@@ -9,27 +9,24 @@ def test_get_modifier():
 
 
 def test_add_remove_modifiers():
-    relationship = Relationship(1, 2)
+    relationship = Relationship(1, 2, 0, True)
 
-    acquaintance_mod = get_modifier('acquaintance')
+    rival_mod = get_modifier('rival')
 
-    relationship.add_modifier(acquaintance_mod)
+    relationship.add_modifier(rival_mod)
 
-    assert relationship.modifiers[0] == acquaintance_mod
     assert relationship.has_flags(
-        Connection.ACQUAINTANCE) == True
+        Connection.RIVAL) == True
 
-    relationship.remove_modifier(acquaintance_mod)
+    relationship.remove_modifier(rival_mod)
 
-    assert len(relationship.modifiers) == 0
     assert relationship.has_flags(
-        Connection.ACQUAINTANCE) == False
+        Connection.RIVAL) == False
 
     best_friend_mod = get_modifier('best friend')
 
     relationship.add_modifier(best_friend_mod)
 
-    assert relationship.modifiers[0] == best_friend_mod
     assert relationship.has_flags(
         Connection.BEST_FRIEND) == True
     assert relationship.salience == 30

@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from typing import Optional
 
 import esper
-from neighborly.core.time import SimDateTime, TimeProcessor
 
-from neighborly.core.weather import WeatherManager, WeatherProcessor
+from neighborly.core.time import SimDateTime, TimeProcessor
+from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
+from neighborly.core.processors import CharacterProcessor, RoutineProcessor
 
 __all__ = [
     "SimulationConfig",
@@ -29,8 +30,10 @@ class Simulation:
         self.config: SimulationConfig = config if config else SimulationConfig()
         random.seed(self.config.seed)
         self.world: esper.World = esper.World()
-        self.world.add_processor(WeatherProcessor(), 5)
+        self.world.add_processor(WeatherProcessor(), 9)
         self.world.add_processor(TimeProcessor(), 10)
+        self.world.add_processor(RoutineProcessor(), 5)
+        self.world.add_processor(CharacterProcessor())
         self.simulation_manager: int = self.world.create_entity(
             WeatherManager(),
             SimDateTime())
@@ -38,3 +41,9 @@ class Simulation:
     def step(self) -> None:
         """Advance the simulation a single timestep"""
         self.world.process(delta_time=self.config.hours_per_timstep)
+
+    def get_time(self) -> SimDateTime:
+        return self.world.component_for_entity(self.simulation_manager, SimDateTime)
+
+    def get_weather(self) -> Weather:
+        return self.world.component_for_entity(self.simulation_manager, WeatherManager).current_weather

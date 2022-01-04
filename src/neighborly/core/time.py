@@ -15,10 +15,10 @@ _DAYS_OF_WEEK: List[str] = [
     'Sunday',
     'Monday',
     'Tuesday',
-    'Wednesday'
+    'Wednesday',
     'Thursday',
     'Friday',
-    'Saturday'
+    'Saturday',
 ]
 
 
@@ -114,6 +114,15 @@ class SimDateTime:
             self.year,
             self.month,
             self.day,
+            self.hour
+        )
+
+    def to_date_str(self) -> str:
+        return "{}, {:02d}/{:02d}/{:04d} @ {:02d}:00".format(
+            self.weekday_str,
+            self.day,
+            self.month,
+            self.year,
             self.hour
         )
 

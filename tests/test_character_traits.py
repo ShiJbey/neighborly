@@ -1,48 +1,52 @@
 import pytest
 
-from neighborly.core.character.traits import CharacterTraits
+from neighborly.core.character.values import CharacterValues
 
 
 def test_constructor():
-    base_propensities = CharacterTraits()
+    base_values = CharacterValues(default=50)
 
-    rls_propensities = CharacterTraits({
-        "rash": 90,
-        "lust": 90,
-        "social": 90
+    overridden_values = CharacterValues({
+        "family": 42,
+        "power": 90,
+        "social": 36
     })
 
-    assert base_propensities["love"] == 50
-    assert base_propensities["social"] == 50
+    assert base_values["family"] == 50
+    assert base_values["social"] == 50
 
-    assert rls_propensities["social"] == 90
-    assert rls_propensities["lust"] == 90
+    assert overridden_values["social"] == 36
+    assert overridden_values["power"] == 50  # clamps value
 
 
 def test_setter():
-    base_propensities = CharacterTraits()
+    base_values = CharacterValues()
 
     # Set to a value within bounds
-    base_propensities["confidence"] = 75
-    assert base_propensities["confidence"] == 75
+    base_values["confidence"] = 75
+    assert base_values["confidence"] == 50
 
     # Set to a value less than the bounds
-    base_propensities["confidence"] = -50
-    assert base_propensities["confidence"] == 0
+    base_values["confidence"] = -50
+    assert base_values["confidence"] == -50
 
     # Set to a value greater than the bounds
-    base_propensities["confidence"] = 9000
-    assert base_propensities["confidence"] == 100
+    base_values["confidence"] = 9000
+    assert base_values["confidence"] == 50
 
     with pytest.raises(KeyError):
-        base_propensities["officiousness"] = 100
+        base_values["officiousness"] = 100
 
 
 def test_getter():
-    base_propensities = CharacterTraits()
+    base_propensities = CharacterValues(default=0)
 
-    assert base_propensities["confidence"] == 50
-    assert base_propensities["friendlyness"] == 50
+    assert base_propensities["confidence"] == 0
+    assert base_propensities["friendship"] == 0
 
     with pytest.raises(KeyError):
-        assert base_propensities["officiousness"] == 50
+        assert base_propensities["officiousness"] == 0
+
+
+def test_compatibility():
+    ...

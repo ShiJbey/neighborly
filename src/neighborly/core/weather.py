@@ -52,5 +52,3 @@ class WeatherProcessor(esper.Processor):
                     np.random.normal(self.avg_change_interval))
 
             weather_manager.time_before_change -= delta_time
-
-        return super().process(*args, **kwargs)

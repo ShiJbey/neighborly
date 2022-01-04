@@ -6,6 +6,8 @@ from enum import Enum
 
 import numpy as np
 
+from neighborly.core.relationship import Relationship
+
 AnyPath = Union[str, Path]
 
 
@@ -39,9 +41,9 @@ class DefaultCharacterNameFactory:
 
     def __init__(self, firstname_file: AnyPath, surname_file: AnyPath) -> None:
         with open(firstname_file, 'r') as f:
-            self.first_names: List[str] = f.readlines()
+            self.first_names: List[str] = f.read().splitlines()
         with open(surname_file, 'r') as f:
-            self.surnames: List[str] = f.readlines()
+            self.surnames: List[str] = f.read().splitlines()
 
     def __call__(self) -> CharacterName:
         return CharacterName(
@@ -57,6 +59,9 @@ class Gender(Enum):
 
 class GameCharacter:
     """The state of a single character within the world"""
+
+    __slots__ = "config", "name", "age", "_max_age", "gender", "can_get_pregnant", \
+        "location", "location_aliases", "relationships"
 
     _masculine_names: Dict[str, Callable[..., CharacterName]] = {}
     _feminine_names: Dict[str, Callable[..., CharacterName]] = {}
@@ -76,6 +81,17 @@ class GameCharacter:
         self.can_get_pregnant: bool = can_get_pregnant
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
+        self.relationships: Dict[int, Relationship] = {}
+
+    def __repr__(self) -> str:
+        return "{}(name={}, age={}, gender={}, location={}, location_aliases={})".format(
+            self.__class__.__name__,
+            str(self.name),
+            round(self.age),
+            self.gender,
+            self.location,
+            self.location_aliases
+        )
 
     @classmethod
     def register_name_factory(cls, is_masculine: bool, name: str, factory: Callable[..., CharacterName]) -> None:

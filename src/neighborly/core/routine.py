@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Union
 
 
 @dataclass
-class Activity:
+class ScheduledActivity:
     """
     Activity scheduled to take place at a specific place and time
     Attribute Fields
@@ -29,7 +29,7 @@ class ScheduleConflictError(Exception):
     activities that temporally conflict with one another
     """
 
-    def __init__(self, existing_activity: 'Activity', new_activity: 'Activity') -> None:
+    def __init__(self, existing_activity: 'ScheduledActivity', new_activity: 'ScheduledActivity') -> None:
         super().__init__()
         self.existing_activity = existing_activity
         self.new_activity = new_activity
@@ -55,10 +55,10 @@ class DailyRoutine:
     __slots__ = "_activities", "_schedule"
 
     def __init__(self) -> None:
-        self._activities: List['Activity'] = []
-        self._schedule: List[Optional['Activity']] = [None] * 24
+        self._activities: List['ScheduledActivity'] = []
+        self._schedule: List[Optional['ScheduledActivity']] = [None] * 24
 
-    def get_activity(self, hour: int) -> Optional['Activity']:
+    def get_activity(self, hour: int) -> Optional['ScheduledActivity']:
         """
         Return the activity a character is supposed to be doing given the time
         If there is nothing scheduled, assume free time for one hour
@@ -72,11 +72,11 @@ class DailyRoutine:
 
         return self._schedule[hour]
 
-    def add_activity(self, new_activity: 'Activity') -> None:
+    def add_activity(self, new_activity: 'ScheduledActivity') -> None:
         """
         Add a Activity and update the schedule
         """
-        if not isinstance(new_activity, Activity):
+        if not isinstance(new_activity, ScheduledActivity):
             raise TypeError(
                 f'Expected \'Activity\' object, but received {type(new_activity).__name__}')
 
@@ -87,11 +87,11 @@ class DailyRoutine:
             self._schedule[hour] = new_activity
         self._activities.append(new_activity)
 
-    def remove_activity(self, activity: 'Activity') -> None:
+    def remove_activity(self, activity: 'ScheduledActivity') -> None:
         """
         Remove an activity from the daily routine
         """
-        if not isinstance(activity, Activity):
+        if not isinstance(activity, ScheduledActivity):
             raise TypeError(
                 f'Expected \'Activity\' object, but received {type(activity).__name__}')
 
@@ -137,36 +137,36 @@ class DailyRoutineFactory:
     def get_student_routine() -> 'DailyRoutine':
         """Construct routine for someone who goes to school during the day"""
         routine = DailyRoutine()
-        routine.add_activity(Activity(0, 6, '@home', 'resting'))
-        routine.add_activity(Activity(7, 8, '@school', 'learning'))
-        routine.add_activity(Activity(21, 3, '@home', 'resting'))
+        routine.add_activity(ScheduledActivity(0, 6, '@home', 'resting'))
+        routine.add_activity(ScheduledActivity(7, 8, '@school', 'learning'))
+        routine.add_activity(ScheduledActivity(21, 3, '@home', 'resting'))
         return routine
 
     @staticmethod
     def get_day_shift_routine() -> 'DailyRoutine':
         """Construct routine for someone who works the day shift"""
         routine = DailyRoutine()
-        routine.add_activity(Activity(0, 6, '@home', 'resting'))
-        routine.add_activity(Activity(7, 8, '@work', 'working'))
-        routine.add_activity(Activity(21, 3, '@home', 'resting'))
+        routine.add_activity(ScheduledActivity(0, 6, '@home', 'resting'))
+        routine.add_activity(ScheduledActivity(7, 8, '@work', 'working'))
+        routine.add_activity(ScheduledActivity(21, 3, '@home', 'resting'))
         return routine
 
     @staticmethod
     def get_night_shift_routine() -> 'DailyRoutine':
         """Construct routine for someone who works the night shift"""
         routine = DailyRoutine()
-        routine.add_activity(Activity(22, 2, '@work', 'working'))
-        routine.add_activity(Activity(0, 6, '@work', 'working'))
-        routine.add_activity(Activity(8, 8, '@home', 'resting'))
+        routine.add_activity(ScheduledActivity(22, 2, '@work', 'working'))
+        routine.add_activity(ScheduledActivity(0, 6, '@work', 'working'))
+        routine.add_activity(ScheduledActivity(8, 8, '@home', 'resting'))
         return routine
 
     @staticmethod
     def get_weekend_routine(run_errands: bool = True) -> 'DailyRoutine':
         """Construct routine for someone's weekend"""
         routine = DailyRoutine()
-        routine.add_activity(Activity(0, 8, '@home', 'resting'))
+        routine.add_activity(ScheduledActivity(0, 8, '@home', 'resting'))
         if run_errands:
-            routine.add_activity(Activity(11, 3, '@any', 'errands'))
+            routine.add_activity(ScheduledActivity(11, 3, '@any', 'errands'))
         return routine
 
 
@@ -197,11 +197,11 @@ class Routine:
             'saturday': saturday if saturday else DailyRoutineFactory.get_weekend_routine(),
         }
 
-    def add_activity_to_days(self, days: List[str], activity: 'Activity') -> None:
+    def add_activity_to_days(self, days: List[str], activity: 'ScheduledActivity') -> None:
         for day in days:
             self._daily_routines[day].add_activity(activity)
 
-    def get_activity(self, day: str, hour: int) -> Optional['Activity']:
+    def get_activity(self, day: str, hour: int) -> Optional['ScheduledActivity']:
         """Get the scheduled activity for a given day and time"""
         daily_routine = self._daily_routines.get(day.lower())
 
