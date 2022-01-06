@@ -71,7 +71,7 @@ _BUILT_IN_MODIFIERS: Dict[str, RelationshipModifier] = {
     "rival": RelationshipModifier(name="rival", salience=30, flags=(Connection.RIVAL,)),
     "coworker": RelationshipModifier(name="coworker", flags=(Connection.COWORKER,)),
     "significant other": RelationshipModifier(name="significant other", salience=50, flags=(Connection.SIGNIFICANT_OTHER,)),
-    "gender difference": RelationshipModifier(name='different genders', charge=-10),
+    # "gender difference": RelationshipModifier(name='different genders', charge=-10),
 }
 
 
@@ -103,8 +103,8 @@ class Relationship:
         self._target: int = target
         self._owner: int = owner
 
-        if not same_gender:
-            self.add_modifier(get_modifier("gender difference"))
+        # if not same_gender:
+        #     self.add_modifier(get_modifier("gender difference"))
 
     @property
     def target(self) -> int:
@@ -163,17 +163,19 @@ class Relationship:
 
     def progress_relationship(self) -> None:
         self._base_salience += SALIENCE_INCREMENT
-        self._charge += self._charge_increment
-        self._spark += self._spark_increment
+        self._charge = clamp(
+            self._charge + self._charge_increment, CHARGE_MIN, CHARGE_MAX)
+        self._spark = clamp(
+            self._spark + self._spark_increment, SPARK_MIN, SPARK_MAX)
 
         if self.charge > FRIENDSHIP_THRESHOLD:
             self._type_modifier = get_modifier("friend")
-            self._is_dirty = True
         elif self.charge < ENEMY_THRESHOLD:
             self._type_modifier = get_modifier("enemy")
-            self._is_dirty = True
         if self.spark > CAPTIVATION_THRESHOLD:
             self.add_modifier(get_modifier("love interest"))
+
+        self._is_dirty = True
 
     def _recalculate_stats(self) -> None:
         self._spark_increment = 0
@@ -204,8 +206,9 @@ class Relationship:
         self._is_dirty = False
 
     def __repr__(self) -> str:
-        return "{}(owner={}, target={}, spark={}, charge={}, salience={}, modifiers={})".format(
+        return "{}<{}>(owner={}, target={}, spark={}, charge={}, salience={}, modifiers={})".format(
             self.__class__.__name__,
+            self._type_modifier.name,
             self.owner,
             self.target,
             self.spark,

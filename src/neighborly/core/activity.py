@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
+
+import numpy as np
+
 from neighborly.core.character.values import CharacterValues
 
 
@@ -35,16 +38,14 @@ def get_activity(activity: str) -> Activity:
     return _activity_registry[activity]
 
 
-# Register some default activities
-register_activity(
-    Activity('gambling', ('wealth', 'excitement', 'adventure', 'lust')))
-register_activity(Activity('shopping', ('material', 'excitement')))
-register_activity(Activity('recreation', ('health', 'excitement')))
-register_activity(Activity('studying', ('knowledge', 'power', 'ambition')))
-register_activity(Activity('errands', ('reliability', 'health', 'family')))
-register_activity(Activity('eating', ('social', 'health', 'liesure-time')))
-register_activity(Activity('socializing', ('social', 'friendship')))
-register_activity(
-    Activity('drinking', ('social', 'confidence', 'friendship', 'excitement')))
-register_activity(
-    Activity('relaxing', ('health', 'tranquility', 'liesure-time')))
+def get_top_activities(character_values: CharacterValues, n: int = 3) -> Tuple[str, ...]:
+    """Return the top activities a character would enjoy given their values"""
+
+    scores: List[Tuple[int, str]] = []
+
+    for name, activity in _activity_registry.items():
+        score: int = np.dot(character_values.traits,
+                            activity.character_traits.traits)
+        scores.append((score, name))
+
+    return tuple([activity_score[1] for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)][:n])

@@ -1,4 +1,5 @@
-from typing import Dict, Optional
+import random
+from typing import Dict, List, Optional
 from enum import Enum
 
 import numpy as np
@@ -21,7 +22,7 @@ class ValueTrait(Enum):
     HEALTH = "health"
     INDEPENDENCE = "independence"
     KNOWLEDGE = "knowledge"
-    LIESURE_TIME = "liesure-time"
+    leisure_TIME = "leisure-time"
     LOYALTY = "loyalty"
     LUST = "lust"
     MATERIAL = "material"
@@ -57,8 +58,8 @@ class CharacterValues:
     __slots__ = "_traits"
 
     def __init__(self, overrides: Optional[Dict[str, int]] = None, default: int = 0) -> None:
-        self._traits: npt.NDArray[np.int8] = np.array(
-            [default] * len(_VALUE_INDICES.keys()), dtype=np.int8)
+        self._traits: npt.NDArray[np.int32] = np.array(
+            [default] * len(_VALUE_INDICES.keys()), dtype=np.int32)
 
         if overrides:
             for trait, value in overrides.items():
@@ -66,7 +67,7 @@ class CharacterValues:
                     TRAIT_MIN, min(TRAIT_MAX, value))
 
     @property
-    def traits(self) -> npt.NDArray[np.int8]:
+    def traits(self) -> npt.NDArray[np.int32]:
         return self._traits
 
     @staticmethod
@@ -77,6 +78,16 @@ class CharacterValues:
         # Convert this to a score to be on the range [-50, 50]
         return round(cos_sim * 50)
 
+    def get_high_values(self, n=3) -> List[str]:
+        """Return the value names associated with the to n values"""
+        # This code is adapted from https://stackoverflow.com/a/23734295
+
+        ind = np.argpartition(self.traits, -n)[-n:]
+
+        value_names = list(_VALUE_INDICES.keys())
+
+        return [value_names[i] for i in ind]
+
     def __getitem__(self, trait: str) -> int:
         return self._traits[_VALUE_INDICES[trait]]
 
@@ -84,5 +95,32 @@ class CharacterValues:
         self._traits[_VALUE_INDICES[trait]] = max(
             TRAIT_MIN, min(TRAIT_MAX, value))
 
+    def __str__(self) -> str:
+        return f"Values Most: {self.get_high_values()}"
+
     def __repr__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self._traits.__repr__())
+
+
+def generate_character_values(n_likes: int = 3, n_dislikes: int = 3) -> CharacterValues:
+    """Generate a new set of character values"""
+    # Select Traits
+    total_traits: int = n_likes + n_dislikes
+    traits = [str(trait.value)
+              for trait in random.sample(list(ValueTrait), total_traits)]
+
+    # select likes and dislikes
+    high_values = random.sample(traits, n_likes)
+    [traits.remove(trait) for trait in high_values]
+    low_values = [*traits]
+
+    # Generate values for each ([30,50] for high values, [-50,-30] for dislikes)
+    values_overrides: Dict[str, int] = {}
+
+    for trait in high_values:
+        values_overrides[trait] = random.randint(30, 50)
+
+    for trait in low_values:
+        values_overrides[trait] = random.randint(-50, -30)
+
+    return CharacterValues(values_overrides)

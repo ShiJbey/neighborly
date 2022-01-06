@@ -36,13 +36,13 @@ class OceanPersonality:
                  agreeableness: int = 0,
                  neuroticism: int = 0) -> None:
 
-        self._traits: npt.NDArray[np.int8] = np.zeros([
+        self._traits: npt.NDArray[np.int32] = np.zeros([
             clamp(openness, self.TRAIT_MIN, self.TRAIT_MAX),
             clamp(conscientiousness, self.TRAIT_MIN, self.TRAIT_MAX),
             clamp(extraversion, self.TRAIT_MIN, self.TRAIT_MAX),
             clamp(agreeableness, self.TRAIT_MIN, self.TRAIT_MAX),
             clamp(neuroticism, self.TRAIT_MIN, self.TRAIT_MAX),
-        ], dtype=np.int8)
+        ], dtype=np.int32)
 
     def get_trait_modifiers(self) -> Dict[str, int]:
         raise NotImplementedError()

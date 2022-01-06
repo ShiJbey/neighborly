@@ -3,22 +3,25 @@ from dataclasses import dataclass
 from typing import Optional
 
 import esper
+import numpy as np
 
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
 from neighborly.core.processors import CharacterProcessor, RoutineProcessor
-
-__all__ = [
-    "SimulationConfig",
-    "Simulation"
-]
+import neighborly.plugins.default_plugin as default_plugin
 
 
 @dataclass
 class SimulationConfig:
     """Configuration parameters for a Neighborly instance"""
-    seed: str = str(random.randint(0, 99999))
+    seed: int = random.randint(0, 99999)
     hours_per_timstep: int = 4
+    structures_set: str = "default"
+    residences_set: str = "default"
+    business_set: str = "default"
+    occupation_set: str = "default"
+    activity_set: str = "default"
+    character_set: str = "default"
 
 
 class Simulation:
@@ -28,7 +31,7 @@ class Simulation:
 
     def __init__(self, config: Optional[SimulationConfig] = None) -> None:
         self.config: SimulationConfig = config if config else SimulationConfig()
-        random.seed(self.config.seed)
+        self._set_seed()
         self.world: esper.World = esper.World()
         self.world.add_processor(WeatherProcessor(), 9)
         self.world.add_processor(TimeProcessor(), 10)
@@ -37,6 +40,11 @@ class Simulation:
         self.simulation_manager: int = self.world.create_entity(
             WeatherManager(),
             SimDateTime())
+
+    def _set_seed(self) -> None:
+        """Sets the seed random number generation"""
+        random.seed(self.config.seed)
+        np.random.seed(self.config.seed)
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
