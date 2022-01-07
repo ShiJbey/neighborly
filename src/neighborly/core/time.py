@@ -2,6 +2,13 @@ from typing import List, cast
 
 import esper
 
+HOURS_PER_DAY = 24
+DAYS_PER_WEEK = 7
+DAYS_PER_MONTH = 28
+WEEKS_PER_MONTH = 4
+MONTHS_PER_YEAR = 12
+HOURS_PER_YEAR = HOURS_PER_DAY * DAYS_PER_MONTH * MONTHS_PER_YEAR
+
 
 _TIME_OF_DAY: List[str] = [
     *(['night'] * 6),       # (00:00-05:59)

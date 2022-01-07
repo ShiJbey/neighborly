@@ -15,3 +15,8 @@ class Town:
     def register_name_factory(cls, name: str, factory: Callable[..., str]) -> None:
         """Register a name factory that creates instances of Town names"""
         cls._name_factories[name] = factory
+
+    @classmethod
+    def create(cls, name_factory: str = 'default') -> 'Town':
+        """Create a town instance"""
+        return cls(name=cls._name_factories[name_factory]())

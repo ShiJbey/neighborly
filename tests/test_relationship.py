@@ -9,7 +9,7 @@ def test_get_modifier():
 
 
 def test_add_remove_modifiers():
-    relationship = Relationship(1, 2, 0, True)
+    relationship = Relationship(1, 2, 0, True, False)
 
     rival_mod = get_modifier('rival')
 

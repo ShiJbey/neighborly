@@ -1,13 +1,14 @@
 import random
 from pathlib import Path
-from typing import Any, Callable, Dict, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Dict, NamedTuple, Optional, Set, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
 
 import numpy as np
 from neighborly.core.activity import get_top_activities
+from neighborly.core.character.status import AdultStatus, AliveStatus, ChildStatus, SeniorStatus, Status, StatusManager
 
-from neighborly.core.relationship import Relationship
+from neighborly.core.relationship import Relationship, RelationshipManager
 from neighborly.core.character.values import CharacterValues, generate_character_values
 
 AnyPath = Union[str, Path]
@@ -19,6 +20,10 @@ class LifeCycleConfig:
 
     Fields
     ------
+    can_age: bool
+        Will his character's age change during th simulation
+    can_die: bool
+        Can this character die when it reaches it's max age
     lifespan_mean: int
         Average lifespan of characters with this configuration
     lifespan_std: int
@@ -27,10 +32,18 @@ class LifeCycleConfig:
     adult_age: int
         Age that characters with thi config are considered adults
         in society
+    romantic_feelings_age: int
+        The age that characters start to develop romantic feelings
+        for other characters
     """
+    can_age: bool = True
+    can_die: bool = True
     lifespan_mean: int = 85
     lifespan_std: int = 15
     adult_age: int = 18
+    senior_age: int = 65
+    romantic_feelings_age: int = 13
+    marriageable_age: int = 18
 
 
 @dataclass(frozen=True)
@@ -98,7 +111,7 @@ class GameCharacter:
         The character's name
     age: float
         The character's current age in years
-    _max_age: float
+    max_age: float
         The age that this character is going to die of natural causes
     gender: Gender
         Loose gender identity for the character
@@ -115,10 +128,13 @@ class GameCharacter:
         Names of activities that this character likes to do
     values: CharacterValues
         This characters beliefs/values in life (i.e. loyalty, family, wealth)
+    statuses: StatusManager
+        Statuses that are active on this character
     """
 
-    __slots__ = "config", "name", "age", "_max_age", "gender", "can_get_pregnant", \
-        "location", "location_aliases", "relationships", "values", "likes",
+    __slots__ = "config", "name", "age", "max_age", "gender", "can_get_pregnant", \
+        "location", "location_aliases", "relationships", "values", "likes", "statuses", \
+        "attracted_to"
 
     _masculine_firstname_factories: Dict[str, Callable[..., str]] = {}
     _feminine_firstname_factories: Dict[str, Callable[..., str]] = {}
@@ -132,18 +148,21 @@ class GameCharacter:
                  max_age: float,
                  gender: Gender,
                  values: CharacterValues,
+                 attracted_to: Set[Gender],
                  can_get_pregnant: bool = False) -> None:
         self.config = config
         self.name: CharacterName = name
         self.age: float = age
-        self._max_age: float = max_age
+        self.max_age: float = max_age
         self.gender: Gender = gender
+        self.attracted_to: Set[Gender] = attracted_to
         self.can_get_pregnant: bool = can_get_pregnant
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
-        self.relationships: Dict[int, Relationship] = {}
+        self.relationships: RelationshipManager = RelationshipManager()
         self.likes: Tuple[str, ...] = get_top_activities(values)
         self.values: CharacterValues = values
+        self.statuses: StatusManager = StatusManager()
 
     def __repr__(self) -> str:
         """Return printable representation"""
@@ -151,7 +170,7 @@ class GameCharacter:
             self.__class__.__name__,
             str(self.name),
             round(self.age),
-            round(self._max_age),
+            round(self.max_age),
             self.gender,
             self.location,
             self.location_aliases,
@@ -178,7 +197,20 @@ class GameCharacter:
     @classmethod
     def create(cls, config: CharacterConfig, **kwargs) -> 'GameCharacter':
         """Create a new instance of a character"""
-        age: float = 0
+
+        age_range: str = kwargs.get("age_range", "adult")
+        if age_range == "child":
+            age: float = float(random.randint(3, config.lifecycle.adult_age))
+            age_status: Status = ChildStatus()
+        elif age_range == "adult":
+            age: float = float(random.randint(
+                config.lifecycle.adult_age, config.lifecycle.senior_age))
+            age_status: Status = AdultStatus()
+        else:
+            age: float = float(random.randint(
+                config.lifecycle.senior_age, config.lifecycle.lifespan_mean))
+            age_status: Status = SeniorStatus()
+
         gender: Gender = random.choice(list(Gender))
 
         if gender == gender.MASCULINE:
@@ -198,15 +230,21 @@ class GameCharacter:
 
         values = generate_character_values()
 
-        return cls(
+        character = cls(
             config,
             CharacterName(firstname, surname),
             age,
             max_age,
             gender,
             values,
+            set(random.sample(list(Gender), random.randint(0, 2))),
             can_get_pregnant=(gender == Gender.FEMININE)
         )
+
+        character.statuses.add_status(AliveStatus())
+        character.statuses.add_status(age_status)
+
+        return character
 
 
 def generate_adult_age(config: CharacterConfig) -> float:

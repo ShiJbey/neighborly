@@ -2,8 +2,6 @@ from neighborly.core.character.character import CharacterConfig
 from neighborly.plugins import default_plugin
 from neighborly.simulation import SimulationConfig, Simulation
 from neighborly.core.ecs_manager import create_character, register_character_config
-from neighborly.core.location import Location
-from neighborly.core.gameobject import GameObject
 from neighborly.authoring import load_structure_definitions
 from neighborly.core.ecs_manager import create_structure
 
@@ -22,7 +20,7 @@ STRUCTURES = \
 def main():
     default_plugin.initialize_plugin()
     load_structure_definitions(yaml_str=STRUCTURES)
-    config = SimulationConfig(seed=0000)
+    config = SimulationConfig(hours_per_timstep=4)
     sim = Simulation(config)
 
     register_character_config('default', CharacterConfig())
@@ -44,13 +42,13 @@ def main():
     print(f"Kamino: {loc3}")
 
     print("=== SIMULATION ==")
-    for _ in range(20):
+    for _ in range(100):
         sim.step()
         # print(f"{str(character_1.name)} Location: {character_1.location}")
         # print(f"{str(character_2.name)} Location: {character_2.location}")
 
-        if character_2_id in character_1.relationships:
-            print(character_1.relationships[character_2_id])
+    if character_2_id in character_1.relationships:
+        print(character_1.relationships[character_2_id])
 
 
 if __name__ == "__main__":

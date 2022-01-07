@@ -1,21 +1,7 @@
-"""
-relationship.py
-
-Relationships are one of the core factors of a
-social simulation next to the chracters. They
-track how one character feels about another. And
-they evolve as a function of how many times two
-characters interact.
-
-Relationships are modeled using three integer values:
-- Charge: platonic affinity
-- Spark: romantic affinity
-- Salience: How mentally relevant is a character to another
-"""
-
-from typing import Dict, Tuple, List
+from typing import Dict, Optional, Set, Tuple, List
 from enum import IntEnum
 from dataclasses import dataclass
+
 
 CHARGE_MAX: int = 50
 CHARGE_MIN: int = -50
@@ -67,11 +53,12 @@ _BUILT_IN_MODIFIERS: Dict[str, RelationshipModifier] = {
     "enemy": RelationshipModifier(name="enemy", salience=20, flags=(Connection.ENEMY,)),
     "best friend": RelationshipModifier(name="best friend", salience=30, flags=(Connection.BEST_FRIEND, Connection.FRIEND)),
     "worst enemy": RelationshipModifier(name="worst enemy", salience=30, flags=(Connection.WORST_ENEMY, Connection.ENEMY)),
-    "love interest": RelationshipModifier(name="love interest", salience=30, flags=(Connection.LOVE_INTEREST,)),
+    "love interest": RelationshipModifier(name="love interest", spark=3, salience=30, flags=(Connection.LOVE_INTEREST,)),
     "rival": RelationshipModifier(name="rival", salience=30, flags=(Connection.RIVAL,)),
     "coworker": RelationshipModifier(name="coworker", flags=(Connection.COWORKER,)),
     "significant other": RelationshipModifier(name="significant other", salience=50, flags=(Connection.SIGNIFICANT_OTHER,)),
-    # "gender difference": RelationshipModifier(name='different genders', charge=-10),
+    "same gender": RelationshipModifier(name='different genders', charge=1),
+    "attracted": RelationshipModifier(name='attracted', spark=2),
 }
 
 
@@ -80,12 +67,29 @@ def get_modifier(name: str) -> RelationshipModifier:
 
 
 class Relationship:
+    """
+    Relationships are one of the core factors of a
+    social simulation next to the chracters. They
+    track how one character feels about another. And
+    they evolve as a function of how many times two
+    characters interact.
+
+    Relationships are modeled using three integer values:
+    - Charge: platonic affinity
+    - Spark: romantic affinity
+    - Salience: How mentally relevant is a character to another
+    """
 
     __slots__ = "_base_salience", "_spark", "_charge", "_flags", "_modifiers", \
         "_spark_increment", "_charge_increment", "_salience", "_compatibility", \
         "_target", "_owner", "_is_dirty", "_type_modifier", "_compatibility_modifier"
 
-    def __init__(self, owner: int, target: int, compatibility: int, same_gender: bool) -> None:
+    def __init__(self,
+                 owner: int,
+                 target: int,
+                 compatibility: int,
+                 same_gender: bool,
+                 attracted: bool) -> None:
         self._base_salience: int = 0
         self._charge: int = 0
         self._spark: int = 0
@@ -103,8 +107,11 @@ class Relationship:
         self._target: int = target
         self._owner: int = owner
 
-        # if not same_gender:
-        #     self.add_modifier(get_modifier("gender difference"))
+        if same_gender:
+            self.add_modifier(get_modifier("same gender"))
+
+        if attracted:
+            self.add_modifier(get_modifier("attracted"))
 
     @property
     def target(self) -> int:
@@ -161,19 +168,12 @@ class Relationship:
         self._modifiers.remove(modifier)
         self._is_dirty = True
 
-    def progress_relationship(self) -> None:
+    def update(self) -> None:
         self._base_salience += SALIENCE_INCREMENT
         self._charge = clamp(
             self._charge + self._charge_increment, CHARGE_MIN, CHARGE_MAX)
         self._spark = clamp(
             self._spark + self._spark_increment, SPARK_MIN, SPARK_MAX)
-
-        if self.charge > FRIENDSHIP_THRESHOLD:
-            self._type_modifier = get_modifier("friend")
-        elif self.charge < ENEMY_THRESHOLD:
-            self._type_modifier = get_modifier("enemy")
-        if self.spark > CAPTIVATION_THRESHOLD:
-            self.add_modifier(get_modifier("love interest"))
 
         self._is_dirty = True
 
@@ -216,3 +216,52 @@ class Relationship:
             self.salience,
             [modifier.name for modifier in self.modifiers]
         )
+
+
+class RelationshipManager:
+    """Manages all of a characters active relationships"""
+
+    __slots__ = "_relationships", "significant_other"
+
+    def __init__(self) -> None:
+        self.significant_other: Optional[int] = None
+        self._relationships: Dict[int, Relationship] = {}
+
+    def __getitem__(self, character_id: int) -> Relationship:
+        """Get a relationship by character ID"""
+        return self._relationships[character_id]
+
+    def __setitem__(self, character_id: int, relationship: Relationship) -> None:
+        """Register a relationship to a character ID"""
+        self._relationships[character_id] = relationship
+
+    def __contains__(self, character_id: int) -> bool:
+        """Return True if there is a relationship with the given character"""
+        return character_id in self._relationships
+
+    def __len__(self) -> int:
+        """Return the number of relationships this character has"""
+        return len(self._relationships)
+
+    def get_with_flags(self, *flags: int) -> List[int]:
+        """Return character IDs for relationships that have the given flags"""
+        results: List[int] = []
+        for character_id, relationship in self._relationships.items():
+            if relationship.has_flags(*flags):
+                results.append(character_id)
+        return results
+
+    def progress_relationship(self, character_id: int) -> None:
+        """Update the state of a relationship"""
+        self._relationships[character_id].update()
+
+        if self._relationships[character_id].charge > FRIENDSHIP_THRESHOLD:
+            self._relationships[character_id]._type_modifier = get_modifier(
+                "friend")
+        elif self._relationships[character_id].charge < ENEMY_THRESHOLD:
+            self._relationships[character_id]._type_modifier = get_modifier(
+                "enemy")
+        if self._relationships[character_id].spark > CAPTIVATION_THRESHOLD:
+            if not self._relationships[character_id].has_flags(Connection.LOVE_INTEREST):
+                self._relationships[character_id].add_modifier(
+                    get_modifier("love interest"))

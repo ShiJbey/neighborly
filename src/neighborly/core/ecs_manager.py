@@ -51,12 +51,13 @@ class CharacterDefinition:
     components: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
-def create_character(world: esper.World, config_name: str = 'default') -> Tuple[int, GameCharacter]:
+def create_character(world: esper.World, config_name: str = 'default', age_range: str = "adult") -> Tuple[int, GameCharacter]:
 
     character_id = world.create_entity()
 
     character = GameCharacter.create(
-        config=_character_config_registry[config_name])
+        config=_character_config_registry[config_name],
+        age_range=age_range)
 
     world.add_component(character_id, GameObject(str(character.name)))
     world.add_component(character_id, character)
