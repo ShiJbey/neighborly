@@ -12,13 +12,17 @@ edit, and powerful for structuring data.
 """
 import esper
 
-from neighborly.core.gameobject import GameObject
+from neighborly.authoring import (
+    load_structure_definitions,
+    register_structure_name_generator,
+)
 from neighborly.core.activity import get_top_activities
-from neighborly.core.character.values import generate_character_values
-from neighborly.core.utils import DefaultNameGenerator
-from neighborly.authoring import load_structure_definitions, register_structure_name_generator
-from neighborly.core.ecs_manager import create_structure
 from neighborly.core.behavior_utils import find_places_with_any_activities
+from neighborly.core.character.values import generate_character_values
+from neighborly.core.ecs_manager import create_structure
+from neighborly.core.gameobject import GameObject
+from neighborly.core.utils import DefaultNameGenerator
+from neighborly.plugins import default_plugin
 
 
 def main():
@@ -52,16 +56,18 @@ def main():
         House: {}
         """
 
+    default_plugin.initialize_plugin()
     load_structure_definitions(yaml_str=structure_yaml)
     register_structure_name_generator(
-        "bars", DefaultNameGenerator(["Prancing Pony", "Moe's Tavern", "Drunken Clam"]))
+        "bars", DefaultNameGenerator(["Prancing Pony", "Moe's Tavern", "Drunken Clam"])
+    )
 
     world = esper.World()
 
-    park = create_structure(world, 'Park')
-    restaurant = create_structure(world, 'Restaurant')
-    bar = create_structure(world, 'Bar')
-    library = create_structure(world, 'Library')
+    park = create_structure(world, "Park")
+    restaurant = create_structure(world, "Restaurant")
+    bar = create_structure(world, "Bar")
+    library = create_structure(world, "Library")
     house = create_structure(world, "House")
 
     print(park, world.components_for_entity(park))
@@ -75,10 +81,15 @@ def main():
 
     print(str(values))
 
-    print("Favorite places:", list(map(
-        lambda entity: world.component_for_entity(entity, GameObject).name,
-        find_places_with_any_activities(world, *fav_activities)
-    )))
+    print(
+        "Favorite places:",
+        list(
+            map(
+                lambda entity: world.component_for_entity(entity, GameObject).name,
+                find_places_with_any_activities(world, *fav_activities),
+            )
+        ),
+    )
 
 
 if __name__ == "__main__":

@@ -1,10 +1,9 @@
-from neighborly.core.character.character import CharacterConfig
-from neighborly.plugins import default_plugin
-from neighborly.simulation import SimulationConfig, Simulation
-from neighborly.core.ecs_manager import create_character, register_character_config
 from neighborly.authoring import load_structure_definitions
-from neighborly.core.ecs_manager import create_structure
-
+from neighborly.core.character.character import CharacterConfig
+from neighborly.core.ecs_manager import (create_character, create_structure,
+                                         register_character_config)
+from neighborly.plugins import default_plugin
+from neighborly.simulation import Simulation, SimulationConfig
 
 STRUCTURES = \
     """

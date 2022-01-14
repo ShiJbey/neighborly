@@ -1,4 +1,4 @@
-from neighborly.core.relationship import Connection, get_modifier, Relationship
+from neighborly.core.relationship import Connection, Relationship, get_modifier
 
 
 def test_get_modifier():

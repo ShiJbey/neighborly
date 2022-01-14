@@ -1,13 +1,16 @@
 import random
 from typing import cast
+
 import esper
 
-from neighborly.core.character.character import GameCharacter
-from neighborly.core.character.status import AdultStatus, DatingStatus, DeadStatus
-from neighborly.core.character.values import CharacterValues
-from neighborly.core.relationship import Connection, Relationship, RelationshipModifier, get_modifier
-from neighborly.core.routine import Routine
 import neighborly.core.behavior_utils as behavior_utils
+from neighborly.core.character.character import GameCharacter
+from neighborly.core.character.status import (AdultStatus, DatingStatus,
+                                              DeadStatus)
+from neighborly.core.character.values import CharacterValues
+from neighborly.core.relationship import (Connection, Relationship,
+                                          RelationshipModifier, get_modifier)
+from neighborly.core.routine import Routine
 from neighborly.core.time import HOURS_PER_YEAR
 
 

@@ -1,6 +1,6 @@
 import random
-from typing import Optional, List, Union
 from pathlib import Path
+from typing import List, Optional, Union
 
 AnyPath = Union[str, Path]
 

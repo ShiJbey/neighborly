@@ -1,6 +1,6 @@
+import random
 from enum import Enum
 from typing import cast
-import random
 
 import esper
 import numpy as np
@@ -8,6 +8,7 @@ import numpy as np
 
 class Weather(Enum):
     """Weather status"""
+
     SUNNY = "sunny"
     RAINING = "raining"
     PARTIALLY_CLOUDY = "partially cloudy"
@@ -34,6 +35,14 @@ class WeatherManager:
 
 
 class WeatherProcessor(esper.Processor):
+    """Updates the current weather state
+
+    Attributes
+    ----------
+    avg_change_interval: int
+        Average number of hours that the current weather
+        state will last before being changed
+    """
 
     world: esper.World
 
@@ -45,10 +54,11 @@ class WeatherProcessor(esper.Processor):
         for _, weather_manager in self.world.get_component(WeatherManager):
             weather_manager = cast(WeatherManager, weather_manager)
 
-            if (weather_manager.time_before_change <= 0):
+            if weather_manager.time_before_change <= 0:
                 # Select the next weather pattern
                 weather_manager.current_weather = random.choice(list(Weather))
                 weather_manager.time_before_change = round(
-                    np.random.normal(self.avg_change_interval))
+                    np.random.normal(self.avg_change_interval)
+                )
 
             weather_manager.time_before_change -= delta_time

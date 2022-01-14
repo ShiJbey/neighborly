@@ -1,4 +1,17 @@
-from typing import Callable, Dict
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Optional
+
+from neighborly.core import ecs_manager
+
+
+@dataclass(frozen=True)
+class TownConfig:
+    """Configuration parameters for Town instance"""
+
+    name: Optional[str] = None
+    name_generator: str = "default_town_names"
+    town_layout: str = "default"
+    town_layout_options: Dict[str, Any] = field(default_factory=dict)
 
 
 class Town:
@@ -6,17 +19,16 @@ class Town:
 
     __slots__ = "name"
 
-    _name_factories: Dict[str, Callable[..., str]] = {}
-
     def __init__(self, name: str) -> None:
         self.name = name
 
     @classmethod
-    def register_name_factory(cls, name: str, factory: Callable[..., str]) -> None:
-        """Register a name factory that creates instances of Town names"""
-        cls._name_factories[name] = factory
-
-    @classmethod
-    def create(cls, name_factory: str = 'default') -> 'Town':
+    def create(cls, config: TownConfig) -> "Town":
         """Create a town instance"""
-        return cls(name=cls._name_factories[name_factory]())
+
+        if config.name:
+            town_name = config.name
+        else:
+            town_name = ecs_manager.get_name_generator(config.name_generator)()
+
+        return cls(name=town_name)

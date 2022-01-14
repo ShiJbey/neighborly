@@ -1,15 +1,18 @@
 import random
-from pathlib import Path
-from typing import Any, Callable, Dict, NamedTuple, Optional, Set, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, NamedTuple, Optional, Set, Tuple, Union
 
 import numpy as np
-from neighborly.core.activity import get_top_activities
-from neighborly.core.character.status import AdultStatus, AliveStatus, ChildStatus, SeniorStatus, Status, StatusManager
 
+from neighborly.core.activity import get_top_activities
+from neighborly.core.character.status import (AdultStatus, AliveStatus,
+                                              ChildStatus, SeniorStatus,
+                                              Status, StatusManager)
+from neighborly.core.character.values import (CharacterValues,
+                                              generate_character_values)
 from neighborly.core.relationship import Relationship, RelationshipManager
-from neighborly.core.character.values import CharacterValues, generate_character_values
 
 AnyPath = Union[str, Path]
 

@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional
+
 from neighborly.core.activity import get_activity_flags
 
 

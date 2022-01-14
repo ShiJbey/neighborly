@@ -1,15 +1,16 @@
-from typing import Dict, Tuple, Optional, Callable, List, Any
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import esper
 import yaml
 
-from neighborly.core.character.character import CharacterConfig, GameCharacter, LifeCycleConfig
+from neighborly.core.business import Business, BusinessConfig
+from neighborly.core.character.character import (CharacterConfig,
+                                                 GameCharacter,
+                                                 LifeCycleConfig)
 from neighborly.core.gameobject import GameObject
-from neighborly.core.routine import Routine
-from neighborly.core.business import BusinessConfig, Business
 from neighborly.core.location import Location
-
+from neighborly.core.routine import Routine
 
 _character_config_registry: Dict[str, CharacterConfig] = {}
 
@@ -43,21 +44,24 @@ class CharacterDefinition:
         that should be included when constructing the
         character archetype
     """
-    masculine_names: str = 'default'
-    feminine_names: str = 'default'
-    neutral_names: str = 'default'
-    surnames: str = 'default'
+
+    masculine_names: str = "default"
+    feminine_names: str = "default"
+    neutral_names: str = "default"
+    surnames: str = "default"
     lifecycle: LifeCycleConfig = field(default_factory=LifeCycleConfig)
     components: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
-def create_character(world: esper.World, config_name: str = 'default', age_range: str = "adult") -> Tuple[int, GameCharacter]:
+def create_character(
+    world: esper.World, config_name: str = "default", age_range: str = "adult"
+) -> Tuple[int, GameCharacter]:
 
     character_id = world.create_entity()
 
     character = GameCharacter.create(
-        config=_character_config_registry[config_name],
-        age_range=age_range)
+        config=_character_config_registry[config_name], age_range=age_range
+    )
 
     world.add_component(character_id, GameObject(str(character.name)))
     world.add_component(character_id, character)
@@ -106,8 +110,7 @@ def create_structure(world: esper.World, name: str) -> int:
     location = Location(structure_def.max_capacity, structure_def.activities)
 
     if structure_def.name_generator:
-        structure_name = _structure_name_generators[structure_def.name_generator](
-        )
+        structure_name = _structure_name_generators[structure_def.name_generator]()
     else:
         structure_name = name
 
@@ -121,3 +124,16 @@ def create_structure(world: esper.World, name: str) -> int:
         world.add_component(structure_id, business)
 
     return structure_id
+
+
+_names_corpus: Dict[str, Callable[..., str]] = {}
+
+
+def register_name_generator(name: str, generator: Callable[..., str]) -> None:
+    """Registers a name generator with the corpus"""
+    _names_corpus[name] = generator
+
+
+def get_name_generator(name: str) -> Callable[..., str]:
+    """Get a name generator by name from the corpus"""
+    return _names_corpus[name]

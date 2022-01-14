@@ -8,13 +8,30 @@ from neighborly.core.character.values import CharacterValues
 
 @dataclass(frozen=True)
 class Activity:
+    """Activities that a character can do at a location in the town
+
+    Attributes
+    ----------
+    name: str
+        The name of the activity
+    traits_names: Tuple[str, ...]
+        Character values that associated with this activity
+    character_traits: CharacterValues
+        CharacterValues instance that encodes the list of trait_names
+        as a vector of 0's and 1's for non-applicable and applicable
+        character values respectively.
+    """
+
     name: str
     trait_names: Tuple[str, ...]
     character_traits: CharacterValues = field(init=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, 'character_traits', CharacterValues(
-            {name: 1 for name in self.trait_names}, default=0))
+        object.__setattr__(
+            self,
+            "character_traits",
+            CharacterValues({name: 1 for name in self.trait_names}, default=0),
+        )
 
 
 _activity_registry: Dict[str, Activity] = {}
@@ -38,14 +55,20 @@ def get_activity(activity: str) -> Activity:
     return _activity_registry[activity]
 
 
-def get_top_activities(character_values: CharacterValues, n: int = 3) -> Tuple[str, ...]:
+def get_top_activities(
+    character_values: CharacterValues, n: int = 3
+) -> Tuple[str, ...]:
     """Return the top activities a character would enjoy given their values"""
 
     scores: List[Tuple[int, str]] = []
 
     for name, activity in _activity_registry.items():
-        score: int = np.dot(character_values.traits,
-                            activity.character_traits.traits)
+        score: int = np.dot(character_values.traits, activity.character_traits.traits)
         scores.append((score, name))
 
-    return tuple([activity_score[1] for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)][:n])
+    return tuple(
+        [
+            activity_score[1]
+            for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)
+        ][:n]
+    )

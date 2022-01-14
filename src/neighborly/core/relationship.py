@@ -1,7 +1,6 @@
-from typing import Dict, Optional, Set, Tuple, List
-from enum import IntEnum
 from dataclasses import dataclass
-
+from enum import IntEnum
+from typing import Dict, List, Optional, Tuple
 
 CHARGE_MAX: int = 50
 CHARGE_MIN: int = -50
@@ -48,17 +47,33 @@ class RelationshipModifier:
 
 
 _BUILT_IN_MODIFIERS: Dict[str, RelationshipModifier] = {
-    "acquaintance": RelationshipModifier(name="acquaintance", flags=(Connection.ACQUAINTANCE,)),
-    "friend": RelationshipModifier(name="friend", salience=20, flags=(Connection.FRIEND,)),
+    "acquaintance": RelationshipModifier(
+        name="acquaintance", flags=(Connection.ACQUAINTANCE,)
+    ),
+    "friend": RelationshipModifier(
+        name="friend", salience=20, flags=(Connection.FRIEND,)
+    ),
     "enemy": RelationshipModifier(name="enemy", salience=20, flags=(Connection.ENEMY,)),
-    "best friend": RelationshipModifier(name="best friend", salience=30, flags=(Connection.BEST_FRIEND, Connection.FRIEND)),
-    "worst enemy": RelationshipModifier(name="worst enemy", salience=30, flags=(Connection.WORST_ENEMY, Connection.ENEMY)),
-    "love interest": RelationshipModifier(name="love interest", spark=3, salience=30, flags=(Connection.LOVE_INTEREST,)),
+    "best friend": RelationshipModifier(
+        name="best friend",
+        salience=30,
+        flags=(Connection.BEST_FRIEND, Connection.FRIEND),
+    ),
+    "worst enemy": RelationshipModifier(
+        name="worst enemy",
+        salience=30,
+        flags=(Connection.WORST_ENEMY, Connection.ENEMY),
+    ),
+    "love interest": RelationshipModifier(
+        name="love interest", spark=3, salience=30, flags=(Connection.LOVE_INTEREST,)
+    ),
     "rival": RelationshipModifier(name="rival", salience=30, flags=(Connection.RIVAL,)),
     "coworker": RelationshipModifier(name="coworker", flags=(Connection.COWORKER,)),
-    "significant other": RelationshipModifier(name="significant other", salience=50, flags=(Connection.SIGNIFICANT_OTHER,)),
-    "same gender": RelationshipModifier(name='different genders', charge=1),
-    "attracted": RelationshipModifier(name='attracted', spark=2),
+    "significant other": RelationshipModifier(
+        name="significant other", salience=50, flags=(Connection.SIGNIFICANT_OTHER,)
+    ),
+    "same gender": RelationshipModifier(name="different genders", charge=1),
+    "attracted": RelationshipModifier(name="attracted", spark=2),
 }
 
 
@@ -80,16 +95,31 @@ class Relationship:
     - Salience: How mentally relevant is a character to another
     """
 
-    __slots__ = "_base_salience", "_spark", "_charge", "_flags", "_modifiers", \
-        "_spark_increment", "_charge_increment", "_salience", "_compatibility", \
-        "_target", "_owner", "_is_dirty", "_type_modifier", "_compatibility_modifier"
+    __slots__ = (
+        "_base_salience",
+        "_spark",
+        "_charge",
+        "_flags",
+        "_modifiers",
+        "_spark_increment",
+        "_charge_increment",
+        "_salience",
+        "_compatibility",
+        "_target",
+        "_owner",
+        "_is_dirty",
+        "_type_modifier",
+        "_compatibility_modifier",
+    )
 
-    def __init__(self,
-                 owner: int,
-                 target: int,
-                 compatibility: int,
-                 same_gender: bool,
-                 attracted: bool) -> None:
+    def __init__(
+        self,
+        owner: int,
+        target: int,
+        compatibility: int,
+        same_gender: bool,
+        attracted: bool,
+    ) -> None:
         self._base_salience: int = 0
         self._charge: int = 0
         self._spark: int = 0
@@ -98,10 +128,10 @@ class Relationship:
         self._salience: int = 0
         self._is_dirty: bool = True
         self._flags: int = 0
-        self._type_modifier: RelationshipModifier = get_modifier(
-            "acquaintance")
+        self._type_modifier: RelationshipModifier = get_modifier("acquaintance")
         self._compatibility_modifier: RelationshipModifier = RelationshipModifier(
-            'compatibility boost', charge=compatibility)
+            "compatibility boost", charge=compatibility
+        )
         self._modifiers: List[RelationshipModifier] = []
         self._compatibility: int = compatibility
         self._target: int = target
@@ -171,9 +201,9 @@ class Relationship:
     def update(self) -> None:
         self._base_salience += SALIENCE_INCREMENT
         self._charge = clamp(
-            self._charge + self._charge_increment, CHARGE_MIN, CHARGE_MAX)
-        self._spark = clamp(
-            self._spark + self._spark_increment, SPARK_MIN, SPARK_MAX)
+            self._charge + self._charge_increment, CHARGE_MIN, CHARGE_MAX
+        )
+        self._spark = clamp(self._spark + self._spark_increment, SPARK_MIN, SPARK_MAX)
 
         self._is_dirty = True
 
@@ -214,7 +244,7 @@ class Relationship:
             self.spark,
             self.charge,
             self.salience,
-            [modifier.name for modifier in self.modifiers]
+            [modifier.name for modifier in self.modifiers],
         )
 
 
@@ -256,12 +286,13 @@ class RelationshipManager:
         self._relationships[character_id].update()
 
         if self._relationships[character_id].charge > FRIENDSHIP_THRESHOLD:
-            self._relationships[character_id]._type_modifier = get_modifier(
-                "friend")
+            self._relationships[character_id]._type_modifier = get_modifier("friend")
         elif self._relationships[character_id].charge < ENEMY_THRESHOLD:
-            self._relationships[character_id]._type_modifier = get_modifier(
-                "enemy")
+            self._relationships[character_id]._type_modifier = get_modifier("enemy")
         if self._relationships[character_id].spark > CAPTIVATION_THRESHOLD:
-            if not self._relationships[character_id].has_flags(Connection.LOVE_INTEREST):
+            if not self._relationships[character_id].has_flags(
+                Connection.LOVE_INTEREST
+            ):
                 self._relationships[character_id].add_modifier(
-                    get_modifier("love interest"))
+                    get_modifier("love interest")
+                )

@@ -1,11 +1,10 @@
-import time
 import threading
+import time
 from enum import Enum
 from typing import Optional, Protocol
 
 import ipywidgets as widgets
 from IPython.display import display
-import ipywidgets as widgets
 
 from neighborly.simulation import Simulation
 

@@ -1,12 +1,12 @@
-from typing import Tuple, cast, List
+from typing import List, Tuple, cast
 
 import esper
 
-from neighborly.core.town.town import Town
-from neighborly.core.time import SimDateTime
+from neighborly.core.activity import get_activity_flags
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.location import Location
-from neighborly.core.activity import get_activity_flags
+from neighborly.core.time import SimDateTime
+from neighborly.core.town.town import Town
 from neighborly.core.weather import Weather, WeatherManager
 
 

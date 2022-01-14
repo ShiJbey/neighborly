@@ -1,6 +1,6 @@
 import pytest
 
-from neighborly.core.time import get_time_of_day, SimDateTime
+from neighborly.core.time import SimDateTime, get_time_of_day
 
 
 def test_get_time_of_day():

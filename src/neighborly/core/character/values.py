@@ -1,6 +1,6 @@
 import random
-from typing import Dict, List, Optional
 from enum import Enum
+from typing import Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -22,7 +22,7 @@ class ValueTrait(Enum):
     HEALTH = "health"
     INDEPENDENCE = "independence"
     KNOWLEDGE = "knowledge"
-    leisure_TIME = "leisure-time"
+    LEISURE_TIME = "leisure-time"
     LOYALTY = "loyalty"
     LUST = "lust"
     MATERIAL = "material"
@@ -39,7 +39,8 @@ class ValueTrait(Enum):
 
 
 _VALUE_INDICES: Dict[str, int] = {
-    str(value_trait.value): index for index, value_trait in enumerate(ValueTrait)}
+    str(value_trait.value): index for index, value_trait in enumerate(ValueTrait)
+}
 
 
 class CharacterValues:
@@ -57,24 +58,31 @@ class CharacterValues:
 
     __slots__ = "_traits"
 
-    def __init__(self, overrides: Optional[Dict[str, int]] = None, default: int = 0) -> None:
+    def __init__(
+        self, overrides: Optional[Dict[str, int]] = None, default: int = 0
+    ) -> None:
         self._traits: npt.NDArray[np.int32] = np.array(
-            [default] * len(_VALUE_INDICES.keys()), dtype=np.int32)
+            [default] * len(_VALUE_INDICES.keys()), dtype=np.int32
+        )
 
         if overrides:
             for trait, value in overrides.items():
                 self._traits[_VALUE_INDICES[trait]] = max(
-                    TRAIT_MIN, min(TRAIT_MAX, value))
+                    TRAIT_MIN, min(TRAIT_MAX, value)
+                )
 
     @property
     def traits(self) -> npt.NDArray[np.int32]:
         return self._traits
 
     @staticmethod
-    def calculate_compatibility(traits_a: 'CharacterValues', traits_b: 'CharacterValues') -> int:
+    def calculate_compatibility(
+        traits_a: "CharacterValues", traits_b: "CharacterValues"
+    ) -> int:
         # Cosine similarity is a value between -1 and 1
         cos_sim: float = np.dot(traits_a.traits, traits_b.traits) / (
-            np.linalg.norm(traits_a.traits) * np.linalg.norm(traits_b.traits))
+            np.linalg.norm(traits_a.traits) * np.linalg.norm(traits_b.traits)
+        )
         # Convert this to a score to be on the range [-50, 50]
         return round(cos_sim * 50)
 
@@ -92,8 +100,7 @@ class CharacterValues:
         return self._traits[_VALUE_INDICES[trait]]
 
     def __setitem__(self, trait: str, value: int) -> None:
-        self._traits[_VALUE_INDICES[trait]] = max(
-            TRAIT_MIN, min(TRAIT_MAX, value))
+        self._traits[_VALUE_INDICES[trait]] = max(TRAIT_MIN, min(TRAIT_MAX, value))
 
     def __str__(self) -> str:
         return f"Values Most: {self.get_high_values()}"
@@ -106,8 +113,9 @@ def generate_character_values(n_likes: int = 3, n_dislikes: int = 3) -> Characte
     """Generate a new set of character values"""
     # Select Traits
     total_traits: int = n_likes + n_dislikes
-    traits = [str(trait.value)
-              for trait in random.sample(list(ValueTrait), total_traits)]
+    traits = [
+        str(trait.value) for trait in random.sample(list(ValueTrait), total_traits)
+    ]
 
     # select likes and dislikes
     high_values = random.sample(traits, n_likes)
