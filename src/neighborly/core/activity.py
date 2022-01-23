@@ -63,7 +63,7 @@ def get_top_activities(
     scores: List[Tuple[int, str]] = []
 
     for name, activity in _activity_registry.items():
-        score: int = np.dot(character_values.traits, activity.character_traits.traits)
+        score: int = int(np.dot(character_values.traits, activity.character_traits.traits))
         scores.append((score, name))
 
     return tuple(

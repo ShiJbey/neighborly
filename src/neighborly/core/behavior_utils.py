@@ -15,7 +15,9 @@ def get_date(world: esper.World) -> SimDateTime:
 
 
 def get_weather(self) -> Weather:
-    return self.world.component_for_entity(self.simulation_manager, WeatherManager).current_weather
+    return self.world.component_for_entity(
+        self.simulation_manager, WeatherManager
+    ).current_weather
 
 
 def get_town(world: esper.World) -> Town:
@@ -46,7 +48,10 @@ def move_character(world: esper.World, character_id: int, location_id: int) -> N
 
 
 def get_locations(world: esper.World) -> List[Tuple[int, Location]]:
-    return sorted(cast(List[Tuple[int, Location]], world.get_component(Location)), key=lambda pair: pair[0])
+    return sorted(
+        cast(List[Tuple[int, Location]], world.get_component(Location)),
+        key=lambda pair: pair[0],
+    )
 
 
 def find_places_with_activities(world: esper.World, *activities: str) -> List[int]:
@@ -87,3 +92,15 @@ def find_places_with_any_activities(world: esper.World, *activities: str) -> Lis
             matches.append((score, location_id))
 
     return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
+
+
+def is_adult(world: esper.World, character_id: int) -> bool:
+    """Return tru if the character is an adult"""
+    character = get_character(world, character_id)
+    return character.age >= character.config.lifecycle.adult_age
+
+
+def is_senior(world: esper.World, character_id: int) -> bool:
+    """Return tru if the character is an adult"""
+    character = get_character(world, character_id)
+    return character.age >= character.config.lifecycle.senior_age

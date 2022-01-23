@@ -2,17 +2,15 @@ import random
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, NamedTuple, Optional, Set, Tuple, Union
+from typing import Dict, NamedTuple, Optional, Set, Tuple, Union
 
 import numpy as np
 
 from neighborly.core.activity import get_top_activities
-from neighborly.core.character.status import (AdultStatus, AliveStatus,
-                                              ChildStatus, SeniorStatus,
-                                              Status, StatusManager)
-from neighborly.core.character.values import (CharacterValues,
-                                              generate_character_values)
-from neighborly.core.relationship import Relationship, RelationshipManager
+from neighborly.core.character.status import StatusManager
+from neighborly.core.character.values import CharacterValues, generate_character_values
+from neighborly.core.relationship import RelationshipManager
+import neighborly.core.name_generation as name_gen
 
 AnyPath = Union[str, Path]
 
@@ -39,6 +37,7 @@ class LifeCycleConfig:
         The age that characters start to develop romantic feelings
         for other characters
     """
+
     can_age: bool = True
     can_die: bool = True
     lifespan_mean: int = 85
@@ -55,26 +54,13 @@ class CharacterConfig:
 
     Fields
     ------
-    masculine_names: str
-        Name of the registered factory that creates instances
-        of names that are considered to be more masculine
-    feminine_names: str
-        Name of the registered factory that creates instances
-        of names that are considered to be more feminine
-    neutral_names: str
-        Name of registered factory that creates instances
-        of names that are considered to be more neutral
-    surnames: str
-        Name of registered factory that creates instances
-        of character surnames
     lifecycle: LifeCycleConfig
         Configuration parameters for a characters lifecycle
     """
-    masculine_names: str = 'default'
-    feminine_names: str = 'default'
-    neutral_names: str = 'default'
-    surnames: str = 'default'
+
+    name: str
     lifecycle: LifeCycleConfig = field(default_factory=LifeCycleConfig)
+    gender_overrides: Dict[str, "CharacterConfig"] = field(default_factory=Dict)
 
 
 class CharacterName(NamedTuple):
@@ -86,28 +72,16 @@ class CharacterName(NamedTuple):
 
 
 class Gender(Enum):
-    MASCULINE = 0
-    FEMININE = 1
-    NEUTRAL = 2
+    MASCULINE = "masculine"
+    FEMININE = "feminine"
+    NEUTRAL = "neutral"
 
 
 class GameCharacter:
     """The state of a single character within the world
 
-
-    Class Attributes
-    ----------------
-    _masculine_firstname_factories: Dict[str, Callable[..., str]]
-        Dict of functions that generate strings to be masculine names
-    _feminine_firstname_factories: Dict[str, Callable[..., str]]
-        Dict of functions that generate strings to be feminine names
-    _neutral_firstname_factories: Dict[str, Callable[..., str]]
-        Dict of functions that generate strings to be gender-neutral names
-    _surname_factories: Dict[str, Callable[..., str]]
-        Dict of functions that generate strings to be surnames
-
-    Instance Attributes
-    -------------------
+    Attributes
+    ----------
     config: CharacterConfig
         Configuration settings for the character
     name: CharacterName
@@ -118,8 +92,6 @@ class GameCharacter:
         The age that this character is going to die of natural causes
     gender: Gender
         Loose gender identity for the character
-    can_get_pregnant: bool
-        Can this character bear children
     location: int
         Entity ID of the location where this character current is
     location_aliases: Dict[str, int]
@@ -135,31 +107,38 @@ class GameCharacter:
         Statuses that are active on this character
     """
 
-    __slots__ = "config", "name", "age", "max_age", "gender", "can_get_pregnant", \
-        "location", "location_aliases", "relationships", "values", "likes", "statuses", \
-        "attracted_to"
+    __slots__ = (
+        "config",
+        "name",
+        "age",
+        "max_age",
+        "gender",
+        "can_get_pregnant",
+        "location",
+        "location_aliases",
+        "relationships",
+        "values",
+        "likes",
+        "statuses",
+        "attracted_to",
+    )
 
-    _masculine_firstname_factories: Dict[str, Callable[..., str]] = {}
-    _feminine_firstname_factories: Dict[str, Callable[..., str]] = {}
-    _neutral_firstname_factories: Dict[str, Callable[..., str]] = {}
-    _surnames_factories: Dict[str, Callable[..., str]] = {}
-
-    def __init__(self,
-                 config: CharacterConfig,
-                 name: CharacterName,
-                 age: float,
-                 max_age: float,
-                 gender: Gender,
-                 values: CharacterValues,
-                 attracted_to: Set[Gender],
-                 can_get_pregnant: bool = False) -> None:
+    def __init__(
+        self,
+        config: CharacterConfig,
+        name: CharacterName,
+        age: float,
+        max_age: float,
+        gender: Gender,
+        values: CharacterValues,
+        attracted_to: Set[Gender],
+    ) -> None:
         self.config = config
         self.name: CharacterName = name
         self.age: float = age
         self.max_age: float = max_age
         self.gender: Gender = gender
         self.attracted_to: Set[Gender] = attracted_to
-        self.can_get_pregnant: bool = can_get_pregnant
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
         self.relationships: RelationshipManager = RelationshipManager()
@@ -179,57 +158,43 @@ class GameCharacter:
             self.location_aliases,
             self.likes,
             len(self.relationships),
-            str(self.values)
+            str(self.values),
         )
 
     @classmethod
-    def register_firstname_factory(cls, factory: Callable[..., str], name: str = "default", gender: Gender = Gender.NEUTRAL) -> None:
-        """Adds a name factory function for use during character creation"""
-        if gender == Gender.MASCULINE:
-            cls._masculine_firstname_factories[name] = factory
-        elif gender == Gender.FEMININE:
-            cls._feminine_firstname_factories[name] = factory
-        else:
-            cls._neutral_firstname_factories[name] = factory
-
-    @classmethod
-    def register_surname_factory(cls, factory: Callable[..., str], name: str = "default") -> None:
-        """Adds a name factory function for use during character creation"""
-        cls._surnames_factories[name] = factory
-
-    @classmethod
-    def create(cls, config: CharacterConfig, **kwargs) -> 'GameCharacter':
+    def create(cls, config: CharacterConfig, **kwargs) -> "GameCharacter":
         """Create a new instance of a character"""
 
         age_range: str = kwargs.get("age_range", "adult")
         if age_range == "child":
             age: float = float(random.randint(3, config.lifecycle.adult_age))
-            age_status: Status = ChildStatus()
         elif age_range == "adult":
-            age: float = float(random.randint(
-                config.lifecycle.adult_age, config.lifecycle.senior_age))
-            age_status: Status = AdultStatus()
+            age: float = float(
+                random.randint(config.lifecycle.adult_age, config.lifecycle.senior_age)
+            )
         else:
-            age: float = float(random.randint(
-                config.lifecycle.senior_age, config.lifecycle.lifespan_mean))
-            age_status: Status = SeniorStatus()
+            age: float = float(
+                random.randint(
+                    config.lifecycle.senior_age, config.lifecycle.lifespan_mean
+                )
+            )
 
         gender: Gender = random.choice(list(Gender))
 
-        if gender == gender.MASCULINE:
-            firstname = \
-                cls._masculine_firstname_factories[config.masculine_names]()
-        elif gender == gender.FEMININE:
-            firstname = \
-                cls._feminine_firstname_factories[config.feminine_names]()
-        else:
-            firstname = \
-                cls._neutral_firstname_factories[config.neutral_names]()
+        name_rule: str = (
+            config.gender_overrides[str(gender)].name
+            if str(gender) in config.gender_overrides
+            else config.name
+        )
 
-        surname = cls._surnames_factories[config.surnames]()
+        firstname, surname = tuple(name_gen.get_name(name_rule).split(" "))
 
-        max_age: float = max(age + 1, np.random.normal(config.lifecycle.lifespan_mean,
-                                                       config.lifecycle.lifespan_std))
+        max_age: float = max(
+            age + 1,
+            np.random.normal(
+                config.lifecycle.lifespan_mean, config.lifecycle.lifespan_std
+            ),
+        )
 
         values = generate_character_values()
 
@@ -241,14 +206,12 @@ class GameCharacter:
             gender,
             values,
             set(random.sample(list(Gender), random.randint(0, 2))),
-            can_get_pregnant=(gender == Gender.FEMININE)
         )
-
-        character.statuses.add_status(AliveStatus())
-        character.statuses.add_status(age_status)
 
         return character
 
 
 def generate_adult_age(config: CharacterConfig) -> float:
-    return np.random.uniform(config.lifecycle.adult_age, config.lifecycle.adult_age + 15)
+    return np.random.uniform(
+        config.lifecycle.adult_age, config.lifecycle.adult_age + 15
+    )

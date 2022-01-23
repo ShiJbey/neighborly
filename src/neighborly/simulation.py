@@ -22,7 +22,7 @@ class SimulationConfig:
     hours_per_timestep: int
         How many in-simulation hours elapse every simulation tic
     misc_paces_set: str
-        Namespace of miscellanous places that can exist in the town
+        Namespace of miscellaneous places that can exist in the town
     residences_set: str
         Namespace of residential buildings archetypes that can exist in the town
     businesses_set: str
@@ -34,7 +34,7 @@ class SimulationConfig:
     """
 
     seed: int = random.randint(0, 99999)
-    hours_per_timstep: int = 4
+    hours_per_timestep: int = 4
     misc_places_set: str = "default"
     residences_set: str = "default"
     business_set: str = "default"
@@ -79,7 +79,7 @@ class Simulation:
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
-        self.world.process(delta_time=self.config.hours_per_timstep)
+        self.world.process(delta_time=self.config.hours_per_timestep)
 
     def get_time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""

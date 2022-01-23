@@ -1,19 +1,30 @@
-
-
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Any, Dict, List, Protocol
 
+import esper
 
-class Status(Protocol):
+
+class Status(ABC):
     """A temporary or permanent status applied to a GameCharacter"""
 
-    @abstractmethod
-    def get_name(self) -> str:
-        """Return the name associated with this status"""
+    tag: str
+
+    def __init__(self, metadata: Dict[str, Any], behaviors: List[str]) -> None:
+        self.metadata = {**metadata}
+        self.behaviors = [*behaviors]
+
+    @classmethod
+    def get_tag(cls) -> str:
+        """Return the tag associated with this class"""
+        return cls.tag
+
+    @classmethod
+    def check_preconditions(cls, world: esper.World, character_id: int) -> bool:
+        """Return true if the given character passes the preconditions"""
         raise NotImplementedError()
 
     @abstractmethod
-    def update(self, **kwargs) -> bool:
+    def update(self, world: esper.World, character_id: int) -> bool:
         """Update status and return True is still active"""
         raise NotImplementedError()
 
@@ -28,7 +39,7 @@ class StatusManager:
 
     def add_status(self, status: Status) -> None:
         """Add a status (may overwrite previous status of same type)"""
-        self._statuses[status.get_name()] = status
+        self._statuses[status.get_tag()] = status
 
     def has_status(self, status: str) -> bool:
         """Return True if this status is present"""
@@ -53,86 +64,3 @@ class StatusManager:
 
         for name in inactive:
             self.remove_status(name)
-
-
-class AdultStatus:
-    """Marks a character as being seen as an adult in society"""
-
-    def get_name(self) -> str:
-        """Return the name associated with this status"""
-        return "adult"
-
-    def update(self, **kwargs) -> bool:
-        """Update status and return True is still active"""
-        del kwargs
-        return True
-
-
-class ChildStatus:
-    """Marks a character as being seen as an child in society"""
-
-    def get_name(self) -> str:
-        """Return the name associated with this status"""
-        return "child"
-
-    def update(self, **kwargs) -> bool:
-        """Update status and return True is still active"""
-        del kwargs
-        return True
-
-
-class SeniorStatus:
-    """Marks a character as being seen as a senior in society"""
-
-    def get_name(self) -> str:
-        """Return the name associated with this status"""
-        return "senior"
-
-    def update(self, **kwargs) -> bool:
-        """Update status and return True is still active"""
-        del kwargs
-        return True
-
-
-class AliveStatus:
-    """Marks a character as being alive"""
-
-    def get_name(self) -> str:
-        """Return the name associated with this status"""
-        return "alive"
-
-    def update(self, **kwargs) -> bool:
-        """Update status and return True is still active"""
-        del kwargs
-        return True
-
-
-class DeadStatus:
-    """Marks a character as being dead"""
-
-    def get_name(self) -> str:
-        """Return the name associated with this status"""
-        return "dead"
-
-    def update(self, **kwargs) -> bool:
-        """Update status and return True is still active"""
-        del kwargs
-        return True
-
-
-class DatingStatus:
-    """Signals that this character is dating someone"""
-
-    __slots__ = "significant_other"
-
-    def __init__(self, significant_other: int) -> None:
-        self.significant_other: int = significant_other
-
-    def get_name(self) -> str:
-        """Return the name associated with this status"""
-        return "dating"
-
-    def update(self, **kwargs) -> bool:
-        """Update status and return True is still active"""
-        del kwargs
-        return True

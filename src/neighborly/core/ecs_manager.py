@@ -5,9 +5,11 @@ import esper
 import yaml
 
 from neighborly.core.business import Business, BusinessConfig
-from neighborly.core.character.character import (CharacterConfig,
-                                                 GameCharacter,
-                                                 LifeCycleConfig)
+from neighborly.core.character.character import (
+    CharacterConfig,
+    GameCharacter,
+    LifeCycleConfig,
+)
 from neighborly.core.gameobject import GameObject
 from neighborly.core.location import Location
 from neighborly.core.routine import Routine
@@ -124,16 +126,3 @@ def create_structure(world: esper.World, name: str) -> int:
         world.add_component(structure_id, business)
 
     return structure_id
-
-
-_names_corpus: Dict[str, Callable[..., str]] = {}
-
-
-def register_name_generator(name: str, generator: Callable[..., str]) -> None:
-    """Registers a name generator with the corpus"""
-    _names_corpus[name] = generator
-
-
-def get_name_generator(name: str) -> Callable[..., str]:
-    """Get a name generator by name from the corpus"""
-    return _names_corpus[name]

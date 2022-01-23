@@ -173,6 +173,13 @@ class Relationship:
     def modifiers(self) -> List[RelationshipModifier]:
         return self._modifiers
 
+    @property
+    def type_modifier(self) -> RelationshipModifier:
+        return self._type_modifier
+
+    def set_type_modifier(self, modifier: RelationshipModifier):
+        self._type_modifier = modifier
+
     def has_flags(self, *flags: int) -> bool:
         if self._is_dirty:
             self._recalculate_stats()
@@ -286,9 +293,9 @@ class RelationshipManager:
         self._relationships[character_id].update()
 
         if self._relationships[character_id].charge > FRIENDSHIP_THRESHOLD:
-            self._relationships[character_id]._type_modifier = get_modifier("friend")
+            self._relationships[character_id].set_type_modifier(get_modifier("friend"))
         elif self._relationships[character_id].charge < ENEMY_THRESHOLD:
-            self._relationships[character_id]._type_modifier = get_modifier("enemy")
+            self._relationships[character_id].set_type_modifier(get_modifier("enemy"))
         if self._relationships[character_id].spark > CAPTIVATION_THRESHOLD:
             if not self._relationships[character_id].has_flags(
                 Connection.LOVE_INTEREST

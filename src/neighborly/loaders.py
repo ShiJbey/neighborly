@@ -7,19 +7,14 @@ import yaml
 
 from neighborly.core.activity import Activity, register_activity
 from neighborly.core.business import BusinessConfig
-from neighborly.core.character.character import GameCharacter, Gender
-from neighborly.core.ecs_manager import (StructureDefinition,
-                                         register_name_generator,
-                                         register_structure_def,
-                                         register_structure_name_generator)
-from neighborly.core.town.town import Town
-from neighborly.core.utils import DefaultNameGenerator
+from neighborly.core.ecs_manager import StructureDefinition, register_structure_def
+from neighborly.core.name_generation import register_rule
 
 AnyPath = Union[str, Path]
 
 
 def load_activity_definitions(
-    yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
+        yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
 ) -> None:
     """Loads new activity types from given YAML data"""
     if yaml_str and filepath:
@@ -38,7 +33,7 @@ def load_activity_definitions(
 
 
 def load_structure_definitions(
-    yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
+        yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
 ) -> None:
     if yaml_str and filepath:
         raise ValueError("Only supply YAML string or file path not both")
@@ -53,7 +48,7 @@ def load_structure_definitions(
 
     # HElPER FUNCTIONS
     def _get_business_config(
-        data: Dict[str, Any], **kwargs
+            data: Dict[str, Any], **kwargs
     ) -> Optional[BusinessConfig]:
         config: Optional[Dict[str, Any]] = data.get("business")
 
@@ -78,60 +73,22 @@ def load_structure_definitions(
 
 
 def load_occupation_definitions(
-    yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
+        yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
 ) -> None:
     """Load occupation types from YAML string or YAML file"""
     ...
 
 
-def load_surnames(
-    namespace: str,
-    names: Optional[List[str]] = None,
-    filepath: Optional[AnyPath] = None,
-) -> None:
-    """Load names to be used as characters' surnames"""
-    GameCharacter.register_surname_factory(
-        DefaultNameGenerator(names, filepath), name=namespace
-    )
-
-
-def load_neutral_names(
-    namespace: str,
-    names: Optional[List[str]] = None,
-    filepath: Optional[AnyPath] = None,
-) -> None:
-    """Load names to be used as characters' surnames"""
-    GameCharacter.register_firstname_factory(
-        DefaultNameGenerator(names, filepath), name=namespace
-    )
-
-
-def load_feminine_names(
-    namespace: str,
-    names: Optional[List[str]] = None,
-    filepath: Optional[AnyPath] = None,
-) -> None:
-    """Load names to be used as characters' surnames"""
-    GameCharacter.register_firstname_factory(
-        DefaultNameGenerator(names, filepath), gender=Gender.FEMININE, name=namespace
-    )
-
-
-def load_masculine_names(
-    namespace: str,
-    names: Optional[List[str]] = None,
-    filepath: Optional[AnyPath] = None,
-) -> None:
-    """Load names to be used as characters' surnames"""
-    GameCharacter.register_firstname_factory(
-        DefaultNameGenerator(names, filepath), gender=Gender.MASCULINE, name=namespace
-    )
-
-
 def load_names(
-    namespace: str,
-    names: Optional[List[str]] = None,
-    filepath: Optional[AnyPath] = None,
+        namespace: str,
+        names: Optional[List[str]] = None,
+        filepath: Optional[AnyPath] = None,
 ) -> None:
     """Load names a list of names from a text file or given list"""
-    register_name_generator(namespace, DefaultNameGenerator(names, filepath))
+    if names:
+        register_rule(namespace, names)
+    elif filepath:
+        with open(filepath, "r") as f:
+            register_rule(namespace, f.read().splitlines())
+    else:
+        raise ValueError("Need to supply names list or path to file containing names")

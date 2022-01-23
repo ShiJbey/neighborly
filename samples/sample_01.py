@@ -1,4 +1,4 @@
-from neighborly.authoring import load_structure_definitions
+from neighborly.loaders import load_structure_definitions
 from neighborly.core.character.character import CharacterConfig
 from neighborly.core.ecs_manager import (create_character, create_structure,
                                          register_character_config)

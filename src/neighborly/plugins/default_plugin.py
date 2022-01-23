@@ -1,26 +1,25 @@
 import os
 from pathlib import Path
 
-from neighborly.authoring import (load_activity_definitions,
-                                  load_feminine_names, load_masculine_names,
-                                  load_names, load_neutral_names,
-                                  load_occupation_definitions,
-                                  load_structure_definitions, load_surnames)
+from neighborly.loaders import (load_activity_definitions,
+                                load_names,
+                                load_occupation_definitions,
+                                load_structure_definitions)
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent.parent / "data"
 
 
 def initialize_plugin() -> None:
     # Load character name data
-    load_surnames("default", filepath=_RESOURCES_DIR / "names" / "surnames.txt")
-    load_neutral_names(
-        "default", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt"
+    load_names("surnames", filepath=_RESOURCES_DIR / "names" / "surnames.txt")
+    load_names(
+        "neutral_first_names", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt"
     )
-    load_feminine_names(
-        "default", filepath=_RESOURCES_DIR / "names" / "feminine_names.txt"
+    load_names(
+        "feminine_first_names", filepath=_RESOURCES_DIR / "names" / "feminine_names.txt"
     )
-    load_masculine_names(
-        "default", filepath=_RESOURCES_DIR / "names" / "masculine_names.txt"
+    load_names(
+        "masculine_first_names", filepath=_RESOURCES_DIR / "names" / "masculine_names.txt"
     )
 
     # Load definitions for types of activities that exist
@@ -37,7 +36,7 @@ def initialize_plugin() -> None:
 
     # Load potential names for the town
     load_names(
-        "default_town_names",
+        "town_names",
         filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
     )
 

@@ -12,7 +12,7 @@ edit, and powerful for structuring data.
 """
 import esper
 
-from neighborly.authoring import (
+from neighborly.loaders import (
     load_structure_definitions,
     register_structure_name_generator,
 )
