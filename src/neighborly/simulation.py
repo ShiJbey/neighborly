@@ -3,12 +3,14 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import esper
-import numpy as np
 
 from neighborly.core.processors import CharacterProcessor, RoutineProcessor
+from neighborly.core.social_practice import SocialPracticeManager
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.town.town import Town, TownConfig
 from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
+from neighborly.core.name_generation import initialize_name_generator
+from neighborly.core.rng import DefaultRNGManager
 
 
 @dataclass(frozen=True)
@@ -18,7 +20,7 @@ class SimulationConfig:
     Attributes
     ----------
     seed: int
-        The seed provided to the random number generator
+        The seed provided to the random number factory
     hours_per_timestep: int
         How many in-simulation hours elapse every simulation tic
     misc_paces_set: str
@@ -35,10 +37,10 @@ class SimulationConfig:
 
     seed: int = random.randint(0, 99999)
     hours_per_timestep: int = 4
-    misc_places_set: str = "default"
-    residences_set: str = "default"
-    business_set: str = "default"
-    character_set: str = "default"
+    misc_places_set: str = field(default="default")
+    residences_set: str = field(default="default")
+    business_set: str = field(default="default")
+    character_set: str = field(default="default")
     town: TownConfig = field(default_factory=TownConfig)
 
 
@@ -51,31 +53,31 @@ class Simulation:
         Configuration settings for how the simulation
     world: esper.World
         Entity-component system (ECS) that manages entities in the virtual world
-    simulation_manager: int
-        Entity ID of the Simulation Manager entity in the ECS
+    resources: int
+        Entity ID of the entity that holds common resources used by all entities
     town: int
         Entity ID of the town entity within the ECS
     """
 
-    __slots__ = "config", "world", "simulation_manager", "town"
+    __slots__ = "config", "world", "resources", "town"
 
     def __init__(self, config: Optional[SimulationConfig] = None) -> None:
         self.config: SimulationConfig = config if config else SimulationConfig()
-        self._set_seed()
+
+        initialize_name_generator()
+
         self.world: esper.World = esper.World()
         self.world.add_processor(WeatherProcessor(), 9)
         self.world.add_processor(TimeProcessor(), 10)
         self.world.add_processor(RoutineProcessor(), 5)
         self.world.add_processor(CharacterProcessor())
-        self.simulation_manager: int = self.world.create_entity(
-            WeatherManager(), SimDateTime()
+        self.resources: int = self.world.create_entity(
+            WeatherManager(),
+            SimDateTime(),
+            SocialPracticeManager(),
+            DefaultRNGManager(self.config.seed),
         )
         self.town: int = self.world.create_entity(Town.create(self.config.town))
-
-    def _set_seed(self) -> None:
-        """Sets the seed random number generation"""
-        random.seed(self.config.seed)
-        np.random.seed(self.config.seed)
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
@@ -83,12 +85,12 @@ class Simulation:
 
     def get_time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
-        return self.world.component_for_entity(self.simulation_manager, SimDateTime)
+        return self.world.component_for_entity(self.resources, SimDateTime)
 
     def get_weather(self) -> Weather:
         """Get the current weather pattern in the town"""
         return self.world.component_for_entity(
-            self.simulation_manager, WeatherManager
+            self.resources, WeatherManager
         ).current_weather
 
     def get_town(self) -> Town:

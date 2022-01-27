@@ -1,0 +1,15 @@
+Characters:
+  Assassin:
+    tags: ["john_wick"]
+    components:
+      Assassin:
+        coins: 5
+Places:
+  The Continental Hotel:
+    name: The Continental Hotel
+    description: Safe haven for assassins
+    tags: ["john_wick"]
+    Location:
+      activities: [eating, drinking, socializing]
+      prohibited_behaviors: [kill]
+      occupancy_limit: 20

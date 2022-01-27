@@ -1,25 +1,26 @@
 import os
 from pathlib import Path
 
-from neighborly.loaders import (load_activity_definitions,
-                                load_names,
-                                load_occupation_definitions,
-                                load_structure_definitions)
+from neighborly.loaders import (
+    load_activity_definitions,
+    load_names,
+    load_occupation_definitions,
+    load_structure_definitions,
+)
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent.parent / "data"
 
 
 def initialize_plugin() -> None:
     # Load character name data
-    load_names("surnames", filepath=_RESOURCES_DIR / "names" / "surnames.txt")
+    load_names("surname", filepath=_RESOURCES_DIR / "names" / "surnames.txt")
+    load_names("first_name", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt")
     load_names(
-        "neutral_first_names", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt"
+        "feminine_first_name", filepath=_RESOURCES_DIR / "names" / "feminine_names.txt"
     )
     load_names(
-        "feminine_first_names", filepath=_RESOURCES_DIR / "names" / "feminine_names.txt"
-    )
-    load_names(
-        "masculine_first_names", filepath=_RESOURCES_DIR / "names" / "masculine_names.txt"
+        "masculine_first_name",
+        filepath=_RESOURCES_DIR / "names" / "masculine_names.txt",
     )
 
     # Load definitions for types of activities that exist
@@ -30,13 +31,13 @@ def initialize_plugin() -> None:
 
     # Load potential names for different structures in the town
     load_names(
-        "restaurant_names", filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt"
+        "restaurant_name", filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt"
     )
-    load_names("bar_names", filepath=_RESOURCES_DIR / "names" / "bar_names.txt")
+    load_names("bar_name", filepath=_RESOURCES_DIR / "names" / "bar_names.txt")
 
     # Load potential names for the town
     load_names(
-        "town_names",
+        "town_name",
         filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
     )
 

@@ -1,0 +1,26 @@
+<ImmigrationBehavior name="AddResident">
+    <SequenceBTNode>
+        <SelectorBTNode>
+            <BuildOnEmptyLot />
+            <FindVacantResidence />
+        </SelectorBTNode>
+        <AddNewResidents />
+    </SequenceBTNode>
+</ImmigrationBehavior>
+
+<!--
+# YAML Example
+
+ImmigrationBehaviors:
+    - 
+        name: Add Resident
+        nodes:
+            node: Sequence
+            children:
+                - 
+                    node: Selector
+                    children:
+                        - node: BuildOnEmptyLot
+                        - node: FindVacantResidence
+                - node: AddNewResisence
+ -->

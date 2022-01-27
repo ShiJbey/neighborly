@@ -1,8 +1,7 @@
 import random
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Dict, NamedTuple, Optional, Set, Tuple, Union
+from typing import Any, Dict, NamedTuple, Optional, Set, Tuple
 
 import numpy as np
 
@@ -11,8 +10,6 @@ from neighborly.core.character.status import StatusManager
 from neighborly.core.character.values import CharacterValues, generate_character_values
 from neighborly.core.relationship import RelationshipManager
 import neighborly.core.name_generation as name_gen
-
-AnyPath = Union[str, Path]
 
 
 @dataclass(frozen=True)
@@ -58,9 +55,9 @@ class CharacterConfig:
         Configuration parameters for a characters lifecycle
     """
 
-    name: str
+    name: str = field(default="#first_name# #surname#")
     lifecycle: LifeCycleConfig = field(default_factory=LifeCycleConfig)
-    gender_overrides: Dict[str, "CharacterConfig"] = field(default_factory=Dict)
+    gender_overrides: Dict[str, "CharacterConfig"] = field(default_factory=dict)
 
 
 class CharacterName(NamedTuple):
@@ -105,6 +102,8 @@ class GameCharacter:
         This characters beliefs/values in life (i.e. loyalty, family, wealth)
     statuses: StatusManager
         Statuses that are active on this character
+    metadata: Dict[str, Any]
+        Key-value pair additional information about the state of a character
     """
 
     __slots__ = (
@@ -121,6 +120,7 @@ class GameCharacter:
         "likes",
         "statuses",
         "attracted_to",
+        "metadata",
     )
 
     def __init__(
@@ -145,6 +145,7 @@ class GameCharacter:
         self.likes: Tuple[str, ...] = get_top_activities(values)
         self.values: CharacterValues = values
         self.statuses: StatusManager = StatusManager()
+        self.metadata: Dict[str, Any] = {}
 
     def __repr__(self) -> str:
         """Return printable representation"""

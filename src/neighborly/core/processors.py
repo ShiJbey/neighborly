@@ -52,8 +52,8 @@ class CharacterProcessor(esper.Processor):
         if character.config.lifecycle.can_age:
             character.age += hours / HOURS_PER_YEAR
 
-        if character.age > character.config.lifecycle.adult_age:
-            character.statuses.add_status(AdultStatus())
+        # if character.age > character.config.lifecycle.adult_age:
+        #     character.statuses.add_status(AdultStatus())
 
     def _simulate_dating(self, character_id: int, character: GameCharacter) -> None:
         """Simulate the dating life of this person."""
@@ -82,12 +82,12 @@ class CharacterProcessor(esper.Processor):
             in person_to_ask.relationships.get_with_flags(Connection.LOVE_INTEREST)
             and person_to_ask.relationships.significant_other is not None
         ):
-            character.statuses.add_status(DatingStatus(person_to_ask_id))
+            # character.statuses.add_status(DatingStatus(person_to_ask_id))
             character.relationships.significant_other = person_to_ask_id
             character.relationships[person_to_ask_id].add_modifier(
                 get_modifier("significant other")
             )
-            person_to_ask.statuses.add_status(DatingStatus(character_id))
+            # person_to_ask.statuses.add_status(DatingStatus(character_id))
             person_to_ask.relationships.significant_other = character_id
             person_to_ask.relationships[character_id].add_modifier(
                 get_modifier("significant other")
@@ -168,8 +168,9 @@ class CharacterProcessor(esper.Processor):
 
     def _die(self, character_id: int, character: GameCharacter) -> None:
         """Have a character pass away. Remove them from the simulation"""
-        character.statuses.remove_status("alive")
-        character.statuses.add_status(DeadStatus())
+        # character.statuses.remove_status("alive")
+        # character.statuses.add_status(DeadStatus())
+        ...
 
 
 class RoutineProcessor(esper.Processor):

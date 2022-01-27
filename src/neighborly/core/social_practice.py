@@ -46,6 +46,8 @@ def register_social_practice(practice_config: SocialPracticeConfig) -> None:
     global _registered_social_practices
     _registered_social_practices[practice_config.name] = practice_config
 
+def get_practice_config(name: str) -> SocialPracticeConfig:
+    return _registered_social_practices[name]
 
 class SocialPractice:
     """Collections of character behaviors organized by role
@@ -105,3 +107,17 @@ def register_character_behavior(behavior: CharacterBehavior) -> None:
     """Register the given behavior with the given name"""
     global _behavior_registry
     _behavior_registry[behavior.name] = behavior
+
+
+class SocialPracticeManager:
+    """Updates all its instances of social practices"""
+
+    def __init__(self) -> None:
+        self._active_practices: List[SocialPractice] = []
+
+    def add_practice(self, practice: SocialPractice) -> None:
+        self._active_practices.append(practice)
+
+    def update(self) -> None:
+        for practice in self._active_practices:
+            practice.config.update_fn(practice.roles, practice.metadata)

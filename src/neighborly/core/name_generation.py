@@ -8,7 +8,7 @@ _grammar: Optional[tracery.Grammar] = None
 
 
 class GrammarNotInitializedError(Exception):
-    """Exception raised when attempting to use the name generator before initialization."""
+    """Exception raised when attempting to use the name factory before initialization."""
 
     def __init__(self):
         super().__init__(
@@ -17,7 +17,7 @@ class GrammarNotInitializedError(Exception):
 
 
 def register_rule(name: str, rule: Union[str, List[str]]) -> None:
-    """Add a rule to the name generator"""
+    """Add a rule to the name factory"""
     global _all_name_rules
     _all_name_rules[name] = rule
 

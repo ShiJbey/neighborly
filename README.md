@@ -2,11 +2,20 @@
 
 Neighborly is a framework that simulates characters in a virtual town.
 It takes lessons learned from working with
-[*Talk of the Town*](https://github.com/james-owen-ryan/talktown)
+[_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
 and gives people better documentation, simpler interfaces, and more
 opportunities for customization.
 
 ## Notes
+
+### Task Backlog
+
+- [ ] Remove duplicate rand num generators and create RNGManager class
+- [ ] Create Factories for each of the behavior tree nodes
+- [ ] Create a singular datastore for managing specifications made in YAML/XML
+- [ ] EntityArchetype Authoring in YAML
+- [ ] BehaviorTree Authoring in XML
+- [ ] Support placing all definitions in the same file
 
 ### Non-Deterministic Behavior
 
@@ -16,4 +25,4 @@ We try to remove all forms of non-determinism, but some slip through.
 The known areas are listed below. If you find any, please make a new
 issue with details of the behavior.
 
-* N/A
+- N/A

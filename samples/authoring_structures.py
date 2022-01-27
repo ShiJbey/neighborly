@@ -14,14 +14,13 @@ import esper
 
 from neighborly.loaders import (
     load_structure_definitions,
-    register_structure_name_generator,
+    load_names,
 )
 from neighborly.core.activity import get_top_activities
 from neighborly.core.behavior_utils import find_places_with_any_activities
 from neighborly.core.character.values import generate_character_values
 from neighborly.core.ecs_manager import create_structure
 from neighborly.core.gameobject import GameObject
-from neighborly.core.utils import DefaultNameGenerator
 from neighborly.plugins import default_plugin
 
 
@@ -42,12 +41,12 @@ def main():
             max capacity: 20
             business: {}
         Bar:
+            name: #bars#
             activities:
                 - eating
                 - drinking
                 - socializing
             max capacity: 35
-            name generator: bars
         Library:
             activities:
                 - reading
@@ -58,9 +57,7 @@ def main():
 
     default_plugin.initialize_plugin()
     load_structure_definitions(yaml_str=structure_yaml)
-    register_structure_name_generator(
-        "bars", DefaultNameGenerator(["Prancing Pony", "Moe's Tavern", "Drunken Clam"])
-    )
+    load_names("bars", names=["Prancing Pony", "Moe's Tavern", "Drunken Clam"])
 
     world = esper.World()
 

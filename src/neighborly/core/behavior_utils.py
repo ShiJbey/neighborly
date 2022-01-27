@@ -5,9 +5,15 @@ import esper
 from neighborly.core.activity import get_activity_flags
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.location import Location
+from neighborly.core.relationship import get_modifier
 from neighborly.core.time import SimDateTime
 from neighborly.core.town.town import Town
 from neighborly.core.weather import Weather, WeatherManager
+from neighborly.core.social_practice import (
+    SocialPractice,
+    SocialPracticeManager,
+    get_practice_config,
+)
 
 
 def get_date(world: esper.World) -> SimDateTime:
@@ -94,13 +100,39 @@ def find_places_with_any_activities(world: esper.World, *activities: str) -> Lis
     return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
 
 
+def is_child(world: esper.World, character_id: int) -> bool:
+    """Return True if the character is a child"""
+    character = get_character(world, character_id)
+    return character.age < character.config.lifecycle.adult_age
+
+
 def is_adult(world: esper.World, character_id: int) -> bool:
-    """Return tru if the character is an adult"""
+    """Return True if the character is an adult"""
     character = get_character(world, character_id)
     return character.age >= character.config.lifecycle.adult_age
 
 
 def is_senior(world: esper.World, character_id: int) -> bool:
-    """Return tru if the character is an adult"""
+    """Return True if the character is a senior"""
     character = get_character(world, character_id)
     return character.age >= character.config.lifecycle.senior_age
+
+
+def start_social_practice(name: str, world: esper.World, **kwargs) -> None:
+    """Start an instance of a social practice"""
+    practice = SocialPractice(name, **kwargs)
+
+    manager = cast(
+        SocialPracticeManager, world.get_component(SocialPracticeManager)[0][1]
+    )
+
+    manager.add_practice(practice)
+
+
+def add_relationship_modifier(
+    world: esper.World, subject_id: int, target_id: int, modifier_name: str
+) -> None:
+    """Add a relationship modifier on the subject's relationship to the target"""
+    subject = get_character(world, subject_id)
+
+    subject.relationships[target_id].add_modifier(get_modifier(modifier_name))

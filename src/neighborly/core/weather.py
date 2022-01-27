@@ -50,6 +50,7 @@ class WeatherProcessor(esper.Processor):
         self.avg_change_interval: int = avg_change_interval
 
     def process(self, *args, **kwargs):
+        del args
         delta_time: int = kwargs["delta_time"]
         for _, weather_manager in self.world.get_component(WeatherManager):
             weather_manager = cast(WeatherManager, weather_manager)

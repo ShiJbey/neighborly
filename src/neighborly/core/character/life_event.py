@@ -1,18 +1,30 @@
-from typing import Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional
+from dataclasses import dataclass
+
+import esper
+
+
+@dataclass(frozen=True)
+class LifeEvent:
+    name: str
+    description: str
+    preconditions: Callable[[esper.World, int], bool]
+    post_effects: Callable[[esper.World, int], None]
+
 
 # These are the event types that may be created
 # by character behaviors, social practices, and
 # statuses. This validity set helps to expose
 # event_type typos in downstream code
-_valid_event_types: Set[str] = set()
+_valid_event_types: Dict[str, LifeEvent] = {}
 
 
-def register_event_type(event_type: str) -> None:
+def register_event_type(event: LifeEvent) -> None:
     """Adds an event type name to the set of valid event types"""
-    _valid_event_types.add(event_type)
+    _valid_event_types[event.name] = event
 
 
-class LifeEvent:
+class LifeEventRecord:
     """Record of a major event that occurred in a character's life
 
     Attributes
@@ -35,9 +47,6 @@ class LifeEvent:
         time_stamp: str,
         metadata: Optional[Dict[str, str]] = None,
     ) -> None:
-        if event_type not in _valid_event_types:
-            raise ValueError(f"Invalid event type: '{event_type}'")
-
         self.event_type: str = event_type
         self.time_stamp: str = time_stamp
         self.metadata: Dict[str, str] = metadata if metadata else {}
@@ -64,10 +73,10 @@ class CharacterLifeEvents:
     __slots__ = "_history"
 
     def __init__(self) -> None:
-        self._history: List[LifeEvent] = []
+        self._history: List[LifeEventRecord] = []
 
     @property
-    def history(self) -> List[LifeEvent]:
+    def history(self) -> List[LifeEventRecord]:
         return self._history
 
     def __repr__(self) -> str:

@@ -1,12 +1,14 @@
 from neighborly.loaders import load_structure_definitions
 from neighborly.core.character.character import CharacterConfig
-from neighborly.core.ecs_manager import (create_character, create_structure,
-                                         register_character_config)
+from neighborly.core.ecs_manager import (
+    create_character,
+    create_structure,
+    register_character_config,
+)
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation, SimulationConfig
 
-STRUCTURES = \
-    """
+STRUCTURES = """
     Space Casino:
         activities: ["gambling", "drinking", "eating", "socializing"]
     Mars:
@@ -19,10 +21,10 @@ STRUCTURES = \
 def main():
     default_plugin.initialize_plugin()
     load_structure_definitions(yaml_str=STRUCTURES)
-    config = SimulationConfig(hours_per_timstep=4)
+    config = SimulationConfig(hours_per_timestep=4)
     sim = Simulation(config)
 
-    register_character_config('default', CharacterConfig())
+    register_character_config("default", CharacterConfig())
 
     character_1_id, character_1 = create_character(sim.world)
     character_2_id, character_2 = create_character(sim.world)

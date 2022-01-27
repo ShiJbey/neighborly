@@ -1,15 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict
 
-from neighborly.core import ecs_manager
+from neighborly.core.name_generation import get_name
 
 
 @dataclass(frozen=True)
 class TownConfig:
     """Configuration parameters for Town instance"""
 
-    name: Optional[str] = None
-    name_generator: str = "default_town_names"
+    name: str = "#town_names#"
     town_layout: str = "default"
     town_layout_options: Dict[str, Any] = field(default_factory=dict)
 
@@ -25,10 +24,5 @@ class Town:
     @classmethod
     def create(cls, config: TownConfig) -> "Town":
         """Create a town instance"""
-
-        if config.name:
-            town_name = config.name
-        else:
-            town_name = ecs_manager.get_name_generator(config.name_generator)()
-
+        town_name = get_name(config.name)
         return cls(name=town_name)

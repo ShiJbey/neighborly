@@ -1,49 +1,50 @@
-gambling:
+Activities:
+  gambling:
     traits:
-        - wealth
-        - excitement
-        - adventure
-        - lust
-shopping:
+      - wealth
+      - excitement
+      - adventure
+      - lust
+  shopping:
     traits:
-        - material
-        - excitement
-        - leisure-time
-recreation:
+      - material
+      - excitement
+      - leisure-time
+  recreation:
     traits:
-        - health
-        - excitement
-studying:
+      - health
+      - excitement
+  studying:
     traits:
-        - knowledge
-        - power
-        - ambition
-reading:
+      - knowledge
+      - power
+      - ambition
+  reading:
     traits:
-        - knowledge
-        - power
-        - leisure-time
-errands:
+      - knowledge
+      - power
+      - leisure-time
+  errands:
     traits:
-        - reliability
-        - health
-        - family
-eating:
+      - reliability
+      - health
+      - family
+  eating:
     traits:
-        - social
-        - health
-        - family
-socializing:
+      - social
+      - health
+      - family
+  socializing:
     traits:
-        - social
-        - excitement
-        - friendship
-drinking:
+      - social
+      - excitement
+      - friendship
+  drinking:
     traits:
-        - social
-        - friendship
-relaxing:
+      - social
+      - friendship
+  relaxing:
     traits:
-        - health
-        - tranquility
-        - leisure-time
+      - health
+      - tranquility
+      - leisure-time

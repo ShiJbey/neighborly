@@ -6,6 +6,20 @@ from neighborly.core import behavior_utils
 
 register_social_practice(
     SocialPracticeConfig(
+        name="child",
+        description="This character is a child",
+        preconditions=[
+            lambda world, roles, metadata: behavior_utils.is_child(
+                world, roles["subject"][0]
+            )
+        ],
+        behaviors={},
+        update_fn=lambda roles, metadata: True,
+    )
+)
+
+register_social_practice(
+    SocialPracticeConfig(
         name="adult",
         description="This character is a legal adult",
         preconditions=[
@@ -28,6 +42,20 @@ register_social_practice(
             )
         ],
         behaviors={"all": ["look for job"]},
+        update_fn=lambda roles, metadata: True,
+    )
+)
+
+register_social_practice(
+    SocialPracticeConfig(
+        name="default",
+        description="Default social practice given to all chracters.",
+        preconditions=[
+            lambda world, roles, metadata: behavior_utils.is_senior(
+                world, roles["subject"][0]
+            )
+        ],
+        behaviors={"all": ["die", "socialize"]},
         update_fn=lambda roles, metadata: True,
     )
 )

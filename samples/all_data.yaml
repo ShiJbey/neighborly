@@ -1,0 +1,37 @@
+# This is Neighborly's new data specification.
+# It places all the component configuration data
+# in a single place so that users don't have to
+# split all their specs if they don't want to
+
+Businesses:
+  # Place Business Definitions here
+  {}
+Residences:
+  # Place Residence Definitions here
+  {}
+Places:
+  Grocery Store:
+    activities:
+      - shopping
+    max capacity: 60
+  Restaurant:
+    activities:
+      - eating
+      - socializing
+    max capacity: 20
+  Bar:
+    activities:
+      - eating
+      - drinking
+      - socializing
+    max capacity: 35
+    name factory: bars
+  Library:
+    activities:
+      - reading
+      - studying
+    max capacity: 35
+Characters:
+  # Place Character Definitions here
+  Human:
+    name: "#first_name# #last_name#"
