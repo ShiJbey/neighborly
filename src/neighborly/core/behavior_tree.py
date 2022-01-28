@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from re import S
 from typing import List, Any, Dict, Optional
 
 
@@ -11,7 +12,7 @@ class InvalidNodeState(Exception):
         self.node_state = node_state
 
     def __repr__(self) -> str:
-        return f'InvalidNodeState(node_state={self.node_state})'
+        return f"InvalidNodeState(node_state={self.node_state})"
 
     def __str__(self) -> str:
         return f'Encountered invalid node state "{self.node_state}"'
@@ -24,10 +25,10 @@ class MissingBlackboardError(Exception):
         super().__init__()
 
     def __repr__(self) -> str:
-        return f'MissingBlackboard()'
+        return f"MissingBlackboard()"
 
     def __str__(self) -> str:
-        return f'Node blackboard is not set'
+        return f"Node blackboard is not set"
 
 
 class BlackboardKeyNotFound(Exception):
@@ -36,7 +37,9 @@ class BlackboardKeyNotFound(Exception):
     def __init__(self, key: str) -> None:
         super().__init__()
         self._key = key
-        self.message = f'BlackboardKeyNotFound("{key}" could not be found in Blackboard)'
+        self.message = (
+            f'BlackboardKeyNotFound("{key}" could not be found in Blackboard)'
+        )
 
     def __repr__(self) -> str:
         return f'BlackboardKeyNotFound(key="{self._key}")'
@@ -57,7 +60,9 @@ class Blackboard:
             for key, val in values.items():
                 self._values[key] = val
 
-    def get_value(self, key: str, required: bool = True, default: Optional[Any] = None) -> Any:
+    def get_value(
+        self, key: str, required: bool = True, default: Optional[Any] = None
+    ) -> Any:
         if key not in self._values and required:
             raise BlackboardKeyNotFound(key)
         return self._values.get(key, default)
@@ -73,36 +78,44 @@ class Blackboard:
 
 
 class NodeState(Enum):
-    RUNNING = 'running'
-    SUCCESS = 'success'
-    FAILURE = 'failure'
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILURE = "failure"
 
 
 class AbstractBTNode(ABC):
 
-    def __init__(self) -> None:
-        self._state: 'NodeState' = NodeState.SUCCESS
+    __slots__ = "_state", "_children"
 
-    @property
-    def state(self) -> 'NodeState':
-        """Get the state of this node after execution"""
+    def __init__(self) -> None:
+        self._state: "NodeState" = NodeState.FAILURE
+        self._children: List["AbstractBTNode"] = []
+
+    def get_state(self) -> NodeState:
+        """Get the state of this node after evaluation"""
         return self._state
 
+    def add_child(self, node: "AbstractBTNode") -> None:
+        """Add a child node to this node"""
+        self._children.append(node)
+
     @abstractmethod
-    def evaluate(self, blackboard: 'Blackboard') -> 'NodeState':
+    def evaluate(self, blackboard: "Blackboard") -> "NodeState":
         """Run the logic encapsulated in this node"""
-        pass
+        raise NotImplementedError()
 
 
 class SequenceBTNode(AbstractBTNode):
-
-    def __init__(self, nodes: List[AbstractBTNode]) -> None:
+    def __init__(self, nodes: Optional[List[AbstractBTNode]] = None) -> None:
         super().__init__()
-        self._nodes: List[AbstractBTNode] = nodes
 
-    def evaluate(self, blackboard: 'Blackboard') -> 'NodeState':
+        if nodes:
+            for node in nodes:
+                self.add_child(node)
+
+    def evaluate(self, blackboard: "Blackboard") -> "NodeState":
         any_child_running: bool = False
-        for node in self._nodes:
+        for node in self._children:
             res = node.evaluate(blackboard)
             if res == NodeState.SUCCESS:
                 pass
@@ -118,19 +131,20 @@ class SequenceBTNode(AbstractBTNode):
 
 
 class SelectorBTNode(AbstractBTNode):
-
-    def __init__(self, nodes: List[AbstractBTNode]) -> None:
+    def __init__(self, nodes: Optional[List[AbstractBTNode]] = None) -> None:
         super().__init__()
-        self._nodes: List[AbstractBTNode] = nodes
+        if nodes:
+            for node in nodes:
+                self.add_child(node)
 
-    def evaluate(self, blackboard: 'Blackboard') -> 'NodeState':
-        for node in self._nodes:
+    def evaluate(self, blackboard: "Blackboard") -> "NodeState":
+        for node in self._children:
             res = node.evaluate(blackboard)
             if res == NodeState.SUCCESS:
                 self._state = NodeState.SUCCESS
                 return self._state
             elif res == NodeState.FAILURE:
-                break
+                continue
             elif res == NodeState.RUNNING:
                 self._state = NodeState.RUNNING
                 return self._state
@@ -142,19 +156,19 @@ class SelectorBTNode(AbstractBTNode):
 
 
 class DecoratorBTNode(AbstractBTNode, ABC):
-
-    def __init__(self, node: AbstractBTNode) -> None:
+    def __init__(self, node: Optional[AbstractBTNode] = None) -> None:
         super().__init__()
-        self._node = node
+
+        if node:
+            self.add_child(node)
 
 
 class InverterNode(DecoratorBTNode):
-
-    def __init__(self, node: AbstractBTNode) -> None:
+    def __init__(self, node: Optional[AbstractBTNode] = None) -> None:
         super().__init__(node)
 
-    def evaluate(self, blackboard: 'Blackboard') -> 'NodeState':
-        res = self._node.evaluate(blackboard)
+    def evaluate(self, blackboard: "Blackboard") -> "NodeState":
+        res = self._children[0].evaluate(blackboard)
         if res == NodeState.SUCCESS:
             self._state = NodeState.FAILURE
         elif res == NodeState.FAILURE:
@@ -171,16 +185,27 @@ class BehaviorTree(AbstractBTNode):
     failure
     """
 
-    def __init__(self, root: AbstractBTNode) -> None:
+    __slots__ = "_type"
+
+    def __init__(self, type_name: str, root: Optional[AbstractBTNode] = None) -> None:
         super().__init__()
-        self._root = root
+        self._type = type_name
+        if root:
+            self.add_child(root)
 
-    @property
-    def root(self) -> 'AbstractBTNode':
-        return self._root
+    def add_child(self, node: AbstractBTNode) -> None:
+        if self._children:
+            raise ValueError("BehaviorTree already has a single child")
+        return super().add_child(node)
 
-    def evaluate(self, blackboard: 'Blackboard') -> 'NodeState':
+    def get_type(self) -> str:
+        """Return what type of behavior tree this is"""
+        return self._type
+
+    def get_root(self) -> "AbstractBTNode":
+        return self._children[0]
+
+    def evaluate(self, blackboard: "Blackboard") -> "NodeState":
         """Evaluate the behavior tree"""
-        res = self._root.evaluate(blackboard)
-        self._state = res
-        return res
+        self._state = self.get_root().evaluate(blackboard)
+        return self._state
