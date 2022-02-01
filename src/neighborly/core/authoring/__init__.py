@@ -1,117 +1,99 @@
-"""
-Interfaces and classes to assist in creating
-modular, authorable content.
+from abc import ABC
+from typing import Any, Protocol, Dict, List, Optional
 
 
-This code has been adapted from the C++ examples
-in Game AI Pro 3:
+class AbstractFactory(ABC):
+    """Abstract class for factory instances
 
-Dill, Kevin. "Six Factory System Tricks For Extensibility and Library Reuse."
-    Game AI Pro 3. CRC Press, 2017. 87-114.
-"""
+    Attributes
+    ----------
+    _type: str
+        The name of the type of component the factory instantiates
+    """
+
+    __slots__ = "_type"
+
+    def __init__(self, _type: str) -> None:
+        self._type = _type
+
+    def get_type(self) -> str:
+        """Return the name of the type this factory creates"""
+        return self._type
 
 
-from typing import Any, Callable, Dict, Generic, Protocol, TypeVar, List, Optional, Type
-from abc import abstractmethod, ABC
-import logging
+class ComponentSpec:
+    """Collection of Key-Value pairs used to instantiate instances of components"""
 
+    __slots__ = "_children", "_node_type", "_attributes", "_parent"
 
-logger = logging.getLogger(__name__)
-
-_T = TypeVar("_T", bound="Component")
-
-
-class SpecificationNode:
-
-    __slots__ = "_children", "_node_type", "_attributes"
-
-    def __init__(self, node_type: str, **kwargs) -> None:
+    def __init__(self, node_type: str, attributes: Optional[Dict[str, Any]] = None) -> None:
         self._node_type: str = node_type
-        self._attributes: Dict[str, Any] = {**kwargs}
-        self._children: List["SpecificationNode"] = []
+        self._attributes: Dict[str, Any] = attributes if attributes else {}
+        self._parent: Optional["ComponentSpec"] = None
+        self._children: List["ComponentSpec"] = []
 
     def get_type(self) -> str:
         return self._node_type
 
-    def add_child(self, node: "SpecificationNode") -> None:
+    def set_parent(self, node: "ComponentSpec") -> None:
+        self._parent = node
+
+    def add_child(self, node: "ComponentSpec") -> None:
         self._children.append(node)
 
-    def __getitem__(self, key: str) -> Any:
-        return self._attributes[key]
-
     def get_attributes(self) -> Dict[str, Any]:
-        """Return attributes dict"""
         return self._attributes
 
+    def __getitem__(self, key: str) -> Any:
+        if key in self._attributes:
+            return self._attributes[key]
+        elif self._parent:
+            return self._parent[key]
+        raise KeyError(key)
 
-class CreationData(ABC):
-
-    __slots__ = "_preload_fn", "_specification_node"
-
-    def __init__(self, node: SpecificationNode) -> None:
-        self._specification_node: SpecificationNode = node
-        self._preload_fn: Optional[Callable[[Any], None]] = None
-
-    def get_node(self) -> SpecificationNode:
-        return self._specification_node
-
-    def set_preload_function(self, fn: Callable[[Any], None]):
-        self._preload_fn = fn
-
-    def construct_object(self, cls_type: Type[_T]) -> _T:
-        """Construct an object of a specified type"""
-
-        obj: _T = cls_type()
-
-        if self._preload_fn:
-            self._preload_fn(obj)
-
-        success: bool = obj.load_data(self)
-
-        return obj
+    def __contains__(self, attribute_name: str) -> bool:
+        return attribute_name in self._attributes
 
 
-class Component(Protocol):
-    """Abstract interface for all components in the system"""
+class EntityArchetypeSpec:
+    """Collection of Component specs used to instantiate instances of entities"""
 
-    @abstractmethod
-    def load_data(self, creation_data: CreationData) -> bool:
-        """Load data to from creation data"""
-        ...
+    __slots__ = "_type", "_components", "_attributes"
+
+    def __init__(
+            self,
+            _type: str,
+            components: Optional[Dict[str, ComponentSpec]] = None,
+            attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        self._type: str = _type
+        self._components: Dict[str, ComponentSpec] = components if components else {}
+        self._attributes: Dict[str, Any] = attributes if attributes else {}
+
+    def get_components(self) -> Dict[str, ComponentSpec]:
+        """Return the ComponentSpecs that make up this archetype"""
+        return self._components
+
+    def get_type(self) -> str:
+        """Get the type of archetype this is"""
+        return self._type
+
+    def get_attributes(self) -> Dict[str, Any]:
+        """Get the type of archetype this is"""
+        return self._attributes
+
+    def add_component(self, node: ComponentSpec) -> None:
+        """Add (or overwrites) a component spec attached to this archetype"""
+        self._components[node.get_type()] = node
 
 
-class AbstractConstructor(ABC, Generic[_T]):
-    @abstractmethod
-    def create(self, creation_data: CreationData) -> Optional[_T]:
-        """Create a new instance of the given instance using the creation data"""
-        raise NotImplementedError
+class ComponentFactory(Protocol):
+    """Interface for Factory classes that are used to construct entity components"""
 
+    def get_type(self) -> str:
+        """Return the name of the type this factory creates"""
+        raise NotImplementedError()
 
-class AbstractFactory(ABC, Generic[_T]):
-
-    __slots__ = "_constructors"
-
-    def __init__(self) -> None:
-        self._constructors: List[AbstractConstructor[_T]] = []
-
-    def add_constructor(self, constructor: AbstractConstructor[_T]) -> None:
-        """Add a constructor to this factory"""
-        self._constructors.append(constructor)
-
-    def create(self, creation_data: CreationData) -> Optional[_T]:
-        """Create a new instance of the given instance using the creation data"""
-        ret_val: Optional[_T] = None
-
-        for i in range(len(self._constructors), 0, -1):
-            ret_val = self._constructors[i].create(creation_data)
-            if ret_val:
-                break
-
-        if ret_val is None:
-            logging.error(
-                "Factory failed to create object of type '{}'".format(
-                    creation_data.get_node().get_type()
-                )
-            )
-
-        return ret_val
+    def create(self, spec: ComponentSpec) -> Any:
+        """Create component instance"""
+        raise NotImplementedError()

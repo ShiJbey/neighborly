@@ -76,7 +76,7 @@ def get_distance(
 
 ## Neighborly Control Flow
 
-## Behavior Trees
+## Behaviors Trees
 
 Our goal is to get the most out of behavior trees. This includes
 creating new nodes to support certain types of action selection.

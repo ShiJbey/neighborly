@@ -31,7 +31,7 @@ class ValueTrait(Enum):
     POWER = "power"
     RELIABILITY = "reliability"
     ROMANCE = "romance"
-    SINGLEMINDED = "singleminded"
+    SINGLE_MINDED = "single_minded"
     SOCIAL = "social"
     SELF_CONTROL = "self-control"
     TRADITION = "tradition"

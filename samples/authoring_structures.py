@@ -12,15 +12,14 @@ edit, and powerful for structuring data.
 """
 import esper
 
+from neighborly.core.activity import get_top_activities
+from neighborly.core.behavior_utils import find_places_with_any_activities
+from neighborly.core.character.values import generate_character_values
+from neighborly.core.gameobject import GameObject
 from neighborly.loaders import (
     load_structure_definitions,
     load_names,
 )
-from neighborly.core.activity import get_top_activities
-from neighborly.core.behavior_utils import find_places_with_any_activities
-from neighborly.core.character.values import generate_character_values
-from neighborly.core.ecs_manager import create_structure
-from neighborly.core.gameobject import GameObject
 from neighborly.plugins import default_plugin
 
 

@@ -1,21 +1,35 @@
 import random
+
 import numpy as np
 
-from neighborly.core.authoring import AbstractConstructor, AbstractFactory, CreationData
-from neighborly.core.business import Business
-from neighborly.core.character.character import GameCharacter
+import neighborly.core.name_generation as name_gen
+from neighborly.core.authoring import AbstractFactory, ComponentSpec
+from neighborly.core.business import Business, BusinessConfig
+from neighborly.core.character.character import (
+    GameCharacter,
+    CharacterConfig,
+    Gender,
+    CharacterName,
+)
+from neighborly.core.character.values import CharacterValues, generate_character_values
+from neighborly.core.routine import Routine
 
 
-class GameCharacterFactory(AbstractConstructor):
+class GameCharacterFactory(AbstractFactory):
     """
     Default factory for constructing instances of
     GameCharacters.
     """
 
-    def create(self, cls_type, creation_data) -> GameCharacter:
+    def __init__(self) -> None:
+        super().__init__("GameCharacter")
+
+    def create(self, spec: ComponentSpec) -> GameCharacter:
         """Create a new instance of a character"""
 
-        age_range: str = kwargs.get("age_range", "adult")
+        config: CharacterConfig = CharacterConfig(**spec.get_attributes())
+
+        age_range: str = spec.get_attributes().get("age_range", "adult")
         if age_range == "child":
             age: float = float(random.randint(3, config.lifecycle.adult_age))
         elif age_range == "adult":
@@ -46,9 +60,9 @@ class GameCharacterFactory(AbstractConstructor):
             ),
         )
 
-        values = generate_character_values()
+        values: CharacterValues = generate_character_values()
 
-        character = cls(
+        character = GameCharacter(
             config,
             CharacterName(firstname, surname),
             age,
@@ -67,5 +81,27 @@ class GameCharacterFactory(AbstractConstructor):
         )
 
 
-class BusinessFactory(AbstractFactory[Business]):
-    ...
+class BusinessFactory(AbstractFactory):
+    """Create instances of the default business component"""
+
+    def __init__(self) -> None:
+        super().__init__("Business")
+
+    def create(self, spec: ComponentSpec) -> Business:
+        name = name_gen.get_name(spec["name"])
+
+        conf = BusinessConfig(
+            business_type=spec["business type"],
+            name=spec["name"]
+        )
+
+        return Business(conf, name)
+
+
+class RoutineFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("Routine")
+
+    def create(self, spec: ComponentSpec) -> Routine:
+        return Routine()

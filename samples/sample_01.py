@@ -1,12 +1,7 @@
 from neighborly.loaders import load_structure_definitions
-from neighborly.core.character.character import CharacterConfig
-from neighborly.core.ecs_manager import (
-    create_character,
-    create_structure,
-    register_character_config,
-)
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation, SimulationConfig
+from neighborly.core.engine import NeighborlyEngine
 
 STRUCTURES = """
     Space Casino:
@@ -23,19 +18,14 @@ def main():
     load_structure_definitions(yaml_str=STRUCTURES)
     config = SimulationConfig(hours_per_timestep=4)
     sim = Simulation(config)
+    engine = NeighborlyEngine()
 
-    register_character_config("default", CharacterConfig())
+    engine.create_character(sim.world)
+    engine.create_character(sim.world)
 
-    character_1_id, character_1 = create_character(sim.world)
-    character_2_id, character_2 = create_character(sim.world)
-
-    print("=== CHARACTERS ==")
-    print(character_1_id, character_1)
-    print(character_2_id, character_2)
-
-    loc1 = create_structure(sim.world, "Space Casino")
-    loc2 = create_structure(sim.world, "Mars")
-    loc3 = create_structure(sim.world, "Kamino")
+    loc1 = engine.create_place(sim.world, "Space Casino")
+    loc2 = engine.create_place(sim.world, "Mars")
+    loc3 = engine.create_place(sim.world, "Kamino")
 
     print("=== LOCATIONS ==")
     print(f"Space casino: {loc1}")
@@ -45,11 +35,6 @@ def main():
     print("=== SIMULATION ==")
     for _ in range(100):
         sim.step()
-        # print(f"{str(character_1.name)} Location: {character_1.location}")
-        # print(f"{str(character_2.name)} Location: {character_2.location}")
-
-    if character_2_id in character_1.relationships:
-        print(character_1.relationships[character_2_id])
 
 
 if __name__ == "__main__":

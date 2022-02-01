@@ -5,10 +5,10 @@
 
 Businesses:
   # Place Business Definitions here
-  {}
+  { }
 Residences:
   # Place Residence Definitions here
-  {}
+  { }
 Places:
   Grocery Store:
     activities:
@@ -32,6 +32,74 @@ Places:
       - studying
     max capacity: 35
 Characters:
-  # Place Character Definitions here
-  Human:
-    name: "#first_name# #last_name#"
+  Civilian:
+    default: yes
+    GameCharacter:
+      name: '#first_name# #last_name#'
+      lifecycle:
+        can_age: yes
+        can_die: yes
+        lifespan_mean: 85
+        lifespan_std: 15
+        adult_age: 18
+        senior_age: 65
+        romantic_feelings_age: 13
+        marriageable_age: 18
+    Routine:
+      type: default
+  Hitman:
+    extends: Civilian
+    GameCharacter:
+      name: '#hitman_first_name# #hitman_last_name#'
+    Hitman:
+      coins: 5
+Activities:
+  gambling:
+    traits:
+      - wealth
+      - excitement
+      - adventure
+      - lust
+  shopping:
+    traits:
+      - material
+      - excitement
+      - leisure-time
+  recreation:
+    traits:
+      - health
+      - excitement
+  studying:
+    traits:
+      - knowledge
+      - power
+      - ambition
+  reading:
+    traits:
+      - knowledge
+      - power
+      - leisure-time
+  errands:
+    traits:
+      - reliability
+      - health
+      - family
+  eating:
+    traits:
+      - social
+      - health
+      - family
+  socializing:
+    traits:
+      - social
+      - excitement
+      - friendship
+  drinking:
+    traits:
+      - social
+      - friendship
+  relaxing:
+    traits:
+      - health
+      - tranquility
+      - leisure-time

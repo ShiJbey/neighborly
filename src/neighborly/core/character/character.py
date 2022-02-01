@@ -1,19 +1,15 @@
-import random
-from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, NamedTuple, Optional, Set, Tuple
 
-import numpy as np
+from pydantic import BaseModel, Field
 
 from neighborly.core.activity import get_top_activities
 from neighborly.core.character.status import StatusManager
-from neighborly.core.character.values import CharacterValues, generate_character_values
+from neighborly.core.character.values import CharacterValues
 from neighborly.core.relationship import RelationshipManager
-import neighborly.core.name_generation as name_gen
 
 
-@dataclass(frozen=True)
-class LifeCycleConfig:
+class LifeCycleConfig(BaseModel):
     """Configuration parameters for a characters lifecycle
 
     Fields
@@ -45,8 +41,7 @@ class LifeCycleConfig:
     marriageable_age: int = 18
 
 
-@dataclass(frozen=True)
-class CharacterConfig:
+class CharacterConfig(BaseModel):
     """Configuration parameters for characters
 
     Fields
@@ -55,9 +50,9 @@ class CharacterConfig:
         Configuration parameters for a characters lifecycle
     """
 
-    name: str = field(default="#first_name# #surname#")
-    lifecycle: LifeCycleConfig = field(default_factory=LifeCycleConfig)
-    gender_overrides: Dict[str, "CharacterConfig"] = field(default_factory=dict)
+    name: str = Field(default="#first_name# #surname#")
+    lifecycle: LifeCycleConfig = Field(default_factory=LifeCycleConfig)
+    gender_overrides: Dict[str, "CharacterConfig"] = Field(default_factory=dict)
 
 
 class CharacterName(NamedTuple):
@@ -124,14 +119,14 @@ class GameCharacter:
     )
 
     def __init__(
-        self,
-        config: CharacterConfig,
-        name: CharacterName,
-        age: float,
-        max_age: float,
-        gender: Gender,
-        values: CharacterValues,
-        attracted_to: Set[Gender],
+            self,
+            config: CharacterConfig,
+            name: CharacterName,
+            age: float,
+            max_age: float,
+            gender: Gender,
+            values: CharacterValues,
+            attracted_to: Set[Gender],
     ) -> None:
         self.config = config
         self.name: CharacterName = name
@@ -161,58 +156,3 @@ class GameCharacter:
             len(self.relationships),
             str(self.values),
         )
-
-    @classmethod
-    def create(cls, config: CharacterConfig, **kwargs) -> "GameCharacter":
-        """Create a new instance of a character"""
-
-        age_range: str = kwargs.get("age_range", "adult")
-        if age_range == "child":
-            age: float = float(random.randint(3, config.lifecycle.adult_age))
-        elif age_range == "adult":
-            age: float = float(
-                random.randint(config.lifecycle.adult_age, config.lifecycle.senior_age)
-            )
-        else:
-            age: float = float(
-                random.randint(
-                    config.lifecycle.senior_age, config.lifecycle.lifespan_mean
-                )
-            )
-
-        gender: Gender = random.choice(list(Gender))
-
-        name_rule: str = (
-            config.gender_overrides[str(gender)].name
-            if str(gender) in config.gender_overrides
-            else config.name
-        )
-
-        firstname, surname = tuple(name_gen.get_name(name_rule).split(" "))
-
-        max_age: float = max(
-            age + 1,
-            np.random.normal(
-                config.lifecycle.lifespan_mean, config.lifecycle.lifespan_std
-            ),
-        )
-
-        values = generate_character_values()
-
-        character = cls(
-            config,
-            CharacterName(firstname, surname),
-            age,
-            max_age,
-            gender,
-            values,
-            set(random.sample(list(Gender), random.randint(0, 2))),
-        )
-
-        return character
-
-
-def generate_adult_age(config: CharacterConfig) -> float:
-    return np.random.uniform(
-        config.lifecycle.adult_age, config.lifecycle.adult_age + 15
-    )

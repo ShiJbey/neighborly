@@ -5,12 +5,10 @@ from typing import Optional
 import esper
 
 from neighborly.core.processors import CharacterProcessor, RoutineProcessor
-from neighborly.core.social_practice import SocialPracticeManager
+from neighborly.core.rng import DefaultRNGManager
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.town.town import Town, TownConfig
 from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
-from neighborly.core.name_generation import initialize_name_generator
-from neighborly.core.rng import DefaultRNGManager
 
 
 @dataclass(frozen=True)
@@ -37,10 +35,6 @@ class SimulationConfig:
 
     seed: int = random.randint(0, 99999)
     hours_per_timestep: int = 4
-    misc_places_set: str = field(default="default")
-    residences_set: str = field(default="default")
-    business_set: str = field(default="default")
-    character_set: str = field(default="default")
     town: TownConfig = field(default_factory=TownConfig)
 
 
@@ -64,8 +58,6 @@ class Simulation:
     def __init__(self, config: Optional[SimulationConfig] = None) -> None:
         self.config: SimulationConfig = config if config else SimulationConfig()
 
-        initialize_name_generator()
-
         self.world: esper.World = esper.World()
         self.world.add_processor(WeatherProcessor(), 9)
         self.world.add_processor(TimeProcessor(), 10)
@@ -74,7 +66,6 @@ class Simulation:
         self.resources: int = self.world.create_entity(
             WeatherManager(),
             SimDateTime(),
-            SocialPracticeManager(),
             DefaultRNGManager(self.config.seed),
         )
         self.town: int = self.world.create_entity(Town.create(self.config.town))

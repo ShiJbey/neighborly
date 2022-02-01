@@ -1,5 +1,4 @@
 from neighborly import loaders
-from neighborly.core.name_generation import initialize_name_generator, get_name
 
 
 def main():
