@@ -1,12 +1,10 @@
 from enum import Enum
-from typing import Any, Dict, NamedTuple, Optional, Set, Tuple
+from typing import Dict, NamedTuple, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 
 from neighborly.core.activity import get_top_activities
-from neighborly.core.character.status import StatusManager
 from neighborly.core.character.values import CharacterValues
-from neighborly.core.relationship import RelationshipManager
 
 
 class LifeCycleConfig(BaseModel):
@@ -88,17 +86,10 @@ class GameCharacter:
         Entity ID of the location where this character current is
     location_aliases: Dict[str, int]
         Maps string names to entity IDs of locations in the world
-    relationships: Dict[int, Relationship]
-        Maps characters' entity IDs to Relationships that this
-        character has with them
     likes: Tuple[str, ...]
         Names of activities that this character likes to do
     values: CharacterValues
-        This characters beliefs/values in life (i.e. loyalty, family, wealth)
-    statuses: StatusManager
-        Statuses that are active on this character
-    metadata: Dict[str, Any]
-        Key-value pair additional information about the state of a character
+        A characters beliefs/values in life (i.e. loyalty, family, wealth)
     """
 
     __slots__ = (
@@ -110,12 +101,9 @@ class GameCharacter:
         "can_get_pregnant",
         "location",
         "location_aliases",
-        "relationships",
         "values",
         "likes",
-        "statuses",
-        "attracted_to",
-        "metadata",
+        "attracted_to"
     )
 
     def __init__(
@@ -136,15 +124,12 @@ class GameCharacter:
         self.attracted_to: Set[Gender] = attracted_to
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
-        self.relationships: RelationshipManager = RelationshipManager()
         self.likes: Tuple[str, ...] = get_top_activities(values)
         self.values: CharacterValues = values
-        self.statuses: StatusManager = StatusManager()
-        self.metadata: Dict[str, Any] = {}
 
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "{}(name={}, age={}/{}, gender={}, location={}, location_aliases={}, likes={}, relationships={}, {})".format(
+        return "{}(name={}, age={}/{}, gender={}, location={}, location_aliases={}, likes={}, {})".format(
             self.__class__.__name__,
             str(self.name),
             round(self.age),
@@ -153,6 +138,5 @@ class GameCharacter:
             self.location,
             self.location_aliases,
             self.likes,
-            len(self.relationships),
             str(self.values),
         )

@@ -3,7 +3,7 @@ from typing import cast
 
 import esper
 
-import neighborly.core.behavior_utils as behavior_utils
+import neighborly.ai.behavior_utils as behavior_utils
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.character.values import CharacterValues
 from neighborly.core.relationship import (
@@ -28,8 +28,8 @@ class CharacterProcessor(esper.Processor):
         for character_id, character in self.world.get_component(GameCharacter):
             character = cast(GameCharacter, character)
 
-            if character.statuses.has_status("dead"):
-                continue
+            # if character.statuses.has_status("dead"):
+            #     continue
 
             self._grow_older(character_id, character, delta_time)
             self._simulate_dating(character_id, character)
@@ -40,13 +40,13 @@ class CharacterProcessor(esper.Processor):
             self._socialize(character_id, character)
 
             if (
-                character.age >= character.max_age
-                and character.config.lifecycle.can_die
+                    character.age >= character.max_age
+                    and character.config.lifecycle.can_die
             ):
                 self._die(character_id, character)
 
     def _grow_older(
-        self, character_id: int, character: GameCharacter, hours: float
+            self, character_id: int, character: GameCharacter, hours: float
     ) -> None:
         """Increase the character's age and apply flags at major milestones"""
         if character.config.lifecycle.can_age:
@@ -78,9 +78,9 @@ class CharacterProcessor(esper.Processor):
 
         # They will accept if the other person is also one of their love interests
         if (
-            character_id
-            in person_to_ask.relationships.get_with_flags(Connection.LOVE_INTEREST)
-            and person_to_ask.relationships.significant_other is not None
+                character_id
+                in person_to_ask.relationships.get_with_flags(Connection.LOVE_INTEREST)
+                and person_to_ask.relationships.significant_other is not None
         ):
             # character.statuses.add_status(DatingStatus(person_to_ask_id))
             character.relationships.significant_other = person_to_ask_id
@@ -183,7 +183,7 @@ class RoutineProcessor(esper.Processor):
         date = behavior_utils.get_date(self.world)
 
         for entity, (character, routine) in self.world.get_components(
-            GameCharacter, Routine
+                GameCharacter, Routine
         ):
             character = cast(GameCharacter, character)
             routine = cast(Routine, routine)
@@ -191,9 +191,9 @@ class RoutineProcessor(esper.Processor):
             activity = routine.get_activity(date.weekday_str, date.hour)
 
             if (
-                activity
-                and type(activity.location) == str
-                and activity.location in character.location_aliases
+                    activity
+                    and type(activity.location) == str
+                    and activity.location in character.location_aliases
             ):
                 behavior_utils.move_character(
                     self.world,

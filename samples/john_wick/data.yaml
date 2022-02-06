@@ -1,16 +1,17 @@
 Characters:
-    Civilian: {}
+  Assassin:
+    extends: Civilian
+    GameObject:
+      tags: [ 'john_wick' ]
     Assassin:
-        GameObject:
-            tags: ['john_wick']
-        Assassin:
-            coins: 5
+      coins: 5
 Places:
-    The Continental Hotel:
-        name: The Continental Hotel
-        description: Safe haven for assassins
-        tags: ['john_wick']
-        Location:
-            activities: [eating, drinking, socializing]
-            prohibited_behaviors: [kill]
-            occupancy_limit: 20
+  The Continental Hotel:
+    GameObject:
+      name: The Continental Hotel
+      description: Safe haven for assassins
+      tags: [ 'john_wick' ]
+    Location:
+      activities: [ eating, drinking, socializing ]
+      prohibited_behaviors: [ kill ]
+      occupancy_limit: 20

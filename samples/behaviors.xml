@@ -1,36 +1,35 @@
-<Behaviors>
-    <CharacterBehavior type="make pizza">
-        <Preconditions>
-            <Precondition value="blackboard has" />
-        </Preconditions>
-        <Tree>
-            <Sequence>
-                <Print message="creating order!" />
-                <Selector>
-                    <WillPass value="no">
-                        <Print message="add cheese" />
-                    </WillPass>
-                    <Print message="add tofu cheese" />
-                </Selector>
-                <Print message="sending order!" />
-            </Sequence>
-        </Tree>
-    </Behavior>
-</Behaviors>
+<!--<Behaviors>-->
+<!--    <CharacterBehavior type="make pizza">-->
+<!--        <Preconditions>-->
+<!--            <Precondition value="blackboard has" />-->
+<!--        </Preconditions>-->
+<!--        <Tree>-->
+<!--            <Sequence>-->
+<!--                <Print message="creating order!" />-->
+<!--                <Selector>-->
+<!--                    <WillPass value="no">-->
+<!--                        <Print message="add cheese" />-->
+<!--                    </WillPass>-->
+<!--                    <Print message="add tofu cheese" />-->
+<!--                </Selector>-->
+<!--                <Print message="sending order!" />-->
+<!--            </Sequence>-->
+<!--        </Tree>-->
+<!--    </Behavior>-->
+<!--</Behaviors>-->
 
-<!--
+
 <Behaviors>
     <Behavior type="make pizza">
         <Sequence>
-            <Print message="creating order!" />
+            <Print message="creating order!"/>
             <Selector>
                 <WillPass value="no">
-                    <Print message="add cheese" />
+                    <Print message="add cheese"/>
                 </WillPass>
-                <Print message="add tofu cheese" />
+                <Print message="add tofu cheese"/>
             </Selector>
-            <Print message="sending order!" />
+            <Print message="sending order!"/>
         </Sequence>
     </Behavior>
 </Behaviors>
--->

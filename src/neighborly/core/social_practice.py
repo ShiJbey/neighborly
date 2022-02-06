@@ -3,8 +3,7 @@ from typing import Any, Callable, List, Dict
 
 import esper
 
-from neighborly.core.behavior_tree import BehaviorTree
-
+from neighborly.ai.behavior_tree import BehaviorTree, Blackboard
 
 SocialPracticePrecondition = Callable[
     [esper.World, Dict[str, List[int]], Dict[str, Any]], bool
@@ -46,8 +45,10 @@ def register_social_practice(practice_config: SocialPracticeConfig) -> None:
     global _registered_social_practices
     _registered_social_practices[practice_config.name] = practice_config
 
+
 def get_practice_config(name: str) -> SocialPracticeConfig:
     return _registered_social_practices[name]
+
 
 class SocialPractice:
     """Collections of character behaviors organized by role
@@ -96,7 +97,7 @@ class CharacterBehavior:
     """
 
     name: str
-    preconditions: List[Callable[..., bool]]
+    preconditions: List[Callable[[Blackboard], bool]]
     behavior_tree: BehaviorTree
 
 

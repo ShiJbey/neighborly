@@ -2,13 +2,13 @@ import os
 import pathlib
 import sys
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Set, Tuple
 from abc import ABC, abstractmethod
-import neighborly.core.behavior_tree as bt
+from typing import Dict, List, Optional, Set, Tuple
+
+import neighborly.ai.behavior_tree as bt
 
 
 class AbstractFactory(ABC):
-
     __slots__ = "_type"
 
     def __init__(self, _type: str) -> None:

@@ -1,8 +1,9 @@
 import esper
 
-from neighborly.core.social_practice import CharacterBehavior, register_character_behavior
-from neighborly.core.behavior_tree import AbstractBTNode, BehaviorTree, NodeState, Blackboard
-from neighborly.core import behavior_utils
+from neighborly.core.social_practice import CharacterBehavior
+from neighborly.ai.behavior_tree import AbstractBTNode, NodeState, Blackboard
+from neighborly.ai import behavior_utils
+
 
 class DieAction(AbstractBTNode):
     def evaluate(self, blackboard: 'Blackboard') -> 'NodeState':

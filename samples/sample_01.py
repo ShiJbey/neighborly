@@ -1,31 +1,33 @@
-from neighborly.loaders import load_structure_definitions
+from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation, SimulationConfig
-from neighborly.core.engine import NeighborlyEngine
 
 STRUCTURES = """
-    Space Casino:
-        activities: ["gambling", "drinking", "eating", "socializing"]
-    Mars:
-        activities: ["reading", "relaxing"]
-    Kamino:
-        activities: ["recreation", "studying"]
+    Places:
+        Space Casino:
+            Location:
+                activities: ["gambling", "drinking", "eating", "socializing"]
+        Mars:
+            Location:
+                activities: ["reading", "relaxing"]
+        Kamino:
+            Location:
+                activities: ["recreation", "studying"]
     """
 
 
 def main():
-    default_plugin.initialize_plugin()
-    load_structure_definitions(yaml_str=STRUCTURES)
     config = SimulationConfig(hours_per_timestep=4)
     sim = Simulation(config)
-    engine = NeighborlyEngine()
+    default_plugin.initialize_plugin(sim.get_engine())
+    YamlDataLoader(str_data=STRUCTURES).load(sim.get_engine())
 
-    engine.create_character(sim.world)
-    engine.create_character(sim.world)
+    sim.get_engine().create_character(sim.world, "Civilian")
+    sim.get_engine().create_character(sim.world, "Civilian")
 
-    loc1 = engine.create_place(sim.world, "Space Casino")
-    loc2 = engine.create_place(sim.world, "Mars")
-    loc3 = engine.create_place(sim.world, "Kamino")
+    loc1 = sim.get_engine().create_place(sim.world, "Space Casino")
+    loc2 = sim.get_engine().create_place(sim.world, "Mars")
+    loc3 = sim.get_engine().create_place(sim.world, "Kamino")
 
     print("=== LOCATIONS ==")
     print(f"Space casino: {loc1}")

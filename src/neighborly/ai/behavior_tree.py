@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from re import S
 from typing import List, Any, Dict, Optional
 
 
@@ -61,7 +60,7 @@ class Blackboard:
                 self._values[key] = val
 
     def get_value(
-        self, key: str, required: bool = True, default: Optional[Any] = None
+            self, key: str, required: bool = True, default: Optional[Any] = None
     ) -> Any:
         if key not in self._values and required:
             raise BlackboardKeyNotFound(key)
@@ -84,7 +83,6 @@ class NodeState(Enum):
 
 
 class AbstractBTNode(ABC):
-
     __slots__ = "_state", "_children"
 
     def __init__(self) -> None:
@@ -164,8 +162,6 @@ class DecoratorBTNode(AbstractBTNode, ABC):
 
 
 class InverterNode(DecoratorBTNode):
-    def __init__(self, node: Optional[AbstractBTNode] = None) -> None:
-        super().__init__(node)
 
     def evaluate(self, blackboard: "Blackboard") -> "NodeState":
         res = self._children[0].evaluate(blackboard)

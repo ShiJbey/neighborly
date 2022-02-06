@@ -1,6 +1,0 @@
-Characters:
-    Civilian:
-        default: yes
-        name: '#first_name# #last_name#'
-        GameCharacter: {}
-        Routine: {}

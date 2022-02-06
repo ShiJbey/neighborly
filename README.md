@@ -1,10 +1,22 @@
 # Neighborly: OpenSource Town-Scale Social Simulation for Sims-Likes
 
-Neighborly is a framework that simulates characters in a virtual town.
-It takes lessons learned from working with
+Neighborly is a framework that simulates characters in a virtual town. It takes lessons learned from working with
 [_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
-and gives people better documentation, simpler interfaces, and more
-opportunities for customization.
+and gives people better documentation, simpler interfaces, and more opportunities for customization.
+
+## Project Structure
+
+```
+/src/neighborly
+    /ai
+    /core
+    /data
+    /factories
+    /plugins
+    decorators.py
+    loaders.py
+    simulation.py
+```
 
 ## Notes
 
@@ -19,10 +31,8 @@ opportunities for customization.
 
 ### Non-Deterministic Behavior
 
-The goal of having a seeded pseudo random simulation is so that users
-experience deterministic behavior when using the same starting seed.
-We try to remove all forms of non-determinism, but some slip through.
-The known areas are listed below. If you find any, please make a new
-issue with details of the behavior.
+The goal of having a seeded pseudo random simulation is so that users experience deterministic behavior when using the
+same starting seed. We try to remove all forms of non-determinism, but some slip through. The known areas are listed
+below. If you find any, please make a new issue with details of the behavior.
 
 - N/A

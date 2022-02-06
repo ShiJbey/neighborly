@@ -11,21 +11,21 @@ HOURS_PER_YEAR = HOURS_PER_DAY * DAYS_PER_MONTH * MONTHS_PER_YEAR
 
 
 _TIME_OF_DAY: List[str] = [
-    *(['night'] * 6),       # (00:00-05:59)
-    *(['morning'] * 1),     # (06:00-06:59)
-    *(['day'] * 11),        # (07:00-17:59)
-    *(['evening'] * 1),     # (18:00-18:59)
-    *(['night'] * 5),       # (19:00-23:59)
+    *(["night"] * 6),  # (00:00-05:59)
+    *(["morning"] * 1),  # (06:00-06:59)
+    *(["day"] * 11),  # (07:00-17:59)
+    *(["evening"] * 1),  # (18:00-18:59)
+    *(["night"] * 5),  # (19:00-23:59)
 ]
 
 _DAYS_OF_WEEK: List[str] = [
-    'Sunday',
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
 ]
 
 
@@ -49,11 +49,9 @@ class SimDateTime:
         self._year: int = 0
         self._weekday: int = 0
 
-    def increment(self,
-                  hours: int = 0,
-                  days: int = 0,
-                  months: int = 0,
-                  years: int = 0) -> None:
+    def increment(
+        self, hours: int = 0, days: int = 0, months: int = 0, years: int = 0
+    ) -> None:
         """Advance time by a given amount"""
 
         if hours < 0:
@@ -113,30 +111,21 @@ class SimDateTime:
             self.day,
             self.month,
             self.year,
-            self.weekday_str
+            self.weekday_str,
         )
 
     def __str__(self) -> str:
-        return "{}-{}-{}-{}".format(
-            self.year,
-            self.month,
-            self.day,
-            self.hour
-        )
+        return "{}-{}-{}-{}".format(self.year, self.month, self.day, self.hour)
 
     def to_date_str(self) -> str:
         return "{}, {:02d}/{:02d}/{:04d} @ {:02d}:00".format(
-            self.weekday_str,
-            self.day,
-            self.month,
-            self.year,
-            self.hour
+            self.weekday_str[:3], self.day, self.month, self.year, self.hour
         )
 
     @classmethod
-    def from_str(cls, time_str: str) -> 'SimDateTime':
+    def from_str(cls, time_str: str) -> "SimDateTime":
         time = cls()
-        year, month, day, hour = tuple(time_str.split('-'))
+        year, month, day, hour = tuple(time_str.split("-"))
         time._year = int(year)
         time._month = int(month)
         time._weekday = int(day) % 7
@@ -150,7 +139,7 @@ class TimeProcessor(esper.Processor):
     world: esper.World
 
     def process(self, *args, **kwargs):
-        delta_time: int = kwargs['delta_time']
+        delta_time: int = kwargs["delta_time"]
         for _, sim_time in self.world.get_component(SimDateTime):
             sim_time = cast(SimDateTime, sim_time)
             sim_time.increment(hours=delta_time)

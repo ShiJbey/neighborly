@@ -6,8 +6,8 @@ import esper
 
 import neighborly.core.name_generation as name_gen
 from neighborly.core.authoring import ComponentSpec, AbstractFactory
-from neighborly.core.authoring.factories import GameCharacterFactory, RoutineFactory
-from neighborly.core.engine import NeighborlyEngine
+from neighborly.engine import NeighborlyEngine
+from neighborly.factories.factories import GameCharacterFactory, RoutineFactory, LocationFactory
 from neighborly.loaders import YamlDataLoader
 
 
@@ -36,21 +36,20 @@ class HitmanFactory(AbstractFactory):
 
 def main():
     engine: NeighborlyEngine = NeighborlyEngine()
-    engine.register_component_factory(GameCharacterFactory())
-    engine.register_component_factory(RoutineFactory())
-    engine.register_component_factory(HitmanFactory())
+    engine.add_component_factory(GameCharacterFactory())
+    engine.add_component_factory(RoutineFactory())
+    engine.add_component_factory(HitmanFactory())
+    engine.add_component_factory(LocationFactory())
+
     name_gen.register_rule("first_name", "Joe")
     name_gen.register_rule("last_name", "Black")
     name_gen.register_rule("hitman_first_name", ["John", "Agent"])
     name_gen.register_rule("hitman_last_name", ["Wick", "47"])
 
-    xml_path = pathlib.Path(os.path.abspath(__file__)).parent / "all_data.xml"
     yaml_path = pathlib.Path(os.path.abspath(__file__)).parent / "all_data.yaml"
 
-    # xml_loader = XmlDataLoader(filepath=xml_path)
     yaml_loader = YamlDataLoader(filepath=yaml_path)
 
-    # xml_loader.load()
     yaml_loader.load(engine)
 
     world: esper.World = esper.World()
@@ -60,6 +59,9 @@ def main():
 
     hitman_id = engine.create_character(world, "Hitman")
     print(world.components_for_entity(hitman_id))
+
+    grocery_store_id = engine.create_place(world, "Grocery Store")
+    print(world.components_for_entity(grocery_store_id))
 
 
 if __name__ == "__main__":

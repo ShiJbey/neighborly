@@ -1,8 +1,8 @@
+from neighborly.ai import behavior_utils
 from neighborly.core.social_practice import (
     SocialPracticeConfig,
     register_social_practice,
 )
-from neighborly.core import behavior_utils
 
 register_social_practice(
     SocialPracticeConfig(

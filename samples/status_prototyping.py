@@ -1,10 +1,10 @@
 from typing import Dict, Type
 
 import esper
+from neighborly.core.ecs_manager import register_character_config, create_character
 
 from neighborly.core.character.character import CharacterConfig, GameCharacter
 from neighborly.core.character.status import Status
-from neighborly.core.ecs_manager import register_character_config, create_character
 from neighborly.plugins import default_plugin
 from neighborly.simulation import SimulationConfig, Simulation
 

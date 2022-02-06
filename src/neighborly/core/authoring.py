@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Protocol, Dict, List, Optional
+from typing import Optional, Dict, Any, List, Protocol
 
 
 class AbstractFactory(ABC):

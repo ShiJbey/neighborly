@@ -1,16 +1,15 @@
 from typing import List, Optional
 
-from .relationship import Relationship
 
-class RelationshipNetwork:
-    """Represents the relationships in the town as a bidirectional graph
+class DirectedSocialNetwork:
+    """Manages information about characters objective feelings for another
 
-    Attributes
-    ----------
-    relationships: Dict[int, Dict[int, Relationship]]
+    This class is for modeling asymmetric social connections
     """
 
-    __slots__ = ""
+    
+class ReciprocalSocialNetwork:
+    """Manages information about characters shared feeling towards each other
 
-    def __init__(self, defaults: Optional[List[Relationship]] = None) -> None:
-        ...
+    This class is for modeling symmetric social connections
+    """

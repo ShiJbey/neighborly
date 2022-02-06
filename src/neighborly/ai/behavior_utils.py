@@ -6,14 +6,14 @@ from neighborly.core.activity import get_activity_flags
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.location import Location
 from neighborly.core.relationship import get_modifier
-from neighborly.core.time import SimDateTime
-from neighborly.core.town.town import Town
-from neighborly.core.weather import Weather, WeatherManager
 from neighborly.core.social_practice import (
     SocialPractice,
     SocialPracticeManager,
-    get_practice_config,
 )
+from neighborly.core.time import SimDateTime
+from neighborly.core.town import Town
+from neighborly.core.weather import Weather, WeatherManager
+from neighborly.engine import NeighborlyEngine
 
 
 def get_date(world: esper.World) -> SimDateTime:
@@ -36,6 +36,10 @@ def get_character(world: esper.World, character_id: int) -> GameCharacter:
 
 def get_place(world: esper.World, location_id: int) -> Location:
     return cast(Location, world.component_for_entity(location_id, Location))
+
+
+def get_engine(world: esper.World) -> NeighborlyEngine:
+    return cast(NeighborlyEngine, world.get_component(NeighborlyEngine)[0][1])
 
 
 def move_character(world: esper.World, character_id: int, location_id: int) -> None:
@@ -130,7 +134,7 @@ def start_social_practice(name: str, world: esper.World, **kwargs) -> None:
 
 
 def add_relationship_modifier(
-    world: esper.World, subject_id: int, target_id: int, modifier_name: str
+        world: esper.World, subject_id: int, target_id: int, modifier_name: str
 ) -> None:
     """Add a relationship modifier on the subject's relationship to the target"""
     subject = get_character(world, subject_id)

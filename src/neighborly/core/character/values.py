@@ -25,13 +25,13 @@ class ValueTrait(Enum):
     LEISURE_TIME = "leisure-time"
     LOYALTY = "loyalty"
     LUST = "lust"
-    MATERIAL = "material"
+    MATERIAL_THINGS = "material things"
     NATURE = "nature"
     PEACE = "peace"
     POWER = "power"
     RELIABILITY = "reliability"
     ROMANCE = "romance"
-    SINGLE_MINDED = "single_minded"
+    SINGLE_MINDEDNESS = "single mindedness"
     SOCIAL = "social"
     SELF_CONTROL = "self-control"
     TRADITION = "tradition"
@@ -59,7 +59,7 @@ class CharacterValues:
     __slots__ = "_traits"
 
     def __init__(
-        self, overrides: Optional[Dict[str, int]] = None, default: int = 0
+            self, overrides: Optional[Dict[str, int]] = None, default: int = 0
     ) -> None:
         self._traits: npt.NDArray[np.int32] = np.array(
             [default] * len(_VALUE_INDICES.keys()), dtype=np.int32
@@ -77,11 +77,11 @@ class CharacterValues:
 
     @staticmethod
     def calculate_compatibility(
-        traits_a: "CharacterValues", traits_b: "CharacterValues"
+            traits_a: "CharacterValues", traits_b: "CharacterValues"
     ) -> int:
         # Cosine similarity is a value between -1 and 1
         cos_sim: float = np.dot(traits_a.traits, traits_b.traits) / (
-            np.linalg.norm(traits_a.traits) * np.linalg.norm(traits_b.traits)
+                np.linalg.norm(traits_a.traits) * np.linalg.norm(traits_b.traits)
         )
         # Convert this to a score to be on the range [-50, 50]
         return round(cos_sim * 50)

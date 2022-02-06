@@ -1,7 +1,7 @@
 import esper
 
+from neighborly.ai import behavior_utils
 from neighborly.core.character.life_event import LifeEvent, register_event_type
-from neighborly.core import behavior_utils
 from neighborly.core.relationship import Connection
 
 
@@ -12,12 +12,12 @@ def dating_precondition(world: esper.World, character_id: int, **kwargs) -> bool
     character = behavior_utils.get_character(world, character_id)
 
     return (
-        character.relationships[other_character_id].has_flags(Connection.LOVE_INTEREST)
-        and other_character.relationships[character_id].has_flags(
-            Connection.LOVE_INTEREST
-        )
-        and character.relationships.significant_other is None
-        and other_character.relationships.significant_other is None
+            character.relationships[other_character_id].has_flags(Connection.LOVE_INTEREST)
+            and other_character.relationships[character_id].has_flags(
+        Connection.LOVE_INTEREST
+    )
+            and character.relationships.significant_other is None
+            and other_character.relationships.significant_other is None
     )
 
 

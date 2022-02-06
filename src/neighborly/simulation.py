@@ -5,10 +5,10 @@ from typing import Optional
 import esper
 
 from neighborly.core.processors import CharacterProcessor, RoutineProcessor
-from neighborly.core.rng import DefaultRNGManager
 from neighborly.core.time import SimDateTime, TimeProcessor
-from neighborly.core.town.town import Town, TownConfig
+from neighborly.core.town import Town, TownConfig
 from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
+from neighborly.engine import NeighborlyEngine, create_default_engine
 
 
 @dataclass(frozen=True)
@@ -57,18 +57,18 @@ class Simulation:
 
     def __init__(self, config: Optional[SimulationConfig] = None) -> None:
         self.config: SimulationConfig = config if config else SimulationConfig()
-
         self.world: esper.World = esper.World()
         self.world.add_processor(WeatherProcessor(), 9)
         self.world.add_processor(TimeProcessor(), 10)
         self.world.add_processor(RoutineProcessor(), 5)
         self.world.add_processor(CharacterProcessor())
         self.resources: int = self.world.create_entity(
-            WeatherManager(),
-            SimDateTime(),
-            DefaultRNGManager(self.config.seed),
+            WeatherManager(), SimDateTime(), create_default_engine()
         )
-        self.town: int = self.world.create_entity(Town.create(self.config.town))
+        self.town: int = -1
+
+    def create_town(self) -> None:
+        self.town = self.world.create_entity(Town.create(self.config.town))
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
@@ -87,3 +87,6 @@ class Simulation:
     def get_town(self) -> Town:
         """Get the Town instance"""
         return self.world.component_for_entity(self.town, Town)
+
+    def get_engine(self) -> NeighborlyEngine:
+        return self.world.component_for_entity(self.resources, NeighborlyEngine)

@@ -6,10 +6,11 @@ import os
 import pathlib
 from dataclasses import dataclass
 
-import yaml
-
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.authoring import AbstractFactory
+import neighborly.core.name_generation as name_gen
+from neighborly.core.authoring import AbstractFactory, ComponentSpec
+from neighborly.loaders import YamlDataLoader
+from neighborly.plugins import default_plugin
+from neighborly.simulation import Simulation
 
 
 @dataclass
@@ -25,54 +26,27 @@ class Assassin:
     kills: int = 0
 
 
-@dataclass
-class Sniper(Assassin):
-    """Advanced component to be attached to a character
-
-    Assassins mark people who are part of the criminal
-    underworld and who may exchange coins for assassinations
-    of characters that they don't like
-    """
-
-    coins: int = 9999
-    kills: int = 0
-    range: int = 10
-
-
 class AssassinFactory(AbstractFactory):
     """Creates instances of Assassin components"""
 
     def __init__(self) -> None:
         super().__init__("Assassin")
 
-    def create(self, **kwargs) -> Assassin:
-        return Assassin(**kwargs)
-
-
-class SniperFactory(AbstractFactory):
-    """Creates instances of Assassin components"""
-
-    def __init__(self) -> None:
-        super().__init__("Sniper")
-
-    def create(self, **kwargs) -> Assassin:
-        return Sniper(**kwargs)
+    def create(self, spec: ComponentSpec) -> Assassin:
+        return Assassin(**spec.get_attributes())
 
 
 def main():
-    engine = NeighborlyEngine()
-    engine.register_component_factory(AssassinFactory())
-    engine.register_component_factory(SniperFactory())
+    data_path = pathlib.Path(os.path.abspath(__file__)).parent / "data.yaml"
+    sim = Simulation()
+    default_plugin.initialize_plugin(sim.get_engine())
+    YamlDataLoader(filepath=data_path).load(sim.get_engine())
+    sim.get_engine().add_component_factory(AssassinFactory())
+    name_gen.register_rule("hitman_first_name", ["John", "Agent"])
+    name_gen.register_rule("hitman_last_name", ["Wick", "47"])
 
-    defs_path = pathlib.Path(os.path.abspath(__file__)).parent / "data.yaml"
-
-    with open(defs_path, "r") as f:
-        yaml_data = yaml.safe_load(f)
-
-    engine.load_all_definitions(yaml_data)
-
-    print(engine._character_archetypes["Assassin"])
-    print(engine._place_archetypes["The Continental Hotel"])
+    print(sim.get_engine().create_character(sim.world, "Assassin"))
+    print(sim.get_engine().create_place(sim.world, "The Continental Hotel"))
 
 
 if __name__ == "__main__":
