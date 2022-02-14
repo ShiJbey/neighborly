@@ -1,147 +1,71 @@
-from dataclasses import dataclass
-from enum import IntEnum
-from typing import Dict, List, Optional, Tuple
+import math
+from dataclasses import dataclass, field
+from typing import Callable, Dict, List, Any
 
-CHARGE_MAX: int = 50
-CHARGE_MIN: int = -50
+FRIENDSHIP_MAX: float = 50
+FRIENDSHIP_MIN: float = -50
 
-SPARK_MAX: int = 50
-SPARK_MIN: int = -50
+ROMANCE_MAX: float = 50
+ROMANCE_MIN: float = -50
 
-SALIENCE_MAX: int = 100
-SALIENCE_MIN: int = 0
-
-FRIENDSHIP_THRESHOLD: int = 15
-ENEMY_THRESHOLD: int = -10
-CAPTIVATION_THRESHOLD: int = 20
-LIKE_THRESHOLD: int = 20
-DISLIKE_THRESHOLD: int = -8
-HATE_THRESHOLD: int = -20
-
-SALIENCE_INCREMENT: int = 2
+SALIENCE_MAX: float = 100
+SALIENCE_MIN: float = 0
+SALIENCE_INCREMENT: float = 2
 
 
-def clamp(value: int, minimum: int, maximum: int) -> int:
+def clamp(value: float, minimum: float, maximum: float) -> float:
     return min(maximum, max(minimum, value))
 
 
-class Connection(IntEnum):
-    FRIEND = 1 << 0
-    ENEMY = 1 << 1
-    BEST_FRIEND = 1 << 2
-    WORST_ENEMY = 1 << 3
-    LOVE_INTEREST = 1 << 4
-    RIVAL = 1 << 5
-    COWORKER = 1 << 6
-    ACQUAINTANCE = 1 << 7
-    SIGNIFICANT_OTHER = 1 << 8
-
-
 @dataclass(frozen=True)
-class RelationshipModifier:
+class RelationshipTag:
     name: str
-    charge: int = 0
-    spark: int = 0
-    salience: int = 0
-    flags: Tuple[int, ...] = ()
-
-
-_BUILT_IN_MODIFIERS: Dict[str, RelationshipModifier] = {
-    "acquaintance": RelationshipModifier(
-        name="acquaintance", flags=(Connection.ACQUAINTANCE,)
-    ),
-    "friend": RelationshipModifier(
-        name="friend", salience=20, flags=(Connection.FRIEND,)
-    ),
-    "enemy": RelationshipModifier(name="enemy", salience=20, flags=(Connection.ENEMY,)),
-    "best friend": RelationshipModifier(
-        name="best friend",
-        salience=30,
-        flags=(Connection.BEST_FRIEND, Connection.FRIEND),
-    ),
-    "worst enemy": RelationshipModifier(
-        name="worst enemy",
-        salience=30,
-        flags=(Connection.WORST_ENEMY, Connection.ENEMY),
-    ),
-    "love interest": RelationshipModifier(
-        name="love interest", spark=3, salience=30, flags=(Connection.LOVE_INTEREST,)
-    ),
-    "rival": RelationshipModifier(name="rival", salience=30, flags=(Connection.RIVAL,)),
-    "coworker": RelationshipModifier(name="coworker", flags=(Connection.COWORKER,)),
-    "significant other": RelationshipModifier(
-        name="significant other", salience=50, flags=(Connection.SIGNIFICANT_OTHER,)
-    ),
-    "same gender": RelationshipModifier(name="different genders", charge=1),
-    "attracted": RelationshipModifier(name="attracted", spark=2),
-}
-
-
-def get_modifier(name: str) -> RelationshipModifier:
-    return _BUILT_IN_MODIFIERS[name]
+    friendship: float = 0
+    romance: float = 0
+    salience: float = 0
+    requirements: List[Callable[['Relationship'], bool]] = \
+        field(default_factory=list)
 
 
 class Relationship:
     """
     Relationships are one of the core factors of a
-    social simulation next to the chracters. They
+    social simulation next to the characters. They
     track how one character feels about another. And
     they evolve as a function of how many times two
     characters interact.
-
-    Relationships are modeled using three integer values:
-    - Charge: platonic affinity
-    - Spark: romantic affinity
-    - Salience: How mentally relevant is a character to another
     """
 
     __slots__ = (
         "_base_salience",
-        "_spark",
-        "_charge",
-        "_flags",
-        "_modifiers",
-        "_spark_increment",
-        "_charge_increment",
+        "_romance",
+        "_romance_increment",
+        "_friendship",
+        "_friendship_increment",
+        "_tags",
         "_salience",
-        "_compatibility",
         "_target",
         "_owner",
         "_is_dirty",
-        "_type_modifier",
-        "_compatibility_modifier",
     )
 
+    _registered_tags: Dict[str, RelationshipTag] = {}
+
     def __init__(
-        self,
-        owner: int,
-        target: int,
-        compatibility: int,
-        same_gender: bool,
-        attracted: bool,
+            self,
+            owner: int,
+            target: int,
     ) -> None:
-        self._base_salience: int = 0
-        self._charge: int = 0
-        self._spark: int = 0
-        self._spark_increment: int = 0
-        self._charge_increment: int = 0
-        self._salience: int = 0
+        self._base_salience: float = 0
+        self._friendship: float = 0
+        self._romance: float = 0
+        self._romance_increment: float = 0
+        self._friendship_increment: float = 0
+        self._salience: float = 0
         self._is_dirty: bool = True
-        self._flags: int = 0
-        self._type_modifier: RelationshipModifier = get_modifier("acquaintance")
-        self._compatibility_modifier: RelationshipModifier = RelationshipModifier(
-            "compatibility boost", charge=compatibility
-        )
-        self._modifiers: List[RelationshipModifier] = []
-        self._compatibility: int = compatibility
+        self._tags: Dict[str, RelationshipTag] = {}
         self._target: int = target
         self._owner: int = owner
-
-        if same_gender:
-            self.add_modifier(get_modifier("same gender"))
-
-        if attracted:
-            self.add_modifier(get_modifier("attracted"))
 
     @property
     def target(self) -> int:
@@ -152,154 +76,171 @@ class Relationship:
         return self._owner
 
     @property
-    def charge(self) -> int:
+    def friendship(self) -> int:
         if self._is_dirty:
             self._recalculate_stats()
-        return self._charge
+        return math.floor(self._friendship)
 
     @property
-    def spark(self) -> int:
+    def romance(self) -> int:
         if self._is_dirty:
             self._recalculate_stats()
-        return self._spark
+        return math.floor(self._romance)
 
     @property
     def salience(self) -> int:
         if self._is_dirty:
             self._recalculate_stats()
-        return self._salience
+        return math.floor(self._salience)
 
     @property
-    def modifiers(self) -> List[RelationshipModifier]:
-        return self._modifiers
+    def tags(self) -> Dict[str, RelationshipTag]:
+        return self._tags
 
-    @property
-    def type_modifier(self) -> RelationshipModifier:
-        return self._type_modifier
+    def add_tag(self, modifier: RelationshipTag) -> None:
+        self._tags[modifier.name] = modifier
+        self._is_dirty = True
 
-    def set_type_modifier(self, modifier: RelationshipModifier):
-        self._type_modifier = modifier
+    def remove_tag(self, modifier: RelationshipTag) -> None:
+        del self._tags[modifier.name]
+        self._is_dirty = True
 
-    def has_flags(self, *flags: int) -> bool:
+    def has_tags(self, *names: str) -> bool:
+        return all([name in self._tags for name in names])
+
+    def update(self) -> None:
         if self._is_dirty:
             self._recalculate_stats()
 
-        for flag in flags:
-            if self._flags & flag == 0:
-                return False
-        return True
-
-    def set_flags(self, *flags: int) -> None:
-        for flag in flags:
-            self._flags |= flag
-
-    def unset_flags(self, *flags: int) -> None:
-        for flag in flags:
-            self._flags ^= flag
-
-    def add_modifier(self, modifier: RelationshipModifier) -> None:
-        self._modifiers.append(modifier)
-        self._is_dirty = True
-
-    def remove_modifier(self, modifier: RelationshipModifier) -> None:
-        self._modifiers.remove(modifier)
-        self._is_dirty = True
-
-    def update(self) -> None:
         self._base_salience += SALIENCE_INCREMENT
-        self._charge = clamp(
-            self._charge + self._charge_increment, CHARGE_MIN, CHARGE_MAX
+        self._friendship = clamp(
+            self._friendship + self._friendship_increment, FRIENDSHIP_MIN, FRIENDSHIP_MAX
         )
-        self._spark = clamp(self._spark + self._spark_increment, SPARK_MIN, SPARK_MAX)
+        self._romance = clamp(self._romance + self._romance_increment, ROMANCE_MIN, ROMANCE_MAX)
+
+        for tag in [*self._tags.values()]:
+            reqs_pass = all([fn(self)
+                             for fn in tag.requirements]) if tag.requirements else True
+            if not reqs_pass:
+                self.remove_tag(tag)
+
+        # Loop through all tags and apply valid ones
+        for tag in self._registered_tags.values():
+            if tag.name in self._tags:
+                continue
+
+            reqs_pass = all([fn(self)
+                             for fn in tag.requirements]) if tag.requirements else True
+            if reqs_pass:
+                self.add_tag(tag)
 
         self._is_dirty = True
 
     def _recalculate_stats(self) -> None:
-        self._spark_increment = 0
-        self._charge_increment = 0
+        self._romance_increment = 0
+        self._friendship_increment = 0
         self._salience = self._base_salience
-        self._flags = 0
 
-        # Relationship Type modifier
-        self._salience += self._type_modifier.salience
-        self._spark_increment += self._type_modifier.spark
-        self._charge_increment += self._type_modifier.charge
-        self.set_flags(*self._type_modifier.flags)
-
-        # Compatibility modifier
-        self._salience += self._compatibility_modifier.salience
-        self._spark_increment += self._compatibility_modifier.spark
-        self._charge_increment += self._compatibility_modifier.charge
-        self.set_flags(*self._compatibility_modifier.flags)
-
-        for modifier in self._modifiers:
+        for modifier in self._tags.values():
             self._salience += modifier.salience
-            self._spark_increment += modifier.spark
-            self._charge_increment += modifier.charge
-            self.set_flags(*modifier.flags)
+            self._romance_increment += modifier.romance
+            self._friendship_increment += modifier.friendship
 
         self._salience = clamp(self._salience, SALIENCE_MIN, SALIENCE_MAX)
 
         self._is_dirty = False
 
     def __repr__(self) -> str:
-        return "{}<{}>(owner={}, target={}, spark={}, charge={}, salience={}, modifiers={})".format(
+        return "{}(owner={}, target={}, romance={}, friendship={}, salience={}, tags={})".format(
             self.__class__.__name__,
-            self._type_modifier.name,
             self.owner,
             self.target,
-            self.spark,
-            self.charge,
+            self.romance,
+            self.friendship,
             self.salience,
-            [modifier.name for modifier in self.modifiers],
+            list(self._tags.keys()),
         )
 
+    @classmethod
+    def get_tag(cls, name: str) -> RelationshipTag:
+        return cls._registered_tags[name]
 
-class RelationshipManager:
-    """Manages all of a characters active relationships"""
+    @classmethod
+    def register_tag(cls, tag: RelationshipTag) -> None:
+        cls._registered_tags[tag.name] = tag
 
-    __slots__ = "_relationships", "significant_other"
 
-    def __init__(self) -> None:
-        self.significant_other: Optional[int] = None
-        self._relationships: Dict[int, Relationship] = {}
+################################################
+#          PARSING RELATIONSHIP TAGS           #
+################################################
 
-    def __getitem__(self, character_id: int) -> Relationship:
-        """Get a relationship by character ID"""
-        return self._relationships[character_id]
+def _ineq_check(attr: str, op: str, val: float) -> Callable[['Relationship'], bool]:
+    """Perform equality/inequality check on a Relationship's attribute"""
 
-    def __setitem__(self, character_id: int, relationship: Relationship) -> None:
-        """Register a relationship to a character ID"""
-        self._relationships[character_id] = relationship
+    def check_fn(obj: 'Relationship') -> bool:
+        attr_val = getattr(obj, attr)
+        if op == '=':
+            return attr_val == val
+        elif op == '<':
+            return attr_val < val
+        elif op == '>':
+            return attr_val > val
+        elif op == '<=':
+            return attr_val <= val
+        elif op == '>=':
+            return attr_val >= val
+        else:
+            raise ValueError(f"Invalid inequality operation {op}")
 
-    def __contains__(self, character_id: int) -> bool:
-        """Return True if there is a relationship with the given character"""
-        return character_id in self._relationships
+    return check_fn
 
-    def __len__(self) -> int:
-        """Return the number of relationships this character has"""
-        return len(self._relationships)
 
-    def get_with_flags(self, *flags: int) -> List[int]:
-        """Return character IDs for relationships that have the given flags"""
-        results: List[int] = []
-        for character_id, relationship in self._relationships.items():
-            if relationship.has_flags(*flags):
-                results.append(character_id)
-        return results
+def _tag_check(*tags) -> Callable[['Relationship'], bool]:
+    """Check if a Relationship has given tags"""
 
-    def progress_relationship(self, character_id: int) -> None:
-        """Update the state of a relationship"""
-        self._relationships[character_id].update()
+    def check_fn(obj: 'Relationship') -> bool:
+        return obj.has_tags(*tags)
 
-        if self._relationships[character_id].charge > FRIENDSHIP_THRESHOLD:
-            self._relationships[character_id].set_type_modifier(get_modifier("friend"))
-        elif self._relationships[character_id].charge < ENEMY_THRESHOLD:
-            self._relationships[character_id].set_type_modifier(get_modifier("enemy"))
-        if self._relationships[character_id].spark > CAPTIVATION_THRESHOLD:
-            if not self._relationships[character_id].has_flags(
-                Connection.LOVE_INTEREST
-            ):
-                self._relationships[character_id].add_modifier(
-                    get_modifier("love interest")
-                )
+    return check_fn
+
+
+def parse_requirements_str(requirements_str: str) -> List[Callable[['Relationship'], bool]]:
+    """Parse requirement strings from RelationshipTag definitions and create callables"""
+    clauses = list(map(str.strip, requirements_str.split("AND")))
+
+    check_fns: List[Callable[['Relationship'], bool]] = []
+
+    for clause in clauses:
+        clause_tuple = tuple(map(str.strip, clause.split(" ")))
+
+        if len(clause_tuple) == 2:
+            op, value = clause_tuple
+            if op == 'hasTag':
+                check_fns.append(_tag_check(value))
+            elif op == 'hasTags':
+                # Split the params
+                tags_to_check = tuple(map(str.strip, value.split(",")))
+                check_fns.append(_tag_check(*tags_to_check))
+            else:
+                raise ValueError(f"Invalid operation: {op} in '{clause}'")
+
+        elif len(clause_tuple) == 3:
+            attr, op, val = clause_tuple
+            check_fns.append(_ineq_check(attr, op, float(val)))
+        else:
+            raise ValueError(f"Clause has too many terms: {clause}")
+
+    return check_fns
+
+
+def load_relationship_tags(tags: List[Dict[str, Any]]) -> None:
+    """Load relationship tags from list of dicts"""
+
+    for tag_data in tags:
+        requirements_str = tag_data.get('requirements')
+
+        requirements = parse_requirements_str(requirements_str) if requirements_str else []
+
+        creation_data = {**tag_data, 'requirements': requirements}
+
+        Relationship.register_tag(RelationshipTag(**creation_data))

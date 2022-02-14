@@ -1,6 +1,7 @@
 from enum import Enum
-from typing import Dict, NamedTuple, Optional, Set, Tuple
+from typing import Dict, NamedTuple, Optional, Tuple
 
+from ordered_set import OrderedSet
 from pydantic import BaseModel, Field
 
 from neighborly.core.activity import get_top_activities
@@ -114,14 +115,14 @@ class GameCharacter:
             max_age: float,
             gender: Gender,
             values: CharacterValues,
-            attracted_to: Set[Gender],
+            attracted_to: Tuple[Gender],
     ) -> None:
         self.config = config
         self.name: CharacterName = name
         self.age: float = age
         self.max_age: float = max_age
         self.gender: Gender = gender
-        self.attracted_to: Set[Gender] = attracted_to
+        self.attracted_to: OrderedSet[Gender] = OrderedSet(attracted_to)
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
         self.likes: Tuple[str, ...] = get_top_activities(values)

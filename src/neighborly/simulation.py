@@ -5,6 +5,7 @@ from typing import Optional
 import esper
 
 from neighborly.core.processors import CharacterProcessor, RoutineProcessor
+from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.town import Town, TownConfig
 from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
@@ -63,7 +64,8 @@ class Simulation:
         self.world.add_processor(RoutineProcessor(), 5)
         self.world.add_processor(CharacterProcessor())
         self.resources: int = self.world.create_entity(
-            WeatherManager(), SimDateTime(), create_default_engine()
+            WeatherManager(), SimDateTime(), create_default_engine(),
+            RelationshipNetwork(),
         )
         self.town: int = -1
 

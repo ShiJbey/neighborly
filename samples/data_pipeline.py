@@ -53,9 +53,10 @@ def main():
     yaml_loader.load(engine)
 
     world: esper.World = esper.World()
-
-    civilian_id = engine.create_character(world, "Civilian")
-    print(world.components_for_entity(civilian_id))
+    
+    for _ in range(10):
+        civilian_id = engine.create_character(world, "Civilian")
+        print(world.components_for_entity(civilian_id))
 
     hitman_id = engine.create_character(world, "Hitman")
     print(world.components_for_entity(hitman_id))

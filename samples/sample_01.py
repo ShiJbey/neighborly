@@ -1,3 +1,4 @@
+from neighborly.ai import behavior_utils
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation, SimulationConfig
@@ -22,8 +23,8 @@ def main():
     default_plugin.initialize_plugin(sim.get_engine())
     YamlDataLoader(str_data=STRUCTURES).load(sim.get_engine())
 
-    sim.get_engine().create_character(sim.world, "Civilian")
-    sim.get_engine().create_character(sim.world, "Civilian")
+    character_1 = sim.get_engine().create_character(sim.world, "Civilian")
+    character_2 = sim.get_engine().create_character(sim.world, "Civilian")
 
     loc1 = sim.get_engine().create_place(sim.world, "Space Casino")
     loc2 = sim.get_engine().create_place(sim.world, "Mars")
@@ -37,6 +38,11 @@ def main():
     print("=== SIMULATION ==")
     for _ in range(100):
         sim.step()
+
+    print(sim.world.components_for_entity(character_1))
+
+    print(behavior_utils.get_relationship_net(sim.world).get_connection(character_1, character_2))
+    print(behavior_utils.get_relationship_net(sim.world).get_connection(character_2, character_1))
 
 
 if __name__ == "__main__":

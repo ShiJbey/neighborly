@@ -5,7 +5,8 @@ import esper
 from neighborly.core.activity import get_activity_flags
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.location import Location
-from neighborly.core.relationship import get_modifier
+from neighborly.core.relationship import RelationshipTag
+from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.social_practice import (
     SocialPractice,
     SocialPracticeManager,
@@ -28,6 +29,10 @@ def get_weather(self) -> Weather:
 
 def get_town(world: esper.World) -> Town:
     return cast(Town, world.get_component(Town)[0][1])
+
+
+def get_relationship_net(world: esper.World) -> RelationshipNetwork:
+    return world.component_for_entity(1, RelationshipNetwork)
 
 
 def get_character(world: esper.World, character_id: int) -> GameCharacter:
@@ -133,10 +138,8 @@ def start_social_practice(name: str, world: esper.World, **kwargs) -> None:
     manager.add_practice(practice)
 
 
-def add_relationship_modifier(
-        world: esper.World, subject_id: int, target_id: int, modifier_name: str
+def add_relationship_tag(
+        world: esper.World, owner_id: int, target_id: int, tag: RelationshipTag
 ) -> None:
     """Add a relationship modifier on the subject's relationship to the target"""
-    subject = get_character(world, subject_id)
-
-    subject.relationships[target_id].add_modifier(get_modifier(modifier_name))
+    get_relationship_net(world).get_connection(owner_id, target_id).add_tag(tag)

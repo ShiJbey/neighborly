@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RelationshipModifiers>
+    <RelationshipModifier name="Acquaintance"/>
+    <RelationshipModifier name="Friend" salience="20" requirements="friendship &gt; 15"/>
+    <RelationshipModifier name="Enemy" salience="20" requirements="friendship lt -10"/>
+    <RelationshipModifier name="Best Friend" salience="30" requirements="friendship gt 40"/>
+    <RelationshipModifier name="Worst Enemy" salience="30" requirements="friendship &lt;= -40"/>
+    <RelationshipModifier name="Love Interest" romance="3" salience="30" requirements="romance gt 20"/>
+    <RelationshipModifier name="Rival" salience="30"/>
+    <RelationshipModifier name="Coworker"/>
+    <RelationshipModifier name="Significant Other" salience="50"/>
+    <RelationshipModifier name="Same Gender" friendship="1"/>
+    <RelationshipModifier name="Attraction" romance="2"/>
+</RelationshipModifiers>
