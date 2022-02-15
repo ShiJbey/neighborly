@@ -43,7 +43,7 @@ class GameObject:
         self._id: int = FarmHash64(str(uuid1()))
         self._name: str = name
         self._tags: Set[str] = set(tags)
-        self._components: Dict[str, 'Component'] = {}
+        self._components: Dict[Type[Component], 'Component'] = {}
         if components:
             for component in components:
                 self.add_component(component)
@@ -88,22 +88,22 @@ class GameObject:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
         component.on_add()
-        self._components[type(component).__name__] = component
+        self._components[type(component)] = component
 
     def remove_component(self, component: 'Component') -> None:
         """Add a component to this GameObject"""
         component.on_remove()
         component.set_gameobject(None)
-        del self._components[type(component).__name__]
+        del self._components[type(component)]
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
-        return cast(_CT, self._components[component_type.__name__])
+        return cast(_CT, self._components[component_type])
 
     def has_component(self, component_type: Type[_CT]) -> bool:
         return component_type.__name__ in self._components
 
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
-        return cast(Optional[_CT], self._components.get(component_type.__name__))
+        return cast(Optional[_CT], self._components.get(component_type))
 
     def start(self) -> None:
         for component in self._components.values():
