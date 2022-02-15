@@ -31,6 +31,4 @@ def initialize_plugin(engine: NeighborlyEngine) -> None:
         filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
     )
 
-    loader = YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml")
-
-    loader.load(engine)
+    YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(engine)

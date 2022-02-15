@@ -1,7 +1,8 @@
 from abc import abstractmethod, ABC
-from typing import Any, Dict, List, Protocol
+from typing import Any, Dict, List
 
-import esper
+from neighborly.core.character.character import GameCharacter
+from neighborly.core.ecs import World, Component
 
 
 class Status(ABC):
@@ -19,22 +20,23 @@ class Status(ABC):
         return cls.tag
 
     @classmethod
-    def check_preconditions(cls, world: esper.World, character_id: int) -> bool:
+    def check_preconditions(cls, world: World, character: GameCharacter) -> bool:
         """Return true if the given character passes the preconditions"""
         raise NotImplementedError()
 
     @abstractmethod
-    def update(self, world: esper.World, character_id: int) -> bool:
+    def update(self, world: World, character: GameCharacter) -> bool:
         """Update status and return True is still active"""
         raise NotImplementedError()
 
 
-class StatusManager:
+class StatusManager(Component):
     """Keeps track of statuses that are active on a character"""
 
     __slots__ = "_statuses"
 
     def __init__(self) -> None:
+        super().__init__()
         self._statuses: Dict[str, Status] = {}
 
     def add_status(self, status: Status) -> None:

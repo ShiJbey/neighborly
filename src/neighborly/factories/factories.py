@@ -12,22 +12,8 @@ from neighborly.core.character.character import (
     CharacterName,
 )
 from neighborly.core.character.values import CharacterValues, generate_character_values
-from neighborly.core.gameobject import GameObject
 from neighborly.core.location import Location
 from neighborly.core.routine import Routine
-
-
-class GameObjectFactory(AbstractFactory):
-
-    def __init__(self):
-        super().__init__("GameObject")
-
-    def create(self, spec: ComponentSpec) -> GameObject:
-        return GameObject(
-            name=spec.get_attributes().get("name", "game object"),
-            description=spec.get_attributes().get("description", ""),
-            tags=spec.get_attributes().get("tags", [])
-        )
 
 
 class GameCharacterFactory(AbstractFactory):
@@ -84,7 +70,7 @@ class GameCharacterFactory(AbstractFactory):
             max_age,
             gender,
             values,
-            set(random.sample(list(Gender), random.randint(0, 2))),
+            tuple(random.sample(list(Gender), random.randint(0, 2))),
         )
 
         return character

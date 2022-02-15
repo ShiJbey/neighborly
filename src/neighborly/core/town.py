@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
-from neighborly.core.name_generation import get_name
 from neighborly.core.authoring import AbstractFactory
+from neighborly.core.ecs import Component
+from neighborly.core.name_generation import get_name
 
 
 @dataclass(frozen=True)
@@ -14,12 +15,13 @@ class TownConfig:
     town_layout_options: Dict[str, Any] = field(default_factory=dict)
 
 
-class Town:
+class Town(Component):
     """Simulated town where characters live"""
 
     __slots__ = "name"
 
     def __init__(self, name: str) -> None:
+        super().__init__()
         self.name = name
 
     @classmethod

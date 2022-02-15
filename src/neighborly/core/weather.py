@@ -1,9 +1,9 @@
 import random
 from enum import Enum
-from typing import cast
 
-import esper
 import numpy as np
+
+from neighborly.core.ecs import System
 
 
 class Weather(Enum):
@@ -34,7 +34,7 @@ class WeatherManager:
         self.time_before_change: int = 0
 
 
-class WeatherProcessor(esper.Processor):
+class WeatherProcessor(System):
     """Updates the current weather state
 
     Attributes
@@ -44,22 +44,20 @@ class WeatherProcessor(esper.Processor):
         state will last before being changed
     """
 
-    world: esper.World
-
     def __init__(self, avg_change_interval: int = 24) -> None:
+        super().__init__()
         self.avg_change_interval: int = avg_change_interval
 
     def process(self, *args, **kwargs):
         del args
         delta_time: int = kwargs["delta_time"]
-        for _, weather_manager in self.world.get_component(WeatherManager):
-            weather_manager = cast(WeatherManager, weather_manager)
+        weather_manager = self.world.get_resource(WeatherManager)
 
-            if weather_manager.time_before_change <= 0:
-                # Select the next weather pattern
-                weather_manager.current_weather = random.choice(list(Weather))
-                weather_manager.time_before_change = round(
-                    np.random.normal(self.avg_change_interval)
-                )
+        if weather_manager.time_before_change <= 0:
+            # Select the next weather pattern
+            weather_manager.current_weather = random.choice(list(Weather))
+            weather_manager.time_before_change = round(
+                np.random.normal(self.avg_change_interval)
+            )
 
-            weather_manager.time_before_change -= delta_time
+        weather_manager.time_before_change -= delta_time

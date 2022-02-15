@@ -8,13 +8,14 @@ from dataclasses import dataclass
 
 import neighborly.core.name_generation as name_gen
 from neighborly.core.authoring import AbstractFactory, ComponentSpec
+from neighborly.core.ecs import Component
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation
 
 
 @dataclass
-class Assassin:
+class Assassin(Component):
     """Assassin component to be attached to a character
 
     Assassins mark people who are part of the criminal
@@ -38,15 +39,15 @@ class AssassinFactory(AbstractFactory):
 
 def main():
     data_path = pathlib.Path(os.path.abspath(__file__)).parent / "data.yaml"
-    sim = Simulation()
+    sim = Simulation.create()
     default_plugin.initialize_plugin(sim.get_engine())
     YamlDataLoader(filepath=data_path).load(sim.get_engine())
     sim.get_engine().add_component_factory(AssassinFactory())
     name_gen.register_rule("hitman_first_name", ["John", "Agent"])
     name_gen.register_rule("hitman_last_name", ["Wick", "47"])
 
-    print(sim.get_engine().create_character(sim.world, "Assassin"))
-    print(sim.get_engine().create_place(sim.world, "The Continental Hotel"))
+    print(sim.get_engine().create_character("Assassin"))
+    print(sim.get_engine().create_place("The Continental Hotel"))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 from typing import List, cast
 
-import esper
+from neighborly.core.ecs import System
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
@@ -8,7 +8,6 @@ DAYS_PER_MONTH = 28
 WEEKS_PER_MONTH = 4
 MONTHS_PER_YEAR = 12
 HOURS_PER_YEAR = HOURS_PER_DAY * DAYS_PER_MONTH * MONTHS_PER_YEAR
-
 
 _TIME_OF_DAY: List[str] = [
     *(["night"] * 6),  # (00:00-05:59)
@@ -50,7 +49,7 @@ class SimDateTime:
         self._weekday: int = 0
 
     def increment(
-        self, hours: int = 0, days: int = 0, months: int = 0, years: int = 0
+            self, hours: int = 0, days: int = 0, months: int = 0, years: int = 0
     ) -> None:
         """Advance time by a given amount"""
 
@@ -134,12 +133,10 @@ class SimDateTime:
         return time
 
 
-class TimeProcessor(esper.Processor):
-
-    world: esper.World
+class TimeProcessor(System):
 
     def process(self, *args, **kwargs):
         delta_time: int = kwargs["delta_time"]
-        for _, sim_time in self.world.get_component(SimDateTime):
-            sim_time = cast(SimDateTime, sim_time)
-            sim_time.increment(hours=delta_time)
+        sim_time = self.world.get_resource(SimDateTime)
+        sim_time = cast(SimDateTime, sim_time)
+        sim_time.increment(hours=delta_time)

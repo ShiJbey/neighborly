@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
+from neighborly.core.ecs import Component
+
 
 @dataclass(frozen=True)
 class ScheduledActivity:
@@ -31,7 +33,7 @@ class ScheduleConflictError(Exception):
     """
 
     def __init__(
-        self, existing_activity: "ScheduledActivity", new_activity: "ScheduledActivity"
+            self, existing_activity: "ScheduledActivity", new_activity: "ScheduledActivity"
     ) -> None:
         super().__init__()
         self.existing_activity = existing_activity
@@ -89,7 +91,7 @@ class DailyRoutine:
             )
 
         for hour in range(
-            new_activity.time, min(new_activity.time + new_activity.duration, 24)
+                new_activity.time, min(new_activity.time + new_activity.duration, 24)
         ):
             existing_activity = self._schedule[hour]
             if existing_activity is not None:
@@ -183,7 +185,7 @@ class DailyRoutineFactory:
         return routine
 
 
-class Routine:
+class Routine(Component):
     """
     Manage a character's routine for the week
     """
@@ -191,15 +193,16 @@ class Routine:
     __slots__ = "_daily_routines"
 
     def __init__(
-        self,
-        sunday: Optional[DailyRoutine] = None,
-        monday: Optional[DailyRoutine] = None,
-        tuesday: Optional[DailyRoutine] = None,
-        wednesday: Optional[DailyRoutine] = None,
-        thursday: Optional[DailyRoutine] = None,
-        friday: Optional[DailyRoutine] = None,
-        saturday: Optional[DailyRoutine] = None,
+            self,
+            sunday: Optional[DailyRoutine] = None,
+            monday: Optional[DailyRoutine] = None,
+            tuesday: Optional[DailyRoutine] = None,
+            wednesday: Optional[DailyRoutine] = None,
+            thursday: Optional[DailyRoutine] = None,
+            friday: Optional[DailyRoutine] = None,
+            saturday: Optional[DailyRoutine] = None,
     ) -> None:
+        super().__init__()
         self._daily_routines: Dict[str, "DailyRoutine"] = {
             "sunday": sunday if sunday else DailyRoutineFactory.get_weekend_routine(),
             "monday": monday if monday else DailyRoutine(),
@@ -213,7 +216,7 @@ class Routine:
         }
 
     def add_activity_to_days(
-        self, days: List[str], activity: "ScheduledActivity"
+            self, days: List[str], activity: "ScheduledActivity"
     ) -> None:
         for day in days:
             self._daily_routines[day].add_activity(activity)

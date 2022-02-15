@@ -1,6 +1,8 @@
 from abc import ABC
 from typing import Optional, Dict, Any, List, Protocol
 
+from neighborly.core.ecs import Component
+
 
 class AbstractFactory(ABC):
     """Abstract class for factory instances
@@ -13,8 +15,8 @@ class AbstractFactory(ABC):
 
     __slots__ = "_type"
 
-    def __init__(self, _type: str) -> None:
-        self._type = _type
+    def __init__(self, name: str) -> None:
+        self._type = name
 
     def get_type(self) -> str:
         """Return the name of the type this factory creates"""
@@ -62,11 +64,11 @@ class EntityArchetypeSpec:
 
     def __init__(
             self,
-            _type: str,
+            name: str,
             components: Optional[Dict[str, ComponentSpec]] = None,
             attributes: Optional[Dict[str, Any]] = None
     ) -> None:
-        self._type: str = _type
+        self._type: str = name
         self._components: Dict[str, ComponentSpec] = components if components else {}
         self._attributes: Dict[str, Any] = attributes if attributes else {}
 
@@ -94,6 +96,6 @@ class ComponentFactory(Protocol):
         """Return the name of the type this factory creates"""
         raise NotImplementedError()
 
-    def create(self, spec: ComponentSpec) -> Any:
+    def create(self, spec: ComponentSpec) -> Component:
         """Create component instance"""
         raise NotImplementedError()

@@ -1,27 +1,23 @@
-import esper
-
 from neighborly.ai import behavior_utils
 from neighborly.core.character.life_event import LifeEvent, register_event_type
-from neighborly.core.relationship import Connection
+from neighborly.core.ecs import World
+from neighborly.core.social_network import RelationshipNetwork
 
 
-def dating_precondition(world: esper.World, character_id: int, **kwargs) -> bool:
+def dating_precondition(world: World, character_id: int, **kwargs) -> bool:
     """Return True if these characters like each other enough to date"""
     other_character_id: int = int(kwargs["other_character"])
-    other_character = behavior_utils.get_character(world, other_character_id)
-    character = behavior_utils.get_character(world, character_id)
+    relationship_net = world.get_resource(RelationshipNetwork)
 
     return (
-            character.relationships[other_character_id].has_flags(Connection.LOVE_INTEREST)
-            and other_character.relationships[character_id].has_flags(
-        Connection.LOVE_INTEREST
-    )
-            and character.relationships.significant_other is None
-            and other_character.relationships.significant_other is None
+            relationship_net.get_connection(character_id, other_character_id).has_tags("Love Interest") and
+            relationship_net.get_connection(other_character_id, character_id).has_tags("Love Interest") and
+            len(relationship_net.get_all_relationships_with_tags(character_id, "Significant Other")) == 0 and
+            len(relationship_net.get_all_relationships_with_tags(other_character_id, "Significant Other")) == 0
     )
 
 
-def dating_posteffects(world: esper.World, character_id: int, **kwargs) -> None:
+def dating_post_effects(world: World, character_id: int, **kwargs) -> None:
     """Update the simulation state since these two characters are dating"""
     other_character_id: int = int(kwargs["other_character"])
 
@@ -44,12 +40,12 @@ register_event_type(
         name="Start Dating",
         description="Two characters start a romantic relationship",
         preconditions=dating_precondition,
-        post_effects=dating_posteffects,
+        post_effects=dating_post_effects,
     )
 )
 
 
-def birth_posteffects(world: esper.World, character_id: int) -> None:
+def birth_post_effects(world: World, character_id: int) -> None:
     behavior_utils.start_social_practice(
         "child", world, roles={"subject": [character_id]}
     )
@@ -60,6 +56,6 @@ register_event_type(
         name="Start Dating",
         description="Two characters start a romantic relationship",
         preconditions=lambda world, character_id: True,
-        post_effects=birth_posteffects,
+        post_effects=birth_post_effects,
     )
 )

@@ -1,16 +1,18 @@
 from typing import List, Optional
 
 from neighborly.core.activity import get_activity_flags
+from neighborly.core.ecs import Component
 
 
-class Location:
+class Location(Component):
     """Anywhere where game characters may be"""
 
     __slots__ = "characters_present", "activities", "activity_flags", "max_capacity"
 
     def __init__(
-        self, max_capacity: int = 9999, activities: Optional[List[str]] = None
+            self, max_capacity: int = 9999, activities: Optional[List[str]] = None
     ) -> None:
+        super().__init__()
         self.max_capacity: int = max_capacity
         self.characters_present: List[int] = []
         self.activities: List[str] = activities if activities else []

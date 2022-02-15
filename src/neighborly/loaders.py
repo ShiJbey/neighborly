@@ -2,79 +2,32 @@
 """
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union, Tuple, Set
 
 import yaml
 
+from neighborly.ai.behavior_tree import BehaviorTree, AbstractBTNode
+from neighborly.ai.character_behavior import get_node_factory_for_type, register_behavior
 from neighborly.core.activity import Activity, register_activity
 from neighborly.core.authoring import ComponentSpec, EntityArchetypeSpec
+from neighborly.core.relationship import load_relationship_tags
 from neighborly.engine import NeighborlyEngine
 
 AnyPath = Union[str, Path]
 
 
-# def load_activity_definitions(
-#         yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
-# ) -> None:
-#     """Loads new activity types from given YAML data"""
-#     if yaml_str and filepath:
-#         raise ValueError("Only supply YAML string or file path not both")
-#
-#     if yaml_str:
-#         yaml_data: Dict[str, Dict[str, Any]] = yaml.safe_load(yaml_str)
-#     elif filepath:
-#         with open(filepath, "r") as f:
-#             yaml_data: Dict[str, Dict[str, Any]] = yaml.safe_load(f)
-#     else:
-#         raise ValueError("No YAML string or file path given")
-#
-#     for name, data in yaml_data.items():
-#         register_activity(Activity(name, tuple(data["traits"])))
-#
-#
-# def load_structure_definitions(
-#         yaml_str: Optional[str] = None, filepath: Optional[AnyPath] = None
-# ) -> None:
-#     if yaml_str and filepath:
-#         raise ValueError("Only supply YAML string or file path not both")
-#
-#     if yaml_str:
-#         structures_raw: Dict[str, Dict[str, Any]] = yaml.safe_load(yaml_str)
-#     elif filepath:
-#         with open(filepath, "r") as f:
-#             structures_raw: Dict[str, Dict[str, Any]] = yaml.safe_load(f)
-#     else:
-#         raise ValueError("No YAML string or file path given")
-#
-#     # HElPER FUNCTIONS
-#     def _get_business_config(
-#             data: Dict[str, Any], **kwargs
-#     ) -> Optional[BusinessConfig]:
-#         config: Optional[Dict[str, Any]] = data.get("business")
-#
-#         if config is None:
-#             return
-#
-#         return BusinessConfig(**kwargs, **config)
-#
-#     # END HELPER FUNCTIONS
-#
-#     for name, data in structures_raw.items():
-#         register_structure_def(name, data)
-
-
 def load_names(
-        namespace: str,
+        rule_name: str,
         names: Optional[List[str]] = None,
         filepath: Optional[AnyPath] = None,
 ) -> None:
     """Load names a list of names from a text file or given list"""
     from neighborly.core.name_generation import register_rule
     if names:
-        register_rule(namespace, names)
+        register_rule(rule_name, names)
     elif filepath:
         with open(filepath, "r") as f:
-            register_rule(namespace, f.read().splitlines())
+            register_rule(rule_name, f.read().splitlines())
     else:
         raise ValueError("Need to supply names list or path to file containing names")
 
@@ -132,7 +85,7 @@ class YamlDataLoader:
     def __init__(
             self,
             str_data: Optional[str] = None,
-            filepath: Optional[AnyPath] = None
+            filepath: Optional[AnyPath] = None,
     ) -> None:
         if str_data:
             self._raw_data: Dict[str, Any] = yaml.safe_load(str_data)
@@ -148,44 +101,59 @@ class YamlDataLoader:
         # Now we change into an intermediate representation
         # Each archetype needs to be saved as dict of trees
         # where each specification node
-        for subsection, data in self._raw_data.items():
-            if subsection == "Characters":
+        for section, data in self._raw_data.items():
+            if section == "Characters":
                 self._load_character_data(engine, data)
-            if subsection == "Activities":
+            elif section == "Activities":
                 self._load_activity_data(data)
-            if subsection == "Places":
+            elif section == "Places":
                 self._load_place_data(engine, data)
+            elif section == "RelationshipTags":
+                self._load_relationship_tag_data(data)
+            else:
+                print(f"WARNING:: Skipping unsupported section '{section}'")
 
     @staticmethod
-    def _load_activity_data(activities: Dict[str, Dict[str, Any]]) -> None:
+    def _load_activity_data(activities: List[Dict[str, Any]]) -> None:
         """Process data related to defining activities"""
-        for activity_name, attrs in activities.items():
-            register_activity(Activity(activity_name, trait_names=attrs["traits"]))
+        for data in activities:
+            register_activity(Activity(data['name'], trait_names=data["traits"]))
 
     @staticmethod
-    def _load_character_data(engine: NeighborlyEngine, characters: Dict[str, Dict[str, Any]]) -> None:
+    def _load_character_data(engine: NeighborlyEngine, characters: List[Dict[str, Any]]) -> None:
         """Process data related to defining character archetypes"""
-        for archetype_name, data in characters.items():
-            archetype = EntityArchetypeSpec(archetype_name)
+        for data in characters:
+            archetype = EntityArchetypeSpec(
+                data['name'],
+                attributes={
+                    'name': data['name'],
+                    'tags': data['tags'] if 'tags' in data else [],
+                }
+            )
 
             if data.get("default"):
                 engine.add_character_archetype(archetype, name="default")
 
-            if data.get("extends"):
-                parent = engine.get_character_archetype(data["extends"])
+            if data.get("inherits"):
+                parent = engine.get_character_archetype(data["inherits"])
 
                 # Add all the parents components to this instance
                 for component_name, component_spec in parent.get_components().items():
                     archetype.add_component(component_spec)
 
-            components = {component_name: params for component_name, params in data.items() if type(params) is dict}
+            if 'components' not in data:
+                raise ValueError("Entity spec missing component definitions")
 
-            for component_name, params in components.items():
+            for component in data['components']:
                 # Check if there is an existing node
                 default_params: Dict[str, Any] = {}
 
+                component_name = component['type']
+
                 if component_name in archetype.get_components():
                     default_params.update(archetype.get_components()[component_name].get_attributes())
+
+                params = component['options'] if 'options' in component else {}
 
                 component_spec = ComponentSpec(component_name, {**default_params, **params})
 
@@ -194,32 +162,93 @@ class YamlDataLoader:
             engine.add_character_archetype(archetype)
 
     @staticmethod
-    def _load_place_data(engine: NeighborlyEngine, places: Dict[str, Dict[str, Any]]) -> None:
+    def _load_place_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
         """Process information regarding place archetypes"""
-        for archetype_name, data in places.items():
-            archetype = EntityArchetypeSpec(archetype_name)
+        for data in places:
+            archetype = EntityArchetypeSpec(
+                name=data['name'],
+                attributes={
+                    'name': data['name'],
+                    'tags': data['tags'] if 'tags' in data else [],
+                }
+            )
 
             if data.get("default"):
                 engine.add_place_archetype(archetype, name="default")
 
-            if data.get("extends"):
-                parent = engine.get_place_archetype(data["extends"])
+            if data.get("inherits"):
+                parent = engine.get_place_archetype(data["inherits"])
 
                 # Add all the parents components to this instance
                 for component_name, component_spec in parent.get_components().items():
                     archetype.add_component(component_spec)
 
-            components = {component_name: params for component_name, params in data.items() if type(params) is dict}
+            if 'components' not in data:
+                raise ValueError("Entity spec missing component definitions")
 
-            for component_name, params in components.items():
+            for component in data['components']:
                 # Check if there is an existing node
                 default_params: Dict[str, Any] = {}
 
+                component_name = component['type']
+
                 if component_name in archetype.get_components():
                     default_params.update(archetype.get_components()[component_name].get_attributes())
+
+                params = component['options'] if 'options' in component else {}
 
                 component_spec = ComponentSpec(component_name, {**default_params, **params})
 
                 archetype.add_component(component_spec)
 
             engine.add_place_archetype(archetype)
+
+    @staticmethod
+    def _load_relationship_tag_data(relationship_tags: List[Dict[str, Any]]) -> None:
+        load_relationship_tags(relationship_tags)
+
+
+class XmlBehaviorLoader:
+    __slots__ = "_data_tree"
+
+    def __init__(self, filepath: AnyPath) -> None:
+        self._data_tree = ET.parse(filepath)
+
+    def load(self) -> None:
+        # Check that the root node has the behavior tag.
+        root = self._data_tree.getroot()
+
+        if root.tag != "Behaviors":
+            raise ValueError("Root tag of XML must be '<Behaviors>'")
+
+        # Create a new behavior tree for each behavior node
+        for child in root:
+            register_behavior(self.construct_behavior(child))
+
+    @staticmethod
+    def construct_behavior(el: ET.Element) -> BehaviorTree:
+        behavior_tree: BehaviorTree = BehaviorTree(el.attrib["type"])
+
+        # Perform DFS, linking child nodes to their parent
+        visited: Set[ET.Element] = set()
+        stack: List[Tuple[Optional[AbstractBTNode], ET.Element]] = list()
+
+        stack.append((None, el))
+
+        while stack:
+            bt_node, xml_node = stack.pop()
+            if xml_node not in visited:
+                visited.add(xml_node)
+
+                if bt_node:
+                    new_node = get_node_factory_for_type(xml_node.tag).create(
+                        **xml_node.attrib
+                    )
+                    bt_node.add_child(new_node)
+                else:
+                    new_node = behavior_tree
+
+                for child in reversed(xml_node):
+                    stack.append((new_node, child))
+
+        return behavior_tree

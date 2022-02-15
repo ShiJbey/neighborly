@@ -1,38 +1,35 @@
 import random
 from typing import cast
 
-import esper
-
 import neighborly.ai.behavior_utils as behavior_utils
 from neighborly.core.character.character import GameCharacter
+from neighborly.core.ecs import System
+from neighborly.core.location import Location
 from neighborly.core.relationship import Relationship
 from neighborly.core.routine import Routine
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import HOURS_PER_YEAR
 
 
-class CharacterProcessor(esper.Processor):
-    world: esper.World
+class CharacterProcessor(System):
 
     def process(self, *args, **kwargs):
 
         delta_time: float = kwargs["delta_time"]
 
-        relationship_net = self.world.component_for_entity(1, RelationshipNetwork)
+        relationship_net = self.world.get_resource(RelationshipNetwork)
 
         for character_id, character in self.world.get_component(GameCharacter):
-            character = cast(GameCharacter, character)
-
             # if character.statuses.has_status("dead"):
             #     continue
 
-            self._grow_older(character_id, character, delta_time)
+            self._grow_older(character, delta_time)
             # self._simulate_dating(character_id, character)
             #
             # if relationship_net.get_all_relationships_with_tags(character_id, "Significant Other"):
             #     self._simulate_breakup(character_id, character)
             #
-            self._socialize(character_id, character)
+            self._socialize(character)
             #
             # if (
             #         character.age >= character.max_age
@@ -41,7 +38,7 @@ class CharacterProcessor(esper.Processor):
             #     self._die(character_id, character)
 
     def _grow_older(
-            self, character_id: int, character: GameCharacter, hours: float
+            self, character: GameCharacter, hours: float
     ) -> None:
         """Increase the character's age and apply flags at major milestones"""
         if character.config.lifecycle.can_age:
@@ -121,20 +118,18 @@ class CharacterProcessor(esper.Processor):
     #                     get_modifier("significant other")
     #                 )
 
-    def _socialize(self, character_id: int, character: GameCharacter) -> None:
+    def _socialize(self, character: GameCharacter) -> None:
         """Have all the characters talk to those around them"""
         if character.location:
-            location = behavior_utils.get_place(self.world, character.location)
-            relationship_net = self.world.component_for_entity(1, RelationshipNetwork)
+            location = self.world.get_gameobject(character.location).get_component(Location)
+            relationship_net = self.world.get_resource(RelationshipNetwork)
+
+            character_id = character.gameobject.id
 
             # Socialize
             for other_character_id in location.characters_present:
-                if other_character_id == character_id:
+                if other_character_id == character.gameobject.id:
                     continue
-
-                other_character = behavior_utils.get_character(
-                    self.world, other_character_id
-                )
 
                 if not relationship_net.has_connection(character_id, other_character_id):
                     relationship_net.add_connection(
@@ -164,8 +159,7 @@ class CharacterProcessor(esper.Processor):
         ...
 
 
-class RoutineProcessor(esper.Processor):
-    world: esper.World
+class RoutineProcessor(System):
 
     def process(self, *args, **kwargs):
         del args

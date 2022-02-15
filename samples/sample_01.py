@@ -1,48 +1,64 @@
 from neighborly.ai import behavior_utils
+from neighborly.core.character.character import GameCharacter
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation, SimulationConfig
 
 STRUCTURES = """
     Places:
-        Space Casino:
-            Location:
-                activities: ["gambling", "drinking", "eating", "socializing"]
-        Mars:
-            Location:
-                activities: ["reading", "relaxing"]
-        Kamino:
-            Location:
-                activities: ["recreation", "studying"]
+        - name: Space Casino
+          components:
+            - type: Location
+              options:
+                activities: ["Gambling", "Drinking", "Eating", "Socializing"]
+        - name: Mars
+          components:
+            - type: Location
+              options:
+                activities: ["Reading", "Relaxing"]
+        - name: Kamino
+          components:
+            - type: Location
+              options:
+                activities: ["Recreation", "Studying"]
     """
 
 
 def main():
     config = SimulationConfig(hours_per_timestep=4)
-    sim = Simulation(config)
+    sim = Simulation.create(config)
     default_plugin.initialize_plugin(sim.get_engine())
     YamlDataLoader(str_data=STRUCTURES).load(sim.get_engine())
 
-    character_1 = sim.get_engine().create_character(sim.world, "Civilian")
-    character_2 = sim.get_engine().create_character(sim.world, "Civilian")
+    character_1 = sim.get_engine().create_character("Civilian")
+    character_2 = sim.get_engine().create_character("Civilian")
 
-    loc1 = sim.get_engine().create_place(sim.world, "Space Casino")
-    loc2 = sim.get_engine().create_place(sim.world, "Mars")
-    loc3 = sim.get_engine().create_place(sim.world, "Kamino")
+    sim.world.add_gameobject(character_1)
+    sim.world.add_gameobject(character_2)
+
+    print("=== CHARACTERS ==")
+    print(character_1.get_component(GameCharacter))
+    print(character_2.get_component(GameCharacter))
+
+    loc1 = sim.get_engine().create_place("Space Casino")
+    loc2 = sim.get_engine().create_place("Mars")
+    loc3 = sim.get_engine().create_place("Kamino")
+
+    sim.world.add_gameobject(loc1)
+    sim.world.add_gameobject(loc2)
+    sim.world.add_gameobject(loc3)
 
     print("=== LOCATIONS ==")
-    print(f"Space casino: {loc1}")
-    print(f"Mars: {loc2}")
-    print(f"Kamino: {loc3}")
+    print(loc1)
+    print(loc2)
+    print(loc3)
 
-    print("=== SIMULATION ==")
     for _ in range(100):
         sim.step()
 
-    print(sim.world.components_for_entity(character_1))
-
-    print(behavior_utils.get_relationship_net(sim.world).get_connection(character_1, character_2))
-    print(behavior_utils.get_relationship_net(sim.world).get_connection(character_2, character_1))
+    print("=== RELATIONSHIPS ==")
+    print(behavior_utils.get_relationship_net(sim.world).get_connection(character_1.id, character_2.id))
+    print(behavior_utils.get_relationship_net(sim.world).get_connection(character_2.id, character_1.id))
 
 
 if __name__ == "__main__":

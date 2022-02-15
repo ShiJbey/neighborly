@@ -1,93 +1,127 @@
 Characters:
-  Civilian:
+  - name: Civilian
     default: yes
-    GameCharacter:
-      name: '#first_name# #last_name#'
-      lifecycle:
-        can_age: yes
-        can_die: yes
-        lifespan_mean: 85
-        lifespan_std: 15
-        adult_age: 18
-        senior_age: 65
-        romantic_feelings_age: 13
-        marriageable_age: 18
-    Routine:
-      type: default
+    tags: [ 'character' ]
+    components:
+      - type: GameCharacter
+        options:
+          name: '#first_name# #last_name#'
+          lifecycle:
+            can_age: yes
+            can_die: yes
+            lifespan_mean: 85
+            lifespan_std: 15
+            adult_age: 18
+            senior_age: 65
+            romantic_feelings_age: 13
+            marriageable_age: 18
+      - type: Routine
 Places:
-  Park:
-    activities:
-      - recreation
-    max capacity: 200
-  Grocery Store:
-    activities:
-      - shopping
-    max capacity: 60
-  Restaurant:
-    activities:
-      - eating
-      - socializing
-    max capacity: 20
-    business: { }
-  Bar:
-    activities:
-      - eating
-      - drinking
-      - socializing
-    max capacity: 35
-    name factory: bars
-  Library:
-    activities:
-      - reading
-      - studying
-    max capacity: 35
+  - name: Park
+    components:
+      - type: Location
+        options:
+          activities: [ Recreation ]
+          max capacity: 200
+  - name: Grocery Store
+    components:
+      - type: Location
+        options:
+          activities: [ Shopping ]
+          max capacity: 60
+  - name: Restaurant
+    components:
+      - type: Location
+        options:
+          activities: [ Eating, Socializing ]
+          max capacity: 20
+  - name: Bar
+    components:
+      - type: Location
+        options:
+          name: "#bar_name#"
+          activities: [ Eating, Drinking, Socializing ]
+          max capacity: 35
+  - name: Library
+    components:
+      - type: Location
+        options:
+          activities: [ Reading, Studying ]
+          max capacity: 35
 Activities:
-  gambling:
+  - name: Gambling
     traits:
       - wealth
       - excitement
       - adventure
       - lust
-  shopping:
+  - name: Shopping
     traits:
       - material things
       - excitement
       - leisure-time
-  recreation:
+  - name: Recreation
     traits:
       - health
       - excitement
-  studying:
+  - name: Studying
     traits:
       - knowledge
       - power
       - ambition
-  reading:
+  - name: Reading
     traits:
       - knowledge
       - power
       - leisure-time
-  errands:
+  - name: Errands
     traits:
       - reliability
       - health
       - family
-  eating:
+  - name: Eating
     traits:
       - social
       - health
       - family
-  socializing:
+  - name: Socializing
     traits:
       - social
       - excitement
       - friendship
-  drinking:
+  - name: Drinking
     traits:
       - social
       - friendship
-  relaxing:
+  - name: Relaxing
     traits:
       - health
       - tranquility
       - leisure-time
+RelationshipTags:
+  - name: Acquaintance
+    requirements: "friendship < 7 AND friendship > -7"
+  - name: Friend
+    salience: 20
+    requirements: "friendship > 15"
+  - name: Enemy
+    salience: 20
+    requirements: "friendship < -10"
+  - name: Best Friend
+    salience: 30
+    requirements: "friendship > 40"
+  - name: Worst Enemy
+    salience: 30
+    requirements: "friendship <= -40"
+  - name: Love Interest
+    salience: 30
+    romance: 3
+    requirements: "romance > 20"
+  - name: Rival
+    salience: 30
+  - name: Coworker
+    salience: 10
+  - name: Significant Other
+    salience: 50
+  - name: Attraction
+    romance: 2

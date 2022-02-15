@@ -1,11 +1,10 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, DefaultDict
-
-import esper
+from typing import Dict, List, Optional, DefaultDict
 
 from neighborly.core.authoring import ComponentFactory, ComponentSpec, EntityArchetypeSpec
+from neighborly.core.ecs import GameObject, Component
 from neighborly.core.rng import RandNumGenerator, DefaultRNG
-from neighborly.factories.factories import RoutineFactory, GameCharacterFactory, LocationFactory, GameObjectFactory
+from neighborly.factories.factories import RoutineFactory, GameCharacterFactory, LocationFactory
 
 
 class NeighborlyEngine:
@@ -63,32 +62,32 @@ class NeighborlyEngine:
     def get_component_factory(self, type_name: str) -> ComponentFactory:
         return self._component_factories[type_name]
 
-    def create_character(self, world: esper.World, archetype_name: str) -> int:
+    def create_character(self, archetype_name: str) -> GameObject:
 
         archetype = self._character_archetypes[archetype_name]
 
-        components: List[Any] = []
+        components: List[Component] = []
 
         for name, spec in archetype.get_components().items():
             factory = self.get_component_factory(name)
             components.append(factory.create(spec))
 
-        character_id = world.create_entity(*components)
+        gameobject = GameObject(name=archetype_name, components=components)
 
-        return character_id
+        return gameobject
 
-    def create_place(self, world: esper.World, archetype_name: str) -> int:
+    def create_place(self, archetype_name: str) -> GameObject:
         archetype: EntityArchetypeSpec = self._place_archetypes[archetype_name]
 
-        components: List[Any] = []
+        components: List[Component] = []
 
         for name, spec in archetype.get_components().items():
             factory = self.get_component_factory(name)
             components.append(factory.create(spec))
 
-        place_id: int = world.create_entity(*components)
+        gameobject = GameObject(name=archetype_name, components=components)
 
-        return place_id
+        return gameobject
 
 
 def create_default_engine(rng: Optional[RandNumGenerator] = None) -> NeighborlyEngine:
@@ -96,5 +95,4 @@ def create_default_engine(rng: Optional[RandNumGenerator] = None) -> NeighborlyE
     engine.add_component_factory(GameCharacterFactory())
     engine.add_component_factory(RoutineFactory())
     engine.add_component_factory(LocationFactory())
-    engine.add_component_factory(GameObjectFactory())
     return engine

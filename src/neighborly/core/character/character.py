@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from neighborly.core.activity import get_top_activities
 from neighborly.core.character.values import CharacterValues
+from neighborly.core.ecs import Component
 
 
 class LifeCycleConfig(BaseModel):
@@ -68,7 +69,7 @@ class Gender(Enum):
     NEUTRAL = "neutral"
 
 
-class GameCharacter:
+class GameCharacter(Component):
     """The state of a single character within the world
 
     Attributes
@@ -117,6 +118,7 @@ class GameCharacter:
             values: CharacterValues,
             attracted_to: Tuple[Gender],
     ) -> None:
+        super().__init__()
         self.config = config
         self.name: CharacterName = name
         self.age: float = age
@@ -127,6 +129,9 @@ class GameCharacter:
         self.location_aliases: Dict[str, int] = {}
         self.likes: Tuple[str, ...] = get_top_activities(values)
         self.values: CharacterValues = values
+        
+    def on_start(self) -> None:
+        self.gameobject.set_name(str(self.name))
 
     def __repr__(self) -> str:
         """Return printable representation"""

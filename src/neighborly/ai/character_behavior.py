@@ -1,12 +1,13 @@
 """Special components and behavior tree nodes for implementing character behaviors"""
 
+from abc import ABC, abstractmethod
 from typing import Protocol, Dict
-
-import esper
 
 from neighborly.ai import behavior_utils
 from neighborly.ai.behavior_tree import BehaviorTree, SelectorBTNode, NodeState, Blackboard, \
-    DecoratorBTNode
+    DecoratorBTNode, AbstractBTNode
+from neighborly.core.authoring import AbstractFactory
+from neighborly.core.ecs import World
 
 
 class CharacterBehavior(BehaviorTree):
@@ -60,7 +61,40 @@ class PrioritySelectorNode(SelectorBTNode):
 class RandomSelectorNode(SelectorBTNode):
 
     def evaluate(self, blackboard: Blackboard) -> NodeState:
-        world: esper.World = blackboard.get_value("world")
+        world: World = blackboard.get_value("world")
         engine = behavior_utils.get_engine(world)
         engine.get_rng().shuffle(self._children)
         return super().evaluate(blackboard)
+
+
+class BehaviorNodeFactory(AbstractFactory, ABC):
+    def __init__(self, _type: str) -> None:
+        super().__init__(_type)
+
+    @abstractmethod
+    def create(self, **kwargs) -> AbstractBTNode:
+        """Create node instance"""
+        raise NotImplementedError()
+
+
+_node_factories: Dict[str, BehaviorNodeFactory] = {}
+_behavior_bank: Dict[str, BehaviorTree] = {}
+
+
+def register_node_factory(factory: BehaviorNodeFactory) -> None:
+    global _node_factories
+    _node_factories[factory.get_type()] = factory
+
+
+def get_node_factory_for_type(type_name: str) -> BehaviorNodeFactory:
+    return _node_factories[type_name]
+
+
+def register_behavior(tree: BehaviorTree) -> None:
+    """Add behavior tree to lookup table"""
+    global _behavior_bank
+    _behavior_bank[tree.get_type()] = tree
+
+
+def get_behavior(type_name: str) -> BehaviorTree:
+    return _behavior_bank[type_name]

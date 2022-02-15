@@ -49,7 +49,7 @@ register_social_practice(
 register_social_practice(
     SocialPracticeConfig(
         name="default",
-        description="Default social practice given to all chracters.",
+        description="Default social practice given to all characters.",
         preconditions=[
             lambda world, roles, metadata: behavior_utils.is_senior(
                 world, roles["subject"][0]
