@@ -21,6 +21,7 @@ COLOR_BLACK = (0, 0, 0)
 COLOR_RED = (255, 0, 0)
 COLOR_GREEN = (99, 133, 108)
 COLOR_BLUE = (0, 0, 255)
+CHARACTER_COLOR = (66, 242, 245)
 BUILDING_COLOR = (194, 194, 151)
 BACKGROUND_COLOR = (232, 232, 213)
 LOT_COLOR = (79, 107, 87)
@@ -29,9 +30,9 @@ GROUND_COLOR = (127, 130, 128)
 # Character sprite width in pixels
 CHARACTER_SIZE = 12
 
-SMALL_PLACE_SIZE = (5 * CHARACTER_SIZE, 5 * CHARACTER_SIZE)
-MEDIUM_PLACE_SIZE = (7 * CHARACTER_SIZE, 10 * CHARACTER_SIZE)
-LARGE_PLACE_SIZE = (10 * CHARACTER_SIZE, 15 * CHARACTER_SIZE)
+SMALL_PLACE_SIZE = (5, 5)
+MEDIUM_PLACE_SIZE = (7, 10)
+LARGE_PLACE_SIZE = (10, 15)
 
 # Number of pixels between lots
 LOT_PADDING = 36
@@ -172,24 +173,23 @@ class GameConfig:
 
 
 class CharacterSprite(pygame.sprite.Sprite):
+    __slots__ = "character", "image", "rect", "position", "speed", "previous_destination", "destination"
+
     def __init__(
             self,
             character: GameObject,
-            color: Tuple[int, int, int] = COLOR_BLUE,
-            pos_x: int = 0,
-            pos_y: int = 0,
+            color: Tuple[int, int, int] = CHARACTER_COLOR
     ) -> None:
         super().__init__()
-        self.character = character
-        self.image = pygame.Surface([CHARACTER_SIZE, CHARACTER_SIZE])
+        self.character: GameObject = character
+        self.image: pygame.Surface = pygame.Surface([CHARACTER_SIZE, CHARACTER_SIZE])
         self.image.fill(color)
-        self.rect = self.image.get_rect()
-        self.position = pygame.Vector2(pos_x, pos_y)
+        self.rect: pygame.Rect = self.image.get_rect()
+        self.position: pygame.math.Vector2 = pygame.math.Vector2(0, 0)
         self.rect.topleft = (round(self.position.x), round(self.position.y))
-
-        self.speed = 1000
-
-        self.destination: Optional[pygame.Vector2] = None
+        self.speed: int = 2000
+        self.previous_destination: Optional[Tuple[int, int, pygame.math.Vector2]] = None
+        self.destination: Optional[Tuple[int, int, pygame.math.Vector2]] = None
 
     def set_position(self, x: float, y: float):
         self.position.x = x
@@ -199,11 +199,14 @@ class CharacterSprite(pygame.sprite.Sprite):
     def update(self, **kwargs) -> None:
         delta_time: float = kwargs["delta_time"]
         if self.destination and self.rect:
-            move = self.destination - self.position
-            move_length = move.length()
+            _, _, destination_pos = self.destination
+
+            move: pygame.math.Vector2 = destination_pos - self.position
+            move_length: float = move.length()
 
             if move_length < self.speed * delta_time:
-                self.position = self.destination
+                self.position = destination_pos
+                self.previous_destination = self.destination
                 self.destination = None
             elif move_length != 0:
                 move.normalize_ip()
@@ -216,34 +219,33 @@ class CharacterSprite(pygame.sprite.Sprite):
 class OccupancyGrid:
     """Manages where characters can stand at a location"""
 
-    def __init__(self, width: int, height: int) -> None:
+    def __init__(self, width: int, length: int) -> None:
         self._width = width
-        self._height = height
-        self._spaces: List[bool] = [False] * width * height
-        self._unoccupied: List[int] = list(range(0, width * height))
+        self._length = length
+        self._spaces: List[bool] = [False] * width * length
+        self._unoccupied: List[int] = list(range(0, width * length))
         self._occupied: Set[int] = set()
 
     def get_size(self) -> int:
-        return self._width * self._height
+        return self._width * self._length
 
     def has_vacancy(self) -> bool:
         return bool(self._unoccupied)
 
-    def set_next(self) -> Tuple[int, int]:
+    def set_next(self) -> Tuple[int, pygame.math.Vector2]:
         index = self._unoccupied.pop()
         self._occupied.add(index)
-        row = int(index / self._height)
-        col = index % self._height
-        return row, col
+        x: int = index // self._length
+        y: int = index % self._length
+        return index, pygame.math.Vector2(x, y)
 
-    def unset(self, pos: Tuple[int, int]) -> None:
-        index = pos[1] * self._width + pos[0]
+    def unset(self, index: int) -> None:
         self._unoccupied.append(index)
         self._occupied.remove(index)
         self._spaces[index] = False
 
-    def __getitem__(self, pos: Tuple[int, int]) -> bool:
-        return self._spaces[pos[1] * self._width + pos[0]]
+    def __getitem__(self, pos: pygame.math.Vector2) -> bool:
+        return self._spaces[int(pos.x * self._length + pos.y)]
 
 
 class BoxSprite(pygame.sprite.Sprite):
@@ -272,20 +274,18 @@ class PlaceSprite(pygame.sprite.Sprite):
             self,
             place: GameObject,
             color: Tuple[int, int, int] = BUILDING_COLOR,
-            width_cu: int = 48,
-            height_cu: int = 48
     ) -> None:
         super().__init__()
         self.place = place
         width = place.get_component(Building).size[0]
         height = place.get_component(Building).size[1]
-        self.image = pygame.Surface([width, height])
+        self.image = pygame.Surface([width * CHARACTER_SIZE, height * CHARACTER_SIZE])
         self.image.fill(color)
         self.rect = self.image.get_rect()
         pos = place.get_component(Position2D)
         self.position = pygame.Vector2(
-            LOT_PADDING + pos.x * (LARGE_PLACE_SIZE[0] + LOT_PADDING),
-            LOT_PADDING + pos.y * (LARGE_PLACE_SIZE[1] + LOT_PADDING))
+            LOT_PADDING + pos.x * (LARGE_PLACE_SIZE[0] * CHARACTER_SIZE + LOT_PADDING),
+            LOT_PADDING + pos.y * (LARGE_PLACE_SIZE[1] * CHARACTER_SIZE + LOT_PADDING))
 
         self.rect.topleft = (round(self.position.x), round(self.position.y))
 
@@ -293,17 +293,21 @@ class PlaceSprite(pygame.sprite.Sprite):
         self.textSurf = self.font.render(place.name, True, (255, 255, 255), (0, 0, 0, 255))
         text_width = self.textSurf.get_width()
         text_height = self.textSurf.get_height()
-        self.image.blit(self.textSurf, [width / 2 - text_width / 2, height / 2 - text_height / 2])
+        self.image.blit(self.textSurf, [(width * CHARACTER_SIZE) / 2 - text_width / 2,
+                                        (height * CHARACTER_SIZE) / 2 - text_height / 2])
 
-        self.occupancy: OccupancyGrid = OccupancyGrid(width_cu, height_cu)
+        self.occupancy: OccupancyGrid = OccupancyGrid(width, height)
 
-    def handle_character_move(self):
+    def get_available_space(self) -> Tuple[int, pygame.math.Vector2]:
         if self.occupancy.has_vacancy():
-            col, row = self.occupancy.set_next()
-            pos_x = col * CHARACTER_SIZE + self.position.x
-            pos_y = row * CHARACTER_SIZE + self.position.y
-            pos = pygame.Vector2(pos_x, pos_y)
-            return pos
+            index, pos = self.occupancy.set_next()
+            pos_x = pos.x * CHARACTER_SIZE + self.position.x
+            pos_y = pos.y * CHARACTER_SIZE + self.position.y
+            sprite_pos = pygame.math.Vector2(pos_x, pos_y)
+            return index, sprite_pos
+
+    def free_space(self, space: int) -> None:
+        self.occupancy.unset(space)
 
 
 class YSortCameraGroup(pygame.sprite.Group):
@@ -347,9 +351,7 @@ class CharacterSpriteGroup(pygame.sprite.Group):
         self.offset.x = camera_focus.x - self.half_width
         self.offset.y = camera_focus.y - self.half_height
 
-        for sprite in sorted(
-                self.sprites(), key=lambda s: s.rect.centery if s.rect else 0
-        ):
+        for sprite in self.sprites():
             if sprite.rect and sprite.image:
                 offset_pos = pygame.math.Vector2(sprite.rect.topleft) - self.offset
                 self.surface.blit(sprite.image, offset_pos)
@@ -496,7 +498,7 @@ class GameScene:
             - type: Position2D
         """
 
-        sim = Simulation.create(SimulationConfig(hours_per_timestep=4, town=TownConfig(town_width=3, town_length=1)))
+        sim = Simulation.create(SimulationConfig(hours_per_timestep=4, town=TownConfig(town_width=5, town_length=5)))
         default_plugin.initialize_plugin(sim.get_engine())
         YamlDataLoader(str_data=structure_data).load(sim.get_engine())
         sim.get_engine().add_component_factory(BuildingFactory())
@@ -507,19 +509,19 @@ class GameScene:
     def _create_background(sprite_group: pygame.sprite.Group, town_size: Tuple[int, int]) -> None:
         ground = BoxSprite(
             GROUND_COLOR,
-            town_size[0] * LARGE_PLACE_SIZE[0] + LOT_PADDING * (town_size[0] + 1),
-            town_size[1] * LARGE_PLACE_SIZE[1] + LOT_PADDING * (town_size[1] + 1),
+            town_size[0] * LARGE_PLACE_SIZE[0] * CHARACTER_SIZE + LOT_PADDING * (town_size[0] + 1),
+            town_size[1] * LARGE_PLACE_SIZE[1] * CHARACTER_SIZE + LOT_PADDING * (town_size[1] + 1),
         )
         sprite_group.add(ground)
 
         for row in range(town_size[1]):
-            y_offset = LOT_PADDING + row * (LARGE_PLACE_SIZE[1] + LOT_PADDING)
+            y_offset = LOT_PADDING + row * (LARGE_PLACE_SIZE[1] * CHARACTER_SIZE + LOT_PADDING)
             for col in range(town_size[0]):
-                x_offset = LOT_PADDING + col * (LARGE_PLACE_SIZE[0] + LOT_PADDING)
+                x_offset = LOT_PADDING + col * (LARGE_PLACE_SIZE[0] * CHARACTER_SIZE + LOT_PADDING)
                 lot_sprite = BoxSprite(
                     LOT_COLOR,
-                    LARGE_PLACE_SIZE[0],
-                    LARGE_PLACE_SIZE[1],
+                    LARGE_PLACE_SIZE[0] * CHARACTER_SIZE,
+                    LARGE_PLACE_SIZE[1] * CHARACTER_SIZE,
                     x_offset,
                     y_offset
                 )
@@ -585,7 +587,14 @@ class GameScene:
                 loc_id = character_sprite.character.get_component(GameCharacter).location
                 if loc_id in self.places_group.sprite_dict:
                     loc = self.places_group.sprite_dict[loc_id]
-                    character_sprite.destination = pygame.math.Vector2(loc.position.x, loc.position.y)
+
+                    if character_sprite.previous_destination \
+                            and character_sprite.previous_destination[0] in self.places_group.sprite_dict:
+                        previous_loc = self.places_group.sprite_dict[character_sprite.previous_destination[0]]
+                        previous_loc.free_space(character_sprite.previous_destination[1])
+
+                    destination_space, destination_pos = loc.get_available_space()
+                    character_sprite.destination = (loc_id, destination_space, destination_pos)
 
     def step_simulation(self) -> None:
         self.sim.step()
