@@ -1,11 +1,15 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Set, Union, Sequence, cast
+from typing import List, Optional, Tuple, Set, Union, Sequence, cast, Iterable, Dict
 
 import pygame
 import pygame_gui
 
+from neighborly.core.authoring import AbstractFactory, ComponentSpec
 from neighborly.core.character.character import GameCharacter
+from neighborly.core.ecs import GameObject, Component
 from neighborly.core.location import Location
+from neighborly.core.position import Position2D
+from neighborly.core.town import TownConfig
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation, SimulationConfig
@@ -25,15 +29,44 @@ GROUND_COLOR = (127, 130, 128)
 # Character sprite width in pixels
 CHARACTER_SIZE = 12
 
-# Number of rows/columns of lots
-TOWN_SIZE = (4, 4)
-
 SMALL_PLACE_SIZE = (5 * CHARACTER_SIZE, 5 * CHARACTER_SIZE)
 MEDIUM_PLACE_SIZE = (7 * CHARACTER_SIZE, 10 * CHARACTER_SIZE)
 LARGE_PLACE_SIZE = (10 * CHARACTER_SIZE, 15 * CHARACTER_SIZE)
 
 # Number of pixels between lots
 LOT_PADDING = 36
+
+
+class Building(Component):
+    __slots__ = "size", "capacity"
+
+    def __init__(self, size: str) -> None:
+        super().__init__()
+        self.size = size
+        if size == 'small':
+            self.size = SMALL_PLACE_SIZE
+        elif size == 'medium':
+            self.size = MEDIUM_PLACE_SIZE
+        elif size == 'large':
+            self.capacity = LARGE_PLACE_SIZE
+        else:
+            raise ValueError("Invalid building size")
+
+    def on_start(self) -> None:
+        location = self.gameobject.get_component(Location)
+        location.max_capacity = self.size[0] * self.size[1]
+
+    def __repr__(self) -> str:
+        return f"Building(size={self.size}, capacity={self.capacity})"
+
+
+class BuildingFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("Building")
+
+    def create(self, spec: ComponentSpec) -> Building:
+        return Building(size=spec.get_attributes().get("size", "small"))
 
 
 class CharacterInfoWindow(pygame_gui.elements.UIWindow):
@@ -43,18 +76,17 @@ class CharacterInfoWindow(pygame_gui.elements.UIWindow):
     """
 
     def __init__(
-            self, character_id: int, sim: Simulation, ui_manager: pygame_gui.UIManager
+            self, character: GameObject, sim: Simulation, ui_manager: pygame_gui.UIManager
     ) -> None:
-        character_comp = sim.world.component_for_entity(character_id, GameCharacter)
         super().__init__(
             pygame.Rect((10, 10), (320, 240)),
             ui_manager,
-            window_display_title=str(character_comp.name),
-            object_id=f"{character_id}",
+            window_display_title=character.name,
+            object_id=f"{character.id}",
         )
         self.ui_manager = ui_manager
         self.text = pygame_gui.elements.UITextBox(
-            f"{sim.world.components_for_entity(character_id)}",
+            f"{character.get_component(GameCharacter)}",
             pygame.Rect(0, 0, 320, 240),
             manager=ui_manager,
             container=self,
@@ -91,18 +123,17 @@ class PlaceInfoWindow(pygame_gui.elements.UIWindow):
     """
 
     def __init__(
-            self, character_id: int, sim: Simulation, ui_manager: pygame_gui.UIManager
+            self, place: GameObject, sim: Simulation, ui_manager: pygame_gui.UIManager
     ) -> None:
-        character_comp = sim.world.component_for_entity(character_id, GameCharacter)
         super().__init__(
             pygame.Rect((10, 10), (320, 240)),
             ui_manager,
-            window_display_title=str(character_comp.name),
-            object_id=f"{character_id}",
+            window_display_title=str(place.name),
+            object_id=f"{place.id}",
         )
         self.ui_manager = ui_manager
         self.text = pygame_gui.elements.UITextBox(
-            f"{sim.world.components_for_entity(character_id)}",
+            f"{place}",
             pygame.Rect(0, 0, 320, 240),
             manager=ui_manager,
             container=self,
@@ -143,13 +174,13 @@ class GameConfig:
 class CharacterSprite(pygame.sprite.Sprite):
     def __init__(
             self,
-            entity: int,
+            character: GameObject,
             color: Tuple[int, int, int] = COLOR_BLUE,
             pos_x: int = 0,
             pos_y: int = 0,
     ) -> None:
         super().__init__()
-        self.entity = entity
+        self.character = character
         self.image = pygame.Surface([CHARACTER_SIZE, CHARACTER_SIZE])
         self.image.fill(color)
         self.rect = self.image.get_rect()
@@ -159,6 +190,11 @@ class CharacterSprite(pygame.sprite.Sprite):
         self.speed = 1000
 
         self.destination: Optional[pygame.Vector2] = None
+
+    def set_position(self, x: float, y: float):
+        self.position.x = x
+        self.position.y = y
+        self.rect.topleft = (round(self.position.x), round(self.position.y))
 
     def update(self, **kwargs) -> None:
         delta_time: float = kwargs["delta_time"]
@@ -234,25 +270,27 @@ class PlaceSprite(pygame.sprite.Sprite):
 
     def __init__(
             self,
-            entity: int,
+            place: GameObject,
             color: Tuple[int, int, int] = BUILDING_COLOR,
             width_cu: int = 48,
-            height_cu: int = 48,
-            pos_x: int = 0,
-            pos_y: int = 0,
+            height_cu: int = 48
     ) -> None:
         super().__init__()
-        self.entity = entity
-        width = width_cu * CHARACTER_SIZE
-        height = height_cu * CHARACTER_SIZE
+        self.place = place
+        width = place.get_component(Building).size[0]
+        height = place.get_component(Building).size[1]
         self.image = pygame.Surface([width, height])
         self.image.fill(color)
         self.rect = self.image.get_rect()
-        self.position = pygame.Vector2(pos_x, pos_y)
+        pos = place.get_component(Position2D)
+        self.position = pygame.Vector2(
+            LOT_PADDING + pos.x * (LARGE_PLACE_SIZE[0] + LOT_PADDING),
+            LOT_PADDING + pos.y * (LARGE_PLACE_SIZE[1] + LOT_PADDING))
+
         self.rect.topleft = (round(self.position.x), round(self.position.y))
 
         self.font = pygame.font.SysFont("Arial", 12)
-        self.textSurf = self.font.render('Insert Building Name', True, (255, 255, 255), (0, 0, 0, 255))
+        self.textSurf = self.font.render(place.name, True, (255, 255, 255), (0, 0, 0, 255))
         text_width = self.textSurf.get_width()
         text_height = self.textSurf.get_height()
         self.image.blit(self.textSurf, [width / 2 - text_width / 2, height / 2 - text_height / 2])
@@ -334,17 +372,29 @@ class PlacesSpriteGroup(pygame.sprite.Group):
         self.half_width = self.surface.get_width() // 2
         self.half_height = self.surface.get_height() // 2
         self.offset = pygame.math.Vector2()
+        self.sprite_dict: Dict[int, PlaceSprite] = {}
 
     def get_places(self) -> List[PlaceSprite]:
         return cast(List[PlaceSprite], self.sprites())
+
+    def add(
+            self,
+            *sprites: Union[PlaceSprite, 'PlacesSpriteGroup', Iterable[Union[PlaceSprite, 'PlacesSpriteGroup']]]
+    ) -> None:
+        super(PlacesSpriteGroup, self).add(*sprites)
+        for sprite in sprites:
+            self.sprite_dict[sprite.place.id] = sprite
+
+    def remove(self, *sprites: PlaceSprite) -> None:
+        super().remove(*sprites)
+        for sprite in sprites:
+            del self.sprite_dict[sprite.place.id]
 
     def custom_draw(self, camera_focus: pygame.math.Vector2) -> None:
         self.offset.x = camera_focus.x - self.half_width
         self.offset.y = camera_focus.y - self.half_height
 
-        for sprite in sorted(
-                self.sprites(), key=lambda s: s.rect.centery if s.rect else 0
-        ):
+        for sprite in self.sprites():
             if sprite.rect and sprite.image:
                 offset_pos = pygame.math.Vector2(sprite.rect.topleft) - self.offset
                 self.surface.blit(sprite.image, offset_pos)
@@ -364,13 +414,16 @@ class GameScene:
         self.character_group = CharacterSpriteGroup(display)
         self.places_group = PlacesSpriteGroup(display)
         self.background_group = YSortCameraGroup(display)
-        self._create_background(self.background_group)
+
         self.camera_focus = pygame.math.Vector2()
         self.camera_speed = 300
         self.input_state = {"up": False, "right": False, "down": False, "left": False}
 
         self.sim = self._init_sim()
         self.sim_running = False
+
+        self._create_background(self.background_group,
+                                (self.sim.config.town.town_width, self.sim.config.town.town_length))
 
         self.ui_elements = {
             "step-btn": pygame_gui.elements.UIButton(
@@ -416,40 +469,52 @@ class GameScene:
 
         structure_data = """
         Places:
-            Space Casino:
-                Location:
-                    activities: ["gambling", "drinking", "eating", "socializing"]
-            Mars:
-                Location:
-                    activities: ["reading", "relaxing"]
-            Kamino:
-                Location:
-                    activities: ["recreation", "studying"]
+        - name: Space Casino
+          components:
+            - type: Location
+              options:
+                activities: ["Gambling", "Drinking", "Eating", "Socializing"]
+        - name: Mars
+          components:
+            - type: Location
+              options:
+                activities: ["Reading", "Relaxing"]
+        - name: Kamino
+          components:
+            - type: Location
+              options:
+                activities: ["Recreation", "Studying"]
+        - name: House
+          inherits: House
+          components:
+            - type: Location
+              options:
+                activities: ["Rest"]
+            - type: Building
+              options:
+                size: small
+            - type: Position2D
         """
 
-        sim = Simulation(SimulationConfig(hours_per_timestep=4))
+        sim = Simulation.create(SimulationConfig(hours_per_timestep=4, town=TownConfig(town_width=3, town_length=1)))
         default_plugin.initialize_plugin(sim.get_engine())
         YamlDataLoader(str_data=structure_data).load(sim.get_engine())
-        sim.create_town()
-
-        # Add two characters
-        sim.get_engine().create_character(sim.world, "Civilian")
-        sim.get_engine().create_character(sim.world, "Civilian")
+        sim.get_engine().add_component_factory(BuildingFactory())
 
         return sim
 
     @staticmethod
-    def _create_background(sprite_group: pygame.sprite.Group) -> None:
+    def _create_background(sprite_group: pygame.sprite.Group, town_size: Tuple[int, int]) -> None:
         ground = BoxSprite(
             GROUND_COLOR,
-            TOWN_SIZE[0] * LARGE_PLACE_SIZE[0] + LOT_PADDING * (TOWN_SIZE[0] + 1),
-            TOWN_SIZE[1] * LARGE_PLACE_SIZE[1] + LOT_PADDING * (TOWN_SIZE[1] + 1),
+            town_size[0] * LARGE_PLACE_SIZE[0] + LOT_PADDING * (town_size[0] + 1),
+            town_size[1] * LARGE_PLACE_SIZE[1] + LOT_PADDING * (town_size[1] + 1),
         )
         sprite_group.add(ground)
 
-        for row in range(TOWN_SIZE[1]):
+        for row in range(town_size[1]):
             y_offset = LOT_PADDING + row * (LARGE_PLACE_SIZE[1] + LOT_PADDING)
-            for col in range(TOWN_SIZE[0]):
+            for col in range(town_size[0]):
                 x_offset = LOT_PADDING + col * (LARGE_PLACE_SIZE[0] + LOT_PADDING)
                 lot_sprite = BoxSprite(
                     LOT_COLOR,
@@ -498,23 +563,29 @@ class GameScene:
                 set(map(lambda res: res[0], self.sim.world.get_component(GameCharacter)))
 
             entities_with_sprites: Set[int] = \
-                set(map(lambda sprite: sprite.entity, self.character_group.get_characters()))
+                set(map(lambda sprite: sprite.character.id, self.character_group.get_characters()))
 
             new_character_entities = existing_characters - entities_with_sprites
 
             for entity in new_character_entities:
-                self.character_group.add(CharacterSprite(entity))
+                self.character_group.add(CharacterSprite(self.sim.world.get_gameobject(entity)))
 
             existing_places: Set[int] = \
                 set(map(lambda res: res[0], self.sim.world.get_component(Location)))
 
             places_with_sprites: Set[int] = \
-                set(map(lambda sprite: sprite.entity, self.places_group.get_places()))
+                set(map(lambda sprite: sprite.place.id, self.places_group.get_places()))
 
             new_place_entities = existing_places - places_with_sprites
 
             for entity in new_place_entities:
-                self.places_group.add(PlaceSprite(entity))
+                self.places_group.add(PlaceSprite(self.sim.world.get_gameobject(entity)))
+
+            for character_sprite in self.character_group.get_characters():
+                loc_id = character_sprite.character.get_component(GameCharacter).location
+                if loc_id in self.places_group.sprite_dict:
+                    loc = self.places_group.sprite_dict[loc_id]
+                    character_sprite.destination = pygame.math.Vector2(loc.position.x, loc.position.y)
 
     def step_simulation(self) -> None:
         self.sim.step()
@@ -547,15 +618,15 @@ class GameScene:
             mouse_pos = mouse_screen_pos - mouse_camera_offset
 
             # Check if the user clicked a character
-            for character in self.character_group.get_characters():
-                if character.rect and character.rect.collidepoint(mouse_pos.x, mouse_pos.y):
-                    CharacterInfoWindow(character.entity, self.sim, self.ui_manager)
+            for character_sprite in self.character_group.get_characters():
+                if character_sprite.rect and character_sprite.rect.collidepoint(mouse_pos.x, mouse_pos.y):
+                    CharacterInfoWindow(character_sprite.character, self.sim, self.ui_manager)
                     return True
 
             # Check if the user clicked a building
-            for place in self.places_group.get_places():
-                if place.rect and place.rect.collidepoint(mouse_pos.x, mouse_pos.y):
-                    PlaceInfoWindow(place.entity, self.sim, self.ui_manager)
+            for place_sprite in self.places_group.get_places():
+                if place_sprite.rect and place_sprite.rect.collidepoint(mouse_pos.x, mouse_pos.y):
+                    PlaceInfoWindow(place_sprite.place, self.sim, self.ui_manager)
                     return True
 
         if event.type == pygame.KEYDOWN:

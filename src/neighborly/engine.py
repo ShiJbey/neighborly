@@ -4,7 +4,8 @@ from typing import Dict, List, Optional, DefaultDict
 from neighborly.core.authoring import ComponentFactory, ComponentSpec, EntityArchetypeSpec
 from neighborly.core.ecs import GameObject, Component
 from neighborly.core.rng import RandNumGenerator, DefaultRNG
-from neighborly.factories.factories import RoutineFactory, GameCharacterFactory, LocationFactory
+from neighborly.factories.factories import RoutineFactory, GameCharacterFactory, LocationFactory, ResidenceFactory, \
+    Position2DFactory
 
 
 class NeighborlyEngine:
@@ -95,4 +96,6 @@ def create_default_engine(rng: Optional[RandNumGenerator] = None) -> NeighborlyE
     engine.add_component_factory(GameCharacterFactory())
     engine.add_component_factory(RoutineFactory())
     engine.add_component_factory(LocationFactory())
+    engine.add_component_factory(ResidenceFactory())
+    engine.add_component_factory(Position2DFactory())
     return engine

@@ -13,6 +13,8 @@ from neighborly.core.character.character import (
 )
 from neighborly.core.character.values import CharacterValues, generate_character_values
 from neighborly.core.location import Location
+from neighborly.core.position import Position2D
+from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 
 
@@ -115,3 +117,21 @@ class LocationFactory(AbstractFactory):
 
     def create(self, spec: ComponentSpec) -> Location:
         return Location(max_capacity=spec.get_attributes().get("max capacity", 9999), activities=spec["activities"])
+
+
+class ResidenceFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("Residence")
+
+    def create(self, spec: ComponentSpec) -> Residence:
+        return Residence()
+
+
+class Position2DFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("Position2D")
+
+    def create(self, spec: ComponentSpec) -> Position2D:
+        return Position2D()

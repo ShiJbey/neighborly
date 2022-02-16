@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from neighborly.core.ecs import World
-from neighborly.core.processors import CharacterProcessor, RoutineProcessor
+from neighborly.core.processors import CharacterProcessor, RoutineProcessor, CityPlanner
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.town import Town, TownConfig
@@ -62,6 +62,7 @@ class Simulation:
         self.world.add_system(TimeProcessor(), 10)
         self.world.add_system(RoutineProcessor(), 5)
         self.world.add_system(CharacterProcessor())
+        self.world.add_system(CityPlanner())
         self.world.add_resource(WeatherManager())
         self.world.add_resource(SimDateTime())
         self.world.add_resource(engine)

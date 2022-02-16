@@ -48,7 +48,17 @@ Places:
         options:
           activities: [ Reading, Studying ]
           max capacity: 35
+  - name: House
+    components:
+      - type: Location
+        options:
+          activities: [ Rest ]
+      - type: Residence
+      - type: Position2D
 Activities:
+  - name: Rest
+    traits:
+      - leisure-time
   - name: Gambling
     traits:
       - wealth

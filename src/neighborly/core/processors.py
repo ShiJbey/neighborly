@@ -1,14 +1,18 @@
 import random
-from typing import cast
+from typing import cast, Optional
 
 import neighborly.ai.behavior_utils as behavior_utils
 from neighborly.core.character.character import GameCharacter
-from neighborly.core.ecs import System
+from neighborly.core.ecs import System, GameObject
 from neighborly.core.location import Location
+from neighborly.core.position import Position2D
 from neighborly.core.relationship import Relationship
+from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import HOURS_PER_YEAR
+from neighborly.core.town import Town
+from neighborly.engine import NeighborlyEngine
 
 
 class CharacterProcessor(System):
@@ -190,3 +194,44 @@ class RoutineProcessor(System):
                 if potential_locations:
                     loc_id, _ = random.choice(potential_locations)
                     behavior_utils.move_character(self.world, entity, loc_id)
+
+
+class CityPlanner(System):
+    """Responsible for adding residents to the town"""
+
+    def process(self, *args, **kwargs) -> None:
+        # Find an empty space to build a house
+        residence = self.try_build_house()
+        if residence is None:
+            residence = self.try_get_abandoned()
+
+        if residence is None:
+            return
+
+        # Create a new character to live at the location
+        engine = self.world.get_resource(NeighborlyEngine)
+        character = engine.create_character("default")
+        self.world.add_gameobject(character)
+        character.get_component(GameCharacter).location = residence.id
+        character.get_component(GameCharacter).location_aliases['home'] = residence.id
+        residence.get_component(Residence).add_tenant(character.id, True)
+        residence.get_component(Location).characters_present.append(character.id)
+
+    def try_build_house(self) -> Optional[GameObject]:
+        town = self.world.get_resource(Town)
+        engine = self.world.get_resource(NeighborlyEngine)
+        if town.layout.has_vacancy():
+            space = town.layout.allocate_space()
+            place = engine.create_place("House")
+            space.place_id = place.id
+            place.get_component(Position2D).x = space.position[0]
+            place.get_component(Position2D).y = space.position[1]
+            self.world.add_gameobject(place)
+            return place
+        return None
+
+    def try_get_abandoned(self) -> Optional[GameObject]:
+        residences = list(filter(lambda res: res[1].is_vacant(), self.world.get_component(Residence)))
+        if residences:
+            return residences[0][1].gameobject
+        return None
