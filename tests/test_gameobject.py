@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from neighborly.core.ecs import World, GameObject, Component
 
 
-class TestGameCharacter(Component):
+class SimpleGameCharacter(Component):
 
     def __init__(self, name: str) -> None:
         super().__init__()
@@ -16,7 +16,7 @@ class TestGameCharacter(Component):
         return f"GameCharacter(name={self.name})"
 
 
-class TestBuilding(Component):
+class SimpleBuilding(Component):
     __slots__ = "size", "capacity"
 
     def __init__(self, size: str) -> None:
@@ -32,14 +32,14 @@ class TestBuilding(Component):
             raise ValueError("Invalid building size")
 
     def on_start(self) -> None:
-        location = self.gameobject.get_component(TestLocation)
+        location = self.gameobject.get_component(SimpleLocation)
         location.capacity = self.capacity
 
     def __repr__(self) -> str:
         return f"Building(size={self.size}, capacity={self.capacity})"
 
 
-class TestLocation(Component):
+class SimpleLocation(Component):
     __slots__ = "capacity"
 
     def __init__(self, capacity: int = 999) -> None:
@@ -51,7 +51,7 @@ class TestLocation(Component):
 
 
 @dataclass
-class TestRoutine(Component):
+class SimpleRoutine(Component):
     free: bool
 
 
@@ -59,15 +59,15 @@ def test_gameobject() -> None:
     world = World()
 
     adrian = GameObject(
-        components=[TestGameCharacter("Adrian"), TestRoutine(False)])
+        components=[SimpleGameCharacter("Adrian"), SimpleRoutine(False)])
 
     jamie = GameObject(
-        components=[TestGameCharacter("Jamie"), TestRoutine(False)])
+        components=[SimpleGameCharacter("Jamie"), SimpleRoutine(False)])
 
-    park = GameObject(name="Park", components=[TestLocation()])
+    park = GameObject(name="Park", components=[SimpleLocation()])
 
     office_building = GameObject(name="Office Building", components=[
-        TestLocation(), TestBuilding("medium")])
+        SimpleLocation(), SimpleBuilding("medium")])
 
     world.add_gameobject(adrian)
     world.add_gameobject(jamie)
@@ -75,12 +75,12 @@ def test_gameobject() -> None:
     world.add_gameobject(office_building)
 
     assert jamie.name == "Jamie"
-    assert jamie.get_component(TestGameCharacter).name == "Jamie"
+    assert jamie.get_component(SimpleGameCharacter).name == "Jamie"
 
-    assert len(world.get_component(TestGameCharacter)) == 2
-    assert len(world.get_component(TestLocation)) == 2
+    assert len(world.get_component(SimpleGameCharacter)) == 2
+    assert len(world.get_component(SimpleLocation)) == 2
 
-    assert park.get_component(TestLocation).capacity == 999
-    assert office_building.get_component(TestLocation).capacity == 18
+    assert park.get_component(SimpleLocation).capacity == 999
+    assert office_building.get_component(SimpleLocation).capacity == 18
 
-    assert len(world.get_components(TestGameCharacter, TestRoutine)) == 2
+    assert len(world.get_components(SimpleGameCharacter, SimpleRoutine)) == 2
