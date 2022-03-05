@@ -64,3 +64,9 @@ def test_relationship_network():
     social_graph.get_connection(homer, lisa).has_tags("Father")
 
     assert len(social_graph.get_all_relationships_with_tags(lisa, "Sibling")) == 2
+
+    social_graph.remove_node(homer)
+
+    assert social_graph.has_connection(lisa, homer) is False
+    assert social_graph.has_connection(homer, lisa) is False
+    assert social_graph.has_connection(homer, bart) is False

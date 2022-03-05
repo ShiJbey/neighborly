@@ -2,6 +2,7 @@ from typing import List, Optional
 
 from neighborly.core.activity import get_activity_flags
 from neighborly.core.ecs import Component
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 
 
 class Location(Component):
@@ -28,6 +29,12 @@ class Location(Component):
                 return False
         return True
 
+    def add_character(self, character: int) -> None:
+        self.characters_present.append(character)
+
+    def remove_character(self, character: int) -> None:
+        self.characters_present.remove(character)
+
     def __repr__(self) -> str:
         return "{}(present={}, activities={}, max_capacity={})".format(
             self.__class__.__name__,
@@ -35,3 +42,12 @@ class Location(Component):
             self.activities,
             self.max_capacity,
         )
+
+
+class LocationFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("Location")
+
+    def create(self, spec: ComponentSpec) -> Location:
+        return Location(max_capacity=spec.get_attributes().get("max capacity", 9999), activities=spec["activities"])

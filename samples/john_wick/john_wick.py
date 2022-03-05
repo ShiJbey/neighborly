@@ -7,8 +7,8 @@ import pathlib
 from dataclasses import dataclass
 
 import neighborly.core.name_generation as name_gen
-from neighborly.core.authoring import AbstractFactory, ComponentSpec
 from neighborly.core.ecs import Component
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation

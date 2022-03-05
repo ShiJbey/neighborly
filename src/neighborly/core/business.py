@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
+from neighborly.core import name_generation as name_gen
 from neighborly.core.ecs import Component
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 
 
 @dataclass(frozen=True)
@@ -25,3 +27,20 @@ class Business(Component):
         self.name: str = name
         self.owner: Optional[int] = owner
         self.employees: List[int] = [*employees] if employees else []
+
+
+class BusinessFactory(AbstractFactory):
+    """Create instances of the default business component"""
+
+    def __init__(self) -> None:
+        super().__init__("Business")
+
+    def create(self, spec: ComponentSpec) -> Business:
+        name = name_gen.get_name(spec["name"])
+
+        conf = BusinessConfig(
+            business_type=spec["business type"],
+            name=spec["name"]
+        )
+
+        return Business(conf, name)

@@ -1,12 +1,16 @@
+import random
 from enum import Enum
 from typing import Dict, NamedTuple, Optional, Tuple
 
+import numpy as np
 from ordered_set import OrderedSet
 from pydantic import BaseModel, Field
 
+from neighborly.core import name_generation as name_gen
 from neighborly.core.activity import get_top_activities
-from neighborly.core.character.values import CharacterValues
+from neighborly.core.character.values import CharacterValues, generate_character_values
 from neighborly.core.ecs import Component
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 
 
 class LifeCycleConfig(BaseModel):
@@ -96,6 +100,7 @@ class GameCharacter(Component):
 
     __slots__ = (
         "config",
+        "alive",
         "name",
         "age",
         "max_age",
@@ -120,6 +125,7 @@ class GameCharacter(Component):
     ) -> None:
         super().__init__()
         self.config = config
+        self.alive: bool = True
         self.name: CharacterName = name
         self.age: float = age
         self.max_age: float = max_age
@@ -129,7 +135,7 @@ class GameCharacter(Component):
         self.location_aliases: Dict[str, int] = {}
         self.likes: Tuple[str, ...] = get_top_activities(values)
         self.values: CharacterValues = values
-        
+
     def on_start(self) -> None:
         self.gameobject.set_name(str(self.name))
 
@@ -145,4 +151,70 @@ class GameCharacter(Component):
             self.location_aliases,
             self.likes,
             str(self.values),
+        )
+
+
+class GameCharacterFactory(AbstractFactory):
+    """
+    Default factory for constructing instances of
+    GameCharacters.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("GameCharacter")
+
+    def create(self, spec: ComponentSpec) -> GameCharacter:
+        """Create a new instance of a character"""
+
+        config: CharacterConfig = CharacterConfig(**spec.get_attributes())
+
+        age_range: str = spec.get_attributes().get("age_range", "adult")
+        if age_range == "child":
+            age: float = float(random.randint(3, config.lifecycle.adult_age))
+        elif age_range == "adult":
+            age: float = float(
+                random.randint(config.lifecycle.adult_age, config.lifecycle.senior_age)
+            )
+        else:
+            age: float = float(
+                random.randint(
+                    config.lifecycle.senior_age, config.lifecycle.lifespan_mean
+                )
+            )
+
+        gender: Gender = random.choice(list(Gender))
+
+        name_rule: str = (
+            config.gender_overrides[str(gender)].name
+            if str(gender) in config.gender_overrides
+            else config.name
+        )
+
+        firstname, surname = tuple(name_gen.get_name(name_rule).split(" "))
+
+        max_age: float = max(
+            age + 1,
+            np.random.normal(
+                config.lifecycle.lifespan_mean, config.lifecycle.lifespan_std
+            ),
+        )
+
+        values: CharacterValues = generate_character_values()
+
+        character = GameCharacter(
+            config,
+            CharacterName(firstname, surname),
+            age,
+            max_age,
+            gender,
+            values,
+            tuple(random.sample(list(Gender), random.randint(0, 2))),
+        )
+
+        return character
+
+    @staticmethod
+    def generate_adult_age(config: CharacterConfig) -> float:
+        return np.random.uniform(
+            config.lifecycle.adult_age, config.lifecycle.adult_age + 15
         )

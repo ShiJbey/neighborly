@@ -2,13 +2,19 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
+from neighborly.core.character.character import GameCharacterFactory
 from neighborly.core.ecs import World
-from neighborly.core.processors import CharacterProcessor, RoutineProcessor, CityPlanner
+from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.location import LocationFactory
+from neighborly.core.position import Position2DFactory
+from neighborly.core.processors import CharacterProcessor, RoutineProcessor, CityPlanner, SocializeProcessor
+from neighborly.core.residence import ResidenceFactory
+from neighborly.core.rng import RandNumGenerator
+from neighborly.core.routine import RoutineFactory
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.town import Town, TownConfig
 from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
-from neighborly.engine import NeighborlyEngine, create_default_engine
 
 
 @dataclass(frozen=True)
@@ -61,7 +67,8 @@ class Simulation:
         self.world.add_system(WeatherProcessor(), 9)
         self.world.add_system(TimeProcessor(), 10)
         self.world.add_system(RoutineProcessor(), 5)
-        self.world.add_system(CharacterProcessor())
+        self.world.add_system(CharacterProcessor(), 3)
+        self.world.add_system(SocializeProcessor(), 2)
         self.world.add_system(CityPlanner())
         self.world.add_resource(WeatherManager())
         self.world.add_resource(SimDateTime())
@@ -99,3 +106,13 @@ class Simulation:
 
     def get_engine(self) -> NeighborlyEngine:
         return self.world.get_resource(NeighborlyEngine)
+
+
+def create_default_engine(rng: Optional[RandNumGenerator] = None) -> NeighborlyEngine:
+    engine = NeighborlyEngine(rng)
+    engine.add_component_factory(GameCharacterFactory())
+    engine.add_component_factory(RoutineFactory())
+    engine.add_component_factory(LocationFactory())
+    engine.add_component_factory(ResidenceFactory())
+    engine.add_component_factory(Position2DFactory())
+    return engine

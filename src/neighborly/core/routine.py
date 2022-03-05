@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
 from neighborly.core.ecs import Component
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 
 
 @dataclass(frozen=True)
@@ -229,3 +230,12 @@ class Routine(Component):
             raise ValueError(f"Expected day of the week, but received '{day}'")
 
         return daily_routine.get_activity(hour)
+
+
+class RoutineFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("Routine")
+
+    def create(self, spec: ComponentSpec) -> Routine:
+        return Routine()

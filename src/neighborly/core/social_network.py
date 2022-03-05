@@ -1,4 +1,5 @@
-from typing import Generic, TypeVar, NamedTuple, Dict, Tuple, cast, List
+from collections import defaultdict
+from typing import Generic, TypeVar, NamedTuple, Dict, Tuple, cast, List, DefaultDict
 
 from ordered_set import OrderedSet
 
@@ -18,49 +19,42 @@ class DirectedSocialGraph(Generic[_T]):
     __slots__ = "_nodes", "_edges"
 
     def __init__(self) -> None:
-        self._nodes: Dict[int, BDGraphNode] = {}
-        self._edges: Dict[int, Dict[int, _T]] = {}
+        self._nodes: DefaultDict[int, BDGraphNode] = defaultdict(lambda: BDGraphNode(OrderedSet(), OrderedSet()))
+        self._edges: Dict[Tuple[int, int], _T] = {}
 
     def add_connection(self, owner: int, target: int, data: _T) -> None:
         """Insert a new connection between characters"""
-        if owner not in self._nodes:
-            self._nodes[owner] = BDGraphNode(OrderedSet(), OrderedSet())
-
-        if target not in self._nodes:
-            self._nodes[target] = BDGraphNode(OrderedSet(), OrderedSet())
-
         self._nodes[owner].outgoing.add(target)
         self._nodes[target].incoming.add(owner)
-
-        if owner not in self._edges:
-            self._edges[owner] = {}
-
-        self._edges[owner][target] = data
+        self._edges[(owner, target)] = data
 
     def has_connection(self, owner: int, target: int) -> bool:
         """Return true if a connection exists from the owner to the target"""
-        return (owner in self._nodes) and (target in self._nodes[owner].outgoing)
+        return (owner, target) in self._edges
 
     def get_connection(self, owner: int, target: int) -> _T:
         """Get a connection between two characters if one exists"""
-        return self._edges[owner][target]
+        return self._edges[(owner, target)]
 
     def remove_node(self, node: int) -> None:
         """Remove a node and delete incoming and outgoing connections"""
-        node_info = self._nodes[node]
+        node_to_remove = self._nodes[node]
 
-        for conn_target in node_info.outgoing:
-            self.remove_connection(node, conn_target)
+        # Delete all the outgoing connections
+        for other_node in [*node_to_remove.outgoing]:
+            self.remove_connection(node, other_node)
 
-        for conn_owner in node_info.incoming:
-            self.remove_connection(conn_owner, node)
+        # Delete incoming connections
+        for other_node in [*node_to_remove.incoming]:
+            self.remove_connection(other_node, node)
 
-        del self._edges[node]
         del self._nodes[node]
 
     def remove_connection(self, owner: int, target: int) -> None:
         """Remove a connection from the social graph"""
-        del self._edges[owner][target]
+        self._nodes[owner].outgoing.remove(target)
+        self._nodes[target].incoming.remove(owner)
+        del self._edges[owner, target]
 
 
 class UndirectedSocialGraph(Generic[_T]):
@@ -116,9 +110,14 @@ class RelationshipNetwork(DirectedSocialGraph[Relationship]):
     def __init__(self) -> None:
         super().__init__()
 
+    def get_relationships(self, owner: int) -> List[Relationship]:
+        """Get all the outgoing relationships for this character"""
+        owner_node = self._nodes[owner]
+        return [self._edges[owner, target] for target in owner_node.outgoing]
+
     def get_all_relationships_with_tags(self, owner: int, *tags: str) -> List[Relationship]:
         owner_node = self._nodes[owner]
-        
+
         return list(filter(
             lambda rel: rel.has_tags(*tags),
-            [self._edges[owner][target] for target in owner_node.outgoing]))
+            [self._edges[owner, target] for target in owner_node.outgoing]))

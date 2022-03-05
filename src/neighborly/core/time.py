@@ -121,6 +121,12 @@ class SimDateTime:
             self.weekday_str[:3], self.day, self.month, self.year, self.hour
         )
 
+    def to_iso_str(self) -> str:
+        """Return ISO string format"""
+        return "{:04d}-{:02d}-{:02d}T{:02d}:00.000z".format(
+            self.year, self.month, self.day, self.hour
+        )
+
     @classmethod
     def from_str(cls, time_str: str) -> "SimDateTime":
         time = cls()

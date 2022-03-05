@@ -3,13 +3,13 @@ from typing import List, Tuple, cast
 from neighborly.core.activity import get_activity_flags
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.ecs import World
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
 from neighborly.core.relationship import RelationshipTag
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town
 from neighborly.core.weather import Weather, WeatherManager
-from neighborly.engine import NeighborlyEngine
 
 
 def get_date(world: World) -> SimDateTime:
@@ -41,9 +41,9 @@ def move_character(world: World, character_id: int, location_id: int) -> None:
 
     if character.location is not None:
         current_location: Location = world.get_gameobject(character.location).get_component(Location)
-        current_location.characters_present.remove(character_id)
+        current_location.remove_character(character_id)
 
-    destination.characters_present.append(character_id)
+    destination.add_character(character_id)
     character.location = location_id
 
 

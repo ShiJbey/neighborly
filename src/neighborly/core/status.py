@@ -1,33 +1,34 @@
-from abc import abstractmethod, ABC
+from abc import ABC
 from typing import Any, Dict, List
 
-from neighborly.core.character.character import GameCharacter
-from neighborly.core.ecs import World, Component
+from neighborly.core.ecs import Component, GameObject
 
 
 class Status(ABC):
-    """A temporary or permanent status applied to a GameCharacter"""
+    """A temporary or permanent status applied to a GameObject"""
 
-    tag: str
+    __slots__ = "_name", "_description", "_metadata"
 
-    def __init__(self, metadata: Dict[str, Any], behaviors: List[str]) -> None:
-        self.metadata = {**metadata}
-        self.behaviors = [*behaviors]
+    def __init__(self, name: str, description: str, metadata: Dict[str, Any]) -> None:
+        self._name: str = name
+        self._description: str = description
+        self._metadata = {**metadata}
 
-    @classmethod
-    def get_tag(cls) -> str:
+    def get_tag(self) -> str:
         """Return the tag associated with this class"""
-        return cls.tag
+        return self._name
 
-    @classmethod
-    def check_preconditions(cls, world: World, character: GameCharacter) -> bool:
-        """Return true if the given character passes the preconditions"""
-        raise NotImplementedError()
+    def get_description(self) -> str:
+        """Return the description for this status"""
+        return self._description
 
-    @abstractmethod
-    def update(self, world: World, character: GameCharacter) -> bool:
+    def update(self, gameobject: GameObject, **kwargs) -> bool:
         """Update status and return True is still active"""
-        raise NotImplementedError()
+        pass
+
+    def __getitem__(self, item: str) -> Any:
+        """Get an item from the metadata"""
+        return self._metadata[item]
 
 
 class StatusManager(Component):
@@ -60,7 +61,7 @@ class StatusManager(Component):
         inactive: List[str] = []
 
         for name, status in self._statuses.items():
-            is_active = status.update(**kwargs)
+            is_active = status.update(self.gameobject, **kwargs)
             if not is_active:
                 inactive.append(name)
 

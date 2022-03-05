@@ -9,9 +9,8 @@ import yaml
 from neighborly.ai.behavior_tree import BehaviorTree, AbstractBTNode
 from neighborly.ai.character_behavior import get_node_factory_for_type, register_behavior
 from neighborly.core.activity import Activity, register_activity
-from neighborly.core.authoring import ComponentSpec, EntityArchetypeSpec
+from neighborly.core.engine import NeighborlyEngine, ComponentSpec, EntityArchetypeSpec
 from neighborly.core.relationship import load_relationship_tags
-from neighborly.engine import NeighborlyEngine
 
 AnyPath = Union[str, Path]
 
@@ -136,6 +135,9 @@ class YamlDataLoader:
 
             if data.get("inherits"):
                 parent = engine.get_character_archetype(data["inherits"])
+
+                if parent.get_attributes().get('default') and parent.get_type() == archetype.get_type():
+                    engine.add_character_archetype(archetype, name="default")
 
                 # Add all the parents components to this instance
                 for component_name, component_spec in parent.get_components().items():

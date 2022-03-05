@@ -4,9 +4,9 @@ from typing import List, Optional, Tuple, Set, Union, Sequence, cast, Iterable, 
 import pygame
 import pygame_gui
 
-from neighborly.core.authoring import AbstractFactory, ComponentSpec
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.ecs import GameObject, Component
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 from neighborly.core.town import TownConfig

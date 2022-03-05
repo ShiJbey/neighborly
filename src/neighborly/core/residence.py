@@ -1,6 +1,7 @@
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 
 
 class Residence(Component):
@@ -32,3 +33,12 @@ class Residence(Component):
 
     def is_vacant(self) -> bool:
         return self._vacant
+
+
+class ResidenceFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("Residence")
+
+    def create(self, spec: ComponentSpec) -> Residence:
+        return Residence()

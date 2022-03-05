@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from neighborly.engine import NeighborlyEngine
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.loaders import load_names, YamlDataLoader
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"

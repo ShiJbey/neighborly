@@ -32,17 +32,19 @@ class GameObject:
         Components attached to this GameObject
     """
 
-    __slots__ = "_id", "_name", "_tags", "_components"
+    __slots__ = "_id", "_name", "_tags", "_components", "_world"
 
     def __init__(
             self,
             name: str = "GameObject",
             tags: Iterable[str] = (),
-            components: Iterable['Component'] = None
+            components: Iterable['Component'] = None,
+            world: Optional['World'] = None,
     ) -> None:
         self._id: int = FarmHash64(str(uuid1()))
         self._name: str = name
         self._tags: Set[str] = set(tags)
+        self._world: Optional['World'] = world
         self._components: Dict[Type[Component], 'Component'] = {}
         if components:
             for component in components:
@@ -62,6 +64,17 @@ class GameObject:
     def tags(self) -> Set[str]:
         """Return tags associated with this GameObject"""
         return self._tags
+
+    @property
+    def world(self) -> 'World':
+        """Return the world that this GameObject belongs to"""
+        if self._world:
+            return self._world
+        raise TypeError("World is None for GameObject")
+
+    def set_world(self, world: Optional['World']) -> None:
+        """Set the world instance"""
+        self._world = world
 
     def set_name(self, name: str) -> None:
         """Change the GameObject's name"""
@@ -207,6 +220,7 @@ class World:
     def add_gameobject(self, gameobject: GameObject) -> None:
         """Add gameobject to the world"""
         self._gameobjects[gameobject.id] = gameobject
+        gameobject.set_world(self)
         gameobject.start()
 
     def get_gameobject(self, gid: int) -> GameObject:
@@ -249,6 +263,7 @@ class World:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
             self._gameobjects[gameobject_id].on_destroy()
+            self._gameobjects[gameobject_id].set_world(None)
             del self._gameobjects[gameobject_id]
 
         self._dead_gameobjects.clear()

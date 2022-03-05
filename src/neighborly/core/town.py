@@ -99,9 +99,11 @@ class TownLayout:
 
     @property
     def shape(self) -> Tuple[int, int]:
+        """Return the width x length of the town"""
         return self._width, self._length
 
     def get_num_vacancies(self) -> int:
+        """Return number of vacant spaces"""
         return len(self._unoccupied)
 
     def has_vacancy(self) -> bool:
@@ -109,6 +111,7 @@ class TownLayout:
         return bool(self._unoccupied)
 
     def allocate_space(self, selection_strategy: Optional[SpaceSelectionStrategy] = None) -> LayoutGridSpace:
+        """Allocates a space for a location, setting it as occupied"""
         if self._unoccupied:
             if selection_strategy:
                 space = selection_strategy.choose_space([self._spaces[i] for i in self._unoccupied])
@@ -123,6 +126,7 @@ class TownLayout:
         raise RuntimeError("Attempting to get space from full town layout")
 
     def free_space(self, space: int) -> None:
+        """Frees up a space in the town to be used by another location"""
         self._spaces[space].space_id = None
         self._unoccupied.append(space)
         self._occupied.remove(space)

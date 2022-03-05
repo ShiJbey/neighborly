@@ -6,8 +6,8 @@ from typing import Protocol, Dict
 from neighborly.ai import behavior_utils
 from neighborly.ai.behavior_tree import BehaviorTree, SelectorBTNode, NodeState, Blackboard, \
     DecoratorBTNode, AbstractBTNode
-from neighborly.core.authoring import AbstractFactory
 from neighborly.core.ecs import World
+from neighborly.core.engine import AbstractFactory
 
 
 class CharacterBehavior(BehaviorTree):
