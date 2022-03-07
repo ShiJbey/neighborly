@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.relationship import Relationship
 from neighborly.loaders import load_names, YamlDataLoader
+from neighborly.plugins.default_plugin.relationship_tags import FriendTag
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
@@ -32,3 +34,5 @@ def initialize_plugin(engine: NeighborlyEngine) -> None:
     )
 
     YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(engine)
+
+    Relationship.register_tag(FriendTag())

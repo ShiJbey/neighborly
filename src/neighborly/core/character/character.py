@@ -56,7 +56,8 @@ class CharacterConfig(BaseModel):
 
     name: str = Field(default="#first_name# #surname#")
     lifecycle: LifeCycleConfig = Field(default_factory=LifeCycleConfig)
-    gender_overrides: Dict[str, "CharacterConfig"] = Field(default_factory=dict)
+    gender_overrides: Dict[str, "CharacterConfig"] = Field(
+        default_factory=dict)
 
 
 class CharacterName(NamedTuple):
@@ -121,7 +122,7 @@ class GameCharacter(Component):
             max_age: float,
             gender: Gender,
             values: CharacterValues,
-            attracted_to: Tuple[Gender],
+            attracted_to: Tuple[Gender, ...],
     ) -> None:
         super().__init__()
         self.config = config
@@ -169,14 +170,17 @@ class GameCharacterFactory(AbstractFactory):
         config: CharacterConfig = CharacterConfig(**spec.get_attributes())
 
         age_range: str = spec.get_attributes().get("age_range", "adult")
+        age: float = 0
+
         if age_range == "child":
-            age: float = float(random.randint(3, config.lifecycle.adult_age))
+            age = float(random.randint(3, config.lifecycle.adult_age))
         elif age_range == "adult":
-            age: float = float(
-                random.randint(config.lifecycle.adult_age, config.lifecycle.senior_age)
+            age = float(
+                random.randint(config.lifecycle.adult_age,
+                               config.lifecycle.senior_age)
             )
         else:
-            age: float = float(
+            age = float(
                 random.randint(
                     config.lifecycle.senior_age, config.lifecycle.lifespan_mean
                 )

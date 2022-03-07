@@ -3,7 +3,8 @@ from collections import defaultdict
 from typing import Dict, List, Optional, DefaultDict, Any, Protocol
 
 from neighborly.core.ecs import GameObject, Component
-from neighborly.core.rng import RandNumGenerator, DefaultRNG
+from neighborly.core.rng import RandNumGenerator
+from neighborly.core.utils.tracery import set_grammar_rng
 
 
 class AbstractFactory(ABC):
@@ -71,7 +72,8 @@ class EntityArchetypeSpec:
             attributes: Optional[Dict[str, Any]] = None
     ) -> None:
         self._type: str = name
-        self._components: Dict[str, ComponentSpec] = components if components else {}
+        self._components: Dict[str,
+                               ComponentSpec] = components if components else {}
         self._attributes: Dict[str, Any] = attributes if attributes else {}
 
     def get_components(self) -> Dict[str, ComponentSpec]:
@@ -89,6 +91,10 @@ class EntityArchetypeSpec:
     def add_component(self, node: ComponentSpec) -> None:
         """Add (or overwrites) a component spec attached to this archetype"""
         self._components[node.get_type()] = node
+
+    def has_component(self, *components: str) -> bool:
+        """Return True if this archetype has the given components"""
+        return all([c in self._components for c in components])
 
 
 class ComponentFactory(Protocol):
@@ -124,12 +130,14 @@ class NeighborlyEngine:
         "_rng"
     )
 
-    def __init__(self, rng: Optional[RandNumGenerator] = None) -> None:
-        self._component_specs: DefaultDict[str, Dict[str, ComponentSpec]] = defaultdict(dict)
+    def __init__(self, rng: RandNumGenerator) -> None:
+        self._component_specs: DefaultDict[str,
+                                           Dict[str, ComponentSpec]] = defaultdict(dict)
         self._component_factories: Dict[str, ComponentFactory] = {}
         self._character_archetypes: Dict[str, EntityArchetypeSpec] = {}
         self._place_archetypes: Dict[str, EntityArchetypeSpec] = {}
-        self._rng: RandNumGenerator = rng if rng else DefaultRNG()
+        self._rng: RandNumGenerator = rng
+        set_grammar_rng(self._rng)
 
     def get_rng(self) -> RandNumGenerator:
         return self._rng
@@ -151,6 +159,19 @@ class NeighborlyEngine:
 
     def get_place_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
         return self._place_archetypes[archetype_name]
+
+    def filter_place_archetypes(self, options: Dict[str, Any]) -> List[EntityArchetypeSpec]:
+        """Retrieve a set of place archetypes based on given options"""
+        results: List[EntityArchetypeSpec] = []
+
+        include: List[str] = options.get("include", [])
+        exclude: List[str] = options.get("exclude", [])
+
+        for _, spec in self._place_archetypes.items():
+            if spec.has_component(*include) and not spec.has_component(*exclude):
+                results.append(spec)
+
+        return results
 
     def add_component_factory(self, factory: ComponentFactory) -> None:
         self._component_factories[factory.get_type()] = factory

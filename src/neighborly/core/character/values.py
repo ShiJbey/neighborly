@@ -78,13 +78,13 @@ class CharacterValues:
     @staticmethod
     def calculate_compatibility(
             traits_a: "CharacterValues", traits_b: "CharacterValues"
-    ) -> int:
+    ) -> float:
         # Cosine similarity is a value between -1 and 1
         cos_sim: float = np.dot(traits_a.traits, traits_b.traits) / (
                 np.linalg.norm(traits_a.traits) * np.linalg.norm(traits_b.traits)
         )
-        # Convert this to a score to be on the range [-50, 50]
-        return round(cos_sim * 50)
+
+        return cos_sim
 
     def get_high_values(self, n=3) -> List[str]:
         """Return the value names associated with the to n values"""
@@ -100,7 +100,8 @@ class CharacterValues:
         return self._traits[_VALUE_INDICES[trait]]
 
     def __setitem__(self, trait: str, value: int) -> None:
-        self._traits[_VALUE_INDICES[trait]] = max(TRAIT_MIN, min(TRAIT_MAX, value))
+        self._traits[_VALUE_INDICES[trait]] = max(
+            TRAIT_MIN, min(TRAIT_MAX, value))
 
     def __str__(self) -> str:
         return f"Values Most: {self.get_high_values()}"
@@ -119,7 +120,9 @@ def generate_character_values(n_likes: int = 3, n_dislikes: int = 3) -> Characte
 
     # select likes and dislikes
     high_values = random.sample(traits, n_likes)
-    [traits.remove(trait) for trait in high_values]
+
+    map(lambda t: traits.remove(t), high_values)
+
     low_values = [*traits]
 
     # Generate values for each ([30,50] for high values, [-50,-30] for dislikes)

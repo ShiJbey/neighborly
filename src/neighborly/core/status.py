@@ -24,7 +24,7 @@ class Status(ABC):
 
     def update(self, gameobject: GameObject, **kwargs) -> bool:
         """Update status and return True is still active"""
-        pass
+        return True
 
     def __getitem__(self, item: str) -> Any:
         """Get an item from the metadata"""

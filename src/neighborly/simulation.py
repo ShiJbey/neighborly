@@ -9,7 +9,7 @@ from neighborly.core.location import LocationFactory
 from neighborly.core.position import Position2DFactory
 from neighborly.core.processors import CharacterProcessor, RoutineProcessor, CityPlanner, SocializeProcessor
 from neighborly.core.residence import ResidenceFactory
-from neighborly.core.rng import RandNumGenerator
+from neighborly.core.rng import DefaultRNG, RandNumGenerator
 from neighborly.core.routine import RoutineFactory
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime, TimeProcessor
@@ -84,9 +84,10 @@ class Simulation:
     ) -> 'Simulation':
         """Create new simulation instance"""
         sim_config: SimulationConfig = config if config else SimulationConfig()
-        engine: NeighborlyEngine = engine if engine else create_default_engine()
+        engine_instance: NeighborlyEngine = engine if engine else create_default_engine(
+            sim_config.seed)
         town = Town.create(sim_config.town)
-        return cls(sim_config, engine, town)
+        return cls(sim_config, engine_instance, town)
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
@@ -108,8 +109,8 @@ class Simulation:
         return self.world.get_resource(NeighborlyEngine)
 
 
-def create_default_engine(rng: Optional[RandNumGenerator] = None) -> NeighborlyEngine:
-    engine = NeighborlyEngine(rng)
+def create_default_engine(seed) -> NeighborlyEngine:
+    engine = NeighborlyEngine(DefaultRNG(seed))
     engine.add_component_factory(GameCharacterFactory())
     engine.add_component_factory(RoutineFactory())
     engine.add_component_factory(LocationFactory())

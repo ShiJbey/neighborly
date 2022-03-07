@@ -9,8 +9,7 @@ https://github.com/benmoran56/esper
 from abc import ABC, abstractmethod
 from typing import Dict, Iterable, List, Optional, Set, Tuple, Type, TypeVar, cast, Any
 from uuid import uuid1
-
-from farmhash import FarmHash64
+import hashlib
 
 _CT = TypeVar("_CT", bound='Component')
 _ST = TypeVar("_ST", bound='System')
@@ -38,10 +37,10 @@ class GameObject:
             self,
             name: str = "GameObject",
             tags: Iterable[str] = (),
-            components: Iterable['Component'] = None,
+            components: Iterable['Component'] = (),
             world: Optional['World'] = None,
     ) -> None:
-        self._id: int = FarmHash64(str(uuid1()))
+        self._id: int = self.generate_id()
         self._name: str = name
         self._tags: Set[str] = set(tags)
         self._world: Optional['World'] = world
@@ -137,6 +136,12 @@ class GameObject:
             self.tags,
             tuple(self._components.keys())
         )
+
+    @staticmethod
+    def generate_id() -> int:
+        """Create a new unique int ID"""
+        return int.from_bytes(hashlib.sha256(uuid1().bytes)
+                              .digest()[:8], 'little')
 
 
 class Component(ABC):

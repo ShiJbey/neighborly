@@ -52,10 +52,14 @@ class PriorityNode(DecoratorBTNode):
 class PrioritySelectorNode(SelectorBTNode):
     """Evaluates subtrees in priority order and stops at the first successful evaluation"""
 
-    def add_child(self, node: PriorityNode) -> None:
+    def add_child(self, node: AbstractBTNode) -> None:
         """Add a child node to this node"""
+        if not isinstance(node, PriorityNode):
+            raise TypeError(
+                "Only Priority Nodes may be children of Priority Selectors")
         self._children.append(node)
-        self._children.sort(key=lambda n: n.get_priority())
+        self._children.sort(key=lambda n: n.get_priority()
+                            if hasattr(n, 'get_priority') else 0)
 
 
 class RandomSelectorNode(SelectorBTNode):

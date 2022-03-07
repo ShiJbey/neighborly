@@ -114,7 +114,8 @@ class TownLayout:
         """Allocates a space for a location, setting it as occupied"""
         if self._unoccupied:
             if selection_strategy:
-                space = selection_strategy.choose_space([self._spaces[i] for i in self._unoccupied])
+                space = selection_strategy.choose_space(
+                    [self._spaces[i] for i in self._unoccupied])
             else:
                 space = self._spaces[self._unoccupied[0]]
 
@@ -127,6 +128,6 @@ class TownLayout:
 
     def free_space(self, space: int) -> None:
         """Frees up a space in the town to be used by another location"""
-        self._spaces[space].space_id = None
+        self._spaces[space].place_id = None
         self._unoccupied.append(space)
         self._occupied.remove(space)

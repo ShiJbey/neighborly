@@ -3,11 +3,12 @@ from typing import cast, Optional
 
 import neighborly.ai.behavior_utils as behavior_utils
 from neighborly.core.character.character import GameCharacter
+from neighborly.core.character.values import CharacterValues
 from neighborly.core.ecs import System, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
-from neighborly.core.relationship import Relationship
+from neighborly.core.relationship import Relationship, RelationshipTag
 from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 from neighborly.core.social_network import RelationshipNetwork
@@ -26,7 +27,6 @@ class CharacterProcessor(System):
                 continue
 
             self._grow_older(character, delta_time)
-            self._socialize(self.world, character)
 
     def _grow_older(
             self, character: GameCharacter, hours: float
@@ -34,45 +34,6 @@ class CharacterProcessor(System):
         """Increase the character's age and apply flags at major milestones"""
         if character.config.lifecycle.can_age:
             character.age += hours / HOURS_PER_YEAR
-
-    def _socialize(self, world: World, character: GameCharacter) -> None:
-        """Have all the characters talk to those around them"""
-        if character.location:
-            location = self.world.get_gameobject(character.location).get_component(Location)
-
-            relationship_net = self.world.get_resource(RelationshipNetwork)
-
-            character_id = character.gameobject.id
-
-            # Socialize
-            for other_character_id in location.characters_present:
-                if other_character_id == character.gameobject.id:
-                    continue
-
-                if not relationship_net.has_connection(character_id, other_character_id):
-                    relationship_net.add_connection(
-                        character_id,
-                        other_character_id,
-                        Relationship(character_id, other_character_id, )
-                    )
-                    print(
-                        f"{str(character.name)} met {str(world.get_gameobject(other_character_id).get_component(GameCharacter).name)}")
-                else:
-                    relationship_net.get_connection(character_id, other_character_id).update()
-
-                if not relationship_net.has_connection(other_character_id, character_id):
-                    relationship_net.add_connection(
-                        other_character_id,
-                        character_id,
-                        Relationship(
-                            other_character_id,
-                            character_id,
-                        )
-                    )
-                    print(
-                        f"{str(world.get_gameobject(other_character_id).get_component(GameCharacter).name)} met {str(character.name)}")
-                else:
-                    relationship_net.get_connection(other_character_id, character_id).update()
 
 
 class SocializeProcessor(System):
@@ -103,10 +64,25 @@ class SocializeProcessor(System):
                     relationship_net.add_connection(
                         character_id,
                         other_character_id,
-                        Relationship(character_id, other_character_id, )
+                        Relationship(character_id, other_character_id)
                     )
-                    print(
-                        f"{str(character.name)} met {str(world.get_gameobject(other_character_id).get_component(GameCharacter).name)}")
+
+                    other_character = world.get_gameobject(other_character_id).get_component(GameCharacter)
+
+                    # Add compatibility
+                    compatibility = CharacterValues.calculate_compatibility(character.values, other_character.values)
+
+                    relationship_net.get_connection(character_id, other_character_id).add_tag(
+                        RelationshipTag("Compatibility", automatic=False, friendship_increment=compatibility))
+
+                    if other_character.gender in character.attracted_to:
+                        relationship_net.get_connection(character_id, other_character_id).add_tag(
+                            RelationshipTag("Attracted", automatic=False, romance_increment=1))
+
+                    print("{} met {}".format(
+                        str(character.name),
+                        str(world.get_gameobject(other_character_id).get_component(GameCharacter).name)
+                    ))
                 else:
                     relationship_net.get_connection(character_id, other_character_id).update()
 
@@ -119,8 +95,23 @@ class SocializeProcessor(System):
                             character_id,
                         )
                     )
-                    print(
-                        f"{str(world.get_gameobject(other_character_id).get_component(GameCharacter).name)} met {str(character.name)}")
+
+                    other_character = world.get_gameobject(other_character_id).get_component(GameCharacter)
+
+                    # Add compatibility
+                    compatibility = CharacterValues.calculate_compatibility(character.values, other_character.values)
+
+                    relationship_net.get_connection(other_character_id, character_id).add_tag(
+                        RelationshipTag("Compatibility", friendship_increment=compatibility))
+
+                    if other_character.gender in character.attracted_to:
+                        relationship_net.get_connection(other_character_id, character_id).add_tag(
+                            RelationshipTag("Attracted", romance_increment=1))
+
+                    print("{} met {}".format(
+                        str(world.get_gameobject(other_character_id).get_component(GameCharacter).name),
+                        str(character.name)
+                    ))
                 else:
                     relationship_net.get_connection(other_character_id, character_id).update()
 

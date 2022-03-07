@@ -19,7 +19,7 @@ class RandNumGenerator(Protocol):
         raise NotImplementedError()
 
     @abstractmethod
-    def sample(self, s: Sequence[_T], n: int) -> _T:
+    def sample(self, s: Sequence[_T], n: int) -> List[_T]:
         """Return an n-number of random items from the sequence"""
         raise NotImplementedError()
 
@@ -60,9 +60,9 @@ class DefaultRNG:
         """Return an item from this sequence"""
         return self._rng.choice(s)
 
-    def sample(self, s: Sequence[_T], num: int) -> List[_T]:
+    def sample(self, s: Sequence[_T], n: int) -> List[_T]:
         """Return an n-number of random items from the sequence"""
-        return self._rng.sample(s, k=num)
+        return self._rng.sample(s, k=n)
 
     def normal(self, mu: float, sigma: float) -> float:
         """Return an item from this sequence"""

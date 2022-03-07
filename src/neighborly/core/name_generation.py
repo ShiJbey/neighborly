@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 
-import tracery
-from tracery.modifiers import base_english
+import neighborly.core.utils.tracery as tracery
+from neighborly.core.utils.tracery.modifiers import base_english
 
 _all_name_rules: Dict[str, Union[str, List[str]]] = {}
 _grammar: tracery.Grammar = tracery.Grammar(_all_name_rules)

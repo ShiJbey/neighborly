@@ -28,52 +28,8 @@ def load_names(
         with open(filepath, "r") as f:
             register_rule(rule_name, f.read().splitlines())
     else:
-        raise ValueError("Need to supply names list or path to file containing names")
-
-
-class XmlDataLoader:
-    """Load Neighborly Component and Archetype definitions from an XMl
-
-    Not fully supported. For now, please use the YAML loader
-    """
-
-    __slots__ = "_raw_data"
-
-    def __init__(
-            self,
-            str_data: Optional[str] = None,
-            filepath: Optional[AnyPath] = None
-    ) -> None:
-        raise NotImplementedError()
-        # if str_data:
-        #     self._raw_data: ET.ElementTree = ET.parse(str_data)
-        # elif filepath:
-        #     self._raw_data: ET.ElementTree = ET.parse(filepath)
-        # else:
-        #     raise ValueError("No data string or file path given")
-
-    def load(self, engine: NeighborlyEngine) -> None:
-        """Load the definitions"""
-        root = self._raw_data.getroot()
-        # Now we change into an intermediate representation
-        # Each archetype needs to be saved as dict of trees
-        # where each specification node
-
-        for child in root:
-            # For each subsection process the data
-            if child.tag == "Characters":
-                print(f"Importing ({len(child)}) character archetypes from XML")
-            if child.tag == "Activities":
-                print(f"Importing ({len(child)}) activities from XML")
-                self._load_activity_data(child)
-
-    @staticmethod
-    def _load_activity_data(activities: ET.Element) -> None:
-        """Process data related to defining activities"""
-        for child in activities:
-            # Add a specification node
-            traits_list: Tuple[str] = tuple(map(lambda trait: str(trait).strip(), child.attrib["traits"].split(',')))
-            register_activity(Activity(child.attrib["name"], trait_names=traits_list))
+        raise ValueError(
+            "Need to supply names list or path to file containing names")
 
 
 class YamlDataLoader:
@@ -86,11 +42,13 @@ class YamlDataLoader:
             str_data: Optional[str] = None,
             filepath: Optional[AnyPath] = None,
     ) -> None:
+        self._raw_data: Dict[str, Any] = {}
+
         if str_data:
-            self._raw_data: Dict[str, Any] = yaml.safe_load(str_data)
+            self._raw_data = yaml.safe_load(str_data)
         elif filepath:
             with open(filepath, "r") as f:
-                self._raw_data: Dict[str, Any] = yaml.safe_load(f)
+                self._raw_data = yaml.safe_load(f)
         else:
             raise ValueError("No data string or file path given")
 
@@ -107,8 +65,8 @@ class YamlDataLoader:
                 self._load_activity_data(data)
             elif section == "Places":
                 self._load_place_data(engine, data)
-            elif section == "RelationshipTags":
-                self._load_relationship_tag_data(data)
+            # elif section == "RelationshipTags":
+            #     self._load_relationship_tag_data(data)
             else:
                 print(f"WARNING:: Skipping unsupported section '{section}'")
 
@@ -116,7 +74,8 @@ class YamlDataLoader:
     def _load_activity_data(activities: List[Dict[str, Any]]) -> None:
         """Process data related to defining activities"""
         for data in activities:
-            register_activity(Activity(data['name'], trait_names=data["traits"]))
+            register_activity(
+                Activity(data['name'], trait_names=data["traits"]))
 
     @staticmethod
     def _load_character_data(engine: NeighborlyEngine, characters: List[Dict[str, Any]]) -> None:
@@ -153,11 +112,13 @@ class YamlDataLoader:
                 component_name = component['type']
 
                 if component_name in archetype.get_components():
-                    default_params.update(archetype.get_components()[component_name].get_attributes())
+                    default_params.update(archetype.get_components()[
+                                              component_name].get_attributes())
 
                 params = component['options'] if 'options' in component else {}
 
-                component_spec = ComponentSpec(component_name, {**default_params, **params})
+                component_spec = ComponentSpec(
+                    component_name, {**default_params, **params})
 
                 archetype.add_component(component_spec)
 
@@ -195,11 +156,13 @@ class YamlDataLoader:
                 component_name = component['type']
 
                 if component_name in archetype.get_components():
-                    default_params.update(archetype.get_components()[component_name].get_attributes())
+                    default_params.update(archetype.get_components()[
+                                              component_name].get_attributes())
 
                 params = component['options'] if 'options' in component else {}
 
-                component_spec = ComponentSpec(component_name, {**default_params, **params})
+                component_spec = ComponentSpec(
+                    component_name, {**default_params, **params})
 
                 archetype.add_component(component_spec)
 

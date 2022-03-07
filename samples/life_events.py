@@ -96,7 +96,7 @@ class DeathEvent(LifeEvent):
                 world.get_gameobject(character.location).get_component(Location).remove_character(
                     character.gameobject.id)
 
-            home_id: int = character.location_aliases.get("home")
+            home_id = character.location_aliases.get("home")
             if home_id:
                 world.get_gameobject(home_id).get_component(Residence).remove_tenant(character.gameobject.id)
 
@@ -187,7 +187,11 @@ class StartedDatingEvent(LifeEvent):
                                             love_interests if
                                             relationship_net.has_connection(r.target, character.gameobject.id)]
 
-            return any([r.has_tags("Love Interest") for r in love_interests_that_know_you])
+            single_love_interests = [li for li in love_interests_that_know_you if
+                                     not gameobject.world.get_gameobject(li.owner).get_component(
+                                         StatusManager).has_status("Dating")]
+
+            return any([r.has_tags("Love Interest") for r in single_love_interests])
 
         # end precondition
 
@@ -209,13 +213,23 @@ class StartedDatingEvent(LifeEvent):
                  love_interests if
                  relationship_net.has_connection(r.target, character.gameobject.id)]))
 
+            single_love_interests = [li for li in love_interests_that_know_you if
+                                     not gameobject.world.get_gameobject(li.owner).get_component(
+                                         StatusManager).has_status("Dating")]
+
             potential_mate: int = \
-                world.get_resource(NeighborlyEngine).get_rng().choice(love_interests_that_know_you).owner
+                world.get_resource(NeighborlyEngine).get_rng().choice(single_love_interests).owner
 
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
                                 {"subject": [gameobject.id, potential_mate]}),
                 [gameobject.id, potential_mate])
+
+            world.get_gameobject(potential_mate).get_component(StatusManager).add_status(
+                DatingStatus(gameobject.id, gameobject.name))
+
+            gameobject.get_component(StatusManager).add_status(
+                DatingStatus(potential_mate, world.get_gameobject(potential_mate).name))
 
             print(
                 f"{str(character.name)} and {str(world.get_gameobject(potential_mate).get_component(GameCharacter).name)} started dating")
@@ -242,13 +256,10 @@ class DatingBreakUpEvent(LifeEvent):
 
             relationship_net = world.get_resource(RelationshipNetwork)
 
-            partner_love_interests = relationship_net.get_all_relationships_with_tags(
-                partner_id,
-                "Love Interest"
-            )
-
-            if character.gameobject.id not in partner_love_interests:
-                return True
+            # rel = relationship_net.get_connection(partner_id, gameobject.id)
+            #
+            # if character.gameobject.id not in partner_love_interests:
+            #     return True
 
             return False
 
