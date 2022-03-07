@@ -12,6 +12,7 @@ from neighborly.core.relationship import Relationship, RelationshipTag
 from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 from neighborly.core.social_network import RelationshipNetwork
+from neighborly.core.status import StatusManager
 from neighborly.core.time import HOURS_PER_YEAR, SimDateTime
 from neighborly.core.town import Town
 
@@ -153,6 +154,10 @@ class CityPlanner(System):
     """Responsible for adding residents to the town"""
 
     def process(self, *args, **kwargs) -> None:
+        self.try_add_resident()
+        self.try_add_business()
+
+    def try_add_resident(self) -> None:
         # Find an empty space to build a house
         residence = self.try_build_house()
         if residence is None:
@@ -188,3 +193,20 @@ class CityPlanner(System):
         if residences:
             return residences[0][1].gameobject
         return None
+
+    def try_add_business(self) -> None:
+        town = self.world.get_resource(Town)
+        engine = self.world.get_resource(NeighborlyEngine)
+        if town.layout.has_vacancy():
+            space = town.layout.allocate_space()
+            engine.filter_place_archetypes({"includes": []})
+            place = engine.create_place("House")
+        return None
+
+
+class StatusManagerProcessor(System):
+
+    def process(self, *args, **kwargs) -> None:
+        delta_time: float = kwargs['delta_time']
+        for _, status_manager in self.world.get_component(StatusManager):
+            status_manager.update(delta_time=delta_time)

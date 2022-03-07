@@ -5,12 +5,13 @@ from typing import Dict, Optional, Any
 
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.ecs import System, GameObject
-from neighborly.core.engine import NeighborlyEngine, AbstractFactory, ComponentSpec
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent, EventLog, LifeEventRecord
 from neighborly.core.location import Location
+from neighborly.core.processors import StatusManagerProcessor
 from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.status import StatusManager, Status
+from neighborly.core.status import StatusManager, Status, StatusManagerFactory
 from neighborly.core.time import SimDateTime
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
@@ -335,14 +336,6 @@ class MarriageEvent(LifeEvent):
         super().__init__("Marriage", p, cb)
 
 
-class StatusManagerProcessor(System):
-
-    def process(self, *args, **kwargs) -> None:
-        delta_time: float = kwargs['delta_time']
-        for _, status_manager in self.world.get_component(StatusManager):
-            status_manager.update(delta_time=delta_time)
-
-
 class LifeEventProcessor(System):
     _event_registry: Dict[str, LifeEvent] = {}
 
@@ -362,15 +355,6 @@ class LifeEventProcessor(System):
             for event in self._event_registry.values():
                 if rng.random() < event.probability and event.precondition(character.gameobject):
                     event.callback(character.gameobject, {'delta_time': delta_time})
-
-
-class StatusManagerFactory(AbstractFactory):
-
-    def __init__(self):
-        super().__init__("StatusManager")
-
-    def create(self, spec: ComponentSpec) -> StatusManager:
-        return StatusManager()
 
 
 def main():

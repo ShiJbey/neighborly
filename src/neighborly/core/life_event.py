@@ -4,6 +4,46 @@ from typing import Any, Callable, Optional, Dict, List, DefaultDict, Iterable
 from neighborly.core.ecs import GameObject
 
 
+class LifeEventHandler:
+    """
+    Handles checking a LifeEvent's preconditions and callback effects
+    for a single GameObject
+
+    Attributes
+    ----------
+    name: str
+        Name of the EventHandler
+    precondition: (GameObject) -> bool
+        Function to check if this event is accepted
+    callback:
+        Function that performs GameObject archetype-specific affects
+    """
+
+    __slots__ = "_name", "_precondition", "_callback"
+
+    def __init__(
+            self,
+            name: str,
+            precondition: Callable[[GameObject, Dict[str, Any]], bool],
+            callback: Callable[[GameObject, Optional[Dict[str, Any]]], None]
+    ) -> None:
+        self._name: str = name
+        self._precondition: Callable[[GameObject, Dict[str, Any]], bool] = precondition
+        self._callback: Callable[[GameObject, Optional[Dict[str, Any]]], None] = callback
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def precondition(self) -> Callable[[GameObject, Dict[str, Any]], bool]:
+        return self._precondition
+
+    @property
+    def callback(self) -> Callable[[GameObject, Optional[Dict[str, Any]]], None]:
+        return self._callback
+
+
 class LifeEvent:
     """An event in the life of a character"""
 

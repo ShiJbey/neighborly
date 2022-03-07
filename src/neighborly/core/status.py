@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Any, Dict, List
 
 from neighborly.core.ecs import Component, GameObject
+from neighborly.core.engine import AbstractFactory, ComponentSpec
 
 
 class Status(ABC):
@@ -67,3 +68,12 @@ class StatusManager(Component):
 
         for name in inactive:
             self.remove_status(name)
+
+
+class StatusManagerFactory(AbstractFactory):
+
+    def __init__(self):
+        super().__init__("StatusManager")
+
+    def create(self, spec: ComponentSpec) -> StatusManager:
+        return StatusManager()

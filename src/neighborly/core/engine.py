@@ -160,16 +160,16 @@ class NeighborlyEngine:
     def get_place_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
         return self._place_archetypes[archetype_name]
 
-    def filter_place_archetypes(self, options: Dict[str, Any]) -> List[EntityArchetypeSpec]:
+    def filter_place_archetypes(self, options: Dict[str, Any]) -> List[str]:
         """Retrieve a set of place archetypes based on given options"""
-        results: List[EntityArchetypeSpec] = []
+        results: List[str] = []
 
         include: List[str] = options.get("include", [])
         exclude: List[str] = options.get("exclude", [])
 
         for _, spec in self._place_archetypes.items():
             if spec.has_component(*include) and not spec.has_component(*exclude):
-                results.append(spec)
+                results.append(spec.get_type())
 
         return results
 
