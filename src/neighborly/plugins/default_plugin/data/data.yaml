@@ -1,5 +1,5 @@
 Characters:
-  - name: Civilian
+  - name: BaseCharacter
     default: yes
     tags: [ 'character' ]
     components:
@@ -16,6 +16,8 @@ Characters:
             romantic_feelings_age: 13
             marriageable_age: 18
       - type: Routine
+      - type: LifeEventHandler
+      - type: StatusManager
 Places:
   - name: Park
     components:

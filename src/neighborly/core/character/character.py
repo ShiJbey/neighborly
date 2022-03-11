@@ -21,7 +21,7 @@ class LifeCycleConfig(BaseModel):
     can_age: bool
         Will his character's age change during th simulation
     can_die: bool
-        Can this character die when it reaches it's max age
+        Can this character die when it reaches its max age
     lifespan_mean: int
         Average lifespan of characters with this configuration
     lifespan_std: int

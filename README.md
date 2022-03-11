@@ -52,6 +52,13 @@ Now you may execute any of the tests using `python ./samples/<sample_name>.py`.
 
 ## Notes
 
+### To-Do
+
+- [ ] Add functions for selecting what kind of business/place to add to the town. The CityPlanner class is responsible
+  for adding new residents and businesses to the town.
+- [ ] Parameters and functions for determining the relative population breakdown for character archetypes.
+- [ ]
+
 ### Non-Deterministic Behavior
 
 The goal of having a seeded pseudo random simulation is so that users experience deterministic behavior when using the

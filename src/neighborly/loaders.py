@@ -65,8 +65,12 @@ class YamlDataLoader:
                 self._load_activity_data(data)
             elif section == "Places":
                 self._load_place_data(engine, data)
-            # elif section == "RelationshipTags":
-            #     self._load_relationship_tag_data(data)
+            elif section == "Residences":
+                self._load_place_data(engine, data)
+            elif section == "Businesses":
+                self._load_place_data(engine, data)
+            elif section == "RelationshipTags":
+                self._load_relationship_tag_data(data)
             else:
                 print(f"WARNING:: Skipping unsupported section '{section}'")
 
@@ -167,6 +171,94 @@ class YamlDataLoader:
                 archetype.add_component(component_spec)
 
             engine.add_place_archetype(archetype)
+
+    @staticmethod
+    def _load_business_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
+        """Process information regarding place archetypes"""
+        for data in places:
+            archetype = EntityArchetypeSpec(
+                name=data['name'],
+                attributes={
+                    'name': data['name'],
+                    'tags': data['tags'] if 'tags' in data else [],
+                }
+            )
+
+            if data.get("default"):
+                engine.add_business_archetype(archetype, name="default")
+
+            if data.get("inherits"):
+                parent = engine.get_business_archetype(data["inherits"])
+
+                # Add all the parents components to this instance
+                for component_name, component_spec in parent.get_components().items():
+                    archetype.add_component(component_spec)
+
+            if 'components' not in data:
+                raise ValueError("Entity spec missing component definitions")
+
+            for component in data['components']:
+                # Check if there is an existing node
+                default_params: Dict[str, Any] = {}
+
+                component_name = component['type']
+
+                if component_name in archetype.get_components():
+                    default_params.update(archetype.get_components()[
+                                              component_name].get_attributes())
+
+                params = component['options'] if 'options' in component else {}
+
+                component_spec = ComponentSpec(
+                    component_name, {**default_params, **params})
+
+                archetype.add_component(component_spec)
+
+            engine.add_business_archetype(archetype)
+
+    @staticmethod
+    def _load_residence_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
+        """Process information regarding place archetypes"""
+        for data in places:
+            archetype = EntityArchetypeSpec(
+                name=data['name'],
+                attributes={
+                    'name': data['name'],
+                    'tags': data['tags'] if 'tags' in data else [],
+                }
+            )
+
+            if data.get("default"):
+                engine.add_residence_archetype(archetype, name="default")
+
+            if data.get("inherits"):
+                parent = engine.get_residence_archetype(data["inherits"])
+
+                # Add all the parents components to this instance
+                for component_name, component_spec in parent.get_components().items():
+                    archetype.add_component(component_spec)
+
+            if 'components' not in data:
+                raise ValueError("Entity spec missing component definitions")
+
+            for component in data['components']:
+                # Check if there is an existing node
+                default_params: Dict[str, Any] = {}
+
+                component_name = component['type']
+
+                if component_name in archetype.get_components():
+                    default_params.update(archetype.get_components()[
+                                              component_name].get_attributes())
+
+                params = component['options'] if 'options' in component else {}
+
+                component_spec = ComponentSpec(
+                    component_name, {**default_params, **params})
+
+                archetype.add_component(component_spec)
+
+            engine.add_residence_archetype(archetype)
 
     @staticmethod
     def _load_relationship_tag_data(relationship_tags: List[Dict[str, Any]]) -> None:

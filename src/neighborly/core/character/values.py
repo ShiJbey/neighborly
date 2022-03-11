@@ -45,7 +45,7 @@ _VALUE_INDICES: Dict[str, int] = {
 
 class CharacterValues:
     """
-    Values are what a character believes in and they are used
+    Values are what a character believes in. They are used
     for decision-making and relationship compatibility among
     other things.
 

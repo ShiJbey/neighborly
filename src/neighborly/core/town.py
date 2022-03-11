@@ -29,11 +29,12 @@ class TownConfig:
 class Town(Component):
     """Simulated town where characters live"""
 
-    __slots__ = "name", "layout"
+    __slots__ = "name", "layout", "population"
 
     def __init__(self, name: str, layout: 'TownLayout') -> None:
         super().__init__()
         self.name: str = name
+        self.population: int = 0
         self.layout: 'TownLayout' = layout
 
     @classmethod

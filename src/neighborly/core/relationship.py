@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Any
+from dataclasses import dataclass
+from typing import Dict, ClassVar
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -17,7 +17,7 @@ def clamp(value: float, minimum: float, maximum: float) -> float:
     return min(maximum, max(minimum, value))
 
 
-@dataclass(frozen=True)
+@dataclass
 class RelationshipTag:
     """
     Modifiers attached to Relationship instances that affect
@@ -45,16 +45,24 @@ class RelationshipTag:
     salience_increment: float, default 0
         Flat value to apply when incrementing the salience value
     """
+    _tag_registry: ClassVar[Dict[str, 'RelationshipTag']] = {}
+
     name: str
     automatic: bool = False
-    requirements: List[Callable[['Relationship'], bool]] = \
-        field(default_factory=list)
     friendship_boost: float = 0
     romance_boost: float = 0
     salience_boost: float = 0
     friendship_increment: float = 0
     romance_increment: float = 0
     salience_increment: float = 0
+
+    @classmethod
+    def register_tag(cls, tag: 'RelationshipTag') -> None:
+        cls._tag_registry[tag.name] = tag
+
+    @classmethod
+    def get_registered_tag(cls, name: str) -> 'RelationshipTag':
+        return cls._tag_registry[name]
 
 
 class Relationship:
@@ -120,8 +128,6 @@ class Relationship:
         "_tags"
     )
 
-    _registered_tags: Dict[str, RelationshipTag] = {}
-
     def __init__(
             self,
             owner: int,
@@ -170,8 +176,8 @@ class Relationship:
     def get_tags(self) -> Dict[str, RelationshipTag]:
         return self._tags
 
-    def add_tag(self, modifier: RelationshipTag) -> None:
-        self._tags[modifier.name] = modifier
+    def add_tag(self, tag: str) -> None:
+        self._tags[tag] = RelationshipTag.get_registered_tag(tag)
         self._is_dirty = True
 
     def remove_tag(self, modifier: str) -> None:
@@ -190,25 +196,7 @@ class Relationship:
         self._romance_base += self._romance_increment
         self._friendship_base += self._friendship_increment
 
-        # Check remove tags whose requirements no longer pass
-        for tag in [*self._tags.values()]:
-            if tag.requirements:
-                reqs_pass = all([fn(self)
-                                 for fn in tag.requirements]) if tag.requirements else True
-                if not reqs_pass:
-                    self.remove_tag(tag)
-
-        # Loop through all tags and apply valid ones
-        for tag in self._registered_tags.values():
-            if tag.name in self._tags or tag.automatic is False:
-                continue
-
-            reqs_pass = all([fn(self)
-                             for fn in tag.requirements]) if tag.requirements else True
-            if reqs_pass:
-                self.add_tag(tag)
-
-        self._is_dirty = True
+        self._recalculate_stats()
 
     def _recalculate_stats(self) -> None:
         """Recalculate all the stats after a change"""
@@ -249,87 +237,3 @@ class Relationship:
             self.salience,
             list(self._tags.keys()),
         )
-
-    @classmethod
-    def get_tag(cls, name: str) -> RelationshipTag:
-        return cls._registered_tags[name]
-
-    @classmethod
-    def register_tag(cls, tag: RelationshipTag) -> None:
-        cls._registered_tags[tag.name] = tag
-
-
-################################################
-#          PARSING RELATIONSHIP TAGS           #
-################################################
-
-def _ineq_check(attr: str, op: str, val: float) -> Callable[['Relationship'], bool]:
-    """Perform equality/inequality check on a Relationship's attribute"""
-
-    def check_fn(obj: 'Relationship') -> bool:
-        attr_val = getattr(obj, attr)
-        if op == '=':
-            return attr_val == val
-        elif op == '<':
-            return attr_val < val
-        elif op == '>':
-            return attr_val > val
-        elif op == '<=':
-            return attr_val <= val
-        elif op == '>=':
-            return attr_val >= val
-        else:
-            raise ValueError(f"Invalid inequality operation {op}")
-
-    return check_fn
-
-
-def _tag_check(*tags) -> Callable[['Relationship'], bool]:
-    """Check if a Relationship has given tags"""
-
-    def check_fn(obj: 'Relationship') -> bool:
-        return obj.has_tags(*tags)
-
-    return check_fn
-
-
-def parse_requirements_str(requirements_str: str) -> List[Callable[['Relationship'], bool]]:
-    """Parse requirement strings from RelationshipTag definitions and create callables"""
-    clauses = list(map(str.strip, requirements_str.split("AND")))
-
-    check_fns: List[Callable[['Relationship'], bool]] = []
-
-    for clause in clauses:
-        clause_tuple = tuple(map(str.strip, clause.split(" ")))
-
-        if len(clause_tuple) == 2:
-            op, value = clause_tuple
-            if op == 'hasTag':
-                check_fns.append(_tag_check(value))
-            elif op == 'hasTags':
-                # Split the params
-                tags_to_check = tuple(map(str.strip, value.split(",")))
-                check_fns.append(_tag_check(*tags_to_check))
-            else:
-                raise ValueError(f"Invalid operation: {op} in '{clause}'")
-
-        elif len(clause_tuple) == 3:
-            attr, op, val = clause_tuple
-            check_fns.append(_ineq_check(attr, op, float(val)))
-        else:
-            raise ValueError(f"Clause has too many terms: {clause}")
-
-    return check_fns
-
-
-def load_relationship_tags(tags: List[Dict[str, Any]]) -> None:
-    """Load relationship tags from list of dicts"""
-
-    for tag_data in tags:
-        requirements_str = tag_data.get('requirements')
-
-        requirements = parse_requirements_str(requirements_str) if requirements_str else []
-
-        creation_data = {**tag_data, 'requirements': requirements}
-
-        Relationship.register_tag(RelationshipTag(**creation_data))

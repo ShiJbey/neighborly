@@ -1,11 +1,12 @@
 import random
-from typing import cast, Optional
+from typing import cast, Optional, Dict
 
 import neighborly.ai.behavior_utils as behavior_utils
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.character.values import CharacterValues
 from neighborly.core.ecs import System, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.life_event import LifeEvent
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 from neighborly.core.relationship import Relationship, RelationshipTag
@@ -180,7 +181,7 @@ class CityPlanner(System):
         engine = self.world.get_resource(NeighborlyEngine)
         if town.layout.has_vacancy():
             space = town.layout.allocate_space()
-            place = engine.create_place("House")
+            place = engine.create_residence("House")
             space.place_id = place.id
             place.get_component(Position2D).x = space.position[0]
             place.get_component(Position2D).y = space.position[1]
@@ -210,3 +211,24 @@ class StatusManagerProcessor(System):
         delta_time: float = kwargs['delta_time']
         for _, status_manager in self.world.get_component(StatusManager):
             status_manager.update(delta_time=delta_time)
+
+
+class LifeEventProcessor(System):
+    _event_registry: Dict[str, LifeEvent] = {}
+
+    @classmethod
+    def register_event(cls, *events: LifeEvent) -> None:
+        """Add a new life event to the registry"""
+        for event in events:
+            cls._event_registry[event.name] = event
+
+    def process(self, *args, **kwargs) -> None:
+        """Check if the life event"""
+
+        rng = self.world.get_resource(NeighborlyEngine).get_rng()
+        delta_time = kwargs["delta_time"]
+
+        for entity, character in self.world.get_component(GameCharacter):
+            for event in self._event_registry.values():
+                if rng.random() < event.probability(character.gameobject) and event.precondition(character.gameobject):
+                    event.effect(character.gameobject, {'delta_time': delta_time})

@@ -84,7 +84,7 @@ class DailyRoutine:
 
     def add_activity(self, new_activity: "ScheduledActivity") -> None:
         """
-        Add a Activity and update the schedule
+        Add an Activity and update the schedule
         """
         if not isinstance(new_activity, ScheduledActivity):
             raise TypeError(

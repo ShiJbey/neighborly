@@ -126,6 +126,8 @@ class NeighborlyEngine:
         "_component_factories",
         "_character_archetypes",
         "_place_archetypes",
+        "_business_archetypes",
+        "_residence_archetypes",
         "_component_specs",
         "_rng"
     )
@@ -135,6 +137,8 @@ class NeighborlyEngine:
                                            Dict[str, ComponentSpec]] = defaultdict(dict)
         self._component_factories: Dict[str, ComponentFactory] = {}
         self._character_archetypes: Dict[str, EntityArchetypeSpec] = {}
+        self._business_archetypes: Dict[str, EntityArchetypeSpec] = {}
+        self._residence_archetypes: Dict[str, EntityArchetypeSpec] = {}
         self._place_archetypes: Dict[str, EntityArchetypeSpec] = {}
         self._rng: RandNumGenerator = rng
         set_grammar_rng(self._rng)
@@ -157,8 +161,26 @@ class NeighborlyEngine:
         else:
             self._place_archetypes[archetype.get_type()] = archetype
 
+    def add_residence_archetype(self, archetype: EntityArchetypeSpec, name: Optional[str] = None) -> None:
+        if name:
+            self._residence_archetypes[name] = archetype
+        else:
+            self._residence_archetypes[archetype.get_type()] = archetype
+
+    def add_business_archetype(self, archetype: EntityArchetypeSpec, name: Optional[str] = None) -> None:
+        if name:
+            self._business_archetypes[name] = archetype
+        else:
+            self._business_archetypes[archetype.get_type()] = archetype
+
     def get_place_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
         return self._place_archetypes[archetype_name]
+
+    def get_business_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
+        return self._business_archetypes[archetype_name]
+
+    def get_residence_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
+        return self._residence_archetypes[archetype_name]
 
     def filter_place_archetypes(self, options: Dict[str, Any]) -> List[str]:
         """Retrieve a set of place archetypes based on given options"""
@@ -195,6 +217,32 @@ class NeighborlyEngine:
 
     def create_place(self, archetype_name: str) -> GameObject:
         archetype: EntityArchetypeSpec = self._place_archetypes[archetype_name]
+
+        components: List[Component] = []
+
+        for name, spec in archetype.get_components().items():
+            factory = self.get_component_factory(name)
+            components.append(factory.create(spec))
+
+        gameobject = GameObject(name=archetype_name, components=components)
+
+        return gameobject
+
+    def create_business(self, archetype_name: str) -> GameObject:
+        archetype: EntityArchetypeSpec = self._business_archetypes[archetype_name]
+
+        components: List[Component] = []
+
+        for name, spec in archetype.get_components().items():
+            factory = self.get_component_factory(name)
+            components.append(factory.create(spec))
+
+        gameobject = GameObject(name=archetype_name, components=components)
+
+        return gameobject
+
+    def create_residence(self, archetype_name: str) -> GameObject:
+        archetype: EntityArchetypeSpec = self._residence_archetypes[archetype_name]
 
         components: List[Component] = []
 

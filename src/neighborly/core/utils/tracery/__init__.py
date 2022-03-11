@@ -2,14 +2,7 @@ import re
 
 from neighborly.core.rng import RandNumGenerator, DefaultRNG
 
-try:
-    unicode = unicode
-except NameError:
-    # 'unicode' is undefined, must be Python 3
-    basestring = (str, bytes)
-else:
-    # 'unicode' exists, must be Python 2
-    basestring = basestring
+basestring = (str, bytes)
 
 __rng: RandNumGenerator = DefaultRNG()
 

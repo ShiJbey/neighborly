@@ -1,6 +1,6 @@
 Characters:
   - name: Assassin
-    inherits: Civilian
+    inherits: BaseCharacter
     tags: [ 'john_wick' ]
     components:
       - type: Assassin

@@ -6,10 +6,10 @@ Python esper library.
 Sources:
 https://github.com/benmoran56/esper
 """
+import hashlib
 from abc import ABC, abstractmethod
 from typing import Dict, Iterable, List, Optional, Set, Tuple, Type, TypeVar, cast, Any
 from uuid import uuid1
-import hashlib
 
 _CT = TypeVar("_CT", bound='Component')
 _ST = TypeVar("_ST", bound='System')
@@ -44,7 +44,7 @@ class GameObject:
         self._name: str = name
         self._tags: Set[str] = set(tags)
         self._world: Optional['World'] = world
-        self._components: Dict[Type[Component], 'Component'] = {}
+        self._components: Dict[str, 'Component'] = {}
         if components:
             for component in components:
                 self.add_component(component)
@@ -100,22 +100,31 @@ class GameObject:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
         component.on_add()
-        self._components[type(component)] = component
+        self._components[type(component).__name__] = component
 
     def remove_component(self, component: 'Component') -> None:
         """Add a component to this GameObject"""
         component.on_remove()
         component.set_gameobject(None)
-        del self._components[type(component)]
+        del self._components[type(component).__name__]
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
-        return cast(_CT, self._components[component_type])
+        return cast(_CT, self._components[component_type.__name__])
 
     def has_component(self, component_type: Type[_CT]) -> bool:
         return component_type.__name__ in self._components
 
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
-        return cast(Optional[_CT], self._components.get(component_type))
+        return cast(Optional[_CT], self._components.get(component_type.__name__))
+
+    def get_component_with_name(self, name: str) -> _CT:
+        return self._components[name]
+
+    def has_component_with_name(self, name: str) -> bool:
+        return name in self._components
+
+    def try_component_with_name(self, name: str) -> Optional[_CT]:
+        return self._components.get(name)
 
     def start(self) -> None:
         for component in self._components.values():
@@ -249,6 +258,14 @@ class World:
         components: List[Tuple[int, _CT]] = []
         for gid, gameobject in self._gameobjects.items():
             component = gameobject.try_component(component_type)
+            if component is not None:
+                components.append((gid, component))
+        return components
+
+    def get_component_by_name(self, name: str) -> List[Tuple[int, _CT]]:
+        components: List[Tuple[int, _CT]] = []
+        for gid, gameobject in self._gameobjects.items():
+            component = gameobject.try_component_with_name(name)
             if component is not None:
                 components.append((gid, component))
         return components

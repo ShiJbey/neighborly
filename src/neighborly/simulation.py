@@ -2,16 +2,20 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
+from neighborly.core.business import BusinessFactory
 from neighborly.core.character.character import GameCharacterFactory
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.life_event import EventLog, LifeEventHandlerFactory
 from neighborly.core.location import LocationFactory
 from neighborly.core.position import Position2DFactory
-from neighborly.core.processors import CharacterProcessor, RoutineProcessor, CityPlanner, SocializeProcessor
+from neighborly.core.processors import CharacterProcessor, RoutineProcessor, CityPlanner, SocializeProcessor, \
+    LifeEventProcessor, StatusManagerProcessor
 from neighborly.core.residence import ResidenceFactory
-from neighborly.core.rng import DefaultRNG, RandNumGenerator
+from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import RoutineFactory
 from neighborly.core.social_network import RelationshipNetwork
+from neighborly.core.status import StatusManagerFactory
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.town import Town, TownConfig
 from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
@@ -27,14 +31,6 @@ class SimulationConfig:
         The seed provided to the random number factory
     hours_per_timestep: int
         How many in-simulation hours elapse every simulation tic
-    misc_paces_set: str
-        Namespace of miscellaneous places that can exist in the town
-    residences_set: str
-        Namespace of residential buildings archetypes that can exist in the town
-    businesses_set: str
-        Namespace of business archetypes that can exist in the town
-    characters_set: str
-        Namespace of character archetypes that can exist in the town
     town: TownConfig
         Configuration settings for town creation
     """
@@ -51,12 +47,8 @@ class Simulation:
     ----------
     config: SimulationConfig
         Configuration settings for how the simulation
-    world: esper.World
+    world: World
         Entity-component system (ECS) that manages entities in the virtual world
-    resources: int
-        Entity ID of the entity that holds common resources used by all entities
-    town: int
-        Entity ID of the town entity within the ECS
     """
 
     __slots__ = "config", "world"
@@ -68,13 +60,16 @@ class Simulation:
         self.world.add_system(TimeProcessor(), 10)
         self.world.add_system(RoutineProcessor(), 5)
         self.world.add_system(CharacterProcessor(), 3)
+        self.world.add_system(StatusManagerProcessor(), 2)
         self.world.add_system(SocializeProcessor(), 2)
         self.world.add_system(CityPlanner())
+        self.world.add_system(LifeEventProcessor())
         self.world.add_resource(WeatherManager())
         self.world.add_resource(SimDateTime())
         self.world.add_resource(engine)
         self.world.add_resource(RelationshipNetwork())
         self.world.add_resource(town)
+        self.world.add_resource(EventLog())
 
     @classmethod
     def create(
@@ -109,11 +104,14 @@ class Simulation:
         return self.world.get_resource(NeighborlyEngine)
 
 
-def create_default_engine(seed) -> NeighborlyEngine:
+def create_default_engine(seed: int) -> NeighborlyEngine:
     engine = NeighborlyEngine(DefaultRNG(seed))
     engine.add_component_factory(GameCharacterFactory())
     engine.add_component_factory(RoutineFactory())
     engine.add_component_factory(LocationFactory())
     engine.add_component_factory(ResidenceFactory())
     engine.add_component_factory(Position2DFactory())
+    engine.add_component_factory(StatusManagerFactory())
+    engine.add_component_factory(LifeEventHandlerFactory())
+    engine.add_component_factory(BusinessFactory())
     return engine
