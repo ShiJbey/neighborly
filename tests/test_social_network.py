@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from neighborly.core.relationship import Relationship, load_relationship_tags, RelationshipTag
+from neighborly.core.relationship import Relationship, RelationshipTag
 from neighborly.core.social_network import RelationshipNetwork
 
 
@@ -10,21 +10,19 @@ def load_tags():
     tag_defs = """
     RelationshipTags:
       - name: Acquaintance
-        friendship: 1
-        requirements: "friendship < 7 AND friendship > -7"
+        friendship_boost: 1
       - name: Friend
-        salience: 20
-        requirements: "friendship > 15"
+        salience_boost: 20
       - name: Enemy
-        salience: 20
-        requirements: "friendship < -10"
+        salience_boost: 20
       - name: Best Friend
-        salience: 30
-        requirements: "friendship > 40"
+        salience_boost: 30
     """
 
     data = yaml.safe_load(tag_defs)
-    load_relationship_tags(data['RelationshipTags'])
+
+    for tag_data in data:
+        RelationshipTag.register_tag(RelationshipTag(**tag_data))
 
 
 def test_relationship_network():
