@@ -71,3 +71,13 @@ cook_type = OccupationType(
     name="Cook",
     level=2
 )
+
+owner_type = OccupationType(
+    name="Owner",
+    level=4,
+)
+
+proprietor_type = OccupationType(
+    name="Proprietor",
+    level=4,
+)

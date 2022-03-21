@@ -1,0 +1,4 @@
+hours_per_timestep: 24
+town:
+  width: 1
+  length: 7

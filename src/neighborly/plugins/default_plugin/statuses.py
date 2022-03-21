@@ -13,6 +13,15 @@ class AdultStatusType(StatusType):
         )
 
 
+class UnemployedStatusType(StatusType):
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Unemployed",
+            "Character doesn't have a job",
+        )
+
+
 class SeniorStatusType(StatusType):
 
     def __init__(self) -> None:
@@ -66,5 +75,13 @@ class MarriedStatus(Status):
         super().__init__(StatusType.get_registered_type("Married"), {
             "partner_name": partner_name,
             "partner_id": partner_id,
+            "duration": 0
+        })
+
+
+class UnemployedStatus(Status):
+
+    def __init__(self) -> None:
+        super().__init__(StatusType.get_registered_type("Unemployed"), {
             "duration": 0
         })

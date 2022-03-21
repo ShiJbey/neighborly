@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 
+from neighborly.core.business import Business, OccupationType, Occupation
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.ecs import GameObject
 from neighborly.core.engine import NeighborlyEngine
@@ -102,6 +103,119 @@ class BecameSeniorEvent(LifeEvent):
         # end callback
 
         super().__init__("Became Senior", p, cb)
+
+
+class BecameUnemployedEvent(LifeEvent):
+
+    def __init__(self) -> None:
+        def p(gameobject: GameObject) -> bool:
+            """Die if they are older than a certain age and not immortal"""
+            character = gameobject.get_component(GameCharacter)
+            status_manager = gameobject.get_component(StatusManager)
+            return status_manager.has_status("Adult") \
+                   and not status_manager.has_status("Unemployed")
+
+        # end precondition
+
+        def cb(gameobject: GameObject, options: Optional[Dict[str, Any]] = None) -> None:
+            """Remove the character from the world"""
+            character = gameobject.get_component(GameCharacter)
+            world = gameobject.world
+            print(f"{str(character.name)} became unemployed")
+            character.gameobject.get_component(StatusManager).add_status(Status.create("Unemployed"))
+            world.get_resource(EventLog).add_event(
+                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
+                [gameobject.id])
+
+        # end callback
+
+        super().__init__("Became Unemployed", p, cb)
+
+
+class BecameBusinessOwnerEvent(LifeEvent):
+
+    def __init__(self) -> None:
+        def p(gameobject: GameObject) -> bool:
+            """Characters get hired if they are unemployed"""
+            status_manager = gameobject.get_component(StatusManager)
+            is_unemployed = status_manager.has_status("Unemployed")
+
+            # There is a business that needs an owner
+            businesses_without_owners = list(filter(
+                lambda res: res[1].needs_owner(),
+                gameobject.world.get_component(Business)
+            ))
+
+            return is_unemployed and businesses_without_owners
+
+        # end precondition
+
+        def cb(gameobject: GameObject, options: Optional[Dict[str, Any]] = None) -> None:
+            """Remove the character from the world"""
+            businesses_without_owners = list(filter(
+                lambda res: res[1].needs_owner(),
+                gameobject.world.get_component(Business)
+            ))
+
+            business_id, business = businesses_without_owners[0]
+
+            owner_typename = business.get_type().owner
+
+            if owner_typename is None:
+                raise RuntimeError("Missing owner occupation type for business that needs owner")
+
+            occupation_type = OccupationType.get_registered_type(owner_typename)
+
+            gameobject.add_component(Occupation(occupation_type, business_id))
+
+            character = gameobject.get_component(GameCharacter)
+
+            business.hire_owner(character.gameobject.id)
+
+            world = gameobject.world
+
+            print(f"{str(character.name)} became owner of {business.get_name()}")
+
+            character.gameobject.get_component(StatusManager).remove_status("Unemployed")
+
+            world.get_resource(EventLog).add_event(
+                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
+                                {"subject": [gameobject.id], "business": business_id}),
+                [gameobject.id])
+
+        # end callback
+
+        super().__init__("Became Business Owner", p, cb)
+
+
+class GetHiredEvent(LifeEvent):
+
+    def __init__(self) -> None:
+        def p(gameobject: GameObject) -> bool:
+            """Characters get hired if they are unemployed"""
+            status_manager = gameobject.get_component(StatusManager)
+            is_unemployed = status_manager.has_status("Unemployed")
+
+            # There is a business with vacancies
+            businesses = gameobject.world.get_component(Business)
+
+            return is_unemployed
+
+        # end precondition
+
+        def cb(gameobject: GameObject, options: Optional[Dict[str, Any]] = None) -> None:
+            """Remove the character from the world"""
+            character = gameobject.get_component(GameCharacter)
+            world = gameobject.world
+            print(f"{str(character.name)} became unemployed")
+            character.gameobject.get_component(StatusManager).add_status(Status.create("Unemployed"))
+            world.get_resource(EventLog).add_event(
+                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
+                [gameobject.id])
+
+        # end callback
+
+        super().__init__("Became Unemployed", p, cb)
 
 
 class StartedDatingEvent(LifeEvent):

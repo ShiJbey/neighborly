@@ -22,8 +22,8 @@ class TownConfig:
     """
 
     name: str = "#town_name#"
-    town_width: int = 5
-    town_length: int = 5
+    width: int = 5
+    length: int = 5
 
 
 class Town(Component):
@@ -41,7 +41,7 @@ class Town(Component):
     def create(cls, config: TownConfig) -> "Town":
         """Create a town instance"""
         town_name = get_name(config.name)
-        layout = TownLayout(config.town_width, config.town_length)
+        layout = TownLayout(config.width, config.length)
         return cls(name=town_name, layout=layout)
 
 

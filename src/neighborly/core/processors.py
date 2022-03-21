@@ -1,7 +1,8 @@
 import random
-from typing import cast, Optional, Dict
+from typing import cast, Optional, Dict, List
 
 import neighborly.ai.behavior_utils as behavior_utils
+from neighborly.core.business import BusinessType
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.character.values import CharacterValues
 from neighborly.core.ecs import System, GameObject, World
@@ -75,11 +76,11 @@ class SocializeProcessor(System):
                     compatibility = CharacterValues.calculate_compatibility(character.values, other_character.values)
 
                     relationship_net.get_connection(character_id, other_character_id).add_tag(
-                        RelationshipTag("Compatibility", automatic=False, friendship_increment=compatibility))
+                        RelationshipTag("Compatibility", friendship_increment=compatibility))
 
                     if other_character.gender in character.attracted_to:
                         relationship_net.get_connection(character_id, other_character_id).add_tag(
-                            RelationshipTag("Attracted", automatic=False, romance_increment=1))
+                            RelationshipTag("Attracted", romance_increment=1))
 
                     print("{} met {}".format(
                         str(character.name),
@@ -121,10 +122,8 @@ class SocializeProcessor(System):
 class RoutineProcessor(System):
 
     def process(self, *args, **kwargs):
-        del args
-        del kwargs
-
         date = self.world.get_resource(SimDateTime)
+        engine = self.world.get_resource(NeighborlyEngine)
 
         for entity, (character, routine) in self.world.get_components(
                 GameCharacter, Routine
@@ -132,27 +131,41 @@ class RoutineProcessor(System):
             character = cast(GameCharacter, character)
             routine = cast(Routine, routine)
 
-            activity = routine.get_activity(date.weekday_str, date.hour)
+            routine_entries = routine.get_activity(date.weekday_str, date.hour)
 
-            if (
-                    activity
-                    and type(activity.location) == str
-                    and activity.location in character.location_aliases
-            ):
-                behavior_utils.move_character(
-                    self.world,
-                    entity,
-                    character.location_aliases[str(activity.location)],
-                )
-            else:
-                potential_locations = behavior_utils.get_locations(self.world)
-                if potential_locations:
-                    loc_id, _ = random.choice(potential_locations)
-                    behavior_utils.move_character(self.world, entity, loc_id)
+            if routine_entries:
+                chosen_entry = engine.get_rng().choice(routine_entries)
+
+                if type(chosen_entry.location) == str \
+                        and chosen_entry.location in character.location_aliases:
+                    behavior_utils.move_character(
+                        self.world,
+                        entity,
+                        character.location_aliases[str(chosen_entry.location)],
+                    )
+                    return
+                else:
+                    behavior_utils.move_character(
+                        self.world,
+                        entity,
+                        chosen_entry.location,
+                    )
+                    return
+
+            potential_locations = behavior_utils.get_locations(self.world)
+            if potential_locations:
+                loc_id, _ = random.choice(potential_locations)
+                behavior_utils.move_character(self.world, entity, loc_id)
 
 
 class CityPlanner(System):
     """Responsible for adding residents to the town"""
+
+    def __init__(self, weights: Optional[Dict[str, int]] = None):
+        super().__init__()
+        self.weights: Dict[str, int] = {}
+        if weights:
+            self.weights.update(weights)
 
     def process(self, *args, **kwargs) -> None:
         self.try_add_resident()
@@ -169,7 +182,18 @@ class CityPlanner(System):
 
         # Create a new character to live at the location
         engine = self.world.get_resource(NeighborlyEngine)
-        character = engine.create_character("default")
+
+        character_archetypes = list(
+            map(
+                lambda archetype: (self.weights.get(archetype.get_type(), 1), archetype.get_type()),
+                engine.get_character_archetypes()
+            )
+        )
+
+        weights, names = zip(*character_archetypes)
+        chosen_archetype = engine.get_rng().choices(names, weights=weights)[0]
+        character = engine.create_character(chosen_archetype)
+
         self.world.add_gameobject(character)
         character.get_component(GameCharacter).location = residence.id
         character.get_component(GameCharacter).location_aliases['home'] = residence.id
@@ -198,11 +222,49 @@ class CityPlanner(System):
     def try_add_business(self) -> None:
         town = self.world.get_resource(Town)
         engine = self.world.get_resource(NeighborlyEngine)
+
+        # Get eligible businesses
+        eligible_business_types = self.get_eligible_types(self.world)
+
+        if not eligible_business_types:
+            return
+
+        business_type_to_build = engine.get_rng().choice(eligible_business_types).name
+
         if town.layout.has_vacancy():
             space = town.layout.allocate_space()
             engine.filter_place_archetypes({"includes": []})
-            place = engine.create_place("House")
-        return None
+            place = engine.create_business(business_type_to_build)
+            space.place_id = place.id
+            self.world.add_gameobject(place)
+            print(f"Added business {place}")
+
+    @classmethod
+    def get_eligible_types(cls, world: World) -> List['BusinessType']:
+        """
+        Return all business types that may be built
+        given the state of the simulation
+        """
+        population = world.get_resource(Town).population
+        engine = world.get_resource(NeighborlyEngine)
+
+        eligible_types: List['BusinessType'] = []
+
+        for t in BusinessType.get_all_types():
+            if t.instances >= t.max_instances:
+                continue
+
+            if population < t.min_population:
+                continue
+
+            try:
+                engine.get_business_archetype(t.name)
+            except KeyError:
+                continue
+
+            eligible_types.append(t)
+
+        return eligible_types
 
 
 class StatusManagerProcessor(System):

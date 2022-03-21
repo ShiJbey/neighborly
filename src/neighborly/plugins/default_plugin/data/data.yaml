@@ -5,6 +5,7 @@ Characters:
     components:
       - type: GameCharacter
         options:
+          config_name: ""
           name: '#first_name# #last_name#'
           lifecycle:
             can_age: yes
@@ -18,38 +19,7 @@ Characters:
       - type: Routine
       - type: LifeEventHandler
       - type: StatusManager
-Places:
-  - name: Park
-    components:
-      - type: Location
-        options:
-          activities: [ Recreation ]
-          max capacity: 200
-  - name: Grocery Store
-    components:
-      - type: Location
-        options:
-          activities: [ Shopping ]
-          max capacity: 60
-  - name: Restaurant
-    components:
-      - type: Location
-        options:
-          activities: [ Eating, Socializing ]
-          max capacity: 20
-  - name: Bar
-    components:
-      - type: Location
-        options:
-          name: "#bar_name#"
-          activities: [ Eating, Drinking, Socializing ]
-          max capacity: 35
-  - name: Library
-    components:
-      - type: Location
-        options:
-          activities: [ Reading, Studying ]
-          max capacity: 35
+Residences:
   - name: House
     components:
       - type: Location
@@ -57,6 +27,61 @@ Places:
           activities: [ Rest ]
       - type: Residence
       - type: Position2D
+Businesses:
+  - name: BaseBusiness
+    template: yes
+    components:
+      - type: Location
+  - name: Grocery Store
+    components:
+      - type: Location
+        options:
+          activities: [ Shopping ]
+          max capacity: 60
+      - type: Business
+        options:
+          name: "Grocery Store"
+          name_pattern: "Department Store"
+          hours: "MTWRF 9:00-17:00, SU 10:00-15:00"
+          owner: "Owner"
+          employees:
+            Cashier: 1
+            Sales Associate: 2
+            Manager: 1
+  - name: Restaurant
+    components:
+      - type: Location
+        options:
+          activities: [ Eating, Socializing ]
+          max capacity: 20
+      - type: Business
+        options:
+          business_type: Restaurant
+  - name: Bar
+    components:
+      - type: Location
+        options:
+          name: "#bar_name#"
+          activities: [ Eating, Drinking, Socializing ]
+          max capacity: 35
+      - type: Business
+        options:
+          business_type: Bar
+
+Places:
+  - name: Park
+    components:
+      - type: Location
+        options:
+          activities: [ Recreation ]
+          max capacity: 200
+
+  - name: Library
+    components:
+      - type: Location
+        options:
+          activities: [ Reading, Studying ]
+          max capacity: 35
 Activities:
   - name: Rest
     traits:
@@ -112,28 +137,22 @@ Activities:
       - leisure-time
 RelationshipTags:
   - name: Acquaintance
-    requirements: "friendship < 7 AND friendship > -7"
   - name: Friend
-    salience: 20
-    requirements: "friendship > 15"
+    salience_boost: 20
   - name: Enemy
-    salience: 20
-    requirements: "friendship < -10"
+    salience_boost: 20
   - name: Best Friend
-    salience: 30
-    requirements: "friendship > 40"
+    salience_boost: 30
   - name: Worst Enemy
-    salience: 30
-    requirements: "friendship <= -40"
+    salience_boost: 30
   - name: Love Interest
-    salience: 30
-    romance: 3
-    requirements: "romance > 20"
+    salience_boost: 30
+    romance_increment: 3
   - name: Rival
-    salience: 30
+    salience_boost: 30
   - name: Coworker
-    salience: 10
+    salience_boost: 10
   - name: Significant Other
-    salience: 50
+    salience_boost: 50
   - name: Attraction
-    romance: 2
+    romance_boost: 2

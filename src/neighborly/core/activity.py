@@ -1,7 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
-
-import numpy as np
+from typing import Dict, Tuple
 
 from neighborly.core.character.values import CharacterValues
 
@@ -53,22 +51,3 @@ def get_activity_flags(*activities: str) -> Tuple[int, ...]:
 def get_activity(activity: str) -> Activity:
     """Return Activity instance corresponding to a given string"""
     return _activity_registry[activity]
-
-
-def get_top_activities(
-    character_values: CharacterValues, n: int = 3
-) -> Tuple[str, ...]:
-    """Return the top activities a character would enjoy given their values"""
-
-    scores: List[Tuple[int, str]] = []
-
-    for name, activity in _activity_registry.items():
-        score: int = int(np.dot(character_values.traits, activity.character_traits.traits))
-        scores.append((score, name))
-
-    return tuple(
-        [
-            activity_score[1]
-            for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)
-        ][:n]
-    )

@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple, Dict, ClassVar, Callable
 from neighborly.core import name_generation as name_gen
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
+from neighborly.core.routine import RoutineEntry, RoutinePriority
 
 
 class OccupationType:
@@ -76,7 +77,7 @@ class OccupationType:
         )
 
 
-class Occupation:
+class Occupation(Component):
     """
     Employment Information about a character
     """
@@ -87,6 +88,7 @@ class Occupation:
             occupation_type: OccupationType,
             business: int,
     ) -> None:
+        super().__init__()
         self._occupation_type: OccupationType = occupation_type
         self._business: int = business
         self._years_held: float = 0.0
@@ -130,71 +132,9 @@ class BusinessType:
     def get_registered_type(cls, name: str) -> 'BusinessType':
         return cls._type_registry[name]
 
-
-def hours_str_to_arr(hours_str: str) -> List[bool]:
-    """Converts a time interval to boolean array of length 24"""
-    # Split the string
-    opens, closes = tuple(
-        map(
-            lambda time_str: int(time_str.strip().split(":")[0]),
-            hours_str.strip().split("-")
-        )
-    )
-
-    hours = [False] * 24
-
-    if opens > closes:
-        # Night shift business
-        for i in range(closes, 24):
-            hours[i] = True
-        for i in range(0, opens):
-            hours[i] = True
-    elif opens < closes:
-        # Day shift business
-        for i in range(opens, closes):
-            hours[i] = True
-    else:
-        raise ValueError("Opening and closing times must be different")
-
-    return hours
-
-
-def hours_str_to_schedule(hours_str: str) -> Dict[str, List[bool]]:
-    """Convert an operating hours string to dict of days with hours"""
-    # Split the operating hours by commas
-    schedule_sets = \
-        list(map(
-            lambda s: tuple(
-                map(lambda x: x.strip(), s.strip().split(' '))),
-            hours_str.split(",")
-        ))
-
-    abbrev_to_day = {
-        "M": "Monday", "T": "Tuesday",
-        "W": "Wednesday", "R": "Thursday",
-        "F": "Friday", "S": "Saturday",
-        "U": "Sunday"
-    }
-
-    schedule: Dict[str, List[bool]] = {}
-
-    for schedule_tup in schedule_sets:
-        if len(schedule_tup) == 1:
-            days = "MTWRFSU"
-            hours = schedule_tup[0]
-        else:
-            days, hours = schedule_tup
-
-        hour_arr = hours_str_to_arr(hours)
-        for abbrev in days:
-            day = abbrev_to_day[abbrev]
-            if day in schedule:
-                raise RuntimeError(
-                    f"Day ({day}) listed twice in operating hours")
-            else:
-                schedule[day] = hour_arr
-
-    return schedule
+    @classmethod
+    def get_all_types(cls) -> List['BusinessType']:
+        return list(cls._type_registry.values())
 
 
 class Business(Component):
@@ -210,17 +150,29 @@ class Business(Component):
         super().__init__()
         self._business_type: BusinessType = business_type
         self._name: str = name
-        self._operating_hours: Dict[str, List[bool]] = \
-            hours_str_to_schedule(business_type.hours)
+        self._operating_hours: Dict[str, List[RoutineEntry]] = \
+            self.hours_str_to_schedule(business_type.hours)
         self._open_positions: Dict[str, int] = business_type.employees
         self._employees: List[Tuple[str, int]] = []
         self._owner: Optional[int] = owner
+
+    def needs_owner(self) -> bool:
+        return self._owner is None and self.get_type().owner is not None
+
+    def get_open_positions(self) -> List[str]:
+        return [title for title, n in self._open_positions if n > 0]
 
     def get_type(self) -> BusinessType:
         return self._business_type
 
     def get_name(self) -> str:
         return self._name
+
+    def hire_owner(self, character: int) -> None:
+        self._owner = character
+
+    def on_start(self) -> None:
+        self.gameobject.set_name(str(self._name))
 
     def __repr__(self) -> str:
         """Return printable representation"""
@@ -233,6 +185,82 @@ class Business(Component):
             self._open_positions
         )
 
+    @staticmethod
+    def hours_str_to_schedule(hours_str: str) -> Dict[str, List[RoutineEntry]]:
+        """Convert an operating hours string to dict of days with hours"""
+        # Split the operating hours by commas
+        schedule_sets = \
+            list(map(
+                lambda s: tuple(
+                    map(lambda x: x.strip(), s.strip().split(' '))),
+                hours_str.split(",")
+            ))
+
+        abbrev_to_day = {
+            "M": "Monday", "T": "Tuesday",
+            "W": "Wednesday", "R": "Thursday",
+            "F": "Friday", "S": "Saturday",
+            "U": "Sunday"
+        }
+
+        schedule: Dict[str, List[RoutineEntry]] = {}
+
+        for schedule_tup in schedule_sets:
+            if len(schedule_tup) == 1:
+                days = "MTWRFSU"
+                hours = schedule_tup[0]
+            else:
+                days, hours = schedule_tup
+
+            opens, closes = tuple(
+                map(
+                    lambda time_str: int(time_str.strip().split(":")[0]),
+                    hours.strip().split("-")
+                )
+            )
+
+            routine_entries: List[RoutineEntry] = []
+
+            if opens > closes:
+                # Night shift business have their schedules
+                # split between two entries
+                routine_entries.append(RoutineEntry(
+                    start=opens,
+                    end=24,
+                    activity='working',
+                    location='work',
+                    priority=RoutinePriority.HIGH,
+                ))
+
+                routine_entries.append(RoutineEntry(
+                    start=0,
+                    end=closes,
+                    activity='working',
+                    location='work',
+                    priority=RoutinePriority.HIGH,
+                ))
+            elif opens < closes:
+                # Day shift business
+                routine_entries.append(RoutineEntry(
+                    start=opens,
+                    end=closes,
+                    activity='working',
+                    location='work',
+                    priority=RoutinePriority.HIGH,
+                ))
+            else:
+                raise ValueError("Opening and closing times must be different")
+
+            for abbrev in days:
+                day = abbrev_to_day[abbrev]
+                if day in schedule:
+                    raise RuntimeError(
+                        f"Day ({day}) listed twice in operating hours")
+                else:
+                    schedule[day] = routine_entries
+
+        return schedule
+
 
 class BusinessFactory(AbstractFactory):
     """Create instances of the default business component"""
@@ -241,16 +269,13 @@ class BusinessFactory(AbstractFactory):
         super().__init__("Business")
 
     def create(self, spec: ComponentSpec) -> Business:
-        name = name_gen.get_name(spec["name"])
+        type_name: Optional[str] = spec.get_attribute("business_type")
 
-        conf = BusinessType(
-            name=spec["business type"],
-            name_pattern=spec["name pattern"],
-            hours=spec["hours"],
-            employees=spec.get_attributes().get("employees", {}),
-            owner=spec.get_attributes().get("owner", None),
-            max_instances=spec.get_attributes().get("max instances", 9999),
-            min_population=spec.get_attributes().get("min population", 0),
-        )
+        if type_name is None:
+            raise TypeError("Expected to fund business_type str but was None")
 
-        return Business(conf, name)
+        business_type = BusinessType.get_registered_type(type_name)
+
+        name = name_gen.get_name(business_type.name_pattern)
+
+        return Business(business_type, name)

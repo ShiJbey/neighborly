@@ -1,4 +1,6 @@
-from typing import List, Optional
+from typing import List
+
+from ordered_set import OrderedSet
 
 from neighborly.core.activity import get_activity_flags
 from neighborly.core.ecs import Component
@@ -11,12 +13,12 @@ class Location(Component):
     __slots__ = "characters_present", "activities", "activity_flags", "max_capacity"
 
     def __init__(
-            self, max_capacity: int = 9999, activities: Optional[List[str]] = None
+            self, max_capacity: int, activities: List[str]
     ) -> None:
         super().__init__()
         self.max_capacity: int = max_capacity
-        self.characters_present: List[int] = []
-        self.activities: List[str] = activities if activities else []
+        self.characters_present: OrderedSet[int] = OrderedSet()
+        self.activities: List[str] = activities
         self.activity_flags: int = 0
 
         for activity in self.activities:
@@ -35,6 +37,9 @@ class Location(Component):
     def remove_character(self, character: int) -> None:
         self.characters_present.remove(character)
 
+    def has_character(self, character: int) -> bool:
+        return character in self.characters_present
+
     def __repr__(self) -> str:
         return "{}(present={}, activities={}, max_capacity={})".format(
             self.__class__.__name__,
@@ -50,4 +55,7 @@ class LocationFactory(AbstractFactory):
         super().__init__("Location")
 
     def create(self, spec: ComponentSpec) -> Location:
-        return Location(max_capacity=spec.get_attributes().get("max capacity", 9999), activities=spec["activities"])
+        return Location(
+            max_capacity=spec.get_attribute("max capacity", 9999),
+            activities=spec.get_attribute("activities", [])
+        )

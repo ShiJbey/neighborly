@@ -19,6 +19,17 @@ class RandNumGenerator(Protocol):
         raise NotImplementedError()
 
     @abstractmethod
+    def choices(
+            self,
+            s: Sequence[_T],
+            weights: Optional[List[int]] = None,
+            cum_weights: Optional[List[int]] = None,
+            k: int = 1
+    ) -> List[_T]:
+        """Return one or more items from a sequence using weighted random selection"""
+        raise NotImplementedError()
+
+    @abstractmethod
     def sample(self, s: Sequence[_T], n: int) -> List[_T]:
         """Return an n-number of random items from the sequence"""
         raise NotImplementedError()
@@ -59,6 +70,16 @@ class DefaultRNG:
     def choice(self, s: Sequence[_T]) -> _T:
         """Return an item from this sequence"""
         return self._rng.choice(s)
+
+    def choices(
+            self,
+            s: Sequence[_T],
+            weights: Optional[List[int]] = None,
+            cum_weights: Optional[List[int]] = None,
+            k: int = 1
+    ) -> List[_T]:
+        """Return one or more items from a sequence using weighted random selection"""
+        return self._rng.choices(s, weights=weights, cum_weights=cum_weights, k=k)
 
     def sample(self, s: Sequence[_T], n: int) -> List[_T]:
         """Return an n-number of random items from the sequence"""

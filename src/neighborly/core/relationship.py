@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, ClassVar
+from typing import Dict, ClassVar, Union
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -48,7 +48,7 @@ class RelationshipTag:
     _tag_registry: ClassVar[Dict[str, 'RelationshipTag']] = {}
 
     name: str
-    automatic: bool = False
+    description: str = ""
     friendship_boost: float = 0
     romance_boost: float = 0
     salience_boost: float = 0
@@ -176,8 +176,11 @@ class Relationship:
     def get_tags(self) -> Dict[str, RelationshipTag]:
         return self._tags
 
-    def add_tag(self, tag: str) -> None:
-        self._tags[tag] = RelationshipTag.get_registered_tag(tag)
+    def add_tag(self, tag: Union[RelationshipTag, str]) -> None:
+        if isinstance(tag, RelationshipTag):
+            self._tags[tag.name] = tag
+        else:
+            self._tags[tag] = RelationshipTag.get_registered_tag(tag)
         self._is_dirty = True
 
     def remove_tag(self, modifier: str) -> None:

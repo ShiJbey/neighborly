@@ -1,13 +1,13 @@
 import random
 from enum import Enum
-from typing import Dict, NamedTuple, Optional, Tuple
+from typing import Dict, NamedTuple, Optional, Tuple, List
 
 import numpy as np
 from ordered_set import OrderedSet
 from pydantic import BaseModel, Field
 
 from neighborly.core import name_generation as name_gen
-from neighborly.core.activity import get_top_activities
+from neighborly.core.activity import _activity_registry
 from neighborly.core.character.values import CharacterValues, generate_character_values
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
@@ -53,7 +53,7 @@ class CharacterConfig(BaseModel):
     lifecycle: LifeCycleConfig
         Configuration parameters for a characters lifecycle
     """
-
+    config_name: str
     name: str = Field(default="#first_name# #surname#")
     lifecycle: LifeCycleConfig = Field(default_factory=LifeCycleConfig)
     gender_overrides: Dict[str, "CharacterConfig"] = Field(
@@ -114,6 +114,8 @@ class GameCharacter(Component):
         "attracted_to"
     )
 
+    _config_registry: Dict[str, CharacterConfig] = {}
+
     def __init__(
             self,
             config: CharacterConfig,
@@ -154,6 +156,16 @@ class GameCharacter(Component):
             str(self.values),
         )
 
+    @classmethod
+    def register_config(cls, name: str, config: CharacterConfig) -> None:
+        """Registers a character config with the shared registry"""
+        cls._config_registry[name] = config
+
+    @classmethod
+    def get_registered_config(cls, name: str) -> CharacterConfig:
+        """Retrieve a CharacterConfig from the shared registry"""
+        return cls._config_registry[name]
+
 
 class GameCharacterFactory(AbstractFactory):
     """
@@ -167,9 +179,9 @@ class GameCharacterFactory(AbstractFactory):
     def create(self, spec: ComponentSpec) -> GameCharacter:
         """Create a new instance of a character"""
 
-        config: CharacterConfig = CharacterConfig(**spec.get_attributes())
+        config: CharacterConfig = GameCharacter.get_registered_config(spec['config_name'])
 
-        age_range: str = spec.get_attributes().get("age_range", "adult")
+        age_range: str = spec.get_attribute("age_range", "adult")
         age: float = 0
 
         if age_range == "child":
@@ -222,3 +234,69 @@ class GameCharacterFactory(AbstractFactory):
         return np.random.uniform(
             config.lifecycle.adult_age, config.lifecycle.adult_age + 15
         )
+
+
+def create_family(
+        n_children: Optional[int] = None
+) -> Dict[str, List[GameCharacter]]:
+    adults: List[GameCharacter] = []
+    children: List[GameCharacter] = []
+
+    character = cls.create(config)
+
+    adults.append(character)
+
+    spouse_gender = random.choice(character.attracted_to)
+
+    spouse = GameCharacter(
+        name=GameCharacter.name_factories[config.name_generator](
+            gender=spouse_gender, surname=character.name.surname),
+        gender=spouse_gender,
+        attracted_to=[character.gender],
+        hometown=character.hometown,
+        config=config,
+        age=generate_age(),
+    )
+
+    adults.append(spouse)
+
+    years_married = random.randint(
+        1, int(min(character.age, spouse.age)) - 18)
+
+    num_children = n_children if n_children else random.randint(0, 4)
+
+    for _ in range(num_children):
+        gender = choose_gender(config)
+        child = GameCharacter(
+            name=GameCharacter.name_factories[config.name_generator](
+                gender=gender,
+                surname=character.name.surname,
+            ),
+            gender=gender,
+            attracted_to=choose_attraction(config),
+            hometown=character.hometown,
+            config=config,
+            age=generate_age(age_min=0, age_max=years_married),
+        )
+        children.append(child)
+
+    return {'adults': adults, 'children': children}
+
+
+def get_top_activities(
+        character_values: CharacterValues, n: int = 3
+) -> Tuple[str, ...]:
+    """Return the top activities a character would enjoy given their values"""
+
+    scores: List[Tuple[int, str]] = []
+
+    for name, activity in _activity_registry.items():
+        score: int = int(np.dot(character_values.traits, activity.character_traits.traits))
+        scores.append((score, name))
+
+    return tuple(
+        [
+            activity_score[1]
+            for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)
+        ][:n]
+    )

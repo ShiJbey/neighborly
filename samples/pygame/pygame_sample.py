@@ -425,7 +425,7 @@ class GameScene:
         self.sim_running = False
 
         self._create_background(self.background_group,
-                                (self.sim.config.town.town_width, self.sim.config.town.town_length))
+                                (self.sim.config.town.width, self.sim.config.town.length))
 
         self.ui_elements = {
             "step-btn": pygame_gui.elements.UIButton(
