@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, cast
 
 from neighborly.core.ecs import System
@@ -33,6 +34,15 @@ def get_time_of_day(hour: int) -> str:
     return _TIME_OF_DAY[hour]
 
 
+@dataclass(frozen=True)
+class TimeDelta:
+    """Represents a difference in time from one SimDateTime to Another"""
+    years: int = 0
+    months: int = 0
+    days: int = 0
+    hours: int = 0
+
+
 class SimDateTime:
     """
     Implementation of time in the simulated town
@@ -41,15 +51,37 @@ class SimDateTime:
 
     __slots__ = "_hour", "_day", "_month", "_year", "_weekday"
 
-    def __init__(self) -> None:
-        self._hour: int = 0
-        self._day: int = 0
-        self._month: int = 0
-        self._year: int = 0
-        self._weekday: int = 0
+    def __init__(
+            self,
+            year: int = 0,
+            month: int = 0,
+            day: int = 0,
+            hour: int = 0,
+    ) -> None:
+        if 0 <= hour < HOURS_PER_DAY:
+            self._hour: int = hour
+        else:
+            raise ValueError(f"Parameter 'hours' must be between 0 and {HOURS_PER_DAY - 1}")
+
+        if 0 <= day < DAYS_PER_MONTH:
+            self._day: int = day
+            self._weekday: int = day % 7
+        else:
+            raise ValueError(f"Parameter 'day' must be between 0 and {DAYS_PER_MONTH - 1}")
+
+        if 0 <= month < MONTHS_PER_YEAR:
+            self._month: int = month
+        else:
+            raise ValueError(f"Parameter 'month' must be between 0 and {MONTHS_PER_YEAR - 1}")
+
+        self._year: int = year
 
     def increment(
-            self, hours: int = 0, days: int = 0, months: int = 0, years: int = 0
+            self,
+            hours: int = 0,
+            days: int = 0,
+            months: int = 0,
+            years: int = 0
     ) -> None:
         """Advance time by a given amount"""
 
@@ -116,6 +148,21 @@ class SimDateTime:
     def __str__(self) -> str:
         return "{}-{}-{}-{}".format(self.year, self.month, self.day, self.hour)
 
+    def __sub__(self, other: 'SimDateTime') -> TimeDelta:
+        """Subtract a SimDateTime from another and return the difference"""
+        diff_hours = self.to_hours() - other.to_hours()
+
+        # Convert hours back to date components
+        remainder: int = diff_hours
+        years = remainder // (MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+        remainder = remainder % (MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+        months = remainder // (DAYS_PER_MONTH * HOURS_PER_DAY)
+        remainder = remainder % (DAYS_PER_MONTH * HOURS_PER_DAY)
+        days = remainder // HOURS_PER_DAY
+        hours = remainder % HOURS_PER_DAY
+
+        return TimeDelta(years=years, months=months, days=days, hours=hours)
+
     def to_date_str(self) -> str:
         return "{}, {:02d}/{:02d}/{:04d} @ {:02d}:00".format(
             self.weekday_str[:3], self.day, self.month, self.year, self.hour
@@ -126,6 +173,24 @@ class SimDateTime:
         return "{:04d}-{:02d}-{:02d}T{:02d}:00.000z".format(
             self.year, self.month, self.day, self.hour
         )
+
+    def to_hours(self) -> int:
+        """Return the number of hours that have elapsed since 00-00-0000"""
+        return \
+            self.hour \
+            + (self.day * HOURS_PER_DAY) \
+            + (self.month * DAYS_PER_MONTH * HOURS_PER_DAY) \
+            + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+
+    @classmethod
+    def from_iso_str(cls, iso_date: str) -> 'SimDateTime':
+        """Return a SimDateTime object given an ISO format string"""
+        date_time = iso_date.strip().split('T')
+        date = date_time[0]
+        time = date_time[1] if len(date_time) == 2 else "00:00.000z"
+        year, month, day = tuple(map(lambda s: int(s.strip()), date.split('-')))
+        hour = int(time.split(':')[0])
+        return cls(year=year, month=month, day=day, hour=hour)
 
     @classmethod
     def from_str(cls, time_str: str) -> "SimDateTime":

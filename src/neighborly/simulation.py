@@ -1,6 +1,9 @@
+import math
 import random
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
+
+from tqdm import tqdm
 
 from neighborly.core.business import BusinessFactory
 from neighborly.core.character.character import GameCharacterFactory
@@ -18,10 +21,11 @@ from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.status import StatusManagerFactory
 from neighborly.core.time import SimDateTime, TimeProcessor
 from neighborly.core.town import Town, TownConfig
-from neighborly.core.weather import Weather, WeatherManager, WeatherProcessor
+from neighborly.plugins import NeighborlyPlugin
+from neighborly.plugins.default_plugin import DefaultPlugin, PluginContext
 
 
-@dataclass(frozen=True)
+@dataclass
 class SimulationConfig:
     """Configuration parameters for a Neighborly instance
 
@@ -37,6 +41,8 @@ class SimulationConfig:
 
     seed: int = random.randint(0, 99999)
     hours_per_timestep: int = 4
+    start_date: str = "0000-00-00T00:00.000z"
+    end_date: str = "0001-00-00T00:00.000z"
     town: TownConfig = field(default_factory=TownConfig)
 
 
@@ -53,10 +59,9 @@ class Simulation:
 
     __slots__ = "config", "world"
 
-    def __init__(self, config: SimulationConfig, engine: NeighborlyEngine, town: Town) -> None:
+    def __init__(self, config: SimulationConfig, engine: NeighborlyEngine) -> None:
         self.config: SimulationConfig = config
         self.world: World = World()
-        self.world.add_system(WeatherProcessor(), 9)
         self.world.add_system(TimeProcessor(), 10)
         self.world.add_system(RoutineProcessor(), 5)
         self.world.add_system(CharacterProcessor(), 3)
@@ -64,11 +69,9 @@ class Simulation:
         self.world.add_system(SocializeProcessor(), 2)
         self.world.add_system(CityPlanner())
         self.world.add_system(LifeEventProcessor())
-        self.world.add_resource(WeatherManager())
         self.world.add_resource(SimDateTime())
         self.world.add_resource(engine)
         self.world.add_resource(RelationshipNetwork())
-        self.world.add_resource(town)
         self.world.add_resource(EventLog())
 
     @classmethod
@@ -79,10 +82,37 @@ class Simulation:
     ) -> 'Simulation':
         """Create new simulation instance"""
         sim_config: SimulationConfig = config if config else SimulationConfig()
-        engine_instance: NeighborlyEngine = engine if engine else create_default_engine(
-            sim_config.seed)
-        town = Town.create(sim_config.town)
-        return cls(sim_config, engine_instance, town)
+        engine_instance: NeighborlyEngine = engine if engine else create_default_engine(sim_config.seed)
+        sim = cls(sim_config, engine_instance)
+        sim.world.add_resource(Town.create(sim_config.town))
+        return sim
+
+    @classmethod
+    def from_config(cls, config: 'NeighborlyConfig') -> 'Simulation':
+        """Create a new simulation from a Neighborly configuration"""
+        engine = create_default_engine(config.simulation.seed)
+        sim = cls(config.simulation, engine)
+
+        for plugin in config.plugins:
+            plugin.apply(PluginContext(engine=engine, world=sim.world))
+
+        town = Town.create(config.simulation.town)
+        sim.world.add_resource(town)
+
+        return sim
+
+    def run(self) -> None:
+        """Run the simulation until it reaches the end date in the config"""
+        start_date: SimDateTime = SimDateTime.from_iso_str(self.config.start_date)
+        end_date: SimDateTime = SimDateTime.from_iso_str(self.config.end_date)
+        total_hours = end_date.to_hours() - start_date.to_hours()
+        total_timesteps = math.ceil(total_hours / self.config.hours_per_timestep)
+
+        try:
+            for _ in tqdm(range(total_timesteps)):
+                self.step()
+        except KeyboardInterrupt:
+            print("Stopping Simulation")
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
@@ -91,10 +121,6 @@ class Simulation:
     def get_time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
         return self.world.get_resource(SimDateTime)
-
-    def get_weather(self) -> Weather:
-        """Get the current weather pattern in the town"""
-        return self.world.get_resource(WeatherManager).current_weather
 
     def get_town(self) -> Town:
         """Get the Town instance"""
@@ -115,3 +141,16 @@ def create_default_engine(seed: int) -> NeighborlyEngine:
     engine.add_component_factory(LifeEventHandlerFactory())
     engine.add_component_factory(BusinessFactory())
     return engine
+
+
+@dataclass
+class NeighborlyConfig:
+    simulation: SimulationConfig = field(default_factory=lambda: SimulationConfig())
+    plugins: List[NeighborlyPlugin] = field(default_factory=lambda: [DefaultPlugin()])
+
+    @staticmethod
+    def merge(config_a: 'NeighborlyConfig', config_b: 'NeighborlyConfig') -> 'NeighborlyConfig':
+        """Merge config B into config A and return a new config"""
+        ret = NeighborlyConfig()
+        ret.simulation = {**config_a.simulation, **config_b.simulation}
+        return ret

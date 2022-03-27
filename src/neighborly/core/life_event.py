@@ -188,6 +188,13 @@ class LifeEventRecord:
     def metadata(self) -> Dict[str, Any]:
         return self._metadata
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'event_type': self._event_type,
+            'time_stamp': self._time_stamp,
+            **self._metadata,
+        }
+
     def __repr__(self) -> str:
         """Return printable representation"""
         return "{}(type={}, date={}, metadata={})".format(

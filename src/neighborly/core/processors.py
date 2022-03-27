@@ -1,3 +1,4 @@
+import logging
 import random
 from typing import cast, Optional, Dict, List
 
@@ -17,6 +18,8 @@ from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.status import StatusManager
 from neighborly.core.time import HOURS_PER_YEAR, SimDateTime
 from neighborly.core.town import Town
+
+logger = logging.getLogger(__name__)
 
 
 class CharacterProcessor(System):
@@ -82,7 +85,7 @@ class SocializeProcessor(System):
                         relationship_net.get_connection(character_id, other_character_id).add_tag(
                             RelationshipTag("Attracted", romance_increment=1))
 
-                    print("{} met {}".format(
+                    logger.debug("{} met {}".format(
                         str(character.name),
                         str(world.get_gameobject(other_character_id).get_component(GameCharacter).name)
                     ))
@@ -111,7 +114,7 @@ class SocializeProcessor(System):
                         relationship_net.get_connection(other_character_id, character_id).add_tag(
                             RelationshipTag("Attracted", romance_increment=1))
 
-                    print("{} met {}".format(
+                    logger.debug("{} met {}".format(
                         str(world.get_gameobject(other_character_id).get_component(GameCharacter).name),
                         str(character.name)
                     ))
@@ -237,7 +240,7 @@ class CityPlanner(System):
             place = engine.create_business(business_type_to_build)
             space.place_id = place.id
             self.world.add_gameobject(place)
-            print(f"Added business {place}")
+            logger.debug(f"Added business {place}")
 
     @classmethod
     def get_eligible_types(cls, world: World) -> List['BusinessType']:

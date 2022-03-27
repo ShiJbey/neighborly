@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Dict, Any
 
 from neighborly.core.business import Business, OccupationType, Occupation
@@ -11,6 +12,8 @@ from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.status import StatusManager, Status
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.default_plugin.statuses import DatingStatus, MarriedStatus
+
+logger = logging.getLogger(__name__)
 
 
 class DeathEvent(LifeEvent):
@@ -28,7 +31,7 @@ class DeathEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
 
-            print(f"{str(character.name)} died at the age of {round(character.age)}")
+            logger.debug(f"{str(character.name)} died at the age of {round(character.age)}")
 
             character.alive = False
 
@@ -68,7 +71,7 @@ class BecameAdultEvent(LifeEvent):
             """Remove the character from the world"""
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
-            print(f"{str(character.name)} became and adult")
+            logger.debug(f"{str(character.name)} became and adult")
             character.gameobject.get_component(StatusManager).add_status(Status.create("Adult"))
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
@@ -94,7 +97,7 @@ class BecameSeniorEvent(LifeEvent):
             """Remove the character from the world"""
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
-            print(f"{str(character.name)} became and senior")
+            logger.debug(f"{str(character.name)} became and senior")
             character.gameobject.get_component(StatusManager).add_status(Status.create("Senior"))
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
@@ -121,7 +124,7 @@ class BecameUnemployedEvent(LifeEvent):
             """Remove the character from the world"""
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
-            print(f"{str(character.name)} became unemployed")
+            logger.debug(f"{str(character.name)} became unemployed")
             character.gameobject.get_component(StatusManager).add_status(Status.create("Unemployed"))
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
@@ -174,7 +177,7 @@ class BecameBusinessOwnerEvent(LifeEvent):
 
             world = gameobject.world
 
-            print(f"{str(character.name)} became owner of {business.get_name()}")
+            logger.debug(f"{str(character.name)} became owner of {business.get_name()}")
 
             character.gameobject.get_component(StatusManager).remove_status("Unemployed")
 
@@ -207,15 +210,15 @@ class GetHiredEvent(LifeEvent):
             """Remove the character from the world"""
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
-            print(f"{str(character.name)} became unemployed")
-            character.gameobject.get_component(StatusManager).add_status(Status.create("Unemployed"))
+            logger.debug(f"{str(character.name)} got hired")
+            character.gameobject.get_component(StatusManager).remove_status("Unemployed")
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
                 [gameobject.id])
 
         # end callback
 
-        super().__init__("Became Unemployed", p, cb)
+        super().__init__("Get Hired", p, cb)
 
 
 class StartedDatingEvent(LifeEvent):
@@ -284,7 +287,7 @@ class StartedDatingEvent(LifeEvent):
             gameobject.get_component(StatusManager).add_status(
                 DatingStatus(potential_mate, world.get_gameobject(potential_mate).name))
 
-            print(
+            logger.debug(
                 f"{str(character.name)} and {str(world.get_gameobject(potential_mate).get_component(GameCharacter).name)} started dating")
 
         # end callback
@@ -333,7 +336,7 @@ class DatingBreakUpEvent(LifeEvent):
             partner.get_component(StatusManager).remove_status("Dating")
             character.gameobject.get_component(StatusManager).remove_status("Dating")
 
-            print(f"{str(character.name)} and {str(partner_name)} broke up")
+            logger.debug(f"{str(character.name)} and {str(partner_name)} broke up")
 
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
@@ -380,7 +383,7 @@ class MarriageEvent(LifeEvent):
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
                                 {"subject": [gameobject.id, partner_id]}), [gameobject.id, partner_id])
 
-            print(
+            logger.debug(
                 f"{str(character.name)} and {str(partner_name)} got married.")
 
         # end callback

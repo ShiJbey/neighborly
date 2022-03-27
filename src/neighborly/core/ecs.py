@@ -135,6 +135,14 @@ class GameObject:
         for component in self._components.values():
             component.on_destroy()
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self._id,
+            'name': self._name,
+            'tags': sorted([*self._tags]),
+            'components': [c.to_dict() for c in self._components.values()]
+        }
+
     def __hash__(self) -> int:
         return self._id
 
@@ -171,6 +179,11 @@ class Component(ABC):
     def set_gameobject(self, gameobject: Optional['GameObject']) -> None:
         """Set the gameobject instance for this component"""
         self._gameobject = gameobject
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'type': self.__class__.__name__
+        }
 
     def on_add(self) -> None:
         """Callback for when the component is added to a GameObject"""
@@ -240,6 +253,10 @@ class World:
     def get_gameobject(self, gid: int) -> GameObject:
         """Retrieve the GameObject with the given id"""
         return self._gameobjects[gid]
+
+    def get_gameobjects(self) -> List[GameObject]:
+        """Get all gameobjects"""
+        return list(self._gameobjects.values())
 
     def has_gameobject(self, gid: int) -> bool:
         """Check that a GameObject with the given id exists"""

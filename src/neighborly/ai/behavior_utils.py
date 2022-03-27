@@ -9,15 +9,10 @@ from neighborly.core.relationship import RelationshipTag
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town
-from neighborly.core.weather import Weather, WeatherManager
 
 
 def get_date(world: World) -> SimDateTime:
     return world.get_resource(SimDateTime)
-
-
-def get_weather(self) -> Weather:
-    return self.world.get_resource(WeatherManager).current_weather
 
 
 def get_town(world: World) -> Town:
