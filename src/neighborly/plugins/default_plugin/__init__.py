@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from neighborly.core.business import OccupationType, BusinessType
+from neighborly.core.business import OccupationDefinition, BusinessDefinition
 from neighborly.core.processors import LifeEventProcessor
 from neighborly.core.relationship import RelationshipTag
 from neighborly.core.status import StatusType
@@ -23,8 +23,10 @@ class DefaultPlugin(NeighborlyPlugin):
 
     def apply(self, ctx: PluginContext, **kwargs) -> None:
         # Load character name data
-        load_names("last_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt")
-        load_names("first_name", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt")
+        load_names("last_name", filepath=_RESOURCES_DIR /
+                   "names" / "surnames.txt")
+        load_names("first_name", filepath=_RESOURCES_DIR /
+                   "names" / "neutral_names.txt")
         load_names(
             "feminine_first_name", filepath=_RESOURCES_DIR / "names" / "feminine_names.txt"
         )
@@ -37,7 +39,8 @@ class DefaultPlugin(NeighborlyPlugin):
         load_names(
             "restaurant_name", filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt"
         )
-        load_names("bar_name", filepath=_RESOURCES_DIR / "names" / "bar_names.txt")
+        load_names("bar_name", filepath=_RESOURCES_DIR /
+                   "names" / "bar_names.txt")
 
         # Load potential names for the town
         load_names(
@@ -63,16 +66,16 @@ class DefaultPlugin(NeighborlyPlugin):
         StatusType.register_type(MarriedStatusType())
         StatusType.register_type(UnemployedStatusType())
 
-        BusinessType.register_type(restaurant_type)
-        BusinessType.register_type(bar_type)
-        BusinessType.register_type(department_store_type)
+        BusinessDefinition.register_type(restaurant_type)
+        BusinessDefinition.register_type(bar_type)
+        BusinessDefinition.register_type(department_store_type)
 
-        OccupationType.register_type(manager_type)
-        OccupationType.register_type(sales_associate_type)
-        OccupationType.register_type(cashier_type)
-        OccupationType.register_type(dj_type)
-        OccupationType.register_type(bartender_type)
-        OccupationType.register_type(security_type)
-        OccupationType.register_type(cook_type)
-        OccupationType.register_type(owner_type)
-        OccupationType.register_type(proprietor_type)
+        OccupationDefinition.register_type(manager_type)
+        OccupationDefinition.register_type(sales_associate_type)
+        OccupationDefinition.register_type(cashier_type)
+        OccupationDefinition.register_type(dj_type)
+        OccupationDefinition.register_type(bartender_type)
+        OccupationDefinition.register_type(security_type)
+        OccupationDefinition.register_type(cook_type)
+        OccupationDefinition.register_type(owner_type)
+        OccupationDefinition.register_type(proprietor_type)

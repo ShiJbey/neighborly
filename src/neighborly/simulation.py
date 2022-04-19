@@ -1,7 +1,7 @@
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from tqdm import tqdm
 
@@ -44,6 +44,8 @@ class SimulationConfig:
     start_date: str = "0000-00-00T00:00.000z"
     end_date: str = "0001-00-00T00:00.000z"
     town: TownConfig = field(default_factory=TownConfig)
+    population_weights: Dict[str, int] = field(default_factory=dict)
+    business_wights: Dict[str, int] = field(default_factory=dict)
 
 
 class Simulation:

@@ -1,10 +1,10 @@
-from neighborly.core.business import OccupationType, BusinessType
+from neighborly.core.business import OccupationDefinition, BusinessDefinition
 
-restaurant_type = BusinessType(
+restaurant_type = BusinessDefinition(
     name="Restaurant",
     name_pattern="#restaurant_name#",
     hours="10:00-21:00",
-    owner="Proprietor",
+    owner_type="Proprietor",
     employees={
         "Cook": 1,
         "Server": 2,
@@ -12,11 +12,11 @@ restaurant_type = BusinessType(
     },
 )
 
-bar_type = BusinessType(
+bar_type = BusinessDefinition(
     name="Bar",
     name_pattern="#bar_name#",
     hours="RFS 21:00-2:00",
-    owner="Proprietor",
+    owner_type="Proprietor",
     employees={
         "Bartender": 2,
         "DJ": 1,
@@ -25,11 +25,11 @@ bar_type = BusinessType(
     }
 )
 
-department_store_type = BusinessType(
+department_store_type = BusinessDefinition(
     name="Department Store",
     name_pattern="Department Store",
     hours="MTWRF 9:00-17:00, SU 10:00-15:00",
-    owner="Owner",
+    owner_type="Owner",
     employees={
         "Cashier": 1,
         "Sales Associate": 2,
@@ -37,47 +37,47 @@ department_store_type = BusinessType(
     }
 )
 
-cashier_type = OccupationType(
+cashier_type = OccupationDefinition(
     name="Cashier",
     level=1,
 )
 
-sales_associate_type = OccupationType(
+sales_associate_type = OccupationDefinition(
     name="Sales Associate",
     level=2,
 )
 
-manager_type = OccupationType(
+manager_type = OccupationDefinition(
     name="Manager",
     level=3
 )
 
-dj_type = OccupationType(
+dj_type = OccupationDefinition(
     name="DJ",
     level=2
 )
 
-bartender_type = OccupationType(
+bartender_type = OccupationDefinition(
     name="Bartender",
     level=2
 )
 
-security_type = OccupationType(
+security_type = OccupationDefinition(
     name="Security",
     level=2
 )
 
-cook_type = OccupationType(
+cook_type = OccupationDefinition(
     name="Cook",
     level=2
 )
 
-owner_type = OccupationType(
+owner_type = OccupationDefinition(
     name="Owner",
     level=4,
 )
 
-proprietor_type = OccupationType(
+proprietor_type = OccupationDefinition(
     name="Proprietor",
     level=4,
 )

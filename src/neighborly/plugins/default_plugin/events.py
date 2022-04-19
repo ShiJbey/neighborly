@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, Dict, Any
 
-from neighborly.core.business import Business, OccupationType, Occupation
+from neighborly.core.business import Business, OccupationDefinition, Occupation
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.ecs import GameObject
 from neighborly.core.engine import NeighborlyEngine
@@ -31,7 +31,8 @@ class DeathEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
 
-            logger.debug(f"{str(character.name)} died at the age of {round(character.age)}")
+            logger.debug(
+                f"{str(character.name)} died at the age of {round(character.age)}")
 
             character.alive = False
 
@@ -41,12 +42,15 @@ class DeathEvent(LifeEvent):
 
             home_id = character.location_aliases.get("home")
             if home_id:
-                world.get_gameobject(home_id).get_component(Residence).remove_tenant(character.gameobject.id)
+                world.get_gameobject(home_id).get_component(
+                    Residence).remove_tenant(character.gameobject.id)
 
-            world.get_resource(RelationshipNetwork).remove_node(character.gameobject.id)
+            world.get_resource(RelationshipNetwork).remove_node(
+                character.gameobject.id)
 
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
+                LifeEventRecord(self.name, world.get_resource(
+                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
                 [gameobject.id])
 
             world.delete_gameobject(character.gameobject.id)
@@ -63,7 +67,7 @@ class BecameAdultEvent(LifeEvent):
             """Die if they are older than a certain age and not immortal"""
             character = gameobject.get_component(GameCharacter)
             return character.alive and character.age >= character.config.lifecycle.adult_age \
-                   and not gameobject.get_component(StatusManager).has_status("Adult")
+                and not gameobject.get_component(StatusManager).has_status("Adult")
 
         # end precondition
 
@@ -72,9 +76,11 @@ class BecameAdultEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
             logger.debug(f"{str(character.name)} became and adult")
-            character.gameobject.get_component(StatusManager).add_status(Status.create("Adult"))
+            character.gameobject.get_component(
+                StatusManager).add_status(Status.create("Adult"))
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
+                LifeEventRecord(self.name, world.get_resource(
+                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
                 [gameobject.id])
 
         # end callback
@@ -89,7 +95,7 @@ class BecameSeniorEvent(LifeEvent):
             """Die if they are older than a certain age and not immortal"""
             character = gameobject.get_component(GameCharacter)
             return character.age >= character.config.lifecycle.senior_age \
-                   and not character.gameobject.get_component(StatusManager).has_status("Senior")
+                and not character.gameobject.get_component(StatusManager).has_status("Senior")
 
         # end precondition
 
@@ -98,9 +104,11 @@ class BecameSeniorEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
             logger.debug(f"{str(character.name)} became and senior")
-            character.gameobject.get_component(StatusManager).add_status(Status.create("Senior"))
+            character.gameobject.get_component(
+                StatusManager).add_status(Status.create("Senior"))
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
+                LifeEventRecord(self.name, world.get_resource(
+                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
                 [gameobject.id])
 
         # end callback
@@ -116,7 +124,7 @@ class BecameUnemployedEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             status_manager = gameobject.get_component(StatusManager)
             return status_manager.has_status("Adult") \
-                   and not status_manager.has_status("Unemployed")
+                and not status_manager.has_status("Unemployed")
 
         # end precondition
 
@@ -125,9 +133,11 @@ class BecameUnemployedEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
             logger.debug(f"{str(character.name)} became unemployed")
-            character.gameobject.get_component(StatusManager).add_status(Status.create("Unemployed"))
+            character.gameobject.get_component(
+                StatusManager).add_status(Status.create("Unemployed"))
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
+                LifeEventRecord(self.name, world.get_resource(
+                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
                 [gameobject.id])
 
         # end callback
@@ -165,9 +175,11 @@ class BecameBusinessOwnerEvent(LifeEvent):
             owner_typename = business.get_type().owner
 
             if owner_typename is None:
-                raise RuntimeError("Missing owner occupation type for business that needs owner")
+                raise RuntimeError(
+                    "Missing owner occupation type for business that needs owner")
 
-            occupation_type = OccupationType.get_registered_type(owner_typename)
+            occupation_type = OccupationDefinition.get_registered_type(
+                owner_typename)
 
             gameobject.add_component(Occupation(occupation_type, business_id))
 
@@ -177,9 +189,11 @@ class BecameBusinessOwnerEvent(LifeEvent):
 
             world = gameobject.world
 
-            logger.debug(f"{str(character.name)} became owner of {business.get_name()}")
+            logger.debug(
+                f"{str(character.name)} became owner of {business.get_name()}")
 
-            character.gameobject.get_component(StatusManager).remove_status("Unemployed")
+            character.gameobject.get_component(
+                StatusManager).remove_status("Unemployed")
 
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
@@ -211,9 +225,11 @@ class GetHiredEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
             logger.debug(f"{str(character.name)} got hired")
-            character.gameobject.get_component(StatusManager).remove_status("Unemployed")
+            character.gameobject.get_component(
+                StatusManager).remove_status("Unemployed")
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
+                LifeEventRecord(self.name, world.get_resource(
+                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
                 [gameobject.id])
 
         # end callback
@@ -274,7 +290,8 @@ class StartedDatingEvent(LifeEvent):
                                          StatusManager).has_status("Dating")]
 
             potential_mate: int = \
-                world.get_resource(NeighborlyEngine).get_rng().choice(single_love_interests).owner
+                world.get_resource(NeighborlyEngine).get_rng().choice(
+                    single_love_interests).owner
 
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
@@ -306,7 +323,8 @@ class DatingBreakUpEvent(LifeEvent):
             if not gameobject.get_component(StatusManager).has_status("Dating"):
                 return False
 
-            dating_status = character.gameobject.get_component(StatusManager).get_status("Dating")
+            dating_status = character.gameobject.get_component(
+                StatusManager).get_status("Dating")
 
             partner_id: int = dating_status["partner_id"]
 
@@ -326,7 +344,8 @@ class DatingBreakUpEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
 
-            dating_status = character.gameobject.get_component(StatusManager).get_status("Dating")
+            dating_status = character.gameobject.get_component(
+                StatusManager).get_status("Dating")
 
             partner_id: int = dating_status["partner_id"]
             partner_name: int = dating_status["partner_name"]
@@ -334,9 +353,11 @@ class DatingBreakUpEvent(LifeEvent):
             partner = world.get_gameobject(partner_id)
 
             partner.get_component(StatusManager).remove_status("Dating")
-            character.gameobject.get_component(StatusManager).remove_status("Dating")
+            character.gameobject.get_component(
+                StatusManager).remove_status("Dating")
 
-            logger.debug(f"{str(character.name)} and {str(partner_name)} broke up")
+            logger.debug(
+                f"{str(character.name)} and {str(partner_name)} broke up")
 
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
@@ -372,7 +393,8 @@ class MarriageEvent(LifeEvent):
 
             # Remove dating status from characters
             status_manager.remove_status("Dating")
-            world.get_gameobject(partner_id).get_component(StatusManager).remove_status("Dating")
+            world.get_gameobject(partner_id).get_component(
+                StatusManager).remove_status("Dating")
 
             # Add Married status to characters
             status_manager.add_status(MarriedStatus(partner_id, partner_name))

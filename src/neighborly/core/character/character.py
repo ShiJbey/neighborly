@@ -1,6 +1,6 @@
-import random
 from enum import Enum
-from typing import Dict, NamedTuple, Optional, Tuple, List
+from typing import Dict, NamedTuple, Optional, Tuple, List, ClassVar, TypedDict, Any, Union
+from click import option
 
 import numpy as np
 from ordered_set import OrderedSet
@@ -11,6 +11,16 @@ from neighborly.core.activity import _activity_registry
 from neighborly.core.character.values import CharacterValues, generate_character_values
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
+from neighborly.core.rng import RandNumGenerator
+
+
+class AgeRanges(TypedDict):
+    """Age range values for characters of a given type"""
+    child: Tuple[int, int]
+    teen: Tuple[int, int]
+    young_adult: Tuple[int, int]
+    adult: Tuple[int, int]
+    senior: Tuple[int, int]
 
 
 class LifeCycleConfig(BaseModel):
@@ -34,18 +44,30 @@ class LifeCycleConfig(BaseModel):
         The age that characters start to develop romantic feelings
         for other characters
     """
-
-    can_age: bool = True
-    can_die: bool = True
-    lifespan_mean: int = 85
-    lifespan_std: int = 15
-    adult_age: int = 18
-    senior_age: int = 65
-    romantic_feelings_age: int = 13
-    marriageable_age: int = 18
+    can_age: bool
+    can_die: bool
+    chance_of_death: float
+    romantic_feelings_age: int
+    marriageable_age: int
+    age_ranges: AgeRanges
 
 
-class CharacterConfig(BaseModel):
+class FamilyGenerationOptions(BaseModel):
+    """Options used when generating a family for a new character entering the town"""
+    probability_spouse: float
+    probability_children: float
+    num_children: Tuple[int, int]
+
+
+class GenerationConfig(BaseModel):
+    """Parameters for generating new characters with this type"""
+    first_name: str
+    last_name: str
+    family: FamilyGenerationOptions
+    gender_weights: Dict[str, int] = Field(default_factory=dict)
+
+
+class CharacterDefinition(BaseModel):
     """Configuration parameters for characters
 
     Fields
@@ -53,11 +75,44 @@ class CharacterConfig(BaseModel):
     lifecycle: LifeCycleConfig
         Configuration parameters for a characters lifecycle
     """
-    config_name: str
-    name: str = Field(default="#first_name# #surname#")
-    lifecycle: LifeCycleConfig = Field(default_factory=LifeCycleConfig)
-    gender_overrides: Dict[str, "CharacterConfig"] = Field(
-        default_factory=dict)
+
+    _type_registry: ClassVar[Dict[str, 'CharacterDefinition']] = {}
+
+    type_name: str
+    lifecycle: LifeCycleConfig
+    generation: GenerationConfig
+    gender_overrides: Dict[str, Any] = Field(default_factory=dict)
+
+    @classmethod
+    def create(cls, options: Dict[str, Any], base: Optional['CharacterDefinition'] = None) -> 'CharacterDefinition':
+        """Create a new Character type
+
+        Parameters
+        ----------
+        options: dict[str, Any]
+            data used to instantiate the CharacterType
+        base: CharacterType
+            Character type to base the new type off of
+        """
+
+        character_def = {}
+
+        if base:
+            character_def.update(base.dict())
+
+        character_def.update(options)
+
+        return CharacterDefinition(**character_def)
+
+    @classmethod
+    def register_type(cls, type_config: 'CharacterDefinition') -> None:
+        """Registers a character config with the shared registry"""
+        cls._type_registry[type_config.type_name] = type_config
+
+    @classmethod
+    def get_type(cls, name: str) -> 'CharacterDefinition':
+        """Retrieve a CharacterConfig from the shared registry"""
+        return cls._type_registry[name]
 
 
 class CharacterName(NamedTuple):
@@ -79,7 +134,7 @@ class GameCharacter(Component):
 
     Attributes
     ----------
-    config: CharacterConfig
+    character_def: CharacterType
         Configuration settings for the character
     name: CharacterName
         The character's name
@@ -100,11 +155,10 @@ class GameCharacter(Component):
     """
 
     __slots__ = (
-        "config",
+        "character_def",
         "alive",
         "name",
         "age",
-        "max_age",
         "gender",
         "can_get_pregnant",
         "location",
@@ -114,24 +168,22 @@ class GameCharacter(Component):
         "attracted_to"
     )
 
-    _config_registry: Dict[str, CharacterConfig] = {}
+    _type_registry: Dict[str, CharacterDefinition] = {}
 
     def __init__(
             self,
-            config: CharacterConfig,
+            character_def: CharacterDefinition,
             name: CharacterName,
             age: float,
-            max_age: float,
             gender: Gender,
             values: CharacterValues,
             attracted_to: Tuple[Gender, ...],
     ) -> None:
         super().__init__()
-        self.config = config
+        self.character_def = character_def
         self.alive: bool = True
         self.name: CharacterName = name
         self.age: float = age
-        self.max_age: float = max_age
         self.gender: Gender = gender
         self.attracted_to: OrderedSet[Gender] = OrderedSet(attracted_to)
         self.location: Optional[int] = None
@@ -144,11 +196,10 @@ class GameCharacter(Component):
 
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "{}(name={}, age={}/{}, gender={}, location={}, location_aliases={}, likes={}, {})".format(
+        return "{}(name={}, age={}, gender={}, location={}, location_aliases={}, likes={}, {})".format(
             self.__class__.__name__,
             str(self.name),
             round(self.age),
-            round(self.max_age),
             self.gender,
             self.location,
             self.location_aliases,
@@ -156,15 +207,61 @@ class GameCharacter(Component):
             str(self.values),
         )
 
-    @classmethod
-    def register_config(cls, name: str, config: CharacterConfig) -> None:
-        """Registers a character config with the shared registry"""
-        cls._config_registry[name] = config
 
-    @classmethod
-    def get_registered_config(cls, name: str) -> CharacterConfig:
-        """Retrieve a CharacterConfig from the shared registry"""
-        return cls._config_registry[name]
+def choose_gender(rng: RandNumGenerator, overrides: Optional[Dict[str, int]] = None) -> Gender:
+    weights = [1 for _ in list(Gender)]
+    if overrides:
+        for i, g in enumerate(list(Gender)):
+            if overrides.get(g.value):
+                weights[i] = overrides[g.value]
+    return Gender[rng.choices(list(Gender), weights)[0].name]
+
+
+def create_character(
+        character_type: CharacterDefinition,
+        rng: RandNumGenerator,
+        **kwargs
+) -> GameCharacter:
+    first_name = kwargs.get('first_name', name_gen.get_name(
+        character_type.generation.first_name))
+    last_name = kwargs.get('last_name', name_gen.get_name(
+        character_type.generation.last_name))
+    name = CharacterName(first_name, last_name)
+
+    gender = kwargs.get('gender', choose_gender(rng))
+
+    # generate an age
+    age_range: Union[str, Tuple[int, int]] = kwargs.get(
+        'age_range', character_type.lifecycle.age_ranges['adult'])
+
+    age = -1
+    if isinstance(age_range, str):
+        if age_range in character_type.lifecycle.age_ranges:
+            # type: ignore
+            range_tuple = character_type.lifecycle.age_ranges[age_range]
+            age = rng.randint(range_tuple[0], range_tuple[1])
+        else:
+            ValueError(
+                f"Given age range ({age_range}) is not one of (child, teen, young adult, adult, senior)")
+    else:
+        age = rng.randint(age_range[0], age_range[1])
+
+    if age == -1:
+        raise RuntimeError("Age never set")
+
+    values: CharacterValues = generate_character_values(rng)
+
+    attracted_to = kwargs.get('attracted_to', tuple(
+        rng.sample(list(Gender), rng.randint(0, 2))))
+
+    return GameCharacter(
+        character_def=character_type,
+        name=name,
+        age=float(age),
+        gender=gender,
+        values=values,
+        attracted_to=attracted_to,
+    )
 
 
 class GameCharacterFactory(AbstractFactory):
@@ -176,108 +273,38 @@ class GameCharacterFactory(AbstractFactory):
     def __init__(self) -> None:
         super().__init__("GameCharacter")
 
-    def create(self, spec: ComponentSpec) -> GameCharacter:
+    def create(self, spec: ComponentSpec, **kwargs) -> GameCharacter:
         """Create a new instance of a character"""
-
-        config: CharacterConfig = GameCharacter.get_registered_config(spec['config_name'])
-
-        age_range: str = spec.get_attribute("age_range", "adult")
-        age: float = 0
-
-        if age_range == "child":
-            age = float(random.randint(3, config.lifecycle.adult_age))
-        elif age_range == "adult":
-            age = float(
-                random.randint(config.lifecycle.adult_age,
-                               config.lifecycle.senior_age)
-            )
-        else:
-            age = float(
-                random.randint(
-                    config.lifecycle.senior_age, config.lifecycle.lifespan_mean
-                )
-            )
-
-        gender: Gender = random.choice(list(Gender))
-
-        name_rule: str = (
-            config.gender_overrides[str(gender)].name
-            if str(gender) in config.gender_overrides
-            else config.name
-        )
-
-        firstname, surname = tuple(name_gen.get_name(name_rule).split(" "))
-
-        max_age: float = max(
-            age + 1,
-            np.random.normal(
-                config.lifecycle.lifespan_mean, config.lifecycle.lifespan_std
-            ),
-        )
-
-        values: CharacterValues = generate_character_values()
-
-        character = GameCharacter(
-            config,
-            CharacterName(firstname, surname),
-            age,
-            max_age,
-            gender,
-            values,
-            tuple(random.sample(list(Gender), random.randint(0, 2))),
-        )
-
-        return character
-
-    @staticmethod
-    def generate_adult_age(config: CharacterConfig) -> float:
-        return np.random.uniform(
-            config.lifecycle.adult_age, config.lifecycle.adult_age + 15
+        return create_character(
+            character_type=CharacterDefinition.get_type(spec['type_name']),
+            rng=kwargs["rng"],
+            **kwargs
         )
 
 
 def create_family(
-        n_children: Optional[int] = None
+        character_type: CharacterDefinition,
+        rng: RandNumGenerator,
+        **kwargs
 ) -> Dict[str, List[GameCharacter]]:
     adults: List[GameCharacter] = []
     children: List[GameCharacter] = []
 
-    character = cls.create(config)
+    adult_0 = create_character(character_type, rng, age_range='young_adult')
+    adult_1 = create_character(character_type, rng, age_range='young_adult', last_name=adult_0.name.surname,
+                               attracted_to=[adult_0.gender])
 
-    adults.append(character)
+    adults.append(adult_0)
+    adults.append(adult_1)
 
-    spouse_gender = random.choice(character.attracted_to)
-
-    spouse = GameCharacter(
-        name=GameCharacter.name_factories[config.name_generator](
-            gender=spouse_gender, surname=character.name.surname),
-        gender=spouse_gender,
-        attracted_to=[character.gender],
-        hometown=character.hometown,
-        config=config,
-        age=generate_age(),
-    )
-
-    adults.append(spouse)
-
-    years_married = random.randint(
-        1, int(min(character.age, spouse.age)) - 18)
-
-    num_children = n_children if n_children else random.randint(0, 4)
+    num_children = kwargs.get('n_children',
+                              rng.randint(0,
+                                          int(min(adult_0.age,
+                                                  adult_1.age) - character_type.lifecycle.marriageable_age)))
 
     for _ in range(num_children):
-        gender = choose_gender(config)
-        child = GameCharacter(
-            name=GameCharacter.name_factories[config.name_generator](
-                gender=gender,
-                surname=character.name.surname,
-            ),
-            gender=gender,
-            attracted_to=choose_attraction(config),
-            hometown=character.hometown,
-            config=config,
-            age=generate_age(age_min=0, age_max=years_married),
-        )
+        child = create_character(
+            character_type, rng, age_range='child', last_name=adult_0.name.surname)
         children.append(child)
 
     return {'adults': adults, 'children': children}
@@ -291,7 +318,8 @@ def get_top_activities(
     scores: List[Tuple[int, str]] = []
 
     for name, activity in _activity_registry.items():
-        score: int = int(np.dot(character_values.traits, activity.character_traits.traits))
+        score: int = int(np.dot(character_values.traits,
+                         activity.character_traits.traits))
         scores.append((score, name))
 
     return tuple(

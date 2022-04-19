@@ -3,7 +3,7 @@ import random
 from typing import cast, Optional, Dict, List
 
 import neighborly.ai.behavior_utils as behavior_utils
-from neighborly.core.business import BusinessType
+from neighborly.core.business import BusinessDefinition
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.character.values import CharacterValues
 from neighborly.core.ecs import System, GameObject, World
@@ -55,7 +55,8 @@ class SocializeProcessor(System):
     def _socialize(self, world: World, character: GameCharacter) -> None:
         """Have all the characters talk to those around them"""
         if character.location:
-            location = self.world.get_gameobject(character.location).get_component(Location)
+            location = self.world.get_gameobject(
+                character.location).get_component(Location)
 
             relationship_net = self.world.get_resource(RelationshipNetwork)
 
@@ -73,10 +74,12 @@ class SocializeProcessor(System):
                         Relationship(character_id, other_character_id)
                     )
 
-                    other_character = world.get_gameobject(other_character_id).get_component(GameCharacter)
+                    other_character = world.get_gameobject(
+                        other_character_id).get_component(GameCharacter)
 
                     # Add compatibility
-                    compatibility = CharacterValues.calculate_compatibility(character.values, other_character.values)
+                    compatibility = CharacterValues.calculate_compatibility(
+                        character.values, other_character.values)
 
                     relationship_net.get_connection(character_id, other_character_id).add_tag(
                         RelationshipTag("Compatibility", friendship_increment=compatibility))
@@ -87,10 +90,12 @@ class SocializeProcessor(System):
 
                     logger.debug("{} met {}".format(
                         str(character.name),
-                        str(world.get_gameobject(other_character_id).get_component(GameCharacter).name)
+                        str(world.get_gameobject(
+                            other_character_id).get_component(GameCharacter).name)
                     ))
                 else:
-                    relationship_net.get_connection(character_id, other_character_id).update()
+                    relationship_net.get_connection(
+                        character_id, other_character_id).update()
 
                 if not relationship_net.has_connection(other_character_id, character_id):
                     relationship_net.add_connection(
@@ -102,10 +107,12 @@ class SocializeProcessor(System):
                         )
                     )
 
-                    other_character = world.get_gameobject(other_character_id).get_component(GameCharacter)
+                    other_character = world.get_gameobject(
+                        other_character_id).get_component(GameCharacter)
 
                     # Add compatibility
-                    compatibility = CharacterValues.calculate_compatibility(character.values, other_character.values)
+                    compatibility = CharacterValues.calculate_compatibility(
+                        character.values, other_character.values)
 
                     relationship_net.get_connection(other_character_id, character_id).add_tag(
                         RelationshipTag("Compatibility", friendship_increment=compatibility))
@@ -115,11 +122,13 @@ class SocializeProcessor(System):
                             RelationshipTag("Attracted", romance_increment=1))
 
                     logger.debug("{} met {}".format(
-                        str(world.get_gameobject(other_character_id).get_component(GameCharacter).name),
+                        str(world.get_gameobject(
+                            other_character_id).get_component(GameCharacter).name),
                         str(character.name)
                     ))
                 else:
-                    relationship_net.get_connection(other_character_id, character_id).update()
+                    relationship_net.get_connection(
+                        other_character_id, character_id).update()
 
 
 class RoutineProcessor(System):
@@ -188,7 +197,8 @@ class CityPlanner(System):
 
         character_archetypes = list(
             map(
-                lambda archetype: (self.weights.get(archetype.get_type(), 1), archetype.get_type()),
+                lambda archetype: (self.weights.get(
+                    archetype.get_type(), 1), archetype.get_type()),
                 engine.get_character_archetypes()
             )
         )
@@ -199,9 +209,11 @@ class CityPlanner(System):
 
         self.world.add_gameobject(character)
         character.get_component(GameCharacter).location = residence.id
-        character.get_component(GameCharacter).location_aliases['home'] = residence.id
+        character.get_component(
+            GameCharacter).location_aliases['home'] = residence.id
         residence.get_component(Residence).add_tenant(character.id, True)
-        residence.get_component(Location).characters_present.append(character.id)
+        residence.get_component(
+            Location).characters_present.append(character.id)
 
     def try_build_house(self) -> Optional[GameObject]:
         town = self.world.get_resource(Town)
@@ -217,7 +229,8 @@ class CityPlanner(System):
         return None
 
     def try_get_abandoned(self) -> Optional[GameObject]:
-        residences = list(filter(lambda res: res[1].is_vacant(), self.world.get_component(Residence)))
+        residences = list(
+            filter(lambda res: res[1].is_vacant(), self.world.get_component(Residence)))
         if residences:
             return residences[0][1].gameobject
         return None
@@ -243,7 +256,7 @@ class CityPlanner(System):
             logger.debug(f"Added business {place}")
 
     @classmethod
-    def get_eligible_types(cls, world: World) -> List['BusinessType']:
+    def get_eligible_types(cls, world: World) -> List['BusinessDefinition']:
         """
         Return all business types that may be built
         given the state of the simulation
@@ -251,9 +264,9 @@ class CityPlanner(System):
         population = world.get_resource(Town).population
         engine = world.get_resource(NeighborlyEngine)
 
-        eligible_types: List['BusinessType'] = []
+        eligible_types: List['BusinessDefinition'] = []
 
-        for t in BusinessType.get_all_types():
+        for t in BusinessDefinition.get_all_types():
             if t.instances >= t.max_instances:
                 continue
 
@@ -296,4 +309,5 @@ class LifeEventProcessor(System):
         for entity, character in self.world.get_component(GameCharacter):
             for event in self._event_registry.values():
                 if rng.random() < event.probability(character.gameobject) and event.precondition(character.gameobject):
-                    event.effect(character.gameobject, {'delta_time': delta_time})
+                    event.effect(character.gameobject, {
+                                 'delta_time': delta_time})

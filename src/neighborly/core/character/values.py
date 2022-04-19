@@ -1,9 +1,10 @@
-import random
 from enum import Enum
 from typing import Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
+
+from neighborly.core.rng import RandNumGenerator
 
 TRAIT_MAX = 50
 TRAIT_MIN = -50
@@ -110,16 +111,16 @@ class CharacterValues:
         return "{}({})".format(self.__class__.__name__, self._traits.__repr__())
 
 
-def generate_character_values(n_likes: int = 3, n_dislikes: int = 3) -> CharacterValues:
+def generate_character_values(rng: RandNumGenerator, n_likes: int = 3, n_dislikes: int = 3) -> CharacterValues:
     """Generate a new set of character values"""
     # Select Traits
     total_traits: int = n_likes + n_dislikes
     traits = [
-        str(trait.value) for trait in random.sample(list(ValueTrait), total_traits)
+        str(trait.value) for trait in rng.sample(list(ValueTrait), total_traits)
     ]
 
     # select likes and dislikes
-    high_values = random.sample(traits, n_likes)
+    high_values = rng.sample(traits, n_likes)
 
     map(lambda t: traits.remove(t), high_values)
 
@@ -129,9 +130,9 @@ def generate_character_values(n_likes: int = 3, n_dislikes: int = 3) -> Characte
     values_overrides: Dict[str, int] = {}
 
     for trait in high_values:
-        values_overrides[trait] = random.randint(30, 50)
+        values_overrides[trait] = rng.randint(30, 50)
 
     for trait in low_values:
-        values_overrides[trait] = random.randint(-50, -30)
+        values_overrides[trait] = rng.randint(-50, -30)
 
     return CharacterValues(values_overrides)

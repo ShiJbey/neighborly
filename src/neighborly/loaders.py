@@ -10,8 +10,7 @@ import yaml
 from neighborly.ai.behavior_tree import BehaviorTree, AbstractBTNode
 from neighborly.ai.character_behavior import get_node_factory_for_type, register_behavior
 from neighborly.core.activity import Activity, register_activity
-from neighborly.core.business import BusinessType
-from neighborly.core.character.character import GameCharacter, CharacterConfig
+from neighborly.core.business import BusinessDefinition
 from neighborly.core.engine import NeighborlyEngine, ComponentSpec, EntityArchetypeSpec
 from neighborly.core.relationship import RelationshipTag
 
@@ -146,15 +145,15 @@ class YamlDataLoader:
                 # Create and register a new character config from
                 # the options
                 character_component['config_name'] = archetype.get_type()
-                GameCharacter.register_config(
-                    archetype.get_type(),
-                    CharacterConfig(**{
-                        'config_name': archetype.get_type(),
-                        'name': character_component.get_attribute('name'),
-                        'lifecycle': character_component.get_attribute('lifecycle'),
-                        # 'gender_overrides': character_component.get_attribute('gender_overrides'),
-                    })
-                )
+                # GameCharacter.register_config(
+                #     archetype.get_type(),
+                #     CharacterType(**{
+                #         'config_name': archetype.get_type(),
+                #         'name': character_component.get_attribute('name'),
+                #         'lifecycle': character_component.get_attribute('lifecycle'),
+                #         # 'gender_overrides': character_component.get_attribute('gender_overrides'),
+                #     })
+                # )
             else:
                 raise MissingComponentSpecError('GameCharacter')
 
@@ -178,13 +177,14 @@ class YamlDataLoader:
                 # Create and register a new character config from
                 # the options
                 if business_component.get_attribute("business_type") is None:
-                    BusinessType.register_type(
-                        BusinessType(**{
+                    BusinessDefinition.register_type(
+                        BusinessDefinition(**{
                             **business_component.get_attributes(),
                             'name': archetype.get_type(),
                         })
                     )
-                    business_component.update({'business_type': archetype.get_type()})
+                    business_component.update(
+                        {'business_type': archetype.get_type()})
             elif not archetype.is_template:
                 raise MissingComponentSpecError('Business')
 
@@ -201,7 +201,8 @@ class YamlDataLoader:
     def _load_relationship_tag_data(relationship_tags: List[Dict[str, Any]]) -> None:
         """Load list of dictionary objects defining relaitonship tags"""
         if not isinstance(relationship_tags, list):
-            raise TypeError(f"Expected List of dicts but was {type(relationship_tags).__name__}")
+            raise TypeError(
+                f"Expected List of dicts but was {type(relationship_tags).__name__}")
 
         for entry in relationship_tags:
             # Convert the dictionary to an object

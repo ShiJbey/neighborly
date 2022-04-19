@@ -1,14 +1,45 @@
 import math
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict, ClassVar, Callable
+from typing import Any, List, Optional, Tuple, Dict, ClassVar, Callable, Protocol
 
 from neighborly.core import name_generation as name_gen
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, GameObject
 from neighborly.core.engine import AbstractFactory, ComponentSpec
 from neighborly.core.routine import RoutineEntry, RoutinePriority
 
 
-class OccupationType:
+class OccupationPreconditionFn(Protocol):
+    """
+    A function that must evaluate to True for a character to
+    be eligible to hold the occupation.
+
+    Notes
+    -----
+    This was implemented using a Protocol because the
+    implementation of Callable from the typing module
+    does not have proper support for **kwargs
+    """
+
+    def __call__(self, gameobject: GameObject, **kwargs: Any) -> bool:
+        """
+        A function that must evaluate to True for a character to
+        be eligible to hold the occupation.
+
+        Arguments
+        ---------
+        gameobject: GameObject
+            GameObject to evaluate
+
+        Returns
+        -------
+        bool: True if the character is eligible for the occupation
+            False otherwise
+        """
+        raise NotImplementedError()
+
+
+@dataclass
+class OccupationDefinition:
     """
     Shared information about all occupations with this type
 
@@ -18,7 +49,7 @@ class OccupationType:
         Name of the position
     _level: int
         Prestige or socioeconomic status associated with the position
-    _preconditions: List[Callable[..., bool]]
+    _preconditions: List[OccupationPreconditionFn]
         Preconditions functions that need to pass for a character
         to qualify for this occupation type
 
@@ -26,55 +57,29 @@ class OccupationType:
     ----------------
     _type_registry: Dict[str, OccupationType]
         Registered instances of OccupationTypes
-    _precondition_registry: Dict[str, Callable[..., bool]]
+    _precondition_registry: Dict[str, OccupationPreconditionFn]
         Registered preconditions used to determine
         if a character qualifies for a position
     """
 
-    __slots__ = "_name", "_level", "_preconditions"
+    _type_registry: ClassVar[Dict[str, 'OccupationDefinition']] = {}
+    _precondition_registry: ClassVar[Dict[str, OccupationPreconditionFn]] = {}
 
-    _type_registry: Dict[str, 'OccupationType'] = {}
-    _precondition_registry: Dict[str, Callable[..., bool]] = {}
-
-    def __init__(
-            self,
-            name: str,
-            level: int,
-            preconditions: Optional[List[Callable[..., bool]]] = None
-    ) -> None:
-        self._name: str = name
-        self._level: int = level
-        self._preconditions: List[Callable[..., bool]] = \
-            preconditions if preconditions else []
-
-    def get_name(self) -> str:
-        return self._name
-
-    def get_level(self) -> int:
-        return self._level
-
-    def get_preconditions(self) -> List[Callable[..., bool]]:
-        return self._preconditions
+    name: str
+    level: int
+    preconditions: List[OccupationPreconditionFn] = field(default_factory=list)
 
     @classmethod
-    def register_type(cls, occupation_type: 'OccupationType') -> None:
-        cls._type_registry[occupation_type._name] = occupation_type
+    def register_type(cls, occupation_type: 'OccupationDefinition') -> None:
+        cls._type_registry[occupation_type.name] = occupation_type
 
     @classmethod
-    def get_registered_type(cls, name: str) -> 'OccupationType':
+    def get_registered_type(cls, name: str) -> 'OccupationDefinition':
         return cls._type_registry[name]
 
     @classmethod
-    def register_precondition(cls, precondition: Callable[..., bool]) -> None:
-        cls._precondition_registry[precondition.__name__] = precondition
-
-    def __repr__(self) -> str:
-        return "{}(name={}, level={}, preconditions=[{}])".format(
-            self.__class__.__name__,
-            self._name,
-            self._level,
-            [fn.__name__ for fn in self._preconditions]
-        )
+    def register_precondition(cls, name: str, precondition: OccupationPreconditionFn) -> None:
+        cls._precondition_registry[name] = precondition
 
 
 class Occupation(Component):
@@ -85,15 +90,15 @@ class Occupation(Component):
 
     def __init__(
             self,
-            occupation_type: OccupationType,
+            occupation_type: OccupationDefinition,
             business: int,
     ) -> None:
         super().__init__()
-        self._occupation_type: OccupationType = occupation_type
+        self._occupation_type: OccupationDefinition = occupation_type
         self._business: int = business
         self._years_held: float = 0.0
 
-    def get_type(self) -> OccupationType:
+    def get_type(self) -> OccupationDefinition:
         return self._occupation_type
 
     def get_business(self) -> int:
@@ -107,33 +112,33 @@ class Occupation(Component):
 
 
 @dataclass
-class BusinessType:
+class BusinessDefinition:
     """
     Shared information about all businesses that
     have this type
     """
-    _type_registry: ClassVar[Dict[str, 'BusinessType']] = {}
+    _type_registry: ClassVar[Dict[str, 'BusinessDefinition']] = {}
 
     name: str
-    name_pattern: str
     hours: str
-    owner: Optional[str] = None
+    name_pattern: Optional[str] = None
+    owner_type: Optional[str] = None
     max_instances: int = 9999
     instances: int = 0
     min_population: int = 0
     employees: Dict[str, int] = field(default_factory=dict)
 
     @classmethod
-    def register_type(cls, business_type: 'BusinessType') -> None:
+    def register_type(cls, business_type: 'BusinessDefinition') -> None:
         """Register one or more business types for later use"""
         cls._type_registry[business_type.name] = business_type
 
     @classmethod
-    def get_registered_type(cls, name: str) -> 'BusinessType':
+    def get_registered_type(cls, name: str) -> 'BusinessDefinition':
         return cls._type_registry[name]
 
     @classmethod
-    def get_all_types(cls) -> List['BusinessType']:
+    def get_all_types(cls) -> List['BusinessDefinition']:
         return list(cls._type_registry.values())
 
 
@@ -143,12 +148,12 @@ class Business(Component):
 
     def __init__(
             self,
-            business_type: BusinessType,
+            business_type: BusinessDefinition,
             name: str,
             owner: Optional[int] = None
     ) -> None:
         super().__init__()
-        self._business_type: BusinessType = business_type
+        self._business_type: BusinessDefinition = business_type
         self._name: str = name
         self._operating_hours: Dict[str, List[RoutineEntry]] = \
             self.hours_str_to_schedule(business_type.hours)
@@ -157,12 +162,12 @@ class Business(Component):
         self._owner: Optional[int] = owner
 
     def needs_owner(self) -> bool:
-        return self._owner is None and self.get_type().owner is not None
+        return self._owner is None and self.get_type().owner_type is not None
 
     def get_open_positions(self) -> List[str]:
-        return [title for title, n in self._open_positions if n > 0]
+        return [title for title, n in self._open_positions.items() if n > 0]
 
-    def get_type(self) -> BusinessType:
+    def get_type(self) -> BusinessDefinition:
         return self._business_type
 
     def get_name(self) -> str:
@@ -173,6 +178,10 @@ class Business(Component):
 
     def on_start(self) -> None:
         self.gameobject.set_name(str(self._name))
+        self.get_type().instances = self.get_type().instances + 1
+
+    def on_destroy(self) -> None:
+        self.get_type().instances = self.get_type().instances - 1
 
     def __repr__(self) -> str:
         """Return printable representation"""
@@ -187,7 +196,19 @@ class Business(Component):
 
     @staticmethod
     def hours_str_to_schedule(hours_str: str) -> Dict[str, List[RoutineEntry]]:
-        """Convert an operating hours string to dict of days with hours"""
+        """
+        Convert an operating hours string to dict of days with hours
+
+        Arguments
+        ---------
+        hours_str: str
+            Business hours given as a string (e.g. MTWRF 9:00-17:00, SU 10:00-15:00)
+
+        Returns
+        -------
+        Dict[str, List[RoutineEntry]]:
+            Hours that the business will be open mapped to days of the week
+        """
         # Split the operating hours by commas
         schedule_sets = \
             list(map(
@@ -274,8 +295,9 @@ class BusinessFactory(AbstractFactory):
         if type_name is None:
             raise TypeError("Expected to fund business_type str but was None")
 
-        business_type = BusinessType.get_registered_type(type_name)
+        business_type = BusinessDefinition.get_registered_type(type_name)
 
-        name = name_gen.get_name(business_type.name_pattern)
+        name = name_gen.get_name(
+            business_type.name_pattern) if business_type.name_pattern else type_name
 
         return Business(business_type, name)
