@@ -1,4 +1,4 @@
-# Neighborly: OpenSource Town-Scale Social Simulation
+# Neighborly: Town-Scale Social Simulation Engine
 
 ![Neighborly Screenshot in pygame](./docs/resources/pygame_sample_screenshot.png)
 
@@ -49,6 +49,22 @@ python -m pip install -e ".[samples]"
 ```
 
 Now you may execute any of the tests using `python ./samples/<sample_name>.py`.
+
+## Contributing
+
+If you are interested in contributing to Neighborly, feel free to fork this repository, make your changes, and submit a pull-request. Please keep in mind that this project is a tool for creativity and learning. We have a [code of conduct](./CODE_OF_CONDUCT.md) to encourage healthy collaboration, and will enforce it if we need to.
+
+**WARNING::** This repository's structure in in high flux. Parts of the code get shifted to make the API's cleaner for use. 
+
+Here are some ways that people can contribute to Neighborly:
+1. Proposing/Implementing new features
+2. Fixing bugs
+3. Providing optimizations
+4. Fixing typos
+5. Filing issues
+6. Contributing tutorials/how-to's to the wiki
+7. Fixing grammar and spelling in the wiki
+8. Creating new samples
 
 ## Notes
 
