@@ -89,24 +89,6 @@ def find_places_with_any_activities(world: World, *activities: str) -> List[int]
     return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
 
 
-def is_child(world: World, character_id: int) -> bool:
-    """Return True if the character is a child"""
-    character = world.get_gameobject(character_id).get_component(GameCharacter)
-    return character.age < character.config.lifecycle.adult_age
-
-
-def is_adult(world: World, character_id: int) -> bool:
-    """Return True if the character is an adult"""
-    character = world.get_gameobject(character_id).get_component(GameCharacter)
-    return character.age >= character.config.lifecycle.adult_age
-
-
-def is_senior(world: World, character_id: int) -> bool:
-    """Return True if the character is a senior"""
-    character = world.get_gameobject(character_id).get_component(GameCharacter)
-    return character.age >= character.config.lifecycle.senior_age
-
-
 def add_relationship_tag(
         world: World, owner_id: int, target_id: int, tag: RelationshipTag
 ) -> None:

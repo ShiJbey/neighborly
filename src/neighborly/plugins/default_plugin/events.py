@@ -9,9 +9,9 @@ from neighborly.core.life_event import LifeEvent, EventLog, LifeEventRecord
 from neighborly.core.location import Location
 from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.status import StatusManager, Status
+from neighborly.core.status import Status
 from neighborly.core.time import SimDateTime
-from neighborly.plugins.default_plugin.statuses import DatingStatus, MarriedStatus
+from neighborly.plugins.default_plugin.statuses import DatingStatus, MarriedStatus, AdultStatus
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +66,8 @@ class BecameAdultEvent(LifeEvent):
         def p(gameobject: GameObject) -> bool:
             """Die if they are older than a certain age and not immortal"""
             character = gameobject.get_component(GameCharacter)
-            return character.alive and character.age >= character.config.lifecycle.adult_age \
-                and not gameobject.get_component(StatusManager).has_status("Adult")
+            return character.alive and character.age >= character.character_def.lifecycle.adult_age \
+                   and not gameobject.get_component(AdultStatus)
 
         # end precondition
 
@@ -76,8 +76,7 @@ class BecameAdultEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             world = gameobject.world
             logger.debug(f"{str(character.name)} became and adult")
-            character.gameobject.get_component(
-                StatusManager).add_status(Status.create("Adult"))
+            character.gameobject.add_component(AdultStatus())
             world.get_resource(EventLog).add_event(
                 LifeEventRecord(self.name, world.get_resource(
                     SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
@@ -95,7 +94,7 @@ class BecameSeniorEvent(LifeEvent):
             """Die if they are older than a certain age and not immortal"""
             character = gameobject.get_component(GameCharacter)
             return character.age >= character.config.lifecycle.senior_age \
-                and not character.gameobject.get_component(StatusManager).has_status("Senior")
+                   and not character.gameobject.get_component(StatusManager).has_status("Senior")
 
         # end precondition
 
@@ -124,7 +123,7 @@ class BecameUnemployedEvent(LifeEvent):
             character = gameobject.get_component(GameCharacter)
             status_manager = gameobject.get_component(StatusManager)
             return status_manager.has_status("Adult") \
-                and not status_manager.has_status("Unemployed")
+                   and not status_manager.has_status("Unemployed")
 
         # end precondition
 
@@ -286,8 +285,7 @@ class StartedDatingEvent(LifeEvent):
                  relationship_net.has_connection(r.target, character.gameobject.id)]))
 
             single_love_interests = [li for li in love_interests_that_know_you if
-                                     not gameobject.world.get_gameobject(li.owner).get_component(
-                                         StatusManager).has_status("Dating")]
+                                     not gameobject.has_component(DatingStatus)]
 
             potential_mate: int = \
                 world.get_resource(NeighborlyEngine).get_rng().choice(
@@ -298,11 +296,13 @@ class StartedDatingEvent(LifeEvent):
                                 {"subject": [gameobject.id, potential_mate]}),
                 [gameobject.id, potential_mate])
 
-            world.get_gameobject(potential_mate).get_component(StatusManager).add_status(
-                DatingStatus(gameobject.id, gameobject.name))
+            world.get_gameobject(potential_mate).add_component(
+                DatingStatus(gameobject.id,
+                             str(gameobject.get_component(GameCharacter).name)))
 
-            gameobject.get_component(StatusManager).add_status(
-                DatingStatus(potential_mate, world.get_gameobject(potential_mate).name))
+            gameobject.add_component(
+                DatingStatus(potential_mate,
+                             str(world.get_gameobject(potential_mate).get_component(GameCharacter).name)))
 
             logger.debug(
                 f"{str(character.name)} and {str(world.get_gameobject(potential_mate).get_component(GameCharacter).name)} started dating")

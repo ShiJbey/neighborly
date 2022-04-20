@@ -40,5 +40,5 @@ class ResidenceFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Residence")
 
-    def create(self, spec: ComponentSpec) -> Residence:
+    def create(self, spec: ComponentSpec, **kwargs) -> Residence:
         return Residence()

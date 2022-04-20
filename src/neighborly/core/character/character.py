@@ -1,10 +1,9 @@
 from enum import Enum
 from typing import Dict, NamedTuple, Optional, Tuple, List, ClassVar, TypedDict, Any, Union
-from click import option
 
 import numpy as np
 from ordered_set import OrderedSet
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from neighborly.core import name_generation as name_gen
 from neighborly.core.activity import _activity_registry
@@ -12,6 +11,7 @@ from neighborly.core.character.values import CharacterValues, generate_character
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
 from neighborly.core.rng import RandNumGenerator
+from neighborly.core.utils.utilities import parse_number_range
 
 
 class AgeRanges(TypedDict):
@@ -51,12 +51,31 @@ class LifeCycleConfig(BaseModel):
     marriageable_age: int
     age_ranges: AgeRanges
 
+    @validator('age_ranges', pre=True)
+    def convert_age_ranges_to_tuples(cls, v):
+        if not isinstance(v, dict):
+            raise TypeError("Attribute 'age_ranges' expected dict object")
+
+        validated_dict = {}
+        for key, value in v.items():
+            if isinstance(value, str):
+                validated_dict[key] = parse_number_range(value)
+            else:
+                validated_dict[key] = value
+        return validated_dict
+
 
 class FamilyGenerationOptions(BaseModel):
     """Options used when generating a family for a new character entering the town"""
     probability_spouse: float
     probability_children: float
     num_children: Tuple[int, int]
+
+    @validator('num_children', pre=True)
+    def convert_age_ranges_to_tuples(cls, v):
+        if isinstance(v, str):
+            return parse_number_range(v)
+        return v
 
 
 class GenerationConfig(BaseModel):
@@ -78,7 +97,7 @@ class CharacterDefinition(BaseModel):
 
     _type_registry: ClassVar[Dict[str, 'CharacterDefinition']] = {}
 
-    type_name: str
+    name: str
     lifecycle: LifeCycleConfig
     generation: GenerationConfig
     gender_overrides: Dict[str, Any] = Field(default_factory=dict)
@@ -107,7 +126,7 @@ class CharacterDefinition(BaseModel):
     @classmethod
     def register_type(cls, type_config: 'CharacterDefinition') -> None:
         """Registers a character config with the shared registry"""
-        cls._type_registry[type_config.type_name] = type_config
+        cls._type_registry[type_config.name] = type_config
 
     @classmethod
     def get_type(cls, name: str) -> 'CharacterDefinition':
@@ -140,8 +159,6 @@ class GameCharacter(Component):
         The character's name
     age: float
         The character's current age in years
-    max_age: float
-        The age that this character is going to die of natural causes
     gender: Gender
         Loose gender identity for the character
     location: int
@@ -168,8 +185,6 @@ class GameCharacter(Component):
         "attracted_to"
     )
 
-    _type_registry: Dict[str, CharacterDefinition] = {}
-
     def __init__(
             self,
             character_def: CharacterDefinition,
@@ -193,6 +208,21 @@ class GameCharacter(Component):
 
     def on_start(self) -> None:
         self.gameobject.set_name(str(self.name))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            'character_def': self.character_def.name,
+            'name': str(self.name),
+            'alive': self.alive,
+            'age': self.age,
+            'gender': self.gender.value,
+            'attracted_to': [g.value for g in self.attracted_to],
+            'location': self.location,
+            'location_aliases': self.location_aliases,
+            'likes': self.likes,
+            'values': self.values.traits.tolist(),
+        }
 
     def __repr__(self) -> str:
         """Return printable representation"""
@@ -237,8 +267,7 @@ def create_character(
     age = -1
     if isinstance(age_range, str):
         if age_range in character_type.lifecycle.age_ranges:
-            # type: ignore
-            range_tuple = character_type.lifecycle.age_ranges[age_range]
+            range_tuple = character_type.lifecycle.age_ranges[age_range]  # type: ignore
             age = rng.randint(range_tuple[0], range_tuple[1])
         else:
             ValueError(
@@ -276,8 +305,7 @@ class GameCharacterFactory(AbstractFactory):
     def create(self, spec: ComponentSpec, **kwargs) -> GameCharacter:
         """Create a new instance of a character"""
         return create_character(
-            character_type=CharacterDefinition.get_type(spec['type_name']),
-            rng=kwargs["rng"],
+            character_type=CharacterDefinition.get_type(spec['character_def']),
             **kwargs
         )
 
@@ -319,7 +347,7 @@ def get_top_activities(
 
     for name, activity in _activity_registry.items():
         score: int = int(np.dot(character_values.traits,
-                         activity.character_traits.traits))
+                                activity.character_traits.traits))
         scores.append((score, name))
 
     return tuple(

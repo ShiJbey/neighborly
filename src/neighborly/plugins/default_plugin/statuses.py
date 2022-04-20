@@ -1,10 +1,8 @@
-from typing import Dict, Any
-
-from neighborly.core.ecs import GameObject
-from neighborly.core.status import StatusType, Status
+from neighborly.core.ecs import World
+from neighborly.core.status import Status
 
 
-class AdultStatusType(StatusType):
+class AdultStatus(Status):
 
     def __init__(self) -> None:
         super().__init__(
@@ -13,16 +11,42 @@ class AdultStatusType(StatusType):
         )
 
 
-class UnemployedStatusType(StatusType):
+class ResidentStatus(Status):
+    __slots__ = "duration", "town"
+
+    def __init__(self, town: str) -> None:
+        super().__init__(
+            "Resident",
+            "This character is a resident of a town",
+        )
+        self.duration: float = 0
+        self.town: str = town
+
+    @staticmethod
+    def system_fn(world: World, **kwargs) -> None:
+        delta_time: float = kwargs['delta_time']
+        for _, resident_status in world.get_component(ResidentStatus):
+            resident_status.duration += delta_time
+
+
+class UnemployedStatus(Status):
+    __slots__ = "duration"
 
     def __init__(self) -> None:
         super().__init__(
             "Unemployed",
             "Character doesn't have a job",
         )
+        self.duration: float = 0
+
+    @staticmethod
+    def system_fn(world: World, **kwargs) -> None:
+        delta_time: float = kwargs['delta_time']
+        for _, unemployed_status in world.get_component(UnemployedStatus):
+            unemployed_status.duration += delta_time
 
 
-class SeniorStatusType(StatusType):
+class SeniorStatus(Status):
 
     def __init__(self) -> None:
         super().__init__(
@@ -31,57 +55,39 @@ class SeniorStatusType(StatusType):
         )
 
 
-class DatingStatusType(StatusType):
+class DatingStatus(Status):
+    __slots__ = "duration", "partner_id", "partner_name"
 
-    def __init__(self) -> None:
-        def fn(game_object: GameObject, metadata: Dict[str, Any], **kwargs) -> bool:
-            metadata['duration'] += kwargs['delta_time']
-            return True
-
+    def __init__(self, partner_id: int, partner_name: str) -> None:
         super().__init__(
             "Dating",
             "This character is in a relationship with another",
-            fn
         )
+        self.duration: float = 0.0
+        self.partner_id: int = partner_id
+        self.partner_name: str = partner_name
 
-
-class MarriedStatusType(StatusType):
-
-    def __init__(self) -> None:
-        def fn(game_object: GameObject, metadata: Dict[str, Any], **kwargs) -> bool:
-            metadata['duration'] += kwargs['delta_time']
-            return True
-
-        super().__init__(
-            "Married",
-            "This character is married to another",
-            fn
-        )
-
-
-class DatingStatus(Status):
-
-    def __init__(self, partner_id: int, partner_name: str) -> None:
-        super().__init__(StatusType.get_registered_type("Dating"), {
-            "partner_name": partner_name,
-            "partner_id": partner_id,
-            "duration": 0
-        })
+    @staticmethod
+    def system_fn(world: World, **kwargs) -> None:
+        delta_time: float = kwargs['delta_time']
+        for _, dating_status in world.get_component(DatingStatus):
+            dating_status.duration += delta_time
 
 
 class MarriedStatus(Status):
+    __slots__ = "duration", "partner_id", "partner_name"
 
     def __init__(self, partner_id: int, partner_name: str) -> None:
-        super().__init__(StatusType.get_registered_type("Married"), {
-            "partner_name": partner_name,
-            "partner_id": partner_id,
-            "duration": 0
-        })
+        super().__init__(
+            "Married",
+            "This character is married to another",
+        )
+        self.duration = 0.0
+        self.partner_id: int = partner_id
+        self.partner_name: str = partner_name
 
-
-class UnemployedStatus(Status):
-
-    def __init__(self) -> None:
-        super().__init__(StatusType.get_registered_type("Unemployed"), {
-            "duration": 0
-        })
+    @staticmethod
+    def system_fn(world: World, **kwargs) -> None:
+        delta_time: float = kwargs['delta_time']
+        for _, married_status in world.get_component(MarriedStatus):
+            married_status.duration += delta_time

@@ -1,11 +1,9 @@
-from typing import Dict
-
 from neighborly.core.character.character import CharacterDefinition, create_character, create_family
 from neighborly.core.character.character import GenerationConfig, FamilyGenerationOptions, LifeCycleConfig, AgeRanges
 from neighborly.simulation import Simulation, NeighborlyConfig
 
 BASE_CHARACTER_TYPE = CharacterDefinition(
-    type_name="BaseCharacter",
+    name="BaseCharacter",
     lifecycle=LifeCycleConfig(
         can_age=True,
         can_die=True,
@@ -32,39 +30,11 @@ BASE_CHARACTER_TYPE = CharacterDefinition(
 )
 
 
-def merge_dict_recursive(dict_a: Dict, dict_b: Dict) -> Dict:
-    """Merges dictionary b into dictionary a, including nested dicts"""
-    ret = {**dict_a}
-
-    for key, value in dict_b.items():
-        if isinstance(ret.get(key), dict) and isinstance(value, dict):
-            ret[key] = merge_dict_recursive(ret[key], value)
-        else:
-            ret[key] = value
-
-    return ret
-
-
-def test_merge_configs() -> None:
-    opt_b_settings = {
-        'generation': {
-            'family': {
-                'num_children': (2, 4)
-            },
-        },
-    }
-
-    new_type = CharacterDefinition(
-        **merge_dict_recursive(BASE_CHARACTER_TYPE.dict(), opt_b_settings))
-
-    assert new_type.generation.family.num_children == (2, 4)
-
-
 def main():
     CharacterDefinition.register_type(BASE_CHARACTER_TYPE)
     sim = Simulation.from_config(NeighborlyConfig())
     print(create_character(BASE_CHARACTER_TYPE,
-          sim.get_engine().get_rng(), age_range="child"))
+                           sim.get_engine().get_rng(), age_range="child"))
     print(create_family(BASE_CHARACTER_TYPE, sim.get_engine().get_rng()))
 
 

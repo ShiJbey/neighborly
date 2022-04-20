@@ -28,18 +28,18 @@ class AbstractFactory(ABC):
 class ComponentSpec:
     """Collection of Key-Value pairs used to instantiate instances of components"""
 
-    __slots__ = "_node_type", "_attributes"
+    __slots__ = "_component_type", "_attributes"
 
     def __init__(
             self,
-            node_type: str,
+            component_type: str,
             attributes: Optional[Dict[str, Any]] = None,
     ) -> None:
-        self._node_type: str = node_type
+        self._component_type: str = component_type
         self._attributes: Dict[str, Any] = attributes if attributes else {}
 
     def get_type(self) -> str:
-        return self._node_type
+        return self._component_type
 
     def get_attributes(self) -> Dict[str, Any]:
         return self._attributes
@@ -154,11 +154,8 @@ class NeighborlyEngine:
     def get_rng(self) -> RandNumGenerator:
         return self._rng
 
-    def add_character_archetype(self, archetype: EntityArchetypeSpec, name: Optional[str] = None) -> None:
-        if name:
-            self._character_archetypes[name] = archetype
-        else:
-            self._character_archetypes[archetype.get_type()] = archetype
+    def add_character_archetype(self, archetype: EntityArchetypeSpec) -> None:
+        self._character_archetypes[archetype.get_type()] = archetype
 
     def get_character_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
         return self._character_archetypes[archetype_name]
@@ -166,23 +163,14 @@ class NeighborlyEngine:
     def get_character_archetypes(self) -> List[EntityArchetypeSpec]:
         return list(self._character_archetypes.values())
 
-    def add_place_archetype(self, archetype: EntityArchetypeSpec, name: Optional[str] = None) -> None:
-        if name:
-            self._place_archetypes[name] = archetype
-        else:
-            self._place_archetypes[archetype.get_type()] = archetype
+    def add_place_archetype(self, archetype: EntityArchetypeSpec) -> None:
+        self._place_archetypes[archetype.get_type()] = archetype
 
-    def add_residence_archetype(self, archetype: EntityArchetypeSpec, name: Optional[str] = None) -> None:
-        if name:
-            self._residence_archetypes[name] = archetype
-        else:
-            self._residence_archetypes[archetype.get_type()] = archetype
+    def add_residence_archetype(self, archetype: EntityArchetypeSpec) -> None:
+        self._residence_archetypes[archetype.get_type()] = archetype
 
-    def add_business_archetype(self, archetype: EntityArchetypeSpec, name: Optional[str] = None) -> None:
-        if name:
-            self._business_archetypes[name] = archetype
-        else:
-            self._business_archetypes[archetype.get_type()] = archetype
+    def add_business_archetype(self, archetype: EntityArchetypeSpec) -> None:
+        self._business_archetypes[archetype.get_type()] = archetype
 
     def get_place_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
         return self._place_archetypes[archetype_name]
@@ -217,15 +205,15 @@ class NeighborlyEngine:
         return self.create_entity(archetype, **kwargs)
 
     def create_place(self, archetype_name: str, **kwargs) -> GameObject:
-        archetype: EntityArchetypeSpec = self._place_archetypes[archetype_name]
+        archetype = self._place_archetypes[archetype_name]
         return self.create_entity(archetype, **kwargs)
 
     def create_business(self, archetype_name: str, **kwargs) -> GameObject:
-        archetype: EntityArchetypeSpec = self._business_archetypes[archetype_name]
+        archetype = self._business_archetypes[archetype_name]
         return self.create_entity(archetype, **kwargs)
 
     def create_residence(self, archetype_name: str, **kwargs) -> GameObject:
-        archetype: EntityArchetypeSpec = self._residence_archetypes[archetype_name]
+        archetype = self._residence_archetypes[archetype_name]
         return self.create_entity(archetype, **kwargs)
 
     def create_entity(self, archetype: EntityArchetypeSpec, **kwargs) -> GameObject:
@@ -234,7 +222,7 @@ class NeighborlyEngine:
 
         for name, spec in archetype.get_components().items():
             factory = self.get_component_factory(name)
-            components.append(factory.create(spec, **kwargs))
+            components.append(factory.create(spec, **{**kwargs, 'rng': self.get_rng()}))
 
         gameobject = GameObject(name=archetype.get_type(), components=components)
 

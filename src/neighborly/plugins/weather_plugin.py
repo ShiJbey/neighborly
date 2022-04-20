@@ -3,7 +3,7 @@ from enum import Enum
 
 import numpy as np
 
-from neighborly.core.ecs import System
+from neighborly.core.ecs import World
 from neighborly.plugins import NeighborlyPlugin, PluginContext
 
 
@@ -35,7 +35,7 @@ class WeatherManager:
         self.time_before_change: int = 0
 
 
-class WeatherProcessor(System):
+class WeatherProcessor:
     """Updates the current weather state
 
     Attributes
@@ -49,10 +49,9 @@ class WeatherProcessor(System):
         super().__init__()
         self.avg_change_interval: int = avg_change_interval
 
-    def process(self, *args, **kwargs):
-        del args
+    def __call__(self, world: World, **kwargs):
         delta_time: int = kwargs["delta_time"]
-        weather_manager = self.world.get_resource(WeatherManager)
+        weather_manager = world.get_resource(WeatherManager)
 
         if weather_manager.time_before_change <= 0:
             # Select the next weather pattern

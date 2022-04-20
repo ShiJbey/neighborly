@@ -13,13 +13,12 @@ from neighborly.core.life_event import EventLog, LifeEventHandlerFactory
 from neighborly.core.location import LocationFactory
 from neighborly.core.position import Position2DFactory
 from neighborly.core.processors import CharacterProcessor, RoutineProcessor, CityPlanner, SocializeProcessor, \
-    LifeEventProcessor, StatusManagerProcessor
+    LifeEventProcessor, TimeProcessor
 from neighborly.core.residence import ResidenceFactory
 from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import RoutineFactory
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.status import StatusManagerFactory
-from neighborly.core.time import SimDateTime, TimeProcessor
+from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town, TownConfig
 from neighborly.plugins import NeighborlyPlugin
 from neighborly.plugins.default_plugin import DefaultPlugin, PluginContext
@@ -67,7 +66,6 @@ class Simulation:
         self.world.add_system(TimeProcessor(), 10)
         self.world.add_system(RoutineProcessor(), 5)
         self.world.add_system(CharacterProcessor(), 3)
-        self.world.add_system(StatusManagerProcessor(), 2)
         self.world.add_system(SocializeProcessor(), 2)
         self.world.add_system(CityPlanner())
         self.world.add_system(LifeEventProcessor())
@@ -139,7 +137,6 @@ def create_default_engine(seed: int) -> NeighborlyEngine:
     engine.add_component_factory(LocationFactory())
     engine.add_component_factory(ResidenceFactory())
     engine.add_component_factory(Position2DFactory())
-    engine.add_component_factory(StatusManagerFactory())
     engine.add_component_factory(LifeEventHandlerFactory())
     engine.add_component_factory(BusinessFactory())
     return engine

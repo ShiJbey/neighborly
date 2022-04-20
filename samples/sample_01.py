@@ -1,3 +1,4 @@
+from neighborly.core.town import TownConfig
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import NeighborlyPlugin, PluginContext
 from neighborly.plugins.default_plugin import DefaultPlugin
@@ -31,17 +32,25 @@ class CustomPlugin(NeighborlyPlugin):
 
 def main():
     config = NeighborlyConfig(
-        simulation=SimulationConfig(hours_per_timestep=12),
+        simulation=SimulationConfig(
+            hours_per_timestep=12,
+            town=TownConfig(
+                width=5,
+                length=1
+            )
+        ),
         plugins=[
             CustomPlugin(),
             DefaultPlugin(),
         ]
     )
 
-    sim = Simulation.from_config(config)
+    _sim = Simulation.from_config(config)
 
-    sim.run()
+    _sim.run()
+
+    return _sim
 
 
 if __name__ == "__main__":
-    main()
+    sim = main()

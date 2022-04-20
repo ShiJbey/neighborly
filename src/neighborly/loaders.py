@@ -1,16 +1,14 @@
 """Utility functions to help users load configuration data from files
 """
 import copy
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Tuple, Set
+from typing import Any, Dict, List, Optional, Union, Protocol
 
 import yaml
 
-from neighborly.ai.behavior_tree import BehaviorTree, AbstractBTNode
-from neighborly.ai.character_behavior import get_node_factory_for_type, register_behavior
 from neighborly.core.activity import Activity, register_activity
 from neighborly.core.business import BusinessDefinition
+from neighborly.core.character.character import CharacterDefinition
 from neighborly.core.engine import NeighborlyEngine, ComponentSpec, EntityArchetypeSpec
 from neighborly.core.relationship import RelationshipTag
 
@@ -48,10 +46,18 @@ class MissingComponentSpecError(Exception):
         return self.message
 
 
+class SectionLoader(Protocol):
+
+    def __call__(self, engine: NeighborlyEngine, data: Any) -> None:
+        raise NotImplementedError()
+
+
 class YamlDataLoader:
     """Load Neighborly Component and Archetype definitions from an YAML"""
 
     __slots__ = "_raw_data"
+
+    _section_loader_funcs: Dict[str, SectionLoader] = {}
 
     def __init__(
             self,
@@ -69,188 +75,156 @@ class YamlDataLoader:
             raise ValueError("No data string or file path given")
 
     def load(self, engine: NeighborlyEngine) -> None:
-        """Load the definitions"""
+        """
+        Load each section of that YAML datafile
 
-        # Now we change into an intermediate representation
-        # Each archetype needs to be saved as dict of trees
-        # where each specification node
+        Parameters
+        ----------
+        engine: NeighborlyEngine
+            Neighborly engine instance to load archetype data into
+        """
         for section, data in self._raw_data.items():
-            if section == "Characters":
-                self._load_character_data(engine, data)
-            elif section == "Activities":
-                self._load_activity_data(data)
-            elif section == "Places":
-                self._load_place_data(engine, data)
-            elif section == "Residences":
-                self._load_residence_data(engine, data)
-            elif section == "Businesses":
-                self._load_business_data(engine, data)
-            elif section == "RelationshipTags":
-                self._load_relationship_tag_data(data)
+            if section in self._section_loader_funcs:
+                self._section_loader_funcs[section](engine, data)
             else:
                 print(f"WARNING:: Skipping unsupported section '{section}'")
 
-    @staticmethod
-    def _load_activity_data(activities: List[Dict[str, Any]]) -> None:
-        """Process data related to defining activities"""
-        for data in activities:
-            register_activity(
-                Activity(data['name'], trait_names=data["traits"]))
+    @classmethod
+    def section_loader(cls, section_name: str):
+        def decorator(section_loader: SectionLoader):
+            YamlDataLoader._section_loader_funcs[section_name] = section_loader
+            return section_loader
 
-    @staticmethod
-    def _load_entity_archetype(engine: NeighborlyEngine, data: Dict[str, Any]) -> EntityArchetypeSpec:
-        archetype = EntityArchetypeSpec(
-            data['name'],
-            is_template=data.get('template', False),
-            attributes={
-                'name': data['name'],
-                'tags': data.get('tags', []),
-                'inherits': data.get('inherits', None),
-            }
-        )
-
-        if archetype["inherits"]:
-            parent = engine.get_character_archetype(archetype["inherits"])
-
-            # Copy component specs from the parent
-            for component_spec in parent.get_components().values():
-                archetype.add_component(copy.deepcopy(component_spec))
-
-        if 'components' not in data:
-            raise ValueError("Entity spec missing component definitions")
-
-        for component in data['components']:
-            component_name = component['type']
-
-            options: Dict[str, Any] = component.get('options', {})
-
-            component = archetype.try_component(component_name)
-            if component:
-                component.update(options)
-            else:
-                component = ComponentSpec(component_name, {**options})
-
-            archetype.add_component(component)
-
-        return archetype
-
-    @staticmethod
-    def _load_character_data(engine: NeighborlyEngine, characters: List[Dict[str, Any]]) -> None:
-        """Process data related to defining character archetypes"""
-        for data in characters:
-            archetype = YamlDataLoader._load_entity_archetype(engine, data)
-
-            character_component = archetype.try_component('GameCharacter')
-            if character_component:
-                # Create and register a new character config from
-                # the options
-                character_component['config_name'] = archetype.get_type()
-                # GameCharacter.register_config(
-                #     archetype.get_type(),
-                #     CharacterType(**{
-                #         'config_name': archetype.get_type(),
-                #         'name': character_component.get_attribute('name'),
-                #         'lifecycle': character_component.get_attribute('lifecycle'),
-                #         # 'gender_overrides': character_component.get_attribute('gender_overrides'),
-                #     })
-                # )
-            else:
-                raise MissingComponentSpecError('GameCharacter')
-
-            engine.add_character_archetype(archetype)
-
-    @staticmethod
-    def _load_place_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
-        """Process information regarding place archetypes"""
-        for data in places:
-            archetype = YamlDataLoader._load_entity_archetype(engine, data)
-            engine.add_place_archetype(archetype)
-
-    @staticmethod
-    def _load_business_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
-        """Process information regarding place archetypes"""
-        for data in places:
-            archetype = YamlDataLoader._load_entity_archetype(engine, data)
-
-            business_component = archetype.try_component('Business')
-            if business_component:
-                # Create and register a new character config from
-                # the options
-                if business_component.get_attribute("business_type") is None:
-                    BusinessDefinition.register_type(
-                        BusinessDefinition(**{
-                            **business_component.get_attributes(),
-                            'name': archetype.get_type(),
-                        })
-                    )
-                    business_component.update(
-                        {'business_type': archetype.get_type()})
-            elif not archetype.is_template:
-                raise MissingComponentSpecError('Business')
-
-            engine.add_business_archetype(archetype)
-
-    @staticmethod
-    def _load_residence_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
-        """Process information regarding place archetypes"""
-        for data in places:
-            archetype = YamlDataLoader._load_entity_archetype(engine, data)
-            engine.add_residence_archetype(archetype)
-
-    @staticmethod
-    def _load_relationship_tag_data(relationship_tags: List[Dict[str, Any]]) -> None:
-        """Load list of dictionary objects defining relaitonship tags"""
-        if not isinstance(relationship_tags, list):
-            raise TypeError(
-                f"Expected List of dicts but was {type(relationship_tags).__name__}")
-
-        for entry in relationship_tags:
-            # Convert the dictionary to an object
-            tag = RelationshipTag(**entry)
-            RelationshipTag.register_tag(tag)
+        return decorator
 
 
-class XmlBehaviorLoader:
-    __slots__ = "_data_tree"
+@YamlDataLoader.section_loader("CharacterDefinitions")
+def _load_character_definitions(engine: NeighborlyEngine, character_defs: List[Dict[str, Any]]) -> None:
+    """Process data related to defining activities"""
+    for data in character_defs:
+        CharacterDefinition.register_type(CharacterDefinition(**data))
 
-    def __init__(self, filepath: AnyPath) -> None:
-        self._data_tree = ET.parse(filepath)
 
-    def load(self) -> None:
-        # Check that the root node has the behavior tag.
-        root = self._data_tree.getroot()
+@YamlDataLoader.section_loader("Activities")
+def _load_activity_data(engine: NeighborlyEngine, activities: List[Dict[str, Any]]) -> None:
+    """Process data related to defining activities"""
+    for data in activities:
+        register_activity(
+            Activity(data['name'], trait_names=data["traits"]))
 
-        if root.tag != "Behaviors":
-            raise ValueError("Root tag of XML must be '<Behaviors>'")
 
-        # Create a new behavior tree for each behavior node
-        for child in root:
-            register_behavior(self.construct_behavior(child))
+def _load_entity_archetype(engine: NeighborlyEngine, data: Dict[str, Any]) -> EntityArchetypeSpec:
+    archetype = EntityArchetypeSpec(
+        data['name'],
+        is_template=data.get('template', False),
+        attributes={
+            'name': data['name'],
+            'tags': data.get('tags', []),
+            'inherits': data.get('inherits', None),
+        }
+    )
 
-    @staticmethod
-    def construct_behavior(el: ET.Element) -> BehaviorTree:
-        behavior_tree: BehaviorTree = BehaviorTree(el.attrib["type"])
+    if archetype["inherits"]:
+        parent = engine.get_character_archetype(archetype["inherits"])
 
-        # Perform DFS, linking child nodes to their parent
-        visited: Set[ET.Element] = set()
-        stack: List[Tuple[Optional[AbstractBTNode], ET.Element]] = list()
+        # Copy component specs from the parent
+        for component_spec in parent.get_components().values():
+            archetype.add_component(copy.deepcopy(component_spec))
 
-        stack.append((None, el))
+    if 'components' not in data:
+        raise ValueError("Entity spec missing component definitions")
 
-        while stack:
-            bt_node, xml_node = stack.pop()
-            if xml_node not in visited:
-                visited.add(xml_node)
+    for component in data['components']:
+        component_name = component['type']
 
-                if bt_node:
-                    new_node = get_node_factory_for_type(xml_node.tag).create(
-                        **xml_node.attrib
-                    )
-                    bt_node.add_child(new_node)
-                else:
-                    new_node = behavior_tree
+        options: Dict[str, Any] = component.get('options', {})
 
-                for child in reversed(xml_node):
-                    stack.append((new_node, child))
+        component = archetype.try_component(component_name)
+        if component:
+            component.update(options)
+        else:
+            component = ComponentSpec(component_name, {**options})
 
-        return behavior_tree
+        archetype.add_component(component)
+
+    return archetype
+
+
+@YamlDataLoader.section_loader("Characters")
+def _load_character_data(engine: NeighborlyEngine, characters: List[Dict[str, Any]]) -> None:
+    """Process data related to defining character archetypes"""
+    for data in characters:
+        archetype = _load_entity_archetype(engine, data)
+
+        character_component = archetype.try_component('GameCharacter')
+        if character_component:
+            # Create and register a new character config from
+            # the options
+            character_component['config_name'] = archetype.get_type()
+            # GameCharacter.register_config(
+            #     archetype.get_type(),
+            #     CharacterType(**{
+            #         'config_name': archetype.get_type(),
+            #         'name': character_component.get_attribute('name'),
+            #         'lifecycle': character_component.get_attribute('lifecycle'),
+            #         # 'gender_overrides': character_component.get_attribute('gender_overrides'),
+            #     })
+            # )
+        else:
+            raise MissingComponentSpecError('GameCharacter')
+
+        engine.add_character_archetype(archetype)
+
+
+@YamlDataLoader.section_loader("Places")
+def _load_place_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
+    """Process information regarding place archetypes"""
+    for data in places:
+        archetype = _load_entity_archetype(engine, data)
+        engine.add_place_archetype(archetype)
+
+
+@YamlDataLoader.section_loader("Businesses")
+def _load_business_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
+    """Process information regarding place archetypes"""
+    for data in places:
+        archetype = _load_entity_archetype(engine, data)
+
+        business_component = archetype.try_component('Business')
+        if business_component:
+            # Create and register a new character config from
+            # the options
+            if business_component.get_attribute("business_type") is None:
+                BusinessDefinition.register_type(
+                    BusinessDefinition(**{
+                        **business_component.get_attributes(),
+                        'name': archetype.get_type(),
+                    })
+                )
+                business_component.update(
+                    {'business_type': archetype.get_type()})
+        elif not archetype.is_template:
+            raise MissingComponentSpecError('Business')
+
+        engine.add_business_archetype(archetype)
+
+
+@YamlDataLoader.section_loader("Residences")
+def _load_residence_data(engine: NeighborlyEngine, places: List[Dict[str, Any]]) -> None:
+    """Process information regarding place archetypes"""
+    for data in places:
+        archetype = _load_entity_archetype(engine, data)
+        engine.add_residence_archetype(archetype)
+
+
+@YamlDataLoader.section_loader("RelationshipTags")
+def _load_relationship_tag_data(engine: NeighborlyEngine, relationship_tags: List[Dict[str, Any]]) -> None:
+    """Load list of dictionary objects defining relationship tags"""
+    if not isinstance(relationship_tags, list):
+        raise TypeError(
+            f"Expected List of dicts but was {type(relationship_tags).__name__}")
+
+    for entry in relationship_tags:
+        # Convert the dictionary to an object
+        tag = RelationshipTag(**entry)
+        RelationshipTag.register_tag(tag)

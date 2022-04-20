@@ -60,7 +60,8 @@ class CharacterValues:
     __slots__ = "_traits"
 
     def __init__(
-            self, overrides: Optional[Dict[str, int]] = None, default: int = 0
+            self, overrides: Optional[Dict[str, int]] = None,
+            default: int = 0
     ) -> None:
         self._traits: npt.NDArray[np.int32] = np.array(
             [default] * len(_VALUE_INDICES.keys()), dtype=np.int32

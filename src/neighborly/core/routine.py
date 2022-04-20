@@ -138,5 +138,5 @@ class RoutineFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Routine")
 
-    def create(self, spec: ComponentSpec) -> Routine:
+    def create(self, spec: ComponentSpec, **kwargs) -> Routine:
         return Routine()

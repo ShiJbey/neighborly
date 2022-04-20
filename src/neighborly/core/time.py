@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from typing import List, cast
+from __future__ import annotations
 
-from neighborly.core.ecs import System
+from dataclasses import dataclass
+from typing import List
 
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
@@ -148,7 +148,7 @@ class SimDateTime:
     def __str__(self) -> str:
         return "{}-{}-{}-{}".format(self.year, self.month, self.day, self.hour)
 
-    def __sub__(self, other: 'SimDateTime') -> TimeDelta:
+    def __sub__(self, other: SimDateTime) -> TimeDelta:
         """Subtract a SimDateTime from another and return the difference"""
         diff_hours = self.to_hours() - other.to_hours()
 
@@ -182,8 +182,15 @@ class SimDateTime:
             + (self.month * DAYS_PER_MONTH * HOURS_PER_DAY) \
             + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
 
+    def to_ordinal(self) -> int:
+        """Returns the number of elapsed days since 00-00-0000"""
+        return \
+            + self.day \
+            + (self.month * DAYS_PER_MONTH) \
+            + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH)
+    
     @classmethod
-    def from_iso_str(cls, iso_date: str) -> 'SimDateTime':
+    def from_iso_str(cls, iso_date: str) -> SimDateTime:
         """Return a SimDateTime object given an ISO format string"""
         date_time = iso_date.strip().split('T')
         date = date_time[0]
@@ -193,7 +200,7 @@ class SimDateTime:
         return cls(year=year, month=month, day=day, hour=hour)
 
     @classmethod
-    def from_str(cls, time_str: str) -> "SimDateTime":
+    def from_str(cls, time_str: str) -> SimDateTime:
         time = cls()
         year, month, day, hour = tuple(time_str.split("-"))
         time._year = int(year)
@@ -202,12 +209,3 @@ class SimDateTime:
         time._day = int(day)
         time._hour = int(hour)
         return time
-
-
-class TimeProcessor(System):
-
-    def process(self, *args, **kwargs):
-        delta_time: int = kwargs["delta_time"]
-        sim_time = self.world.get_resource(SimDateTime)
-        sim_time = cast(SimDateTime, sim_time)
-        sim_time.increment(hours=delta_time)

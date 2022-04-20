@@ -33,7 +33,7 @@ class AssassinFactory(AbstractFactory):
     def __init__(self) -> None:
         super().__init__("Assassin")
 
-    def create(self, spec: ComponentSpec) -> Assassin:
+    def create(self, spec: ComponentSpec, **kwargs) -> Assassin:
         return Assassin(**spec.get_attributes())
 
 

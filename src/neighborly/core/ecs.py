@@ -6,13 +6,14 @@ Python esper library.
 Sources:
 https://github.com/benmoran56/esper
 """
+from __future__ import annotations
+
 import hashlib
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Set, Tuple, Type, TypeVar, cast, Any
+from typing import Dict, Iterable, List, Optional, Protocol, Set, Tuple, Type, TypeVar, cast, Any
 from uuid import uuid1
 
 _CT = TypeVar("_CT", bound='Component')
-_ST = TypeVar("_ST", bound='System')
 _RT = TypeVar("_RT", bound='Any')
 
 
@@ -27,6 +28,8 @@ class GameObject:
         GameObject's name
     tags: List[string]
         Associated tag strings
+    world: World
+        the World instance this GameObject belongs to
     _components: Dict[Type, Components]
         Components attached to this GameObject
     """
@@ -37,14 +40,14 @@ class GameObject:
             self,
             name: str = "GameObject",
             tags: Iterable[str] = (),
-            components: Iterable['Component'] = (),
-            world: Optional['World'] = None,
+            components: Iterable[Component] = (),
+            world: Optional[World] = None,
     ) -> None:
         self._id: int = self.generate_id()
         self._name: str = name
         self._tags: Set[str] = set(tags)
-        self._world: Optional['World'] = world
-        self._components: Dict[str, 'Component'] = {}
+        self._world: Optional[World] = world
+        self._components: Dict[str, Component] = {}
         if components:
             for component in components:
                 self.add_component(component)
@@ -65,13 +68,13 @@ class GameObject:
         return self._tags
 
     @property
-    def world(self) -> 'World':
+    def world(self) -> World:
         """Return the world that this GameObject belongs to"""
         if self._world:
             return self._world
         raise TypeError("World is None for GameObject")
 
-    def set_world(self, world: Optional['World']) -> None:
+    def set_world(self, world: Optional[World]) -> None:
         """Set the world instance"""
         self._world = world
 
@@ -96,13 +99,13 @@ class GameObject:
                 return False
         return True
 
-    def add_component(self, component: 'Component') -> None:
+    def add_component(self, component: Component) -> None:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
         component.on_add()
         self._components[type(component).__name__] = component
 
-    def remove_component(self, component: 'Component') -> None:
+    def remove_component(self, component: Component) -> None:
         """Add a component to this GameObject"""
         component.on_remove()
         component.set_gameobject(None)
@@ -117,20 +120,20 @@ class GameObject:
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
         return cast(Optional[_CT], self._components.get(component_type.__name__))
 
-    def get_component_with_name(self, name: str) -> _CT:
+    def get_component_with_name(self, name: str) -> Component:
         return self._components[name]
 
     def has_component_with_name(self, name: str) -> bool:
         return name in self._components
 
-    def try_component_with_name(self, name: str) -> Optional[_CT]:
+    def try_component_with_name(self, name: str) -> Optional[Component]:
         return self._components.get(name)
 
     def start(self) -> None:
         for component in self._components.values():
             component.on_start()
 
-    def on_destroy(self) -> None:
+    def destroy(self) -> None:
         """Callback for when this GameObject is destroyed"""
         for component in self._components.values():
             component.on_destroy()
@@ -171,12 +174,12 @@ class Component(ABC):
         self._gameobject: Optional[GameObject] = None
 
     @property
-    def gameobject(self) -> 'GameObject':
+    def gameobject(self) -> GameObject:
         if self._gameobject is None:
             raise TypeError("Component's GameObject is None")
         return self._gameobject
 
-    def set_gameobject(self, gameobject: Optional['GameObject']) -> None:
+    def set_gameobject(self, gameobject: Optional[GameObject]) -> None:
         """Set the gameobject instance for this component"""
         self._gameobject = gameobject
 
@@ -202,34 +205,11 @@ class Component(ABC):
         pass
 
 
-class System(ABC):
+class System(Protocol):
     """Abstract base class for ECS systems"""
 
-    __slots__ = "_priority", "_world"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._priority: int = 0
-        self._world: Optional['World'] = None
-
-    @property
-    def priority(self) -> int:
-        return self._priority
-
-    @property
-    def world(self) -> 'World':
-        if self._world is None:
-            raise TypeError("System's World is None")
-        return self._world
-
-    def set_world(self, world: 'World') -> None:
-        self._world = world
-
-    def set_priority(self, priority: int) -> None:
-        self._priority = priority
-
     @abstractmethod
-    def process(self, *args, **kwargs) -> None:
+    def __call__(self, world: World, **kwargs) -> None:
         raise NotImplementedError()
 
 
@@ -241,7 +221,7 @@ class World:
     def __init__(self) -> None:
         self._gameobjects: Dict[int, GameObject] = {}
         self._dead_gameobjects: List[int] = []
-        self._systems: List[System] = []
+        self._systems: List[Tuple[int, System]] = []
         self._resources: Dict[str, Any] = {}
 
     def add_gameobject(self, gameobject: GameObject) -> None:
@@ -279,8 +259,8 @@ class World:
                 components.append((gid, component))
         return components
 
-    def get_component_by_name(self, name: str) -> List[Tuple[int, _CT]]:
-        components: List[Tuple[int, _CT]] = []
+    def get_component_by_name(self, name: str) -> List[Tuple[int, Component]]:
+        components: List[Tuple[int, Component]] = []
         for gid, gameobject in self._gameobjects.items():
             component = gameobject.try_component_with_name(name)
             if component is not None:
@@ -301,7 +281,7 @@ class World:
     def _clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
-            self._gameobjects[gameobject_id].on_destroy()
+            self._gameobjects[gameobject_id].destroy()
             self._gameobjects[gameobject_id].set_world(None)
             del self._gameobjects[gameobject_id]
 
@@ -309,30 +289,21 @@ class World:
 
     def add_system(self, system: System, priority=0) -> None:
         """Add a System instance to the World"""
-        system.set_priority(priority)
-        system.set_world(self)
-        self._systems.append(system)
-        self._systems.sort(key=lambda proc: proc.priority, reverse=True)
+        self._systems.append((priority, system))
+        self._systems.sort(key=lambda pair: pair[0], reverse=True)
 
-    def remove_system(self, system_type: Type[System]) -> None:
+    def remove_system(self, system: System) -> None:
         """Remove a System from the World"""
-        for system in self._systems:
-            if type(system) == system_type:
-                self._systems.remove(system)
+        for entry in self._systems:
+            _, s = entry
+            if s == system:
+                self._systems.remove(entry)
 
-    def get_system(self, system_type: Type[_ST]) -> Optional[_ST]:
-        """Get a System instance"""
-        for system in self._systems:
-            if type(system) == system_type:
-                return cast(_ST, system)
-        else:
-            return None
-
-    def process(self, *args, **kwargs) -> None:
+    def process(self, **kwargs) -> None:
         """Call the process method on all systems"""
         self._clear_dead_gameobjects()
-        for system in self._systems:
-            system.process(*args, **kwargs)
+        for _, system in self._systems:
+            system(self, **kwargs)
 
     def add_resource(self, resource: Any) -> None:
         """Add a global resource to the world"""

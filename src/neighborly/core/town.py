@@ -1,23 +1,28 @@
+from __future__ import annotations
+
+import itertools
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Tuple, List, Set, Protocol, Optional
+from enum import Enum
+from typing import Tuple, List, Set, Protocol, Optional, Dict, Generic, Callable, TypeVar, Any
+
+from pydantic import BaseModel
 
 from neighborly.core.ecs import Component
 from neighborly.core.name_generation import get_name
 
 
-@dataclass(frozen=True)
-class TownConfig:
+class TownConfig(BaseModel):
     """
-    Configuration parameters for Town instance
+    Static configuration parameters for Town instance
 
     Attributes
     ----------
     name : str
         Tracery grammar used to generate a town's name
-    town_width : int
+    width : int
         Number of space tiles wide the town will be
-    town_length : int
+    length : int
         Number of space tile long the town will be
     """
 
@@ -48,9 +53,9 @@ class Town(Component):
 @dataclass
 class LayoutGridSpace:
     # Identifier given to this space
-    space_id: int
+    # space_id: int
     # Position of the space in the grid
-    position: Tuple[int, int]
+    # position: Tuple[int, int]
     # ID of the gameobject for the place occupying this space
     place_id: Optional[int] = None
 
@@ -59,9 +64,100 @@ class SpaceSelectionStrategy(Protocol):
     """Uses a heuristic to select a space within the town"""
 
     @abstractmethod
-    def choose_space(self, spaces: List[LayoutGridSpace]) -> LayoutGridSpace:
+    def choose_space(self, spaces: List[LayoutGridSpace]) -> Tuple[int, int]:
         """Choose a space based on an internal heuristic"""
         raise NotImplementedError()
+
+
+class CompassDirection(Enum):
+    """Compass directions to string"""
+    NORTH = 0
+    SOUTH = 1
+    EAST = 2
+    WEST = 3
+
+    def __str__(self) -> str:
+        """Convert compass direction to string"""
+        mapping = {
+            CompassDirection.NORTH: "north",
+            CompassDirection.SOUTH: "south",
+            CompassDirection.EAST: "east",
+            CompassDirection.WEST: "west",
+        }
+
+        return mapping[self]
+
+    def to_direction_tuple(self) -> Tuple[int, int]:
+        """Convert direction to (x,y) tuple for the direction"""
+        mapping = {
+            CompassDirection.NORTH: (0, -1),
+            CompassDirection.SOUTH: (0, 1),
+            CompassDirection.EAST: (1, 0),
+            CompassDirection.WEST: (-1, 0),
+        }
+
+        return mapping[self]
+
+
+_GT = TypeVar('_GT')
+
+
+class Grid(Generic[_GT]):
+    """
+    Grids house spatially-related data using a graph implemented
+    as a grid of nodes. Nodes are stored in column-major order
+    for easier interfacing with higher-level positioning systems
+    """
+
+    __slots__ = "_width", "_length", "_grid"
+
+    def __init__(
+            self,
+            width: int,
+            length: int,
+            default_factory: Callable[[], _GT]
+    ) -> None:
+        self._width: int = width
+        self._length: int = length
+        self._grid: List[_GT] = [default_factory()
+                                 for _ in range(width * length)]
+
+    @property
+    def shape(self) -> Tuple[int, int]:
+        return self._width, self._length
+
+    def __setitem__(self, point: Tuple[int, int], value: _GT) -> None:
+        index = (point[0] * self.shape[1]) + point[1]
+        self._grid[index] = value
+
+    def __getitem__(self, point: Tuple[int, int]) -> _GT:
+        index = (point[0] * self.shape[1]) + point[1]
+        return self._grid[index]
+
+    def get_adjacent_cells(self, point: Tuple[int, int]) -> Dict[str, Tuple[int, int]]:
+        adjacent_cells: Dict[str, Tuple[int, int]] = {}
+
+        if point[0] > 0:
+            adjacent_cells['west'] = (point[0] - 1, point[1])
+
+        if point[0] < self.shape[0] - 1:
+            adjacent_cells['east'] = (point[0] + 1, point[1])
+
+        if point[1] > 0:
+            adjacent_cells['north'] = (point[0], point[1] - 1)
+
+        if point[1] < self.shape[1] - 1:
+            adjacent_cells['south'] = (point[0], point[1] + 1)
+
+        return adjacent_cells
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": type(self).__name__,
+            "height": self._length,
+            "width": self._width,
+            "grid": [str(cell) for cell in self._grid]
+        }
 
 
 class TownLayout:
@@ -75,33 +171,17 @@ class TownLayout:
         Size of the grid in the y-direction
     """
 
-    __slots__ = "_width", "_length", "_spaces", "_unoccupied", "_occupied"
+    __slots__ = "_unoccupied", "_occupied", "_grid"
 
     def __init__(self, width: int, length: int) -> None:
-        self._width: int = width
-        self._length: int = length
-        self._spaces: List[LayoutGridSpace] = []
-        for x in range(width):
-            for y in range(length):
-                self._spaces.append(LayoutGridSpace(len(self._spaces), (x, y)))
-        assert len(self._spaces) == width * length
-        self._unoccupied: List[int] = list(range(0, width * length))
-        self._occupied: Set[int] = set()
+        self._grid: Grid[LayoutGridSpace] = Grid(width, length, lambda: LayoutGridSpace())
+        self._unoccupied: List[Tuple[int, int]] = \
+            list(itertools.product(list(range(width)), list(range(length))))
+        self._occupied: Set[Tuple[int, int]] = set()
 
     @property
-    def width(self) -> int:
-        """Return the width of the layout"""
-        return self._width
-
-    @property
-    def length(self) -> int:
-        """Return the length of the layout"""
-        return self._length
-
-    @property
-    def shape(self) -> Tuple[int, int]:
-        """Return the width x length of the town"""
-        return self._width, self._length
+    def grid(self) -> Grid[LayoutGridSpace]:
+        return self._grid
 
     def get_num_vacancies(self) -> int:
         """Return number of vacant spaces"""
@@ -111,24 +191,29 @@ class TownLayout:
         """Returns True if there are empty spaces available in the town"""
         return bool(self._unoccupied)
 
-    def allocate_space(self, selection_strategy: Optional[SpaceSelectionStrategy] = None) -> LayoutGridSpace:
+    def allocate_space(
+            self,
+            place_id: int,
+            selection_strategy: Optional[SpaceSelectionStrategy] = None
+    ) -> Tuple[int, int]:
         """Allocates a space for a location, setting it as occupied"""
         if self._unoccupied:
             if selection_strategy:
                 space = selection_strategy.choose_space(
-                    [self._spaces[i] for i in self._unoccupied])
+                    [self._grid[i] for i in self._unoccupied])
             else:
-                space = self._spaces[self._unoccupied[0]]
+                space = self._unoccupied[0]
 
-            self._unoccupied.remove(space.space_id)
-            self._occupied.add(space.space_id)
+            self._grid[space].place_id = place_id
+            self._unoccupied.remove(space)
+            self._occupied.add(space)
 
             return space
 
         raise RuntimeError("Attempting to get space from full town layout")
 
-    def free_space(self, space: int) -> None:
+    def free_space(self, space: Tuple[int, int]) -> None:
         """Frees up a space in the town to be used by another location"""
-        self._spaces[space].place_id = None
+        self._grid[space].place_id = None
         self._unoccupied.append(space)
         self._occupied.remove(space)

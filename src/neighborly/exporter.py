@@ -4,6 +4,8 @@ from typing import Union
 
 from neighborly.core.ecs import World
 from neighborly.core.life_event import EventLog
+from neighborly.core.social_network import RelationshipNetwork
+from neighborly.core.time import SimDateTime
 
 
 class NeighborlyExporter(ABC):
@@ -19,6 +21,8 @@ class NeighborlyJsonExporter(NeighborlyExporter):
 
     def export(self, world: World) -> Union[str, bytes]:
         return json.dumps({
+            'date': world.get_resource(SimDateTime).to_iso_str(),
             'gameobjects': {g.id: g.to_dict() for g in world.get_gameobjects()},
+            'relationships': world.get_resource(RelationshipNetwork).to_dict(),
             'events': [e.to_dict() for e in world.get_resource(EventLog).get_all_events()],
         })

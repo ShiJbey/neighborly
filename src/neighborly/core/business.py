@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple, Dict, ClassVar, Callable, Protocol
+from typing import Any, List, Optional, Tuple, Dict, ClassVar, Protocol
 
 from neighborly.core import name_generation as name_gen
 from neighborly.core.ecs import Component, GameObject
@@ -289,7 +289,7 @@ class BusinessFactory(AbstractFactory):
     def __init__(self) -> None:
         super().__init__("Business")
 
-    def create(self, spec: ComponentSpec) -> Business:
+    def create(self, spec: ComponentSpec, **kwargs) -> Business:
         type_name: Optional[str] = spec.get_attribute("business_type")
 
         if type_name is None:

@@ -66,7 +66,7 @@ class BuildingFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Building")
 
-    def create(self, spec: ComponentSpec) -> Building:
+    def create(self, spec: ComponentSpec, **kwargs) -> Building:
         return Building(size=spec.get_attributes().get("size", "small"))
 
 

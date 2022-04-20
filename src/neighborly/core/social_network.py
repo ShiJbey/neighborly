@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Generic, TypeVar, NamedTuple, Dict, Tuple, cast, List, DefaultDict
+from typing import Generic, TypeVar, NamedTuple, Dict, Tuple, cast, List, DefaultDict, Any
 
 from ordered_set import OrderedSet
 
@@ -121,3 +121,13 @@ class RelationshipNetwork(DirectedSocialGraph[Relationship]):
         return list(filter(
             lambda rel: rel.has_tags(*tags),
             [self._edges[owner, target] for target in owner_node.outgoing]))
+
+    def to_dict(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
+        network_dict: Dict[int, Dict[int, Dict[str, Any]]] = {}
+
+        for character_id in self._nodes.keys():
+            network_dict[character_id] = {}
+            for relationship in self.get_relationships(character_id):
+                network_dict[character_id][relationship.target] = relationship.to_dict()
+
+        return network_dict

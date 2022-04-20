@@ -2,7 +2,7 @@ from neighborly.core.relationship import RelationshipTag
 
 
 class FriendTag(RelationshipTag):
-    """Indicated a friendship"""
+    """Indicates a friendship"""
 
     def __init__(self) -> None:
         super().__init__(

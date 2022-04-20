@@ -54,7 +54,7 @@ class LocationFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Location")
 
-    def create(self, spec: ComponentSpec) -> Location:
+    def create(self, spec: ComponentSpec, **kwargs) -> Location:
         return Location(
             max_capacity=spec.get_attribute("max capacity", 9999),
             activities=spec.get_attribute("activities", [])

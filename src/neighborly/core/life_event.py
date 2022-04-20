@@ -273,7 +273,7 @@ class LifeEventHandlerFactory(AbstractFactory):
     def __init__(self):
         super().__init__("LifeEventHandler")
 
-    def create(self, spec: ComponentSpec) -> LifeEventHandler:
+    def create(self, spec: ComponentSpec, **kwargs) -> LifeEventHandler:
 
         preconditions: DefaultDict[str, List[PreconditionFn]] = defaultdict()
         effects: DefaultDict[str, List[EffectFn]] = defaultdict()

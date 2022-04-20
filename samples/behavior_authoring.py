@@ -3,7 +3,7 @@ import pathlib
 
 import neighborly.ai.behavior_tree as bt
 from neighborly.ai.character_behavior import register_node_factory, get_behavior, BehaviorNodeFactory
-from neighborly.loaders import XmlBehaviorLoader
+from neighborly.ai.loader import XmlBehaviorLoader
 
 
 class InverterNodeFactory(BehaviorNodeFactory):

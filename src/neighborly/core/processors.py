@@ -6,7 +6,7 @@ import neighborly.ai.behavior_utils as behavior_utils
 from neighborly.core.business import BusinessDefinition
 from neighborly.core.character.character import GameCharacter
 from neighborly.core.character.values import CharacterValues
-from neighborly.core.ecs import System, GameObject, World
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.location import Location
@@ -15,50 +15,47 @@ from neighborly.core.relationship import Relationship, RelationshipTag
 from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.status import StatusManager
 from neighborly.core.time import HOURS_PER_YEAR, SimDateTime
 from neighborly.core.town import Town
 
 logger = logging.getLogger(__name__)
 
 
-class CharacterProcessor(System):
+class CharacterProcessor:
 
-    def process(self, *args, **kwargs):
+    def __call__(self, world: World, **kwargs):
 
         delta_time: float = kwargs["delta_time"]
 
-        for _, character in self.world.get_component(GameCharacter):
+        for _, character in world.get_component(GameCharacter):
             if not character.alive:
                 continue
 
             self._grow_older(character, delta_time)
 
-    def _grow_older(
-            self, character: GameCharacter, hours: float
-    ) -> None:
+    def _grow_older(self, character: GameCharacter, hours: float) -> None:
         """Increase the character's age and apply flags at major milestones"""
-        if character.config.lifecycle.can_age:
+        if character.character_def.lifecycle.can_age:
             character.age += hours / HOURS_PER_YEAR
 
 
-class SocializeProcessor(System):
+class SocializeProcessor:
     """Runs logic for characters socializing with the other characters at their location"""
 
-    def process(self, *args, **kwargs):
-        for _, character in self.world.get_component(GameCharacter):
+    def __call__(self, world: World, **kwargs):
+        for _, character in world.get_component(GameCharacter):
             if not character.alive:
                 continue
 
-            self._socialize(self.world, character)
+            self._socialize(world, character)
 
     def _socialize(self, world: World, character: GameCharacter) -> None:
         """Have all the characters talk to those around them"""
         if character.location:
-            location = self.world.get_gameobject(
+            location = world.get_gameobject(
                 character.location).get_component(Location)
 
-            relationship_net = self.world.get_resource(RelationshipNetwork)
+            relationship_net = world.get_resource(RelationshipNetwork)
 
             character_id = character.gameobject.id
 
@@ -131,13 +128,13 @@ class SocializeProcessor(System):
                         other_character_id, character_id).update()
 
 
-class RoutineProcessor(System):
+class RoutineProcessor:
 
-    def process(self, *args, **kwargs):
-        date = self.world.get_resource(SimDateTime)
-        engine = self.world.get_resource(NeighborlyEngine)
+    def __call__(self, world: World, **kwargs):
+        date = world.get_resource(SimDateTime)
+        engine = world.get_resource(NeighborlyEngine)
 
-        for entity, (character, routine) in self.world.get_components(
+        for entity, (character, routine) in world.get_components(
                 GameCharacter, Routine
         ):
             character = cast(GameCharacter, character)
@@ -151,26 +148,34 @@ class RoutineProcessor(System):
                 if type(chosen_entry.location) == str \
                         and chosen_entry.location in character.location_aliases:
                     behavior_utils.move_character(
-                        self.world,
+                        world,
                         entity,
                         character.location_aliases[str(chosen_entry.location)],
                     )
                     return
                 else:
                     behavior_utils.move_character(
-                        self.world,
+                        world,
                         entity,
-                        chosen_entry.location,
+                        int(chosen_entry.location),
                     )
                     return
 
-            potential_locations = behavior_utils.get_locations(self.world)
+            potential_locations = behavior_utils.get_locations(world)
             if potential_locations:
                 loc_id, _ = random.choice(potential_locations)
-                behavior_utils.move_character(self.world, entity, loc_id)
+                behavior_utils.move_character(world, entity, loc_id)
 
 
-class CityPlanner(System):
+class TimeProcessor:
+
+    def __call__(self, world: World, **kwargs):
+        delta_time: int = kwargs["delta_time"]
+        sim_time = world.get_resource(SimDateTime)
+        sim_time.increment(hours=delta_time)
+
+
+class CityPlanner:
     """Responsible for adding residents to the town"""
 
     def __init__(self, weights: Optional[Dict[str, int]] = None):
@@ -179,21 +184,21 @@ class CityPlanner(System):
         if weights:
             self.weights.update(weights)
 
-    def process(self, *args, **kwargs) -> None:
-        self.try_add_resident()
-        self.try_add_business()
+    def __call__(self, world: World, **kwargs):
+        self.try_add_resident(world)
+        self.try_add_business(world)
 
-    def try_add_resident(self) -> None:
+    def try_add_resident(self, world: World) -> None:
         # Find an empty space to build a house
-        residence = self.try_build_house()
+        residence = self.try_build_house(world)
         if residence is None:
-            residence = self.try_get_abandoned()
+            residence = self.try_get_abandoned(world)
 
         if residence is None:
             return
 
         # Create a new character to live at the location
-        engine = self.world.get_resource(NeighborlyEngine)
+        engine = world.get_resource(NeighborlyEngine)
 
         character_archetypes = list(
             map(
@@ -207,7 +212,7 @@ class CityPlanner(System):
         chosen_archetype = engine.get_rng().choices(names, weights=weights)[0]
         character = engine.create_character(chosen_archetype)
 
-        self.world.add_gameobject(character)
+        world.add_gameobject(character)
         character.get_component(GameCharacter).location = residence.id
         character.get_component(
             GameCharacter).location_aliases['home'] = residence.id
@@ -215,32 +220,31 @@ class CityPlanner(System):
         residence.get_component(
             Location).characters_present.append(character.id)
 
-    def try_build_house(self) -> Optional[GameObject]:
-        town = self.world.get_resource(Town)
-        engine = self.world.get_resource(NeighborlyEngine)
+    def try_build_house(self, world: World) -> Optional[GameObject]:
+        town = world.get_resource(Town)
+        engine = world.get_resource(NeighborlyEngine)
         if town.layout.has_vacancy():
-            space = town.layout.allocate_space()
             place = engine.create_residence("House")
-            space.place_id = place.id
-            place.get_component(Position2D).x = space.position[0]
-            place.get_component(Position2D).y = space.position[1]
-            self.world.add_gameobject(place)
+            space = town.layout.allocate_space(place.id)
+            place.get_component(Position2D).x = space[0]
+            place.get_component(Position2D).y = space[1]
+            world.add_gameobject(place)
             return place
         return None
 
-    def try_get_abandoned(self) -> Optional[GameObject]:
+    def try_get_abandoned(self, world: World) -> Optional[GameObject]:
         residences = list(
-            filter(lambda res: res[1].is_vacant(), self.world.get_component(Residence)))
+            filter(lambda res: res[1].is_vacant(), world.get_component(Residence)))
         if residences:
             return residences[0][1].gameobject
         return None
 
-    def try_add_business(self) -> None:
-        town = self.world.get_resource(Town)
-        engine = self.world.get_resource(NeighborlyEngine)
+    def try_add_business(self, world: World) -> None:
+        town = world.get_resource(Town)
+        engine = world.get_resource(NeighborlyEngine)
 
         # Get eligible businesses
-        eligible_business_types = self.get_eligible_types(self.world)
+        eligible_business_types = self.get_eligible_types(world)
 
         if not eligible_business_types:
             return
@@ -248,11 +252,10 @@ class CityPlanner(System):
         business_type_to_build = engine.get_rng().choice(eligible_business_types).name
 
         if town.layout.has_vacancy():
-            space = town.layout.allocate_space()
             engine.filter_place_archetypes({"includes": []})
             place = engine.create_business(business_type_to_build)
-            space.place_id = place.id
-            self.world.add_gameobject(place)
+            space = town.layout.allocate_space(place.id)
+            world.add_gameobject(place)
             logger.debug(f"Added business {place}")
 
     @classmethod
@@ -283,15 +286,7 @@ class CityPlanner(System):
         return eligible_types
 
 
-class StatusManagerProcessor(System):
-
-    def process(self, *args, **kwargs) -> None:
-        delta_time: float = kwargs['delta_time']
-        for _, status_manager in self.world.get_component(StatusManager):
-            status_manager.update(delta_time=delta_time)
-
-
-class LifeEventProcessor(System):
+class LifeEventProcessor:
     _event_registry: Dict[str, LifeEvent] = {}
 
     @classmethod
@@ -300,14 +295,14 @@ class LifeEventProcessor(System):
         for event in events:
             cls._event_registry[event.name] = event
 
-    def process(self, *args, **kwargs) -> None:
+    def __call__(self, world: World, **kwargs) -> None:
         """Check if the life event"""
 
-        rng = self.world.get_resource(NeighborlyEngine).get_rng()
+        rng = world.get_resource(NeighborlyEngine).get_rng()
         delta_time = kwargs["delta_time"]
 
-        for entity, character in self.world.get_component(GameCharacter):
+        for _, character in world.get_component(GameCharacter):
             for event in self._event_registry.values():
                 if rng.random() < event.probability(character.gameobject) and event.precondition(character.gameobject):
                     event.effect(character.gameobject, {
-                                 'delta_time': delta_time})
+                        'delta_time': delta_time})

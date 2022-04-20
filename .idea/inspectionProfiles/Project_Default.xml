@@ -13,5 +13,19 @@
         </value>
       </option>
     </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="id" />
+          <option value="seed" />
+          <option value="hours_per_timestep" />
+          <option value="town" />
+          <option value="name" />
+          <option value="town_width" />
+          <option value="length" />
+          <option value="width" />
+        </list>
+      </option>
+    </inspection_tool>
   </profile>
 </component>

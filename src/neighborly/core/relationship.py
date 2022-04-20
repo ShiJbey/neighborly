@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, ClassVar, Union
+from typing import Dict, ClassVar, Union, Any
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -200,6 +200,14 @@ class Relationship:
         self._friendship_base += self._friendship_increment
 
         self._recalculate_stats()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "friendship": self.friendship,
+            "romance": self.romance,
+            "salience": self.salience,
+            "tags": [t.name for t in self._tags.values()]
+        }
 
     def _recalculate_stats(self) -> None:
         """Recalculate all the stats after a change"""
