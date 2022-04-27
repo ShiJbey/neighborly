@@ -24,6 +24,13 @@
           <option value="town_width" />
           <option value="length" />
           <option value="width" />
+          <option value="description" />
+          <option value="friendship_boost" />
+          <option value="romance_boost" />
+          <option value="salience_boost" />
+          <option value="friendship_increment" />
+          <option value="romance_increment" />
+          <option value="salience_increment" />
         </list>
       </option>
     </inspection_tool>

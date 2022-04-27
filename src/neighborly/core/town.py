@@ -42,6 +42,13 @@ class Town(Component):
         self.population: int = 0
         self.layout: 'TownLayout' = layout
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            'name': self.name,
+            'population': self.population
+        }
+
     @classmethod
     def create(cls, config: TownConfig) -> "Town":
         """Create a town instance"""

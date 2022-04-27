@@ -2,17 +2,19 @@ import os
 from pathlib import Path
 
 from neighborly.core.business import OccupationDefinition, BusinessDefinition
-from neighborly.core.relationship import RelationshipTag
-from neighborly.loaders import load_names, YamlDataLoader
-from neighborly.plugins import NeighborlyPlugin, PluginContext
-from neighborly.plugins.default_plugin.businesses import restaurant_type, bar_type, department_store_type, \
+from neighborly.core.processors import LifeEventProcessor
+from neighborly.core.relationship import RelationshipModifier
+from neighborly.data.businesses import restaurant_type, bar_type, department_store_type, \
     manager_type, sales_associate_type, cashier_type, dj_type, bartender_type, security_type, cook_type, owner_type, \
     proprietor_type
-from neighborly.plugins.default_plugin.events import DeathEvent, BecameAdultEvent, BecameSeniorEvent, \
-    StartedDatingEvent, DatingBreakUpEvent, BecameUnemployedEvent, BecameBusinessOwnerEvent
-from neighborly.plugins.default_plugin.relationship_tags import FriendTag
-from neighborly.plugins.default_plugin.statuses import AdultStatus, SeniorStatus, DatingStatus, \
+from neighborly.data.events import DeathEvent, BecameAdultEvent, BecameSeniorEvent, \
+    StartedDatingEvent, DatingBreakUpEvent, UnemploymentEvent, BecameBusinessOwnerEvent, BecameChildEvent, \
+    BecameYoungAdultEvent, BecameAdolescentEvent
+from neighborly.data.relationship_tags import FriendTag
+from neighborly.data.statuses import DatingStatus, \
     MarriedStatus, UnemployedStatus
+from neighborly.loaders import load_names, YamlDataLoader
+from neighborly.plugins import NeighborlyPlugin, PluginContext
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
@@ -20,15 +22,18 @@ _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 class DefaultPlugin(NeighborlyPlugin):
 
     def apply(self, ctx: PluginContext, **kwargs) -> None:
-        RelationshipTag.register_tag(FriendTag())
+        RelationshipModifier.register_tag(FriendTag())
 
-        # LifeEventProcessor.register_event(DeathEvent())
-        # LifeEventProcessor.register_event(BecameAdultEvent())
-        # LifeEventProcessor.register_event(BecameSeniorEvent())
-        # LifeEventProcessor.register_event(StartedDatingEvent())
-        # LifeEventProcessor.register_event(DatingBreakUpEvent())
-        # LifeEventProcessor.register_event(BecameUnemployedEvent())
-        # LifeEventProcessor.register_event(BecameBusinessOwnerEvent())
+        LifeEventProcessor.register_event(DeathEvent())
+        LifeEventProcessor.register_event(BecameChildEvent())
+        LifeEventProcessor.register_event(BecameAdolescentEvent())
+        LifeEventProcessor.register_event(BecameYoungAdultEvent())
+        LifeEventProcessor.register_event(BecameAdultEvent())
+        LifeEventProcessor.register_event(BecameSeniorEvent())
+        LifeEventProcessor.register_event(StartedDatingEvent())
+        LifeEventProcessor.register_event(DatingBreakUpEvent())
+        LifeEventProcessor.register_event(UnemploymentEvent())
+        LifeEventProcessor.register_event(BecameBusinessOwnerEvent())
 
         ctx.world.add_system(DatingStatus.system_fn, 1)
         ctx.world.add_system(MarriedStatus.system_fn, 1)

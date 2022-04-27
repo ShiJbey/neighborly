@@ -1,4 +1,4 @@
-from neighborly.core.character.character import CharacterDefinition, create_character, create_family
+from neighborly.core.character.character import CharacterDefinition, create_character
 from neighborly.core.character.character import GenerationConfig, FamilyGenerationOptions, LifeCycleConfig, AgeRanges
 from neighborly.simulation import Simulation, NeighborlyConfig
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Dict, Any
 
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
@@ -8,6 +9,13 @@ from neighborly.core.engine import AbstractFactory, ComponentSpec
 class Position2D(Component):
     x: float = 0.0
     y: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            'x': self.x,
+            'y': self.y
+        }
 
 
 class Position2DFactory(AbstractFactory):

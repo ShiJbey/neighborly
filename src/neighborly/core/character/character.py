@@ -310,34 +310,6 @@ class GameCharacterFactory(AbstractFactory):
         )
 
 
-def create_family(
-        character_type: CharacterDefinition,
-        rng: RandNumGenerator,
-        **kwargs
-) -> Dict[str, List[GameCharacter]]:
-    adults: List[GameCharacter] = []
-    children: List[GameCharacter] = []
-
-    adult_0 = create_character(character_type, rng, age_range='young_adult')
-    adult_1 = create_character(character_type, rng, age_range='young_adult', last_name=adult_0.name.surname,
-                               attracted_to=[adult_0.gender])
-
-    adults.append(adult_0)
-    adults.append(adult_1)
-
-    num_children = kwargs.get('n_children',
-                              rng.randint(0,
-                                          int(min(adult_0.age,
-                                                  adult_1.age) - character_type.lifecycle.marriageable_age)))
-
-    for _ in range(num_children):
-        child = create_character(
-            character_type, rng, age_range='child', last_name=adult_0.name.surname)
-        children.append(child)
-
-    return {'adults': adults, 'children': children}
-
-
 def get_top_activities(
         character_values: CharacterValues, n: int = 3
 ) -> Tuple[str, ...]:

@@ -181,6 +181,9 @@ class NeighborlyEngine:
     def get_residence_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
         return self._residence_archetypes[archetype_name]
 
+    def get_residence_archetypes(self) -> List[EntityArchetypeSpec]:
+        return list(self._residence_archetypes.values())
+
     def filter_place_archetypes(self, options: Dict[str, Any]) -> List[str]:
         """Retrieve a set of place archetypes based on given options"""
         results: List[str] = []

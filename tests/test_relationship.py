@@ -1,9 +1,9 @@
 import pytest
 
-from neighborly.core.relationship import Relationship, RelationshipTag
+from neighborly.core.relationship import Relationship, RelationshipModifier
 
 
-class FriendTag(RelationshipTag):
+class FriendModifier(RelationshipModifier):
     """Indicated a friendship"""
 
     def __init__(self) -> None:
@@ -14,7 +14,7 @@ class FriendTag(RelationshipTag):
         )
 
 
-class EnemyTag(RelationshipTag):
+class EnemyModifier(RelationshipModifier):
     """Indicated an enmity"""
 
     def __init__(self) -> None:
@@ -25,7 +25,7 @@ class EnemyTag(RelationshipTag):
         )
 
 
-class AcquaintanceTag(RelationshipTag):
+class AcquaintanceModifier(RelationshipModifier):
     """Indicated an enmity"""
 
     def __init__(self) -> None:
@@ -37,28 +37,28 @@ class AcquaintanceTag(RelationshipTag):
 
 @pytest.fixture
 def create_tags():
-    RelationshipTag.register_tag(FriendTag())
-    RelationshipTag.register_tag(EnemyTag())
-    RelationshipTag.register_tag(AcquaintanceTag())
+    RelationshipModifier.register_tag(FriendModifier())
+    RelationshipModifier.register_tag(EnemyModifier())
+    RelationshipModifier.register_tag(AcquaintanceModifier())
 
 
 @pytest.mark.usefixtures('create_tags')
 def test_load_relationship_tags():
-    assert RelationshipTag.get_registered_tag("Acquaintance") is not None
-    assert RelationshipTag.get_registered_tag("Friend") is not None
-    assert RelationshipTag.get_registered_tag("Enemy") is not None
+    assert RelationshipModifier.get_tag("Acquaintance") is not None
+    assert RelationshipModifier.get_tag("Friend") is not None
+    assert RelationshipModifier.get_tag("Enemy") is not None
 
 
 @pytest.mark.usefixtures('create_tags')
 def test_add_remove_modifiers():
     relationship = Relationship(1, 2)
 
-    compatibility_tag = RelationshipTag("Compatibility", friendship_increment=1)
+    compatibility_tag = RelationshipModifier("Compatibility", friendship_increment=1)
 
-    relationship.add_tag(compatibility_tag)
+    relationship.add_modifier(compatibility_tag)
 
-    assert relationship.has_tags("Compatibility")
+    assert relationship.has_modifier("Compatibility")
 
     relationship.update()
-    
-    assert relationship.has_tags("Compatibility")
+
+    assert relationship.has_modifier("Compatibility")

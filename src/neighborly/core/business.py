@@ -86,7 +86,7 @@ class Occupation(Component):
     """
     Employment Information about a character
     """
-    __slots__ = "_occupation_type", "_years_held", "_business"
+    __slots__ = "_occupation_def", "_years_held", "_business"
 
     def __init__(
             self,
@@ -94,12 +94,20 @@ class Occupation(Component):
             business: int,
     ) -> None:
         super().__init__()
-        self._occupation_type: OccupationDefinition = occupation_type
+        self._occupation_def: OccupationDefinition = occupation_type
         self._business: int = business
         self._years_held: float = 0.0
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "occupation_def": self._occupation_def.name,
+            "business": self._business,
+            "years_held": self.get_years_held(),
+        }
+
     def get_type(self) -> OccupationDefinition:
-        return self._occupation_type
+        return self._occupation_def
 
     def get_business(self) -> int:
         return self._business
@@ -143,23 +151,34 @@ class BusinessDefinition:
 
 
 class Business(Component):
-    __slots__ = "_business_type", "_name", "_years_in_business", \
+    __slots__ = "_business_def", "_name", "_years_in_business", \
                 "_operating_hours", "_employees", "_open_positions", "_owner"
 
     def __init__(
             self,
-            business_type: BusinessDefinition,
+            business_def: BusinessDefinition,
             name: str,
             owner: Optional[int] = None
     ) -> None:
         super().__init__()
-        self._business_type: BusinessDefinition = business_type
+        self._business_def: BusinessDefinition = business_def
         self._name: str = name
         self._operating_hours: Dict[str, List[RoutineEntry]] = \
-            self.hours_str_to_schedule(business_type.hours)
-        self._open_positions: Dict[str, int] = business_type.employees
+            self.hours_str_to_schedule(business_def.hours)
+        self._open_positions: Dict[str, int] = business_def.employees
         self._employees: List[Tuple[str, int]] = []
         self._owner: Optional[int] = owner
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "business_def": self._business_def.name,
+            "name": self._name,
+            "operating_hours": self._business_def.hours,
+            "open_positions": self._open_positions,
+            "employees": self._employees,
+            "owner": self._owner if self._owner else -1,
+        }
 
     def needs_owner(self) -> bool:
         return self._owner is None and self.get_type().owner_type is not None
@@ -168,7 +187,7 @@ class Business(Component):
         return [title for title, n in self._open_positions.items() if n > 0]
 
     def get_type(self) -> BusinessDefinition:
-        return self._business_type
+        return self._business_def
 
     def get_name(self) -> str:
         return self._name
@@ -187,7 +206,7 @@ class Business(Component):
         """Return printable representation"""
         return "{}(type='{}', name='{}', owner={}, employees={}, openings={})".format(
             self.__class__.__name__,
-            self._business_type.name,
+            self._business_def.name,
             self._name,
             self._owner,
             self._employees,

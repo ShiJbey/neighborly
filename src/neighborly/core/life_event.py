@@ -1,11 +1,20 @@
 from collections import defaultdict
-from typing import Any, Callable, Optional, Dict, List, DefaultDict, Iterable, Union
+from typing import Any, Callable, Optional, Dict, List, DefaultDict, Iterable, Union, Protocol
 
 from neighborly.core.ecs import GameObject, Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
 
-PreconditionFn = Callable[..., bool]
-EffectFn = Callable[..., None]
+
+class PreconditionFn(Protocol):
+    def __call__(self, gameobject: GameObject, **kwargs) -> bool:
+        raise NotImplementedError()
+
+
+class EffectFn(Protocol):
+    def __call__(self, gameobject: GameObject, **kwargs) -> bool:
+        raise NotImplementedError()
+
+
 ProbabilityFn = Callable[..., float]
 
 _precondition_fn_registry: Dict[str, PreconditionFn] = {}

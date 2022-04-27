@@ -34,7 +34,7 @@ class GameObject:
         Components attached to this GameObject
     """
 
-    __slots__ = "_id", "_name", "_tags", "_components", "_world"
+    __slots__ = "_id", "_name", "_tags", "_components", "_world", "_active"
 
     def __init__(
             self,
@@ -44,6 +44,7 @@ class GameObject:
             world: Optional[World] = None,
     ) -> None:
         self._id: int = self.generate_id()
+        self._active: bool = True
         self._name: str = name
         self._tags: Set[str] = set(tags)
         self._world: Optional[World] = world
@@ -74,6 +75,10 @@ class GameObject:
             return self._world
         raise TypeError("World is None for GameObject")
 
+    @property
+    def active(self) -> bool:
+        return self._active
+
     def set_world(self, world: Optional[World]) -> None:
         """Set the world instance"""
         self._world = world
@@ -81,6 +86,9 @@ class GameObject:
     def set_name(self, name: str) -> None:
         """Change the GameObject's name"""
         self._name = name
+
+    def set_active(self, is_active: bool) -> None:
+        self._active = is_active
 
     def add_tags(self, *tags: str) -> None:
         """Add tags to this GameObject"""

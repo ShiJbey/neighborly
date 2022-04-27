@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from neighborly.core.relationship import Relationship, RelationshipTag
+from neighborly.core.relationship import Relationship, RelationshipModifier
 from neighborly.core.social_network import RelationshipNetwork
 
 
@@ -22,7 +22,7 @@ def load_tags():
     data = yaml.safe_load(tag_defs)
 
     for tag_data in data:
-        RelationshipTag.register_tag(RelationshipTag(**tag_data))
+        RelationshipModifier.register_tag(RelationshipModifier(**tag_data))
 
 
 def test_relationship_network():
@@ -49,16 +49,16 @@ def test_relationship_network():
     social_graph.add_connection(krusty, bart, Relationship(krusty, bart))
 
     social_graph.add_connection(lisa, bart, Relationship(lisa, bart))
-    social_graph.get_connection(lisa, bart).add_tag(RelationshipTag("Sibling"))
+    social_graph.get_connection(lisa, bart).add_tag(RelationshipModifier("Sibling"))
 
     social_graph.add_connection(lisa, maggie, Relationship(lisa, maggie))
-    social_graph.get_connection(lisa, maggie).add_tag(RelationshipTag("Sibling"))
+    social_graph.get_connection(lisa, maggie).add_tag(RelationshipModifier("Sibling"))
 
     assert social_graph.has_connection(homer, krusty) is False
     assert social_graph.has_connection(lisa, homer) is True
     assert social_graph.has_connection(bart, lisa) is False
 
-    social_graph.get_connection(homer, lisa).add_tag(RelationshipTag("Father"))
+    social_graph.get_connection(homer, lisa).add_tag(RelationshipModifier("Father"))
     social_graph.get_connection(homer, lisa).has_tags("Father")
 
     assert len(social_graph.get_all_relationships_with_tags(lisa, "Sibling")) == 2

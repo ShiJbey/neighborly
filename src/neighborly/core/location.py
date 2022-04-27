@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 
 from ordered_set import OrderedSet
 
@@ -23,6 +23,15 @@ class Location(Component):
 
         for activity in self.activities:
             self.activity_flags |= get_activity_flags(activity)[0]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "max_capacity": self.max_capacity,
+            "characters_present": list(self.characters_present),
+            "activities": self.activities,
+            "activity_flags": self.activity_flags,
+        }
 
     def has_flags(self, *flag_strs: str) -> bool:
         flags = get_activity_flags(*flag_strs)

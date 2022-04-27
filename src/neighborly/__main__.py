@@ -48,11 +48,32 @@ def get_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--config",
         help="Load a simulation config from the following path")
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default="neighborly.log",
+        help="Enable logging ",
+    )
+    parser.add_argument(
+        "-d", "--debug",
+        action="store_true",
+        default=False,
+        help="Enable logging",
+    )
     return parser
 
 
 def main():
     args = get_arg_parser().parse_args()
+
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    if args.log_file:
+        logging.basicConfig(filename=args.log_file, filemode='w', level=log_level)
+    else:
+        logging.basicConfig(level=log_level)
+
+    if args.debug:
+        logging.debug("Neighborly debug output enabled.")
 
     config = load_config(args.config)
 

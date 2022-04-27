@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component
@@ -14,6 +16,16 @@ class Residence(Component):
         self.residents: OrderedSet[int] = OrderedSet()
         self.former_residents: OrderedSet[int] = OrderedSet()
         self._vacant: bool = True
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            'owners': list(self.owners),
+            'former_owners': list(self.former_owners),
+            'residents': list(self.residents),
+            'former_residents': list(self.former_residents),
+            'vacant': self._vacant
+        }
 
     def add_tenant(self, person: int, is_owner: bool = False) -> None:
         """Add a tenant to this residence"""

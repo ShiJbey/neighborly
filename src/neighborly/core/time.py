@@ -9,6 +9,7 @@ DAYS_PER_MONTH = 28
 WEEKS_PER_MONTH = 4
 MONTHS_PER_YEAR = 12
 HOURS_PER_YEAR = HOURS_PER_DAY * DAYS_PER_MONTH * MONTHS_PER_YEAR
+DAYS_PER_YEAR = DAYS_PER_MONTH * MONTHS_PER_YEAR
 
 _TIME_OF_DAY: List[str] = [
     *(["night"] * 6),  # (00:00-05:59)
@@ -42,6 +43,19 @@ class TimeDelta:
     days: int = 0
     hours: int = 0
 
+    @property
+    def total_days(self) -> int:
+        """get the total number of days that this delta represents"""
+        return self.days + (self.months * DAYS_PER_MONTH) + (self.years * MONTHS_PER_YEAR * DAYS_PER_MONTH)
+
+    @property
+    def total_hours(self) -> int:
+        """get the total number of days that this delta represents"""
+        return self.hours \
+               + (self.days * HOURS_PER_DAY) \
+               + (self.months * DAYS_PER_MONTH * HOURS_PER_DAY) \
+               + (self.years * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+
 
 class SimDateTime:
     """
@@ -49,7 +63,7 @@ class SimDateTime:
     using 7-day weeks, 4-week months, and 12-month years
     """
 
-    __slots__ = "_hour", "_day", "_month", "_year", "_weekday"
+    __slots__ = "_hour", "_day", "_month", "_year", "_weekday", "_delta_time"
 
     def __init__(
             self,
@@ -75,6 +89,7 @@ class SimDateTime:
             raise ValueError(f"Parameter 'month' must be between 0 and {MONTHS_PER_YEAR - 1}")
 
         self._year: int = year
+        self._delta_time: int = 0
 
     def increment(
             self,
@@ -111,6 +126,12 @@ class SimDateTime:
 
         self._year = self._year + years + carry_years
 
+        self._delta_time = \
+            hours \
+            + days * HOURS_PER_DAY \
+            + months * DAYS_PER_MONTH * HOURS_PER_DAY \
+            + years * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY
+
     @property
     def hour(self) -> int:
         return self._hour
@@ -130,6 +151,10 @@ class SimDateTime:
     @property
     def year(self) -> int:
         return self._year
+
+    @property
+    def delta_time(self) -> int:
+        return self._delta_time
 
     @property
     def weekday_str(self) -> str:
@@ -163,6 +188,23 @@ class SimDateTime:
 
         return TimeDelta(years=years, months=months, days=days, hours=hours)
 
+    def __add__(self, other: TimeDelta) -> SimDateTime:
+        """Add a TimeDelta to this data"""
+        if not isinstance(other, TimeDelta):
+            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        self.increment(hours=other.hours, days=other.days, months=other.months, years=other.years)
+        return self
+
+    def __le__(self, other: SimDateTime) -> bool:
+        if not isinstance(other, SimDateTime):
+            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        return self.to_iso_str() < other.to_iso_str()
+
+    def __gt__(self, other) -> bool:
+        if not isinstance(other, SimDateTime):
+            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        return self.to_iso_str() > other.to_iso_str()
+
     def to_date_str(self) -> str:
         return "{}, {:02d}/{:02d}/{:04d} @ {:02d}:00".format(
             self.weekday_str[:3], self.day, self.month, self.year, self.hour
@@ -188,7 +230,13 @@ class SimDateTime:
             + self.day \
             + (self.month * DAYS_PER_MONTH) \
             + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH)
-    
+
+    @classmethod
+    def from_ordinal(cls, ordinal_date: int) -> SimDateTime:
+        date = cls()
+        date.increment(days=ordinal_date)
+        return date
+
     @classmethod
     def from_iso_str(cls, iso_date: str) -> SimDateTime:
         """Return a SimDateTime object given an ISO format string"""

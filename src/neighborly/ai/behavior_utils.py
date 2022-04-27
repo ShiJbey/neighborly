@@ -5,7 +5,7 @@ from neighborly.core.character.character import GameCharacter
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
-from neighborly.core.relationship import RelationshipTag
+from neighborly.core.relationship import RelationshipModifier
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town
@@ -90,7 +90,7 @@ def find_places_with_any_activities(world: World, *activities: str) -> List[int]
 
 
 def add_relationship_tag(
-        world: World, owner_id: int, target_id: int, tag: RelationshipTag
+        world: World, owner_id: int, target_id: int, tag: RelationshipModifier
 ) -> None:
     """Add a relationship modifier on the subject's relationship to the target"""
     get_relationship_net(world).get_connection(owner_id, target_id).add_tag(tag)

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, ClassVar, Union, Any
+from enum import IntFlag, auto
+from typing import Dict, ClassVar, Any, List
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -17,21 +20,42 @@ def clamp(value: float, minimum: float, maximum: float) -> float:
     return min(maximum, max(minimum, value))
 
 
+class RelationshipTag(IntFlag):
+    """Relationship Tags are bitwise flags that indicate certain relationship types"""
+    NONE = 0
+    Father = auto()
+    Mother = auto()
+    Brother = auto()
+    Sister = auto()
+    Son = auto()
+    Daughter = auto()
+    Coworker = auto()
+    Boss = auto()
+    Spouse = auto()
+    Friend = auto()
+    Enemy = auto()
+    BestFriend = auto()
+    WorstEnemy = auto()
+    Rival = auto()
+    Acquaintance = auto()
+    BiologicalFamily = auto()
+    Neighbors = auto()
+    SignificantOther = auto()
+
+
 @dataclass
-class RelationshipTag:
+class RelationshipModifier:
     """
-    Modifiers attached to Relationship instances that affect
-    the development of the relationship over time
+    Modifiers apply buffs to the friendship, romance, and salience
+    stats on relationship instances
 
     Attributes
     ----------
     name: str
         Name of the tag (used when searching for relationships with
-        specific tags
-    automatic: bool, default False
-        Should this tag automatically apply when the requirements are met
-    requirements: List[Callable[['Relationship'], bool]]
-        Functions that need to return True for this tag to apply
+        specific tags)
+    description: str
+        String description of what this relationship modifier means
     friendship_boost: float, default 0
         Flat value to apply the friendship value by
     romance_boost: float, default 0
@@ -45,7 +69,7 @@ class RelationshipTag:
     salience_increment: float, default 0
         Flat value to apply when incrementing the salience value
     """
-    _tag_registry: ClassVar[Dict[str, 'RelationshipTag']] = {}
+    _tag_registry: ClassVar[Dict[str, 'RelationshipModifier']] = {}
 
     name: str
     description: str = ""
@@ -57,11 +81,13 @@ class RelationshipTag:
     salience_increment: float = 0
 
     @classmethod
-    def register_tag(cls, tag: 'RelationshipTag') -> None:
+    def register_tag(cls, tag: 'RelationshipModifier') -> None:
+        """Add a tag to the internal registry for finding later"""
         cls._tag_registry[tag.name] = tag
 
     @classmethod
-    def get_registered_tag(cls, name: str) -> 'RelationshipTag':
+    def get_tag(cls, name: str) -> 'RelationshipModifier':
+        """Retrieve a tag from the internal registry of RelationshipModifiers"""
         return cls._tag_registry[name]
 
 
@@ -108,8 +134,10 @@ class Relationship:
         Amount to increment the salience score by after each interaction
     _is_dirty: bool
         Used internally to mark when score need to be recalculated after a change
-    _tags: Dict[str, RelationshipTag]
-        All the tags active on the Relationship instance
+    _modifiers: Dict[str, RelationshipModifier]
+        All the modifiers active on the Relationship instance
+    _tags: RelationshipTag
+        All the tags that that are attached to this
     """
 
     __slots__ = (
@@ -125,6 +153,7 @@ class Relationship:
         "_salience_base",
         "_salience_increment",
         "_is_dirty",
+        "_modifiers",
         "_tags"
     )
 
@@ -145,7 +174,8 @@ class Relationship:
         self._romance_increment: float = 0
         self._salience_increment: float = 0
         self._is_dirty: bool = True
-        self._tags: Dict[str, RelationshipTag] = {}
+        self._modifiers: Dict[str, RelationshipModifier] = {}
+        self._tags: RelationshipTag = RelationshipTag.NONE
 
     @property
     def target(self) -> int:
@@ -173,22 +203,31 @@ class Relationship:
             self._recalculate_stats()
         return self._salience
 
-    def get_tags(self) -> Dict[str, RelationshipTag]:
-        return self._tags
+    def add_tag(self, tag: RelationshipTag) -> None:
+        """Return add a tag to this Relationship"""
+        self._tags |= tag
 
-    def add_tag(self, tag: Union[RelationshipTag, str]) -> None:
-        if isinstance(tag, RelationshipTag):
-            self._tags[tag.name] = tag
-        else:
-            self._tags[tag] = RelationshipTag.get_registered_tag(tag)
+    def has_tag(self, tag: RelationshipTag) -> bool:
+        """Return True if a relationship has a tag"""
+        return bool(self._tags & tag)
+
+    def get_modifiers(self) -> List[RelationshipModifier]:
+        """Return a list of the modifiers attached to this Relationship instance"""
+        return list(self._modifiers.values())
+
+    def has_modifier(self, name: str) -> bool:
+        """Return true if the relationship has a modifier with the given name"""
+        return name in self._modifiers
+
+    def add_modifier(self, modifier: RelationshipModifier) -> None:
+        """Add a RelationshipModifier to the relationship instance"""
+        self._modifiers[modifier.name] = modifier
         self._is_dirty = True
 
-    def remove_tag(self, modifier: str) -> None:
-        del self._tags[modifier]
+    def remove_modifier(self, name: str) -> None:
+        """Remove modifier with the given name"""
+        del self._modifiers[name]
         self._is_dirty = True
-
-    def has_tags(self, *names: str) -> bool:
-        return all([name in self._tags for name in names])
 
     def update(self) -> None:
         """Update the relationship when the two characters interact"""
@@ -206,7 +245,8 @@ class Relationship:
             "friendship": self.friendship,
             "romance": self.romance,
             "salience": self.salience,
-            "tags": [t.name for t in self._tags.values()]
+            "tags": self._tags,
+            "modifiers": [m for m in self._modifiers.keys()],
         }
 
     def _recalculate_stats(self) -> None:
@@ -222,7 +262,7 @@ class Relationship:
         self._salience = self._salience_base
 
         # Apply modifiers in tags
-        for modifier in self._tags.values():
+        for modifier in self._modifiers.values():
             # Apply boosts to relationship scores
             self._salience += modifier.salience_boost
             self._romance += modifier.romance_boost
@@ -239,12 +279,13 @@ class Relationship:
         self._is_dirty = False
 
     def __repr__(self) -> str:
-        return "{}(owner={}, target={}, romance={}, friendship={}, salience={}, tags={})".format(
+        return "{}(owner={}, target={}, romance={}, friendship={}, salience={}, tags={}, modifiers={})".format(
             self.__class__.__name__,
             self.owner,
             self.target,
             self.romance,
             self.friendship,
             self.salience,
-            list(self._tags.keys()),
+            self._tags,
+            list(self._modifiers.keys()),
         )
