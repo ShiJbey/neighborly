@@ -1,3 +1,4 @@
+from enum import IntFlag, auto
 import math
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple, Dict, ClassVar, Protocol
@@ -119,6 +120,31 @@ class Occupation(Component):
         self._years_held += years
 
 
+class BusinessServiceFlag(IntFlag):
+    NONE = 0
+    ALCOHOL = auto()
+    BANKING = auto()
+    COLLEGE_EDUCATION = auto()
+    CONSTRUCTION = auto()
+    COSMETICS = auto()
+    CLOTHING = auto()
+    FIRE_EMERGENCY = auto()
+    FOOD = auto()
+    HARDWARE = auto()
+    HOME_IMPROVEMENT = auto()
+    HOUSING = auto()
+    LEGAL = auto()
+    MEDICAL_EMERGENCY = auto()
+    MORTICIAN = auto()
+    RECREATION  = auto()
+    PUBLIC_SERVICE = auto()
+    PRIMARY_EDUCATION = auto()
+    REALTY = auto()
+    SECONDARY_EDUCATION = auto()
+    SHOPPING = auto()
+    SOCIALIZING = auto()
+
+
 @dataclass
 class BusinessDefinition:
     """
@@ -135,6 +161,13 @@ class BusinessDefinition:
     instances: int = 0
     min_population: int = 0
     employees: Dict[str, int] = field(default_factory=dict)
+    services: List[str] = field(default_factory=list)
+    service_flags: BusinessServiceFlag = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.service_flags = BusinessServiceFlag.NONE
+        for service_name in self.services:
+            self.service_flags |= BusinessServiceFlag[service_name.strip().upper().replace(" ", "_")]
 
     @classmethod
     def register_type(cls, business_type: 'BusinessDefinition') -> None:
