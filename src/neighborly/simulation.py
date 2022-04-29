@@ -1,8 +1,6 @@
 import random
-from dataclasses import dataclass, field
 from typing import Optional, List, Dict
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from neighborly.core.business import BusinessFactory
 from neighborly.core.character.character import GameCharacterFactory
@@ -11,8 +9,15 @@ from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import EventLog, LifeEventHandlerFactory
 from neighborly.core.location import LocationFactory
 from neighborly.core.position import Position2DFactory
-from neighborly.core.processors import CharacterProcessor, RoutineProcessor, SocializeProcessor, \
-    LifeEventProcessor, TimeProcessor, ResidentImmigrationSystem, CityPlanner
+from neighborly.core.processors import (
+    CharacterProcessor,
+    RoutineProcessor,
+    SocializeProcessor,
+    LifeEventProcessor,
+    TimeProcessor,
+    ResidentImmigrationSystem,
+    CityPlanner,
+)
 from neighborly.core.residence import ResidenceFactory
 from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import RoutineFactory
@@ -40,10 +45,10 @@ class SimulationConfig(BaseModel):
     hours_per_timestep: int = 6
     start_date: str = "0000-00-00T00:00.000z"
     end_date: str = "0100-00-00T00:00.000z"
-    town: TownConfig = field(default_factory=TownConfig)
-    character_weights: Dict[str, int] = field(default_factory=dict)
-    residence_weights: Dict[str, int] = field(default_factory=dict)
-    business_wights: Dict[str, int] = field(default_factory=dict)
+    town: TownConfig = Field(default_factory=TownConfig)
+    character_weights: Dict[str, int] = Field(default_factory=dict)
+    residence_weights: Dict[str, int] = Field(default_factory=dict)
+    business_wights: Dict[str, int] = Field(default_factory=dict)
 
 
 class Simulation:
@@ -67,8 +72,11 @@ class Simulation:
         self.world.add_system(CharacterProcessor(), 3)
         self.world.add_system(SocializeProcessor(), 2)
         self.world.add_system(CityPlanner())
-        self.world.add_system(ResidentImmigrationSystem(
-            config.character_weights, config.residence_weights))
+        self.world.add_system(
+            ResidentImmigrationSystem(
+                config.character_weights, config.residence_weights
+            )
+        )
         self.world.add_system(LifeEventProcessor())
         self.world.add_resource(SimDateTime())
         self.world.add_resource(engine)
@@ -77,20 +85,21 @@ class Simulation:
 
     @classmethod
     def create(
-            cls,
-            config: Optional[SimulationConfig] = None,
-            engine: Optional[NeighborlyEngine] = None,
-    ) -> 'Simulation':
+        cls,
+        config: Optional[SimulationConfig] = None,
+        engine: Optional[NeighborlyEngine] = None,
+    ) -> "Simulation":
         """Create new simulation instance"""
         sim_config: SimulationConfig = config if config else SimulationConfig()
-        engine_instance: NeighborlyEngine = engine if engine else create_default_engine(
-            sim_config.seed)
+        engine_instance: NeighborlyEngine = (
+            engine if engine else create_default_engine(sim_config.seed)
+        )
         sim = cls(sim_config, engine_instance)
         sim.world.add_resource(Town.create(sim_config.town))
         return sim
 
     @classmethod
-    def from_config(cls, config: 'NeighborlyConfig') -> 'Simulation':
+    def from_config(cls, config: "NeighborlyConfig") -> "Simulation":
         """Create a new simulation from a Neighborly configuration"""
         engine = create_default_engine(config.simulation.seed)
         sim = cls(config.simulation, engine)
@@ -105,24 +114,23 @@ class Simulation:
 
     def run(self) -> None:
         """Run the simulation until it reaches the end date in the config"""
-        start_date: SimDateTime = SimDateTime.from_iso_str(
-            self.config.start_date)
+        start_date: SimDateTime = SimDateTime.from_iso_str(self.config.start_date)
         end_date: SimDateTime = SimDateTime.from_iso_str(self.config.end_date)
 
         fully_simulated_days = set(
-            self._generate_sample_days(start_date, end_date, n=36))
+            self._generate_sample_days(start_date, end_date, n=36)
+        )
 
         total_days = (start_date - end_date).total_days
-        total_timesteps = \
-            (total_days - len(fully_simulated_days)) \
-            + (len(fully_simulated_days) *
-               (HOURS_PER_DAY // self.config.hours_per_timestep))
+        total_timesteps = (total_days - len(fully_simulated_days)) + (
+            len(fully_simulated_days)
+            * (HOURS_PER_DAY // self.config.hours_per_timestep)
+        )
 
         try:
             while self.get_time() <= end_date:
                 if self.get_time().to_ordinal() in fully_simulated_days:
-                    self.step(hours=self.config.hours_per_timestep,
-                              full_sim=True)
+                    self.step(hours=self.config.hours_per_timestep, full_sim=True)
                 else:
                     self.step(hours=24)
         except KeyboardInterrupt:
@@ -146,7 +154,9 @@ class Simulation:
         return self.world.get_resource(NeighborlyEngine)
 
     @staticmethod
-    def _generate_sample_days(start_date: SimDateTime, end_date: SimDateTime, n: int) -> list[int]:
+    def _generate_sample_days(
+        start_date: SimDateTime, end_date: SimDateTime, n: int
+    ) -> list[int]:
         """Samples n days from each year between the start and end dates"""
         ordinal_start_date: int = start_date.to_ordinal()
         ordinal_end_date: int = end_date.to_ordinal()
@@ -157,7 +167,8 @@ class Simulation:
 
         while current_date < ordinal_end_date:
             sampled_dates = random.sample(
-                range(current_date, current_date + DAYS_PER_YEAR), k=n)
+                range(current_date, current_date + DAYS_PER_YEAR), k=n
+            )
             sampled_ordinal_dates.extend(sorted(sampled_dates))
             current_date = min(current_date + DAYS_PER_YEAR, ordinal_end_date)
 
@@ -176,17 +187,17 @@ def create_default_engine(seed: int) -> NeighborlyEngine:
     return engine
 
 
-@dataclass
-class NeighborlyConfig:
-    simulation: SimulationConfig = field(
-        default_factory=lambda: SimulationConfig())
-    plugins: List[NeighborlyPlugin] = field(
-        default_factory=lambda: [DefaultPlugin()])
+class NeighborlyConfig(BaseModel):
+    simulation: SimulationConfig = Field(default_factory=lambda: SimulationConfig())
+    plugins: List[NeighborlyPlugin] = Field(default_factory=lambda: [DefaultPlugin()])
 
     @staticmethod
-    def merge(config_a: 'NeighborlyConfig', config_b: 'NeighborlyConfig') -> 'NeighborlyConfig':
+    def merge(
+        config_a: "NeighborlyConfig", config_b: "NeighborlyConfig"
+    ) -> "NeighborlyConfig":
         """Merge config B into config A and return a new config"""
         ret = NeighborlyConfig()
         ret.simulation = SimulationConfig(
-            **{**config_a.simulation.dict(), **config_b.simulation.dict()})
+            **{**config_a.simulation.dict(), **config_b.simulation.dict()}
+        )
         return ret
