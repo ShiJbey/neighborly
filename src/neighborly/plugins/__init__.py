@@ -12,6 +12,8 @@ class PluginContext:
 
 
 class NeighborlyPlugin(ABC):
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
 
     @abstractmethod
     def apply(self, ctx: PluginContext, **kwargs) -> None:

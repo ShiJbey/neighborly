@@ -46,6 +46,11 @@ class MissingComponentSpecError(Exception):
         return self.message
 
 
+class UnsupportedFileType(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+
 class SectionLoader(Protocol):
     def __call__(self, engine: NeighborlyEngine, data: Any) -> None:
         raise NotImplementedError()

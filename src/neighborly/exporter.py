@@ -20,11 +20,15 @@ class NeighborlyExporter(ABC):
 class NeighborlyJsonExporter(NeighborlyExporter):
     """Serializes the simulation world to a JSON string"""
 
-    def export(self, world: World) -> Union[str, bytes]:
-        return json.dumps({
-            'date': world.get_resource(SimDateTime).to_iso_str(),
-            'town': world.get_resource(Town).to_dict(),
-            'gameobjects': {g.id: g.to_dict() for g in world.get_gameobjects()},
-            'relationships': world.get_resource(RelationshipNetwork).to_dict(),
-            'events': [e.to_dict() for e in world.get_resource(EventLog).get_all_events()],
-        })
+    def export(self, world: World) -> str:
+        return json.dumps(
+            {
+                "date": world.get_resource(SimDateTime).to_iso_str(),
+                "town": world.get_resource(Town).to_dict(),
+                "gameobjects": {g.id: g.to_dict() for g in world.get_gameobjects()},
+                "relationships": world.get_resource(RelationshipNetwork).to_dict(),
+                "events": [
+                    e.to_dict() for e in world.get_resource(EventLog).get_all_events()
+                ],
+            }
+        )

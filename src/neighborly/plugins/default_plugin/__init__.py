@@ -4,15 +4,34 @@ from pathlib import Path
 from neighborly.core.business import OccupationDefinition, BusinessDefinition
 from neighborly.core.processors import LifeEventProcessor
 from neighborly.core.relationship import RelationshipModifier
-from neighborly.data.businesses import restaurant_type, bar_type, department_store_type, \
-    manager_type, sales_associate_type, cashier_type, dj_type, bartender_type, security_type, cook_type, owner_type, \
-    proprietor_type
-from neighborly.data.events import DeathEvent, BecameAdultEvent, BecameSeniorEvent, \
-    StartedDatingEvent, DatingBreakUpEvent, UnemploymentEvent, BecameBusinessOwnerEvent, BecameChildEvent, \
-    BecameYoungAdultEvent, BecameAdolescentEvent
+from neighborly.data.businesses import (
+    restaurant_type,
+    bar_type,
+    department_store_type,
+    manager_type,
+    sales_associate_type,
+    cashier_type,
+    dj_type,
+    bartender_type,
+    security_type,
+    cook_type,
+    owner_type,
+    proprietor_type,
+)
+from neighborly.data.events import (
+    DeathEvent,
+    BecameAdultEvent,
+    BecameSeniorEvent,
+    StartedDatingEvent,
+    DatingBreakUpEvent,
+    UnemploymentEvent,
+    BecameBusinessOwnerEvent,
+    BecameChildEvent,
+    BecameYoungAdultEvent,
+    BecameAdolescentEvent,
+)
 from neighborly.data.relationship_tags import FriendTag
-from neighborly.data.statuses import DatingStatus, \
-    MarriedStatus, UnemployedStatus
+from neighborly.data.statuses import DatingStatus, MarriedStatus, UnemployedStatus
 from neighborly.loaders import load_names, YamlDataLoader
 from neighborly.plugins import NeighborlyPlugin, PluginContext
 
@@ -20,7 +39,6 @@ _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
 
 class DefaultPlugin(NeighborlyPlugin):
-
     def apply(self, ctx: PluginContext, **kwargs) -> None:
         RelationshipModifier.register_tag(FriendTag())
 
@@ -54,24 +72,34 @@ class DefaultPlugin(NeighborlyPlugin):
         OccupationDefinition.register_type(proprietor_type)
 
         # Load character name data
-        load_names("last_name",
-                   filepath=_RESOURCES_DIR / "names" / "surnames.txt")
-        load_names("first_name",
-                   filepath=_RESOURCES_DIR / "names" / "neutral_names.txt")
-        load_names("feminine_first_name",
-                   filepath=_RESOURCES_DIR / "names" / "feminine_names.txt")
-        load_names("masculine_first_name",
-                   filepath=_RESOURCES_DIR / "names" / "masculine_names.txt", )
+        load_names("last_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt")
+        load_names(
+            "first_name", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt"
+        )
+        load_names(
+            "feminine_first_name",
+            filepath=_RESOURCES_DIR / "names" / "feminine_names.txt",
+        )
+        load_names(
+            "masculine_first_name",
+            filepath=_RESOURCES_DIR / "names" / "masculine_names.txt",
+        )
 
         # Load potential names for different structures in the town
-        load_names("restaurant_name",
-                   filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt")
-        load_names("bar_name",
-                   filepath=_RESOURCES_DIR / "names" / "bar_names.txt")
+        load_names(
+            "restaurant_name",
+            filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt",
+        )
+        load_names("bar_name", filepath=_RESOURCES_DIR / "names" / "bar_names.txt")
 
         # Load potential names for the town
-        load_names("town_name",
-                   filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt")
+        load_names(
+            "town_name", filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt"
+        )
 
         # Load additional data from yaml
         YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)
+
+
+def create_plugin(**kwargs) -> NeighborlyPlugin:
+    return DefaultPlugin(**kwargs)

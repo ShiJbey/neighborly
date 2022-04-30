@@ -1,5 +1,15 @@
 from collections import defaultdict
-from typing import Any, Callable, Optional, Dict, List, DefaultDict, Iterable, Union, Protocol
+from typing import (
+    Any,
+    Callable,
+    Optional,
+    Dict,
+    List,
+    DefaultDict,
+    Iterable,
+    Union,
+    Protocol,
+)
 
 from neighborly.core.ecs import GameObject, Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
@@ -22,16 +32,16 @@ _effect_fn_registry: Dict[str, EffectFn] = {}
 _probability_fn_registry: Dict[str, ProbabilityFn] = {}
 
 
-def register_precondition(fn: PreconditionFn) -> None:
+def register_precondition(name: str, fn: PreconditionFn) -> None:
     """Adds function to the global registry of event preconditions"""
     global _precondition_fn_registry
-    _precondition_fn_registry[fn.__name__] = fn
+    _precondition_fn_registry[name] = fn
 
 
-def register_effect(fn: EffectFn) -> None:
+def register_effect(name, fn: EffectFn) -> None:
     """Adds a function to the global registry of event effects"""
     global _effect_fn_registry
-    _effect_fn_registry[fn.__name__] = fn
+    _effect_fn_registry[name] = fn
 
 
 def register_probability(fn: ProbabilityFn) -> None:
@@ -61,16 +71,24 @@ def get_probability(name: str) -> ProbabilityFn:
         raise EventProbabilityNotFoundError(name)
 
 
-def event_precondition(fn: PreconditionFn) -> PreconditionFn:
+def event_precondition(name: str):
     """Decorator registers a precondition function"""
-    register_precondition(fn)
-    return fn
+
+    def wrapper(fn: PreconditionFn):
+        register_precondition(name, fn)
+        return fn
+
+    return wrapper
 
 
-def event_effect(fn: EffectFn) -> EffectFn:
+def event_effect(name: str):
     """Decorator that registers an effect function"""
-    register_effect(fn)
-    return fn
+
+    def wrapper(fn: EffectFn):
+        register_precondition(name, fn)
+        return fn
+
+    return wrapper
 
 
 def event_probability(fn: ProbabilityFn) -> ProbabilityFn:
@@ -121,40 +139,63 @@ class EventProbabilityNotFoundError(Exception):
         return self.message
 
 
+class LifeEventPreconditionFn(Protocol):
+    """Function that determines if a life event will fire"""
+
+    def __call__(self, gameobject: GameObject) -> bool:
+        raise NotImplementedError()
+
+
+class LifeEventEffectFn(Protocol):
+    """Function that runs when an event fires"""
+
+    def __call__(self, gameobject: GameObject, **kwargs) -> None:
+        raise NotImplementedError()
+
+
+class LifeEventProbabilityFn(Protocol):
+    """Function that determines if a life event will fire"""
+
+    def __call__(self, gameobject: GameObject) -> float:
+        raise NotImplementedError()
+
+
 class LifeEvent:
     """An event in the life of a character"""
 
     __slots__ = "_name", "_precondition_fn", "_probability_fn", "_effect_fn"
 
     def __init__(
-            self,
-            name: str,
-            precondition_fn: Callable[[GameObject], bool],
-            effect_fn: Callable[[GameObject, Optional[Dict[str, Any]]], None],
-            probability: Union[float, Callable[[GameObject], float]] = 1.0,
+        self,
+        name: str,
+        precondition_fn: LifeEventPreconditionFn,
+        effect_fn: LifeEventEffectFn,
+        probability: Union[float, LifeEventProbabilityFn] = 1.0,
     ) -> None:
         self._name: str = name
-        self._precondition_fn: Callable[[GameObject], bool] = precondition_fn
-        self._effect_fn: Callable[[GameObject, Optional[Dict[str, Any]]], None] = effect_fn
+        self._precondition_fn: LifeEventPreconditionFn = precondition_fn
+        self._effect_fn: LifeEventEffectFn = effect_fn
         if isinstance(probability, float):
-            self._probability_fn: Callable[[GameObject], float] = lambda gameobject: probability
+            self._probability_fn: LifeEventProbabilityFn = (
+                lambda gameobject: probability
+            )
         else:
-            self._probability_fn: Callable[[GameObject], float] = probability
+            self._probability_fn: LifeEventProbabilityFn = probability
 
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def precondition(self) -> Callable[[GameObject], bool]:
+    def precondition(self) -> LifeEventPreconditionFn:
         return self._precondition_fn
 
     @property
-    def effect(self) -> Callable[[GameObject, Optional[Dict[str, Any]]], None]:
+    def effect(self) -> LifeEventEffectFn:
         return self._effect_fn
 
     @property
-    def probability(self) -> Callable[[GameObject], float]:
+    def probability(self) -> LifeEventProbabilityFn:
         return self._probability_fn
 
 
@@ -176,10 +217,10 @@ class LifeEventRecord:
     __slots__ = "_event_type", "_time_stamp", "_metadata"
 
     def __init__(
-            self,
-            event_type: str,
-            time_stamp: str,
-            metadata: Optional[Dict[str, Any]] = None,
+        self,
+        event_type: str,
+        time_stamp: str,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._event_type: str = event_type
         self._time_stamp: str = time_stamp
@@ -199,8 +240,8 @@ class LifeEventRecord:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'event_type': self._event_type,
-            'time_stamp': self._time_stamp,
+            "event_type": self._event_type,
+            "time_stamp": self._time_stamp,
             **self._metadata,
         }
 
@@ -230,9 +271,9 @@ class LifeEventHandler(Component):
     __slots__ = "_preconditions", "_effects"
 
     def __init__(
-            self,
-            preconditions: Optional[Dict[str, List[PreconditionFn]]] = None,
-            effects: Optional[Dict[str, List[EffectFn]]] = None
+        self,
+        preconditions: Optional[Dict[str, List[PreconditionFn]]] = None,
+        effects: Optional[Dict[str, List[EffectFn]]] = None,
     ) -> None:
         super().__init__()
         self._preconditions: DefaultDict[str, List[PreconditionFn]] = defaultdict(list)
@@ -288,11 +329,11 @@ class LifeEventHandlerFactory(AbstractFactory):
         effects: DefaultDict[str, List[EffectFn]] = defaultdict()
 
         for event, event_config in spec.get_attributes().items():
-            if 'preconditions' in event_config:
-                for name in event_config['preconditions']:
+            if "preconditions" in event_config:
+                for name in event_config["preconditions"]:
                     preconditions[event].append(get_precondition(name))
-            if 'effects' in event_config:
-                for name in event_config['preconditions']:
+            if "effects" in event_config:
+                for name in event_config["preconditions"]:
                     effects[event].append(get_effect(name))
 
         return LifeEventHandler(preconditions, effects)
