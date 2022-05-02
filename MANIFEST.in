@@ -1,1 +1,3 @@
-src/neighborly/plugins/default_plugin/data/**
+include LICENSE
+include CODE_OF_CONDUCT.md
+include-recursive src/neighborly/plugins/default_plugin/data

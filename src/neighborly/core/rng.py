@@ -20,11 +20,11 @@ class RandNumGenerator(Protocol):
 
     @abstractmethod
     def choices(
-            self,
-            s: Sequence[_T],
-            weights: Optional[List[int]] = None,
-            cum_weights: Optional[List[int]] = None,
-            k: int = 1
+        self,
+        s: Sequence[_T],
+        weights: Optional[List[int]] = None,
+        cum_weights: Optional[List[int]] = None,
+        k: int = 1,
     ) -> List[_T]:
         """Return one or more items from a sequence using weighted random selection"""
         raise NotImplementedError()
@@ -72,11 +72,11 @@ class DefaultRNG:
         return self._rng.choice(s)
 
     def choices(
-            self,
-            s: Sequence[_T],
-            weights: Optional[List[int]] = None,
-            cum_weights: Optional[List[int]] = None,
-            k: int = 1
+        self,
+        s: Sequence[_T],
+        weights: Optional[List[int]] = None,
+        cum_weights: Optional[List[int]] = None,
+        k: int = 1,
     ) -> List[_T]:
         """Return one or more items from a sequence using weighted random selection"""
         return self._rng.choices(s, weights=weights, cum_weights=cum_weights, k=k)

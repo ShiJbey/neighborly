@@ -1,11 +1,21 @@
 from collections import defaultdict
-from typing import Generic, TypeVar, NamedTuple, Dict, Tuple, cast, List, DefaultDict, Any
+from typing import (
+    Generic,
+    TypeVar,
+    NamedTuple,
+    Dict,
+    Tuple,
+    cast,
+    List,
+    DefaultDict,
+    Any,
+)
 
 from ordered_set import OrderedSet
 
-from neighborly.core.relationship import Relationship
+from neighborly.core.relationship import Relationship, RelationshipTag
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 
 
 class BDGraphNode(NamedTuple):
@@ -19,7 +29,9 @@ class DirectedSocialGraph(Generic[_T]):
     __slots__ = "_nodes", "_edges"
 
     def __init__(self) -> None:
-        self._nodes: DefaultDict[int, BDGraphNode] = defaultdict(lambda: BDGraphNode(OrderedSet(), OrderedSet()))
+        self._nodes: DefaultDict[int, BDGraphNode] = defaultdict(
+            lambda: BDGraphNode(OrderedSet(), OrderedSet())
+        )
         self._edges: Dict[Tuple[int, int], _T] = {}
 
     def add_connection(self, owner: int, target: int, data: _T) -> None:
@@ -106,7 +118,6 @@ class UndirectedSocialGraph(Generic[_T]):
 
 
 class RelationshipNetwork(DirectedSocialGraph[Relationship]):
-
     def __init__(self) -> None:
         super().__init__()
 
@@ -115,12 +126,17 @@ class RelationshipNetwork(DirectedSocialGraph[Relationship]):
         owner_node = self._nodes[owner]
         return [self._edges[owner, target] for target in owner_node.outgoing]
 
-    def get_all_relationships_with_tags(self, owner: int, *tags: str) -> List[Relationship]:
+    def get_all_relationships_with_tags(
+        self, owner: int, tags: RelationshipTag
+    ) -> List[Relationship]:
         owner_node = self._nodes[owner]
 
-        return list(filter(
-            lambda rel: rel.has_tags(*tags),
-            [self._edges[owner, target] for target in owner_node.outgoing]))
+        return list(
+            filter(
+                lambda rel: rel.has_tag(tags),
+                [self._edges[owner, target] for target in owner_node.outgoing],
+            )
+        )
 
     def to_dict(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
         network_dict: Dict[int, Dict[int, Dict[str, Any]]] = {}

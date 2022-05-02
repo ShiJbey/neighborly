@@ -4,7 +4,7 @@ from enum import Enum
 import numpy as np
 
 from neighborly.core.ecs import World
-from neighborly.plugins import NeighborlyPlugin, PluginContext
+from neighborly.simulation import PluginContext
 
 
 class Weather(Enum):
@@ -63,8 +63,6 @@ class WeatherProcessor:
         weather_manager.time_before_change -= delta_time
 
 
-class WeatherPlugin(NeighborlyPlugin):
-
-    def apply(self, ctx: PluginContext, **kwargs) -> None:
-        ctx.world.add_system(WeatherProcessor(), 9)
-        ctx.world.add_resource(WeatherManager())
+def setup(ctx: PluginContext, **kwargs) -> None:
+    ctx.world.add_system(WeatherProcessor(), 9)
+    ctx.world.add_resource(WeatherManager())

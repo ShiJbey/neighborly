@@ -22,6 +22,7 @@ def clamp(value: float, minimum: float, maximum: float) -> float:
 
 class RelationshipTag(IntFlag):
     """Relationship Tags are bitwise flags that indicate certain relationship types"""
+
     NONE = 0
     Father = auto()
     Mother = auto()
@@ -41,6 +42,7 @@ class RelationshipTag(IntFlag):
     BiologicalFamily = auto()
     Neighbors = auto()
     SignificantOther = auto()
+    LoveInterest = auto()
 
 
 @dataclass
@@ -69,7 +71,8 @@ class RelationshipModifier:
     salience_increment: float, default 0
         Flat value to apply when incrementing the salience value
     """
-    _tag_registry: ClassVar[Dict[str, 'RelationshipModifier']] = {}
+
+    _tag_registry: ClassVar[Dict[str, "RelationshipModifier"]] = {}
 
     name: str
     description: str = ""
@@ -81,12 +84,12 @@ class RelationshipModifier:
     salience_increment: float = 0
 
     @classmethod
-    def register_tag(cls, tag: 'RelationshipModifier') -> None:
+    def register_tag(cls, tag: "RelationshipModifier") -> None:
         """Add a tag to the internal registry for finding later"""
         cls._tag_registry[tag.name] = tag
 
     @classmethod
-    def get_tag(cls, name: str) -> 'RelationshipModifier':
+    def get_tag(cls, name: str) -> "RelationshipModifier":
         """Retrieve a tag from the internal registry of RelationshipModifiers"""
         return cls._tag_registry[name]
 
@@ -154,13 +157,13 @@ class Relationship:
         "_salience_increment",
         "_is_dirty",
         "_modifiers",
-        "_tags"
+        "_tags",
     )
 
     def __init__(
-            self,
-            owner: int,
-            target: int,
+        self,
+        owner: int,
+        target: int,
     ) -> None:
         self._owner: int = owner
         self._target: int = target

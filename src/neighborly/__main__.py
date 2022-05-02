@@ -1,24 +1,28 @@
 import argparse
-import importlib
-import importlib.util
 import json
 import logging
 import os
-import sys
+import random
 import pathlib
 from typing import Any, Dict, Optional
 
 import yaml
 
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.simulation import (
-    DEFAULT_NEIGHBORLY_CONFIG,
-    NeighborlyConfig,
-    Simulation,
-)
+from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 from neighborly.loaders import UnsupportedFileType
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_NEIGHBORLY_CONFIG = NeighborlyConfig(
+    simulation=SimulationConfig(
+        seed=random.randint(0, 999999),
+        hours_per_timestep=6,
+        start_date="0000-00-00T00:00.000z",
+        end_date="0100-00-00T00:00.000z",
+    ),
+    plugins=["neighborly.plugins.default_plugin"],
+)
 
 
 def load_config_from_path(config_path: str) -> Dict[str, Any]:

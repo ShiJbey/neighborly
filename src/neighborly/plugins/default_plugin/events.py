@@ -7,22 +7,35 @@ from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent, EventLog, LifeEventRecord
 from neighborly.core.location import Location
+from neighborly.core.relationship import RelationshipTag
 from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
-from neighborly.data.statuses import DatingStatus, MarriedStatus, AdultStatus, SeniorStatus, \
-    UnemployedStatus, ChildStatus, AdolescentStatus, YoungAdultStatus, RetiredStatus
+from neighborly.plugins.default_plugin.statuses import (
+    DatingStatus,
+    MarriedStatus,
+    AdultStatus,
+    SeniorStatus,
+    UnemployedStatus,
+    ChildStatus,
+    AdolescentStatus,
+    YoungAdultStatus,
+    RetiredStatus,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class DeathEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             """Die if they are older than a certain age and not immortal"""
             character = gameobject.get_component(GameCharacter)
-            return character.alive and character.age > character.character_def.lifecycle.age_ranges['senior'][0]
+            return (
+                character.alive
+                and character.age
+                > character.character_def.lifecycle.age_ranges["senior"][0]
+            )
 
         # end precondition
 
@@ -32,26 +45,32 @@ class DeathEvent(LifeEvent):
             world = gameobject.world
 
             logger.debug(
-                f"{str(character.name)} died at the age of {round(character.age)}")
+                f"{str(character.name)} died at the age of {round(character.age)}"
+            )
 
             character.alive = False
 
             if character.location:
-                world.get_gameobject(character.location).get_component(Location).remove_character(
-                    character.gameobject.id)
+                world.get_gameobject(character.location).get_component(
+                    Location
+                ).remove_character(character.gameobject.id)
 
             home_id = character.location_aliases.get("home")
             if home_id:
-                world.get_gameobject(home_id).get_component(
-                    Residence).remove_tenant(character.gameobject.id)
+                world.get_gameobject(home_id).get_component(Residence).remove_tenant(
+                    character.gameobject.id
+                )
 
-            world.get_resource(RelationshipNetwork).remove_node(
-                character.gameobject.id)
+            world.get_resource(RelationshipNetwork).remove_node(character.gameobject.id)
 
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(
-                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
-                [gameobject.id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
+            )
 
             world.delete_gameobject(character.gameobject.id)
 
@@ -61,15 +80,17 @@ class DeathEvent(LifeEvent):
 
 
 class BecameChildEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             character = gameobject.get_component(GameCharacter)
-            child_age_min, child_age_max = character.character_def.lifecycle.age_ranges["child"]
-            return \
-                character.alive \
-                and child_age_min <= character.age <= child_age_max \
+            child_age_min, child_age_max = character.character_def.lifecycle.age_ranges[
+                "child"
+            ]
+            return (
+                character.alive
+                and child_age_min <= character.age <= child_age_max
                 and not gameobject.has_component(ChildStatus)
+            )
 
         # end precondition
 
@@ -79,9 +100,13 @@ class BecameChildEvent(LifeEvent):
             logger.debug(f"{str(character.name)} became and child")
             gameobject.add_component(ChildStatus())
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(
-                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
-                [gameobject.id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
+            )
 
         # end callback
 
@@ -89,15 +114,18 @@ class BecameChildEvent(LifeEvent):
 
 
 class BecameAdolescentEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             character = gameobject.get_component(GameCharacter)
-            adolescent_age_min, adolescent_age_max = character.character_def.lifecycle.age_ranges["teen"]
-            return \
-                character.alive \
-                and adolescent_age_min <= character.age <= adolescent_age_max \
+            (
+                adolescent_age_min,
+                adolescent_age_max,
+            ) = character.character_def.lifecycle.age_ranges["teen"]
+            return (
+                character.alive
+                and adolescent_age_min <= character.age <= adolescent_age_max
                 and not gameobject.has_component(AdolescentStatus)
+            )
 
         # end precondition
 
@@ -110,8 +138,9 @@ class BecameAdolescentEvent(LifeEvent):
                 LifeEventRecord(
                     self.name,
                     world.get_resource(SimDateTime).to_iso_str(),
-                    {"subject": [gameobject.id]}),
-                [gameobject.id]
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
             )
 
         # end callback
@@ -120,15 +149,17 @@ class BecameAdolescentEvent(LifeEvent):
 
 
 class BecameYoungAdultEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             character = gameobject.get_component(GameCharacter)
-            age_min, age_max = character.character_def.lifecycle.age_ranges["young_adult"]
-            return \
-                character.alive \
-                and age_min <= character.age <= age_max \
+            age_min, age_max = character.character_def.lifecycle.age_ranges[
+                "young_adult"
+            ]
+            return (
+                character.alive
+                and age_min <= character.age <= age_max
                 and not gameobject.has_component(YoungAdultStatus)
+            )
 
         # end precondition
 
@@ -141,8 +172,9 @@ class BecameYoungAdultEvent(LifeEvent):
                 LifeEventRecord(
                     self.name,
                     world.get_resource(SimDateTime).to_iso_str(),
-                    {"subject": [gameobject.id]}),
-                [gameobject.id]
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
             )
 
         # end callback
@@ -151,15 +183,15 @@ class BecameYoungAdultEvent(LifeEvent):
 
 
 class BecameAdultEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             character = gameobject.get_component(GameCharacter)
             age_min, age_max = character.character_def.lifecycle.age_ranges["adult"]
-            return \
-                character.alive \
-                and age_min <= character.age <= age_max \
+            return (
+                character.alive
+                and age_min <= character.age <= age_max
                 and not gameobject.has_component(AdultStatus)
+            )
 
         # end precondition
 
@@ -169,9 +201,13 @@ class BecameAdultEvent(LifeEvent):
             logger.debug(f"{str(character.name)} became and adult")
             character.gameobject.add_component(AdultStatus())
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(
-                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
-                [gameobject.id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
+            )
 
         # end callback
 
@@ -179,15 +215,15 @@ class BecameAdultEvent(LifeEvent):
 
 
 class BecameSeniorEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             character = gameobject.get_component(GameCharacter)
             age_min, _ = character.character_def.lifecycle.age_ranges["senior"]
-            return \
-                character.alive \
-                and age_min <= character.age \
+            return (
+                character.alive
+                and age_min <= character.age
                 and not gameobject.has_component(SeniorStatus)
+            )
 
         # end precondition
 
@@ -197,9 +233,13 @@ class BecameSeniorEvent(LifeEvent):
             logger.debug(f"{str(character.name)} became and senior")
             character.gameobject.add_component(SeniorStatus())
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(
-                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
-                [gameobject.id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
+            )
 
         # end callback
 
@@ -207,14 +247,14 @@ class BecameSeniorEvent(LifeEvent):
 
 
 class UnemploymentEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             """Die if they are older than a certain age and not immortal"""
 
-            return \
-                not gameobject.has_component(UnemployedStatus) \
-                and (gameobject.get_component(YoungAdultStatus) or gameobject.has_component(AdultStatus))
+            return not gameobject.has_component(UnemployedStatus) and (
+                gameobject.has_component(YoungAdultStatus)
+                or gameobject.has_component(AdultStatus)
+            )
 
         # end precondition
 
@@ -225,9 +265,13 @@ class UnemploymentEvent(LifeEvent):
             logger.debug(f"{str(character.name)} became unemployed")
             gameobject.add_component(UnemployedStatus())
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(
-                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
-                [gameobject.id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
+            )
 
         # end callback
 
@@ -235,28 +279,31 @@ class UnemploymentEvent(LifeEvent):
 
 
 class BecameBusinessOwnerEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             """Characters get hired if they are unemployed"""
             is_unemployed = gameobject.has_component(UnemployedStatus)
 
             # There is a business that needs an owner
-            businesses_without_owners = list(filter(
-                lambda res: res[1].needs_owner(),
-                gameobject.world.get_component(Business)
-            ))
+            businesses_without_owners = list(
+                filter(
+                    lambda res: res[1].needs_owner(),
+                    gameobject.world.get_component(Business),
+                )
+            )
 
-            return is_unemployed and businesses_without_owners
+            return is_unemployed and bool(businesses_without_owners)
 
         # end precondition
 
         def cb(gameobject: GameObject, **kwargs) -> None:
             """Remove the character from the world"""
-            businesses_without_owners = list(filter(
-                lambda res: res[1].needs_owner(),
-                gameobject.world.get_component(Business)
-            ))
+            businesses_without_owners = list(
+                filter(
+                    lambda res: res[1].needs_owner(),
+                    gameobject.world.get_component(Business),
+                )
+            )
 
             business_id, business = businesses_without_owners[0]
 
@@ -264,10 +311,10 @@ class BecameBusinessOwnerEvent(LifeEvent):
 
             if owner_typename is None:
                 raise RuntimeError(
-                    "Missing owner occupation type for business that needs owner")
+                    "Missing owner occupation type for business that needs owner"
+                )
 
-            occupation_type = OccupationDefinition.get_registered_type(
-                owner_typename)
+            occupation_type = OccupationDefinition.get_registered_type(owner_typename)
 
             gameobject.add_component(Occupation(occupation_type, business_id))
 
@@ -277,15 +324,18 @@ class BecameBusinessOwnerEvent(LifeEvent):
 
             world = gameobject.world
 
-            logger.debug(
-                f"{str(character.name)} became owner of {business.get_name()}")
+            logger.debug(f"{str(character.name)} became owner of {business.get_name()}")
 
             gameobject.remove_component(gameobject.get_component(UnemployedStatus))
 
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
-                                {"subject": [gameobject.id], "business": business_id}),
-                [gameobject.id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id], "business": business_id},
+                ),
+                [gameobject.id],
+            )
 
         # end callback
 
@@ -293,7 +343,6 @@ class BecameBusinessOwnerEvent(LifeEvent):
 
 
 class GetHiredEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             """Characters get hired if they are unemployed"""
@@ -313,9 +362,13 @@ class GetHiredEvent(LifeEvent):
             logger.debug(f"{str(character.name)} got hired")
             gameobject.remove_component(gameobject.get_component(UnemployedStatus))
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(
-                    SimDateTime).to_iso_str(), {"subject": [gameobject.id]}),
-                [gameobject.id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
+            )
 
         # end callback
 
@@ -323,7 +376,6 @@ class GetHiredEvent(LifeEvent):
 
 
 class StartedDatingEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             """Die if they are older than a certain age and not immortal"""
@@ -336,19 +388,26 @@ class StartedDatingEvent(LifeEvent):
             relationship_net = world.get_resource(RelationshipNetwork)
 
             love_interests = relationship_net.get_all_relationships_with_tags(
-                character.gameobject.id,
-                "Love Interest"
+                character.gameobject.id, RelationshipTag.LoveInterest
             )
 
-            love_interests_that_know_you = [relationship_net.get_connection(r.target, character.gameobject.id) for r in
-                                            love_interests if
-                                            relationship_net.has_connection(r.target, character.gameobject.id)]
+            love_interests_that_know_you = [
+                relationship_net.get_connection(r.target, character.gameobject.id)
+                for r in love_interests
+                if relationship_net.has_connection(r.target, character.gameobject.id)
+            ]
 
-            single_love_interests = [li for li in love_interests_that_know_you if
-                                     not gameobject.world.get_gameobject(li.owner).has_component(
-                                         DatingStatus)]
+            single_love_interests = [
+                li
+                for li in love_interests_that_know_you
+                if not gameobject.world.get_gameobject(li.owner).has_component(
+                    DatingStatus
+                )
+            ]
 
-            return any([r.has_tags("Love Interest") for r in single_love_interests])
+            return any(
+                [r.has_tag(RelationshipTag.LoveInterest) for r in single_love_interests]
+            )
 
         # end precondition
 
@@ -360,38 +419,66 @@ class StartedDatingEvent(LifeEvent):
             relationship_net = world.get_resource(RelationshipNetwork)
 
             love_interests = relationship_net.get_all_relationships_with_tags(
-                character.gameobject.id,
-                "Love Interest"
+                character.gameobject.id, RelationshipTag.LoveInterest
             )
 
-            love_interests_that_know_you = list(filter(
-                lambda rel: rel.has_tags("Love Interest"),
-                [relationship_net.get_connection(r.target, character.gameobject.id) for r in
-                 love_interests if
-                 relationship_net.has_connection(r.target, character.gameobject.id)]))
+            love_interests_that_know_you = list(
+                filter(
+                    lambda rel: rel.has_tag(RelationshipTag.LoveInterest),
+                    [
+                        relationship_net.get_connection(
+                            r.target, character.gameobject.id
+                        )
+                        for r in love_interests
+                        if relationship_net.has_connection(
+                        r.target, character.gameobject.id
+                    )
+                    ],
+                )
+            )
 
-            single_love_interests = [li for li in love_interests_that_know_you if
-                                     not gameobject.has_component(DatingStatus)]
+            single_love_interests = [
+                li
+                for li in love_interests_that_know_you
+                if not gameobject.has_component(DatingStatus)
+            ]
 
-            potential_mate: int = \
-                world.get_resource(NeighborlyEngine).get_rng().choice(
-                    single_love_interests).owner
+            potential_mate: int = (
+                world.get_resource(NeighborlyEngine)
+                    .get_rng()
+                    .choice(single_love_interests)
+                    .owner
+            )
 
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
-                                {"subject": [gameobject.id, potential_mate]}),
-                [gameobject.id, potential_mate])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id, potential_mate]},
+                ),
+                [gameobject.id, potential_mate],
+            )
 
             world.get_gameobject(potential_mate).add_component(
-                DatingStatus(gameobject.id,
-                             str(gameobject.get_component(GameCharacter).name)))
+                DatingStatus(
+                    gameobject.id, str(gameobject.get_component(GameCharacter).name)
+                )
+            )
 
             gameobject.add_component(
-                DatingStatus(potential_mate,
-                             str(world.get_gameobject(potential_mate).get_component(GameCharacter).name)))
+                DatingStatus(
+                    potential_mate,
+                    str(
+                        world.get_gameobject(potential_mate)
+                            .get_component(GameCharacter)
+                            .name
+                    ),
+                )
+            )
 
             logger.debug(
-                f"{str(character.name)} and {str(world.get_gameobject(potential_mate).get_component(GameCharacter).name)} started dating")
+                f"{str(character.name)} and {str(world.get_gameobject(potential_mate).get_component(GameCharacter).name)} started dating"
+            )
 
         # end callback
 
@@ -399,7 +486,6 @@ class StartedDatingEvent(LifeEvent):
 
 
 class DatingBreakUpEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             """Break up with your partner if you're not one of their love interests"""
@@ -439,12 +525,16 @@ class DatingBreakUpEvent(LifeEvent):
             partner.remove_component(partner.get_component(DatingStatus))
             gameobject.remove_component(gameobject.get_component(DatingStatus))
 
-            logger.debug(
-                f"{str(character.name)} and {str(partner_name)} broke up")
+            logger.debug(f"{str(character.name)} and {str(partner_name)} broke up")
 
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
-                                {"subject": [gameobject.id, partner_id]}), [gameobject.id, partner_id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id, partner_id]},
+                ),
+                [gameobject.id, partner_id],
+            )
 
         # end callback
 
@@ -452,7 +542,6 @@ class DatingBreakUpEvent(LifeEvent):
 
 
 class MarriageEvent(LifeEvent):
-
     def __init__(self) -> None:
         def p(gameobject: GameObject) -> bool:
             """Die if they are older than a certain age and not immortal"""
@@ -472,19 +561,26 @@ class MarriageEvent(LifeEvent):
 
             # Remove dating status from characters
             gameobject.remove_component(gameobject.get_component(DatingStatus))
-            world.get_gameobject(partner_id).remove_component(gameobject.get_component(DatingStatus))
+            world.get_gameobject(partner_id).remove_component(
+                gameobject.get_component(DatingStatus)
+            )
 
             # Add Married status to characters
             gameobject.add_component(MarriedStatus(partner_id, partner_name))
             world.get_gameobject(partner_id).add_component(
-                MarriedStatus(character.gameobject.id, str(character.name)))
+                MarriedStatus(character.gameobject.id, str(character.name))
+            )
 
             world.get_resource(EventLog).add_event(
-                LifeEventRecord(self.name, world.get_resource(SimDateTime).to_iso_str(),
-                                {"subject": [gameobject.id, partner_id]}), [gameobject.id, partner_id])
+                LifeEventRecord(
+                    self.name,
+                    world.get_resource(SimDateTime).to_iso_str(),
+                    {"subject": [gameobject.id, partner_id]},
+                ),
+                [gameobject.id, partner_id],
+            )
 
-            logger.debug(
-                f"{str(character.name)} and {str(partner_name)} got married.")
+            logger.debug(f"{str(character.name)} and {str(partner_name)} got married.")
 
         # end callback
 
@@ -500,15 +596,20 @@ class FindTheirOwnPlace(LifeEvent):
     def __init__(self, chance_move_out: float) -> None:
         def p(gameobject: GameObject) -> bool:
             character = gameobject.get_component(GameCharacter)
-            current_residence = gameobject.world.get_gameobject(character.location_aliases['home']) \
-                .get_component(Residence)
+            current_residence = gameobject.world.get_gameobject(
+                character.location_aliases["home"]
+            ).get_component(Residence)
 
             is_home_owner = gameobject.id in current_residence.owners
 
-            return \
-                gameobject.has_component(Occupation) \
-                and (gameobject.has_component(YoungAdultStatus) or gameobject.has_component(AdultStatus)) \
+            return (
+                gameobject.has_component(Occupation)
+                and (
+                    gameobject.has_component(YoungAdultStatus)
+                    or gameobject.has_component(AdultStatus)
+                )
                 and not is_home_owner
+            )
 
         def cb(gameobject: GameObject, **kwargs) -> None:
             # Find a residence to move into
@@ -524,8 +625,9 @@ class FindTheirOwnPlace(LifeEvent):
                 LifeEventRecord(
                     self.name,
                     gameobject.world.get_resource(SimDateTime).to_iso_str(),
-                    {"subject": [gameobject.id]}),
-                [gameobject.id]
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
             )
 
         super().__init__("FindTheirOwnPlace", p, cb, chance_move_out)
@@ -542,9 +644,9 @@ class RetirementEvent(LifeEvent):
             rng = gameobject.world.get_resource(NeighborlyEngine).get_rng()
             age_min, age_max = character.character_def.lifecycle.age_ranges["senior"]
 
-            return \
-                gameobject.has_component(Occupation) \
-                and gameobject.get_component(GameCharacter).age > max(age_min, int(rng.random() * age_max))
+            return gameobject.has_component(Occupation) and gameobject.get_component(
+                GameCharacter
+            ).age > max(age_min, int(rng.random() * age_max))
 
         def cb(gameobject: GameObject, **kwargs) -> None:
             gameobject.add_component(RetiredStatus())
@@ -555,8 +657,9 @@ class RetirementEvent(LifeEvent):
                 LifeEventRecord(
                     self.name,
                     gameobject.world.get_resource(SimDateTime).to_iso_str(),
-                    {"subject": [gameobject.id]}),
-                [gameobject.id]
+                    {"subject": [gameobject.id]},
+                ),
+                [gameobject.id],
             )
             raise NotImplementedError()
 
@@ -566,6 +669,7 @@ class RetirementEvent(LifeEvent):
 #######################################
 #         HELPER FUNCTIONS            #
 #######################################
+
 
 def try_find_housing(world: World) -> Optional[Residence]:
     """
@@ -584,7 +688,9 @@ def try_find_housing(world: World) -> Optional[Residence]:
     raise NotImplementedError()
 
 
-def move_into_residence(character: GameObject, residence: Residence, is_owner: bool = True) -> None:
+def move_into_residence(
+    character: GameObject, residence: Residence, is_owner: bool = True
+) -> None:
     """
     Move a character into a given residence including their nuclear family
 
