@@ -82,14 +82,14 @@ def get_arg_parser() -> argparse.ArgumentParser:
         "--log-file",
         type=str,
         default="neighborly.log",
-        help="Enable logging ",
+        help="File to save logging output to",
     )
     parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
         default=False,
-        help="Enable logging",
+        help="Enable debug logging",
     )
     return parser
 
@@ -111,7 +111,7 @@ def main():
     else:
         loaded_settings = try_load_local_config()
         if loaded_settings:
-            logging.debug("Successfully loaded config from cwd.")
+            logger.debug("Successfully loaded config from cwd.")
             config = NeighborlyConfig.from_partial(loaded_settings, config)
 
     sim = Simulation(config)
