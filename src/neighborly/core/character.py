@@ -1,13 +1,10 @@
 from enum import Enum
-from typing import Dict, NamedTuple, Optional, Tuple, List, ClassVar, TypedDict, Any, Union
+from typing import Any, ClassVar, Dict, NamedTuple, Optional, Tuple, TypedDict, Union
 
-import numpy as np
 from ordered_set import OrderedSet
 from pydantic import BaseModel, Field, validator
 
 from neighborly.core import name_generation as name_gen
-from neighborly.core.activity import _activity_registry
-from neighborly.core.character.values import CharacterValues, generate_character_values
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
 from neighborly.core.rng import RandNumGenerator
@@ -16,6 +13,7 @@ from neighborly.core.utils.utilities import parse_number_range
 
 class AgeRanges(TypedDict):
     """Age range values for characters of a given type"""
+
     child: Tuple[int, int]
     teen: Tuple[int, int]
     young_adult: Tuple[int, int]
@@ -44,6 +42,7 @@ class LifeCycleConfig(BaseModel):
         The age that characters start to develop romantic feelings
         for other characters
     """
+
     can_age: bool
     can_die: bool
     chance_of_death: float
@@ -51,7 +50,7 @@ class LifeCycleConfig(BaseModel):
     marriageable_age: int
     age_ranges: AgeRanges
 
-    @validator('age_ranges', pre=True)
+    @validator("age_ranges", pre=True)
     def convert_age_ranges_to_tuples(cls, v):
         if not isinstance(v, dict):
             raise TypeError("Attribute 'age_ranges' expected dict object")
@@ -67,11 +66,12 @@ class LifeCycleConfig(BaseModel):
 
 class FamilyGenerationOptions(BaseModel):
     """Options used when generating a family for a new character entering the town"""
+
     probability_spouse: float
     probability_children: float
     num_children: Tuple[int, int]
 
-    @validator('num_children', pre=True)
+    @validator("num_children", pre=True)
     def convert_age_ranges_to_tuples(cls, v):
         if isinstance(v, str):
             return parse_number_range(v)
@@ -80,6 +80,7 @@ class FamilyGenerationOptions(BaseModel):
 
 class GenerationConfig(BaseModel):
     """Parameters for generating new characters with this type"""
+
     first_name: str
     last_name: str
     family: FamilyGenerationOptions
@@ -95,7 +96,7 @@ class CharacterDefinition(BaseModel):
         Configuration parameters for a characters lifecycle
     """
 
-    _type_registry: ClassVar[Dict[str, 'CharacterDefinition']] = {}
+    _type_registry: ClassVar[Dict[str, "CharacterDefinition"]] = {}
 
     name: str
     lifecycle: LifeCycleConfig
@@ -103,7 +104,9 @@ class CharacterDefinition(BaseModel):
     gender_overrides: Dict[str, Any] = Field(default_factory=dict)
 
     @classmethod
-    def create(cls, options: Dict[str, Any], base: Optional['CharacterDefinition'] = None) -> 'CharacterDefinition':
+    def create(
+        cls, options: Dict[str, Any], base: Optional["CharacterDefinition"] = None
+    ) -> "CharacterDefinition":
         """Create a new Character type
 
         Parameters
@@ -124,12 +127,12 @@ class CharacterDefinition(BaseModel):
         return CharacterDefinition(**character_def)
 
     @classmethod
-    def register_type(cls, type_config: 'CharacterDefinition') -> None:
+    def register_type(cls, type_config: "CharacterDefinition") -> None:
         """Registers a character config with the shared registry"""
         cls._type_registry[type_config.name] = type_config
 
     @classmethod
-    def get_type(cls, name: str) -> 'CharacterDefinition':
+    def get_type(cls, name: str) -> "CharacterDefinition":
         """Retrieve a CharacterConfig from the shared registry"""
         return cls._type_registry[name]
 
@@ -165,10 +168,6 @@ class GameCharacter(Component):
         Entity ID of the location where this character current is
     location_aliases: Dict[str, int]
         Maps string names to entity IDs of locations in the world
-    likes: Tuple[str, ...]
-        Names of activities that this character likes to do
-    values: CharacterValues
-        A characters beliefs/values in life (i.e. loyalty, family, wealth)
     """
 
     __slots__ = (
@@ -180,19 +179,16 @@ class GameCharacter(Component):
         "can_get_pregnant",
         "location",
         "location_aliases",
-        "values",
-        "likes",
-        "attracted_to"
+        "attracted_to",
     )
 
     def __init__(
-            self,
-            character_def: CharacterDefinition,
-            name: CharacterName,
-            age: float,
-            gender: Gender,
-            values: CharacterValues,
-            attracted_to: Tuple[Gender, ...],
+        self,
+        character_def: CharacterDefinition,
+        name: CharacterName,
+        age: float,
+        gender: Gender,
+        attracted_to: Tuple[Gender, ...],
     ) -> None:
         super().__init__()
         self.character_def = character_def
@@ -203,8 +199,6 @@ class GameCharacter(Component):
         self.attracted_to: OrderedSet[Gender] = OrderedSet(attracted_to)
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
-        self.likes: Tuple[str, ...] = get_top_activities(values)
-        self.values: CharacterValues = values
 
     def on_start(self) -> None:
         self.gameobject.set_name(str(self.name))
@@ -212,33 +206,33 @@ class GameCharacter(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            'character_def': self.character_def.name,
-            'name': str(self.name),
-            'alive': self.alive,
-            'age': self.age,
-            'gender': self.gender.value,
-            'attracted_to': [g.value for g in self.attracted_to],
-            'location': self.location,
-            'location_aliases': self.location_aliases,
-            'likes': self.likes,
-            'values': self.values.traits.tolist(),
+            "character_def": self.character_def.name,
+            "name": str(self.name),
+            "alive": self.alive,
+            "age": self.age,
+            "gender": self.gender.value,
+            "attracted_to": [g.value for g in self.attracted_to],
+            "location": self.location,
+            "location_aliases": self.location_aliases,
         }
 
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "{}(name={}, age={}, gender={}, location={}, location_aliases={}, likes={}, {})".format(
-            self.__class__.__name__,
-            str(self.name),
-            round(self.age),
-            self.gender,
-            self.location,
-            self.location_aliases,
-            self.likes,
-            str(self.values),
+        return (
+            "{}(name={}, age={}, gender={}, location={}, location_aliases={})".format(
+                self.__class__.__name__,
+                str(self.name),
+                round(self.age),
+                self.gender,
+                self.location,
+                self.location_aliases,
+            )
         )
 
 
-def choose_gender(rng: RandNumGenerator, overrides: Optional[Dict[str, int]] = None) -> Gender:
+def _choose_gender(
+    rng: RandNumGenerator, overrides: Optional[Dict[str, int]] = None
+) -> Gender:
     weights = [1 for _ in list(Gender)]
     if overrides:
         for i, g in enumerate(list(Gender)):
@@ -247,22 +241,23 @@ def choose_gender(rng: RandNumGenerator, overrides: Optional[Dict[str, int]] = N
     return Gender[rng.choices(list(Gender), weights)[0].name]
 
 
-def create_character(
-        character_type: CharacterDefinition,
-        rng: RandNumGenerator,
-        **kwargs
+def _create_character(
+    character_type: CharacterDefinition, rng: RandNumGenerator, **kwargs
 ) -> GameCharacter:
-    first_name = kwargs.get('first_name', name_gen.get_name(
-        character_type.generation.first_name))
-    last_name = kwargs.get('last_name', name_gen.get_name(
-        character_type.generation.last_name))
+    first_name = kwargs.get(
+        "first_name", name_gen.get_name(character_type.generation.first_name)
+    )
+    last_name = kwargs.get(
+        "last_name", name_gen.get_name(character_type.generation.last_name)
+    )
     name = CharacterName(first_name, last_name)
 
-    gender = kwargs.get('gender', choose_gender(rng))
+    gender = kwargs.get("gender", _choose_gender(rng))
 
     # generate an age
     age_range: Union[str, Tuple[int, int]] = kwargs.get(
-        'age_range', character_type.lifecycle.age_ranges['adult'])
+        "age_range", character_type.lifecycle.age_ranges["adult"]
+    )
 
     age = -1
     if isinstance(age_range, str):
@@ -271,24 +266,23 @@ def create_character(
             age = rng.randint(range_tuple[0], range_tuple[1])
         else:
             ValueError(
-                f"Given age range ({age_range}) is not one of (child, teen, young adult, adult, senior)")
+                f"Given age range {age_range} is not one of (child, teen, young adult, adult, senior)"
+            )
     else:
         age = rng.randint(age_range[0], age_range[1])
 
     if age == -1:
         raise RuntimeError("Age never set")
 
-    values: CharacterValues = generate_character_values(rng)
-
-    attracted_to = kwargs.get('attracted_to', tuple(
-        rng.sample(list(Gender), rng.randint(0, 2))))
+    attracted_to = kwargs.get(
+        "attracted_to", tuple(rng.sample(list(Gender), rng.randint(0, 2)))
+    )
 
     return GameCharacter(
         character_def=character_type,
         name=name,
         age=float(age),
         gender=gender,
-        values=values,
         attracted_to=attracted_to,
     )
 
@@ -304,27 +298,6 @@ class GameCharacterFactory(AbstractFactory):
 
     def create(self, spec: ComponentSpec, **kwargs) -> GameCharacter:
         """Create a new instance of a character"""
-        return create_character(
-            character_type=CharacterDefinition.get_type(spec['character_def']),
-            **kwargs
+        return _create_character(
+            character_type=CharacterDefinition.get_type(spec["character_def"]), **kwargs
         )
-
-
-def get_top_activities(
-        character_values: CharacterValues, n: int = 3
-) -> Tuple[str, ...]:
-    """Return the top activities a character would enjoy given their values"""
-
-    scores: List[Tuple[int, str]] = []
-
-    for name, activity in _activity_registry.items():
-        score: int = int(np.dot(character_values.traits,
-                                activity.character_traits.traits))
-        scores.append((score, name))
-
-    return tuple(
-        [
-            activity_score[1]
-            for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)
-        ][:n]
-    )

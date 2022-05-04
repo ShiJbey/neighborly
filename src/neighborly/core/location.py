@@ -1,8 +1,7 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 from ordered_set import OrderedSet
 
-from neighborly.core.activity import get_activity_flags
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentSpec
 
@@ -10,35 +9,19 @@ from neighborly.core.engine import AbstractFactory, ComponentSpec
 class Location(Component):
     """Anywhere where game characters may be"""
 
-    __slots__ = "characters_present", "activities", "activity_flags", "max_capacity"
+    __slots__ = "characters_present", "max_capacity"
 
-    def __init__(
-            self, max_capacity: int, activities: List[str]
-    ) -> None:
+    def __init__(self, max_capacity: int) -> None:
         super().__init__()
         self.max_capacity: int = max_capacity
         self.characters_present: OrderedSet[int] = OrderedSet()
-        self.activities: List[str] = activities
-        self.activity_flags: int = 0
-
-        for activity in self.activities:
-            self.activity_flags |= get_activity_flags(activity)[0]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
             "max_capacity": self.max_capacity,
             "characters_present": list(self.characters_present),
-            "activities": self.activities,
-            "activity_flags": self.activity_flags,
         }
-
-    def has_flags(self, *flag_strs: str) -> bool:
-        flags = get_activity_flags(*flag_strs)
-        for flag in flags:
-            if self.activity_flags & flag == 0:
-                return False
-        return True
 
     def add_character(self, character: int) -> None:
         self.characters_present.append(character)
@@ -50,21 +33,16 @@ class Location(Component):
         return character in self.characters_present
 
     def __repr__(self) -> str:
-        return "{}(present={}, activities={}, max_capacity={})".format(
+        return "{}(present={}, max_capacity={})".format(
             self.__class__.__name__,
             self.characters_present,
-            self.activities,
             self.max_capacity,
         )
 
 
 class LocationFactory(AbstractFactory):
-
     def __init__(self):
         super().__init__("Location")
 
     def create(self, spec: ComponentSpec, **kwargs) -> Location:
-        return Location(
-            max_capacity=spec.get_attribute("max capacity", 9999),
-            activities=spec.get_attribute("activities", [])
-        )
+        return Location(max_capacity=spec.get_attribute("max capacity", 9999))

@@ -6,9 +6,9 @@ from typing import Any, Dict, List, Optional, Union, Protocol
 
 import yaml
 
-from neighborly.core.activity import Activity, register_activity
+from neighborly.plugins.default_plugin.activity import Activity, register_activity
 from neighborly.core.business import BusinessDefinition
-from neighborly.core.character.character import CharacterDefinition
+from neighborly.core.character import CharacterDefinition
 from neighborly.core.engine import NeighborlyEngine, ComponentSpec, EntityArchetypeSpec
 from neighborly.core.relationship import RelationshipModifier
 

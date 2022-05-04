@@ -17,14 +17,16 @@
   <img src="https://img.shields.io/pypi/pyversions/neighborly">
 </p>
 
-![Neighborly Screenshot in pygame](./docs/resources/pygame_sample_screenshot.png)
+![pygame_sample_screenshot](https://user-images.githubusercontent.com/11076525/166522030-598a1fcd-3f9e-4203-ab50-8fa04722bd50.png)
 
 # Overview
 
-Neighborly is an social simulation engine that procedurally generates towns of characters. It simulates
+Neighborly is a social simulation engine for procedurally generating towns of characters. It simulates
 the lives of each character, their jobs, routines, relationships, and life events. Neighborly utilizes
 an entity-component system architecture, and enables users to specify custom character types, businesses,
-occupations, life events, and simulation systems. Neighborly takes lessons learned from working with
+occupations, life events, and AI components and simulation systems.
+
+Neighborly takes lessons learned from working with
 [_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
 and aims to give people better documentation, simpler interfaces, and more opportunities for extension and content authoring.
 
@@ -113,7 +115,7 @@ python ./samples/<sample_name>.py
 
 # Documentation
 
-Neighborly uses Numpy-style docstrings, we generate the documentation using Sphinx.
+Neighborly uses Numpy-style docstrings and we generate the documentation using Sphinx.
 
 When adding docstrings for existing or new bits of code please use the following
 references for how to format your contributions:
@@ -151,6 +153,13 @@ Here are some ways that people can contribute to Neighborly:
 6. Contributing tutorials/how-to's to the wiki
 7. Fixing grammar and spelling in the wiki
 8. Creating new samples
+
+## Code Style
+
+Neighborly does not have a set-in-stone code style yet, but I have started integrating
+isort, black, and flake8 into the development workflow in VSCode.
+
+You can follow [these instructions](https://black.readthedocs.io/en/stable/integrations/editors.html) for setting up both black and isort. And I found this gist helpful for getting [flake8 working in PyCharm](https://gist.github.com/tossmilestone/23139d870841a3d5cba2aea28da1a895).
 
 # Notes
 

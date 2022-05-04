@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntFlag, auto
-from typing import Dict, ClassVar, Any, List
+from typing import Any, ClassVar, Dict, List
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -26,8 +26,10 @@ class RelationshipTag(IntFlag):
     NONE = 0
     Father = auto()
     Mother = auto()
+    Parent = auto()
     Brother = auto()
     Sister = auto()
+    Sibling = auto()
     Son = auto()
     Daughter = auto()
     Coworker = auto()

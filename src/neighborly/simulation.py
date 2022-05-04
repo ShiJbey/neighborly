@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import importlib
-from logging import getLogger
 import os
 import sys
 from dataclasses import dataclass
-from typing import Any, List, Dict, Optional, Union
+from logging import getLogger
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 from tqdm import tqdm
 
 import neighborly.core.utils.utilities as utilities
 from neighborly.core.business import BusinessFactory
-from neighborly.core.character.character import GameCharacterFactory
+from neighborly.core.character import GameCharacterFactory
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import EventLog, LifeEventHandlerFactory
@@ -20,16 +20,15 @@ from neighborly.core.location import LocationFactory
 from neighborly.core.position import Position2DFactory
 from neighborly.core.processors import (
     CharacterProcessor,
-    RoutineProcessor,
-    SocializeProcessor,
     LifeEventProcessor,
+    RoutineProcessor,
     TimeProcessor,
 )
 from neighborly.core.residence import ResidenceFactory
 from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import RoutineFactory
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.time import HOURS_PER_DAY, SimDateTime, DAYS_PER_YEAR
+from neighborly.core.time import DAYS_PER_YEAR, HOURS_PER_DAY, SimDateTime
 from neighborly.core.town import Town, TownConfig
 
 logger = getLogger(__name__)
@@ -140,7 +139,6 @@ class Simulation:
         self.world.add_system(TimeProcessor(), 10)
         self.world.add_system(RoutineProcessor(), 5)
         self.world.add_system(CharacterProcessor(), 3)
-        self.world.add_system(SocializeProcessor(), 2)
         self.world.add_system(LifeEventProcessor())
         # Add default resources
         self.world.add_resource(SimDateTime())

@@ -44,5 +44,7 @@ def parse_number_range(range_str: str) -> Tuple[int, int]:
     -------
     Tuple[int, int]
     """
-    range_min, range_max = tuple(map(lambda s: int(s.strip()), range_str.strip().split('-')))
+    range_min, range_max = tuple(
+        map(lambda s: int(s.strip()), range_str.strip().split("-"))
+    )
     return range_min, range_max

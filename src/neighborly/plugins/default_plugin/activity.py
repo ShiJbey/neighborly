@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
-from neighborly.core.character.values import CharacterValues
+from neighborly.core.ecs import Component
+from neighborly.plugins.default_plugin.character_values import CharacterValues
 
 
 @dataclass(frozen=True)
@@ -51,3 +52,24 @@ def get_activity_flags(*activities: str) -> Tuple[int, ...]:
 def get_activity(activity: str) -> Activity:
     """Return Activity instance corresponding to a given string"""
     return _activity_registry[activity]
+
+
+def get_all_activities() -> List[Activity]:
+    """Return all activity instances in the registry"""
+    return list(_activity_registry.values())
+
+
+class ActivityCenter(Component):
+    def __init__(self, activities: List[str]) -> None:
+        self.activities: List[str] = activities
+        self.activity_flags: int = 0
+
+        for activity in self.activities:
+            self.activity_flags |= get_activity_flags(activity)[0]
+
+    def has_flags(self, *flag_strs: str) -> bool:
+        flags = get_activity_flags(*flag_strs)
+        for flag in flags:
+            if self.activity_flags & flag == 0:
+                return False
+        return True

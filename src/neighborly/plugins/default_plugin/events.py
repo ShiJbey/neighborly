@@ -1,26 +1,26 @@
 import logging
 from typing import Optional
 
-from neighborly.core.business import Business, OccupationDefinition, Occupation
-from neighborly.core.character.character import GameCharacter
+from neighborly.core.business import Business, Occupation, OccupationDefinition
+from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvent, EventLog, LifeEventRecord
+from neighborly.core.life_event import EventLog, LifeEvent, LifeEventRecord
 from neighborly.core.location import Location
 from neighborly.core.relationship import RelationshipTag
 from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.default_plugin.statuses import (
+    AdolescentStatus,
+    AdultStatus,
+    ChildStatus,
     DatingStatus,
     MarriedStatus,
-    AdultStatus,
+    RetiredStatus,
     SeniorStatus,
     UnemployedStatus,
-    ChildStatus,
-    AdolescentStatus,
     YoungAdultStatus,
-    RetiredStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -431,8 +431,8 @@ class StartedDatingEvent(LifeEvent):
                         )
                         for r in love_interests
                         if relationship_net.has_connection(
-                        r.target, character.gameobject.id
-                    )
+                            r.target, character.gameobject.id
+                        )
                     ],
                 )
             )
@@ -445,9 +445,9 @@ class StartedDatingEvent(LifeEvent):
 
             potential_mate: int = (
                 world.get_resource(NeighborlyEngine)
-                    .get_rng()
-                    .choice(single_love_interests)
-                    .owner
+                .get_rng()
+                .choice(single_love_interests)
+                .owner
             )
 
             world.get_resource(EventLog).add_event(
@@ -470,8 +470,8 @@ class StartedDatingEvent(LifeEvent):
                     potential_mate,
                     str(
                         world.get_gameobject(potential_mate)
-                            .get_component(GameCharacter)
-                            .name
+                        .get_component(GameCharacter)
+                        .name
                     ),
                 )
             )
@@ -730,8 +730,6 @@ def vacate_job_position(occupation: Occupation) -> None:
 
     Parameters
     ----------
-    character: Character
-        The Character that is leaving their job
     occupation: Occupation
         The Occupation that this character currently holds
     """

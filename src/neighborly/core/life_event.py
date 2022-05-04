@@ -1,7 +1,6 @@
 from collections import defaultdict
 from typing import (
     Any,
-    Callable,
     Optional,
     Dict,
     List,
@@ -25,7 +24,10 @@ class EffectFn(Protocol):
         raise NotImplementedError()
 
 
-ProbabilityFn = Callable[..., float]
+class ProbabilityFn(Protocol):
+    def __call__(self, gameobject: GameObject, **kwargs) -> float:
+        raise NotImplementedError()
+
 
 _precondition_fn_registry: Dict[str, PreconditionFn] = {}
 _effect_fn_registry: Dict[str, EffectFn] = {}
@@ -38,16 +40,16 @@ def register_precondition(name: str, fn: PreconditionFn) -> None:
     _precondition_fn_registry[name] = fn
 
 
-def register_effect(name, fn: EffectFn) -> None:
+def register_effect(name: str, fn: EffectFn) -> None:
     """Adds a function to the global registry of event effects"""
     global _effect_fn_registry
     _effect_fn_registry[name] = fn
 
 
-def register_probability(fn: ProbabilityFn) -> None:
+def register_probability(name: str, fn: ProbabilityFn) -> None:
     """Adds a function to the global registry of event probability functions"""
     global _probability_fn_registry
-    _probability_fn_registry[fn.__name__] = fn
+    _probability_fn_registry[name] = fn
 
 
 def get_precondition(name: str) -> PreconditionFn:
@@ -91,10 +93,14 @@ def event_effect(name: str):
     return wrapper
 
 
-def event_probability(fn: ProbabilityFn) -> ProbabilityFn:
-    """Decorator that registers a probability function"""
-    register_probability(fn)
-    return fn
+def event_probability(name: str):
+    """Decorator that registers an probability function"""
+
+    def wrapper(fn: ProbabilityFn):
+        register_probability(name, fn)
+        return fn
+
+    return wrapper
 
 
 class EventPreconditionNotFoundError(Exception):

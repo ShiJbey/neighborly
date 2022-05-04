@@ -1,16 +1,12 @@
 import pytest
 
-from neighborly.core.character.values import CharacterValues
+from neighborly.plugins.default_plugin.character_values import CharacterValues
 
 
 def test_constructor():
     base_values = CharacterValues(default=50)
 
-    overridden_values = CharacterValues({
-        "family": 42,
-        "power": 90,
-        "social": 36
-    })
+    overridden_values = CharacterValues({"family": 42, "power": 90, "social": 36})
 
     assert base_values["family"] == 50
     assert base_values["social"] == 50

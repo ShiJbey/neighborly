@@ -2,17 +2,19 @@ from logging import getLogger
 from typing import Dict, List, Optional
 
 from neighborly.core.business import BusinessDefinition
-from neighborly.core.character.character import GameCharacter
+from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
-from neighborly.core.relationship import Relationship
+from neighborly.core.relationship import Relationship, RelationshipModifier
 from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.town import Town
 from neighborly.core.time import SimDateTime
+from neighborly.core.town import Town
 from neighborly.plugins.default_plugin.statuses import MarriedStatus
+
+from .character_values import CharacterValues
 
 logger = getLogger(__name__)
 
@@ -282,3 +284,106 @@ class CityPlanner:
             eligible_types.append(t)
 
         return eligible_types
+
+
+class SocializeProcessor:
+    """Runs logic for characters socializing with the other characters at their location"""
+
+    def __call__(self, world: World, **kwargs):
+
+        delta_time: float = float(world.get_resource(SimDateTime).delta_time)
+
+        if kwargs.get("full_sim"):
+            return
+
+        for _, character in world.get_component(GameCharacter):
+            if not character.alive:
+                continue
+
+            self._socialize(world, character)
+
+    def _socialize(self, world: World, character: GameCharacter) -> None:
+        """Have all the characters talk to those around them"""
+        if character.location:
+            location = world.get_gameobject(character.location).get_component(Location)
+
+            relationship_net = world.get_resource(RelationshipNetwork)
+
+            character_id = character.gameobject.id
+
+            # Socialize
+            for other_character_id in location.characters_present:
+                if other_character_id == character.gameobject.id:
+                    continue
+
+                if not relationship_net.has_connection(
+                    character_id, other_character_id
+                ):
+
+                    logger.debug(
+                        "{} met {}".format(
+                            str(character.name),
+                            str(
+                                world.get_gameobject(other_character_id)
+                                .get_component(GameCharacter)
+                                .name
+                            ),
+                        )
+                    )
+                else:
+                    relationship_net.get_connection(
+                        character_id, other_character_id
+                    ).update()
+
+                if not relationship_net.has_connection(
+                    other_character_id, character_id
+                ):
+
+                    logger.debug(
+                        "{} met {}".format(
+                            str(
+                                world.get_gameobject(other_character_id)
+                                .get_component(GameCharacter)
+                                .name
+                            ),
+                            str(character.name),
+                        )
+                    )
+                else:
+                    relationship_net.get_connection(
+                        other_character_id, character_id
+                    ).update()
+
+
+def create_new_relationship(
+    relationship_net: RelationshipNetwork,
+    character: GameCharacter,
+    other_character: GameCharacter,
+) -> None:
+
+    # Add a new relationship instance to the RelationshipNetwork
+    relationship_net.add_connection(
+        character.gameobject.id,
+        other_character.gameobject.id,
+        Relationship(character.gameobject.id, other_character.gameobject.id),
+    )
+
+    # both_have_character
+
+    # Add compatibility
+    if character.gameobject.has_component(
+        CharacterValues
+    ) and other_character.gameobject.has_component(CharacterValues):
+        compatibility = CharacterValues.calculate_compatibility(
+            character.gameobject.get_component(CharacterValues),
+            other_character.gameobject.get_component(CharacterValues),
+        )
+
+        relationship_net.get_connection(character_id, other_character_id).add_modifier(
+            RelationshipModifier("Compatibility", friendship_increment=compatibility)
+        )
+
+        if other_character.gender in character.attracted_to:
+            relationship_net.get_connection(
+                character_id, other_character_id
+            ).add_modifier(RelationshipModifier("Attracted", romance_increment=1))

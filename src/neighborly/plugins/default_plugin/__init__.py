@@ -1,35 +1,35 @@
 import os
 from pathlib import Path
 
-from neighborly.core.business import OccupationDefinition, BusinessDefinition
+from neighborly.core.business import BusinessDefinition, OccupationDefinition
 from neighborly.core.processors import LifeEventProcessor
 from neighborly.core.relationship import RelationshipModifier
-from neighborly.loaders import load_names, YamlDataLoader
+from neighborly.loaders import YamlDataLoader, load_names
 from neighborly.plugins.default_plugin.businesses import (
-    restaurant_type,
     bar_type,
-    department_store_type,
-    manager_type,
-    sales_associate_type,
-    cashier_type,
-    dj_type,
     bartender_type,
-    security_type,
+    cashier_type,
     cook_type,
+    department_store_type,
+    dj_type,
+    manager_type,
     owner_type,
     proprietor_type,
+    restaurant_type,
+    sales_associate_type,
+    security_type,
 )
 from neighborly.plugins.default_plugin.events import (
-    DeathEvent,
+    BecameAdolescentEvent,
     BecameAdultEvent,
-    BecameSeniorEvent,
-    StartedDatingEvent,
-    DatingBreakUpEvent,
-    UnemploymentEvent,
     BecameBusinessOwnerEvent,
     BecameChildEvent,
+    BecameSeniorEvent,
     BecameYoungAdultEvent,
-    BecameAdolescentEvent,
+    DatingBreakUpEvent,
+    DeathEvent,
+    StartedDatingEvent,
+    UnemploymentEvent,
 )
 from neighborly.plugins.default_plugin.relationship_modifiers import FriendModifier
 from neighborly.plugins.default_plugin.statuses import (
@@ -37,6 +37,7 @@ from neighborly.plugins.default_plugin.statuses import (
     MarriedStatus,
     UnemployedStatus,
 )
+from neighborly.plugins.default_plugin.systems import SocializeProcessor
 from neighborly.simulation import PluginContext
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
@@ -59,6 +60,7 @@ def setup(ctx: PluginContext, **kwargs) -> None:
     ctx.world.add_system(DatingStatus.system_fn, 1)
     ctx.world.add_system(MarriedStatus.system_fn, 1)
     ctx.world.add_system(UnemployedStatus.system_fn, 1)
+    # ctx.world.add_system(SocializeProcessor(), 2)
 
     BusinessDefinition.register_type(restaurant_type)
     BusinessDefinition.register_type(bar_type)
