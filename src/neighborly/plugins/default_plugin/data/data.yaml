@@ -33,7 +33,7 @@ Residences:
     components:
       - type: Location
         options:
-          activities: [ Rest ]
+          activities: [Rest]
       - type: Residence
       - type: Position2D
 Businesses:
@@ -45,14 +45,14 @@ Businesses:
     components:
       - type: Location
         options:
-          activities: [ Shopping ]
+          activities: [Shopping]
           max capacity: 60
       - type: Business
         options:
-          name: 'Grocery Store'
-          name_pattern: 'Department Store'
-          hours: 'MTWRF 9:00-17:00, SU 10:00-15:00'
-          owner_type: 'Owner'
+          name: "Grocery Store"
+          name_pattern: "Department Store"
+          hours: "MTWRF 9:00-17:00, SU 10:00-15:00"
+          owner_type: "Owner"
           employees:
             Cashier: 1
             Sales Associate: 2
@@ -61,7 +61,7 @@ Businesses:
     components:
       - type: Location
         options:
-          activities: [ Eating, Socializing ]
+          activities: [Eating, Socializing]
           max capacity: 20
       - type: Business
         options:
@@ -70,8 +70,8 @@ Businesses:
     components:
       - type: Location
         options:
-          name: '#bar_name#'
-          activities: [ Eating, Drinking, Socializing ]
+          name: "#bar_name#"
+          activities: [Eating, Drinking, Socializing]
           max capacity: 35
       - type: Business
         options:
@@ -81,14 +81,14 @@ Places:
     components:
       - type: Location
         options:
-          activities: [ Recreation ]
+          activities: [Recreation]
           max capacity: 200
 
   - name: Library
     components:
       - type: Location
         options:
-          activities: [ Reading, Studying ]
+          activities: [Reading, Studying]
           max capacity: 35
 Activities:
   - name: Rest
@@ -143,7 +143,7 @@ Activities:
       - health
       - tranquility
       - leisure-time
-RelationshipTags:
+RelationshipModifiers:
   - name: Acquaintance
   - name: Friend
     salience_boost: 20

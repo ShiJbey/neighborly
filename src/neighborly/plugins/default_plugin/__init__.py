@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
+from typing import List, Dict, Any
 
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.business import BusinessDefinition, OccupationDefinition
 from neighborly.core.processors import LifeEventProcessor
 from neighborly.core.relationship import RelationshipModifier
@@ -37,10 +39,18 @@ from neighborly.plugins.default_plugin.statuses import (
     MarriedStatus,
     UnemployedStatus,
 )
+from neighborly.plugins.default_plugin.activity import register_activity, Activity
 from neighborly.plugins.default_plugin.systems import SocializeProcessor
 from neighborly.simulation import PluginContext
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
+
+
+@YamlDataLoader.section_loader("Activities")
+def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
+    """Process data related to defining activities"""
+    for activity in data:
+        register_activity(Activity(activity["name"], trait_names=activity["traits"]))
 
 
 def setup(ctx: PluginContext, **kwargs) -> None:
@@ -60,7 +70,7 @@ def setup(ctx: PluginContext, **kwargs) -> None:
     ctx.world.add_system(DatingStatus.system_fn, 1)
     ctx.world.add_system(MarriedStatus.system_fn, 1)
     ctx.world.add_system(UnemployedStatus.system_fn, 1)
-    # ctx.world.add_system(SocializeProcessor(), 2)
+    ctx.world.add_system(SocializeProcessor(), 2)
 
     BusinessDefinition.register_type(restaurant_type)
     BusinessDefinition.register_type(bar_type)

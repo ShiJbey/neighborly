@@ -3,14 +3,16 @@
 import copy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, Protocol
+import logging
 
 import yaml
 
-from neighborly.plugins.default_plugin.activity import Activity, register_activity
 from neighborly.core.business import BusinessDefinition
 from neighborly.core.character import CharacterDefinition
 from neighborly.core.engine import NeighborlyEngine, ComponentSpec, EntityArchetypeSpec
 from neighborly.core.relationship import RelationshipModifier
+
+logger = logging.getLogger(__name__)
 
 AnyPath = Union[str, Path]
 
@@ -91,7 +93,7 @@ class YamlDataLoader:
             if section in self._section_loaders:
                 self._section_loaders[section](engine, data)
             else:
-                print(f"WARNING:: Skipping unsupported section '{section}'")
+                logger.warning(f"skipping unsupported YAML section '{section}'.")
 
     @classmethod
     def section_loader(cls, section_name: str):
@@ -118,13 +120,6 @@ def _load_business_definitions(
     """Process data related to defining activities"""
     for business_def in data:
         BusinessDefinition.register_type(BusinessDefinition(**business_def))
-
-
-@YamlDataLoader.section_loader("Activities")
-def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
-    """Process data related to defining activities"""
-    for activity in data:
-        register_activity(Activity(activity["name"], trait_names=activity["traits"]))
 
 
 def _load_entity_archetype(

@@ -4,10 +4,12 @@ import logging
 import os
 import random
 import pathlib
+import sys
 from typing import Any, Dict, Optional
 
 import yaml
 
+import neighborly
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 from neighborly.loaders import UnsupportedFileType
@@ -68,28 +70,38 @@ def try_load_local_config() -> Optional[Dict[str, Any]]:
 
 def get_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("Run Neighborly social simulation")
-    parser.add_argument("-o", "--output", help="path to write output file")
     parser.add_argument(
-        "--no-emit",
-        default=False,
+        "-v",
+        "--version",
         action="store_true",
-        help="Disable creating an output file",
+        default=False,
+        help="Print the version of Neighborly",
     )
     parser.add_argument(
-        "--config", help="Load a simulation config from the following path"
+        "-c",
+        "--config",
+        help="Path to the neighborlyconfig.yaml file to load for configuration",
     )
-    parser.add_argument(
-        "--log-file",
-        type=str,
-        default="neighborly.log",
-        help="File to save logging output to",
-    )
+    parser.add_argument("-o", "--output", help="path to write final simulation state")
     parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
         default=False,
-        help="Enable debug logging",
+        help="Print verbose debug output and save a log file",
+    )
+    parser.add_argument(
+        "--no-emit",
+        default=False,
+        action="store_true",
+        help="Disable creating an output file with the simulation's final state",
+    )
+    parser.add_argument(
+        "-q,",
+        "--quiet",
+        default=False,
+        action="store_true",
+        help="Disable all printing to stdout",
     )
     return parser
 
@@ -97,11 +109,14 @@ def get_arg_parser() -> argparse.ArgumentParser:
 def main():
     args = get_arg_parser().parse_args()
 
-    log_level = logging.DEBUG if args.debug else logging.INFO
-    if args.log_file:
-        logging.basicConfig(filename=args.log_file, filemode="w", level=log_level)
-    else:
-        logging.basicConfig(level=log_level)
+    if args.version:
+        print(neighborly.__version__)
+        sys.exit(0)
+
+    if args.debug:
+        logging.basicConfig(
+            filename="neighborly.log", filemode="w", level=logging.DEBUG
+        )
 
     config = DEFAULT_NEIGHBORLY_CONFIG
     if args.config:
@@ -113,6 +128,8 @@ def main():
         if loaded_settings:
             logger.debug("Successfully loaded config from cwd.")
             config = NeighborlyConfig.from_partial(loaded_settings, config)
+
+    config.quiet = args.quiet
 
     sim = Simulation(config)
 
@@ -128,7 +145,7 @@ def main():
         with open(output_path, "w") as f:
             data = NeighborlyJsonExporter().export(sim.world)
             f.write(data)
-            print(f"Simulation data written to: '{output_path}'")
+            logger.debug(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":

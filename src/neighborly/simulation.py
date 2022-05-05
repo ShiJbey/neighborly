@@ -86,6 +86,7 @@ class NeighborlyConfig(BaseModel):
         instantiation parameters
     """
 
+    quiet: bool = False
     simulation: SimulationConfig = Field(default_factory=lambda: SimulationConfig())
     plugins: List[Union[str, PluginConfig]] = Field(default_factory=list)
 
@@ -206,16 +207,16 @@ class Simulation:
         )
 
         try:
-            for _ in tqdm(range(total_timesteps)):
+            for _ in tqdm(range(total_timesteps), disable=self.config.quiet is True):
                 if self.get_time().to_ordinal() in high_res_days:
                     self.step(hours=self.config.simulation.hours_per_timestep)
                 else:
                     self.step(hours=24)
 
         except KeyboardInterrupt:
-            print("Stopping Simulation")
-        finally:
-            print(f"Current Date: {self.get_time().to_date_str()}")
+            if self.config.quiet is False:
+                print("Stopping Simulation")
+                print(f"Current Date: {self.get_time().to_date_str()}")
 
     def step(self, hours: int, **kwargs) -> None:
         """Advance the simulation a single timestep"""
