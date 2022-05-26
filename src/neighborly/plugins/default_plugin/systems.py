@@ -142,7 +142,6 @@ class ResidentImmigrationSystem:
             archetype_name,
             age_range="young_adult",
             last_name=character.name.surname,
-            attracted_to=[character.gender],
         )
 
     def create_children(
@@ -161,7 +160,7 @@ class ResidentImmigrationSystem:
         spouse_age = spouse.age if spouse else 999
         min_parent_age = min(spouse_age, character.age)
         child_age_max = (
-            min_parent_age - character.character_def.lifecycle.marriageable_age
+            min_parent_age - character.character_def.lifecycle.life_stages["adult"]
         )
 
         children = []
@@ -180,7 +179,7 @@ class ResidentImmigrationSystem:
         """Randomly select from the available character archetypes using weighted random"""
         rng = engine.get_rng()
 
-        archetype_names = [a.get_type() for a in engine.get_character_archetypes()]
+        archetype_names = [a.get_name() for a in engine.get_character_archetypes()]
         weights = []
 
         # override weights
@@ -208,7 +207,7 @@ class ResidentImmigrationSystem:
         """Randomly select from the available residence archetypes using weighted random"""
         rng = engine.get_rng()
 
-        archetype_names = [a.get_type() for a in engine.get_residence_archetypes()]
+        archetype_names = [a.get_name() for a in engine.get_residence_archetypes()]
         weights = []
 
         # override weights
@@ -292,9 +291,6 @@ class SocializeProcessor:
     def __call__(self, world: World, **kwargs):
 
         delta_time: float = float(world.get_resource(SimDateTime).delta_time)
-
-        if kwargs.get("full_sim"):
-            return
 
         for _, character in world.get_component(GameCharacter):
             if not character.alive:

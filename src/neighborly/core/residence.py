@@ -1,13 +1,13 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentSpec
+from neighborly.core.engine import AbstractFactory, ComponentDefinition
 
 
 class Residence(Component):
-    __slots__ = 'owners', 'former_owners', 'residents', 'former_residents', '_vacant'
+    __slots__ = "owners", "former_owners", "residents", "former_residents", "_vacant"
 
     def __init__(self) -> None:
         super().__init__()
@@ -20,11 +20,11 @@ class Residence(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            'owners': list(self.owners),
-            'former_owners': list(self.former_owners),
-            'residents': list(self.residents),
-            'former_residents': list(self.former_residents),
-            'vacant': self._vacant
+            "owners": list(self.owners),
+            "former_owners": list(self.former_owners),
+            "residents": list(self.residents),
+            "former_residents": list(self.former_residents),
+            "vacant": self._vacant,
         }
 
     def add_tenant(self, person: int, is_owner: bool = False) -> None:
@@ -48,9 +48,8 @@ class Residence(Component):
 
 
 class ResidenceFactory(AbstractFactory):
-
     def __init__(self):
         super().__init__("Residence")
 
-    def create(self, spec: ComponentSpec, **kwargs) -> Residence:
+    def create(self, spec: ComponentDefinition, **kwargs) -> Residence:
         return Residence()

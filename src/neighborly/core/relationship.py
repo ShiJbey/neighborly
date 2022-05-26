@@ -208,13 +208,17 @@ class Relationship:
             self._recalculate_stats()
         return self._salience
 
-    def add_tag(self, tag: RelationshipTag) -> None:
+    def add_tags(self, tags: RelationshipTag) -> None:
         """Return add a tag to this Relationship"""
-        self._tags |= tag
+        self._tags |= tags
 
-    def has_tag(self, tag: RelationshipTag) -> bool:
+    def has_tags(self, tags: RelationshipTag) -> bool:
         """Return True if a relationship has a tag"""
-        return bool(self._tags & tag)
+        return bool(self._tags & tags)
+
+    def remove_tags(self, tags: RelationshipTag) -> None:
+        """Return True if a relationship has a tag"""
+        self._tags = self._tags & (~tags)
 
     def get_modifiers(self) -> List[RelationshipModifier]:
         """Return a list of the modifiers attached to this Relationship instance"""

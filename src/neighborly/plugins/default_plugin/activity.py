@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
 
 from neighborly.core.ecs import Component
 from neighborly.plugins.default_plugin.character_values import CharacterValues

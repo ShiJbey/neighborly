@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import pathlib
 import os
 import sys
 from dataclasses import dataclass
@@ -15,14 +16,18 @@ from neighborly.core.business import BusinessFactory
 from neighborly.core.character import GameCharacterFactory
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import EventLog, LifeEventHandlerFactory
+from neighborly.core.life_event import LifeEventLogger
 from neighborly.core.location import LocationFactory
 from neighborly.core.position import Position2DFactory
-from neighborly.core.processors import (
-    CharacterProcessor,
-    LifeEventProcessor,
-    RoutineProcessor,
-    TimeProcessor,
+from neighborly.core.systems import (
+    AdolescentSystem,
+    AdultSystem,
+    CharacterSystem,
+    ChildSystem,
+    LifeEventSystem,
+    RoutineSystem,
+    TimeSystem,
+    YoungAdultSystem,
 )
 from neighborly.core.residence import ResidenceFactory
 from neighborly.core.rng import DefaultRNG
@@ -84,11 +89,14 @@ class NeighborlyConfig(BaseModel):
     plugins: List[Union[str, PluginConfig]]
         Names of plugins to load or names combined with
         instantiation parameters
+    path: str
+        Path to the config file
     """
 
     quiet: bool = False
     simulation: SimulationConfig = Field(default_factory=lambda: SimulationConfig())
     plugins: List[Union[str, PluginConfig]] = Field(default_factory=list)
+    path: str = "."
 
     @classmethod
     def from_partial(
@@ -133,24 +141,30 @@ class Simulation:
         engine.add_component_factory(LocationFactory())
         engine.add_component_factory(ResidenceFactory())
         engine.add_component_factory(Position2DFactory())
-        engine.add_component_factory(LifeEventHandlerFactory())
         engine.add_component_factory(BusinessFactory())
         self.world.add_resource(engine)
         # Add default systems
-        self.world.add_system(TimeProcessor(), 10)
-        self.world.add_system(RoutineProcessor(), 5)
-        self.world.add_system(CharacterProcessor(), 3)
-        self.world.add_system(LifeEventProcessor())
+        self.world.add_system(TimeSystem(), 10)
+        self.world.add_system(RoutineSystem(), 5)
+        self.world.add_system(CharacterSystem(), 3)
+        self.world.add_system(ChildSystem(), 3)
+        self.world.add_system(AdolescentSystem(), 3)
+        self.world.add_system(YoungAdultSystem(), 3)
+        self.world.add_system(AdultSystem(), 3)
+        self.world.add_system(LifeEventSystem())
         # Add default resources
         self.world.add_resource(SimDateTime())
         self.world.add_resource(RelationshipNetwork())
-        self.world.add_resource(EventLog())
+        self.world.add_resource(LifeEventLogger())
         # Load Plugins
         for plugin in config.plugins:
             if isinstance(plugin, str):
                 self.load_plugin(plugin)
             else:
-                self.load_plugin(plugin.name, plugin.path, **plugin.options)
+                plugin_path = os.path.join(
+                    pathlib.Path(config.path).parent, plugin.path if plugin.path else ""
+                )
+                self.load_plugin(plugin.name, plugin_path, **plugin.options)
         # Create the town
         town = Town.create(config.simulation.town)
         self.world.add_resource(town)
@@ -166,16 +180,18 @@ class Simulation:
         module_name: str
             Name of module to load
         """
-        plugin_path: Optional[str] = kwargs.get("path")
         path_prepended = False
 
-        if plugin_path:
+        if path:
             path_prepended = True
-            sys.path.insert(0, os.path.abspath(plugin_path))
-            logger.debug(f"Temporarily added plugin path '{plugin_path}' to sys.path")
+            plugin_abs_path = os.path.abspath(path)
+            sys.path.insert(0, plugin_abs_path)
+            logger.debug(
+                f"Temporarily added plugin path '{plugin_abs_path}' to sys.path"
+            )
 
         try:
-            plugin_module = importlib.import_module(module_name, package=".")
+            plugin_module = importlib.import_module(module_name)
             plugin_module.__dict__["setup"](
                 PluginContext(engine=self.get_engine(), world=self.world), **kwargs
             )

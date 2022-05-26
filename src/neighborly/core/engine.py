@@ -1,8 +1,10 @@
-from abc import ABC
-from typing import Dict, List, Optional, Any, Protocol
+from __future__ import annotations
 
-from neighborly.core.ecs import GameObject, Component
-from neighborly.core.rng import RandNumGenerator
+from abc import ABC
+from typing import Any, Optional, Protocol
+
+from neighborly.core.ecs import Component, GameObject
+from neighborly.core.rng import IRandNumGenerator
 from neighborly.core.utils.tracery import set_grammar_rng
 
 
@@ -25,77 +27,89 @@ class AbstractFactory(ABC):
         return self._type
 
 
-class ComponentSpec:
-    """Collection of Key-Value pairs used to instantiate instances of components"""
+class ComponentDefinition:
+    """
+    Collection of Key-Value pairs passed to factories when to
+    instantiating instances of components
+    """
 
     __slots__ = "_component_type", "_attributes"
 
     def __init__(
-            self,
-            component_type: str,
-            attributes: Optional[Dict[str, Any]] = None,
+        self,
+        component_type: str,
+        attributes: Optional[dict[str, Any]] = None,
     ) -> None:
         self._component_type: str = component_type
-        self._attributes: Dict[str, Any] = attributes if attributes else {}
+        self._attributes: dict[str, Any] = attributes if attributes else {}
 
     def get_type(self) -> str:
+        """Returns the name of the type of component this spec is for"""
         return self._component_type
 
-    def get_attributes(self) -> Dict[str, Any]:
+    def get_attributes(self) -> dict[str, Any]:
+        """Get all the attributes associated with this definition"""
         return self._attributes
 
     def get_attribute(self, key: str, default: Any = None) -> Any:
+        """Get a specific attribute associated with this definition"""
         return self._attributes.get(key, default)
 
-    def update(self, new_attributes: Dict[str, Any]) -> None:
+    def update(self, new_attributes: dict[str, Any]) -> None:
+        """Update the attributes using a given dict of values"""
         self._attributes.update(new_attributes)
 
     def __getitem__(self, key: str) -> Any:
+        """Set an attribute using a str key"""
         return self._attributes[key]
 
     def __setitem__(self, key: str, value: Any) -> None:
+        """Set an attribute using a str key"""
         self._attributes[key] = value
 
 
-class EntityArchetypeSpec:
+class EntityArchetypeDefinition:
     """Collection of Component specs used to instantiate instances of entities"""
 
-    __slots__ = "_type", "_components", "_attributes", "_is_template", "_parent"
+    __slots__ = (
+        "_name",
+        "_components",
+        "_attributes",
+        "_is_template",
+    )
 
     def __init__(
-            self,
-            name: str,
-            components: Optional[Dict[str, ComponentSpec]] = None,
-            attributes: Optional[Dict[str, Any]] = None,
-            is_template: bool = False,
-            parent: Optional['EntityArchetypeSpec'] = None,
+        self,
+        name: str,
+        components: Optional[dict[str, ComponentDefinition]] = None,
+        is_template: bool = False,
     ) -> None:
-        self._type: str = name
+        self._name: str = name
         self._is_template: bool = is_template
-        self._parent: Optional['EntityArchetypeSpec'] = parent
-        self._components: Dict[str, ComponentSpec] = components if components else {}
-        self._attributes: Dict[str, Any] = attributes if attributes else {}
+        self._components: dict[str, ComponentDefinition] = (
+            components if components else {}
+        )
 
-    @property
     def is_template(self) -> bool:
         return self._is_template
 
-    def get_components(self) -> Dict[str, ComponentSpec]:
+    def get_components(self) -> dict[str, ComponentDefinition]:
         """Return the ComponentSpecs that make up this archetype"""
         return self._components
 
-    def try_component(self, name: str) -> Optional[ComponentSpec]:
+    def try_component(self, name: str) -> Optional[ComponentDefinition]:
+        """Try to get a component definition by name"""
         return self._components.get(name, None)
 
-    def get_type(self) -> str:
+    def get_name(self) -> str:
         """Get the type of archetype this is"""
-        return self._type
+        return self._name
 
-    def get_attributes(self) -> Dict[str, Any]:
+    def get_attributes(self) -> dict[str, Any]:
         """Get the type of archetype this is"""
         return self._attributes
 
-    def add_component(self, node: ComponentSpec) -> None:
+    def add_component(self, node: ComponentDefinition) -> None:
         """Add (or overwrites) a component spec attached to this archetype"""
         self._components[node.get_type()] = node
 
@@ -108,14 +122,14 @@ class EntityArchetypeSpec:
         return self._attributes[attribute]
 
 
-class ComponentFactory(Protocol):
+class IComponentFactory(Protocol):
     """Interface for Factory classes that are used to construct entity components"""
 
     def get_type(self) -> str:
         """Return the name of the type this factory creates"""
         raise NotImplementedError()
 
-    def create(self, spec: ComponentSpec, **kwargs) -> Component:
+    def create(self, spec: ComponentDefinition, **kwargs) -> Component:
         """Create component instance"""
         raise NotImplementedError()
 
@@ -125,11 +139,11 @@ class NeighborlyEngine:
 
     Attributes
     ----------
-    _component_factories: Dict[str, AbstractFactory[Any]]
+    _component_factories: dict[str, AbstractFactory[Any]]
         Map of component class names to factories that produce them
-    _character_archetypes: Dict[str, Dict[str, Any]]
+    _character_archetypes: dict[str, dict[str, Any]]
         Map of archetype names to their specification data
-    _place_archetypes: Dict[str, Dict[str, Any]]
+    _place_archetypes: dict[str, dict[str, Any]]
         Map of archetype names to their specification data
     """
 
@@ -139,68 +153,68 @@ class NeighborlyEngine:
         "_place_archetypes",
         "_business_archetypes",
         "_residence_archetypes",
-        "_rng"
+        "_rng",
     )
 
-    def __init__(self, rng: RandNumGenerator) -> None:
-        self._component_factories: Dict[str, ComponentFactory] = {}
-        self._character_archetypes: Dict[str, EntityArchetypeSpec] = {}
-        self._business_archetypes: Dict[str, EntityArchetypeSpec] = {}
-        self._residence_archetypes: Dict[str, EntityArchetypeSpec] = {}
-        self._place_archetypes: Dict[str, EntityArchetypeSpec] = {}
-        self._rng: RandNumGenerator = rng
+    def __init__(self, rng: IRandNumGenerator) -> None:
+        self._component_factories: dict[str, IComponentFactory] = {}
+        self._character_archetypes: dict[str, EntityArchetypeDefinition] = {}
+        self._business_archetypes: dict[str, EntityArchetypeDefinition] = {}
+        self._residence_archetypes: dict[str, EntityArchetypeDefinition] = {}
+        self._place_archetypes: dict[str, EntityArchetypeDefinition] = {}
+        self._rng: IRandNumGenerator = rng
         set_grammar_rng(self._rng)
 
-    def get_rng(self) -> RandNumGenerator:
+    def get_rng(self) -> IRandNumGenerator:
         return self._rng
 
-    def add_character_archetype(self, archetype: EntityArchetypeSpec) -> None:
-        self._character_archetypes[archetype.get_type()] = archetype
+    def add_character_archetype(self, archetype: EntityArchetypeDefinition) -> None:
+        self._character_archetypes[archetype.get_name()] = archetype
 
-    def get_character_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
+    def get_character_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
         return self._character_archetypes[archetype_name]
 
-    def get_character_archetypes(self) -> List[EntityArchetypeSpec]:
+    def get_character_archetypes(self) -> list[EntityArchetypeDefinition]:
         return list(self._character_archetypes.values())
 
-    def add_place_archetype(self, archetype: EntityArchetypeSpec) -> None:
-        self._place_archetypes[archetype.get_type()] = archetype
+    def add_place_archetype(self, archetype: EntityArchetypeDefinition) -> None:
+        self._place_archetypes[archetype.get_name()] = archetype
 
-    def add_residence_archetype(self, archetype: EntityArchetypeSpec) -> None:
-        self._residence_archetypes[archetype.get_type()] = archetype
+    def add_residence_archetype(self, archetype: EntityArchetypeDefinition) -> None:
+        self._residence_archetypes[archetype.get_name()] = archetype
 
-    def add_business_archetype(self, archetype: EntityArchetypeSpec) -> None:
-        self._business_archetypes[archetype.get_type()] = archetype
+    def add_business_archetype(self, archetype: EntityArchetypeDefinition) -> None:
+        self._business_archetypes[archetype.get_name()] = archetype
 
-    def get_place_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
+    def get_place_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
         return self._place_archetypes[archetype_name]
 
-    def get_business_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
+    def get_business_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
         return self._business_archetypes[archetype_name]
 
-    def get_residence_archetype(self, archetype_name: str) -> EntityArchetypeSpec:
+    def get_residence_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
         return self._residence_archetypes[archetype_name]
 
-    def get_residence_archetypes(self) -> List[EntityArchetypeSpec]:
+    def get_residence_archetypes(self) -> list[EntityArchetypeDefinition]:
         return list(self._residence_archetypes.values())
 
-    def filter_place_archetypes(self, options: Dict[str, Any]) -> List[str]:
+    def filter_place_archetypes(self, options: dict[str, Any]) -> list[str]:
         """Retrieve a set of place archetypes based on given options"""
-        results: List[str] = []
+        results: list[str] = []
 
-        include: List[str] = options.get("include", [])
-        exclude: List[str] = options.get("exclude", [])
+        include: list[str] = options.get("include", [])
+        exclude: list[str] = options.get("exclude", [])
 
         for _, spec in self._place_archetypes.items():
             if spec.has_component(*include) and not spec.has_component(*exclude):
-                results.append(spec.get_type())
+                results.append(spec.get_name())
 
         return results
 
-    def add_component_factory(self, factory: ComponentFactory) -> None:
+    def add_component_factory(self, factory: IComponentFactory) -> None:
         self._component_factories[factory.get_type()] = factory
 
-    def get_component_factory(self, type_name: str) -> ComponentFactory:
+    def get_component_factory(self, type_name: str) -> IComponentFactory:
         return self._component_factories[type_name]
 
     def create_character(self, archetype_name: str, **kwargs) -> GameObject:
@@ -219,14 +233,18 @@ class NeighborlyEngine:
         archetype = self._residence_archetypes[archetype_name]
         return self.create_entity(archetype, **kwargs)
 
-    def create_entity(self, archetype: EntityArchetypeSpec, **kwargs) -> GameObject:
+    def create_entity(
+        self, archetype: EntityArchetypeDefinition, **kwargs
+    ) -> GameObject:
         """Create a new GameObject and attach the components in the spec"""
-        components: List[Component] = []
+        components: list[Component] = []
 
         for name, spec in archetype.get_components().items():
             factory = self.get_component_factory(name)
-            components.append(factory.create(spec, **{**kwargs, 'rng': self.get_rng()}))
+            components.append(factory.create(spec, **{**kwargs, "rng": self.get_rng()}))
 
-        gameobject = GameObject(name=archetype.get_type(), components=components)
+        gameobject = GameObject(
+            archetype_name=archetype.get_name(), components=components
+        )
 
         return gameobject

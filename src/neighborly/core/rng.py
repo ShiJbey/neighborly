@@ -1,11 +1,11 @@
 import random
 from abc import abstractmethod
-from typing import Protocol, Sequence, TypeVar, List, MutableSequence, Optional
+from typing import List, MutableSequence, Optional, Protocol, Sequence, TypeVar
 
 _T = TypeVar("_T")
 
 
-class RandNumGenerator(Protocol):
+class IRandNumGenerator(Protocol):
     """Abstract interface for a class that handles generating random numbers"""
 
     @abstractmethod

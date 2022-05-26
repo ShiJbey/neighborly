@@ -4,8 +4,8 @@ from typing import Dict, List, Optional
 import numpy as np
 import numpy.typing as npt
 
-from neighborly.core.rng import RandNumGenerator
 from neighborly.core.ecs import Component
+from neighborly.core.rng import IRandNumGenerator
 
 TRAIT_MAX = 50
 TRAIT_MIN = -50
@@ -112,7 +112,7 @@ class CharacterValues(Component):
 
 
 def generate_character_values(
-    rng: RandNumGenerator, n_likes: int = 3, n_dislikes: int = 3
+    rng: IRandNumGenerator, n_likes: int = 3, n_dislikes: int = 3
 ) -> CharacterValues:
     """Generate a new set of character values"""
     # Select Traits

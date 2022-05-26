@@ -53,12 +53,12 @@ def test_relationship_network():
     social_graph.add_connection(krusty, bart, Relationship(krusty, bart))
 
     social_graph.add_connection(lisa, bart, Relationship(lisa, bart))
-    social_graph.get_connection(lisa, bart).add_tag(
+    social_graph.get_connection(lisa, bart).add_tags(
         RelationshipTag.Brother | RelationshipTag.Sibling
     )
 
     social_graph.add_connection(lisa, maggie, Relationship(lisa, maggie))
-    social_graph.get_connection(lisa, maggie).add_tag(
+    social_graph.get_connection(lisa, maggie).add_tags(
         RelationshipTag.Sister | RelationshipTag.Sibling
     )
 
@@ -66,8 +66,8 @@ def test_relationship_network():
     assert social_graph.has_connection(lisa, homer) is True
     assert social_graph.has_connection(bart, lisa) is False
 
-    social_graph.get_connection(homer, lisa).add_tag(RelationshipTag.Daughter)
-    social_graph.get_connection(homer, lisa).has_tag(RelationshipTag.Daughter)
+    social_graph.get_connection(homer, lisa).add_tags(RelationshipTag.Daughter)
+    social_graph.get_connection(homer, lisa).has_tags(RelationshipTag.Daughter)
 
     assert (
         len(social_graph.get_all_relationships_with_tags(lisa, RelationshipTag.Sibling))

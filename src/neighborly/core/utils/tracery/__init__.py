@@ -1,27 +1,27 @@
 import re
 
-from neighborly.core.rng import RandNumGenerator, DefaultRNG
+from neighborly.core.rng import DefaultRNG, IRandNumGenerator
 
 basestring = (str, bytes)
 
-__rng: RandNumGenerator = DefaultRNG()
+__rng: IRandNumGenerator = DefaultRNG()
 
 
-def set_grammar_rng(rng: RandNumGenerator) -> None:
+def set_grammar_rng(rng: IRandNumGenerator) -> None:
     global __rng
     __rng = rng
 
 
-def get_grammar_rng() -> RandNumGenerator:
+def get_grammar_rng() -> IRandNumGenerator:
     return __rng
 
 
 class Node(object):
     def __init__(self, parent, child_index, settings):
         self.errors = []
-        if settings.get('raw', None) is None:
+        if settings.get("raw", None) is None:
             self.errors.append("Empty input for node")
-            settings['raw'] = ""
+            settings["raw"] = ""
         if isinstance(parent, Grammar):
             self.grammar = parent
             self.parent = None
@@ -32,8 +32,8 @@ class Node(object):
             self.parent = parent
             self.depth = parent.depth + 1
             self.child_index = child_index
-        self.raw = settings['raw']
-        self.type = settings.get('type', None)
+        self.raw = settings["raw"]
+        self.type = settings.get("type", None)
         self.is_expanded = False
 
     def expand_children(self, child_rule, prevent_recursion=False):
@@ -74,36 +74,34 @@ class Node(object):
                 self.preactions = []
                 self.postactions = []
                 parsed = parse_tag(self.raw)
-                self.symbol = parsed['symbol']
-                self.modifiers = parsed['modifiers']
-                for preaction in parsed['preactions']:
-                    self.preactions.append(NodeAction(self, preaction['raw']))
+                self.symbol = parsed["symbol"]
+                self.modifiers = parsed["modifiers"]
+                for preaction in parsed["preactions"]:
+                    self.preactions.append(NodeAction(self, preaction["raw"]))
                 for preaction in self.preactions:
                     if preaction.type == 0:
                         self.postactions.append(preaction.create_undo())
                 for preaction in self.preactions:
                     preaction.activate()
                 self.finished_text = self.raw
-                selected_rule = self.grammar.select_rule(self.symbol, self,
-                                                         self.errors)
+                selected_rule = self.grammar.select_rule(self.symbol, self, self.errors)
                 self.expand_children(selected_rule, prevent_recursion)
 
                 # apply modifiers
                 for mod_name in self.modifiers:
                     mod_params = []
-                    if mod_name.find('(') > 0:
-                        regexp = re.compile(r'\(([^)]+)\)')
+                    if mod_name.find("(") > 0:
+                        regexp = re.compile(r"\(([^)]+)\)")
                         matches = regexp.findall(mod_name)
                         if len(matches) > 0:
                             mod_params = matches[0].split(",")
-                            mod_name = mod_name[:mod_name.find('(')]
+                            mod_name = mod_name[: mod_name.find("(")]
                     mod = self.grammar.modifiers.get(mod_name, None)
                     if mod is None:
                         self.errors.append("Missing modifier " + mod_name)
                         self.finished_text += "((." + mod_name + "))"
                     else:
-                        self.finished_text = mod(self.finished_text,
-                                                 *mod_params)
+                        self.finished_text = mod(self.finished_text, *mod_params)
 
             elif self.type == 2:
                 self.action = NodeAction(self, self.raw)
@@ -111,10 +109,11 @@ class Node(object):
                 self.finished_text = ""
 
     def clear_escape_chars(self):
-        self.finished_text = self.finished_text.replace(
-            "\\\\", "DOUBLEBACKSLASH").replace(
-            "\\", "").replace(
-            "DOUBLEBACKSLASH", "\\")
+        self.finished_text = (
+            self.finished_text.replace("\\\\", "DOUBLEBACKSLASH")
+            .replace("\\", "")
+            .replace("DOUBLEBACKSLASH", "\\")
+        )
 
 
 class NodeAction(object):  # has a 'raw' attribute
@@ -143,7 +142,7 @@ class NodeAction(object):  # has a 'raw' attribute
             self.finished_rules = []
             self.rule_nodes = []
             for rule_section in self.rule_sections:
-                n = Node(grammar, 0, {'type': -1, 'raw': rule_section})
+                n = Node(grammar, 0, {"type": -1, "raw": rule_section})
                 n.expand()
                 self.finished_rules.append(n.finished_text)
             grammar.push_rules(self.target, self.finished_rules, self)
@@ -199,10 +198,11 @@ class Symbol(object):
         self.stack.pop()
 
     def select_rule(self, node, errors):
-        self.uses.append({'node': node})
+        self.uses.append({"node": node})
         if len(self.stack) == 0:
-            errors.append("The rule stack for '" + self.key +
-                          "' is empty, too many pops?")
+            errors.append(
+                "The rule stack for '" + self.key + "' is empty, too many pops?"
+            )
         return self.stack[-1].select_rule()
 
     def get_active_rules(self):
@@ -233,11 +233,10 @@ class Grammar(object):
         self.symbols = dict()
         self.subgrammars = list()
         if raw:
-            self.symbols = dict(
-                (k, Symbol(self, k, v)) for k, v in raw.items())
+            self.symbols = dict((k, Symbol(self, k, v)) for k, v in raw.items())
 
     def create_root(self, rule):
-        return Node(self, 0, {'type': -1, 'raw': rule})
+        return Node(self, 0, {"type": -1, "raw": rule})
 
     def expand(self, rule, allow_escape_chars=False):
         root = self.create_root(rule)
@@ -278,25 +277,21 @@ def parse_tag(tag_contents):
     returns a dictionary with 'symbol', 'modifiers', 'preactions',
     'postactions'
     """
-    parsed = dict(
-        symbol=None,
-        preactions=[],
-        postactions=[],
-        modifiers=[])
+    parsed = dict(symbol=None, preactions=[], postactions=[], modifiers=[])
     sections, errors = parse(tag_contents)
     symbol_section = None
     for section in sections:
-        if section['type'] == 0:
+        if section["type"] == 0:
             if symbol_section is None:
-                symbol_section = section['raw']
+                symbol_section = section["raw"]
             else:
                 raise Exception("multiple main sections in " + tag_contents)
         else:
-            parsed['preactions'].append(section)
+            parsed["preactions"].append(section)
     if symbol_section is not None:
         components = symbol_section.split(".")
-        parsed['symbol'] = components[0]
-        parsed['modifiers'] = components[1:]
+        parsed["symbol"] = components[0]
+        parsed["modifiers"] = components[1:]
     return parsed
 
 
@@ -321,15 +316,14 @@ def parse(rule):
                 errors.append(str(start) + ": empty action")
         raw_substring = None
         if last_escaped_char is not None:
-            raw_substring = escaped_substring + "\\" + \
-                            rule[last_escaped_char + 1:end]
+            raw_substring = escaped_substring + "\\" + rule[last_escaped_char + 1 : end]
         else:
             raw_substring = rule[start:end]
-        sections.append({'type': type_, 'raw': raw_substring})
+        sections.append({"type": type_, "raw": raw_substring})
 
     for i, c in enumerate(rule):
         if not escaped:
-            if c == '[':
+            if c == "[":
                 if depth == 0 and not in_tag:
                     if start < i:
                         create_section(start, i, 0)
@@ -337,14 +331,14 @@ def parse(rule):
                         escaped_substring = ""
                     start = i + 1
                 depth += 1
-            elif c == ']':
+            elif c == "]":
                 depth -= 1
                 if depth == 0 and not in_tag:
                     create_section(start, i, 2)
                     last_escaped_char = None
                     escaped_substring = ""
                     start = i + 1
-            elif c == '#':
+            elif c == "#":
                 if depth == 0:
                     if in_tag:
                         create_section(start, i, 1)
@@ -358,7 +352,7 @@ def parse(rule):
                             escaped_substring = ""
                         start = i + 1
                     in_tag = not in_tag
-            elif c == '\\':
+            elif c == "\\":
                 escaped = True
                 escaped_substring = escaped_substring + rule[start:i]
                 start = i + 1
@@ -377,6 +371,5 @@ def parse(rule):
     if depth < 0:
         errors.append("too many ]")
 
-    sections = [s for s in sections
-                if not (s['type'] == 0 and len(s['raw']) == 0)]
+    sections = [s for s in sections if not (s["type"] == 0 and len(s["raw"]) == 0)]
     return sections, errors

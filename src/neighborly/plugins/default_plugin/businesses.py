@@ -1,4 +1,4 @@
-from neighborly.core.business import OccupationDefinition, BusinessDefinition
+from neighborly.core.business import BusinessDefinition, OccupationDefinition
 
 restaurant_type = BusinessDefinition(
     name="Restaurant",

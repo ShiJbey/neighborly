@@ -1,15 +1,19 @@
 """Utility functions to help users load configuration data from files
 """
 import copy
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Protocol
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Protocol, Union
 
 import yaml
 
 from neighborly.core.business import BusinessDefinition
 from neighborly.core.character import CharacterDefinition
-from neighborly.core.engine import NeighborlyEngine, ComponentSpec, EntityArchetypeSpec
+from neighborly.core.engine import (
+    ComponentDefinition,
+    EntityArchetypeDefinition,
+    NeighborlyEngine,
+)
 from neighborly.core.relationship import RelationshipModifier
 
 logger = logging.getLogger(__name__)
@@ -53,7 +57,7 @@ class UnsupportedFileType(Exception):
         super().__init__(*args)
 
 
-class SectionLoader(Protocol):
+class ISectionLoader(Protocol):
     def __call__(self, engine: NeighborlyEngine, data: Any) -> None:
         raise NotImplementedError()
 
@@ -63,7 +67,7 @@ class YamlDataLoader:
 
     __slots__ = "_raw_data"
 
-    _section_loaders: Dict[str, SectionLoader] = {}
+    _section_loaders: Dict[str, ISectionLoader] = {}
 
     def __init__(
         self,
@@ -97,7 +101,7 @@ class YamlDataLoader:
 
     @classmethod
     def section_loader(cls, section_name: str):
-        def decorator(section_loader: SectionLoader):
+        def decorator(section_loader: ISectionLoader):
             YamlDataLoader._section_loaders[section_name] = section_loader
             return section_loader
 
@@ -124,15 +128,10 @@ def _load_business_definitions(
 
 def _load_entity_archetype(
     engine: NeighborlyEngine, data: Dict[str, Any]
-) -> EntityArchetypeSpec:
-    archetype = EntityArchetypeSpec(
+) -> EntityArchetypeDefinition:
+    archetype = EntityArchetypeDefinition(
         data["name"],
         is_template=data.get("template", False),
-        attributes={
-            "name": data["name"],
-            "tags": data.get("tags", []),
-            "inherits": data.get("inherits", None),
-        },
     )
 
     if archetype["inherits"]:
@@ -154,7 +153,7 @@ def _load_entity_archetype(
         if component:
             component.update(options)
         else:
-            component = ComponentSpec(component_name, {**options})
+            component = ComponentDefinition(component_name, {**options})
 
         archetype.add_component(component)
 
@@ -167,10 +166,10 @@ def _load_character_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -
     for character in data:
         archetype = _load_entity_archetype(engine, character)
 
-        character_component = archetype.try_component("GameCharacter")
-        if character_component:
-            character_component["config_name"] = archetype.get_type()
-        else:
+        if (
+            archetype.try_component("GameCharacter") is None
+            and not archetype.is_template
+        ):
             raise MissingComponentSpecError("GameCharacter")
 
         engine.add_character_archetype(archetype)
@@ -190,21 +189,7 @@ def _load_business_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) ->
     for business in data:
         archetype = _load_entity_archetype(engine, business)
 
-        business_component = archetype.try_component("Business")
-        if business_component:
-            # Create and register a new character config from
-            # the options
-            if business_component.get_attribute("business_type") is None:
-                BusinessDefinition.register_type(
-                    BusinessDefinition(
-                        **{
-                            **business_component.get_attributes(),
-                            "name": archetype.get_type(),
-                        }
-                    )
-                )
-                business_component.update({"business_type": archetype.get_type()})
-        elif not archetype.is_template:
+        if archetype.try_component("Business") is None and not archetype.is_template:
             raise MissingComponentSpecError("Business")
 
         engine.add_business_archetype(archetype)

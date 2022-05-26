@@ -2,8 +2,8 @@ import argparse
 import json
 import logging
 import os
-import random
 import pathlib
+import random
 import sys
 from typing import Any, Dict, Optional
 
@@ -11,8 +11,8 @@ import yaml
 
 import neighborly
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 from neighborly.loaders import UnsupportedFileType
+from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,7 @@ def main():
         config = NeighborlyConfig.from_partial(
             load_config_from_path(args.config), config
         )
+        config.path = os.path.abspath(args.config)
     else:
         loaded_settings = try_load_local_config()
         if loaded_settings:

@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 from neighborly.core.ecs import World
-from neighborly.core.life_event import EventLog
+from neighborly.core.life_event import LifeEventLogger
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town
@@ -28,7 +28,8 @@ class NeighborlyJsonExporter(NeighborlyExporter):
                 "gameobjects": {g.id: g.to_dict() for g in world.get_gameobjects()},
                 "relationships": world.get_resource(RelationshipNetwork).to_dict(),
                 "events": [
-                    e.to_dict() for e in world.get_resource(EventLog).get_all_events()
+                    e.to_dict()
+                    for e in world.get_resource(LifeEventLogger).get_all_events()
                 ],
             }
         )

@@ -4,7 +4,18 @@ import itertools
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Tuple, List, Set, Protocol, Optional, Dict, Generic, Callable, TypeVar, Any
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+    TypeVar,
+)
 
 from pydantic import BaseModel
 
@@ -36,18 +47,14 @@ class Town(Component):
 
     __slots__ = "name", "layout", "population"
 
-    def __init__(self, name: str, layout: 'TownLayout') -> None:
+    def __init__(self, name: str, layout: "TownLayout") -> None:
         super().__init__()
         self.name: str = name
         self.population: int = 0
-        self.layout: 'TownLayout' = layout
+        self.layout: "TownLayout" = layout
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            'name': self.name,
-            'population': self.population
-        }
+        return {**super().to_dict(), "name": self.name, "population": self.population}
 
     @classmethod
     def create(cls, config: TownConfig) -> "Town":
@@ -67,7 +74,7 @@ class LayoutGridSpace:
     place_id: Optional[int] = None
 
 
-class SpaceSelectionStrategy(Protocol):
+class ISpaceSelectionStrategy(Protocol):
     """Uses a heuristic to select a space within the town"""
 
     @abstractmethod
@@ -78,6 +85,7 @@ class SpaceSelectionStrategy(Protocol):
 
 class CompassDirection(Enum):
     """Compass directions to string"""
+
     NORTH = 0
     SOUTH = 1
     EAST = 2
@@ -106,7 +114,7 @@ class CompassDirection(Enum):
         return mapping[self]
 
 
-_GT = TypeVar('_GT')
+_GT = TypeVar("_GT")
 
 
 class Grid(Generic[_GT]):
@@ -119,15 +127,11 @@ class Grid(Generic[_GT]):
     __slots__ = "_width", "_length", "_grid"
 
     def __init__(
-            self,
-            width: int,
-            length: int,
-            default_factory: Callable[[], _GT]
+        self, width: int, length: int, default_factory: Callable[[], _GT]
     ) -> None:
         self._width: int = width
         self._length: int = length
-        self._grid: List[_GT] = [default_factory()
-                                 for _ in range(width * length)]
+        self._grid: List[_GT] = [default_factory() for _ in range(width * length)]
 
     @property
     def shape(self) -> Tuple[int, int]:
@@ -145,16 +149,16 @@ class Grid(Generic[_GT]):
         adjacent_cells: Dict[str, Tuple[int, int]] = {}
 
         if point[0] > 0:
-            adjacent_cells['west'] = (point[0] - 1, point[1])
+            adjacent_cells["west"] = (point[0] - 1, point[1])
 
         if point[0] < self.shape[0] - 1:
-            adjacent_cells['east'] = (point[0] + 1, point[1])
+            adjacent_cells["east"] = (point[0] + 1, point[1])
 
         if point[1] > 0:
-            adjacent_cells['north'] = (point[0], point[1] - 1)
+            adjacent_cells["north"] = (point[0], point[1] - 1)
 
         if point[1] < self.shape[1] - 1:
-            adjacent_cells['south'] = (point[0], point[1] + 1)
+            adjacent_cells["south"] = (point[0], point[1] + 1)
 
         return adjacent_cells
 
@@ -163,7 +167,7 @@ class Grid(Generic[_GT]):
             "type": type(self).__name__,
             "height": self._length,
             "width": self._width,
-            "grid": [str(cell) for cell in self._grid]
+            "grid": [str(cell) for cell in self._grid],
         }
 
 
@@ -181,14 +185,21 @@ class TownLayout:
     __slots__ = "_unoccupied", "_occupied", "_grid"
 
     def __init__(self, width: int, length: int) -> None:
-        self._grid: Grid[LayoutGridSpace] = Grid(width, length, lambda: LayoutGridSpace())
-        self._unoccupied: List[Tuple[int, int]] = \
-            list(itertools.product(list(range(width)), list(range(length))))
+        self._grid: Grid[LayoutGridSpace] = Grid(
+            width, length, lambda: LayoutGridSpace()
+        )
+        self._unoccupied: List[Tuple[int, int]] = list(
+            itertools.product(list(range(width)), list(range(length)))
+        )
         self._occupied: Set[Tuple[int, int]] = set()
 
     @property
     def grid(self) -> Grid[LayoutGridSpace]:
         return self._grid
+
+    def get_vacancies(self) -> List[tuple[int, int]]:
+        """Return the positions that are unoccupied in town"""
+        return self._unoccupied
 
     def get_num_vacancies(self) -> int:
         """Return number of vacant spaces"""
@@ -199,15 +210,16 @@ class TownLayout:
         return bool(self._unoccupied)
 
     def allocate_space(
-            self,
-            place_id: int,
-            selection_strategy: Optional[SpaceSelectionStrategy] = None
+        self,
+        place_id: int,
+        selection_strategy: Optional[ISpaceSelectionStrategy] = None,
     ) -> Tuple[int, int]:
         """Allocates a space for a location, setting it as occupied"""
         if self._unoccupied:
             if selection_strategy:
                 space = selection_strategy.choose_space(
-                    [self._grid[i] for i in self._unoccupied])
+                    [self._grid[i] for i in self._unoccupied]
+                )
             else:
                 space = self._unoccupied[0]
 

@@ -5,8 +5,8 @@ import numpy as np
 
 from neighborly.core.ecs import World
 
-from .character_values import CharacterValues
 from .activity import ActivityCenter, get_activity_flags, get_all_activities
+from .character_values import CharacterValues
 
 
 def get_top_activities(

@@ -1,9 +1,9 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentSpec
+from neighborly.core.engine import AbstractFactory, ComponentDefinition
 
 
 class Location(Component):
@@ -44,5 +44,5 @@ class LocationFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Location")
 
-    def create(self, spec: ComponentSpec, **kwargs) -> Location:
+    def create(self, spec: ComponentDefinition, **kwargs) -> Location:
         return Location(max_capacity=spec.get_attribute("max capacity", 9999))

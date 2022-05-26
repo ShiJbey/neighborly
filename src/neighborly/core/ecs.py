@@ -10,11 +10,19 @@ from __future__ import annotations
 
 import hashlib
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Protocol, Set, Tuple, Type, TypeVar, cast, Any
+from typing import (
+    Any,
+    Iterable,
+    Optional,
+    Protocol,
+    Type,
+    TypeVar,
+    cast,
+)
 from uuid import uuid1
 
-_CT = TypeVar("_CT", bound='Component')
-_RT = TypeVar("_RT", bound='Any')
+_CT = TypeVar("_CT", bound="Component")
+_RT = TypeVar("_RT", bound="Any")
 
 
 class GameObject:
@@ -23,32 +31,31 @@ class GameObject:
     Attributes
     ----------
     id: int
-        GameObject's UUID
-    name: string
-        GameObject's name
-    tags: List[string]
+        unique identifier
+    tags: list[string]
         Associated tag strings
     world: World
         the World instance this GameObject belongs to
-    _components: Dict[Type, Components]
+    _components: dict[Type, Components]
         Components attached to this GameObject
     """
 
-    __slots__ = "_id", "_name", "_tags", "_components", "_world", "_active"
+    __slots__ = "_id", "_tags", "_components", "_world", "_active", "_archetype_name"
 
     def __init__(
-            self,
-            name: str = "GameObject",
-            tags: Iterable[str] = (),
-            components: Iterable[Component] = (),
-            world: Optional[World] = None,
+        self,
+        tags: Iterable[str] = (),
+        components: Iterable[Component] = (),
+        world: Optional[World] = None,
+        archetype_name: Optional[str] = None,
     ) -> None:
         self._id: int = self.generate_id()
         self._active: bool = True
-        self._name: str = name
-        self._tags: Set[str] = set(tags)
+        self._tags: set[str] = set(tags)
         self._world: Optional[World] = world
-        self._components: Dict[str, Component] = {}
+        self._components: dict[str, Component] = {}
+        self._archetype_name: Optional[str] = archetype_name
+
         if components:
             for component in components:
                 self.add_component(component)
@@ -59,14 +66,13 @@ class GameObject:
         return self._id
 
     @property
-    def name(self) -> str:
-        """Returns GameObject's name"""
-        return self._name
-
-    @property
-    def tags(self) -> Set[str]:
+    def tags(self) -> set[str]:
         """Return tags associated with this GameObject"""
         return self._tags
+
+    @property
+    def archetype_name(self) -> Optional[str]:
+        return self._archetype_name
 
     @property
     def world(self) -> World:
@@ -80,12 +86,8 @@ class GameObject:
         return self._active
 
     def set_world(self, world: Optional[World]) -> None:
-        """Set the world instance"""
+        """set the world instance"""
         self._world = world
-
-    def set_name(self, name: str) -> None:
-        """Change the GameObject's name"""
-        self._name = name
 
     def set_active(self, is_active: bool) -> None:
         self._active = is_active
@@ -137,6 +139,9 @@ class GameObject:
     def try_component_with_name(self, name: str) -> Optional[Component]:
         return self._components.get(name)
 
+    def get_components(self) -> list[Component]:
+        return list(self._components.values())
+
     def start(self) -> None:
         for component in self._components.values():
             component.on_start()
@@ -146,30 +151,25 @@ class GameObject:
         for component in self._components.values():
             component.on_destroy()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
-            'id': self._id,
-            'name': self._name,
-            'tags': sorted([*self._tags]),
-            'components': [c.to_dict() for c in self._components.values()]
+            "id": self._id,
+            "tags": sorted([*self._tags]),
+            "components": [c.to_dict() for c in self._components.values()],
         }
 
     def __hash__(self) -> int:
         return self._id
 
     def __repr__(self) -> str:
-        return "GameObject(id={}, name={}, tags={}, components={})".format(
-            self.id,
-            self.name,
-            self.tags,
-            tuple(self._components.keys())
+        return "GameObject(id={}, tags={}, components={})".format(
+            self.id, self.tags, tuple(self._components.keys())
         )
 
     @staticmethod
     def generate_id() -> int:
         """Create a new unique int ID"""
-        return int.from_bytes(hashlib.sha256(uuid1().bytes)
-                              .digest()[:8], 'little')
+        return int.from_bytes(hashlib.sha256(uuid1().bytes).digest()[:8], "little")
 
 
 class Component(ABC):
@@ -188,13 +188,11 @@ class Component(ABC):
         return self._gameobject
 
     def set_gameobject(self, gameobject: Optional[GameObject]) -> None:
-        """Set the gameobject instance for this component"""
+        """set the gameobject instance for this component"""
         self._gameobject = gameobject
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'type': self.__class__.__name__
-        }
+    def to_dict(self) -> dict[str, Any]:
+        return {"type": self.__class__.__name__}
 
     def on_add(self) -> None:
         """Callback for when the component is added to a GameObject"""
@@ -213,7 +211,7 @@ class Component(ABC):
         pass
 
 
-class System(Protocol):
+class ISystem(Protocol):
     """Abstract base class for ECS systems"""
 
     @abstractmethod
@@ -227,10 +225,10 @@ class World:
     __slots__ = "_gameobjects", "_dead_gameobjects", "_systems", "_resources"
 
     def __init__(self) -> None:
-        self._gameobjects: Dict[int, GameObject] = {}
-        self._dead_gameobjects: List[int] = []
-        self._systems: List[Tuple[int, System]] = []
-        self._resources: Dict[str, Any] = {}
+        self._gameobjects: dict[int, GameObject] = {}
+        self._dead_gameobjects: list[int] = []
+        self._systems: list[tuple[int, ISystem]] = []
+        self._resources: dict[str, Any] = {}
 
     def add_gameobject(self, gameobject: GameObject) -> None:
         """Add gameobject to the world"""
@@ -242,7 +240,7 @@ class World:
         """Retrieve the GameObject with the given id"""
         return self._gameobjects[gid]
 
-    def get_gameobjects(self) -> List[GameObject]:
+    def get_gameobjects(self) -> list[GameObject]:
         """Get all gameobjects"""
         return list(self._gameobjects.values())
 
@@ -258,30 +256,33 @@ class World:
         """Remove gameobject from world"""
         self._dead_gameobjects.append(gid)
 
-    def get_component(self, component_type: Type[_CT]) -> List[Tuple[int, _CT]]:
+    def get_component(self, component_type: Type[_CT]) -> list[tuple[int, _CT]]:
         """Get all the gameobjects that have a given component type"""
-        components: List[Tuple[int, _CT]] = []
+        components: list[tuple[int, _CT]] = []
         for gid, gameobject in self._gameobjects.items():
             component = gameobject.try_component(component_type)
             if component is not None:
                 components.append((gid, component))
         return components
 
-    def get_component_by_name(self, name: str) -> List[Tuple[int, Component]]:
-        components: List[Tuple[int, Component]] = []
+    def get_component_by_name(self, name: str) -> list[tuple[int, Component]]:
+        components: list[tuple[int, Component]] = []
         for gid, gameobject in self._gameobjects.items():
             component = gameobject.try_component_with_name(name)
             if component is not None:
                 components.append((gid, component))
         return components
 
-    def get_components(self, *component_types: Type[_CT]) -> List[Tuple[int, Tuple[_CT, ...]]]:
+    def get_components(
+        self, *component_types: Type[_CT]
+    ) -> list[tuple[int, tuple[_CT, ...]]]:
         """Get all game objects with the given components"""
-        components: List[Tuple[int, Tuple[_CT, ...]]] = []
+        components: list[tuple[int, tuple[_CT, ...]]] = []
         for gid, gameobject in self._gameobjects.items():
             try:
                 components.append(
-                    (gid, tuple([gameobject.get_component(c) for c in component_types])))
+                    (gid, tuple([gameobject.get_component(c) for c in component_types]))
+                )
             except KeyError:
                 continue
         return components
@@ -295,12 +296,12 @@ class World:
 
         self._dead_gameobjects.clear()
 
-    def add_system(self, system: System, priority=0) -> None:
+    def add_system(self, system: ISystem, priority=0) -> None:
         """Add a System instance to the World"""
         self._systems.append((priority, system))
         self._systems.sort(key=lambda pair: pair[0], reverse=True)
 
-    def remove_system(self, system: System) -> None:
+    def remove_system(self, system: ISystem) -> None:
         """Remove a System from the World"""
         for entry in self._systems:
             _, s = entry

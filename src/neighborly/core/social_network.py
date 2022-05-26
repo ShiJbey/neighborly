@@ -1,14 +1,14 @@
 from collections import defaultdict
 from typing import (
-    Generic,
-    TypeVar,
-    NamedTuple,
-    Dict,
-    Tuple,
-    cast,
-    List,
-    DefaultDict,
     Any,
+    DefaultDict,
+    Dict,
+    Generic,
+    List,
+    NamedTuple,
+    Tuple,
+    TypeVar,
+    cast,
 )
 
 from ordered_set import OrderedSet
@@ -133,7 +133,7 @@ class RelationshipNetwork(DirectedSocialGraph[Relationship]):
 
         return list(
             filter(
-                lambda rel: rel.has_tag(tags),
+                lambda rel: rel.has_tags(tags),
                 [self._edges[owner, target] for target in owner_node.outgoing],
             )
         )
