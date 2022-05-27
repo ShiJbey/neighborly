@@ -261,10 +261,10 @@ class Business(Component):
 
     @staticmethod
     def _create_routines(
-        times: dict[str, tuple[int, int]]
-    ) -> dict[str, list[RoutineEntry]]:
+        times: Dict[str, Tuple[int, int]]
+    ) -> Dict[str, List[RoutineEntry]]:
         """Create routine entries given tuples of time intervals mapped to days of the week"""
-        schedules: dict[str, list[RoutineEntry]] = {}
+        schedules: Dict[str, list[RoutineEntry]] = {}
 
         for day, (opens, closes) in times.items():
             routine_entries: List[RoutineEntry] = []

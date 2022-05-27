@@ -1,21 +1,26 @@
 from __future__ import annotations
+import logging
 
 from collections import defaultdict
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
+from abc import ABC, abstractclassmethod, abstractmethod
 from typing import (
     Any,
     Callable,
     Generator,
+    Dict,
+    Tuple,
+    List,
     Generic,
     Iterable,
     Optional,
     Protocol,
     TypeVar,
-    Union,
 )
 
 from neighborly.core.ecs import GameObject, World
+
+logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
@@ -52,9 +57,9 @@ class _EventCallbackDbEntry(Generic[_T]):
 class EventCallbackDatabase:
     """Manages the various callback functions available when constructing events"""
 
-    _precondition_db: dict[str, _EventCallbackDbEntry[ILifeEventCallback]] = {}
-    _effect_db: dict[str, _EventCallbackDbEntry[ILifeEventCallback]] = {}
-    _probability_db: dict[str, _EventCallbackDbEntry[IProbabilityFn]] = {}
+    _precondition_db: Dict[str, _EventCallbackDbEntry[ILifeEventCallback]] = {}
+    _effect_db: Dict[str, _EventCallbackDbEntry[ILifeEventCallback]] = {}
+    _probability_db: Dict[str, _EventCallbackDbEntry[IProbabilityFn]] = {}
 
     @classmethod
     def register_precondition(
@@ -177,7 +182,7 @@ class EventProbabilityNotFoundError(Exception):
         return self.message
 
 
-class LifeEvent:
+class LifeEvent(ABC):
     """
     Events are things that happen in the story world that GameObjects
     can react to.
@@ -188,28 +193,27 @@ class LifeEvent:
     blocking. They are handled immediately by event handlers when available.
     """
 
-    __slots__ = "event_type", "timestamp", "data"
+    __slots__ = "timestamp"
 
-    def __init__(self, event_type: str, timestamp: str, **kwargs) -> None:
+    def __init__(self, timestamp: str) -> None:
         super().__init__()
-        self.event_type: str = event_type
         self.timestamp: str = timestamp
-        self.data: dict[str, Any] = {**kwargs}
 
-    def __repr__(self) -> str:
-        return "{}(event_type='{}', timestamp='{}', data={})".format(
-            self.__class__.__name__,
-            self.event_type,
-            self.timestamp,
-            self.data,
-        )
+    @abstractclassmethod
+    def get_type(cls) -> str:
+        """Return the type of this event"""
+        raise NotImplementedError()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize this LifeEvent to a dictionary"""
+        return {"event_type": self.get_type(), "timestamp": self.timestamp}
 
 
 class IPatternFn(Protocol):
     @abstractmethod
     def __call__(
         self, world: World, **kwargs
-    ) -> Generator[tuple[LifeEvent, tuple[GameObject, ...]], None, None]:
+    ) -> Generator[Tuple[LifeEvent, Tuple[GameObject, ...]], None, None]:
         raise NotImplementedError()
 
 
@@ -294,31 +298,43 @@ class LifeEventHandler:
 
 
 class LifeEventLogger:
-    """Records a collection of life events associated with game objects"""
+    """Records a collection of life events associated with GameObjects"""
 
-    __slots__ = "_events", "_game_objects", "_next_event_id"
+    __slots__ = "_events", "_game_objects", "_next_event_id", "_subscribers"
 
     def __init__(self) -> None:
         self._next_event_id: int = 0
         self._events: list[LifeEvent] = []
         self._game_objects: defaultdict[int, list[int]] = defaultdict(lambda: list())
+        self._subscribers: Dict[int, List[Callable[[int, LifeEvent], None]]] = {}
 
-    def log_event(self, record: LifeEvent, characters: Iterable[int]) -> None:
+    def log_event(self, event: LifeEvent, gameobject_ids: Iterable[int]) -> None:
         """Add an event to the record of all events and associate it with character"""
-        self._events.append(record)
+        self._events.append(event)
 
-        for character_id in characters:
-            self._game_objects[character_id].append(self._next_event_id)
+        for gid in gameobject_ids:
+            self._game_objects[gid].append(self._next_event_id)
+            if gid in self._subscribers:
+                map(lambda f: f(gid, event), self._subscribers[gid])
+
+        logger.debug(str(event))
 
         self._next_event_id += 1
 
-    def get_all_events(self) -> list[LifeEvent]:
+    def get_all_events(self) -> List[LifeEvent]:
         """Get all recorded events"""
         return self._events
 
-    def get_events_for(self, gid: int) -> list[LifeEvent]:
+    def get_events_for(self, gid: int) -> List[LifeEvent]:
         """Get all the life events for a game object"""
         return [self._events[i] for i in self._game_objects[gid]]
+
+    def subscribe_to_gameobject(
+        self, gid: int, fn: Callable[[int, LifeEvent], None]
+    ) -> None:
+        if gid not in self._subscribers:
+            self._subscribers[gid] = []
+        self._subscribers[gid].append(fn)
 
 
 class ILifeEventListener(ABC):

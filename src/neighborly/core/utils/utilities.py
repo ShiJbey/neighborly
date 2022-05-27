@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Generator, TypeVar
+from typing import Dict, Tuple, Generator, TypeVar, List
 
 
 def merge(source: Dict, destination: Dict) -> Dict:
@@ -53,7 +53,7 @@ def parse_number_range(range_str: str) -> Tuple[int, int]:
 _T = TypeVar("_T")
 
 
-def chunk_list(lst: list[_T], n: int) -> Generator[list[_T], None, None]:
+def chunk_list(lst: List[_T], n: int) -> Generator[List[_T], None, None]:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i : i + n]

@@ -11,10 +11,10 @@ class Residence(Component):
 
     def __init__(self) -> None:
         super().__init__()
-        self.owners: OrderedSet[int] = OrderedSet()
-        self.former_owners: OrderedSet[int] = OrderedSet()
-        self.residents: OrderedSet[int] = OrderedSet()
-        self.former_residents: OrderedSet[int] = OrderedSet()
+        self.owners: OrderedSet[int] = OrderedSet([])
+        self.former_owners: OrderedSet[int] = OrderedSet([])
+        self.residents: OrderedSet[int] = OrderedSet([])
+        self.former_residents: OrderedSet[int] = OrderedSet([])
         self._vacant: bool = True
 
     def to_dict(self) -> Dict[str, Any]:

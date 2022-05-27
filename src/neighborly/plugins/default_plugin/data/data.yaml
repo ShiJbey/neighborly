@@ -8,17 +8,13 @@ CharacterDefinitions:
         probability_children: 0.5
         num_children: "0-2"
     lifecycle:
-      can_age: yes
-      can_die: yes
-      chance_of_death: 0.8
-      romantic_feelings_age: 13
-      marriageable_age: 18
-      age_ranges:
-        child: "0-12"
-        teen: "13-19"
-        young_adult: "20-29"
-        adult: "30-65"
-        senior: "65-100"
+      lifespan: 85
+      life_stages:
+        child: 0
+        adolescent: 13
+        young_adult: 18
+        adult: 30
+        elder: 85
 Characters:
   - name: BaseCharacter
     default: yes
@@ -26,8 +22,14 @@ Characters:
       - type: GameCharacter
         options:
           character_def: BaseCharacter
+          events:
+            marriage:
+              effect: [on_married_behavior]
+            child-birth:
+              effect: [on_child_birth_behavior]
+            move:
+              effect: [on_move_behavior]
       - type: Routine
-      - type: LifeEventHandler
 Residences:
   - name: House
     components:

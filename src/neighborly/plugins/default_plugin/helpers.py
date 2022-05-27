@@ -3,7 +3,9 @@ from typing import List, Tuple
 
 import numpy as np
 
-from neighborly.core.ecs import World
+from neighborly.core.ecs import GameObject, World
+from neighborly.core.life_event import LifeEvent
+from neighborly.core.relationship import Relationship, RelationshipModifier
 
 from .activity import ActivityCenter, get_activity_flags, get_all_activities
 from .character_values import CharacterValues
@@ -68,3 +70,26 @@ def find_places_with_any_activities(world: World, *activities: str) -> List[int]
             matches.append((score, location_id))
 
     return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
+
+
+def try_add_compatibility_modifier(gameobject: GameObject, event: LifeEvent) -> bool:
+    # Add compatibility if both characters have a Character Values component
+    world = gameobject.world
+    owner_has_values = gameobject.has_component(CharacterValues)
+    relationship: Relationship = event.data["relationship"]
+    target = world.get_gameobject(relationship.target)
+    target_has_values = target.has_component(CharacterValues)
+
+    if owner_has_values and target_has_values:
+        compatibility = CharacterValues.calculate_compatibility(
+            gameobject.get_component(CharacterValues),
+            target.get_component(CharacterValues),
+        )
+
+        relationship.add_modifier(
+            RelationshipModifier("Compatibility", friendship_increment=compatibility)
+        )
+
+        return True
+    else:
+        return False

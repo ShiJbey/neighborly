@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import cast
+from typing import Any, Dict, cast, List, Tuple, Optional
 
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
@@ -9,6 +7,7 @@ from neighborly.core.location import Location
 from neighborly.core.relationship import Relationship, RelationshipTag
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.tags import Tag
+from neighborly.core.engine import NeighborlyEngine
 
 
 def hire_character_at_business(character: GameObject, **kwargs) -> None:
@@ -97,9 +96,9 @@ def move_character(world: World, character_id: int, location_id: int) -> None:
     character.location = location_id
 
 
-def get_locations(world: World) -> list[tuple[int, Location]]:
+def get_locations(world: World) -> List[Tuple[int, Location]]:
     return sorted(
-        cast(list[tuple[int, Location]], world.get_component(Location)),
+        cast(List[Tuple[int, Location]], world.get_component(Location)),
         key=lambda pair: pair[0],
     )
 
@@ -111,3 +110,78 @@ def add_relationship_tag(
     world.get_resource(RelationshipNetwork).get_connection(
         owner_id, target_id
     ).add_tags(tag)
+
+
+def try_generate_family(
+    engine: NeighborlyEngine, gameobject: GameObject
+) -> Dict[str, Any]:
+    """For the given character, try to generate a spouse and children"""
+
+    # If the character does not have an archetype, throw an error
+    if gameobject.archetype_name is None:
+        raise TypeError("Character's GameObject does not have an archetype name")
+
+    result = {"spouse": None, "children": []}
+
+    character = gameobject.get_component(GameCharacter)
+
+    has_spouse = (
+        engine.get_rng().random()
+        < character.character_def.generation.family.probability_spouse
+    )
+
+    spouse: Optional[GameObject] = None
+
+    if has_spouse:
+        spouse = engine.create_character(
+            gameobject.archetype_name,
+            last_name=character.name.surname,
+            age_range="young_adult",
+        )
+        result["spouse"] = spouse
+
+    has_children = (
+        engine.get_rng().random()
+        < character.character_def.generation.family.probability_children
+    )
+
+    if has_children:
+        result["children"] = create_children(
+            character,
+            engine,
+            gameobject.archetype_name,
+            spouse.get_component(GameCharacter) if spouse else None,
+        )
+
+    return result
+
+
+def create_children(
+    character: GameCharacter,
+    engine: NeighborlyEngine,
+    archetype_name: str,
+    spouse: Optional[GameCharacter] = None,
+) -> List[GameObject]:
+
+    n_children = engine.get_rng().randint(
+        character.character_def.generation.family.num_children[0],
+        character.character_def.generation.family.num_children[1],
+    )
+
+    spouse_age = spouse.age if spouse else 999
+    min_parent_age = min(spouse_age, character.age)
+    child_age_max = (
+        min_parent_age - character.character_def.lifecycle.life_stages["young_adult"]
+    )
+
+    children = []
+
+    for _ in range(n_children):
+        child = engine.create_character(
+            archetype_name,
+            age_range=(0, child_age_max),
+            last_name=character.name.surname,
+        )
+        children.append(child)
+
+    return children

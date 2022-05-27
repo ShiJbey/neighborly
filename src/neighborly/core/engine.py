@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from abc import ABC
-from typing import Any, Optional, Protocol
+from typing import Any, Optional, Protocol, Dict, List
 
 from neighborly.core.ecs import Component, GameObject
 from neighborly.core.rng import IRandNumGenerator
@@ -38,16 +36,16 @@ class ComponentDefinition:
     def __init__(
         self,
         component_type: str,
-        attributes: Optional[dict[str, Any]] = None,
+        attributes: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._component_type: str = component_type
-        self._attributes: dict[str, Any] = attributes if attributes else {}
+        self._attributes: Dict[str, Any] = attributes if attributes else {}
 
     def get_type(self) -> str:
         """Returns the name of the type of component this spec is for"""
         return self._component_type
 
-    def get_attributes(self) -> dict[str, Any]:
+    def get_attributes(self) -> Dict[str, Any]:
         """Get all the attributes associated with this definition"""
         return self._attributes
 
@@ -55,8 +53,8 @@ class ComponentDefinition:
         """Get a specific attribute associated with this definition"""
         return self._attributes.get(key, default)
 
-    def update(self, new_attributes: dict[str, Any]) -> None:
-        """Update the attributes using a given dict of values"""
+    def update(self, new_attributes: Dict[str, Any]) -> None:
+        """Update the attributes using a given Dict of values"""
         self._attributes.update(new_attributes)
 
     def __getitem__(self, key: str) -> Any:
@@ -81,19 +79,19 @@ class EntityArchetypeDefinition:
     def __init__(
         self,
         name: str,
-        components: Optional[dict[str, ComponentDefinition]] = None,
+        components: Optional[Dict[str, ComponentDefinition]] = None,
         is_template: bool = False,
     ) -> None:
         self._name: str = name
         self._is_template: bool = is_template
-        self._components: dict[str, ComponentDefinition] = (
+        self._components: Dict[str, ComponentDefinition] = (
             components if components else {}
         )
 
     def is_template(self) -> bool:
         return self._is_template
 
-    def get_components(self) -> dict[str, ComponentDefinition]:
+    def get_components(self) -> Dict[str, ComponentDefinition]:
         """Return the ComponentSpecs that make up this archetype"""
         return self._components
 
@@ -105,7 +103,7 @@ class EntityArchetypeDefinition:
         """Get the type of archetype this is"""
         return self._name
 
-    def get_attributes(self) -> dict[str, Any]:
+    def get_attributes(self) -> Dict[str, Any]:
         """Get the type of archetype this is"""
         return self._attributes
 
@@ -139,11 +137,11 @@ class NeighborlyEngine:
 
     Attributes
     ----------
-    _component_factories: dict[str, AbstractFactory[Any]]
+    _component_factories: Dict[str, AbstractFactory[Any]]
         Map of component class names to factories that produce them
-    _character_archetypes: dict[str, dict[str, Any]]
+    _character_archetypes: Dict[str, Dict[str, Any]]
         Map of archetype names to their specification data
-    _place_archetypes: dict[str, dict[str, Any]]
+    _place_archetypes: Dict[str, Dict[str, Any]]
         Map of archetype names to their specification data
     """
 
@@ -157,11 +155,11 @@ class NeighborlyEngine:
     )
 
     def __init__(self, rng: IRandNumGenerator) -> None:
-        self._component_factories: dict[str, IComponentFactory] = {}
-        self._character_archetypes: dict[str, EntityArchetypeDefinition] = {}
-        self._business_archetypes: dict[str, EntityArchetypeDefinition] = {}
-        self._residence_archetypes: dict[str, EntityArchetypeDefinition] = {}
-        self._place_archetypes: dict[str, EntityArchetypeDefinition] = {}
+        self._component_factories: Dict[str, IComponentFactory] = {}
+        self._character_archetypes: Dict[str, EntityArchetypeDefinition] = {}
+        self._business_archetypes: Dict[str, EntityArchetypeDefinition] = {}
+        self._residence_archetypes: Dict[str, EntityArchetypeDefinition] = {}
+        self._place_archetypes: Dict[str, EntityArchetypeDefinition] = {}
         self._rng: IRandNumGenerator = rng
         set_grammar_rng(self._rng)
 
@@ -174,7 +172,7 @@ class NeighborlyEngine:
     def get_character_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
         return self._character_archetypes[archetype_name]
 
-    def get_character_archetypes(self) -> list[EntityArchetypeDefinition]:
+    def get_character_archetypes(self) -> List[EntityArchetypeDefinition]:
         return list(self._character_archetypes.values())
 
     def add_place_archetype(self, archetype: EntityArchetypeDefinition) -> None:
@@ -195,15 +193,15 @@ class NeighborlyEngine:
     def get_residence_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
         return self._residence_archetypes[archetype_name]
 
-    def get_residence_archetypes(self) -> list[EntityArchetypeDefinition]:
+    def get_residence_archetypes(self) -> List[EntityArchetypeDefinition]:
         return list(self._residence_archetypes.values())
 
-    def filter_place_archetypes(self, options: dict[str, Any]) -> list[str]:
+    def filter_place_archetypes(self, options: Dict[str, Any]) -> List[str]:
         """Retrieve a set of place archetypes based on given options"""
-        results: list[str] = []
+        results: List[str] = []
 
-        include: list[str] = options.get("include", [])
-        exclude: list[str] = options.get("exclude", [])
+        include: List[str] = options.get("include", [])
+        exclude: List[str] = options.get("exclude", [])
 
         for _, spec in self._place_archetypes.items():
             if spec.has_component(*include) and not spec.has_component(*exclude):
@@ -237,7 +235,7 @@ class NeighborlyEngine:
         self, archetype: EntityArchetypeDefinition, **kwargs
     ) -> GameObject:
         """Create a new GameObject and attach the components in the spec"""
-        components: list[Component] = []
+        components: List[Component] = []
 
         for name, spec in archetype.get_components().items():
             factory = self.get_component_factory(name)

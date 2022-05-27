@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import Optional, Union
+from typing import Optional, Union, List, Dict, Tuple
 
 from neighborly.core.ecs import Component
 from neighborly.core.engine import AbstractFactory, ComponentDefinition
@@ -58,14 +58,14 @@ class RoutineEntry:
         location: Union[str, int],
         activity: str,
         priority: RoutinePriority = RoutinePriority.LOW,
-        tags: Optional[list[str]] = None,
+        tags: Optional[List[str]] = None,
     ) -> None:
         self.start: int = start
         self.end: int = end
         self.location: Union[str, int] = location
         self.activity: str = activity
         self.priority: RoutinePriority = priority
-        self.tags: list[str] = [*tags] if tags else []
+        self.tags: List[str] = [*tags] if tags else []
         if start < 0 or start > 23:
             raise ValueError("Start time must be within range [0, 23] inclusive.")
         if end < 0 or end > 24:
@@ -89,14 +89,14 @@ class DailyRoutine:
     __slots__ = "_entries", "_tracks"
 
     def __init__(self) -> None:
-        self._entries: list[RoutineEntry] = []
-        self._tracks: dict[RoutinePriority, list[list[RoutineEntry]]] = {
+        self._entries: List[RoutineEntry] = []
+        self._tracks: dict[RoutinePriority, List[List[RoutineEntry]]] = {
             RoutinePriority.LOW: [list() for _ in range(24)],
             RoutinePriority.MED: [list() for _ in range(24)],
             RoutinePriority.HIGH: [list() for _ in range(24)],
         }
 
-    def get_entries(self, hour: int) -> list[RoutineEntry]:
+    def get_entries(self, hour: int) -> List[RoutineEntry]:
         """Get highest-priority entries for a given hour"""
         high_priority_entries = self._tracks[RoutinePriority.HIGH][hour]
         if high_priority_entries:
@@ -157,19 +157,19 @@ class Routine(Component):
             "sunday": DailyRoutine(),
         }
 
-    def get_entries(self, day: str, hour: int) -> list[RoutineEntry]:
+    def get_entries(self, day: str, hour: int) -> List[RoutineEntry]:
         """Get the scheduled activity for a given day and time"""
         try:
             return self._daily_routines[day.lower()].get_entries(hour)
         except KeyError as e:
             raise ValueError(f"Expected day of the week, but received '{day}'") from e
 
-    def add_entries(self, days: list[str], *entries: RoutineEntry) -> None:
+    def add_entries(self, days: List[str], *entries: RoutineEntry) -> None:
         """Add one or more entries to the daily routines on the given days"""
         for day in days:
             self._daily_routines[day].add_entries(*entries)
 
-    def remove_entries(self, days: list[str], *entries: RoutineEntry) -> None:
+    def remove_entries(self, days: List[str], *entries: RoutineEntry) -> None:
         """Remove one or more entries from the daily routines on the given days"""
         for day in days:
             self._daily_routines[day].remove_entries(*entries)
@@ -214,7 +214,7 @@ def time_str_to_int(s: str) -> int:
         )
 
 
-def parse_schedule_str(s: str) -> dict[str, tuple[int, int]]:
+def parse_schedule_str(s: str) -> Dict[str, Tuple[int, int]]:
     """
     Convert a schedule string with days and time intervals
 

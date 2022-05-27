@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import itertools
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -197,7 +195,7 @@ class TownLayout:
     def grid(self) -> Grid[LayoutGridSpace]:
         return self._grid
 
-    def get_vacancies(self) -> List[tuple[int, int]]:
+    def get_vacancies(self) -> List[Tuple[int, int]]:
         """Return the positions that are unoccupied in town"""
         return self._unoccupied
 

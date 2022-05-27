@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import IntFlag, auto
 from typing import Any, ClassVar, Dict, List

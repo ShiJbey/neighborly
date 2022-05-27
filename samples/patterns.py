@@ -3,12 +3,9 @@ In this file, I am messing around with using generator functions
 to handle things like pattern matching in LifeEventRules and
 timestep sizes when handling level-of-detail changes
 """
-from __future__ import annotations
-
 from abc import abstractmethod
-from typing import Generator, Optional, Protocol
+from typing import Generator, List, Protocol, Tuple
 from dataclasses import dataclass
-from neighborly.core.time import SimDateTime
 from neighborly.core.ecs import GameObject, Component
 from neighborly.core.life_event import (
     ILifeEventListener,
@@ -18,47 +15,33 @@ from neighborly.core.life_event import (
 )
 
 
-def custom_range(max: int) -> Generator[int, None, None]:
-    i = 0
-    while i < max:
-        yield i
-        i += 1
-
-
-def print_custom_range(max: int) -> None:
-    for x in custom_range(max):
-        print(x)
-
-
-def variable_lod(
-    date_time: SimDateTime,
-    low_lod_step: int,
-    high_lod_step: int,
-    days_per_year: int,
-    end_date: Optional[str] = None,
-) -> Generator[int, None, None]:
-    """
-    Yields time step increments based on the current date,
-    switching between low and high levels-of-detail.
-    """
-    ...
-
-
 class IPatternFn(Protocol):
     @abstractmethod
     def __call__(
-        self, world: list[GameObject]
-    ) -> Generator[tuple[LifeEvent, tuple[GameObject, ...]], None, None]:
+        self, world: List[GameObject]
+    ) -> Generator[Tuple[LifeEvent, Tuple[GameObject, ...]], None, None]:
         raise NotImplementedError()
+
+
+class TestEvent(LifeEvent):
+
+    event_type: str = "test-event"
+
+    def __init__(self, timestamp: str) -> None:
+        super().__init__(timestamp)
+
+    @classmethod
+    def get_type(cls) -> str:
+        return cls.event_type
 
 
 def strength_greater_than(value: int) -> IPatternFn:
     def pattern(
-        world: list[GameObject],
+        world: List[GameObject],
     ):
         for g in world:
             if g.has_component(A) and g.get_component(A).strength > value:
-                yield LifeEvent("test_event", ""), (g,)
+                yield TestEvent("now"), (g,)
 
     return pattern
 
@@ -71,7 +54,7 @@ class A(Component, ILifeEventListener):
     strength: int = 0
 
     def handle_event(self, event: LifeEvent) -> bool:
-        if event.event_type == "test_event":
+        if event.get_type() == "test-event":
             print("Handling works")
         return True
 

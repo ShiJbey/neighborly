@@ -1,4 +1,4 @@
-"""
+"""Tuple
 Custom Entity component implementation that blends
 the Unity-style workflow with the logic from the
 Python esper library.
@@ -13,6 +13,9 @@ from abc import ABC, abstractmethod
 from typing import (
     Any,
     Iterable,
+    List,
+    Dict,
+    Tuple,
     Optional,
     Protocol,
     Type,
@@ -32,11 +35,11 @@ class GameObject:
     ----------
     id: int
         unique identifier
-    tags: list[string]
+    tags: List[string]
         Associated tag strings
     world: World
         the World instance this GameObject belongs to
-    _components: dict[Type, Components]
+    _components: Dict[Type, Components]
         Components attached to this GameObject
     """
 
@@ -53,7 +56,7 @@ class GameObject:
         self._active: bool = True
         self._tags: set[str] = set(tags)
         self._world: Optional[World] = world
-        self._components: dict[str, Component] = {}
+        self._components: Dict[str, Component] = {}
         self._archetype_name: Optional[str] = archetype_name
 
         if components:
@@ -139,7 +142,7 @@ class GameObject:
     def try_component_with_name(self, name: str) -> Optional[Component]:
         return self._components.get(name)
 
-    def get_components(self) -> list[Component]:
+    def get_components(self) -> List[Component]:
         return list(self._components.values())
 
     def start(self) -> None:
@@ -151,7 +154,7 @@ class GameObject:
         for component in self._components.values():
             component.on_destroy()
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self._id,
             "tags": sorted([*self._tags]),
@@ -191,7 +194,7 @@ class Component(ABC):
         """set the gameobject instance for this component"""
         self._gameobject = gameobject
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         return {"type": self.__class__.__name__}
 
     def on_add(self) -> None:
@@ -225,10 +228,10 @@ class World:
     __slots__ = "_gameobjects", "_dead_gameobjects", "_systems", "_resources"
 
     def __init__(self) -> None:
-        self._gameobjects: dict[int, GameObject] = {}
-        self._dead_gameobjects: list[int] = []
-        self._systems: list[tuple[int, ISystem]] = []
-        self._resources: dict[str, Any] = {}
+        self._gameobjects: Dict[int, GameObject] = {}
+        self._dead_gameobjects: List[int] = []
+        self._systems: List[Tuple[int, ISystem]] = []
+        self._resources: Dict[str, Any] = {}
 
     def add_gameobject(self, gameobject: GameObject) -> None:
         """Add gameobject to the world"""
@@ -240,7 +243,7 @@ class World:
         """Retrieve the GameObject with the given id"""
         return self._gameobjects[gid]
 
-    def get_gameobjects(self) -> list[GameObject]:
+    def get_gameobjects(self) -> List[GameObject]:
         """Get all gameobjects"""
         return list(self._gameobjects.values())
 
@@ -256,17 +259,17 @@ class World:
         """Remove gameobject from world"""
         self._dead_gameobjects.append(gid)
 
-    def get_component(self, component_type: Type[_CT]) -> list[tuple[int, _CT]]:
+    def get_component(self, component_type: Type[_CT]) -> List[Tuple[int, _CT]]:
         """Get all the gameobjects that have a given component type"""
-        components: list[tuple[int, _CT]] = []
+        components: List[Tuple[int, _CT]] = []
         for gid, gameobject in self._gameobjects.items():
             component = gameobject.try_component(component_type)
             if component is not None:
                 components.append((gid, component))
         return components
 
-    def get_component_by_name(self, name: str) -> list[tuple[int, Component]]:
-        components: list[tuple[int, Component]] = []
+    def get_component_by_name(self, name: str) -> List[Tuple[int, Component]]:
+        components: List[Tuple[int, Component]] = []
         for gid, gameobject in self._gameobjects.items():
             component = gameobject.try_component_with_name(name)
             if component is not None:
@@ -275,9 +278,9 @@ class World:
 
     def get_components(
         self, *component_types: Type[_CT]
-    ) -> list[tuple[int, tuple[_CT, ...]]]:
+    ) -> List[Tuple[int, Tuple[_CT, ...]]]:
         """Get all game objects with the given components"""
-        components: list[tuple[int, tuple[_CT, ...]]] = []
+        components: List[Tuple[int, Tuple[_CT, ...]]] = []
         for gid, gameobject in self._gameobjects.items():
             try:
                 components.append(

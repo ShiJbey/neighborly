@@ -14,7 +14,7 @@ class Location(Component):
     def __init__(self, max_capacity: int) -> None:
         super().__init__()
         self.max_capacity: int = max_capacity
-        self.characters_present: OrderedSet[int] = OrderedSet()
+        self.characters_present: OrderedSet[int] = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {

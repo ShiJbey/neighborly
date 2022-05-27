@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import random
-from typing import Protocol, TypeVar, Generator
+from typing import List, Protocol, TypeVar, Generator
 from pprint import pprint
 
 from neighborly.core.character import (
@@ -29,13 +27,13 @@ from neighborly.core.life_event import (
 BASE_CHARACTER_DEF = CharacterDefinition(
     name="BaseCharacter",
     lifecycle=LifeCycleConfig(
-        romantic_feelings_age=13,
+        lifespan=85,
         life_stages={
             "child": 0,
             "adolescent": 13,
             "young_adult": 18,
             "adult": 30,
-            "senior": 65,
+            "elder": 65,
         },
     ),
     generation=GenerationConfig(
@@ -180,7 +178,7 @@ def handle_socialize(gameobject: GameObject, event: LifeEvent) -> bool:
 _T = TypeVar("_T")
 
 
-def chunk_list(lst: list[_T], n: int) -> Generator[list[_T], None, None]:
+def chunk_list(lst: List[_T], n: int) -> Generator[List[_T], None, None]:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i : i + n]

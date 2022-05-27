@@ -27,7 +27,7 @@ def sample_definitions() -> str:
                 marriageable_age: 18
                 age_ranges:
                     child: "0-12"
-                    teen: "13-19"
+                    adolescent: "13-19"
                     young_adult: "20-29"
                     adult: "30-65"
                     senior: "65-100"

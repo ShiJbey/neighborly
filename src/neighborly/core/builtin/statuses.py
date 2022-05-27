@@ -2,6 +2,46 @@ from neighborly.core.ecs import World
 from neighborly.core.status import Status
 
 
+class ChildStatus(Status):
+    def __init__(self) -> None:
+        super().__init__(
+            "child",
+            "Character is seen as a child in the eyes of society",
+        )
+
+
+class AdolescentStatus(Status):
+    def __init__(self) -> None:
+        super().__init__(
+            "Adolescent",
+            "Character is seen as an adolescent in the eyes of society",
+        )
+
+
+class YoungAdultStatus(Status):
+    def __init__(self) -> None:
+        super().__init__(
+            "Young Adult",
+            "Character is seen as a young adult in the eyes of society",
+        )
+
+
+class AdultStatus(Status):
+    def __init__(self) -> None:
+        super().__init__(
+            "Adult",
+            "Character is seen as an adult in the eyes of society",
+        )
+
+
+class ElderStatus(Status):
+    def __init__(self) -> None:
+        super().__init__(
+            "Senior",
+            "Character is seen as a senior in the eyes of society",
+        )
+
+
 class RetiredStatus(Status):
     def __init__(self) -> None:
         super().__init__(

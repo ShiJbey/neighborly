@@ -4,7 +4,7 @@ In this sample, I am adjusting the event system to be more ergonomic
 from dataclasses import dataclass
 from pprint import pprint
 import random
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 from neighborly.core.ecs import GameObject, Component
 from neighborly.core.life_event import (
@@ -16,7 +16,6 @@ from neighborly.core.life_event import (
 from neighborly.core.relationship import RelationshipTag
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.character import (
-    AgeRanges,
     CharacterDefinition,
     CharacterName,
     FamilyGenerationOptions,
@@ -244,21 +243,17 @@ def test_event_effect(gameobject: GameObject, event: LifeEvent) -> bool:
     return True
 
 
-BASE_CHARACTER_TYPE = CharacterDefinition(
+BASE_CHARACTER_DEF = CharacterDefinition(
     name="BaseCharacter",
     lifecycle=LifeCycleConfig(
-        can_age=True,
-        can_die=True,
-        chance_of_death=0.6,
         romantic_feelings_age=13,
-        marriageable_age=18,
-        age_ranges=AgeRanges(
-            child=(0, 10),
-            teen=(11, 19),
-            young_adult=(20, 29),
-            adult=(30, 60),
-            senior=(60, 85),
-        ),
+        life_stages={
+            "child": 0,
+            "adolescent": 13,
+            "young_adult": 18,
+            "adult": 30,
+            "senior": 65,
+        },
     ),
     generation=GenerationConfig(
         first_name="#first_name#",
@@ -267,6 +262,12 @@ BASE_CHARACTER_TYPE = CharacterDefinition(
             probability_spouse=0.5, probability_children=0.3, num_children=(0, 3)
         ),
     ),
+)
+
+HUMAN_CHARACTER_DEF = CharacterDefinition.create({"name": "Human"}, BASE_CHARACTER_DEF)
+
+ANDROID_CHARACTER_DEF = CharacterDefinition.create(
+    {"name": "Android"}, BASE_CHARACTER_DEF
 )
 
 
@@ -283,7 +284,7 @@ DEFAULT_NEIGHBORLY_CONFIG = NeighborlyConfig(
 
 @dataclass
 class DemonSlayer(Component):
-    breathing_style: tuple[str, ...]
+    breathing_style: Tuple[str, ...]
     demons_slain: int
     power_level: int
 
@@ -302,9 +303,7 @@ def main():
     delores_a = GameObject(
         components=[
             GameCharacter(
-                CharacterDefinition(
-                    **{**BASE_CHARACTER_TYPE.dict(), "name": "Android"}
-                ),
+                ANDROID_CHARACTER_DEF,
                 CharacterName("Delores", "Abernathy"),
                 30,
                 events={
@@ -327,7 +326,7 @@ def main():
     kamado_t = GameObject(
         components=[
             GameCharacter(
-                CharacterDefinition(**{**BASE_CHARACTER_TYPE.dict(), "name": "Human"}),
+                HUMAN_CHARACTER_DEF,
                 CharacterName("Kamado", "Tanjiro"),
                 13,
                 events={

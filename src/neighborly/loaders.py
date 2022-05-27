@@ -134,8 +134,8 @@ def _load_entity_archetype(
         is_template=data.get("template", False),
     )
 
-    if archetype["inherits"]:
-        parent = engine.get_character_archetype(archetype["inherits"])
+    if data.get("inherits"):
+        parent = engine.get_character_archetype(data["inherits"])
 
         # Copy component specs from the parent
         for component_spec in parent.get_components().values():

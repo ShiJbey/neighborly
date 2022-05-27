@@ -9,10 +9,7 @@ from neighborly.core.ecs import GameObject, Component
 from neighborly.core.engine import AbstractFactory, ComponentDefinition
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
-from neighborly.core.town import TownConfig
-from neighborly.loaders import YamlDataLoader
-from neighborly.plugins import default_plugin
-from neighborly.simulation import Simulation, SimulationConfig
+from neighborly.simulation import Simulation, NeighborlyConfig
 
 # COMMON COLORS
 SKY_BLUE = (153, 218, 232)

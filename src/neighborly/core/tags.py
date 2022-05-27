@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from typing import Dict
 from dataclasses import dataclass, field
 from neighborly.core.life_event import ILifeEventCallback
 
@@ -10,5 +9,5 @@ class Tag:
 
     name: str
     description: str
-    event_effects: dict[str, ILifeEventCallback] = field(default_factory=dict)
-    event_preconditions: dict[str, ILifeEventCallback] = field(default_factory=dict)
+    event_effects: Dict[str, ILifeEventCallback] = field(default_factory=dict)
+    event_preconditions: Dict[str, ILifeEventCallback] = field(default_factory=dict)

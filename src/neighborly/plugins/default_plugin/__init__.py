@@ -35,13 +35,7 @@ from neighborly.plugins.default_plugin.businesses import (
 #     StartedDatingEvent,
 #     UnemploymentEvent,
 # )
-from neighborly.plugins.default_plugin.relationship_modifiers import FriendModifier
-from neighborly.plugins.default_plugin.statuses import (
-    DatingStatus,
-    MarriedStatus,
-    UnemployedStatus,
-)
-from neighborly.plugins.default_plugin.systems import SocializeProcessor
+
 from neighborly.simulation import PluginContext
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"

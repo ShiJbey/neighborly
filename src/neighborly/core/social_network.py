@@ -30,7 +30,7 @@ class DirectedSocialGraph(Generic[_T]):
 
     def __init__(self) -> None:
         self._nodes: DefaultDict[int, BDGraphNode] = defaultdict(
-            lambda: BDGraphNode(OrderedSet(), OrderedSet())
+            lambda: BDGraphNode(OrderedSet([]), OrderedSet([]))
         )
         self._edges: Dict[Tuple[int, int], _T] = {}
 
@@ -83,10 +83,10 @@ class UndirectedSocialGraph(Generic[_T]):
         """Insert a new connection between characters"""
 
         if node_a not in self._nodes:
-            self._nodes[node_a] = OrderedSet()
+            self._nodes[node_a] = OrderedSet([])
 
         if node_b not in self._nodes:
-            self._nodes[node_b] = OrderedSet()
+            self._nodes[node_b] = OrderedSet([])
 
         self._nodes[node_a].add(node_b)
         self._nodes[node_b].add(node_a)
