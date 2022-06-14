@@ -787,7 +787,72 @@ class HomePurchaseEvent(LifeEvent):
             **super().to_dict(),
             "character_names": self.character_names,
             "character_ids": self.character_ids,
+            "residence_id": self.residence_id,
         }
 
     def __str__(self) -> str:
         return "({}) {} purchased a house.".format(self.timestamp, self.character_names)
+
+
+class BecomeFriendsEvent(LifeEvent):
+    """Two characters become friends"""
+
+    event_type: str = "become-friends"
+
+    __slots__ = ("character_ids", "character_names")
+
+    def __init__(
+        self,
+        timestamp: str,
+        character_ids: Tuple[int, int],
+        character_names: Tuple[str, str],
+    ) -> None:
+        super().__init__(timestamp)
+        self.character_names: Tuple[str, str] = character_names
+        self.character_ids: Tuple[int, int] = character_ids
+
+    @classmethod
+    def get_type(cls) -> str:
+        return cls.event_type
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character_names": self.character_names,
+            "character_ids": self.character_ids,
+        }
+
+    def __str__(self) -> str:
+        return "({}) became friends.".format(self.timestamp, self.character_names)
+
+
+class BecomeEnemiesEvent(LifeEvent):
+    """Two characters become friends"""
+
+    event_type: str = "become-enemies"
+
+    __slots__ = ("character_ids", "character_names")
+
+    def __init__(
+        self,
+        timestamp: str,
+        character_ids: Tuple[int, int],
+        character_names: Tuple[str, str],
+    ) -> None:
+        super().__init__(timestamp)
+        self.character_names: Tuple[str, str] = character_names
+        self.character_ids: Tuple[int, int] = character_ids
+
+    @classmethod
+    def get_type(cls) -> str:
+        return cls.event_type
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character_names": self.character_names,
+            "character_ids": self.character_ids,
+        }
+
+    def __str__(self) -> str:
+        return "({}) became enemies.".format(self.timestamp, self.character_names)

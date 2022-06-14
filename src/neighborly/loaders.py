@@ -127,16 +127,16 @@ def _load_business_definitions(
 
 
 def _load_entity_archetype(
-    engine: NeighborlyEngine, data: Dict[str, Any]
+    engine: NeighborlyEngine,
+    data: Dict[str, Any],
+    parent: Optional[EntityArchetypeDefinition] = None,
 ) -> EntityArchetypeDefinition:
     archetype = EntityArchetypeDefinition(
         data["name"],
         is_template=data.get("template", False),
     )
 
-    if data.get("inherits"):
-        parent = engine.get_character_archetype(data["inherits"])
-
+    if parent:
         # Copy component specs from the parent
         for component_spec in parent.get_components().values():
             archetype.add_component(copy.deepcopy(component_spec))
@@ -164,7 +164,11 @@ def _load_entity_archetype(
 def _load_character_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process data related to defining character archetypes"""
     for character in data:
-        archetype = _load_entity_archetype(engine, character)
+        parent: Optional[EntityArchetypeDefinition] = None
+        if character.get("inherits"):
+            parent = engine.get_character_archetype(character["inherits"])
+
+        archetype = _load_entity_archetype(engine, character, parent)
 
         if (
             archetype.try_component("GameCharacter") is None
@@ -179,7 +183,10 @@ def _load_character_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -
 def _load_place_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process information regarding place archetypes"""
     for place in data:
-        archetype = _load_entity_archetype(engine, place)
+        parent: Optional[EntityArchetypeDefinition] = None
+        if place.get("inherits"):
+            parent = engine.get_place_archetype(place["inherits"])
+        archetype = _load_entity_archetype(engine, place, parent)
         engine.add_place_archetype(archetype)
 
 
@@ -187,7 +194,10 @@ def _load_place_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> No
 def _load_business_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process information regarding place archetypes"""
     for business in data:
-        archetype = _load_entity_archetype(engine, business)
+        parent: Optional[EntityArchetypeDefinition] = None
+        if business.get("inherits"):
+            parent = engine.get_business_archetype(business["inherits"])
+        archetype = _load_entity_archetype(engine, business, parent)
 
         if archetype.try_component("Business") is None and not archetype.is_template:
             raise MissingComponentSpecError("Business")
@@ -199,7 +209,10 @@ def _load_business_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) ->
 def _load_residence_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process information regarding place archetypes"""
     for residence in data:
-        archetype = _load_entity_archetype(engine, residence)
+        parent: Optional[EntityArchetypeDefinition] = None
+        if residence.get("inherits"):
+            parent = engine.get_residence_archetype(residence["inherits"])
+        archetype = _load_entity_archetype(engine, residence, parent)
         engine.add_residence_archetype(archetype)
 
 

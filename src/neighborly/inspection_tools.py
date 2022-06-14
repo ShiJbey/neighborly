@@ -1,3 +1,4 @@
+from pprint import pprint
 from neighborly.core.character import GameCharacter
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.life_event import LifeEventLogger
@@ -25,6 +26,10 @@ def list_relationships(sim: Simulation, character_id: int) -> None:
     print("{:30s} {:12s} {:12s}".format("Target", "Friendship", "Romance"))
     for r in relationships:
         print(f"{r.target:<30} {r.friendship:<12} {r.romance:<12}")
+
+
+def display_gameobject(sim: Simulation, gid: int) -> None:
+    pprint(sim.world.get_gameobject(gid).to_dict())
 
 
 def list_event_history(sim: Simulation, gid: int) -> None:

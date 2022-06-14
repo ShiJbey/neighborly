@@ -213,7 +213,7 @@ class IPatternFn(Protocol):
     @abstractmethod
     def __call__(
         self, world: World, **kwargs
-    ) -> Generator[Tuple[LifeEvent, Tuple[GameObject, ...]], None, None]:
+    ) -> Generator[Tuple[GameObject, ...], None, None]:
         raise NotImplementedError()
 
 
@@ -227,7 +227,7 @@ class LifeEventRule:
     name: str
         Name of the event used when checking event handlers
     description: str
-        A short description of what this event is
+        A short description of this rule
     pattern_fn: IPatternFn
         A precondition function that needs to return True for the event to fire
     effect: LifeEventCallback

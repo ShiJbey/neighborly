@@ -13,6 +13,7 @@ import neighborly
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.loaders import UnsupportedFileType
 from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
+from neighborly.server import NeighborlyServer
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,10 @@ DEFAULT_NEIGHBORLY_CONFIG = NeighborlyConfig(
         seed=random.randint(0, 999999),
         hours_per_timestep=6,
         start_date="0000-00-00T00:00.000z",
-        end_date="0100-00-00T00:00.000z",
+        end_date="0001-00-00T00:00.000z",
+        days_per_year=10,
     ),
-    plugins=["neighborly.plugins.default_plugin"],
+    plugins=["neighborly.plugins.default_plugin", "neighborly.plugins.talktown"],
 )
 
 
@@ -103,6 +105,9 @@ def get_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable all printing to stdout",
     )
+    parser.add_argument(
+        "--server", default=False, action="store_true", help="Run web server UI"
+    )
     return parser
 
 
@@ -134,19 +139,23 @@ def main():
 
     sim = Simulation(config)
 
-    sim.run()
+    if args.server:
+        server = NeighborlyServer(sim)
+        server.run()
+    else:
+        sim.establish_setting()
 
-    if not args.no_emit:
-        output_path = (
-            args.output
-            if args.output
-            else f"{sim.config.simulation.seed}_{sim.get_town().name.replace(' ', '_')}.json"
-        )
+        if not args.no_emit:
+            output_path = (
+                args.output
+                if args.output
+                else f"{sim.config.simulation.seed}_{sim.get_town().name.replace(' ', '_')}.json"
+            )
 
-        with open(output_path, "w") as f:
-            data = NeighborlyJsonExporter().export(sim.world)
-            f.write(data)
-            logger.debug(f"Simulation data written to: '{output_path}'")
+            with open(output_path, "w") as f:
+                data = NeighborlyJsonExporter().export(sim.world)
+                f.write(data)
+                logger.debug(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":

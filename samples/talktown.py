@@ -10,6 +10,7 @@ NEIGHBORLY_CONFIG = NeighborlyConfig(
             "hours_per_timestep": 6,
             "start_date": "0000-00-00T00:00.000z",
             "end_date": "0001-00-00T00:00.000z",
+            "days_per_year": 10,
         },
         "plugins": ["neighborly.plugins.default_plugin", "neighborly.plugins.talktown"],
     }
@@ -17,6 +18,6 @@ NEIGHBORLY_CONFIG = NeighborlyConfig(
 
 
 if __name__ == "__main__":
-    # logging.basicConfig(filename="neighborly.log", filemode="w", level=logging.DEBUG)
+    logging.basicConfig(filename="neighborly.log", filemode="w", level=logging.DEBUG)
     sim = Simulation(NEIGHBORLY_CONFIG)
-    sim.run()
+    sim.establish_setting()

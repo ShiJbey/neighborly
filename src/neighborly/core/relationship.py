@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import IntFlag, auto
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
+
+from neighborly.core.ecs import Component
+from neighborly.core.engine import AbstractFactory, ComponentDefinition
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -249,6 +252,8 @@ class Relationship:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "owner": self.owner,
+            "target": self.target,
             "friendship": self.friendship,
             "romance": self.romance,
             "salience": self.salience,
@@ -296,3 +301,50 @@ class Relationship:
             self._tags,
             list(self._modifiers.keys()),
         )
+
+
+class DuplicateRelationshipError(Exception):
+    """Raise error when attempting to create a second relationship to a character"""
+
+    def __init__(self, character: int, target: int) -> None:
+        super().__init__()
+        self.message = f"Relationship already exist for {character} to {target}"
+
+    def __str__(self) -> str:
+        return self.message
+
+
+class RelationshipManager(Component):
+    """Manages the relationships from a specific character to others"""
+
+    __slots__ = "_relationships"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._relationships: Dict[int, Relationship] = {}
+
+    def add_relationship(self, relationship: Relationship) -> None:
+        if relationship.target in self._relationships:
+            raise DuplicateRelationshipError(self.gameobject.id, relationship.target)
+
+        self._relationships[relationship.target] = relationship
+
+    def get_relationship(self, target: int) -> Optional[Relationship]:
+        return self._relationships.get(target)
+
+    def remove_relationship(self, target: int) -> None:
+        del self._relationships[target]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "relationships": [r.to_dict() for r in self._relationships.values()],
+        }
+
+
+class RelationshipManagerFactory(AbstractFactory):
+    def __init__(self) -> None:
+        super().__init__("RelationshipManager")
+
+    def create(self, spec: ComponentDefinition, **kwargs) -> RelationshipManager:
+        return RelationshipManager()

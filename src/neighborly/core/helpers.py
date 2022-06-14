@@ -1,4 +1,5 @@
 from typing import Any, Dict, cast, List, Tuple, Optional
+from neighborly.core.builtin.statuses import ChildStatus, YoungAdultStatus
 
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
@@ -138,6 +139,8 @@ def try_generate_family(
             last_name=character.name.surname,
             age_range="young_adult",
         )
+        spouse.add_component(YoungAdultStatus())
+        spouse.get_component(GameCharacter).add_tag(Tag("Young Adult", ""))
         result["spouse"] = spouse
 
     has_children = (
@@ -182,6 +185,8 @@ def create_children(
             age_range=(0, child_age_max),
             last_name=character.name.surname,
         )
+        child.add_component(ChildStatus())
+        child.get_component(GameCharacter).add_tag(Tag("Child", ""))
         children.append(child)
 
     return children

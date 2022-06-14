@@ -6,17 +6,19 @@ import os
 import sys
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 from tqdm import tqdm
+from neighborly.core.builtin.event_effects import print_event
+from neighborly.core.relationship import RelationshipManagerFactory
 
 import neighborly.core.utils.utilities as utilities
 from neighborly.core.business import BusinessFactory
 from neighborly.core.character import GameCharacterFactory
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventLogger
+from neighborly.core.life_event import LifeEventLogger, EventCallbackDatabase
 from neighborly.core.location import LocationFactory
 from neighborly.core.position import Position2DFactory
 from neighborly.core.systems import (
@@ -31,11 +33,17 @@ from neighborly.core.systems import (
     YoungAdultSystem,
 )
 from neighborly.core.residence import ResidenceFactory
-from neighborly.core.rng import DefaultRNG, IRandNumGenerator
+from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import RoutineFactory
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.time import DAYS_PER_YEAR, HOURS_PER_DAY, SimDateTime, TimeDelta
+from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town, TownConfig
+from neighborly.core.builtin.event_rules import (
+    death_event_rule,
+    load_event_rules,
+    marriage_event_rule,
+)
+from neighborly.core.builtin.behaviors import load_builtin_behaviors
 
 logger = getLogger(__name__)
 
@@ -131,34 +139,17 @@ class Simulation:
         Entity-component system (ECS) that manages entities in the virtual world
     """
 
-    __slots__ = "config", "world", "_lod_manager"
+    __slots__ = "config", "world"
 
     def __init__(self, config: NeighborlyConfig) -> None:
         self.config: NeighborlyConfig = config
         self.world: World = World()
         # Create the default Engine configuration
         engine = NeighborlyEngine(DefaultRNG(config.simulation.seed))
-        engine.add_component_factory(GameCharacterFactory())
-        engine.add_component_factory(RoutineFactory())
-        engine.add_component_factory(LocationFactory())
-        engine.add_component_factory(ResidenceFactory())
-        engine.add_component_factory(Position2DFactory())
-        engine.add_component_factory(BusinessFactory())
         self.world.add_resource(engine)
-        # Add default systems
-        self.world.add_system(TimeSystem(), 10)
-        self.world.add_system(RoutineSystem(), 5)
-        self.world.add_system(CharacterSystem(), 3)
-        self.world.add_system(ChildSystem(), 3)
-        self.world.add_system(AdolescentSystem(), 3)
-        self.world.add_system(YoungAdultSystem(), 3)
-        self.world.add_system(AdultSystem(), 3)
-        self.world.add_system(LifeEventSystem())
-        self.world.add_system(AddResidentsSystem())
-        # Add default resources
-        self.world.add_resource(SimDateTime())
-        self.world.add_resource(RelationshipNetwork())
-        self.world.add_resource(LifeEventLogger())
+
+        self._configure_builtins(engine)
+
         # Load Plugins
         for plugin in config.plugins:
             if isinstance(plugin, str):
@@ -172,14 +163,32 @@ class Simulation:
         town = Town.create(config.simulation.town)
         logger.debug(f"Created town of {town.name}")
         self.world.add_resource(town)
-        # Create the LOD manager
-        self._lod_manager: Generator[int, None, None] = create_lod_generator(
-            current_date=self.world.get_resource(SimDateTime),
-            high_lod_step=self.config.simulation.hours_per_timestep,
-            days_per_year=self.config.simulation.days_per_year,
-            rng=self.world.get_resource(NeighborlyEngine).get_rng(),
-            end_date=SimDateTime,
-        )
+
+    def _configure_builtins(self, engine: NeighborlyEngine) -> None:
+        load_builtin_behaviors()
+        load_event_rules()
+        # Add default factories
+        engine.add_component_factory(GameCharacterFactory())
+        engine.add_component_factory(RoutineFactory())
+        engine.add_component_factory(LocationFactory())
+        engine.add_component_factory(ResidenceFactory())
+        engine.add_component_factory(Position2DFactory())
+        engine.add_component_factory(BusinessFactory())
+        engine.add_component_factory(RelationshipManagerFactory())
+        # Add default systems
+        self.world.add_system(TimeSystem(self.config.simulation.days_per_year), 10)
+        self.world.add_system(RoutineSystem(), 5)
+        self.world.add_system(CharacterSystem(), 3)
+        self.world.add_system(ChildSystem(), 3)
+        self.world.add_system(AdolescentSystem(), 3)
+        self.world.add_system(YoungAdultSystem(), 3)
+        self.world.add_system(AdultSystem(), 3)
+        self.world.add_system(LifeEventSystem())
+        self.world.add_system(AddResidentsSystem())
+        # Add default resources
+        self.world.add_resource(SimDateTime())
+        self.world.add_resource(RelationshipNetwork())
+        self.world.add_resource(LifeEventLogger())
 
     def load_plugin(
         self, module_name: str, path: Optional[str] = None, **kwargs
@@ -217,38 +226,24 @@ class Simulation:
             if path_prepended:
                 sys.path.pop(0)
 
-    def run(self) -> None:
+    def establish_setting(self) -> None:
         """Run the simulation until it reaches the end date in the config"""
-        start_date: SimDateTime = SimDateTime.from_iso_str(
-            self.config.simulation.start_date
-        )
         end_date: SimDateTime = SimDateTime.from_iso_str(
             self.config.simulation.end_date
         )
 
-        high_res_days = set(self._generate_sample_days(start_date, end_date, n=10))
-
-        low_res_days = (end_date - start_date).total_days - len(high_res_days)
-
-        total_timesteps = low_res_days + len(high_res_days) * (
-            HOURS_PER_DAY // self.config.simulation.hours_per_timestep
-        )
-
         try:
-            for _ in tqdm(range(total_timesteps), disable=self.config.quiet is True):
-                if self.get_time().to_ordinal() in high_res_days:
-                    self.step(hours=self.config.simulation.hours_per_timestep)
-                else:
-                    self.step(hours=24)
-
+            while end_date > self.get_time():
+                self.step()
+                print(f"{self.get_time().to_date_str()}", end="\r")
+            print()
         except KeyboardInterrupt:
             if self.config.quiet is False:
-                print("Stopping Simulation")
-                print(f"Current Date: {self.get_time().to_date_str()}")
+                print("\nStopping Simulation")
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
-        self.world.process(delta_time=hours, **kwargs)
+        self.world.process()
 
     def get_time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
@@ -261,59 +256,3 @@ class Simulation:
     def get_engine(self) -> NeighborlyEngine:
         """Get the NeighborlyEngine instance"""
         return self.world.get_resource(NeighborlyEngine)
-
-    def _generate_sample_days(
-        self, start_date: SimDateTime, end_date: SimDateTime, n: int
-    ) -> List[int]:
-        """Samples n days from each year between the start and end dates"""
-        ordinal_start_date: int = start_date.to_ordinal()
-        ordinal_end_date: int = end_date.to_ordinal()
-
-        sampled_ordinal_dates: List[int] = []
-
-        current_date = ordinal_start_date
-
-        while current_date < ordinal_end_date:
-            sampled_dates = (
-                self.get_engine()
-                .get_rng()
-                .sample(range(current_date, current_date + DAYS_PER_YEAR), n)
-            )
-            sampled_ordinal_dates.extend(sorted(sampled_dates))
-            current_date = min(current_date + DAYS_PER_YEAR, ordinal_end_date)
-
-        return sampled_ordinal_dates
-
-
-def create_lod_generator(
-    current_date: SimDateTime,
-    high_lod_step: int,
-    days_per_year: int,
-    rng: IRandNumGenerator,
-    end_date: Optional[SimDateTime] = None,
-) -> Generator[int, None, None]:
-    """
-    Yields time step increments based on the current date,
-    switching between low and high levels-of-detail.
-    """
-    while True:
-        one_year_ahead = current_date.to_ordinal() + DAYS_PER_YEAR
-
-        # Sample the fully simulated days for the next year
-        high_res_days = set(
-            rng.sample(
-                range(current_date.to_ordinal(), one_year_ahead),
-                days_per_year,
-            )
-        )
-
-        while current_date.to_ordinal() < one_year_ahead:
-            if current_date.to_ordinal() in high_res_days:
-                current_date += TimeDelta(hours=high_lod_step)
-                yield high_lod_step
-            else:
-                current_date += TimeDelta(hours=24)
-                yield 24
-
-            if end_date and current_date > end_date:
-                return

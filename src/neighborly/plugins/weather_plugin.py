@@ -5,6 +5,7 @@ import numpy as np
 
 from neighborly.core.ecs import World
 from neighborly.simulation import PluginContext
+from neighborly.core.time import SimDateTime
 
 
 class Weather(Enum):
@@ -50,7 +51,7 @@ class WeatherProcessor:
         self.avg_change_interval: int = avg_change_interval
 
     def __call__(self, world: World, **kwargs):
-        delta_time: int = kwargs["delta_time"]
+        delta_time = world.get_resource(SimDateTime).delta_time
         weather_manager = world.get_resource(WeatherManager)
 
         if weather_manager.time_before_change <= 0:

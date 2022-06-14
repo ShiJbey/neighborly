@@ -186,9 +186,7 @@ class GameCharacter(Component, ILifeEventListener):
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
         self.tags: Dict[str, Tag] = {}
-        self._event_handlers: defaultdict[str, LifeEventHandler] = defaultdict(
-            LifeEventHandler
-        )
+        self._event_handlers: Dict[str, LifeEventHandler] = {}
 
         if tags:
             self.tags.update({tag.name: tag for tag in tags})
@@ -196,11 +194,26 @@ class GameCharacter(Component, ILifeEventListener):
         if events:
             for event_name, callbacks in events.items():
                 preconditions = callbacks.get("preconditions", [])
+                if event_name not in self._event_handlers:
+                    self._event_handlers[event_name] = LifeEventHandler()
+
                 for fn in preconditions:
                     self._event_handlers[event_name].add_precondition(fn)
                 effects = callbacks.get("effects", [])
                 for fn in effects:
                     self._event_handlers[event_name].add_effect(fn)
+
+    def add_tag(self, tag: Tag) -> None:
+        """Add a tag to this character"""
+        self.tags[tag.name] = tag
+
+    def remove_tag(self, tag_name: str) -> None:
+        """Remove a tag from the character given the tag's name"""
+        del self.tags[tag_name]
+
+    def has_tag(self, tag_name: str) -> bool:
+        """Check if a character has a tag given the tag's name"""
+        return tag_name in self.tags
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -222,9 +235,10 @@ class GameCharacter(Component, ILifeEventListener):
         bool
             True if the event passes all the preconditions
         """
-        self._event_handlers[event.get_type()].check_preconditions(
-            self.gameobject, event
-        )
+        if event.get_type() in self._event_handlers:
+            self._event_handlers[event.get_type()].check_preconditions(
+                self.gameobject, event
+            )
 
         if self.tags:
             for tag in self.tags.values():
@@ -245,7 +259,8 @@ class GameCharacter(Component, ILifeEventListener):
         bool
             True if the event was handled successfully
         """
-        self._event_handlers[event.get_type()].handle_event(self.gameobject, event)
+        if event.get_type() in self._event_handlers:
+            self._event_handlers[event.get_type()].handle_event(self.gameobject, event)
 
         for tag in self.tags.values():
             effect = tag.event_effects.get(event.get_type())
