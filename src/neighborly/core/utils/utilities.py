@@ -1,3 +1,4 @@
+from ctypes import Union
 from typing import Dict, Tuple, Generator, TypeVar, List
 
 
@@ -57,3 +58,11 @@ def chunk_list(lst: List[_T], n: int) -> Generator[List[_T], None, None]:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
+
+
+_NT = TypeVar("_NT", int, float)
+
+
+def clamp(value: _NT, min_value: _NT, max_value: _NT) -> _NT:
+    """Clamp a numerical value between a min and max range"""
+    return min(max_value, max(min_value, value))

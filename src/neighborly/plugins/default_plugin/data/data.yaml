@@ -11,7 +11,7 @@ CharacterDefinitions:
       lifespan: 85
       life_stages:
         child: 0
-        adolescent: 13
+        teen: 13
         young_adult: 18
         adult: 30
         elder: 85
@@ -35,7 +35,7 @@ Residences:
     components:
       - type: Location
         options:
-          activities: [Rest]
+          private: true
       - type: Residence
       - type: Position2D
 Businesses:
@@ -78,19 +78,17 @@ Businesses:
       - type: Business
         options:
           business_type: Bar
-Places:
   - name: Park
     components:
       - type: Location
         options:
-          activities: [Recreation]
+          private: no
           max capacity: 200
-
   - name: Library
     components:
       - type: Location
         options:
-          activities: [Reading, Studying]
+          private: no
           max capacity: 35
 Activities:
   - name: Rest

@@ -2,7 +2,7 @@ from neighborly.core.ecs import World
 from neighborly.core.status import Status
 
 
-class ChildStatus(Status):
+class Child(Status):
     def __init__(self) -> None:
         super().__init__(
             "child",
@@ -10,7 +10,7 @@ class ChildStatus(Status):
         )
 
 
-class AdolescentStatus(Status):
+class Teen(Status):
     def __init__(self) -> None:
         super().__init__(
             "Adolescent",
@@ -18,7 +18,7 @@ class AdolescentStatus(Status):
         )
 
 
-class YoungAdultStatus(Status):
+class YoungAdult(Status):
     def __init__(self) -> None:
         super().__init__(
             "Young Adult",
@@ -26,7 +26,7 @@ class YoungAdultStatus(Status):
         )
 
 
-class AdultStatus(Status):
+class Adult(Status):
     def __init__(self) -> None:
         super().__init__(
             "Adult",
@@ -34,7 +34,7 @@ class AdultStatus(Status):
         )
 
 
-class ElderStatus(Status):
+class Elder(Status):
     def __init__(self) -> None:
         super().__init__(
             "Senior",
@@ -42,7 +42,15 @@ class ElderStatus(Status):
         )
 
 
-class RetiredStatus(Status):
+class Deceased(Status):
+    def __init__(self) -> None:
+        super().__init__(
+            "Deceased",
+            "This character is dead",
+        )
+
+
+class Retired(Status):
     def __init__(self) -> None:
         super().__init__(
             "Retired",
@@ -50,7 +58,7 @@ class RetiredStatus(Status):
         )
 
 
-class ResidentStatus(Status):
+class Resident(Status):
     __slots__ = "duration", "town"
 
     def __init__(self, town: str) -> None:
@@ -64,11 +72,11 @@ class ResidentStatus(Status):
     @staticmethod
     def system_fn(world: World, **kwargs) -> None:
         delta_time: float = kwargs["delta_time"]
-        for _, resident_status in world.get_component(ResidentStatus):
+        for _, resident_status in world.get_component(Resident):
             resident_status.duration += delta_time
 
 
-class UnemployedStatus(Status):
+class Unemployed(Status):
     __slots__ = "duration"
 
     def __init__(self) -> None:
@@ -81,11 +89,11 @@ class UnemployedStatus(Status):
     @staticmethod
     def system_fn(world: World, **kwargs) -> None:
         delta_time: float = kwargs["delta_time"]
-        for _, unemployed_status in world.get_component(UnemployedStatus):
+        for _, unemployed_status in world.get_component(Unemployed):
             unemployed_status.duration += delta_time
 
 
-class DatingStatus(Status):
+class Dating(Status):
     __slots__ = "duration", "partner_id", "partner_name"
 
     def __init__(self, partner_id: int, partner_name: str) -> None:
@@ -100,11 +108,11 @@ class DatingStatus(Status):
     @staticmethod
     def system_fn(world: World, **kwargs) -> None:
         delta_time: float = kwargs["delta_time"]
-        for _, dating_status in world.get_component(DatingStatus):
+        for _, dating_status in world.get_component(Dating):
             dating_status.duration += delta_time
 
 
-class MarriedStatus(Status):
+class Married(Status):
     __slots__ = "duration", "partner_id", "partner_name"
 
     def __init__(self, partner_id: int, partner_name: str) -> None:
@@ -119,5 +127,40 @@ class MarriedStatus(Status):
     @staticmethod
     def system_fn(world: World, **kwargs) -> None:
         delta_time: float = kwargs["delta_time"]
-        for _, married_status in world.get_component(MarriedStatus):
+        for _, married_status in world.get_component(Married):
             married_status.duration += delta_time
+
+
+class InRelationship(Status):
+    __slots__ = "duration", "partner_id", "partner_name", "relationship_type"
+
+    def __init__(
+        self, relationship_type: str, partner_id: int, partner_name: str
+    ) -> None:
+        super().__init__(
+            "Married",
+            "This character is married to another",
+        )
+        self.relationship_type: str = relationship_type
+        self.duration = 0.0
+        self.partner_id: int = partner_id
+        self.partner_name: str = partner_name
+
+    @staticmethod
+    def system_fn(world: World, **kwargs) -> None:
+        delta_time: float = kwargs["delta_time"]
+        for _, married_status in world.get_component(Married):
+            married_status.duration += delta_time
+
+
+class BusinessOwner(Status):
+    __slots__ = "duration", "business_id", "business_name"
+
+    def __init__(self, business_id: int, business_name: str) -> None:
+        super().__init__(
+            "Business Owner",
+            "This character owns a business",
+        )
+        self.duration = 0.0
+        self.business_id: int = business_id
+        self.business_name: str = business_name

@@ -1,63 +1,121 @@
-"""Tuple
-Custom Entity component implementation that blends
-the Unity-style workflow with the logic from the
-Python esper library.
+"""
+Custom Entity-Component implementation that blends
+the Unity-style GameObjects with the ECS logic from the
+Python esper library and the Bevy Game Engine.
 
 Sources:
+https://docs.unity3d.com/ScriptReference/GameObject.html
 https://github.com/benmoran56/esper
+https://github.com/bevyengine/bevy
 """
 from __future__ import annotations
 
 import hashlib
+import logging
 from abc import ABC, abstractmethod
 from typing import (
     Any,
+    Dict,
     Iterable,
     List,
-    Dict,
-    Tuple,
     Optional,
     Protocol,
+    Tuple,
     Type,
     TypeVar,
     cast,
 )
 from uuid import uuid1
 
+logger = logging.getLogger(__name__)
+
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
 
 
+class Event(Protocol):
+    """
+    Events are things that happen in the story world that GameObjects can react to.
+    """
+
+    def get_type(self) -> str:
+        """Return the type of this event"""
+        raise NotImplementedError
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize this LifeEvent to a dictionary"""
+        raise NotImplemented
+
+
+class IEventListener(ABC):
+    """Abstract interface that components inherit from when they want to listen for events"""
+
+    @abstractmethod
+    def will_handle_event(self, event: Event) -> bool:
+        """
+        Check the preconditions for this event type to see if they pass
+
+        Returns
+        -------
+        bool
+            True if the event passes all the preconditions
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def handle_event(self, event: Event) -> bool:
+        """
+        Perform logic when an event occurs
+
+        Returns
+        -------
+        bool
+            True if the event was handled successfully
+        """
+        raise NotImplementedError()
+
+
 class GameObject:
-    """The core class on which all entities are built
+    """
+    Collections of components that share are unique identifier
+    and represent entities within the game world
 
     Attributes
     ----------
     id: int
         unique identifier
-    tags: List[string]
-        Associated tag strings
+    name: str
+        name of the GameObject
     world: World
         the World instance this GameObject belongs to
-    _components: Dict[Type, Components]
+    components: List[Components]
         Components attached to this GameObject
     """
 
-    __slots__ = "_id", "_tags", "_components", "_world", "_active", "_archetype_name"
+    __slots__ = (
+        "_id",
+        "_name",
+        "_components",
+        "_world",
+        "_active",
+        "_archetype_name",
+        "_event_listeners",
+    )
 
     def __init__(
         self,
-        tags: Iterable[str] = (),
+        name: str = "GameObject",
         components: Iterable[Component] = (),
         world: Optional[World] = None,
         archetype_name: Optional[str] = None,
     ) -> None:
+        self._name: str = name
         self._id: int = self.generate_id()
         self._active: bool = True
-        self._tags: set[str] = set(tags)
         self._world: Optional[World] = world
         self._components: Dict[str, Component] = {}
         self._archetype_name: Optional[str] = archetype_name
+        self._event_listeners: List[IEventListener] = []
 
         if components:
             for component in components:
@@ -69,9 +127,9 @@ class GameObject:
         return self._id
 
     @property
-    def tags(self) -> set[str]:
-        """Return tags associated with this GameObject"""
-        return self._tags
+    def name(self) -> str:
+        """Get the name of the GameObject"""
+        return self._name
 
     @property
     def archetype_name(self) -> Optional[str]:
@@ -88,41 +146,35 @@ class GameObject:
     def active(self) -> bool:
         return self._active
 
-    def set_world(self, world: Optional[World]) -> None:
+    @property
+    def components(self) -> List[Component]:
+        return list(self._components.values())
+
+    def set_world(self, world: Optional[World]) -> GameObject:
         """set the world instance"""
         self._world = world
+        return self
 
-    def set_active(self, is_active: bool) -> None:
+    def set_active(self, is_active: bool) -> GameObject:
         self._active = is_active
+        return self
 
-    def add_tags(self, *tags: str) -> None:
-        """Add tags to this GameObject"""
-        for tag in tags:
-            self._tags.add(tag)
-
-    def remove_tags(self, *tags: str) -> None:
-        """Remove tags to this GameObject"""
-        for tag in tags:
-            self._tags.remove(tag)
-
-    def has_tags(self, *tags: str) -> bool:
-        """Add tags to this GameObject"""
-        for tag in tags:
-            if tag not in self._tags:
-                return False
-        return True
-
-    def add_component(self, component: Component) -> None:
+    def add_component(self, component: Component) -> GameObject:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
-        component.on_add()
         self._components[type(component).__name__] = component
+        if isinstance(component, IEventListener):
+            self._event_listeners.append(component)
+        return self
 
-    def remove_component(self, component: Component) -> None:
+    def remove_component(self, component_type: Type[_CT]) -> GameObject:
         """Add a component to this GameObject"""
-        component.on_remove()
+        component = self._components[component_type.__name__]
         component.set_gameobject(None)
-        del self._components[type(component).__name__]
+        if isinstance(component, IEventListener):
+            self._event_listeners.remove(component)
+        del self._components[component_type.__name__]
+        return self
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
         return cast(_CT, self._components[component_type.__name__])
@@ -142,32 +194,32 @@ class GameObject:
     def try_component_with_name(self, name: str) -> Optional[Component]:
         return self._components.get(name)
 
-    def get_components(self) -> List[Component]:
-        return list(self._components.values())
-
-    def start(self) -> None:
-        for component in self._components.values():
-            component.on_start()
-
-    def destroy(self) -> None:
-        """Callback for when this GameObject is destroyed"""
-        for component in self._components.values():
-            component.on_destroy()
-
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "id": self._id,
-            "tags": sorted([*self._tags]),
+            "id": self.id,
+            "name": self.name,
             "components": [c.to_dict() for c in self._components.values()],
+            "archetype": self.archetype_name,
         }
+
+    def handle_event(self, event: Event) -> None:
+        """Handle an event acting on this gameobject"""
+        for listener in self._event_listeners:
+            listener.handle_event(event)
+
+    def will_handle_event(self, event: Event) -> bool:
+        """Return False if this gameobject rejects this event, True otherwise"""
+        if self._event_listeners:
+            return all(
+                [
+                    listener.will_handle_event(event)
+                    for listener in self._event_listeners
+                ]
+            )
+        return True
 
     def __hash__(self) -> int:
         return self._id
-
-    def __repr__(self) -> str:
-        return "GameObject(id={}, tags={}, components={})".format(
-            self.id, self.tags, tuple(self._components.keys())
-        )
 
     @staticmethod
     def generate_id() -> int:
@@ -197,22 +249,6 @@ class Component(ABC):
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.__class__.__name__}
 
-    def on_add(self) -> None:
-        """Callback for when the component is added to a GameObject"""
-        pass
-
-    def on_remove(self) -> None:
-        """Callback for when the component is removed to a GameObject"""
-        pass
-
-    def on_destroy(self) -> None:
-        """Callback for when the GameObject's on_destroy method is called"""
-        pass
-
-    def on_start(self) -> None:
-        """Callback for when the GameObject's start method is called"""
-        pass
-
 
 class ISystem(Protocol):
     """Abstract base class for ECS systems"""
@@ -225,19 +261,27 @@ class ISystem(Protocol):
 class World:
     """Collection of GameObjects"""
 
-    __slots__ = "_gameobjects", "_dead_gameobjects", "_systems", "_resources"
+    __slots__ = (
+        "_gameobjects",
+        "_dead_gameobjects",
+        "_systems",
+        "_resources",
+        "_setup_systems",
+        "_world_setup",
+    )
 
     def __init__(self) -> None:
         self._gameobjects: Dict[int, GameObject] = {}
         self._dead_gameobjects: List[int] = []
         self._systems: List[Tuple[int, ISystem]] = []
+        self._setup_systems: List[Tuple[int, ISystem]] = []
         self._resources: Dict[str, Any] = {}
+        self._world_setup: bool = False
 
     def add_gameobject(self, gameobject: GameObject) -> None:
         """Add gameobject to the world"""
         self._gameobjects[gameobject.id] = gameobject
         gameobject.set_world(self)
-        gameobject.start()
 
     def get_gameobject(self, gid: int) -> GameObject:
         """Retrieve the GameObject with the given id"""
@@ -293,7 +337,6 @@ class World:
     def _clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
-            self._gameobjects[gameobject_id].destroy()
             self._gameobjects[gameobject_id].set_world(None)
             del self._gameobjects[gameobject_id]
 
@@ -311,15 +354,29 @@ class World:
             if s == system:
                 self._systems.remove(entry)
 
-    def process(self, **kwargs) -> None:
+    def add_setup_system(self, system: ISystem, priority=0) -> None:
+        """Add a setup System instance to the World"""
+        self._setup_systems.append((priority, system))
+        self._setup_systems.sort(key=lambda pair: pair[0], reverse=True)
+
+    def run(self, **kwargs) -> None:
         """Call the process method on all systems"""
         self._clear_dead_gameobjects()
+
+        if self._world_setup is False:
+            for _, system in self._setup_systems:
+                system(self, **kwargs)
+            self._world_setup = True
+
         for _, system in self._systems:
             system(self, **kwargs)
 
     def add_resource(self, resource: Any) -> None:
         """Add a global resource to the world"""
-        self._resources[type(resource).__name__] = resource
+        resource_name = type(resource).__name__
+        if resource_name in self._resources:
+            logger.warning(f"Replacing existing resource of type: {resource_name}")
+        self._resources[resource_name] = resource
 
     def remove_resource(self, resource: Type[_RT]) -> None:
         """remove a global resource to the world"""
@@ -336,3 +393,10 @@ class World:
     def try_resource(self, resource: Type[_RT]) -> Optional[_RT]:
         """Return the resource if it exists, None otherwise"""
         return self._resources.get(resource.__name__)
+
+    def __repr__(self) -> str:
+        return "World(gameobjects={}, resources={}, systems={})".format(
+            {g.id: g for g in self._gameobjects.values()},
+            list(self._resources.values()),
+            [s[1] for s in self._systems],
+        )

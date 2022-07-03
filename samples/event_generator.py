@@ -1,5 +1,6 @@
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.rng import DefaultRNG
 
 
 class LifeEventEmitter:
@@ -13,5 +14,5 @@ class LifeEventEmitter:
 
     def run(self, world: World) -> None:
         engine = world.get_resource(NeighborlyEngine)
-        if engine.get_rng().random() < self.probability:
+        if world.get_resource(DefaultRNG).random() < self.probability:
             ...

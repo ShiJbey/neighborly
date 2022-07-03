@@ -8,16 +8,16 @@ from neighborly.core.life_event import (
 )
 from neighborly.core.ecs import GameObject
 from neighborly.core.builtin.events import MarriageEvent
-from neighborly.core.builtin.statuses import MarriedStatus
+from neighborly.core.builtin.statuses import Adult, InRelationship, Married
 from neighborly.core.relationship import Relationship
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.tags import Tag
 
 
 def can_get_married(gameobject: GameObject, event: LifeEvent) -> bool:
-    is_single = not gameobject.get_component(GameCharacter).has_tag("In-Relationship")
-    is_adult = gameobject.get_component(GameCharacter).has_tag("Adult")
-    return is_single and is_adult
+    return gameobject.has_component(Adult) and not gameobject.has_component(
+        InRelationship
+    )
 
 
 def marriage_behavior(gameobject: GameObject, event: LifeEvent) -> bool:
@@ -42,9 +42,8 @@ def marriage_behavior(gameobject: GameObject, event: LifeEvent) -> bool:
         character.name = CharacterName(character.name.firstname, spouse_name.surname)
 
     # Create new Married Status and add it to the game object
-    status = MarriedStatus(spouse_id, str(spouse_name))
+    status = Married(spouse_id, str(spouse_name))
     gameobject.add_component(status)
-    gameobject.get_component(GameCharacter).add_tag(Tag("In-Relationship", ""))
 
     return True
 

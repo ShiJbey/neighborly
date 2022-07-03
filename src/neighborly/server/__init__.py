@@ -1,7 +1,8 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
-from neighborly.core.character import GameCharacter
 
+from neighborly.core.character import GameCharacter
+from neighborly.core.location import Location
 from neighborly.simulation import Simulation
 
 
@@ -17,7 +18,6 @@ class NeighborlyServer:
     def _configure_socketio(self) -> None:
         @self.socketio.on("step")
         def step_simulation():
-            print("Stepping simulation")
             self.sim.step()
             emit("simulation-updated", broadcast=True)
 
@@ -29,10 +29,17 @@ class NeighborlyServer:
                 for gid, character in self.sim.world.get_component(GameCharacter)
             }
 
+        @self.app.route("/locations")
+        def get_locations():
+            return {
+                gid: location.to_dict()
+                for gid, location in self.sim.world.get_component(Location)
+            }
+
         @self.app.route("/gameobject/<gid>")
         def get_gameobject(gid):
             gameobject = self.sim.world.get_gameobject(int(gid))
-            return {"components": [c.to_dict() for c in gameobject.get_components()]}
+            return {"components": [c.to_dict() for c in gameobject.components]}
 
         @self.app.route("/")
         def index():

@@ -1,49 +1,20 @@
 from __future__ import annotations
 
 import importlib
-import pathlib
 import os
 import sys
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
 
 from pydantic import BaseModel, Field
-from tqdm import tqdm
-from neighborly.core.builtin.event_effects import print_event
-from neighborly.core.relationship import RelationshipManagerFactory
 
 import neighborly.core.utils.utilities as utilities
-from neighborly.core.business import BusinessFactory
-from neighborly.core.character import GameCharacterFactory
-from neighborly.core.ecs import World
+from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventLogger, EventCallbackDatabase
-from neighborly.core.location import LocationFactory
-from neighborly.core.position import Position2DFactory
-from neighborly.core.systems import (
-    AddResidentsSystem,
-    AdolescentSystem,
-    AdultSystem,
-    CharacterSystem,
-    ChildSystem,
-    LifeEventSystem,
-    RoutineSystem,
-    TimeSystem,
-    YoungAdultSystem,
-)
-from neighborly.core.residence import ResidenceFactory
 from neighborly.core.rng import DefaultRNG
-from neighborly.core.routine import RoutineFactory
-from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
-from neighborly.core.town import Town, TownConfig
-from neighborly.core.builtin.event_rules import (
-    death_event_rule,
-    load_event_rules,
-    marriage_event_rule,
-)
-from neighborly.core.builtin.behaviors import load_builtin_behaviors
+from neighborly.core.town import LandGrid
 
 logger = getLogger(__name__)
 
@@ -66,7 +37,6 @@ class SimulationConfig(BaseModel):
     start_date: str
     end_date: str
     days_per_year: int
-    town: TownConfig = Field(default_factory=TownConfig)
 
 
 class PluginConfig(BaseModel):
@@ -104,7 +74,7 @@ class NeighborlyConfig(BaseModel):
     """
 
     quiet: bool = False
-    simulation: SimulationConfig = Field(default_factory=lambda: SimulationConfig())
+    simulation: SimulationConfig
     plugins: List[Union[str, PluginConfig]] = Field(default_factory=list)
     path: str = "."
 
@@ -116,15 +86,21 @@ class NeighborlyConfig(BaseModel):
         return cls(**utilities.merge(data, defaults.dict()))
 
 
-@dataclass(frozen=True)
-class PluginContext:
-    engine: NeighborlyEngine
-    world: World
-
-
 class PluginSetupError(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
+
+class Plugin(ABC):
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of this plugin"""
+        return cls.__name__
+
+    @abstractmethod
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        """Add the plugin data to the simulation"""
+        raise NotImplementedError
 
 
 class Simulation:
@@ -133,64 +109,52 @@ class Simulation:
 
     Attributes
     ----------
-    config: SimulationConfig
-        Configuration settings for how the simulation
     world: World
-        Entity-component system (ECS) that manages entities in the virtual world
+        Entity-component system (ECS) that manages entities and procedures in the virtual world
     """
 
-    __slots__ = "config", "world"
+    __slots__ = "world"
 
-    def __init__(self, config: NeighborlyConfig) -> None:
-        self.config: NeighborlyConfig = config
-        self.world: World = World()
-        # Create the default Engine configuration
-        engine = NeighborlyEngine(DefaultRNG(config.simulation.seed))
+    def __init__(self, world: World, engine: NeighborlyEngine) -> None:
+        self.world: World = world
         self.world.add_resource(engine)
 
-        self._configure_builtins(engine)
+    @classmethod
+    def default(cls, seed: Optional[int] = None) -> Simulation:
+        sim = Simulation(World(), NeighborlyEngine())
+        if seed is None:
+            sim.add_resource(DefaultRNG())
+        else:
+            sim.add_resource(DefaultRNG(seed))
+        return sim
 
-        # Load Plugins
-        for plugin in config.plugins:
-            if isinstance(plugin, str):
-                self.load_plugin(plugin)
-            else:
-                plugin_path = os.path.join(
-                    pathlib.Path(config.path).parent, plugin.path if plugin.path else ""
-                )
-                self.load_plugin(plugin.name, plugin_path, **plugin.options)
-        # Create the town
-        town = Town.create(config.simulation.town)
-        logger.debug(f"Created town of {town.name}")
-        self.world.add_resource(town)
+    def add_system(self, system: ISystem, priority: int = 0) -> Simulation:
+        """Add a new system to the simulation"""
+        self.world.add_system(system, priority)
+        return self
 
-    def _configure_builtins(self, engine: NeighborlyEngine) -> None:
-        load_builtin_behaviors()
-        load_event_rules()
-        # Add default factories
-        engine.add_component_factory(GameCharacterFactory())
-        engine.add_component_factory(RoutineFactory())
-        engine.add_component_factory(LocationFactory())
-        engine.add_component_factory(ResidenceFactory())
-        engine.add_component_factory(Position2DFactory())
-        engine.add_component_factory(BusinessFactory())
-        engine.add_component_factory(RelationshipManagerFactory())
-        # Add default systems
-        self.world.add_system(TimeSystem(self.config.simulation.days_per_year), 10)
-        self.world.add_system(RoutineSystem(), 5)
-        self.world.add_system(CharacterSystem(), 3)
-        self.world.add_system(ChildSystem(), 3)
-        self.world.add_system(AdolescentSystem(), 3)
-        self.world.add_system(YoungAdultSystem(), 3)
-        self.world.add_system(AdultSystem(), 3)
-        self.world.add_system(LifeEventSystem())
-        self.world.add_system(AddResidentsSystem())
-        # Add default resources
-        self.world.add_resource(SimDateTime())
-        self.world.add_resource(RelationshipNetwork())
-        self.world.add_resource(LifeEventLogger())
+    def add_setup_system(self, system: ISystem) -> Simulation:
+        """Add a new setup system to the simulation"""
+        self.world.add_setup_system(system)
+        return self
 
-    def load_plugin(
+    def add_resource(self, resource: Any) -> Simulation:
+        """Add a new resource to the simulation"""
+        self.world.add_resource(resource)
+        return self
+
+    def add_plugin(self, plugin: Union[str, PluginConfig, Plugin]) -> Simulation:
+        """Add plugin to simulation"""
+        if isinstance(plugin, str):
+            self._dynamic_load_plugin(plugin)
+        elif isinstance(plugin, PluginConfig):
+            self._dynamic_load_plugin(plugin.name, plugin.path, **plugin.options)
+        else:
+            plugin.setup(self)
+            logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
+        return self
+
+    def _dynamic_load_plugin(
         self, module_name: str, path: Optional[str] = None, **kwargs
     ) -> None:
         """
@@ -213,12 +177,12 @@ class Simulation:
 
         try:
             plugin_module = importlib.import_module(module_name)
-            plugin_module.__dict__["setup"](
-                PluginContext(engine=self.get_engine(), world=self.world), **kwargs
-            )
+            plugin: Plugin = plugin_module.__dict__["get_plugin"]()
+            plugin.setup(self, **kwargs)
+            logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
         except KeyError:
             raise PluginSetupError(
-                f"setup function not found for plugin: {module_name}"
+                f"'get_plugin' function not found for plugin: {module_name}"
             )
         finally:
             # Remove the given plugin path from the front
@@ -226,32 +190,49 @@ class Simulation:
             if path_prepended:
                 sys.path.pop(0)
 
-    def establish_setting(self) -> None:
-        """Run the simulation until it reaches the end date in the config"""
-        end_date: SimDateTime = SimDateTime.from_iso_str(
-            self.config.simulation.end_date
-        )
+    def create_land(
+        self,
+        size: Union[Literal["small", "medium", "large"], Tuple[int, int]] = "medium",
+    ) -> Simulation:
+        """Create a new grid of land to build the town on"""
+        if self.world.has_resource(LandGrid):
+            logger.error("Attempted to overwrite previously generated land grid")
+            return self
 
+        if isinstance(size, tuple):
+            land_size = size
+        else:
+            if size == "small":
+                land_size = (3, 3)
+            elif size == "medium":
+                land_size = (5, 5)
+            else:
+                land_size = (7, 7)
+
+        land_grid = LandGrid(land_size)
+
+        self.add_resource(land_grid)
+
+        return self
+
+    def establish_setting(self, start_date: SimDateTime, end_date: SimDateTime) -> None:
+        """Run the simulation until it reaches the end date in the config"""
+        self.world.add_resource(start_date)
         try:
             while end_date > self.get_time():
                 self.step()
                 print(f"{self.get_time().to_date_str()}", end="\r")
             print()
         except KeyboardInterrupt:
-            if self.config.quiet is False:
-                print("\nStopping Simulation")
+            print("\nStopping Simulation")
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
-        self.world.process()
+        self.world.run()
 
     def get_time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
         return self.world.get_resource(SimDateTime)
-
-    def get_town(self) -> Town:
-        """Get the Town instance"""
-        return self.world.get_resource(Town)
 
     def get_engine(self) -> NeighborlyEngine:
         """Get the NeighborlyEngine instance"""

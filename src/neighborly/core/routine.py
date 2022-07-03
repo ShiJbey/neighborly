@@ -1,9 +1,8 @@
 from enum import IntEnum
-from typing import Optional, Union, List, Dict, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, World
 from neighborly.core.engine import AbstractFactory, ComponentDefinition
-
 
 TIME_ALIAS = {
     "early morning": "02:00",
@@ -179,7 +178,7 @@ class RoutineFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Routine")
 
-    def create(self, spec: ComponentDefinition, **kwargs) -> Routine:
+    def create(self, world: World, **kwargs) -> Routine:
         return Routine()
 
 

@@ -1,24 +1,24 @@
 from __future__ import annotations
-import logging
 
+import logging
+from abc import ABC, abstractclassmethod, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from abc import ABC, abstractclassmethod, abstractmethod
 from typing import (
     Any,
     Callable,
-    Generator,
     Dict,
-    Tuple,
-    List,
+    Generator,
     Generic,
     Iterable,
+    List,
     Optional,
     Protocol,
+    Tuple,
     TypeVar,
 )
 
-from neighborly.core.ecs import GameObject, World
+from neighborly.core.ecs import Event, GameObject, World
 
 logger = logging.getLogger(__name__)
 
@@ -199,10 +199,10 @@ class LifeEvent(ABC):
         super().__init__()
         self.timestamp: str = timestamp
 
-    @abstractclassmethod
+    @classmethod
     def get_type(cls) -> str:
         """Return the type of this event"""
-        raise NotImplementedError()
+        return cls.__name__
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
@@ -363,20 +363,3 @@ class ILifeEventListener(ABC):
             True if the event was handled successfully
         """
         raise NotImplementedError()
-
-
-def check_gameobject_preconditions(gameobject: GameObject, event: LifeEvent) -> bool:
-    """Return True if the given gameobject accepts the event"""
-    for c in gameobject.get_components():
-        if isinstance(c, ILifeEventListener):
-            if not c.check_preconditions(event):
-                return False
-    return True
-
-
-def handle_gameobject_effects(gameobject: GameObject, event: LifeEvent) -> bool:
-    """Return True if the given gameobject accepts the event"""
-    for c in gameobject.get_components():
-        if isinstance(c, ILifeEventListener):
-            c.handle_event(event)
-    return True

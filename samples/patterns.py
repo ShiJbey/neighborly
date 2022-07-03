@@ -4,15 +4,11 @@ to handle things like pattern matching in LifeEventRules and
 timestep sizes when handling level-of-detail changes
 """
 from abc import abstractmethod
-from typing import Generator, List, Protocol, Tuple
 from dataclasses import dataclass
-from neighborly.core.ecs import GameObject, Component
-from neighborly.core.life_event import (
-    ILifeEventListener,
-    LifeEvent,
-    check_gameobject_preconditions,
-    handle_gameobject_effects,
-)
+from typing import Generator, List, Protocol, Tuple
+
+from neighborly.core.ecs import Component, GameObject, IEventListener
+from neighborly.core.life_event import LifeEvent
 
 
 class IPatternFn(Protocol):

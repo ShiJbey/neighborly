@@ -2,7 +2,7 @@ from typing import cast
 import itertools
 from neighborly.core.ecs import World
 from neighborly.core.life_event import LifeEventRule
-from neighborly.core.builtin.statuses import ElderStatus, AdultStatus
+from neighborly.core.builtin.statuses import Elder, Adult, InRelationship
 from neighborly.core.builtin.events import DeathEvent, MarriageEvent
 from neighborly.core.systems import LifeEventSystem
 from neighborly.core.time import SimDateTime
@@ -10,26 +10,27 @@ from neighborly.core.character import GameCharacter
 
 
 def get_elder_characters(world: World, **kwargs):
-    for _, character in world.get_component(GameCharacter):
-        if character.has_tag("Elder"):
-            yield (character.gameobject,)
+    for gid, _ in world.get_components(GameCharacter, Elder):
+        yield (world.get_gameobject(gid),)
 
 
 def get_adult_characters(world: World, **kwargs):
-    for _, character in world.get_component(GameCharacter):
-        if character.has_tag("Adult"):
-            yield (character.gameobject,)
+    for gid, _ in world.get_components(GameCharacter, Adult):
+        yield (world.get_gameobject(gid),)
 
 
 def get_single_adults(world: World, **kwargs):
     for _, character in world.get_component(GameCharacter):
-        if character.has_tag("Adult") and not character.has_tag("In-Relationship"):
+        if character.gameobject.has_component(
+            Adult
+        ) and not character.gameobject.has_component(InRelationship):
             yield (character.gameobject,)
 
 
 def get_single_adult_pairs(world: World, **kwargs):
     single_adults = itertools.filterfalse(
-        lambda c: c.has_tag("Adult") and not c.has_tag("In-Relationship"),
+        lambda c: c.gameobject.has_component(Adult)
+        and not c.gameobject.has_component(InRelationship),
         map(lambda res: res[1], world.get_component(GameCharacter)),
     )
     for pair in itertools.combinations(single_adults, 2):

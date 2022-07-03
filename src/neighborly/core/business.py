@@ -3,9 +3,9 @@ from dataclasses import dataclass, field
 from enum import IntFlag, auto
 from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
 
-from neighborly.core import name_generation as name_gen
-from neighborly.core.ecs import Component, GameObject
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
+from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.engine import AbstractFactory
+from neighborly.core.name_generation import TraceryNameFactory
 from neighborly.core.routine import RoutineEntry, RoutinePriority, parse_schedule_str
 
 
@@ -213,6 +213,8 @@ class Business(Component):
         self._employees: List[Tuple[str, int]] = []
         self._owner: Optional[int] = owner
 
+        self.get_type().instances = self.get_type().instances + 1
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
@@ -242,10 +244,7 @@ class Business(Component):
     def hire_owner(self, character: int) -> None:
         self._owner = character
 
-    def on_start(self) -> None:
-        self.get_type().instances = self.get_type().instances + 1
-
-    def on_destroy(self) -> None:
+    def __del__(self) -> None:
         self.get_type().instances = self.get_type().instances - 1
 
     def __repr__(self) -> str:
@@ -316,16 +315,14 @@ class BusinessFactory(AbstractFactory):
     def __init__(self) -> None:
         super().__init__("Business")
 
-    def create(self, spec: ComponentDefinition, **kwargs) -> Business:
-        type_name: Optional[str] = spec.get_attribute("business_type")
-
-        if type_name is None:
-            raise TypeError("Expected to fund business_type str but was None")
+    def create(self, world: World, **kwargs) -> Business:
+        name_factory = world.get_resource(TraceryNameFactory)
+        type_name: str = kwargs["business_type"]
 
         business_type = BusinessDefinition.get_registered_type(type_name)
 
         name = (
-            name_gen.get_name(business_type.name_pattern)
+            name_factory.get_name(business_type.name_pattern)
             if business_type.name_pattern
             else type_name
         )

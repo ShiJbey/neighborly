@@ -21,23 +21,6 @@ logger = logging.getLogger(__name__)
 AnyPath = Union[str, Path]
 
 
-def load_names(
-    rule_name: str,
-    names: Optional[List[str]] = None,
-    filepath: Optional[AnyPath] = None,
-) -> None:
-    """Load names a list of names from a text file or given list"""
-    from neighborly.core.name_generation import register_rule
-
-    if names:
-        register_rule(rule_name, names)
-    elif filepath:
-        with open(filepath, "r") as f:
-            register_rule(rule_name, f.read().splitlines())
-    else:
-        raise ValueError("Need to supply names list or path to file containing names")
-
-
 class MissingComponentSpecError(Exception):
     """Error raised when an entity archetype is missing an expected component"""
 

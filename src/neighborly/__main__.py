@@ -160,3 +160,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# Load Plugins
+# for plugin in config.plugins:
+#     if isinstance(plugin, str):
+#         self._load_plugin(plugin)
+#     else:
+#         plugin_path = os.path.join(
+#             pathlib.Path(config.path).parent, plugin.path if plugin.path else ""
+#         )
+#         self._load_plugin(plugin.name, plugin_path, **plugin.options)

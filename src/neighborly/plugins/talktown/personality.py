@@ -3,10 +3,14 @@ Talk of the Town uses a Big 5 personality model
 to make character decisions and determine
 compatibility in social interactions
 """
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
+from neighborly.core.engine import (
+    AbstractFactory,
+    ComponentDefinition,
+    NeighborlyEngine,
+)
 
 
 BIG_FIVE_FLOOR = -1.0
@@ -39,6 +43,19 @@ class BigFivePersonality(Component):
         self.agreeableness: float = agreeableness
         self.neuroticism: float = neuroticism
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "openness": self.openness,
+            "conscientiousness": self.conscientiousness,
+            "extroversion": self.extroversion,
+            "agreeableness": self.agreeableness,
+            "neuroticism": self.neuroticism,
+        }
+
+    def __repr__(self) -> str:
+        return self.to_dict().__repr__()
+
 
 class BigFivePersonalityFactory(AbstractFactory):
     """Creates instances of BigFivePersonality components"""
@@ -48,7 +65,31 @@ class BigFivePersonalityFactory(AbstractFactory):
 
     def create(self, spec: ComponentDefinition, **kwargs) -> BigFivePersonality:
         """Create new instance given component spec"""
-        raise NotImplementedError()
+        engine: NeighborlyEngine = kwargs["engine"]
+
+        openness: float = (
+            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
+
+        conscientiousness: float = (
+            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
+
+        extroversion: float = (
+            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
+
+        agreeableness: float = (
+            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
+
+        neuroticism: float = (
+            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
+
+        return BigFivePersonality(
+            openness, conscientiousness, extroversion, agreeableness, neuroticism
+        )
 
 
 def personality_from_parents(

@@ -1,9 +1,7 @@
 from abc import ABC
-from typing import Any, Optional, Protocol, Dict, List
+from typing import Any, Dict, List, Optional, Protocol
 
-from neighborly.core.ecs import Component, GameObject
-from neighborly.core.rng import IRandNumGenerator
-from neighborly.core.utils.tracery import set_grammar_rng
+from neighborly.core.ecs import Component, GameObject, World
 
 
 class AbstractFactory(ABC):
@@ -28,7 +26,7 @@ class AbstractFactory(ABC):
 class ComponentDefinition:
     """
     Collection of Key-Value pairs passed to factories when to
-    instantiating instances of components
+    instantiate instances of components
     """
 
     __slots__ = "_component_type", "_attributes"
@@ -127,7 +125,7 @@ class IComponentFactory(Protocol):
         """Return the name of the type this factory creates"""
         raise NotImplementedError()
 
-    def create(self, spec: ComponentDefinition, **kwargs) -> Component:
+    def create(self, world: World, **kwargs) -> Component:
         """Create component instance"""
         raise NotImplementedError()
 
@@ -151,20 +149,14 @@ class NeighborlyEngine:
         "_place_archetypes",
         "_business_archetypes",
         "_residence_archetypes",
-        "_rng",
     )
 
-    def __init__(self, rng: IRandNumGenerator) -> None:
+    def __init__(self) -> None:
         self._component_factories: Dict[str, IComponentFactory] = {}
         self._character_archetypes: Dict[str, EntityArchetypeDefinition] = {}
         self._business_archetypes: Dict[str, EntityArchetypeDefinition] = {}
         self._residence_archetypes: Dict[str, EntityArchetypeDefinition] = {}
         self._place_archetypes: Dict[str, EntityArchetypeDefinition] = {}
-        self._rng: IRandNumGenerator = rng
-        set_grammar_rng(self._rng)
-
-    def get_rng(self) -> IRandNumGenerator:
-        return self._rng
 
     def add_character_archetype(self, archetype: EntityArchetypeDefinition) -> None:
         self._character_archetypes[archetype.get_name()] = archetype
@@ -215,34 +207,44 @@ class NeighborlyEngine:
     def get_component_factory(self, type_name: str) -> IComponentFactory:
         return self._component_factories[type_name]
 
-    def create_character(self, archetype_name: str, **kwargs) -> GameObject:
+    def create_character(
+        self, world: World, archetype_name: str, **kwargs
+    ) -> GameObject:
         archetype = self._character_archetypes[archetype_name]
-        return self.create_entity(archetype, **kwargs)
+        return self.create_entity(world, archetype, **kwargs)
 
-    def create_place(self, archetype_name: str, **kwargs) -> GameObject:
+    def create_place(self, world: World, archetype_name: str, **kwargs) -> GameObject:
         archetype = self._place_archetypes[archetype_name]
-        return self.create_entity(archetype, **kwargs)
+        return self.create_entity(world, archetype, **kwargs)
 
-    def create_business(self, archetype_name: str, **kwargs) -> GameObject:
+    def create_business(
+        self, world: World, archetype_name: str, **kwargs
+    ) -> GameObject:
         archetype = self._business_archetypes[archetype_name]
-        return self.create_entity(archetype, **kwargs)
+        return self.create_entity(world, archetype, **kwargs)
 
-    def create_residence(self, archetype_name: str, **kwargs) -> GameObject:
+    def create_residence(
+        self, world: World, archetype_name: str, **kwargs
+    ) -> GameObject:
         archetype = self._residence_archetypes[archetype_name]
-        return self.create_entity(archetype, **kwargs)
+        return self.create_entity(world, archetype, **kwargs)
 
     def create_entity(
-        self, archetype: EntityArchetypeDefinition, **kwargs
+        self, world: World, archetype: EntityArchetypeDefinition, **kwargs
     ) -> GameObject:
         """Create a new GameObject and attach the components in the spec"""
         components: List[Component] = []
 
         for name, spec in archetype.get_components().items():
             factory = self.get_component_factory(name)
-            components.append(factory.create(spec, **{**kwargs, "rng": self.get_rng()}))
+            components.append(
+                factory.create(world, **{**spec.get_attributes(), **kwargs})
+            )
 
         gameobject = GameObject(
             archetype_name=archetype.get_name(), components=components
         )
+
+        world.add_gameobject(gameobject)
 
         return gameobject

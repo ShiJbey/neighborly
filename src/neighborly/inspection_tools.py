@@ -1,5 +1,6 @@
 from pprint import pprint
 from neighborly.core.character import GameCharacter
+from neighborly.core.location import Location
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.life_event import LifeEventLogger
 from neighborly.simulation import Simulation
@@ -37,3 +38,11 @@ def list_event_history(sim: Simulation, gid: int) -> None:
 
     for e in event_logger.get_events_for(gid):
         print(str(e))
+
+
+def list_locations(sim: Simulation) -> None:
+    print("{:30s} {:25s} {:5s}".format("ID", "Name", "Occupancy"))
+    for gid, location in sim.world.get_component(Location):
+        print(
+            f"{gid:<30} {str(location.name)!r:<25} {int(len(location.characters_present)):<5}"
+        )

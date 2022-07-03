@@ -10,6 +10,7 @@ from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 from neighborly.core.relationship import Relationship, RelationshipModifier
 from neighborly.core.residence import Residence
+from neighborly.core.rng import DefaultRNG
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town
@@ -38,12 +39,14 @@ class CityPlanner:
         if not eligible_business_types:
             return
 
-        business_type_to_build = engine.get_rng().choice(eligible_business_types).name
+        business_type_to_build = (
+            world.get_resource(DefaultRNG).choice(eligible_business_types).name
+        )
 
         if town.layout.has_vacancy():
             engine.filter_place_archetypes({"includes": []})
             place = engine.create_business(business_type_to_build)
-            town.layout.allocate_space(place.id)
+            town.layout.reserve_space(place.id)
             world.add_gameobject(place)
             logger.debug(f"Added business {place}")
 

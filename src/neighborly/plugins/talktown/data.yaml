@@ -80,12 +80,12 @@ CharacterDefinitions:
         num_children: "0-2"
     lifecycle:
       lifespan: 85
-      life_stages:
-        child: 0
-        adolescent: 13
-        young_adult: 18
-        adult: 30
-        elder: 85
+        life_stages:
+          child: 0
+          teen: 13
+          young_adult: 18
+          adult: 30
+          elder: 65
     events:
       marriage:
         preconditions: [default/can_get_married]
@@ -95,6 +95,17 @@ Characters:
     components:
       - type: GameCharacter
         options:
-          character_def: Human
+          first_name: "#first_name#"
+          last_name: "#last_name#"
+          lifespan: 85
+          life_stages:
+            child: 0
+            teen: 13
+            young_adult: 18
+            adult: 30
+            elder: 65
+          probability_spouse: 0.5
+            probability_children: 0.5
+            num_children: "0-2"
       - type: RelationshipManager
       - type: Routine

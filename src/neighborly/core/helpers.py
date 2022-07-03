@@ -1,14 +1,13 @@
-from typing import Any, Dict, cast, List, Tuple, Optional
-from neighborly.core.builtin.statuses import ChildStatus, YoungAdultStatus
+from typing import Any, Dict, List, Optional, Tuple, cast
 
+from neighborly.core.builtin.statuses import Child, YoungAdult
+from neighborly.core.business import Business
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.business import Business
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
 from neighborly.core.relationship import Relationship, RelationshipTag
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.tags import Tag
-from neighborly.core.engine import NeighborlyEngine
 
 
 def hire_character_at_business(character: GameObject, **kwargs) -> None:
@@ -64,18 +63,6 @@ def remove_coworkers(character: GameObject, **kwargs) -> None:
             relationship_net.get_connection(character.id, employee_id).remove_tags(
                 RelationshipTag.Coworker
             )
-
-
-def add_tag(character: GameCharacter, tag: Tag) -> None:
-    if tag.name in character.tags:
-        raise RuntimeError("Cannot add duplicate tags")
-    character.tags[tag.name] = tag
-
-
-def remove_tag(character: GameCharacter, tag: Tag) -> None:
-    if tag.name in character.tags:
-        raise RuntimeError("Cannot add duplicate tags")
-    del character.tags[tag.name]
 
 
 def move_character(world: World, character_id: int, location_id: int) -> None:
@@ -139,8 +126,7 @@ def try_generate_family(
             last_name=character.name.surname,
             age_range="young_adult",
         )
-        spouse.add_component(YoungAdultStatus())
-        spouse.get_component(GameCharacter).add_tag(Tag("Young Adult", ""))
+        spouse.add_component(YoungAdult())
         result["spouse"] = spouse
 
     has_children = (
@@ -185,8 +171,7 @@ def create_children(
             age_range=(0, child_age_max),
             last_name=character.name.surname,
         )
-        child.add_component(ChildStatus())
-        child.get_component(GameCharacter).add_tag(Tag("Child", ""))
+        child.add_component(Child())
         children.append(child)
 
     return children

@@ -1,19 +1,19 @@
 import os
 import random
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Set, Union, Sequence, cast, Iterable, Dict
 from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union, cast
 
 import pygame
 import pygame_gui
 
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import GameObject, Component
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import AbstractFactory, ComponentDefinition
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
-from neighborly.simulation import Simulation, NeighborlyConfig
 from neighborly.loaders import YamlDataLoader
+from neighborly.simulation import NeighborlyConfig, Simulation
 
 # COMMON COLORS
 SKY_BLUE = (153, 218, 232)
@@ -66,8 +66,8 @@ class BuildingFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Building")
 
-    def create(self, spec: ComponentDefinition, **kwargs) -> Building:
-        return Building(size=spec.get_attributes().get("size", "small"))
+    def create(self, world: World, **kwargs) -> Building:
+        return Building(kwargs.get("size", "small"))
 
 
 class CharacterInfoWindow(pygame_gui.elements.UIWindow):

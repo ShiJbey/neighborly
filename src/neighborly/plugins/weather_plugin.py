@@ -4,8 +4,8 @@ from enum import Enum
 import numpy as np
 
 from neighborly.core.ecs import World
-from neighborly.simulation import PluginContext
 from neighborly.core.time import SimDateTime
+from neighborly.simulation import Plugin, Simulation
 
 
 class Weather(Enum):
@@ -64,6 +64,11 @@ class WeatherProcessor:
         weather_manager.time_before_change -= delta_time
 
 
-def setup(ctx: PluginContext, **kwargs) -> None:
-    ctx.world.add_system(WeatherProcessor(), 9)
-    ctx.world.add_resource(WeatherManager())
+class WeatherPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        sim.add_system(WeatherProcessor(), 9)
+        sim.add_resource(WeatherManager())
+
+
+def get_plugin() -> Plugin:
+    return WeatherPlugin()

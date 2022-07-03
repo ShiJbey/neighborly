@@ -7,6 +7,8 @@ from neighborly.core.engine import AbstractFactory, ComponentDefinition
 
 
 class Residence(Component):
+    """Residence is a place where characters live"""
+
     __slots__ = "owners", "former_owners", "residents", "former_residents", "_vacant"
 
     def __init__(self) -> None:
@@ -27,29 +29,45 @@ class Residence(Component):
             "vacant": self._vacant,
         }
 
-    def add_tenant(self, person: int, is_owner: bool = False) -> None:
+    def add_owner(self, owner: int) -> None:
+        """Add owner to the residence"""
+        self.owners.add(owner)
+
+    def remove_owner(self, owner: int) -> None:
+        """Remove owner from residence"""
+        self.owners.remove(owner)
+
+    def is_owner(self, character: int) -> bool:
+        """Return True if the character is an owner of this residence"""
+        return character in self.owners
+
+    def add_resident(self, resident: int) -> None:
         """Add a tenant to this residence"""
-        self.residents.add(person)
-        if is_owner:
-            self.owners.add(person)
+        self.residents.add(resident)
         self._vacant = False
 
-    def remove_tenant(self, person: int) -> None:
+    def remove_resident(self, resident: int) -> None:
         """Remove a tenant rom this residence"""
-        self.residents.remove(person)
-        self.former_residents.add(person)
-        if person in self.owners:
-            self.owners.remove(person)
-            self.former_owners.add(person)
+        self.residents.remove(resident)
+        self.former_residents.add(resident)
         self._vacant = len(self.residents) == 0
 
+    def is_resident(self, character: int) -> bool:
+        """Return True if the given character is a resident"""
+        return character in self.residents
+
     def is_vacant(self) -> bool:
+        """Return True if the residence is vacant"""
         return self._vacant
+
+
+class World:
+    pass
 
 
 class ResidenceFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Residence")
 
-    def create(self, spec: ComponentDefinition, **kwargs) -> Residence:
+    def create(self, world: World, **kwargs) -> Residence:
         return Residence()

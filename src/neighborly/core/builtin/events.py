@@ -1,4 +1,5 @@
 from typing import Any, Dict, Tuple
+
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.relationship import Relationship
 
@@ -592,7 +593,7 @@ class CreateRelationshipEvent(LifeEvent):
 
 
 class BecomeAdolescentEvent(LifeEvent):
-    event_type: str = "become-adolescent"
+    event_type: str = "become-teen"
 
     __slots__ = (
         "character_id",
@@ -621,9 +622,7 @@ class BecomeAdolescentEvent(LifeEvent):
         }
 
     def __str__(self) -> str:
-        return "({}) {} became an adolescent.".format(
-            self.timestamp, self.character_name
-        )
+        return "({}) {} became an teen.".format(self.timestamp, self.character_name)
 
 
 class BecomeYoungAdultEvent(LifeEvent):
@@ -769,13 +768,13 @@ class HomePurchaseEvent(LifeEvent):
     def __init__(
         self,
         timestamp: str,
-        character_ids: Tuple[int, int],
-        character_names: Tuple[str, str],
+        character_ids: Tuple[int, ...],
+        character_names: Tuple[str, ...],
         residence_id: int,
     ) -> None:
         super().__init__(timestamp)
-        self.character_names: Tuple[str, str] = character_names
-        self.character_ids: Tuple[int, int] = character_ids
+        self.character_names: Tuple[str, ...] = character_names
+        self.character_ids: Tuple[int, ...] = character_ids
         self.residence_id: int = residence_id
 
     @classmethod

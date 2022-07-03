@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -17,8 +19,8 @@ from typing import (
 
 from pydantic import BaseModel
 
-from neighborly.core.ecs import Component
-from neighborly.core.name_generation import get_name
+from neighborly.core.ecs import Component, World
+from neighborly.core.name_generation import TraceryNameFactory
 
 
 class TownConfig(BaseModel):
@@ -45,31 +47,30 @@ class Town(Component):
 
     __slots__ = "name", "layout", "population"
 
-    def __init__(self, name: str, layout: "TownLayout") -> None:
+    def __init__(self, name: str, layout: LandGrid) -> None:
         super().__init__()
         self.name: str = name
         self.population: int = 0
-        self.layout: "TownLayout" = layout
+        self.layout: LandGrid = layout
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "name": self.name, "population": self.population}
 
     @classmethod
-    def create(cls, config: TownConfig) -> "Town":
+    def create(cls, world: World, name: str, width: int, length: int) -> Town:
         """Create a town instance"""
-        town_name = get_name(config.name)
-        layout = TownLayout(config.width, config.length)
+        town_name = world.get_resource(TraceryNameFactory).get_name(name)
+        layout = LandGrid(width, length)
         return cls(name=town_name, layout=layout)
 
 
 @dataclass
 class LayoutGridSpace:
-    # Identifier given to this space
-    # space_id: int
-    # Position of the space in the grid
-    # position: Tuple[int, int]
     # ID of the gameobject for the place occupying this space
-    place_id: Optional[int] = None
+    occupant: Optional[int] = None
+
+    def reset(self) -> None:
+        self.occupant = None
 
 
 class ISpaceSelectionStrategy(Protocol):
@@ -169,7 +170,7 @@ class Grid(Generic[_GT]):
         }
 
 
-class TownLayout:
+class LandGrid:
     """Manages an occupancy grid of what tiles in the town currently have places built on them
 
     Attributes
@@ -182,7 +183,8 @@ class TownLayout:
 
     __slots__ = "_unoccupied", "_occupied", "_grid"
 
-    def __init__(self, width: int, length: int) -> None:
+    def __init__(self, size: Tuple[int, int]) -> None:
+        width, length = size
         self._grid: Grid[LayoutGridSpace] = Grid(
             width, length, lambda: LayoutGridSpace()
         )
@@ -207,30 +209,23 @@ class TownLayout:
         """Returns True if there are empty spaces available in the town"""
         return bool(self._unoccupied)
 
-    def allocate_space(
+    def reserve_space(
         self,
-        place_id: int,
-        selection_strategy: Optional[ISpaceSelectionStrategy] = None,
-    ) -> Tuple[int, int]:
+        position: Tuple[int, int],
+        occupant_id: int,
+    ) -> None:
         """Allocates a space for a location, setting it as occupied"""
-        if self._unoccupied:
-            if selection_strategy:
-                space = selection_strategy.choose_space(
-                    [self._grid[i] for i in self._unoccupied]
-                )
-            else:
-                space = self._unoccupied[0]
 
-            self._grid[space].place_id = place_id
-            self._unoccupied.remove(space)
-            self._occupied.add(space)
+        if position in self._occupied:
+            raise RuntimeError("Grid space already occupied")
 
-            return space
-
-        raise RuntimeError("Attempting to get space from full town layout")
+        space = self._grid[position]
+        space.occupant = occupant_id
+        self._unoccupied.remove(position)
+        self._occupied.add(position)
 
     def free_space(self, space: Tuple[int, int]) -> None:
         """Frees up a space in the town to be used by another location"""
-        self._grid[space].place_id = None
+        self._grid[space].reset()
         self._unoccupied.append(space)
         self._occupied.remove(space)

@@ -1,12 +1,13 @@
+import logging
 import os
 import pathlib
-import logging
 
-from neighborly.simulation import PluginContext
-from neighborly.loaders import YamlDataLoader
-from neighborly.core.ecs import World
-from neighborly.core.town import Town
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.rng import DefaultRNG
+from neighborly.core.town import Town
+from neighborly.loaders import YamlDataLoader
+from neighborly.simulation import Plugin, Simulation
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,10 @@ def establish_town(world: World, **kwargs) -> None:
     logger.debug("Establishing town")
 
     engine = world.get_resource(NeighborlyEngine)
-    town = world.get_resource(Town)
 
-    vacant_lots = town.layout.get_vacancies()
+    town = GameObject(components=[Town()])
+
+    vacant_lots = town.get_component(Town).layout.get_vacancies()
     # Each family requires 2 lots (1 for a house, 1 for a business)
     # Save two lots for either a coalmine, quarry, or farm
     n_families_to_add = (len(vacant_lots) // 2) - 1
@@ -48,7 +50,7 @@ def establish_town(world: World, **kwargs) -> None:
         # trigger hiring event
         # trigger home move event
 
-    random_num = engine.get_rng().random()
+    random_num = world.get_resource(DefaultRNG).random()
     if random_num < 0.2:
         # Create a Coalmine 20% of the time
         coalmine = engine.create_business("Coal Mine")
@@ -59,17 +61,16 @@ def establish_town(world: World, **kwargs) -> None:
         # Create Farm 65% of the time
         farm = engine.create_business("Farm")
 
-    world.remove_system(establish_town)
-
     logger.debug("Town established. 'establish_town' function removed from systems")
 
 
-def setup(ctx: PluginContext, **kwargs) -> None:
-    """Entry point for the plugin"""
-    logger.debug("Loading neighborly_talktown plugin")
+class TalkOfTheTownPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        """Entry point for the plugin"""
+        # YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)
+        # sim.add_setup_system(establish_town)
+        ...
 
-    YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)
 
-    ctx.world.add_system(establish_town)
-
-    logger.debug("Neighborly_talktown plugin loaded successfully")
+def get_plugin() -> Plugin:
+    return TalkOfTheTownPlugin()
