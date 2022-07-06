@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import math
 from dataclasses import dataclass, field
 from enum import IntFlag, auto
 from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
 
 from neighborly.core.ecs import Component, GameObject, World
-from neighborly.core.engine import AbstractFactory
 from neighborly.core.name_generation import TraceryNameFactory
 from neighborly.core.routine import RoutineEntry, RoutinePriority, parse_schedule_str
 
@@ -63,7 +64,7 @@ class OccupationDefinition:
         if a character qualifies for a position
     """
 
-    _type_registry: ClassVar[Dict[str, "OccupationDefinition"]] = {}
+    _type_registry: ClassVar[Dict[str, OccupationDefinition]] = {}
     _precondition_registry: ClassVar[Dict[str, IOccupationPreconditionFn]] = {}
 
     name: str
@@ -71,11 +72,11 @@ class OccupationDefinition:
     preconditions: List[IOccupationPreconditionFn] = field(default_factory=list)
 
     @classmethod
-    def register_type(cls, occupation_type: "OccupationDefinition") -> None:
+    def register_type(cls, occupation_type: OccupationDefinition) -> None:
         cls._type_registry[occupation_type.name] = occupation_type
 
     @classmethod
-    def get_registered_type(cls, name: str) -> "OccupationDefinition":
+    def get_registered_type(cls, name: str) -> OccupationDefinition:
         return cls._type_registry[name]
 
     @classmethod
@@ -91,6 +92,8 @@ class Occupation(Component):
     """
 
     __slots__ = "_occupation_def", "_years_held", "_business"
+
+    _definition_registry: Dict[str, OccupationDefinition] = {}
 
     def __init__(
         self,
@@ -121,6 +124,26 @@ class Occupation(Component):
 
     def increment_years_held(self, years: float) -> None:
         self._years_held += years
+
+    @classmethod
+    def create(cls, world, business: int = -1, **kwargs) -> Occupation:
+        type_name = kwargs["name"]
+        level = kwargs.get("level", 1)
+        preconditions = kwargs.get("preconditions", [])
+        return Occupation(
+            cls.get_occupation_definition(type_name, level, preconditions),
+            business=business,
+        )
+
+    @classmethod
+    def get_occupation_definition(
+        cls, name: str, level: int, preconditions: List[IOccupationPreconditionFn]
+    ) -> OccupationDefinition:
+        if name not in cls._definition_registry:
+            cls._definition_registry[name] = OccupationDefinition(
+                name=name, level=level, preconditions=preconditions
+            )
+        return cls._definition_registry[name]
 
 
 class BusinessServiceFlag(IntFlag):
@@ -191,7 +214,7 @@ class BusinessDefinition:
 
 class Business(Component):
     __slots__ = (
-        "_business_def",
+        "business_def",
         "_name",
         "_years_in_business",
         "_operating_hours",
@@ -204,7 +227,7 @@ class Business(Component):
         self, business_def: BusinessDefinition, name: str, owner: Optional[int] = None
     ) -> None:
         super().__init__()
-        self._business_def: BusinessDefinition = business_def
+        self.business_def: BusinessDefinition = business_def
         self._name: str = name
         self._operating_hours: Dict[str, List[RoutineEntry]] = self._create_routines(
             parse_schedule_str(business_def.hours)
@@ -218,9 +241,9 @@ class Business(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "business_def": self._business_def.name,
+            "business_def": self.business_def.name,
             "name": self._name,
-            "operating_hours": self._business_def.hours,
+            "operating_hours": self.business_def.hours,
             "open_positions": self._open_positions,
             "employees": self._employees,
             "owner": self._owner if self._owner else -1,
@@ -233,7 +256,7 @@ class Business(Component):
         return [title for title, n in self._open_positions.items() if n > 0]
 
     def get_type(self) -> BusinessDefinition:
-        return self._business_def
+        return self.business_def
 
     def get_name(self) -> str:
         return self._name
@@ -251,12 +274,27 @@ class Business(Component):
         """Return printable representation"""
         return "{}(type='{}', name='{}', owner={}, employees={}, openings={})".format(
             self.__class__.__name__,
-            self._business_def.name,
+            self.business_def.name,
             self._name,
             self._owner,
             self._employees,
             self._open_positions,
         )
+
+    @classmethod
+    def create(cls, world: World, **kwargs) -> Business:
+        name_factory = world.get_resource(TraceryNameFactory)
+        type_name: str = kwargs["business_type"]
+
+        business_type = BusinessDefinition.get_registered_type(type_name)
+
+        name = (
+            name_factory.get_name(business_type.name_pattern)
+            if business_type.name_pattern
+            else type_name
+        )
+
+        return Business(business_type, name)
 
     @staticmethod
     def _create_routines(
@@ -307,24 +345,3 @@ class Business(Component):
             schedules[day] = routine_entries
 
         return schedules
-
-
-class BusinessFactory(AbstractFactory):
-    """Create instances of the default business component"""
-
-    def __init__(self) -> None:
-        super().__init__("Business")
-
-    def create(self, world: World, **kwargs) -> Business:
-        name_factory = world.get_resource(TraceryNameFactory)
-        type_name: str = kwargs["business_type"]
-
-        business_type = BusinessDefinition.get_registered_type(type_name)
-
-        name = (
-            name_factory.get_name(business_type.name_pattern)
-            if business_type.name_pattern
-            else type_name
-        )
-
-        return Business(business_type, name)

@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional, Set
 
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, World
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
 
 
 class Location(Component):
@@ -60,10 +61,6 @@ class Location(Component):
             self.is_private,
         )
 
-
-class LocationFactory(AbstractFactory):
-    def __init__(self):
-        super().__init__("Location")
-
-    def create(self, world: World, **kwargs) -> Location:
-        return Location(max_capacity=kwargs.get("max capacity", 9999))
+    @classmethod
+    def create(cls, world: World, **kwargs) -> Location:
+        return cls(max_capacity=kwargs.get("max capacity", 9999))

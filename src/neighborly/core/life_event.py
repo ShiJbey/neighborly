@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractclassmethod, abstractmethod
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import (
@@ -18,7 +18,7 @@ from typing import (
     TypeVar,
 )
 
-from neighborly.core.ecs import Event, GameObject, World
+from neighborly.core.ecs import GameObject, World
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,7 @@ def event_effect(name: str, description: Optional[str] = None):
 
 
 def event_probability(name: str, description: Optional[str] = None):
-    """Decorator that registers an probability function"""
+    """Decorator that registers a probability function"""
 
     def wrapper(fn: IProbabilityFn):
         EventCallbackDatabase.register_probability(name, fn, description)

@@ -46,20 +46,20 @@ def establish_town(world: World, **kwargs) -> None:
     for _ in range(n_families_to_add - 1):
         # create residents
         # create Farm
-        farm = engine.create_business("Farm")
+        farm = engine.spawn_business("Farm")
         # trigger hiring event
         # trigger home move event
 
     random_num = world.get_resource(DefaultRNG).random()
     if random_num < 0.2:
         # Create a Coalmine 20% of the time
-        coalmine = engine.create_business("Coal Mine")
+        coalmine = engine.spawn_business("Coal Mine")
     elif 0.2 <= random_num < 0.35:
         # Create a Quarry 15% of the time
-        quarry = engine.create_business("Quarry")
+        quarry = engine.spawn_business("Quarry")
     else:
         # Create Farm 65% of the time
-        farm = engine.create_business("Farm")
+        farm = engine.spawn_business("Farm")
 
     logger.debug("Town established. 'establish_town' function removed from systems")
 

@@ -3,23 +3,12 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-from neighborly.core.business import (
-    BusinessDefinition,
-    BusinessFactory,
-    OccupationDefinition,
-)
-from neighborly.core.character import GameCharacterFactory
-from neighborly.core.engine import (
-    ComponentDefinition,
-    EntityArchetypeDefinition,
-    NeighborlyEngine,
-)
+from neighborly.core.business import Business, BusinessDefinition, OccupationDefinition
+from neighborly.core.engine import EntityArchetype, NeighborlyEngine
 from neighborly.core.life_event import LifeEventLogger
-from neighborly.core.location import LocationFactory
+from neighborly.core.location import Location
 from neighborly.core.name_generation import TraceryNameFactory
-from neighborly.core.position import Position2DFactory
-from neighborly.core.residence import ResidenceFactory
-from neighborly.core.routine import RoutineFactory
+from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.systems import (
     AddResidentsSystem,
@@ -109,19 +98,11 @@ def initialize_tracery_name_factory() -> TraceryNameFactory:
 
 class DefaultPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        # Add default factories
-        sim.get_engine().add_component_factory(GameCharacterFactory())
-        sim.get_engine().add_component_factory(RoutineFactory())
-        sim.get_engine().add_component_factory(LocationFactory())
-        sim.get_engine().add_component_factory(ResidenceFactory())
-        sim.get_engine().add_component_factory(Position2DFactory())
-        sim.get_engine().add_component_factory(BusinessFactory())
-
         # Add default systems
-        sim.world.add_system(TimeSystem(kwargs.get("days_per_year", 10)), 10)
-        sim.world.add_system(RoutineSystem(), 5)
-        sim.world.add_system(LifeEventSystem())
-        sim.world.add_system(AddResidentsSystem())
+        sim.add_system(TimeSystem(kwargs.get("days_per_year", 10)), 10)
+        sim.add_system(RoutineSystem(), 5)
+        sim.add_system(LifeEventSystem())
+        sim.add_system(AddResidentsSystem())
 
         # Add default resources
         sim.add_resource(RelationshipNetwork())
@@ -149,17 +130,26 @@ class DefaultPlugin(Plugin):
         OccupationDefinition.register_type(proprietor_type)
 
         sim.get_engine().add_residence_archetype(
-            EntityArchetypeDefinition(
-                name="House",
-                components={
-                    "Residence": ComponentDefinition(
-                        component_type="Residence",
-                    ),
-                    "Location": ComponentDefinition(
-                        component_type="Location",
-                    ),
+            EntityArchetype("House").add(Residence).add(Location)
+        )
+
+        sim.get_engine().add_business_archetype(
+            EntityArchetype("Department Store")
+            .add(
+                Business,
+                type_name="Department Store",
+                hours="MTWRF 9:00-17:00, SU 10:00-15:00",
+                owner_type="Owner",
+                employees={
+                    "Cashier": 1,
+                    "Sales Associate": 2,
+                    "Manager": 1,
                 },
             )
+            .add(Location),
+            min_population=25,
+            max_instances=2,
+            spawn_multiplier=2,
         )
         # Load additional data from yaml
         # YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)

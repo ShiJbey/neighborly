@@ -6,7 +6,6 @@ from typing import (
     ClassVar,
     Dict,
     List,
-    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -17,7 +16,6 @@ from typing import (
 from pydantic import BaseModel, Field, validator
 
 from neighborly.core.ecs import Component, Event, IEventListener, World
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
 from neighborly.core.life_event import (
     EventCallbackDatabase,
     ILifeEventCallback,
@@ -25,7 +23,7 @@ from neighborly.core.life_event import (
     LifeEventHandler,
 )
 from neighborly.core.name_generation import TraceryNameFactory
-from neighborly.core.rng import IRandNumGenerator
+from neighborly.core.rng import DefaultRNG
 from neighborly.core.utils.utilities import parse_number_range
 
 logger = logging.getLogger(__name__)
@@ -39,9 +37,6 @@ class LifeStages(TypedDict):
     young_adult: int
     adult: int
     elder: int
-
-
-LifeStageName = Literal["child", "teen", "young_adult", "adult", "elder"]
 
 
 class LifeCycleConfig(BaseModel):
@@ -183,6 +178,8 @@ class GameCharacter(Component, IEventListener):
         "_event_handlers",
     )
 
+    character_def_registry: Dict[str, CharacterDefinition] = {}
+
     def __init__(
         self,
         character_def: CharacterDefinition,
@@ -209,6 +206,78 @@ class GameCharacter(Component, IEventListener):
                 effects = callbacks.get("effects", [])
                 for fn in effects:
                     self._event_handlers[event_name].add_effect(fn)
+
+    @classmethod
+    def create(cls, world: World, **kwargs) -> GameCharacter:
+        """Create a new instance of a character"""
+
+        character_def: CharacterDefinition = kwargs["character_def"]
+
+        name_factory = world.get_resource(TraceryNameFactory)
+        rng = world.get_resource(DefaultRNG)
+
+        first_name = kwargs.get(
+            "first_name", name_factory.get_name(character_def.first_name_style)
+        )
+        last_name = kwargs.get(
+            "last_name", name_factory.get_name(character_def.family_name_style)
+        )
+        name = CharacterName(first_name, last_name)
+
+        # generate an age
+        age_range: Optional[Union[str, tuple[int, int]]] = kwargs.get("age_range")
+
+        if isinstance(age_range, str):
+            lower_bound: int = character_def.lifecycle.life_stages[age_range]  # type: ignore
+
+            potential_upper_bounds = {
+                "child": character_def.lifecycle.life_stages["teen"],
+                "teen": character_def.lifecycle.life_stages["young_adult"],
+                "young_adult": character_def.lifecycle.life_stages["adult"],
+                "adult": character_def.lifecycle.life_stages["elder"],
+                "elder": character_def.lifecycle.lifespan,
+            }
+
+            age = rng.randint(lower_bound, potential_upper_bounds[age_range] - 1)
+        elif isinstance(age_range, tuple):
+            age = rng.randint(age_range[0], age_range[1])
+        else:
+            age = rng.randint(
+                character_def.lifecycle.life_stages["young_adult"],
+                character_def.lifecycle.life_stages["adult"] - 1,
+            )
+
+        event_handlers: Dict[str, Dict[str, List[ILifeEventCallback]]] = {}
+
+        for event_name, handler_config in character_def.events.items():
+            if event_name not in event_handlers:
+                event_handlers[event_name] = {"preconditions": [], "effects": []}
+
+            for callback_name in handler_config.get("preconditions", []):
+                event_handlers[event_name]["preconditions"].append(
+                    EventCallbackDatabase.get_precondition(callback_name)
+                )
+
+            for callback_name in handler_config.get("effects", []):
+                event_handlers[event_name]["effects"].append(
+                    EventCallbackDatabase.get_effect(callback_name)
+                )
+
+        return GameCharacter(
+            character_def=character_def,
+            name=name,
+            age=float(age),
+            events=event_handlers,
+        )
+
+    @classmethod
+    def get_character_def(
+        cls, character_def: CharacterDefinition
+    ) -> CharacterDefinition:
+        """Returns an existing CharacterDefinition with the same name or creates a new one"""
+        if character_def.definition_name not in cls.character_def_registry:
+            cls.character_def_registry[character_def.definition_name] = character_def
+        return cls.character_def_registry[character_def.definition_name]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -250,6 +319,18 @@ class GameCharacter(Component, IEventListener):
 
         return True
 
+    def on(
+        self,
+        event_type: str,
+        precondition: Optional[ILifeEventCallback] = None,
+        effect: Optional[ILifeEventCallback] = None,
+    ) -> None:
+        """Add new event callbacks for a given event type"""
+        if precondition:
+            self._event_handlers[event_type].preconditions.append(precondition)
+        if effect:
+            self._event_handlers[event_type].effects.append(effect)
+
     def __repr__(self) -> str:
         """Return printable representation"""
         return "{}(name={}, age={}, location={}, location_aliases={})".format(
@@ -261,71 +342,72 @@ class GameCharacter(Component, IEventListener):
         )
 
 
-class GameCharacterFactory(AbstractFactory):
-    """
-    Default factory for constructing instances of GameCharacters.
-    """
-
-    def __init__(self) -> None:
-        super().__init__("GameCharacter")
-
-    def create(self, world: World, **kwargs) -> GameCharacter:
-        """Create a new instance of a character"""
-
-        name_factory = world.get_resource(TraceryNameFactory)
-
-        first_name = kwargs.get(
-            "first_name", name_factory(character_def.first_name_style)
-        )
-        last_name = kwargs.get(
-            "last_name", name_factory(character_def.family_name_style)
-        )
-        name = CharacterName(first_name, last_name)
-
-        # generate an age
-        age_range: Optional[Union[LifeStageName, tuple[int, int]]] = kwargs.get(
-            "age_range"
-        )
-
-        if isinstance(age_range, str):
-            lower_bound: int = character_def.lifecycle.life_stages[age_range]
-
-            potential_upper_bounds = {
-                "child": character_def.lifecycle.life_stages["teen"],
-                "teen": character_def.lifecycle.life_stages["young_adult"],
-                "young_adult": character_def.lifecycle.life_stages["adult"],
-                "adult": character_def.lifecycle.life_stages["elder"],
-                "elder": character_def.lifecycle.lifespan,
-            }
-
-            age = rng.randint(lower_bound, potential_upper_bounds[age_range] - 1)
-        elif isinstance(age_range, tuple):
-            age = rng.randint(age_range[0], age_range[1])
-        else:
-            age = rng.randint(
-                character_def.lifecycle.life_stages["young_adult"],
-                character_def.lifecycle.life_stages["adult"] - 1,
-            )
-
-        event_handlers: Dict[str, Dict[str, List[ILifeEventCallback]]] = {}
-
-        for event_name, handler_config in character_def.events.items():
-            if event_name not in event_handlers:
-                event_handlers[event_name] = {"preconditions": [], "effects": []}
-
-            for callback_name in handler_config.get("preconditions", []):
-                event_handlers[event_name]["preconditions"].append(
-                    EventCallbackDatabase.get_precondition(callback_name)
-                )
-
-            for callback_name in handler_config.get("effects", []):
-                event_handlers[event_name]["effects"].append(
-                    EventCallbackDatabase.get_effect(callback_name)
-                )
-
-        return GameCharacter(
-            character_def=character_def,
-            name=name,
-            age=float(age),
-            events=event_handlers,
-        )
+# class GameCharacterFactory(AbstractFactory):
+#     """
+#     Default factory for constructing instances of GameCharacters.
+#     """
+#
+#     def __init__(self) -> None:
+#         super().__init__("GameCharacter")
+#
+#     def create(self, world: World, **kwargs) -> GameCharacter:
+#         """Create a new instance of a character"""
+#
+#         character_def: CharacterDefinition = kwargs["character_def"]
+#
+#         name_factory = world.get_resource(TraceryNameFactory)
+#         rng = world.get_resource(DefaultRNG)
+#
+#         first_name = kwargs.get(
+#             "first_name", name_factory.get_name(character_def.first_name_style)
+#         )
+#         last_name = kwargs.get(
+#             "last_name", name_factory.get_name(character_def.family_name_style)
+#         )
+#         name = CharacterName(first_name, last_name)
+#
+#         # generate an age
+#         age_range: Optional[Union[str, tuple[int, int]]] = kwargs.get("age_range")
+#
+#         if isinstance(age_range, str):
+#             lower_bound: int = character_def.lifecycle.life_stages[age_range]
+#
+#             potential_upper_bounds = {
+#                 "child": character_def.lifecycle.life_stages["teen"],
+#                 "teen": character_def.lifecycle.life_stages["young_adult"],
+#                 "young_adult": character_def.lifecycle.life_stages["adult"],
+#                 "adult": character_def.lifecycle.life_stages["elder"],
+#                 "elder": character_def.lifecycle.lifespan,
+#             }
+#
+#             age = rng.randint(lower_bound, potential_upper_bounds[age_range] - 1)
+#         elif isinstance(age_range, tuple):
+#             age = rng.randint(age_range[0], age_range[1])
+#         else:
+#             age = rng.randint(
+#                 character_def.lifecycle.life_stages["young_adult"],
+#                 character_def.lifecycle.life_stages["adult"] - 1,
+#             )
+#
+#         event_handlers: Dict[str, Dict[str, List[ILifeEventCallback]]] = {}
+#
+#         for event_name, handler_config in character_def.events.items():
+#             if event_name not in event_handlers:
+#                 event_handlers[event_name] = {"preconditions": [], "effects": []}
+#
+#             for callback_name in handler_config.get("preconditions", []):
+#                 event_handlers[event_name]["preconditions"].append(
+#                     EventCallbackDatabase.get_precondition(callback_name)
+#                 )
+#
+#             for callback_name in handler_config.get("effects", []):
+#                 event_handlers[event_name]["effects"].append(
+#                     EventCallbackDatabase.get_effect(callback_name)
+#                 )
+#
+#         return GameCharacter(
+#             character_def=character_def,
+#             name=name,
+#             age=float(age),
+#             events=event_handlers,
+#         )

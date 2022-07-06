@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
+from neighborly.core.ecs import Component, World
 
 
 class Residence(Component):
@@ -60,14 +61,6 @@ class Residence(Component):
         """Return True if the residence is vacant"""
         return self._vacant
 
-
-class World:
-    pass
-
-
-class ResidenceFactory(AbstractFactory):
-    def __init__(self):
-        super().__init__("Residence")
-
-    def create(self, world: World, **kwargs) -> Residence:
-        return Residence()
+    @classmethod
+    def create(cls, world: World, **kwargs) -> Residence:
+        return cls()

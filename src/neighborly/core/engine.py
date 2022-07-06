@@ -1,249 +1,288 @@
-from abc import ABC
-from typing import Any, Dict, List, Optional, Protocol
+from __future__ import annotations
+
+import random
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.name_generation import TraceryNameFactory
 
 
-class AbstractFactory(ABC):
-    """Abstract class for factory instances
+class EntityArchetype:
+    """
+    Organizes information for constructing components that compose GameObjects.
 
     Attributes
     ----------
-    _type: str
-        The name of the type of component the factory instantiates
+    _name: str
+        (Read-only) The name of the entity archetype
+    _components: Dict[Type[Component], Dict[str, Any]]
+        Dict of components used to construct this archetype
     """
 
-    __slots__ = "_type"
+    __slots__ = "_name", "_components"
 
     def __init__(self, name: str) -> None:
-        self._type = name
-
-    def get_type(self) -> str:
-        """Return the name of the type this factory creates"""
-        return self._type
-
-
-class ComponentDefinition:
-    """
-    Collection of Key-Value pairs passed to factories when to
-    instantiate instances of components
-    """
-
-    __slots__ = "_component_type", "_attributes"
-
-    def __init__(
-        self,
-        component_type: str,
-        attributes: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        self._component_type: str = component_type
-        self._attributes: Dict[str, Any] = attributes if attributes else {}
-
-    def get_type(self) -> str:
-        """Returns the name of the type of component this spec is for"""
-        return self._component_type
-
-    def get_attributes(self) -> Dict[str, Any]:
-        """Get all the attributes associated with this definition"""
-        return self._attributes
-
-    def get_attribute(self, key: str, default: Any = None) -> Any:
-        """Get a specific attribute associated with this definition"""
-        return self._attributes.get(key, default)
-
-    def update(self, new_attributes: Dict[str, Any]) -> None:
-        """Update the attributes using a given Dict of values"""
-        self._attributes.update(new_attributes)
-
-    def __getitem__(self, key: str) -> Any:
-        """Set an attribute using a str key"""
-        return self._attributes[key]
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        """Set an attribute using a str key"""
-        self._attributes[key] = value
-
-
-class EntityArchetypeDefinition:
-    """Collection of Component specs used to instantiate instances of entities"""
-
-    __slots__ = (
-        "_name",
-        "_components",
-        "_attributes",
-        "_is_template",
-    )
-
-    def __init__(
-        self,
-        name: str,
-        components: Optional[Dict[str, ComponentDefinition]] = None,
-        is_template: bool = False,
-    ) -> None:
         self._name: str = name
-        self._is_template: bool = is_template
-        self._components: Dict[str, ComponentDefinition] = (
-            components if components else {}
-        )
+        self._components: Dict[Type[Component], Dict[str, Any]] = {}
 
-    def is_template(self) -> bool:
-        return self._is_template
-
-    def get_components(self) -> Dict[str, ComponentDefinition]:
-        """Return the ComponentSpecs that make up this archetype"""
-        return self._components
-
-    def try_component(self, name: str) -> Optional[ComponentDefinition]:
-        """Try to get a component definition by name"""
-        return self._components.get(name, None)
-
-    def get_name(self) -> str:
-        """Get the type of archetype this is"""
+    @property
+    def name(self) -> str:
+        """Returns the name of this archetype"""
         return self._name
 
-    def get_attributes(self) -> Dict[str, Any]:
-        """Get the type of archetype this is"""
-        return self._attributes
+    @property
+    def components(self) -> Dict[Type[Component], Dict[str, Any]]:
+        """Returns a list of components in this archetype"""
+        return {**self._components}
 
-    def add_component(self, node: ComponentDefinition) -> None:
-        """Add (or overwrites) a component spec attached to this archetype"""
-        self._components[node.get_type()] = node
+    def add(self, component_type: Type[Component], **kwargs: Any) -> EntityArchetype:
+        """
+        Add a component to this archetype
 
-    def has_component(self, *components: str) -> bool:
-        """Return True if this archetype has the given components"""
-        return all([c in self._components for c in components])
+        Parameters
+        ----------
+        component_type: subclass of neighborly.core.ecs.Component
+            The component type to add to the entity archetype
+        **kwargs: Dict[str, Any]
+            Attribute overrides to pass to the component
+        """
+        self._components[component_type] = {**kwargs}
+        return self
 
-    def __getitem__(self, attribute: str) -> Any:
-        """Get a value from this archetype's attributes"""
-        return self._attributes[attribute]
+    def __repr__(self) -> str:
+        return "{}(name={}, components={})".format(
+            self.__class__.__name__, self._name, self._components
+        )
 
 
-class IComponentFactory(Protocol):
-    """Interface for Factory classes that are used to construct entity components"""
+@dataclass
+class CharacterInfo:
+    """Information used when spawning new characters into the simulation"""
 
-    def get_type(self) -> str:
-        """Return the name of the type this factory creates"""
-        raise NotImplementedError()
+    spawn_multiplier: int = 1
 
-    def create(self, world: World, **kwargs) -> Component:
-        """Create component instance"""
-        raise NotImplementedError()
+
+@dataclass
+class BusinessInfo:
+    """Information used when spawning new characters into the simulation"""
+
+    spawn_multiplier: int = 1
+    min_population: int = 1
+    max_instances: int = 9999
+
+
+@dataclass
+class ResidenceInfo:
+    """Information used when spawning new characters into the simulation"""
+
+    spawn_multiplier: int = 1
+
+
+class ArchetypeNotFoundError(Exception):
+    """Error thrown when an archetype is not found in the engine"""
+
+    def __init__(self, archetype_name: str) -> None:
+        super().__init__()
+        self.archetype_name: str = archetype_name
+        self.message: str = f"Could not find archetype with name '{archetype_name}'"
+
+    def __str__(self) -> str:
+        return self.message
 
 
 class NeighborlyEngine:
-    """Manages all the factories for creating entities and archetypes
+    """
+    An engine stores and instantiates entity archetypes for characters, businesses,
+    residences, and other places.
 
-    Attributes
-    ----------
-    _component_factories: Dict[str, AbstractFactory[Any]]
-        Map of component class names to factories that produce them
-    _character_archetypes: Dict[str, Dict[str, Any]]
-        Map of archetype names to their specification data
-    _place_archetypes: Dict[str, Dict[str, Any]]
-        Map of archetype names to their specification data
+    There should only be one NeighborlyEngine instance per simulation. It is designed
+    to handle the internal logic of determining when to create certain entities. For
+    example, the engine creates characters entities using spawn multipliers associated
+    with each archetype.
     """
 
     __slots__ = (
-        "_component_factories",
-        "_character_archetypes",
-        "_place_archetypes",
         "_business_archetypes",
         "_residence_archetypes",
+        "_character_archetypes",
+        "_rng",
+        "_name_generator",
+        "_component_types",
     )
 
-    def __init__(self) -> None:
-        self._component_factories: Dict[str, IComponentFactory] = {}
-        self._character_archetypes: Dict[str, EntityArchetypeDefinition] = {}
-        self._business_archetypes: Dict[str, EntityArchetypeDefinition] = {}
-        self._residence_archetypes: Dict[str, EntityArchetypeDefinition] = {}
-        self._place_archetypes: Dict[str, EntityArchetypeDefinition] = {}
+    def __init__(self, seed: Optional[int] = None) -> None:
+        self._rng: random.Random = random.Random(seed)
+        self._name_generator: TraceryNameFactory = TraceryNameFactory()
+        self._component_types: Dict[str, Type[Component]] = {}
+        self._character_archetypes: Dict[
+            str, Tuple[EntityArchetype, CharacterInfo]
+        ] = {}
+        self._business_archetypes: Dict[str, Tuple[EntityArchetype, BusinessInfo]] = {}
+        self._residence_archetypes: Dict[
+            str, Tuple[EntityArchetype, ResidenceInfo]
+        ] = {}
 
-    def add_character_archetype(self, archetype: EntityArchetypeDefinition) -> None:
-        self._character_archetypes[archetype.get_name()] = archetype
+    @property
+    def rng(self) -> random.Random:
+        return self._rng
 
-    def get_character_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
-        return self._character_archetypes[archetype_name]
+    @property
+    def name_generator(self) -> TraceryNameFactory:
+        return self._name_generator
 
-    def get_character_archetypes(self) -> List[EntityArchetypeDefinition]:
-        return list(self._character_archetypes.values())
+    def add_component(self, component_type: Type[Component]) -> None:
+        self._component_types[component_type.__name__] = component_type
 
-    def add_place_archetype(self, archetype: EntityArchetypeDefinition) -> None:
-        self._place_archetypes[archetype.get_name()] = archetype
+    def add_character_archetype(
+        self, archetype: EntityArchetype, spawn_multiplier: int = 1
+    ) -> None:
+        """
+        Add a character archetype to the engine and set its spawn multiplier
 
-    def add_residence_archetype(self, archetype: EntityArchetypeDefinition) -> None:
-        self._residence_archetypes[archetype.get_name()] = archetype
-
-    def add_business_archetype(self, archetype: EntityArchetypeDefinition) -> None:
-        self._business_archetypes[archetype.get_name()] = archetype
-
-    def get_place_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
-        return self._place_archetypes[archetype_name]
-
-    def get_business_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
-        return self._business_archetypes[archetype_name]
-
-    def get_residence_archetype(self, archetype_name: str) -> EntityArchetypeDefinition:
-        return self._residence_archetypes[archetype_name]
-
-    def get_residence_archetypes(self) -> List[EntityArchetypeDefinition]:
-        return list(self._residence_archetypes.values())
-
-    def filter_place_archetypes(self, options: Dict[str, Any]) -> List[str]:
-        """Retrieve a set of place archetypes based on given options"""
-        results: List[str] = []
-
-        include: List[str] = options.get("include", [])
-        exclude: List[str] = options.get("exclude", [])
-
-        for _, spec in self._place_archetypes.items():
-            if spec.has_component(*include) and not spec.has_component(*exclude):
-                results.append(spec.get_name())
-
-        return results
-
-    def add_component_factory(self, factory: IComponentFactory) -> None:
-        self._component_factories[factory.get_type()] = factory
-
-    def get_component_factory(self, type_name: str) -> IComponentFactory:
-        return self._component_factories[type_name]
-
-    def create_character(
-        self, world: World, archetype_name: str, **kwargs
-    ) -> GameObject:
-        archetype = self._character_archetypes[archetype_name]
-        return self.create_entity(world, archetype, **kwargs)
-
-    def create_place(self, world: World, archetype_name: str, **kwargs) -> GameObject:
-        archetype = self._place_archetypes[archetype_name]
-        return self.create_entity(world, archetype, **kwargs)
-
-    def create_business(
-        self, world: World, archetype_name: str, **kwargs
-    ) -> GameObject:
-        archetype = self._business_archetypes[archetype_name]
-        return self.create_entity(world, archetype, **kwargs)
-
-    def create_residence(
-        self, world: World, archetype_name: str, **kwargs
-    ) -> GameObject:
-        archetype = self._residence_archetypes[archetype_name]
-        return self.create_entity(world, archetype, **kwargs)
-
-    def create_entity(
-        self, world: World, archetype: EntityArchetypeDefinition, **kwargs
-    ) -> GameObject:
-        """Create a new GameObject and attach the components in the spec"""
-        components: List[Component] = []
-
-        for name, spec in archetype.get_components().items():
-            factory = self.get_component_factory(name)
-            components.append(
-                factory.create(world, **{**spec.get_attributes(), **kwargs})
-            )
-
-        gameobject = GameObject(
-            archetype_name=archetype.get_name(), components=components
+        Parameters
+        ----------
+        archetype: EntityArchetype
+            The archetype to add to the engine
+        spawn_multiplier: (optional) int
+            The multiplier used when determining what archetype to spawn next.
+            The higher the multiplier, the more likely the archetype is to
+            spawn.
+        """
+        self._character_archetypes[archetype.name] = (
+            archetype,
+            CharacterInfo(spawn_multiplier=spawn_multiplier),
         )
+
+    def add_residence_archetype(
+        self, archetype: EntityArchetype, spawn_multiplier: int = 1
+    ) -> None:
+        self._residence_archetypes[archetype.name] = (
+            archetype,
+            ResidenceInfo(spawn_multiplier=spawn_multiplier),
+        )
+
+    def add_business_archetype(
+        self,
+        archetype: EntityArchetype,
+        min_population: int = 0,
+        max_instances: int = 9999,
+        spawn_multiplier: int = 1,
+    ) -> None:
+        self._business_archetypes[archetype.name] = (
+            archetype,
+            BusinessInfo(
+                min_population=min_population,
+                max_instances=max_instances,
+                spawn_multiplier=spawn_multiplier,
+            ),
+        )
+
+    def spawn_character(
+        self, world, archetype_name: Optional[str] = None
+    ) -> GameObject:
+        """
+        Spawn a new character GameObject into the world using a given or randomly-selected archetype
+
+        Parameters
+        ----------
+        world: World
+            World instance to add the character to
+        archetype_name: Optional[str]
+            Archetype name to spawn
+
+        Returns
+        -------
+        GameObject
+            The gameobject spawned into the world
+        """
+        if archetype_name is not None:
+            try:
+                archetype = self._character_archetypes[archetype_name][0]
+            except KeyError:
+                raise ArchetypeNotFoundError(archetype_name)
+
+            character = self.spawn_archetype(world, archetype)
+            world.add_gameobject(character)
+            return character
+        else:
+            archetype_choices: List[EntityArchetype] = []
+            archetype_weights: List[int] = []
+            for _, (archetype, info) in self._character_archetypes.items():
+                archetype_choices.append(archetype)
+                archetype_weights.append(info.spawn_multiplier)
+
+            # Choose an archetype at random
+            archetype: EntityArchetype = random.choices(
+                population=archetype_choices, weights=archetype_weights, k=1
+            )[0]
+
+            character = self.spawn_archetype(world, archetype)
+            world.add_gameobject(character)
+            return character
+
+    def spawn_business(
+        self, world: World, archetype_name: Optional[str] = None
+    ) -> GameObject:
+        if archetype_name is not None:
+            try:
+                archetype = self._business_archetypes[archetype_name][0]
+            except KeyError:
+                raise ArchetypeNotFoundError(archetype_name)
+
+            business = self.spawn_archetype(world, archetype)
+            world.add_gameobject(business)
+            return business
+        else:
+            archetype_choices: List[EntityArchetype] = []
+            archetype_weights: List[int] = []
+            for _, (archetype, info) in self._business_archetypes.items():
+                archetype_choices.append(archetype)
+                archetype_weights.append(info.spawn_multiplier)
+
+            # Choose an archetype at random
+            archetype: EntityArchetype = random.choices(
+                population=archetype_choices, weights=archetype_weights, k=1
+            )[0]
+
+            business = self.spawn_archetype(world, archetype)
+            world.add_gameobject(business)
+            return business
+
+    def spawn_residence(
+        self, world: World, archetype_name: Optional[str] = None
+    ) -> GameObject:
+        if archetype_name is not None:
+            try:
+                archetype = self._residence_archetypes[archetype_name][0]
+            except KeyError:
+                raise ArchetypeNotFoundError(archetype_name)
+
+            residence = self.spawn_archetype(world, archetype)
+            world.add_gameobject(residence)
+            return residence
+        else:
+            archetype_choices: List[EntityArchetype] = []
+            archetype_weights: List[int] = []
+            for _, (archetype, info) in self._residence_archetypes.items():
+                archetype_choices.append(archetype)
+                archetype_weights.append(info.spawn_multiplier)
+
+            # Choose an archetype at random
+            archetype: EntityArchetype = random.choices(
+                population=archetype_choices, weights=archetype_weights, k=1
+            )[0]
+
+            residence = self.spawn_archetype(world, archetype)
+            world.add_gameobject(residence)
+            return residence
+
+    def spawn_archetype(self, world: World, archetype: EntityArchetype) -> GameObject:
+        """Create a new GameObject from the Archetype and add it to the world"""
+        gameobject = GameObject(archetype_name=archetype.name)
+
+        for component_type, options in archetype.components.items():
+            gameobject.add_component(component_type.create(world, **options))
 
         world.add_gameobject(gameobject)
 

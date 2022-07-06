@@ -65,23 +65,24 @@ def remove_coworkers(character: GameObject, **kwargs) -> None:
             )
 
 
-def move_character(world: World, character_id: int, location_id: int) -> None:
-    destination: Location = world.get_gameobject(location_id).get_component(Location)
-    character: GameCharacter = world.get_gameobject(character_id).get_component(
-        GameCharacter
-    )
-
-    if location_id == character.location:
+def move_to_location(
+    world: World, character: GameCharacter, destination: Location
+) -> None:
+    if destination.gameobject.id == character.location:
         return
 
     if character.location is not None:
         current_location: Location = world.get_gameobject(
             character.location
         ).get_component(Location)
-        current_location.remove_character(character_id)
+        current_location.remove_character(character.gameobject.id)
 
-    destination.add_character(character_id)
-    character.location = location_id
+    destination.add_character(character.gameobject.id)
+    character.location = destination.gameobject.id
+
+    print(
+        f"{str(character.name)}({character.gameobject.id}) went to location {destination.gameobject.id}"
+    )
 
 
 def get_locations(world: World) -> List[Tuple[int, Location]]:
@@ -114,7 +115,7 @@ def try_generate_family(
     character = gameobject.get_component(GameCharacter)
 
     has_spouse = (
-        engine.get_rng().random()
+        engine.rng.random()
         < character.character_def.generation.family.probability_spouse
     )
 
@@ -130,7 +131,7 @@ def try_generate_family(
         result["spouse"] = spouse
 
     has_children = (
-        engine.get_rng().random()
+        engine.rng.random()
         < character.character_def.generation.family.probability_children
     )
 
@@ -152,7 +153,7 @@ def create_children(
     spouse: Optional[GameCharacter] = None,
 ) -> List[GameObject]:
 
-    n_children = engine.get_rng().randint(
+    n_children = engine.rng.randint(
         character.character_def.generation.family.num_children[0],
         character.character_def.generation.family.num_children[1],
     )

@@ -1,67 +1,35 @@
 from __future__ import annotations
 
 import itertools
-from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Protocol,
-    Set,
-    Tuple,
-    TypeVar,
-)
-
-from pydantic import BaseModel
+from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
 from neighborly.core.ecs import Component, World
-from neighborly.core.name_generation import TraceryNameFactory
-
-
-class TownConfig(BaseModel):
-    """
-    Static configuration parameters for Town instance
-
-    Attributes
-    ----------
-    name : str
-        Tracery grammar used to generate a town's name
-    width : int
-        Number of space tiles wide the town will be
-    length : int
-        Number of space tile long the town will be
-    """
-
-    name: str = "#town_name#"
-    width: int = 5
-    length: int = 5
+from neighborly.core.engine import NeighborlyEngine
 
 
 class Town(Component):
     """Simulated town where characters live"""
 
-    __slots__ = "name", "layout", "population"
+    __slots__ = "name", "population"
 
-    def __init__(self, name: str, layout: LandGrid) -> None:
+    def __init__(self, name: str) -> None:
         super().__init__()
         self.name: str = name
         self.population: int = 0
-        self.layout: LandGrid = layout
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "name": self.name, "population": self.population}
 
     @classmethod
-    def create(cls, world: World, name: str, width: int, length: int) -> Town:
+    def create(cls, world: World, **kwargs) -> Town:
         """Create a town instance"""
-        town_name = world.get_resource(TraceryNameFactory).get_name(name)
-        layout = LandGrid(width, length)
-        return cls(name=town_name, layout=layout)
+        town_name = kwargs.get("name", "Town")
+        town_name = world.get_resource(NeighborlyEngine).name_generator.get_name(
+            town_name
+        )
+        return cls(name=town_name)
 
 
 @dataclass
@@ -71,15 +39,6 @@ class LayoutGridSpace:
 
     def reset(self) -> None:
         self.occupant = None
-
-
-class ISpaceSelectionStrategy(Protocol):
-    """Uses a heuristic to select a space within the town"""
-
-    @abstractmethod
-    def choose_space(self, spaces: List[LayoutGridSpace]) -> Tuple[int, int]:
-        """Choose a space based on an internal heuristic"""
-        raise NotImplementedError()
 
 
 class CompassDirection(Enum):

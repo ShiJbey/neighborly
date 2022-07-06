@@ -10,7 +10,7 @@ from neighborly.core.builtin.statuses import Child, InRelationship, YoungAdult
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.helpers import get_locations, move_character, try_generate_family
+from neighborly.core.helpers import get_locations, move_to_location, try_generate_family
 from neighborly.core.life_event import LifeEventLogger, LifeEventRule
 from neighborly.core.position import Position2D
 from neighborly.core.relationship import (
@@ -47,7 +47,7 @@ class RoutineSystem:
                     if isinstance(chosen_entry.location, str)
                     else chosen_entry.location
                 )
-                move_character(
+                move_to_location(
                     world,
                     entity,
                     location_id,
@@ -56,7 +56,7 @@ class RoutineSystem:
             potential_locations = get_locations(world)
             if potential_locations:
                 loc_id, _ = world.get_resource(DefaultRNG).choice(potential_locations)
-                move_character(world, entity, loc_id)
+                move_to_location(world, entity, loc_id)
 
 
 class TimeSystem:

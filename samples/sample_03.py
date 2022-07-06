@@ -222,8 +222,7 @@ def create_child(
 
     # Choose which parent to inherit archetype / definition from
     character_def = (
-        engine.get_rng()
-        .choice([pregnant_parent, other_parent])
+        engine.rng.choice([pregnant_parent, other_parent])
         .get_component(GameCharacter)
         .character_def
     )

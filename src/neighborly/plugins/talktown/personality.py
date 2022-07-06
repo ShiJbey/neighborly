@@ -12,7 +12,6 @@ from neighborly.core.engine import (
     NeighborlyEngine,
 )
 
-
 BIG_FIVE_FLOOR = -1.0
 BIG_FIVE_CAP = 1.0
 
@@ -68,23 +67,23 @@ class BigFivePersonalityFactory(AbstractFactory):
         engine: NeighborlyEngine = kwargs["engine"]
 
         openness: float = (
-            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
         ) + BIG_FIVE_FLOOR
 
         conscientiousness: float = (
-            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
         ) + BIG_FIVE_FLOOR
 
         extroversion: float = (
-            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
         ) + BIG_FIVE_FLOOR
 
         agreeableness: float = (
-            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
         ) + BIG_FIVE_FLOOR
 
         neuroticism: float = (
-            engine.get_rng().random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
         ) + BIG_FIVE_FLOOR
 
         return BigFivePersonality(

@@ -45,7 +45,7 @@ class CityPlanner:
 
         if town.layout.has_vacancy():
             engine.filter_place_archetypes({"includes": []})
-            place = engine.create_business(business_type_to_build)
+            place = engine.spawn_business(business_type_to_build)
             town.layout.reserve_space(place.id)
             world.add_gameobject(place)
             logger.debug(f"Added business {place}")

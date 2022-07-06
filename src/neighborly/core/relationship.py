@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import IntFlag, auto
 from typing import Any, ClassVar, Dict, List, Optional
 
-from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
+from neighborly.core.ecs import Component, World
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -341,10 +342,6 @@ class RelationshipManager(Component):
             "relationships": [r.to_dict() for r in self._relationships.values()],
         }
 
-
-class RelationshipManagerFactory(AbstractFactory):
-    def __init__(self) -> None:
-        super().__init__("RelationshipManager")
-
-    def create(self, spec: ComponentDefinition, **kwargs) -> RelationshipManager:
-        return RelationshipManager()
+    @classmethod
+    def create(cls, world: World, **kwargs) -> RelationshipManager:
+        return cls()

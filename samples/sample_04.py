@@ -1,21 +1,85 @@
-import random
-from typing import List, Tuple
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple, Type, TypeVar, Union
 
 from neighborly.core.builtin.statuses import BusinessOwner, Unemployed
-from neighborly.core.business import Business
+from neighborly.core.business import Business, Occupation
 from neighborly.core.character import CharacterDefinition, CharacterName, GameCharacter
-from neighborly.core.ecs import GameObject, ISystem, World
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.helpers import move_to_location
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 from neighborly.core.residence import Residence
 from neighborly.core.rng import DefaultRNG
+from neighborly.core.routine import Routine
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import LandGrid, Town
 from neighborly.plugins.default_plugin import DefaultPlugin
 from neighborly.simulation import Simulation
 
-TOTAL_CHARACTERS: int = 0
+_CT = TypeVar("_CT", bound=Component)
+
+
+class EntityArchetype:
+    """
+    Organizes information for constructing components that compose GameObjects.
+
+    Attributes
+    ----------
+    _name: str
+        (Read-only) The name of the entity archetype
+    _components: Dict[Type[_CT], Dict[str, Any]]
+        Dict of components used to construct this archetype
+    """
+
+    __slots__ = "_name", "_components"
+
+    def __init__(self, name: str) -> None:
+        self._name: str = name
+        self._components: Dict[Type[_CT], Dict[str, Any]] = {}
+
+    @property
+    def name(self) -> str:
+        """Returns the name of this archetype"""
+        return self._name
+
+    @property
+    def components(self) -> Dict[Type[_CT], Dict[str, Any]]:
+        """Returns a list of components in this archetype"""
+        return {**self._components}
+
+    def add(self, component_type: Union[Type[_CT], str], **kwargs) -> EntityArchetype:
+        """
+        Add a component to this archetype
+
+        Parameters
+        ----------
+        component_type: subclass of neighborly.core.ecs.Component
+            The component type to add to the entity archetype
+        **kwargs: Dict[str, Any]
+            Attribute overrides to pass to the component
+        """
+        self._components[component_type] = {**kwargs}
+        return self
+
+    def __repr__(self) -> str:
+        return "{}(name={}, components={})".format(
+            self.__class__.__name__, self._name, self._components
+        )
+
+
+@dataclass
+class CharacterSpawnInfo:
+    """Information used when spawning new characters into the simulation"""
+
+    spawn_multiplier: int = 1
+
+
+human_archetype = (
+    EntityArchetype("Human").add(GameCharacter).add(Position2D, **{"x": 5, "y": 5})
+)
 
 
 def create_house(name: str) -> GameObject:
@@ -52,7 +116,8 @@ def create_character(name: Tuple[str, str], age: int) -> GameObject:
                 ),
                 name=character_name,
                 age=age,
-            )
+            ),
+            Routine(),
         ]
     )
 
@@ -74,41 +139,10 @@ def move_into_residence(character: GameCharacter, residence: Residence) -> None:
     """Move a character into a residence"""
     residence.add_resident(character.gameobject.id)
     character.location_aliases["home"] = residence.gameobject.id
-    character.location = residence.gameobject.id
     residence.gameobject.get_component(Location).whitelist.add(character.gameobject.id)
     print(
         f"{str(character.name)}({character.gameobject.id}) moved into a new home ({residence.gameobject.id})"
     )
-
-
-def create_random_business() -> GameObject:
-    """Create new business gameobject"""
-    ...
-
-
-def open_business_event(probability: float) -> ISystem:
-    """Character opens a business if a certain probability hits"""
-
-    def fn(world: World, **kwargs) -> None:
-        for _, character in world.get_component(GameCharacter):
-            if random.random() < probability:
-                if character.hometown is None:
-                    continue
-
-                if character.gameobject.has_component(BusinessOwner):
-                    return
-
-                if not town.layout.has_vacancy():
-                    continue
-
-                character.gameobject.add_component(BusinessOwner(0, "random business"))
-
-                print(f"{str(character.name)} became a business owner")
-                # business = create_random_business()
-
-                # construct_business(town, business.get_component(Business))
-
-    return fn
 
 
 class SpawnResidentsSystem:
@@ -119,8 +153,6 @@ class SpawnResidentsSystem:
 
     def __call__(self, world: World, **kwargs) -> None:
         """Handles new characters moving into the town"""
-        global TOTAL_CHARACTERS
-
         rng = world.get_resource(DefaultRNG)
         engine = world.get_resource(NeighborlyEngine)
 
@@ -134,9 +166,14 @@ class SpawnResidentsSystem:
                 return
 
             # Create a new character
-            character = create_character(("Joe", "Character"), 25)
+            character = engine.spawn_character(world)
             purchase_residence(character.get_component(GameCharacter), residence)
             move_into_residence(character.get_component(GameCharacter), residence)
+            move_to_location(
+                world,
+                character.get_component(GameCharacter),
+                residence.gameobject.get_component(Location),
+            )
 
 
 class BuildResidenceSystem:
@@ -164,9 +201,7 @@ class BuildResidenceSystem:
         lot = rng.choice(land_grid.get_vacancies())
 
         # Construct a random residence archetype
-        residence = engine.create_residence(
-            world, rng.choice(engine.get_residence_archetypes()).get_name()
-        )
+        residence = engine.spawn_residence(world)
 
         # Reserve the space
         land_grid.reserve_space(lot, residence.id)
@@ -216,14 +251,19 @@ class BuildBusinessSystem:
 
 class FindBusinessOwnerSystem:
     def __call__(self, world: World, **kwargs) -> None:
-        unemployed_characters = list(
+        unemployed_characters: List[GameCharacter] = list(
             map(lambda x: x[1], world.get_component(Unemployed))
         )
 
         for _, business in world.get_component(Business):
-            # Skip businesses that don't need owners
             if not business.needs_owner():
                 return
+
+            character = world.get_resource(DefaultRNG).choice(unemployed_characters)
+            character.gameobject.add_component(BusinessOwner(0, "random business"))
+            character.gameobject.remove_component(Unemployed)
+            # character.gameobject.add_component(Occupation())
+            business.hire_owner(character.gameobject.id)
 
 
 def main():
@@ -237,21 +277,16 @@ def main():
         .create_land("small")
     )
 
+    sim.get_engine().add_character_archetype(
+        EntityArchetype("Human").add(GameCharacter)
+    )
+
     sim.establish_setting(
         SimDateTime.from_iso_str("0000-00-00T00:00.000z"),
         SimDateTime.from_iso_str("0050-00-00T00:00.000z"),
     )
 
     print("Done")
-    # sim.add_system(resident_immigration_system)
-    # sim.add_system(open_business_event(1.0))
-    # sim.ad
-
-    #
-    # sim.world.add_gameobject(town)
-    #
-    # for _ in range(10):
-    #     sim.step()
 
 
 if __name__ == "__main__":

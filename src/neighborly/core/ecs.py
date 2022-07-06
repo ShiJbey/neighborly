@@ -97,7 +97,6 @@ class GameObject:
         "_name",
         "_components",
         "_world",
-        "_active",
         "_archetype_name",
         "_event_listeners",
     )
@@ -111,7 +110,6 @@ class GameObject:
     ) -> None:
         self._name: str = name
         self._id: int = self.generate_id()
-        self._active: bool = True
         self._world: Optional[World] = world
         self._components: Dict[str, Component] = {}
         self._archetype_name: Optional[str] = archetype_name
@@ -133,6 +131,7 @@ class GameObject:
 
     @property
     def archetype_name(self) -> Optional[str]:
+        """Return the name of the archetype for creating this GameObject"""
         return self._archetype_name
 
     @property
@@ -143,20 +142,12 @@ class GameObject:
         raise TypeError("World is None for GameObject")
 
     @property
-    def active(self) -> bool:
-        return self._active
-
-    @property
     def components(self) -> List[Component]:
         return list(self._components.values())
 
     def set_world(self, world: Optional[World]) -> GameObject:
         """set the world instance"""
         self._world = world
-        return self
-
-    def set_active(self, is_active: bool) -> GameObject:
-        self._active = is_active
         return self
 
     def add_component(self, component: Component) -> GameObject:
@@ -184,15 +175,6 @@ class GameObject:
 
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
         return cast(Optional[_CT], self._components.get(component_type.__name__))
-
-    def get_component_with_name(self, name: str) -> Component:
-        return self._components[name]
-
-    def has_component_with_name(self, name: str) -> bool:
-        return name in self._components
-
-    def try_component_with_name(self, name: str) -> Optional[Component]:
-        return self._components.get(name)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -228,7 +210,14 @@ class GameObject:
 
 
 class Component(ABC):
-    """Component attached to a game object"""
+    """
+    Components are collections of related data attached to GameObjects.
+
+    Attributes
+    ----------
+    _gameobject: Optional[GameObject]
+        Reference to the gameobject this component is attached to
+    """
 
     __slots__ = "_gameobject"
 
@@ -238,6 +227,7 @@ class Component(ABC):
 
     @property
     def gameobject(self) -> GameObject:
+        """Returns the GameObject this component is attached to"""
         if self._gameobject is None:
             raise TypeError("Component's GameObject is None")
         return self._gameobject
@@ -246,12 +236,22 @@ class Component(ABC):
         """set the gameobject instance for this component"""
         self._gameobject = gameobject
 
+    @classmethod
+    @abstractmethod
+    def create(cls, world, **kwargs) -> Component:
+        """Create an instance of the component using a reference to the World object and additional parameters"""
+        raise NotImplementedError
+
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize the component to a dict"""
         return {"type": self.__class__.__name__}
 
 
 class ISystem(Protocol):
-    """Abstract base class for ECS systems"""
+    """
+    Abstract base class for ECS systems.
+    Systems perform processes on components and are where the main simulation logic lives.
+    """
 
     @abstractmethod
     def __call__(self, world: World, **kwargs) -> None:
@@ -308,14 +308,6 @@ class World:
         components: List[Tuple[int, _CT]] = []
         for gid, gameobject in self._gameobjects.items():
             component = gameobject.try_component(component_type)
-            if component is not None:
-                components.append((gid, component))
-        return components
-
-    def get_component_by_name(self, name: str) -> List[Tuple[int, Component]]:
-        components: List[Tuple[int, Component]] = []
-        for gid, gameobject in self._gameobjects.items():
-            component = gameobject.try_component_with_name(name)
             if component is not None:
                 components.append((gid, component))
         return components
