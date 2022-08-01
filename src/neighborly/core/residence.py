@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.ecs import Component, Event, IEventListener, World
 
 
 class Residence(Component):
@@ -64,3 +64,32 @@ class Residence(Component):
     @classmethod
     def create(cls, world: World, **kwargs) -> Residence:
         return cls()
+
+
+class Resident(Component, IEventListener):
+    """Component attached to characters indicating that they live in the town"""
+
+    __slots__ = "residence"
+
+    def __init__(self, residence: int) -> None:
+        super().__init__()
+        self.residence: int = residence
+
+    @classmethod
+    def create(cls, world, **kwargs) -> Component:
+        return Resident(**kwargs)
+
+    def will_handle_event(self, event: Event) -> bool:
+        return True
+
+    def handle_event(self, event: Event) -> bool:
+        event_type = event.get_type()
+        if event_type == "death":
+            print("Character died and now we remove them from the house.")
+            # Remove the resident from the residence
+            world = self.gameobject.world
+            residence = world.get_gameobject(self.residence).get_component(Residence)
+            residence.remove_resident(self.gameobject.id)
+            if residence.is_owner(self.gameobject.id):
+                residence.remove_owner(self.gameobject.id)
+        return True

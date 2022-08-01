@@ -3,18 +3,19 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
+from neighborly.core.builtin.systems import character_aging_system
 from neighborly.core.business import Business, BusinessDefinition, OccupationDefinition
-from neighborly.core.engine import EntityArchetype, NeighborlyEngine
+from neighborly.core.ecs import EntityArchetype
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEventLogger
 from neighborly.core.location import Location
-from neighborly.core.name_generation import TraceryNameFactory
 from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.systems import (
     AddResidentsSystem,
+    DynamicLoDTimeSystem,
     LifeEventSystem,
     RoutineSystem,
-    TimeSystem,
 )
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins.default_plugin.activity import Activity, register_activity
@@ -34,19 +35,6 @@ from neighborly.plugins.default_plugin.businesses import (
 )
 from neighborly.simulation import Plugin, Simulation
 
-# from neighborly.plugins.default_plugin.events import (
-#     BecameAdolescentEvent,
-#     BecameAdultEvent,
-#     BecameBusinessOwnerEvent,
-#     BecameChildEvent,
-#     BecameSeniorEvent,
-#     BecameYoungAdultEvent,
-#     DatingBreakUpEvent,
-#     DeathEvent,
-#     StartedDatingEvent,
-#     UnemploymentEvent,
-# )
-
 logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
@@ -59,62 +47,46 @@ def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) ->
         register_activity(Activity(entry["name"], trait_names=entry["traits"]))
 
 
-def initialize_tracery_name_factory() -> TraceryNameFactory:
-    name_factory = TraceryNameFactory()
-
-    # Load character name data
-    name_factory.load_names(
-        rule_name="last_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt"
-    )
-    name_factory.load_names(
-        rule_name="first_name", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt"
-    )
-    name_factory.load_names(
-        rule_name="feminine_first_name",
-        filepath=_RESOURCES_DIR / "names" / "feminine_names.txt",
-    )
-    name_factory.load_names(
-        rule_name="masculine_first_name",
-        filepath=_RESOURCES_DIR / "names" / "masculine_names.txt",
-    )
-
-    # Load potential names for different structures in the town
-    name_factory.load_names(
-        rule_name="restaurant_name",
-        filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt",
-    )
-    name_factory.load_names(
-        rule_name="bar_name", filepath=_RESOURCES_DIR / "names" / "bar_names.txt"
-    )
-
-    # Load potential names for the town
-    name_factory.load_names(
-        rule_name="town_name",
-        filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
-    )
-
-    return name_factory
-
-
-class DefaultPlugin(Plugin):
+class DefaultNameDataPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        # Add default systems
-        sim.add_system(TimeSystem(kwargs.get("days_per_year", 10)), 10)
-        sim.add_system(RoutineSystem(), 5)
-        sim.add_system(LifeEventSystem())
-        sim.add_system(AddResidentsSystem())
+        self.initialize_tracery_name_factory(sim.get_engine())
 
-        # Add default resources
-        sim.add_resource(RelationshipNetwork())
-        sim.add_resource(LifeEventLogger())
-        sim.add_resource(initialize_tracery_name_factory())
+    def initialize_tracery_name_factory(self, engine: NeighborlyEngine) -> None:
+        # Load character name data
+        engine.name_generator.load_names(
+            rule_name="family_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt"
+        )
+        engine.name_generator.load_names(
+            rule_name="first_name",
+            filepath=_RESOURCES_DIR / "names" / "neutral_names.txt",
+        )
+        engine.name_generator.load_names(
+            rule_name="feminine_first_name",
+            filepath=_RESOURCES_DIR / "names" / "feminine_names.txt",
+        )
+        engine.name_generator.load_names(
+            rule_name="masculine_first_name",
+            filepath=_RESOURCES_DIR / "names" / "masculine_names.txt",
+        )
 
-        # LifeEventProcessor.register_event(DeathEvent())
-        # LifeEventProcessor.register_event(StartedDatingEvent())
-        # LifeEventProcessor.register_event(DatingBreakUpEvent())
-        # LifeEventProcessor.register_event(UnemploymentEvent())
-        # LifeEventProcessor.register_event(BecameBusinessOwnerEvent())
+        # Load potential names for different structures in the town
+        engine.name_generator.load_names(
+            rule_name="restaurant_name",
+            filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt",
+        )
+        engine.name_generator.load_names(
+            rule_name="bar_name", filepath=_RESOURCES_DIR / "names" / "bar_names.txt"
+        )
 
+        # Load potential names for the town
+        engine.name_generator.load_names(
+            rule_name="town_name",
+            filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
+        )
+
+
+class DefaultBusinessesPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
         BusinessDefinition.register_type(restaurant_type)
         BusinessDefinition.register_type(bar_type)
         BusinessDefinition.register_type(department_store_type)
@@ -128,10 +100,8 @@ class DefaultPlugin(Plugin):
         OccupationDefinition.register_type(cook_type)
         OccupationDefinition.register_type(owner_type)
         OccupationDefinition.register_type(proprietor_type)
-
-        sim.get_engine().add_residence_archetype(
-            EntityArchetype("House").add(Residence).add(Location)
-        )
+        OccupationDefinition.register_type(OccupationDefinition(name="Server"))
+        OccupationDefinition.register_type(OccupationDefinition(name="Host"))
 
         sim.get_engine().add_business_archetype(
             EntityArchetype("Department Store")
@@ -151,5 +121,46 @@ class DefaultPlugin(Plugin):
             max_instances=2,
             spawn_multiplier=2,
         )
+
+
+class DefaultResidencesPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        sim.get_engine().add_residence_archetype(
+            EntityArchetype("House").add(Residence).add(Location)
+        )
+
+
+class DefaultPlugin(Plugin):
+    def __init__(
+        self, time_system: str = "dynamic", dynamic_days_per_year: int = 10
+    ) -> None:
+        self.time_system: str = time_system
+        self.dynamic_days_per_year: int = dynamic_days_per_year
+
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        # time_system: str = kwargs.get("time_system", self.time_system)
+        # days_per_year: int = kwargs.get("days_per_year", self.dynamic_days_per_year)
+        #
+        # if time_system == "dynamic":
+        #     sim.add_system(DynamicLoDTimeSystem(days_per_year=days_per_year), 10)
+
+        # sim.add_system(RoutineSystem(), 5)
+        sim.add_system(LifeEventSystem())
+        # sim.add_system(AddResidentsSystem())
+        sim.add_system(character_aging_system)
+
+        # Add default resources
+        sim.add_resource(RelationshipNetwork())
+
+        # LifeEventProcessor.register_event(DeathEvent())
+        # LifeEventProcessor.register_event(StartedDatingEvent())
+        # LifeEventProcessor.register_event(DatingBreakUpEvent())
+        # LifeEventProcessor.register_event(UnemploymentEvent())
+        # LifeEventProcessor.register_event(BecameBusinessOwnerEvent())
+
+        sim.get_engine().add_residence_archetype(
+            EntityArchetype("House").add(Residence).add(Location)
+        )
+
         # Load additional data from yaml
         # YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)

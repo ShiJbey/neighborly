@@ -5,6 +5,7 @@ from neighborly.core.builtin.events import (
     BecomeAdultEvent,
     BecomeElderEvent,
     BecomeYoungAdultEvent,
+    DeathEvent,
 )
 from neighborly.core.builtin.statuses import (
     Adult,
@@ -15,11 +16,9 @@ from neighborly.core.builtin.statuses import (
     YoungAdult,
 )
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import ISystem, World
-from neighborly.core.life_event import LifeEventLogger
-from neighborly.core.name_generation import TraceryNameFactory
+from neighborly.core.ecs import World
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.time import HOURS_PER_YEAR, SimDateTime
-from neighborly.core.town import Town, TownConfig
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ def character_aging_system(world: World, **kwargs) -> None:
     """Handles updating the ages of characters"""
 
     date_time = world.get_resource(SimDateTime)
-    event_logger = world.get_resource(LifeEventLogger)
+    engine = world.get_resource(NeighborlyEngine)
 
     for _, character in world.get_component(GameCharacter):
         if character.gameobject.has_component(Deceased):
@@ -36,7 +35,10 @@ def character_aging_system(world: World, **kwargs) -> None:
 
         character.age += float(date_time.delta_time) / HOURS_PER_YEAR
 
-        if character.age >= character.character_def.lifecycle.life_stages["teen"]:
+        if (
+            character.gameobject.has_component(Child)
+            and character.age >= character.character_def.aging.life_stages["teen"]
+        ):
             character.gameobject.remove_component(Child)
             character.gameobject.add_component(Teen())
 
@@ -46,11 +48,11 @@ def character_aging_system(world: World, **kwargs) -> None:
                 character_name=str(character.name),
             )
             character.gameobject.handle_event(event)
-            event_logger.log_event(event, [character.gameobject.id])
 
         elif (
-            character.age
-            >= character.character_def.lifecycle.life_stages["young_adult"]
+            character.gameobject.has_component(Teen)
+            and character.age
+            >= character.character_def.aging.life_stages["young_adult"]
         ):
             character.gameobject.remove_component(Teen)
             character.gameobject.add_component(YoungAdult())
@@ -62,9 +64,11 @@ def character_aging_system(world: World, **kwargs) -> None:
                 character_name=str(character.name),
             )
             character.gameobject.handle_event(event)
-            event_logger.log_event(event, [character.gameobject.id])
 
-        elif character.age >= character.character_def.lifecycle.life_stages["adult"]:
+        elif (
+            character.gameobject.has_component(YoungAdult)
+            and character.age >= character.character_def.aging.life_stages["adult"]
+        ):
             character.gameobject.remove_component(YoungAdult)
 
             event = BecomeAdultEvent(
@@ -73,9 +77,11 @@ def character_aging_system(world: World, **kwargs) -> None:
                 character_name=str(character.name),
             )
             character.gameobject.handle_event(event)
-            event_logger.log_event(event, [character.gameobject.id])
 
-        elif character.age >= character.character_def.lifecycle.life_stages["elder"]:
+        elif (
+            character.gameobject.has_component(Adult)
+            and character.age >= character.character_def.aging.life_stages["elder"]
+        ):
             character.gameobject.add_component(Elder())
 
             event = BecomeElderEvent(
@@ -84,33 +90,17 @@ def character_aging_system(world: World, **kwargs) -> None:
                 character_name=str(character.name),
             )
             character.gameobject.handle_event(event)
-            event_logger.log_event(event, [character.gameobject.id])
 
-
-def default_town_setup_system(name: str, size: str) -> ISystem:
-    """
-    Create a new town and add it to the world
-
-    Notes
-    -----
-    This system runs once during setup
-    """
-
-    def fn(world: World, **kwargs) -> None:
-        town_name_generator = world.get_resource(TraceryNameFactory)
-
-        town_name = town_name_generator.get_name(name)
-
-        TOWN_SIZES = {"small": (3, 3), "medium": (5, 5), "large": (10, 10)}
-
-        town_dimensions = TOWN_SIZES[size]
-
-        town = Town.create(
-            TownConfig(
-                name=town_name, width=town_dimensions[0], length=town_dimensions[1]
+        if (
+            character.age >= character.character_def.aging.lifespan
+            and engine.rng.random() < 0.8
+        ):
+            print(f"{str(character.name)} has died")
+            character.gameobject.handle_event(
+                DeathEvent(
+                    timestamp=date_time.to_iso_str(),
+                    character_name=str(character.name),
+                    character_id=character.gameobject.id,
+                )
             )
-        )
-
-        logger.debug(f"Created town of {town.name}")
-
-    return fn
+            world.delete_gameobject(character.gameobject.id)

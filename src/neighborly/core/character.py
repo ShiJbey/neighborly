@@ -16,14 +16,13 @@ from typing import (
 from pydantic import BaseModel, Field, validator
 
 from neighborly.core.ecs import Component, Event, IEventListener, World
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
     EventCallbackDatabase,
     ILifeEventCallback,
     LifeEvent,
     LifeEventHandler,
 )
-from neighborly.core.name_generation import TraceryNameFactory
-from neighborly.core.rng import DefaultRNG
 from neighborly.core.utils.utilities import parse_number_range
 
 logger = logging.getLogger(__name__)
@@ -39,7 +38,7 @@ class LifeStages(TypedDict):
     elder: int
 
 
-class LifeCycleConfig(BaseModel):
+class AgingConfig(BaseModel):
     """Configuration parameters for a characters lifecycle
 
     Fields
@@ -79,15 +78,6 @@ class FamilyGenerationOptions(BaseModel):
         return v
 
 
-class GenerationConfig(BaseModel):
-    """Parameters for generating new characters with this type"""
-
-    first_name: str
-    last_name: str
-    family: FamilyGenerationOptions
-    gender_weights: Dict[str, int] = Field(default_factory=dict)
-
-
 class CharacterDefinition(BaseModel):
     """Configuration parameters for characters
 
@@ -99,12 +89,11 @@ class CharacterDefinition(BaseModel):
 
     _type_registry: ClassVar[Dict[str, CharacterDefinition]] = {}
 
-    definition_name: str
-    first_name_style: str
-    family_name_style: str
-    lifecycle: LifeCycleConfig
-    # generation: GenerationConfig
-    # gender_overrides: Dict[str, Any] = Field(default_factory=dict)
+    type_name: str
+    first_name: str
+    family_name: str
+    aging: AgingConfig
+    chance_can_get_pregnant: float = 0.5
     events: Dict[str, Dict[str, List[str]]] = Field(default_factory=dict)
 
     @classmethod
@@ -133,7 +122,7 @@ class CharacterDefinition(BaseModel):
     @classmethod
     def register_type(cls, type_config: CharacterDefinition) -> None:
         """Registers a character config with the shared registry"""
-        cls._type_registry[type_config.name] = type_config
+        cls._type_registry[type_config.type_name] = type_config
 
     @classmethod
     def get_type(cls, name: str) -> CharacterDefinition:
@@ -175,6 +164,7 @@ class GameCharacter(Component, IEventListener):
         "age",
         "location",
         "location_aliases",
+        "can_get_pregnant",
         "_event_handlers",
     )
 
@@ -185,6 +175,7 @@ class GameCharacter(Component, IEventListener):
         character_def: CharacterDefinition,
         name: CharacterName,
         age: float,
+        can_get_pregnant: bool = False,
         events: Optional[Dict[str, Dict[str, List[ILifeEventCallback]]]] = None,
     ) -> None:
         super().__init__()
@@ -193,6 +184,7 @@ class GameCharacter(Component, IEventListener):
         self.age: float = age
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
+        self.can_get_pregnant: bool = can_get_pregnant
         self._event_handlers: Dict[str, LifeEventHandler] = {}
 
         if events:
@@ -210,41 +202,38 @@ class GameCharacter(Component, IEventListener):
     @classmethod
     def create(cls, world: World, **kwargs) -> GameCharacter:
         """Create a new instance of a character"""
+        engine: NeighborlyEngine = world.get_resource(NeighborlyEngine)
 
-        character_def: CharacterDefinition = kwargs["character_def"]
+        character_def = cls.get_character_def(CharacterDefinition(**kwargs))
 
-        name_factory = world.get_resource(TraceryNameFactory)
-        rng = world.get_resource(DefaultRNG)
-
-        first_name = kwargs.get(
-            "first_name", name_factory.get_name(character_def.first_name_style)
+        name = CharacterName(
+            engine.name_generator.get_name(character_def.first_name),
+            engine.name_generator.get_name(character_def.family_name),
         )
-        last_name = kwargs.get(
-            "last_name", name_factory.get_name(character_def.family_name_style)
-        )
-        name = CharacterName(first_name, last_name)
+
+        can_get_pregnant = engine.rng.random() < character_def.chance_can_get_pregnant
 
         # generate an age
         age_range: Optional[Union[str, tuple[int, int]]] = kwargs.get("age_range")
 
         if isinstance(age_range, str):
-            lower_bound: int = character_def.lifecycle.life_stages[age_range]  # type: ignore
+            lower_bound: int = character_def.aging.life_stages[age_range]  # type: ignore
 
             potential_upper_bounds = {
-                "child": character_def.lifecycle.life_stages["teen"],
-                "teen": character_def.lifecycle.life_stages["young_adult"],
-                "young_adult": character_def.lifecycle.life_stages["adult"],
-                "adult": character_def.lifecycle.life_stages["elder"],
-                "elder": character_def.lifecycle.lifespan,
+                "child": character_def.aging.life_stages["teen"],
+                "teen": character_def.aging.life_stages["young_adult"],
+                "young_adult": character_def.aging.life_stages["adult"],
+                "adult": character_def.aging.life_stages["elder"],
+                "elder": character_def.aging.lifespan,
             }
 
-            age = rng.randint(lower_bound, potential_upper_bounds[age_range] - 1)
+            age = engine.rng.randint(lower_bound, potential_upper_bounds[age_range] - 1)
         elif isinstance(age_range, tuple):
-            age = rng.randint(age_range[0], age_range[1])
+            age = engine.rng.randint(age_range[0], age_range[1])
         else:
-            age = rng.randint(
-                character_def.lifecycle.life_stages["young_adult"],
-                character_def.lifecycle.life_stages["adult"] - 1,
+            age = engine.rng.randint(
+                character_def.aging.life_stages["young_adult"],
+                character_def.aging.life_stages["adult"] - 1,
             )
 
         event_handlers: Dict[str, Dict[str, List[ILifeEventCallback]]] = {}
@@ -268,6 +257,7 @@ class GameCharacter(Component, IEventListener):
             name=name,
             age=float(age),
             events=event_handlers,
+            can_get_pregnant=can_get_pregnant,
         )
 
     @classmethod
@@ -275,14 +265,14 @@ class GameCharacter(Component, IEventListener):
         cls, character_def: CharacterDefinition
     ) -> CharacterDefinition:
         """Returns an existing CharacterDefinition with the same name or creates a new one"""
-        if character_def.definition_name not in cls.character_def_registry:
-            cls.character_def_registry[character_def.definition_name] = character_def
-        return cls.character_def_registry[character_def.definition_name]
+        if character_def.type_name not in cls.character_def_registry:
+            cls.character_def_registry[character_def.type_name] = character_def
+        return cls.character_def_registry[character_def.type_name]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "character_def": self.character_def.name,
+            "character_def": self.character_def.type_name,
             "name": str(self.name),
             "age": self.age,
             "location": self.location,
@@ -340,74 +330,3 @@ class GameCharacter(Component, IEventListener):
             self.location,
             self.location_aliases,
         )
-
-
-# class GameCharacterFactory(AbstractFactory):
-#     """
-#     Default factory for constructing instances of GameCharacters.
-#     """
-#
-#     def __init__(self) -> None:
-#         super().__init__("GameCharacter")
-#
-#     def create(self, world: World, **kwargs) -> GameCharacter:
-#         """Create a new instance of a character"""
-#
-#         character_def: CharacterDefinition = kwargs["character_def"]
-#
-#         name_factory = world.get_resource(TraceryNameFactory)
-#         rng = world.get_resource(DefaultRNG)
-#
-#         first_name = kwargs.get(
-#             "first_name", name_factory.get_name(character_def.first_name_style)
-#         )
-#         last_name = kwargs.get(
-#             "last_name", name_factory.get_name(character_def.family_name_style)
-#         )
-#         name = CharacterName(first_name, last_name)
-#
-#         # generate an age
-#         age_range: Optional[Union[str, tuple[int, int]]] = kwargs.get("age_range")
-#
-#         if isinstance(age_range, str):
-#             lower_bound: int = character_def.lifecycle.life_stages[age_range]
-#
-#             potential_upper_bounds = {
-#                 "child": character_def.lifecycle.life_stages["teen"],
-#                 "teen": character_def.lifecycle.life_stages["young_adult"],
-#                 "young_adult": character_def.lifecycle.life_stages["adult"],
-#                 "adult": character_def.lifecycle.life_stages["elder"],
-#                 "elder": character_def.lifecycle.lifespan,
-#             }
-#
-#             age = rng.randint(lower_bound, potential_upper_bounds[age_range] - 1)
-#         elif isinstance(age_range, tuple):
-#             age = rng.randint(age_range[0], age_range[1])
-#         else:
-#             age = rng.randint(
-#                 character_def.lifecycle.life_stages["young_adult"],
-#                 character_def.lifecycle.life_stages["adult"] - 1,
-#             )
-#
-#         event_handlers: Dict[str, Dict[str, List[ILifeEventCallback]]] = {}
-#
-#         for event_name, handler_config in character_def.events.items():
-#             if event_name not in event_handlers:
-#                 event_handlers[event_name] = {"preconditions": [], "effects": []}
-#
-#             for callback_name in handler_config.get("preconditions", []):
-#                 event_handlers[event_name]["preconditions"].append(
-#                     EventCallbackDatabase.get_precondition(callback_name)
-#                 )
-#
-#             for callback_name in handler_config.get("effects", []):
-#                 event_handlers[event_name]["effects"].append(
-#                     EventCallbackDatabase.get_effect(callback_name)
-#                 )
-#
-#         return GameCharacter(
-#             character_def=character_def,
-#             name=name,
-#             age=float(age),
-#             events=event_handlers,
-#         )

@@ -9,7 +9,8 @@ import yaml
 
 from neighborly.core.business import BusinessDefinition
 from neighborly.core.character import CharacterDefinition
-from neighborly.core.engine import EntityArchetype, NeighborlyEngine
+from neighborly.core.ecs import EntityArchetype
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.relationship import RelationshipModifier
 
 logger = logging.getLogger(__name__)

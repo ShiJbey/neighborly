@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import IntFlag, auto
+from enum import IntFlag
 from typing import Any, ClassVar, Dict, List, Optional
 
 from neighborly.core.ecs import Component, World
@@ -12,10 +12,6 @@ FRIENDSHIP_MIN: float = -50
 ROMANCE_MAX: float = 50
 ROMANCE_MIN: float = -50
 
-SALIENCE_MAX: float = 100
-SALIENCE_MIN: float = 0
-SALIENCE_INCREMENT: float = 1
-
 
 def clamp(value: float, minimum: float, maximum: float) -> float:
     """Clamp a floating point value within a min,max range"""
@@ -25,28 +21,28 @@ def clamp(value: float, minimum: float, maximum: float) -> float:
 class RelationshipTag(IntFlag):
     """Relationship Tags are bitwise flags that indicate certain relationship types"""
 
-    NONE = 0
-    Father = auto()
-    Mother = auto()
-    Parent = auto()
-    Brother = auto()
-    Sister = auto()
-    Sibling = auto()
-    Son = auto()
-    Daughter = auto()
-    Coworker = auto()
-    Boss = auto()
-    Spouse = auto()
-    Friend = auto()
-    Enemy = auto()
-    BestFriend = auto()
-    WorstEnemy = auto()
-    Rival = auto()
-    Acquaintance = auto()
-    BiologicalFamily = auto()
-    Neighbors = auto()
-    SignificantOther = auto()
-    LoveInterest = auto()
+    Acquaintance = 0
+    Father = 1 << 0
+    Mother = 1 << 1
+    Parent = 1 << 2
+    Brother = 1 << 3
+    Sister = 1 << 4
+    Sibling = 1 << 5
+    Son = 1 << 6
+    Daughter = 1 << 7
+    Coworker = 1 << 8
+    Boss = 1 << 9
+    Spouse = 1 << 10
+    Friend = 1 << 11
+    Enemy = 1 << 12
+    BestFriend = 1 << 13
+    WorstEnemy = 1 << 14
+    Rival = 1 << 15
+    BiologicalFamily = 1 << 16
+    Neighbors = 1 << 17
+    SignificantOther = 1 << 18
+    LoveInterest = 1 << 19
+    Child = 1 << 20
 
 
 @dataclass
@@ -210,6 +206,14 @@ class Relationship:
             self._recalculate_stats()
         return self._salience
 
+    def increment_friendship(self, value: float) -> None:
+        self._friendship_base += value
+        self._is_dirty = True
+
+    def increment_romance(self, value: float) -> None:
+        self._romance_base += value
+        self._is_dirty = True
+
     def add_tags(self, tags: RelationshipTag) -> None:
         """Return add a tag to this Relationship"""
         self._tags |= tags
@@ -272,20 +276,16 @@ class Relationship:
         # Reset final values back to base values
         self._friendship = self._friendship_base
         self._romance = self._romance_base
-        self._salience = self._salience_base
 
         # Apply modifiers in tags
         for modifier in self._modifiers.values():
             # Apply boosts to relationship scores
-            self._salience += modifier.salience_boost
             self._romance += modifier.romance_boost
             self._friendship += modifier.friendship_boost
             # Apply increment boosts
             self._romance_increment += modifier.romance_increment
-            self._salience_increment += modifier.salience_increment
             self._friendship_increment += modifier.friendship_increment
 
-        self._salience = clamp(self._salience, SALIENCE_MIN, SALIENCE_MAX)
         self._romance = clamp(self._romance, ROMANCE_MIN, ROMANCE_MAX)
         self._friendship = clamp(self._friendship, FRIENDSHIP_MIN, FRIENDSHIP_MAX)
 
@@ -302,46 +302,3 @@ class Relationship:
             self._tags,
             list(self._modifiers.keys()),
         )
-
-
-class DuplicateRelationshipError(Exception):
-    """Raise error when attempting to create a second relationship to a character"""
-
-    def __init__(self, character: int, target: int) -> None:
-        super().__init__()
-        self.message = f"Relationship already exist for {character} to {target}"
-
-    def __str__(self) -> str:
-        return self.message
-
-
-class RelationshipManager(Component):
-    """Manages the relationships from a specific character to others"""
-
-    __slots__ = "_relationships"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._relationships: Dict[int, Relationship] = {}
-
-    def add_relationship(self, relationship: Relationship) -> None:
-        if relationship.target in self._relationships:
-            raise DuplicateRelationshipError(self.gameobject.id, relationship.target)
-
-        self._relationships[relationship.target] = relationship
-
-    def get_relationship(self, target: int) -> Optional[Relationship]:
-        return self._relationships.get(target)
-
-    def remove_relationship(self, target: int) -> None:
-        del self._relationships[target]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "relationships": [r.to_dict() for r in self._relationships.values()],
-        }
-
-    @classmethod
-    def create(cls, world: World, **kwargs) -> RelationshipManager:
-        return cls()

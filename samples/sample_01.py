@@ -2,14 +2,12 @@ from neighborly.core.town import TownConfig
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import NeighborlyPlugin, PluginContext
 from neighborly.plugins.default_plugin import DefaultPlugin
-from neighborly.simulation import Simulation, SimulationConfig, NeighborlyConfig
+from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 
 
 class CustomPlugin(NeighborlyPlugin):
-
     def apply(self, ctx: PluginContext, **kwargs) -> None:
-        places = \
-            """
+        places = """
             Places:
                 - name: Space Casino
                   components:
@@ -33,21 +31,17 @@ class CustomPlugin(NeighborlyPlugin):
 def main():
     config = NeighborlyConfig(
         simulation=SimulationConfig(
-            hours_per_timestep=12,
-            town=TownConfig(
-                width=5,
-                length=1
-            )
+            hours_per_timestep=12, town=TownConfig(width=5, length=1)
         ),
         plugins=[
             CustomPlugin(),
             DefaultPlugin(),
-        ]
+        ],
     )
 
     _sim = Simulation.from_config(config)
 
-    _sim.run()
+    _sim.step()
 
     return _sim
 

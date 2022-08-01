@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from enum import IntFlag, auto
+from enum import Enum, Flag, auto
 from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
 
-from neighborly.core.ecs import Component, GameObject, World
-from neighborly.core.name_generation import TraceryNameFactory
-from neighborly.core.routine import RoutineEntry, RoutinePriority, parse_schedule_str
+from neighborly.core.ecs import Component, Event, GameObject, IEventListener, World
+from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.routine import RoutineEntry, RoutinePriority
 
 
 class IOccupationPreconditionFn(Protocol):
@@ -47,11 +47,11 @@ class OccupationDefinition:
 
     Attributes
     ----------
-    _name: str
+    name: str
         Name of the position
-    _level: int
+    level: int
         Prestige or socioeconomic status associated with the position
-    _preconditions: List[OccupationPreconditionFn]
+    preconditions: List[OccupationPreconditionFn]
         Preconditions functions that need to pass for a character
         to qualify for this occupation type
 
@@ -68,7 +68,7 @@ class OccupationDefinition:
     _precondition_registry: ClassVar[Dict[str, IOccupationPreconditionFn]] = {}
 
     name: str
-    level: int
+    level: int = 1
     preconditions: List[IOccupationPreconditionFn] = field(default_factory=list)
 
     @classmethod
@@ -86,7 +86,7 @@ class OccupationDefinition:
         cls._precondition_registry[name] = precondition
 
 
-class Occupation(Component):
+class Occupation(Component, IEventListener):
     """
     Employment Information about a character
     """
@@ -145,8 +145,26 @@ class Occupation(Component):
             )
         return cls._definition_registry[name]
 
+    def will_handle_event(self, event: Event) -> bool:
+        return True
 
-class BusinessServiceFlag(IntFlag):
+    def handle_event(self, event: Event) -> bool:
+        event_type = event.get_type()
+        if event_type == "death":
+            print("Character died and now we remove them from their job.")
+            # Remove the character from their work position
+            self.gameobject.remove_component(Occupation)
+        return True
+
+    def on_remove(self) -> None:
+        """Run when the component is removed from the GameObject"""
+        world = self.gameobject.world
+        workplace = world.get_gameobject(self._business).get_component(Business)
+        if workplace.get_owner() != self.gameobject.id:
+            workplace.remove_employee(self.gameobject.id)
+
+
+class BusinessServiceFlag(Flag):
     NONE = 0
     ALCOHOL = auto()
     BANKING = auto()
@@ -183,7 +201,7 @@ class BusinessDefinition:
     name: str
     hours: str
     name_pattern: Optional[str] = None
-    owner_type: Optional[str] = None
+    owner_type: str = ""
     max_instances: int = 9999
     instances: int = 0
     min_population: int = 0
@@ -212,6 +230,12 @@ class BusinessDefinition:
         return list(cls._type_registry.values())
 
 
+class BusinessStatus(Enum):
+    PendingOpening = 0
+    OpenForBusiness = 1
+    ClosedForBusiness = 2
+
+
 class Business(Component):
     __slots__ = (
         "business_def",
@@ -221,6 +245,7 @@ class Business(Component):
         "_employees",
         "_open_positions",
         "_owner",
+        "_status",
     )
 
     def __init__(
@@ -229,14 +254,29 @@ class Business(Component):
         super().__init__()
         self.business_def: BusinessDefinition = business_def
         self._name: str = name
-        self._operating_hours: Dict[str, List[RoutineEntry]] = self._create_routines(
-            parse_schedule_str(business_def.hours)
-        )
-        self._open_positions: Dict[str, int] = business_def.employees
-        self._employees: List[Tuple[str, int]] = []
+        # self._operating_hours: Dict[str, List[RoutineEntry]] = self._create_routines(
+        #     parse_schedule_str(business_def.hours)
+        # )
+        self._operating_hours: Dict[str, List[RoutineEntry]] = {}
+        self._open_positions: Dict[str, int] = {**business_def.employees}
+        self._employees: Dict[int, str] = {}
         self._owner: Optional[int] = owner
+        self._status: BusinessStatus = BusinessStatus.PendingOpening
+        self._years_in_business: float = 0.0
 
-        self.get_type().instances = self.get_type().instances + 1
+    @property
+    def status(self) -> BusinessStatus:
+        return self._status
+
+    @property
+    def years_in_business(self) -> int:
+        return math.floor(self._years_in_business)
+
+    def on_add(self) -> None:
+        self.get_type().instances += 1
+
+    def on_remove(self) -> None:
+        self.get_type().instances -= 1
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -248,6 +288,9 @@ class Business(Component):
             "employees": self._employees,
             "owner": self._owner if self._owner else -1,
         }
+
+    def get_owner(self) -> Optional[int]:
+        return self._owner
 
     def needs_owner(self) -> bool:
         return self._owner is None and self.get_type().owner_type is not None
@@ -262,13 +305,29 @@ class Business(Component):
         return self._name
 
     def get_employees(self) -> List[int]:
-        return list(map(lambda x: x[1], self._employees))
+        """Return a list of IDs for current employees"""
+        return list(self._employees.keys())
 
-    def hire_owner(self, character: int) -> None:
+    def add_employee(self, character: int, position: str) -> None:
+        """Add character to employees and remove a vacant position"""
+        self._employees[character] = position
+        self._open_positions[position] -= 1
+
+    def remove_employee(self, character: int) -> None:
+        """Remove a character as an employee and add a vacant position"""
+        position = self._employees[character]
+        del self._employees[character]
+        self._open_positions[position] += 1
+
+    def set_owner(self, character: Optional[int]) -> None:
+        """Set the owner for this business"""
         self._owner = character
 
-    def __del__(self) -> None:
-        self.get_type().instances = self.get_type().instances - 1
+    def set_business_status(self, status: BusinessStatus) -> None:
+        self._status = status
+
+    def increment_years_in_business(self, years: float) -> None:
+        self._years_in_business += years
 
     def __repr__(self) -> str:
         """Return printable representation"""
@@ -283,13 +342,13 @@ class Business(Component):
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Business:
-        name_factory = world.get_resource(TraceryNameFactory)
+        engine = world.get_resource(NeighborlyEngine)
         type_name: str = kwargs["business_type"]
 
         business_type = BusinessDefinition.get_registered_type(type_name)
 
         name = (
-            name_factory.get_name(business_type.name_pattern)
+            engine.name_generator.get_name(business_type.name_pattern)
             if business_type.name_pattern
             else type_name
         )

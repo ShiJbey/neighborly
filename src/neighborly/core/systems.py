@@ -11,18 +11,13 @@ from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.helpers import get_locations, move_to_location, try_generate_family
-from neighborly.core.life_event import LifeEventLogger, LifeEventRule
-from neighborly.core.position import Position2D
-from neighborly.core.relationship import (
-    Relationship,
-    RelationshipManager,
-    RelationshipTag,
-)
+from neighborly.core.life_event import LifeEventRule
+from neighborly.core.location import Location
+from neighborly.core.relationship import Relationship, RelationshipTag
 from neighborly.core.residence import Residence
 from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import Routine
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
-from neighborly.core.town import Town
+from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
 from neighborly.core.utils.utilities import chunk_list
 
 logger = logging.getLogger(__name__)
@@ -31,17 +26,16 @@ logger = logging.getLogger(__name__)
 class RoutineSystem:
     def __call__(self, world: World, **kwargs) -> None:
         date = world.get_resource(SimDateTime)
+        engine = world.get_resource(NeighborlyEngine)
 
-        for entity, (character, routine) in world.get_components(
-            GameCharacter, Routine
-        ):
+        for _, (character, routine) in world.get_components(GameCharacter, Routine):
             character = cast(GameCharacter, character)
             routine = cast(Routine, routine)
 
             routine_entries = routine.get_entries(date.weekday_str, date.hour)
 
             if routine_entries:
-                chosen_entry = world.get_resource(DefaultRNG).choice(routine_entries)
+                chosen_entry = engine.rng.choice(routine_entries)
                 location_id = (
                     character.location_aliases[str(chosen_entry.location)]
                     if isinstance(chosen_entry.location, str)
@@ -49,17 +43,35 @@ class RoutineSystem:
                 )
                 move_to_location(
                     world,
-                    entity,
-                    location_id,
+                    character,
+                    world.get_gameobject(location_id).get_component(Location),
                 )
+            else:
 
-            potential_locations = get_locations(world)
-            if potential_locations:
-                loc_id, _ = world.get_resource(DefaultRNG).choice(potential_locations)
-                move_to_location(world, entity, loc_id)
+                potential_locations = get_locations(world)
+
+                if potential_locations:
+                    _, location = engine.rng.choice(potential_locations)
+                    move_to_location(world, character, location)
 
 
-class TimeSystem:
+class LinearTimeSystem:
+    """
+    Advances simulation time using a linear time increment
+    """
+
+    __slots__ = "increment"
+
+    def __init__(self, increment: TimeDelta) -> None:
+        self.increment: TimeDelta = increment
+
+    def __call__(self, world: World, **kwargs) -> None:
+        """Advance time"""
+        current_date = world.get_resource(SimDateTime)
+        current_date += self.increment
+
+
+class DynamicLoDTimeSystem:
     """
     Updates the current date/time in the simulation
     using a variable level-of-detail where a subset
@@ -86,7 +98,7 @@ class TimeSystem:
 
     def __call__(self, world: World, **kwargs):
         current_date = world.get_resource(SimDateTime)
-        rng = world.get_resource(DefaultRNG)
+        rng = world.get_resource(NeighborlyEngine).rng
 
         if self._current_year != current_date.year:
             # Generate a new set of days to simulate this year
@@ -155,7 +167,7 @@ class LifeEventSystem:
         else:
             self.time_until_run = self.interval
 
-        rng = world.get_resource(DefaultRNG)
+        # rng = world.get_resource(DefaultRNG)
         # for event_rule in self._event_registry.values():
         #     for event, participants in event_rule.pattern_fn(world):
         #         if rng.random() < event_rule.probability:
@@ -226,50 +238,14 @@ class AddResidentsSystem:
         registered in the engine instance
     """
 
-    __slots__ = "interval", "time_until_run", "character_weights", "residence_weights"
-
-    def __init__(
-        self,
-        interval: int = 24,
-        character_weights: Optional[Dict[str, int]] = None,
-        residence_weights: Optional[Dict[str, int]] = None,
-    ) -> None:
-        self.interval = 24
-        self.time_until_run = interval
-        self.character_weights: Dict[str, int] = (
-            character_weights if character_weights else {}
-        )
-        self.residence_weights: Dict[str, int] = (
-            residence_weights if residence_weights else {}
-        )
-
     def __call__(self, world: World, **kwargs) -> None:
-        delta_time = world.get_resource(SimDateTime).delta_time
         engine = world.get_resource(NeighborlyEngine)
         date_time = world.get_resource(SimDateTime)
-        event_logger = world.get_resource(LifeEventLogger)
 
-        self.time_until_run -= delta_time
+        return
 
-        # Run when timer reaches zero then reset
-        if self.time_until_run > 0:
-            return
-        else:
-            self.time_until_run = self.interval
-
-        for _, town in world.get_component(Town):
-
-            # Attempt to build or find a house for this character to move into
-            residence = self.try_build_residence(world, engine, town)
-            if residence is None:
-                residence = self.try_get_abandoned(world, engine)
-            if residence is None:
-                return
-
-            chosen_archetype = self.select_random_character_archetype(world, engine)
-            character = engine.create_character(
-                world, chosen_archetype, age_range="young_adult"
-            )
+        for _, residence in world.get_component(Residence):
+            character = engine.spawn_character(world)
             character.add_component(YoungAdult())
             world.add_gameobject(character)
 
@@ -330,8 +306,6 @@ class AddResidentsSystem:
             if spouse:
                 spouse.handle_event(home_purchase_event)
 
-            event_logger.log_event(home_purchase_event, home_owner_ids)
-
             # Create and handle move event
 
             resident_ids: List[int] = [character.id]
@@ -339,7 +313,7 @@ class AddResidentsSystem:
                 str(character.get_component(GameCharacter).name)
             ]
 
-            residence_comp = residence.get_component(Residence)
+            residence_comp = residence.gameobject.get_component(Residence)
             residence_comp.add_resident(character.id)
             residence_comp.add_owner(character.id)
 
@@ -357,65 +331,9 @@ class AddResidentsSystem:
             residence_move_event = MoveResidenceEvent(
                 timestamp=date_time.to_iso_str(),
                 residence_id=residence.id,
-                character_ids=tuple(resident_ids),
-                character_names=tuple(resident_names),
+                character_id=tuple(resident_ids),
+                character_name=tuple(resident_names),
             )
 
             for i in resident_ids:
                 world.get_gameobject(i).handle_event(residence_move_event)
-
-            event_logger.log_event(residence_move_event, resident_ids)
-
-    def select_random_character_archetype(
-        self, world: World, engine: NeighborlyEngine
-    ) -> str:
-        """Randomly select from the available character archetypes using weighted random"""
-        rng = world.get_resource(DefaultRNG)
-
-        archetype_names = [a.get_name() for a in engine.get_character_archetypes()]
-        weights = []
-
-        # override weights
-        for name in archetype_names:
-            weights.append(self.character_weights.get(name, 1))
-
-        return rng.choices(archetype_names, weights=weights, k=1)[0]
-
-    def try_build_residence(
-        self, world: World, engine: NeighborlyEngine, town: Town
-    ) -> Optional[GameObject]:
-
-        if town.layout.has_vacancy():
-            chosen_archetype = self.select_random_residence_archetype(world, engine)
-            residence = engine.create_residence(world, chosen_archetype)
-            space = town.layout.reserve_space(residence.id)
-            residence.get_component(Position2D).x = space[0]
-            residence.get_component(Position2D).y = space[1]
-            world.add_gameobject(residence)
-            return residence
-        return None
-
-    def select_random_residence_archetype(
-        self, world: World, engine: NeighborlyEngine
-    ) -> str:
-        """Randomly select from the available residence archetypes using weighted random"""
-        rng = world.get_resource(DefaultRNG)
-
-        archetype_names = [a.get_name() for a in engine.get_residence_archetypes()]
-        weights = []
-
-        # override weights
-        for name in archetype_names:
-            weights.append(self.residence_weights.get(name, 1))
-
-        return rng.choices(archetype_names, weights=weights, k=1)[0]
-
-    def try_get_abandoned(
-        self, world: World, engine: NeighborlyEngine
-    ) -> Optional[GameObject]:
-        residences = list(
-            filter(lambda res: res[1].is_vacant(), world.get_component(Residence))
-        )
-        if residences:
-            return world.get_resource(DefaultRNG).choice(residences)[1].gameobject
-        return None

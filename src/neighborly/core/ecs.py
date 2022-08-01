@@ -97,7 +97,7 @@ class GameObject:
         "_name",
         "_components",
         "_world",
-        "_archetype_name",
+        "_archetype",
         "_event_listeners",
     )
 
@@ -106,13 +106,13 @@ class GameObject:
         name: str = "GameObject",
         components: Iterable[Component] = (),
         world: Optional[World] = None,
-        archetype_name: Optional[str] = None,
+        archetype: Optional[EntityArchetype] = None,
     ) -> None:
         self._name: str = name
         self._id: int = self.generate_id()
         self._world: Optional[World] = world
         self._components: Dict[str, Component] = {}
-        self._archetype_name: Optional[str] = archetype_name
+        self._archetype: Optional[EntityArchetype] = archetype
         self._event_listeners: List[IEventListener] = []
 
         if components:
@@ -130,9 +130,9 @@ class GameObject:
         return self._name
 
     @property
-    def archetype_name(self) -> Optional[str]:
+    def archetype(self) -> Optional[EntityArchetype]:
         """Return the name of the archetype for creating this GameObject"""
-        return self._archetype_name
+        return self._archetype
 
     @property
     def world(self) -> World:
@@ -145,10 +145,9 @@ class GameObject:
     def components(self) -> List[Component]:
         return list(self._components.values())
 
-    def set_world(self, world: Optional[World]) -> GameObject:
+    def set_world(self, world: Optional[World]) -> None:
         """set the world instance"""
         self._world = world
-        return self
 
     def add_component(self, component: Component) -> GameObject:
         """Add a component to this GameObject"""
@@ -156,16 +155,16 @@ class GameObject:
         self._components[type(component).__name__] = component
         if isinstance(component, IEventListener):
             self._event_listeners.append(component)
+        component.on_add()
         return self
 
-    def remove_component(self, component_type: Type[_CT]) -> GameObject:
+    def remove_component(self, component_type: Type[_CT]) -> None:
         """Add a component to this GameObject"""
         component = self._components[component_type.__name__]
-        component.set_gameobject(None)
         if isinstance(component, IEventListener):
             self._event_listeners.remove(component)
+        component.on_remove()
         del self._components[component_type.__name__]
-        return self
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
         return cast(_CT, self._components[component_type.__name__])
@@ -181,7 +180,7 @@ class GameObject:
             "id": self.id,
             "name": self.name,
             "components": [c.to_dict() for c in self._components.values()],
-            "archetype": self.archetype_name,
+            "archetype": self.archetype.name if self.archetype else "",
         }
 
     def handle_event(self, event: Event) -> None:
@@ -236,11 +235,18 @@ class Component(ABC):
         """set the gameobject instance for this component"""
         self._gameobject = gameobject
 
+    def on_add(self) -> None:
+        """Run when the component is added to the GameObject"""
+        return
+
+    def on_remove(self) -> None:
+        """Run when the component is removed from the GameObject"""
+        return
+
     @classmethod
-    @abstractmethod
     def create(cls, world, **kwargs) -> Component:
         """Create an instance of the component using a reference to the World object and additional parameters"""
-        raise NotImplementedError
+        raise cls()
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the component to a dict"""
@@ -329,7 +335,10 @@ class World:
     def _clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
-            self._gameobjects[gameobject_id].set_world(None)
+            gameobject = self._gameobjects[gameobject_id]
+            if gameobject.archetype:
+                gameobject.archetype.decrement_instances()
+            gameobject.set_world(None)
             del self._gameobjects[gameobject_id]
 
         self._dead_gameobjects.clear()
@@ -351,7 +360,7 @@ class World:
         self._setup_systems.append((priority, system))
         self._setup_systems.sort(key=lambda pair: pair[0], reverse=True)
 
-    def run(self, **kwargs) -> None:
+    def step(self, **kwargs) -> None:
         """Call the process method on all systems"""
         self._clear_dead_gameobjects()
 
@@ -365,30 +374,102 @@ class World:
 
     def add_resource(self, resource: Any) -> None:
         """Add a global resource to the world"""
-        resource_name = type(resource).__name__
-        if resource_name in self._resources:
-            logger.warning(f"Replacing existing resource of type: {resource_name}")
-        self._resources[resource_name] = resource
+        resource_type = type(resource)
+        if resource_type in self._resources:
+            logger.warning(f"Replacing existing resource of type: {resource_type}")
+        self._resources[resource_type] = resource
 
-    def remove_resource(self, resource: Type[_RT]) -> None:
+    def remove_resource(self, resource_type: Any) -> None:
         """remove a global resource to the world"""
-        del self._resources[resource.__name__]
+        del self._resources[resource_type]
 
-    def get_resource(self, resource: Type[_RT]) -> _RT:
+    def get_resource(self, resource_type: Type[_RT]) -> _RT:
         """Add a global resource to the world"""
-        return self._resources[resource.__name__]
+        return self._resources[resource_type]
 
-    def has_resource(self, resource: Type[_RT]) -> bool:
+    def has_resource(self, resource_type: Any) -> bool:
         """Return true if the world has the given resource"""
-        return resource.__name__ in self._resources
+        return resource_type in self._resources
 
-    def try_resource(self, resource: Type[_RT]) -> Optional[_RT]:
+    def try_resource(self, resource_type: Type[_RT]) -> Optional[_RT]:
         """Return the resource if it exists, None otherwise"""
-        return self._resources.get(resource.__name__)
+        return self._resources.get(resource_type)
 
     def __repr__(self) -> str:
         return "World(gameobjects={}, resources={}, systems={})".format(
             {g.id: g for g in self._gameobjects.values()},
             list(self._resources.values()),
             [s[1] for s in self._systems],
+        )
+
+
+class EntityArchetype:
+    """
+    Organizes information for constructing components that compose GameObjects.
+
+    Attributes
+    ----------
+    _name: str
+        (Read-only) The name of the entity archetype
+    _components: Dict[Type[Component], Dict[str, Any]]
+        Dict of components used to construct this archetype
+    """
+
+    __slots__ = "_name", "_components", "_instances"
+
+    def __init__(self, name: str) -> None:
+        self._name: str = name
+        self._components: Dict[Type[Component], Dict[str, Any]] = {}
+        self._instances: int = 0
+
+    @property
+    def name(self) -> str:
+        """Returns the name of this archetype"""
+        return self._name
+
+    @property
+    def components(self) -> Dict[Type[Component], Dict[str, Any]]:
+        """Returns a list of components in this archetype"""
+        return {**self._components}
+
+    @property
+    def instances(self) -> int:
+        return self._instances
+
+    def add(self, component_type: Type[Component], **kwargs: Any) -> EntityArchetype:
+        """
+        Add a component to this archetype
+
+        Parameters
+        ----------
+        component_type: subclass of neighborly.core.ecs.Component
+            The component type to add to the entity archetype
+        **kwargs: Dict[str, Any]
+            Attribute overrides to pass to the component
+        """
+        self._components[component_type] = {**kwargs}
+        return self
+
+    def increment_instances(self) -> None:
+        self._instances += 1
+
+    def decrement_instances(self) -> None:
+        self._instances -= 1
+
+    def spawn(self, world: World) -> GameObject:
+        """Create a new GameObject from the Archetype and add it to the world"""
+        gameobject = GameObject(name=self.name, archetype=self)
+
+        for component_type, options in self.components.items():
+            gameobject.add_component(component_type.create(world, **options))
+
+        world.add_gameobject(gameobject)
+
+        self.increment_instances()
+
+        return gameobject
+
+    def __repr__(self) -> str:
+        return "{}(name={}, components={})".format(
+            self.__class__.__name__, self._name, self._components
         )

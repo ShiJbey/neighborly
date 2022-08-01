@@ -1,33 +1,38 @@
 import json
-from abc import ABC, abstractmethod
-from typing import Union
+import pathlib
+import os
+from typing import Optional
 
 from neighborly.core.ecs import World
-from neighborly.core.life_event import LifeEventLogger
 from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town
 
 
-class NeighborlyExporter(ABC):
-    """Serializes the simulation into a string or byte format"""
-
-    @abstractmethod
-    def export(self, world: World) -> Union[str, bytes]:
-        raise NotImplementedError()
-
-
-class NeighborlyJsonExporter(NeighborlyExporter):
-    """Serializes the simulation world to a JSON string"""
+class NeighborlyJsonExporter:
+    """Serializes the simulation to a JSON string"""
 
     def export(self, world: World) -> str:
         return json.dumps(
             {
                 "gameobjects": {g.id: g.to_dict() for g in world.get_gameobjects()},
-                "resources": world.get_resource(RelationshipNetwork).to_dict(),
-                "events": [
-                    e.to_dict()
-                    for e in world.get_resource(LifeEventLogger).get_all_events()
-                ],
+                "relationships": world.get_resource(RelationshipNetwork).to_dict(),
             }
         )
+
+
+class NeighborlyHTMLExporter:
+    """Generates HTML Pages describing the generated town"""
+
+    def export(
+        self,
+        world: World,
+        output: Optional[str] = None,
+    ) -> None:
+        """Create HTML files for the town"""
+
+        # Step 1: Create a directory with the name of the town
+        output_dir = pathlib.Path(output if output else os.getcwd())
+        output_dir = output_dir / world.get_resource(Town).name
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Step 2: Create a main home page

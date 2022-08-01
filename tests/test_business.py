@@ -6,11 +6,11 @@ from typing import Any, Dict
 import pytest
 
 from neighborly.core.business import (
+    BusinessDefinition,
     Occupation,
     OccupationDefinition,
-    BusinessDefinition,
 )
-from neighborly.core.ecs import GameObject
+from neighborly.core.ecs import Component, GameObject
 from neighborly.core.status import Status
 
 

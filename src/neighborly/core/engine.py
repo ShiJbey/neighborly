@@ -2,58 +2,10 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Tuple, Type
 
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.ecs import Component, EntityArchetype, GameObject, World
 from neighborly.core.name_generation import TraceryNameFactory
-
-
-class EntityArchetype:
-    """
-    Organizes information for constructing components that compose GameObjects.
-
-    Attributes
-    ----------
-    _name: str
-        (Read-only) The name of the entity archetype
-    _components: Dict[Type[Component], Dict[str, Any]]
-        Dict of components used to construct this archetype
-    """
-
-    __slots__ = "_name", "_components"
-
-    def __init__(self, name: str) -> None:
-        self._name: str = name
-        self._components: Dict[Type[Component], Dict[str, Any]] = {}
-
-    @property
-    def name(self) -> str:
-        """Returns the name of this archetype"""
-        return self._name
-
-    @property
-    def components(self) -> Dict[Type[Component], Dict[str, Any]]:
-        """Returns a list of components in this archetype"""
-        return {**self._components}
-
-    def add(self, component_type: Type[Component], **kwargs: Any) -> EntityArchetype:
-        """
-        Add a component to this archetype
-
-        Parameters
-        ----------
-        component_type: subclass of neighborly.core.ecs.Component
-            The component type to add to the entity archetype
-        **kwargs: Dict[str, Any]
-            Attribute overrides to pass to the component
-        """
-        self._components[component_type] = {**kwargs}
-        return self
-
-    def __repr__(self) -> str:
-        return "{}(name={}, components={})".format(
-            self.__class__.__name__, self._name, self._components
-        )
 
 
 @dataclass
@@ -202,7 +154,7 @@ class NeighborlyEngine:
             except KeyError:
                 raise ArchetypeNotFoundError(archetype_name)
 
-            character = self.spawn_archetype(world, archetype)
+            character = archetype.spawn(world)
             world.add_gameobject(character)
             return character
         else:
@@ -212,17 +164,20 @@ class NeighborlyEngine:
                 archetype_choices.append(archetype)
                 archetype_weights.append(info.spawn_multiplier)
 
-            # Choose an archetype at random
-            archetype: EntityArchetype = random.choices(
-                population=archetype_choices, weights=archetype_weights, k=1
-            )[0]
+            if archetype_choices:
+                # Choose an archetype at random
+                archetype: EntityArchetype = random.choices(
+                    population=archetype_choices, weights=archetype_weights, k=1
+                )[0]
 
-            character = self.spawn_archetype(world, archetype)
-            world.add_gameobject(character)
-            return character
+                character = archetype.spawn(world)
+                world.add_gameobject(character)
+                return character
+            else:
+                raise ArchetypeNotFoundError("")
 
     def spawn_business(
-        self, world: World, archetype_name: Optional[str] = None
+        self, world: World, population: int, archetype_name: Optional[str] = None
     ) -> GameObject:
         if archetype_name is not None:
             try:
@@ -230,24 +185,25 @@ class NeighborlyEngine:
             except KeyError:
                 raise ArchetypeNotFoundError(archetype_name)
 
-            business = self.spawn_archetype(world, archetype)
+            business = archetype.spawn(world)
             world.add_gameobject(business)
             return business
         else:
             archetype_choices: List[EntityArchetype] = []
             archetype_weights: List[int] = []
-            for _, (archetype, info) in self._business_archetypes.items():
+            for archetype, info in self.get_eligible_business_archetypes(population):
                 archetype_choices.append(archetype)
                 archetype_weights.append(info.spawn_multiplier)
 
-            # Choose an archetype at random
-            archetype: EntityArchetype = random.choices(
-                population=archetype_choices, weights=archetype_weights, k=1
-            )[0]
+            if archetype_choices:
+                # Choose an archetype at random
+                archetype: EntityArchetype = random.choices(
+                    population=archetype_choices, weights=archetype_weights, k=1
+                )[0]
 
-            business = self.spawn_archetype(world, archetype)
-            world.add_gameobject(business)
-            return business
+                business = archetype.spawn(world)
+                world.add_gameobject(business)
+                return business
 
     def spawn_residence(
         self, world: World, archetype_name: Optional[str] = None
@@ -258,7 +214,7 @@ class NeighborlyEngine:
             except KeyError:
                 raise ArchetypeNotFoundError(archetype_name)
 
-            residence = self.spawn_archetype(world, archetype)
+            residence = archetype.spawn(world)
             world.add_gameobject(residence)
             return residence
         else:
@@ -273,17 +229,24 @@ class NeighborlyEngine:
                 population=archetype_choices, weights=archetype_weights, k=1
             )[0]
 
-            residence = self.spawn_archetype(world, archetype)
+            residence = archetype.spawn(world)
             world.add_gameobject(residence)
             return residence
 
-    def spawn_archetype(self, world: World, archetype: EntityArchetype) -> GameObject:
-        """Create a new GameObject from the Archetype and add it to the world"""
-        gameobject = GameObject(archetype_name=archetype.name)
+    def get_eligible_business_archetypes(
+        self, population: int
+    ) -> List[Tuple[EntityArchetype, BusinessInfo]]:
+        """
+        Return all business archetypes that may be built
+        given the state of the simulation
+        """
+        eligible_types = []
 
-        for component_type, options in archetype.components.items():
-            gameobject.add_component(component_type.create(world, **options))
+        for archetype, info in self._business_archetypes.values():
+            if (
+                archetype.instances < info.max_instances
+                and population >= info.min_population
+            ):
+                eligible_types.append((archetype, info))
 
-        world.add_gameobject(gameobject)
-
-        return gameobject
+        return eligible_types

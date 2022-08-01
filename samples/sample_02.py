@@ -1,29 +1,29 @@
 """
 In this sample, I am adjusting the event system to be more ergonomic
 """
+import random
 from dataclasses import dataclass
 from pprint import pprint
-import random
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
-from neighborly.core.ecs import GameObject, Component
-from neighborly.core.life_event import (
-    LifeEvent,
-    event_precondition,
-    event_effect,
-    ILifeEventCallback,
-)
-from neighborly.core.relationship import RelationshipTag
-from neighborly.core.social_network import RelationshipNetwork
+from neighborly.core.business import Occupation
 from neighborly.core.character import (
+    AgingConfig,
     CharacterDefinition,
     CharacterName,
     FamilyGenerationOptions,
     GameCharacter,
     GenerationConfig,
-    LifeCycleConfig,
 )
-from neighborly.core.business import Occupation
+from neighborly.core.ecs import Component, GameObject
+from neighborly.core.life_event import (
+    ILifeEventCallback,
+    LifeEvent,
+    event_effect,
+    event_precondition,
+)
+from neighborly.core.relationship import RelationshipTag
+from neighborly.core.social_network import RelationshipNetwork
 from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 
 # ==============================
@@ -245,7 +245,7 @@ def test_event_effect(gameobject: GameObject, event: LifeEvent) -> bool:
 
 BASE_CHARACTER_DEF = CharacterDefinition(
     name="BaseCharacter",
-    lifecycle=LifeCycleConfig(
+    aging=AgingConfig(
         romantic_feelings_age=13,
         life_stages={
             "child": 0,

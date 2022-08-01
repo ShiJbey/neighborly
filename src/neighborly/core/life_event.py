@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import (
     Any,
@@ -10,15 +9,16 @@ from typing import (
     Dict,
     Generator,
     Generic,
-    Iterable,
     List,
     Optional,
     Protocol,
     Tuple,
+    Type,
     TypeVar,
 )
 
-from neighborly.core.ecs import GameObject, World
+from neighborly.core.ecs import Component, Event, GameObject, IEventListener, World
+from neighborly.core.engine import NeighborlyEngine
 
 logger = logging.getLogger(__name__)
 
@@ -182,31 +182,50 @@ class EventProbabilityNotFoundError(Exception):
         return self.message
 
 
-class LifeEvent(ABC):
+class LifeEvent:
     """
-    Events are things that happen in the story world that GameObjects
-    can react to.
+    LifeEvents contain information about occurrences that
+    happened in the story world.
 
-
-    Events allow neighborly to decouple the simulation logic from any
-    GameObject-specific logic that should run as a response. Events are
-    blocking. They are handled immediately by event handlers when available.
+    Attributes
+    ----------
+    name: str
+        Name of the event
+    timestamp: str
+        Timestamp for when the event occurred
+    roles: List[EventRole]
+        Roles that were involved in this event
     """
 
-    __slots__ = "timestamp"
+    __slots__ = "timestamp", "name", "roles"
 
-    def __init__(self, timestamp: str) -> None:
-        super().__init__()
+    def __init__(self, name: str, timestamp: str, roles: List[EventRole]) -> None:
+        self.name: str = name
         self.timestamp: str = timestamp
+        self.roles: List[EventRole] = [*roles]
 
-    @classmethod
-    def get_type(cls) -> str:
+    def get_type(self) -> str:
         """Return the type of this event"""
-        return cls.__name__
+        return self.name
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
-        return {"event_type": self.get_type(), "timestamp": self.timestamp}
+        return {
+            "name": self.name,
+            "timestamp": self.timestamp,
+            "roles": {role.name: role.gid for role in self.roles},
+        }
+
+    def __getitem__(self, role_name: str) -> int:
+        for role in self.roles:
+            if role == role_name:
+                return role.gid
+
+    def __repr__(self) -> str:
+        return f"LifeEvent(name={self.name}, timestamp={self.timestamp}, roles=[{self.roles}]"
+
+    def __str__(self) -> str:
+        return f"{self.name} [at {self.timestamp}] : {', '.join(map(lambda r: str(r), self.roles))}"
 
 
 class IPatternFn(Protocol):
@@ -230,7 +249,7 @@ class LifeEventRule:
         A short description of this rule
     pattern_fn: IPatternFn
         A precondition function that needs to return True for the event to fire
-    effect: LifeEventCallback
+    effect_fn: LifeEventCallback
         An effect function that runs if the event fires
     probability: float
         A functions that returns the probability of the event firing
@@ -297,69 +316,192 @@ class LifeEventHandler:
         self.effects.append(fn)
 
 
-class LifeEventLogger:
+class LifeEventLogger(Component, IEventListener):
     """Records a collection of life events associated with GameObjects"""
 
-    __slots__ = "_events", "_game_objects", "_next_event_id", "_subscribers"
+    __slots__ = "events"
 
     def __init__(self) -> None:
-        self._next_event_id: int = 0
-        self._events: list[LifeEvent] = []
-        self._game_objects: defaultdict[int, list[int]] = defaultdict(lambda: list())
-        self._subscribers: Dict[int, List[Callable[[int, LifeEvent], None]]] = {}
+        super().__init__()
+        self.events: list[LifeEvent] = []
 
-    def log_event(self, event: LifeEvent, gameobject_ids: Iterable[int]) -> None:
-        """Add an event to the record of all events and associate it with character"""
-        self._events.append(event)
+    @classmethod
+    def create(cls, world, **kwargs) -> Component:
+        return LifeEventLogger()
 
-        for gid in gameobject_ids:
-            self._game_objects[gid].append(self._next_event_id)
-            if gid in self._subscribers:
-                map(lambda f: f(gid, event), self._subscribers[gid])
+    def will_handle_event(self, event: Event) -> bool:
+        return True
 
-        logger.debug(str(event))
+    def handle_event(self, event: Event) -> bool:
+        if isinstance(event, LifeEvent):
+            self.events.append(event)
+        return True
 
-        self._next_event_id += 1
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "events": [e.to_dict() for e in self.events]}
 
-    def get_all_events(self) -> List[LifeEvent]:
-        """Get all recorded events"""
-        return self._events
 
-    def get_events_for(self, gid: int) -> List[LifeEvent]:
-        """Get all the life events for a game object"""
-        return [self._events[i] for i in self._game_objects[gid]]
+_CT = TypeVar("_CT")
 
-    def subscribe_to_gameobject(
-        self, gid: int, fn: Callable[[int, LifeEvent], None]
+
+class EventRole:
+    """
+    EventRole is a role that has a GameObject bound to it.
+    It does not contain any information about filtering for
+    the role.
+
+    Attributes
+    ----------
+    name: str
+        Name of the role
+    gid: int
+        Unique identifier for the GameObject bound to this role
+    components: List[Type[Component]]
+        Component types associated with this role that are
+        associated with the bound GameObject
+    """
+
+    __slots__ = "name", "gid", "components"
+
+    def __init__(self, name: str, gid: int, components: List[Type[Component]]) -> None:
+        self.name: str = name
+        self.gid: int = gid
+        self.components: List[Type[Component]] = [*components]
+
+
+class EventRoleType:
+    """
+    Information about a role within a LifeEvent, and logic
+    for how to filter which gameobjects can be bound to the
+    role.
+    """
+
+    __slots__ = "name", "filter_fn", "components"
+
+    def __init__(
+        self,
+        name: str,
+        components: List[Type[Component]],
+        filter_fn: Optional[Callable[..., bool]] = None,
     ) -> None:
-        if gid not in self._subscribers:
-            self._subscribers[gid] = []
-        self._subscribers[gid].append(fn)
+        self.name: str = name
+        self.components: List[Type[Component]] = [*components]
+        self.filter_fn: Callable[..., bool] = filter_fn if filter_fn else lambda: True
+
+    def fill_role(
+        self, world: World, life_event: LifeEvent, candidate: Optional[int] = None
+    ) -> Optional[EventRole]:
+        """Attempt to fill a role for a LifeEvent"""
+        if candidate:
+            if self.filter_fn(
+                world.has_components(candidate, *self.components), life_event
+            ):
+                return EventRole(self.name, candidate, self.components)
+
+        else:
+
+            if self.filter_fn is None:
+                candidate_list = world.get_components(*self.components)
+            else:
+                candidate_list = world.get_components(*self.components)
+
+            if any(candidate_list):
+                chosen_candidate = world.get_resource(NeighborlyEngine).rng.choice(
+                    candidate_list
+                )
+                return EventRole(self.name, chosen_candidate[0], self.components)
+
+        return None
 
 
-class ILifeEventListener(ABC):
-    """Abstract interface that components inherit from when they want to listen for events"""
+class LifeEventType:
+    """
+    User-facing class for implementing behaviors around life events
 
-    @abstractmethod
-    def check_preconditions(self, event: LifeEvent) -> bool:
-        """
-        Check the preconditions for this event type to see if they pass
+    This is adapted from:
+    https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
+    """
 
-        Returns
-        -------
-        bool
-            True if the event passes all the preconditions
-        """
-        raise NotImplementedError()
+    __slots__ = (
+        "name",
+        "probability",
+        "roles",
+        "modification",
+    )
 
-    @abstractmethod
-    def handle_event(self, event: LifeEvent) -> bool:
-        """
-        Perform logic when an event occurs
+    def __init__(
+        self,
+        name: str,
+        roles: List[EventRoleType],
+        probability: float = 1.0,
+        modification: Optional[Callable[..., None]] = None,
+    ) -> None:
+        self.name: str = name
+        self.roles: List[EventRoleType] = roles
+        self.probability: float = probability
+        self.modification: Optional[Callable[..., None]] = modification
 
-        Returns
-        -------
-        bool
-            True if the event was handled successfully
-        """
-        raise NotImplementedError()
+    def instantiate(self, *args, **kwargs) -> LifeEvent:
+        ...
+
+
+class EventRoleDatabase:
+
+    _registry: Dict[str, EventRoleType] = {}
+
+    @classmethod
+    def register(cls, name: str, event_role_type: EventRoleType) -> None:
+        """Register a new LifeEventType mapped to a name"""
+        cls._registry[name] = event_role_type
+
+    @classmethod
+    def __getitem__(cls, name: str) -> EventRoleType:
+        """Get a LifeEventType using a name"""
+        return cls._registry[name]
+
+
+class LifeEventDatabase:
+    """
+    Static class used to store instances of LifeEventTypes for
+    use at runtime.
+    """
+
+    _registry: Dict[str, LifeEventType] = {}
+
+    @classmethod
+    def register(cls, name: str, life_event_type: LifeEventType) -> None:
+        """Register a new LifeEventType mapped to a name"""
+        cls._registry[name] = life_event_type
+
+    @classmethod
+    def __getitem__(cls, name: str) -> LifeEventType:
+        """Get a LifeEventType using a name"""
+        return cls._registry[name]
+
+
+class LifeEventSimulator:
+    """
+    LifeEventSimulator handles firing LifeEvents for characters
+    and performing character behaviors
+
+    Attributes
+    ----------
+    event_history: List[LifeEvent]
+        List of events that have occurred over the history of the simulation
+    """
+
+    __slots__ = "event_history"
+
+    def __init__(self) -> None:
+        self.event_history: List[LifeEvent] = []
+
+    def try_execute_event(self, event_type: LifeEventType) -> None:
+        event: LifeEvent = event_type.instantiate(...)
+        if event is not None:
+            if event_type.modification is not None:
+                event_type.modification(event)
+            self.event_history.append(event)
+
+    def __call__(self, world: World, **kwargs) -> None:
+        """Simulate LifeEvents for characters"""
+        ...

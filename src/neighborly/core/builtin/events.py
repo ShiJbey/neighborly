@@ -1,7 +1,31 @@
 from typing import Any, Dict, Tuple
 
-from neighborly.core.life_event import LifeEvent
+from neighborly.core.character import GameCharacter
+from neighborly.core.life_event import (
+    EventRoleDatabase,
+    EventRoleType,
+    LifeEventDatabase,
+    LifeEventType,
+)
 from neighborly.core.relationship import Relationship
+
+EventRoleDatabase.register(
+    "Parent", EventRoleType("Parent", components=[GameCharacter])
+)
+
+EventRoleDatabase.register("Child", EventRoleType("Child", components=[GameCharacter]))
+
+LifeEventDatabase.register(
+    "Child-Birth",
+    LifeEventType(
+        "Child-Birth",
+        [
+            EventRoleDatabase["Child"],
+            EventRoleDatabase["Parent"],
+            EventRoleDatabase["Parent"],
+        ],
+    ),
+)
 
 
 class ChildBirthEvent(LifeEvent):
@@ -477,18 +501,18 @@ class RetirementEvent(LifeEvent):
 class MoveResidenceEvent(LifeEvent):
     event_type: str = "move-residence"
 
-    __slots__ = ("character_ids", "character_names", "residence_id")
+    __slots__ = ("character_id", "character_name", "residence_id")
 
     def __init__(
         self,
         timestamp: str,
-        character_ids: Tuple[int, ...],
-        character_names: Tuple[str, ...],
+        character_id: int,
+        character_name: str,
         residence_id: int,
     ) -> None:
         super().__init__(timestamp)
-        self.character_names: Tuple[str, ...] = character_names
-        self.character_ids: Tuple[int, ...] = character_ids
+        self.character_name: str = character_name
+        self.character_id: int = character_id
         self.residence_id: int = residence_id
 
     @classmethod
@@ -498,13 +522,14 @@ class MoveResidenceEvent(LifeEvent):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "character_names": self.character_names,
-            "character_ids": self.character_ids,
+            "character_name": self.character_name,
+            "character_id": self.character_id,
+            "residence_id": self.residence_id,
         }
 
     def __str__(self) -> str:
         return "({}) {} moved to a new residence.".format(
-            self.timestamp, self.character_names
+            self.timestamp, self.character_name
         )
 
 
@@ -763,18 +788,18 @@ class SocializeEvent(LifeEvent):
 class HomePurchaseEvent(LifeEvent):
     event_type: str = "home-purchase"
 
-    __slots__ = ("character_ids", "character_names", "residence_id")
+    __slots__ = ("character_id", "character_name", "residence_id")
 
     def __init__(
         self,
         timestamp: str,
-        character_ids: Tuple[int, ...],
-        character_names: Tuple[str, ...],
+        character_id: int,
+        character_name: str,
         residence_id: int,
     ) -> None:
         super().__init__(timestamp)
-        self.character_names: Tuple[str, ...] = character_names
-        self.character_ids: Tuple[int, ...] = character_ids
+        self.character_name: str = character_name
+        self.character_id: int = character_id
         self.residence_id: int = residence_id
 
     @classmethod
@@ -784,13 +809,13 @@ class HomePurchaseEvent(LifeEvent):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "character_names": self.character_names,
-            "character_ids": self.character_ids,
+            "character_name": self.character_name,
+            "character_id": self.character_id,
             "residence_id": self.residence_id,
         }
 
     def __str__(self) -> str:
-        return "({}) {} purchased a house.".format(self.timestamp, self.character_names)
+        return "({}) {} purchased a house.".format(self.timestamp, self.character_name)
 
 
 class BecomeFriendsEvent(LifeEvent):

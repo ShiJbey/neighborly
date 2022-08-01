@@ -1,9 +1,9 @@
 import logging
 import random
 
-from neighborly.core.rng import DefaultRNG
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.default_plugin import DefaultPlugin
+from neighborly.plugins.talktown import TalkOfTheTownPlugin
 from neighborly.plugins.weather_plugin import WeatherPlugin
 from neighborly.simulation import Simulation
 
@@ -11,10 +11,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
     sim = (
-        Simulation.default(seed=random.randint(0, 999999))
+        Simulation.create(seed=random.randint(0, 999999))
         .add_plugin(DefaultPlugin())
         .add_plugin(WeatherPlugin())
-        .add_plugin("neighborly.plugins.talktown")
+        .add_plugin(TalkOfTheTownPlugin())
     )
 
     sim.establish_setting(

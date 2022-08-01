@@ -2,7 +2,7 @@ from neighborly.core.town import LandGrid
 
 
 def test_town_layout():
-    layout = LandGrid(5, 4)
+    layout = LandGrid((5, 4))
 
     assert layout.grid.shape == (5, 4)
     assert layout.has_vacancy() is True

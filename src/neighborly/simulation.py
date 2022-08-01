@@ -1,89 +1,17 @@
 from __future__ import annotations
 
-import importlib
-import os
-import sys
+import random
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
+from typing import Any, Literal, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
-
-import neighborly.core.utils.utilities as utilities
 from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.rng import DefaultRNG
-from neighborly.core.time import SimDateTime
-from neighborly.core.town import LandGrid
+from neighborly.core.systems import LinearTimeSystem
+from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.core.town import LandGrid, Town
 
 logger = getLogger(__name__)
-
-
-class SimulationConfig(BaseModel):
-    """Configuration parameters for a Neighborly instance
-
-    Attributes
-    ----------
-    seed: int
-        The seed provided to the random number factory
-    hours_per_timestep: int
-        How many in-simulation hours elapse every simulation tic
-    town: TownConfig
-        Configuration settings for town creation
-    """
-
-    seed: int
-    hours_per_timestep: int
-    start_date: str
-    end_date: str
-    days_per_year: int
-
-
-class PluginConfig(BaseModel):
-    """
-    Settings for loading and constructing a plugin
-
-    Attributes
-    ----------
-    name: str
-        Name of the plugin to load
-    options: Dict[str, Any]
-        Parameters to pass to the plugin when constructing
-        and loading it
-    """
-
-    name: str
-    path: Optional[str] = None
-    options: Dict[str, Any] = Field(default_factory=dict)
-
-
-class NeighborlyConfig(BaseModel):
-    """
-    Static configuration setting for the Neighborly
-
-    Attributes
-    ----------
-    simulation: SimulationConfig
-        Static configuration settings specifically for
-        the simulation instance
-    plugins: List[Union[str, PluginConfig]]
-        Names of plugins to load or names combined with
-        instantiation parameters
-    path: str
-        Path to the config file
-    """
-
-    quiet: bool = False
-    simulation: SimulationConfig
-    plugins: List[Union[str, PluginConfig]] = Field(default_factory=list)
-    path: str = "."
-
-    @classmethod
-    def from_partial(
-        cls, data: Dict[str, Any], defaults: NeighborlyConfig
-    ) -> NeighborlyConfig:
-        """Construct new config from a default config and a partial set of parameters"""
-        return cls(**utilities.merge(data, defaults.dict()))
 
 
 class PluginSetupError(Exception):
@@ -113,19 +41,66 @@ class Simulation:
         Entity-component system (ECS) that manages entities and procedures in the virtual world
     """
 
-    __slots__ = "world"
+    __slots__ = (
+        "world",
+        "engine",
+        "seed",
+        "world_gen_start",
+        "world_gen_end",
+        "town_size",
+        "time_system",
+    )
 
-    def __init__(self, world: World, engine: NeighborlyEngine) -> None:
+    def __init__(
+        self,
+        seed: int,
+        world: World,
+        engine: NeighborlyEngine,
+        world_gen_start: SimDateTime,
+        world_gen_end: SimDateTime,
+    ) -> None:
+        self.seed: int = seed
         self.world: World = world
+        self.engine: NeighborlyEngine = engine
         self.world.add_resource(engine)
+        self.world_gen_start: SimDateTime = world_gen_start
+        self.world_gen_end: SimDateTime = world_gen_end
 
     @classmethod
-    def default(cls, seed: Optional[int] = None) -> Simulation:
-        sim = Simulation(World(), NeighborlyEngine())
-        if seed is None:
-            sim.add_resource(DefaultRNG())
-        else:
-            sim.add_resource(DefaultRNG(seed))
+    def create(
+        cls,
+        seed: Optional[int] = None,
+        world_gen_start: Union[str, SimDateTime] = "0000-00-00",
+        world_gen_end: Union[str, SimDateTime] = "0100-00-00",
+        time_increment_hours: int = 12,
+        town_name: str = "#town_name#",
+        town_size: Union[
+            Literal["small", "medium", "large"], Tuple[int, int]
+        ] = "medium",
+    ) -> Simulation:
+        """Creates an instance of a Neighborly simulation with an empty world and engine"""
+        seed = seed if seed is not None else random.randint(0, 99999999)
+
+        start_date = (
+            world_gen_start
+            if isinstance(world_gen_start, SimDateTime)
+            else SimDateTime.from_iso_str(world_gen_start)
+        )
+
+        end_date = (
+            world_gen_end
+            if isinstance(world_gen_end, SimDateTime)
+            else SimDateTime.from_iso_str(world_gen_end)
+        )
+
+        sim = (
+            Simulation(seed, World(), NeighborlyEngine(seed), start_date, end_date)
+            .add_resource(start_date.copy())
+            .add_system(LinearTimeSystem(TimeDelta(hours=time_increment_hours)))
+        )
+
+        sim._create_town(town_name, town_size)
+
         return sim
 
     def add_system(self, system: ISystem, priority: int = 0) -> Simulation:
@@ -143,62 +118,26 @@ class Simulation:
         self.world.add_resource(resource)
         return self
 
-    def add_plugin(self, plugin: Union[str, PluginConfig, Plugin]) -> Simulation:
+    def add_plugin(self, plugin: Plugin, **kwargs) -> Simulation:
         """Add plugin to simulation"""
-        if isinstance(plugin, str):
-            self._dynamic_load_plugin(plugin)
-        elif isinstance(plugin, PluginConfig):
-            self._dynamic_load_plugin(plugin.name, plugin.path, **plugin.options)
-        else:
-            plugin.setup(self)
-            logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
+        plugin.setup(self, **kwargs)
+        logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
         return self
 
-    def _dynamic_load_plugin(
-        self, module_name: str, path: Optional[str] = None, **kwargs
-    ) -> None:
-        """
-        Load a plugin
-
-        Parameters
-        ----------
-        module_name: str
-            Name of module to load
-        """
-        path_prepended = False
-
-        if path:
-            path_prepended = True
-            plugin_abs_path = os.path.abspath(path)
-            sys.path.insert(0, plugin_abs_path)
-            logger.debug(
-                f"Temporarily added plugin path '{plugin_abs_path}' to sys.path"
-            )
-
-        try:
-            plugin_module = importlib.import_module(module_name)
-            plugin: Plugin = plugin_module.__dict__["get_plugin"]()
-            plugin.setup(self, **kwargs)
-            logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
-        except KeyError:
-            raise PluginSetupError(
-                f"'get_plugin' function not found for plugin: {module_name}"
-            )
-        finally:
-            # Remove the given plugin path from the front
-            # of the system path to prevent module resolution bugs
-            if path_prepended:
-                sys.path.pop(0)
-
-    def create_land(
+    def _create_town(
         self,
+        name: str,
         size: Union[Literal["small", "medium", "large"], Tuple[int, int]] = "medium",
     ) -> Simulation:
         """Create a new grid of land to build the town on"""
-        if self.world.has_resource(LandGrid):
-            logger.error("Attempted to overwrite previously generated land grid")
+        if self.world.has_resource(LandGrid) or self.world.has_resource(Town):
+            logger.error("Attempted to overwrite previously created town")
             return self
 
+        # create town
+        self.add_resource(Town.create(self.world, name=name))
+
+        # Create the land
         if isinstance(size, tuple):
             land_size = size
         else:
@@ -215,20 +154,17 @@ class Simulation:
 
         return self
 
-    def establish_setting(self, start_date: SimDateTime, end_date: SimDateTime) -> None:
+    def establish_setting(self) -> None:
         """Run the simulation until it reaches the end date in the config"""
-        self.world.add_resource(start_date)
         try:
-            while end_date > self.get_time():
+            while self.world_gen_end >= self.get_time():
                 self.step()
-                print(f"{self.get_time().to_date_str()}", end="\r")
-            print()
         except KeyboardInterrupt:
             print("\nStopping Simulation")
 
     def step(self) -> None:
         """Advance the simulation a single timestep"""
-        self.world.run()
+        self.world.step()
 
     def get_time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
@@ -236,4 +172,4 @@ class Simulation:
 
     def get_engine(self) -> NeighborlyEngine:
         """Get the NeighborlyEngine instance"""
-        return self.world.get_resource(NeighborlyEngine)
+        return self.engine

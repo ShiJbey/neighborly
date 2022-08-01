@@ -1,14 +1,15 @@
 import random
+
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject
-from neighborly.loaders import YamlDataLoader
-from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 from neighborly.core.life_event import (
     EventCallbackDatabase,
     LifeEvent,
     event_effect,
     handle_gameobject_effects,
 )
+from neighborly.loaders import YamlDataLoader
+from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 
 CHARACTER_DATA = """
 CharacterDefinitions:
@@ -121,7 +122,6 @@ def main():
             str(character.get_component(GameCharacter).name),
         ),
     )
-    # print(create_family(BASE_CHARACTER_TYPE, DefaultRNG()))
 
 
 if __name__ == "__main__":

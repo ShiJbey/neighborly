@@ -1,32 +1,33 @@
 import random
-from typing import List, Protocol, TypeVar, Generator
 from pprint import pprint
+from typing import Generator, List, Protocol, TypeVar
 
 from neighborly.core.character import (
+    AgingConfig,
     CharacterDefinition,
-    LifeCycleConfig,
-    GenerationConfig,
+    CharacterName,
     FamilyGenerationOptions,
+    GameCharacter,
+    GenerationConfig,
 )
-from neighborly.core.name_generation import get_name
-from neighborly.simulation import Simulation, NeighborlyConfig, SimulationConfig
-from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.relationship import RelationshipModifier
-from neighborly.core.social_network import RelationshipNetwork, Relationship
-from neighborly.core.time import SimDateTime
-from neighborly.core.character import GameCharacter, CharacterName
-from neighborly.core.tags import Tag
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
-    LifeEvent,
     ILifeEventCallback,
+    LifeEvent,
     check_gameobject_preconditions,
     handle_gameobject_effects,
 )
+from neighborly.core.name_generation import get_name
+from neighborly.core.relationship import RelationshipModifier
+from neighborly.core.social_network import Relationship, RelationshipNetwork
+from neighborly.core.tags import Tag
+from neighborly.core.time import SimDateTime
+from neighborly.simulation import NeighborlyConfig, Simulation, SimulationConfig
 
 BASE_CHARACTER_DEF = CharacterDefinition(
     name="BaseCharacter",
-    lifecycle=LifeCycleConfig(
+    aging=AgingConfig(
         lifespan=85,
         life_stages={
             "child": 0,

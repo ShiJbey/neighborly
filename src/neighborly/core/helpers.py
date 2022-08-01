@@ -80,10 +80,6 @@ def move_to_location(
     destination.add_character(character.gameobject.id)
     character.location = destination.gameobject.id
 
-    print(
-        f"{str(character.name)}({character.gameobject.id}) went to location {destination.gameobject.id}"
-    )
-
 
 def get_locations(world: World) -> List[Tuple[int, Location]]:
     return sorted(
@@ -161,7 +157,7 @@ def create_children(
     spouse_age = spouse.age if spouse else 999
     min_parent_age = min(spouse_age, character.age)
     child_age_max = (
-        min_parent_age - character.character_def.lifecycle.life_stages["young_adult"]
+        min_parent_age - character.character_def.aging.life_stages["young_adult"]
     )
 
     children = []

@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Protocol
+
 from neighborly.core.ecs import GameObject
 from neighborly.core.life_event import LifeEvent
 
@@ -55,3 +56,9 @@ def sequence(*nodes: BehaviorNode) -> BehaviorNode:
         return True
 
     return fn
+
+
+class Actor:
+    """Actors perform behaviors on each timestep"""
+
+    ...
