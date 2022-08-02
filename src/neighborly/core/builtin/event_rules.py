@@ -3,9 +3,7 @@ import itertools
 from neighborly.core.ecs import World
 from neighborly.core.life_event import LifeEventRule
 from neighborly.core.builtin.statuses import Elder, Adult, InRelationship
-from neighborly.core.builtin.events import DeathEvent, MarriageEvent
-from neighborly.core.systems import LifeEventSystem
-from neighborly.core.time import SimDateTime
+from neighborly.core.systems import LifeEventISystem
 from neighborly.core.character import GameCharacter
 
 
@@ -30,7 +28,7 @@ def get_single_adults(world: World, **kwargs):
 def get_single_adult_pairs(world: World, **kwargs):
     single_adults = itertools.filterfalse(
         lambda c: c.gameobject.has_component(Adult)
-        and not c.gameobject.has_component(InRelationship),
+                  and not c.gameobject.has_component(InRelationship),
         map(lambda res: res[1], world.get_component(GameCharacter)),
     )
     for pair in itertools.combinations(single_adults, 2):
@@ -55,6 +53,6 @@ depart_town_rule = LifeEventRule(
 
 
 def load_event_rules() -> None:
-    LifeEventSystem.register_event(death_event_rule)
-    LifeEventSystem.register_event(marriage_event_rule)
-    LifeEventSystem.register_event(depart_town_rule)
+    LifeEventISystem.register_event(death_event_rule)
+    LifeEventISystem.register_event(marriage_event_rule)
+    LifeEventISystem.register_event(depart_town_rule)

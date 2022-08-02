@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import (
     Any,
@@ -17,8 +17,9 @@ from typing import (
     TypeVar,
 )
 
-from neighborly.core.ecs import Component, Event, GameObject, IEventListener, World
+from neighborly.core.ecs import Component, ISystem, Event, GameObject, IEventListener, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.time import SimDateTime
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +226,7 @@ class LifeEvent:
         return f"LifeEvent(name={self.name}, timestamp={self.timestamp}, roles=[{self.roles}]"
 
     def __str__(self) -> str:
-        return f"{self.name} [at {self.timestamp}] : {', '.join(map(lambda r: str(r), self.roles))}"
+        return f"{self.name} [at {self.timestamp}] : {', '.join(map(lambda r: f'{r.name}:{r.gid}', self.roles))}"
 
 
 class IPatternFn(Protocol):
@@ -369,6 +370,13 @@ class EventRole:
         self.components: List[Type[Component]] = [*components]
 
 
+class RoleFilterFn(Protocol):
+    """Function that filters GameObjects for an EventRole"""
+
+    def __call__(self, event: LifeEvent, *components: Component) -> bool:
+        raise NotImplementedError
+
+
 class EventRoleType:
     """
     Information about a role within a LifeEvent, and logic
@@ -382,28 +390,28 @@ class EventRoleType:
         self,
         name: str,
         components: List[Type[Component]],
-        filter_fn: Optional[Callable[..., bool]] = None,
+        filter_fn: Optional[RoleFilterFn] = None,
     ) -> None:
         self.name: str = name
         self.components: List[Type[Component]] = [*components]
-        self.filter_fn: Callable[..., bool] = filter_fn if filter_fn else lambda: True
+        self.filter_fn: RoleFilterFn = filter_fn if filter_fn else lambda c, e: True
 
     def fill_role(
-        self, world: World, life_event: LifeEvent, candidate: Optional[int] = None
+        self, world: World, life_event: LifeEvent, candidate: Optional[GameObject] = None
     ) -> Optional[EventRole]:
         """Attempt to fill a role for a LifeEvent"""
         if candidate:
-            if self.filter_fn(
-                world.has_components(candidate, *self.components), life_event
-            ):
-                return EventRole(self.name, candidate, self.components)
-
+            components = world.ecs.try_components(candidate.id, *self.components)
+            if components and self.filter_fn(life_event, *components):
+                return EventRole(self.name, candidate.id, self.components)
         else:
 
             if self.filter_fn is None:
                 candidate_list = world.get_components(*self.components)
             else:
-                candidate_list = world.get_components(*self.components)
+                candidate_list = \
+                    list(
+                        filter(lambda res: self.filter_fn(life_event, *res[1]), world.get_components(*self.components)))
 
             if any(candidate_list):
                 chosen_candidate = world.get_resource(NeighborlyEngine).rng.choice(
@@ -420,33 +428,68 @@ class LifeEventType:
 
     This is adapted from:
     https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
+
+    Attributes
+    ----------
+    name: str
+        Name of the LifeEventType and the LifeEvent it instantiates
+    roles: List[EventRoleType]
+        The roles that need to be cast for this event to be executed
+    frequency: int (default: 1)
+        The relative frequency of this event compared to other events
+    effect_fn: Callable[..., None]
+
     """
 
     __slots__ = (
         "name",
-        "probability",
+        "frequency",
         "roles",
-        "modification",
+        "effect_fn",
     )
 
     def __init__(
         self,
         name: str,
         roles: List[EventRoleType],
-        probability: float = 1.0,
-        modification: Optional[Callable[..., None]] = None,
+        frequency: int = 1,
+        effect_fn: Optional[Callable[[LifeEvent], None]] = None,
     ) -> None:
         self.name: str = name
         self.roles: List[EventRoleType] = roles
-        self.probability: float = probability
-        self.modification: Optional[Callable[..., None]] = modification
+        self.frequency: float = frequency
+        self.effect_fn: Optional[Callable[[LifeEvent], None]] = effect_fn
 
-    def instantiate(self, *args, **kwargs) -> LifeEvent:
-        ...
+    def instantiate(self, world: World, **kwargs: GameObject) -> Optional[LifeEvent]:
+        """Attempts to create a new LifeEvent instance"""
+        life_event = LifeEvent(
+            self.name,
+            world.get_resource(SimDateTime).to_iso_str(),
+            []
+        )
+
+        for role_type in self.roles:
+            bound_object = kwargs.get(role_type.name)
+            if bound_object is not None:
+                temp = role_type.fill_role(world, life_event, candidate=bound_object)
+                if temp is not None:
+                    life_event.roles.append(temp)
+                else:
+                    # Return none if the role candidate is not a fit
+                    return None
+            else:
+                temp = role_type.fill_role(world, life_event)
+                if temp is not None:
+                    life_event.roles.append(temp)
+                else:
+                    # Return None if there are no available entities to fill
+                    # the current role
+                    return None
+
+        return life_event
 
 
 class EventRoleDatabase:
-
     _registry: Dict[str, EventRoleType] = {}
 
     @classmethod
@@ -455,7 +498,11 @@ class EventRoleDatabase:
         cls._registry[name] = event_role_type
 
     @classmethod
-    def __getitem__(cls, name: str) -> EventRoleType:
+    def roles(cls) -> List[EventRoleType]:
+        return list(cls._registry.values())
+
+    @classmethod
+    def get(cls, name: str) -> EventRoleType:
         """Get a LifeEventType using a name"""
         return cls._registry[name]
 
@@ -474,12 +521,16 @@ class LifeEventDatabase:
         cls._registry[name] = life_event_type
 
     @classmethod
-    def __getitem__(cls, name: str) -> LifeEventType:
+    def events(cls) -> List[LifeEventType]:
+        return list(cls._registry.values())
+
+    @classmethod
+    def get(cls, name: str) -> LifeEventType:
         """Get a LifeEventType using a name"""
         return cls._registry[name]
 
 
-class LifeEventSimulator:
+class LifeEventSimulator(ISystem):
     """
     LifeEventSimulator handles firing LifeEvents for characters
     and performing character behaviors
@@ -493,15 +544,20 @@ class LifeEventSimulator:
     __slots__ = "event_history"
 
     def __init__(self) -> None:
+        super().__init__()
         self.event_history: List[LifeEvent] = []
 
-    def try_execute_event(self, event_type: LifeEventType) -> None:
-        event: LifeEvent = event_type.instantiate(...)
+    def try_execute_event(self, world: World, event_type: LifeEventType) -> None:
+        """Execute the given LifeEventType if successfully instantiated"""
+        event: LifeEvent = event_type.instantiate(world)
         if event is not None:
-            if event_type.modification is not None:
-                event_type.modification(event)
+            if event_type.effect_fn is not None:
+                event_type.effect_fn(event)
             self.event_history.append(event)
 
-    def __call__(self, world: World, **kwargs) -> None:
+    def process(self, *args, **kwargs) -> None:
         """Simulate LifeEvents for characters"""
-        ...
+        rng = self.world.get_resource(NeighborlyEngine).rng
+        for event_type in LifeEventDatabase.events():
+            if rng.random() < event_type.frequency:
+                self.try_execute_event(self.world, event_type)

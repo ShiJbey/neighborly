@@ -9,11 +9,11 @@ from typing import (
     NamedTuple,
     Optional,
     Tuple,
-    TypedDict,
     Union,
 )
 
 from pydantic import BaseModel, Field, validator
+from typing_extensions import TypedDict
 
 from neighborly.core.ecs import Component, Event, IEventListener, World
 from neighborly.core.engine import NeighborlyEngine

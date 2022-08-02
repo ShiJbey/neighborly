@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-from neighborly.core.ecs import Component, GameObject, World
+import pytest
+
+from neighborly.core.ecs import Component, World
 
 
 class SimpleGameCharacter(Component):
@@ -28,25 +30,64 @@ class SimpleRoutine(Component):
     free: bool
 
 
+@dataclass
+class A(Component):
+    value: int = 0
+
+
+@dataclass
+class B(Component):
+    value: int = 0
+
+
+@dataclass
+class FakeResource:
+    config_value: int = 5
+
+
+def test_has_resource():
+    world = World()
+    assert world.has_resource(FakeResource) is False
+    world.add_resource(FakeResource())
+    assert world.has_resource(FakeResource) is True
+
+
+def test_get_resource():
+    world = World()
+    fake_resource = FakeResource()
+    assert world.has_resource(FakeResource) is False
+    # This should throw a key error when not present
+    with pytest.raises(KeyError):
+        assert world.get_resource(FakeResource)
+    world.add_resource(fake_resource)
+    assert world.get_resource(FakeResource) == fake_resource
+
+
+def test_remove_resource():
+    world = World()
+    world.add_resource(FakeResource())
+    assert world.has_resource(FakeResource) is True
+    world.remove_resource(FakeResource)
+    assert world.has_resource(FakeResource) is False
+    # This should throw a key error when not present
+    with pytest.raises(KeyError):
+        world.remove_resource(FakeResource)
+
+
+def test_add_resource():
+    world = World()
+    fake_resource = FakeResource()
+    assert world.has_resource(FakeResource) is False
+    world.add_resource(fake_resource)
+    assert world.has_resource(FakeResource) is True
+
+
 def test_gameobject() -> None:
     world = World()
-
-    adrian = GameObject(
-        components=[SimpleGameCharacter("Adrian"), SimpleRoutine(False)]
-    )
-
-    jamie = GameObject(components=[SimpleGameCharacter("Jamie"), SimpleRoutine(False)])
-
-    park = GameObject(name="Park", components=[SimpleLocation()])
-
-    office_building = GameObject(
-        name="Office Building", components=[SimpleLocation(18)]
-    )
-
-    world.add_gameobject(adrian)
-    world.add_gameobject(jamie)
-    world.add_gameobject(park)
-    world.add_gameobject(office_building)
+    adrian = world.spawn_gameobject(SimpleRoutine(False), SimpleGameCharacter("Adrian"), name="Adrian")
+    jamie = world.spawn_gameobject(SimpleRoutine(False), SimpleGameCharacter("Jamie"), name="Jamie")
+    park = world.spawn_gameobject(SimpleLocation(), name="Park")
+    office_building = world.spawn_gameobject(SimpleLocation(18), name="Office Building")
 
     assert jamie.get_component(SimpleGameCharacter).name == "Jamie"
 

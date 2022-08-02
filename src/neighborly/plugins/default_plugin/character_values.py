@@ -89,7 +89,7 @@ class CharacterValues(Component):
         return cos_sim
 
     def get_high_values(self, n=3) -> List[str]:
-        """Return the value names associated with the to n values"""
+        """Return the value names associated with the n values"""
         # This code is adapted from https://stackoverflow.com/a/23734295
 
         ind = np.argpartition(self.traits, -n)[-n:]

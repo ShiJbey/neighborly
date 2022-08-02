@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Any, Literal, Optional, Tuple, Union
 
-from neighborly.core.ecs import ISystem, World
+from neighborly.core.ecs import World, ISystem
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.systems import LinearTimeSystem
+from neighborly.core.systems import LinearTimeISystem
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import LandGrid, Town
 
@@ -96,7 +96,7 @@ class Simulation:
         sim = (
             Simulation(seed, World(), NeighborlyEngine(seed), start_date, end_date)
             .add_resource(start_date.copy())
-            .add_system(LinearTimeSystem(TimeDelta(hours=time_increment_hours)))
+            .add_system(LinearTimeISystem(TimeDelta(hours=time_increment_hours)))
         )
 
         sim._create_town(town_name, town_size)
@@ -106,11 +106,6 @@ class Simulation:
     def add_system(self, system: ISystem, priority: int = 0) -> Simulation:
         """Add a new system to the simulation"""
         self.world.add_system(system, priority)
-        return self
-
-    def add_setup_system(self, system: ISystem) -> Simulation:
-        """Add a new setup system to the simulation"""
-        self.world.add_setup_system(system)
         return self
 
     def add_resource(self, resource: Any) -> Simulation:

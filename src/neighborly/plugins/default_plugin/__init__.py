@@ -3,19 +3,15 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-from neighborly.core.builtin.systems import character_aging_system
+from neighborly.core.builtin.systems import CharacterAgingSystem
 from neighborly.core.business import Business, BusinessDefinition, OccupationDefinition
 from neighborly.core.ecs import EntityArchetype
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventLogger
 from neighborly.core.location import Location
 from neighborly.core.residence import Residence
 from neighborly.core.social_network import RelationshipNetwork
 from neighborly.core.systems import (
-    AddResidentsSystem,
-    DynamicLoDTimeSystem,
-    LifeEventSystem,
-    RoutineSystem,
+    LifeEventISystem,
 )
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins.default_plugin.activity import Activity, register_activity
@@ -145,9 +141,9 @@ class DefaultPlugin(Plugin):
         #     sim.add_system(DynamicLoDTimeSystem(days_per_year=days_per_year), 10)
 
         # sim.add_system(RoutineSystem(), 5)
-        sim.add_system(LifeEventSystem())
+        sim.add_system(LifeEventISystem())
         # sim.add_system(AddResidentsSystem())
-        sim.add_system(character_aging_system)
+        sim.add_system(CharacterAgingSystem())
 
         # Add default resources
         sim.add_resource(RelationshipNetwork())

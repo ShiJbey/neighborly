@@ -1,14 +1,8 @@
 from __future__ import annotations
 
 import random
-from typing import Dict, List, Optional, Protocol, Type, cast
+from typing import Dict, List, Optional, cast
 
-from neighborly.core.builtin.events import (
-    DepartureEvent,
-    HomePurchaseEvent,
-    JobHiringEvent,
-    MoveResidenceEvent,
-)
 from neighborly.core.builtin.statuses import Adult, BusinessOwner, Dependent, Unemployed
 from neighborly.core.business import (
     Business,
@@ -17,10 +11,16 @@ from neighborly.core.business import (
     OccupationDefinition,
 )
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, EntityArchetype, GameObject, ISystem, World
+from neighborly.core.ecs import EntityArchetype, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.helpers import move_to_location
-from neighborly.core.life_event import LifeEventLogger
+from neighborly.core.life_event import (
+    EventRoleDatabase,
+    EventRoleType,
+    LifeEventDatabase,
+    LifeEventType,
+    LifeEventSimulator, LifeEvent
+)
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 from neighborly.core.residence import Residence, Resident
@@ -33,7 +33,7 @@ from neighborly.plugins.default_plugin import (
     DefaultPlugin,
     DefaultResidencesPlugin,
 )
-from neighborly.simulation import Simulation
+from neighborly.simulation import Simulation, Plugin
 
 
 def purchase_residence(character: GameCharacter, residence: Residence) -> None:
@@ -43,16 +43,16 @@ def purchase_residence(character: GameCharacter, residence: Residence) -> None:
         f"{str(character.name)}({character.gameobject.id}) purchased a new home ({residence.gameobject.id})"
     )
 
-    world = character.gameobject.world
+    # world = character.gameobject.world
 
-    character.gameobject.handle_event(
-        HomePurchaseEvent(
-            timestamp=world.get_resource(SimDateTime).to_iso_str(),
-            residence_id=residence.gameobject.id,
-            character_id=character.gameobject.id,
-            character_name=str(character.name),
-        )
-    )
+    # character.gameobject.handle_event(
+    #     HomePurchaseEvent(
+    #         timestamp=world.get_resource(SimDateTime).to_iso_str(),
+    #         residence_id=residence.gameobject.id,
+    #         character_id=character.gameobject.id,
+    #         character_name=str(character.name),
+    #     )
+    # )
 
 
 def move_residence(character: GameCharacter, residence: Residence) -> None:
@@ -77,32 +77,33 @@ def move_residence(character: GameCharacter, residence: Residence) -> None:
     character.location_aliases["home"] = residence.gameobject.id
     residence.gameobject.get_component(Location).whitelist.add(character.gameobject.id)
     character.gameobject.add_component(Resident(residence.gameobject.id))
-    character.gameobject.handle_event(
-        MoveResidenceEvent(
-            timestamp=world.get_resource(SimDateTime).to_iso_str(),
-            residence_id=residence.gameobject.id,
-            character_id=character.gameobject.id,
-            character_name=str(character.name),
-        )
-    )
+    # character.gameobject.handle_event(
+    #     MoveResidenceEvent(
+    #         timestamp=world.get_resource(SimDateTime).to_iso_str(),
+    #         residence_id=residence.gameobject.id,
+    #         character_id=character.gameobject.id,
+    #         character_name=str(character.name),
+    #     )
+    # )
 
     print(
         f"{str(character.name)}({character.gameobject.id}) moved into a new home ({residence.gameobject.id})"
     )
 
 
-class SpawnResidentsSystem:
+class SpawnResidentsSystem(ISystem):
     __slots__ = "chance_spawn"
 
     def __init__(self, chance_spawn: float = 0.5) -> None:
+        super().__init__()
         self.chance_spawn: float = chance_spawn
 
-    def __call__(self, world: World, **kwargs) -> None:
+    def process(self, *args, **kwargs) -> None:
         """Handles new characters moving into the town"""
-        engine = world.get_resource(NeighborlyEngine)
-        town = world.get_resource(Town)
+        engine = self.world.get_resource(NeighborlyEngine)
+        town = self.world.get_resource(Town)
 
-        for _, residence in world.get_component(Residence):
+        for _, residence in self.world.get_component(Residence):
             # Skip occupied residences
             if not residence.is_vacant():
                 continue
@@ -112,13 +113,13 @@ class SpawnResidentsSystem:
                 return
 
             # Create a new character
-            character = engine.spawn_character(world)
+            character = engine.spawn_character(self.world)
             character.add_component(Unemployed())
 
             purchase_residence(character.get_component(GameCharacter), residence)
             move_residence(character.get_component(GameCharacter), residence)
             move_to_location(
-                world,
+                self.world,
                 character.get_component(GameCharacter),
                 residence.gameobject.get_component(Location),
             )
@@ -126,17 +127,17 @@ class SpawnResidentsSystem:
             town.population += 1
 
 
-class BuildResidenceSystem:
-
+class BuildResidenceSystem(ISystem):
     __slots__ = "chance_of_build"
 
     def __init__(self, chance_of_build: float = 0.5) -> None:
+        super().__init__()
         self.chance_of_build: float = chance_of_build
 
-    def __call__(self, world: World, **kwargs) -> None:
+    def process(self, *args, **kwargs) -> None:
         """Build a new residence when there is space"""
-        land_grid = world.get_resource(LandGrid)
-        engine = world.get_resource(NeighborlyEngine)
+        land_grid = self.world.get_resource(LandGrid)
+        engine = self.world.get_resource(NeighborlyEngine)
 
         # Return early if the random-roll is not sufficient
         if engine.rng.random() > self.chance_of_build:
@@ -150,7 +151,7 @@ class BuildResidenceSystem:
         lot = engine.rng.choice(land_grid.get_vacancies())
 
         # Construct a random residence archetype
-        residence = engine.spawn_residence(world)
+        residence = engine.spawn_residence(self.world)
 
         if residence is None:
             return
@@ -164,18 +165,18 @@ class BuildResidenceSystem:
         print(f"Built a new Residence({residence.id}) at {lot}")
 
 
-class BuildBusinessSystem:
-
+class BuildBusinessSystem(ISystem):
     __slots__ = "chance_of_build"
 
     def __init__(self, chance_of_build: float = 0.5) -> None:
+        super().__init__()
         self.chance_of_build: float = chance_of_build
 
-    def __call__(self, world: World, **kwargs) -> None:
+    def process(self, *args, **kwargs) -> None:
         """Build a new business when there is space"""
-        land_grid = world.get_resource(LandGrid)
-        town = world.get_resource(Town)
-        engine = world.get_resource(NeighborlyEngine)
+        land_grid = self.world.get_resource(LandGrid)
+        town = self.world.get_resource(Town)
+        engine = self.world.get_resource(NeighborlyEngine)
 
         # Return early if the random-roll is not sufficient
         if engine.rng.random() > self.chance_of_build:
@@ -189,7 +190,7 @@ class BuildBusinessSystem:
         lot = engine.rng.choice(land_grid.get_vacancies())
 
         # Build a random business archetype
-        business = engine.spawn_business(world, population=town.population)
+        business = engine.spawn_business(self.world, population=town.population)
 
         if business is None:
             return
@@ -206,15 +207,15 @@ class BuildBusinessSystem:
         )
 
 
-class FindBusinessOwnerSystem:
-    def __call__(self, world: World, **kwargs) -> None:
+class FindBusinessOwnerSystem(ISystem):
+    def process(self, *args, **kwargs) -> None:
         unemployed_characters: List[GameCharacter] = list(
-            map(lambda x: x[1][0], world.get_components(GameCharacter, Unemployed))
+            map(lambda x: x[1][0], self.world.get_components(GameCharacter, Unemployed))
         )
 
-        engine = world.get_resource(NeighborlyEngine)
+        engine = self.world.get_resource(NeighborlyEngine)
 
-        for _, business in world.get_component(Business):
+        for _, business in self.world.get_component(Business):
             if not business.needs_owner():
                 continue
 
@@ -237,31 +238,31 @@ class FindBusinessOwnerSystem:
             business.set_owner(character.gameobject.id)
             unemployed_characters.remove(character)
 
-            character.gameobject.handle_event(
-                JobHiringEvent(
-                    timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                    business_id=business.gameobject.id,
-                    character_id=character.gameobject.id,
-                    character_name=str(character.name),
-                    business_name=business.get_name(),
-                    occupation_name=business.get_type().owner_type,
-                )
-            )
+            # character.gameobject.handle_event(
+            #     JobHiringEvent(
+            #         timestamp=world.get_resource(SimDateTime).to_iso_str(),
+            #         business_id=business.gameobject.id,
+            #         character_id=character.gameobject.id,
+            #         character_name=str(character.name),
+            #         business_name=business.get_name(),
+            #         occupation_name=business.get_type().owner_type,
+            #     )
+            # )
 
             print(
                 f"{str(character.name)} was hired as the owner of {business.get_name()}({business.gameobject.id})"
             )
 
 
-class FindEmployeesSystem:
-    def __call__(self, world: World, **kwargs) -> None:
+class FindEmployeesSystem(ISystem):
+    def process(self, *args, **kwargs) -> None:
         unemployed_characters: List[GameCharacter] = list(
-            map(lambda x: x[1][0], world.get_components(GameCharacter, Unemployed))
+            map(lambda x: x[1][0], self.world.get_components(GameCharacter, Unemployed))
         )
 
-        engine = world.get_resource(NeighborlyEngine)
+        engine = self.world.get_resource(NeighborlyEngine)
 
-        for _, business in world.get_component(Business):
+        for _, business in self.world.get_component(Business):
             open_positions = business.get_open_positions()
 
             for position in open_positions:
@@ -279,170 +280,87 @@ class FindEmployeesSystem:
                 )
                 unemployed_characters.remove(character)
 
-                character.gameobject.handle_event(
-                    JobHiringEvent(
-                        timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                        business_id=business.gameobject.id,
-                        character_id=character.gameobject.id,
-                        character_name=str(character.name),
-                        business_name=business.get_name(),
-                        occupation_name=position,
-                    )
-                )
+                # character.gameobject.handle_event(
+                #     JobHiringEvent(
+                #         timestamp=world.get_resource(SimDateTime).to_iso_str(),
+                #         business_id=business.gameobject.id,
+                #         character_id=character.gameobject.id,
+                #         character_name=str(character.name),
+                #         business_name=business.get_name(),
+                #         occupation_name=position,
+                #     )
+                # )
 
                 print(
                     f"{str(character.name)} was hired as a(n) {position} at {business.get_name()}({business.gameobject.id})"
                 )
 
 
-class Behavior(Protocol):
-    def check_preconditions(self, gameobject: GameObject) -> bool:
-        raise NotImplementedError
-
-    def run(self, gameobject: GameObject) -> None:
-        raise NotImplementedError
-
-
-class MoveOutOfParentsBehavior:
-    def check_preconditions(self, gameobject: GameObject) -> bool:
-        return (
-            gameobject.has_component(Adult)
-            and gameobject.has_component(Occupation)
-            and gameobject.has_component(Dependent)
-        )
-
-    def run(self, gameobject: GameObject) -> None:
-        world = gameobject.world
-        character = gameobject.get_component(GameCharacter)
-        resident = gameobject.get_component(Resident)
-        residence = world.get_gameobject(resident.residence).get_component(Residence)
-
-        if not residence.is_owner(character.gameobject.id):
-            vacant_residence = self.find_vacant_residence(world)
-            if vacant_residence:
-                move_residence(character, vacant_residence)
-                return
-
-            new_residence = self.build_new_residence(world)
-            if new_residence:
-                move_residence(character, new_residence)
-                return
-
-            # No residence found leave the simulation
-            character.gameobject.handle_event(
-                DepartureEvent(
-                    timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                    character_id=character.gameobject.id,
-                    character_name=str(character.name),
-                )
-            )
-
-    def find_vacant_residence(self, world: World) -> Optional[Residence]:
-        engine = world.get_resource(NeighborlyEngine)
-        vacant_residences = list(
-            filter(
-                lambda r: r.is_vacant(),
-                map(lambda _, r: r.is_vacant(), world.get_component(Residence)),
-            )
-        )
-        if vacant_residences:
-            return engine.rng.choice(vacant_residences)
-        else:
-            return None
-
-    def build_new_residence(self, world: World) -> Optional[Residence]:
-        land_grid = world.get_resource(LandGrid)
-        engine = world.get_resource(NeighborlyEngine)
-
-        # Return early if there is nowhere to build
-        if not land_grid.has_vacancy():
-            return
-
-        # Pick a random lot from those available
-        lot = engine.rng.choice(land_grid.get_vacancies())
-
-        # Construct a random residence archetype
-        residence = engine.spawn_residence(world)
-
-        if residence is None:
-            return
-
-        # Reserve the space
-        land_grid.reserve_space(lot, residence.id)
-
-        # Set the position of the residence
-        residence.add_component(Position2D(lot[0], lot[1]))
-
-        print(f"Built a new Residence ({residence.id}) at {lot}")
-
-        return residence.get_component(Residence)
+# class GetMarriedBehavior:
+#     def check_preconditions(self, gameobject: GameObject) -> bool:
+#         return (
+#             gameobject.has_component(Adult)
+#             and gameobject.has_component(Occupation)
+#             and gameobject.has_component(Dependent)
+#         )
+#
+#     def run(self, gameobject: GameObject) -> None:
+#         world = gameobject.world
+#         character = gameobject.get_component(GameCharacter)
+#         resident = gameobject.get_component(Resident)
+#         residence = world.get_gameobject(resident.residence).get_component(Residence)
+#
+#         if not residence.is_owner(character.gameobject.id):
+#             vacant_residence = self.find_vacant_residence(world)
+#             if vacant_residence:
+#                 move_residence(character, vacant_residence)
+#                 return
+#
+#             new_residence = self.build_new_residence(world)
+#             if new_residence:
+#                 move_residence(character, new_residence)
+#                 return
+#
+#             # No residence found leave the simulation
+#             # character.gameobject.handle_event(
+#             #     DepartureEvent(
+#             #         timestamp=world.get_resource(SimDateTime).to_iso_str(),
+#             #         character_id=character.gameobject.id,
+#             #         character_name=str(character.name),
+#             #     )
+#             # )
 
 
-class GetMarriedBehavior:
-    def check_preconditions(self, gameobject: GameObject) -> bool:
-        return (
-            gameobject.has_component(Adult)
-            and gameobject.has_component(Occupation)
-            and gameobject.has_component(Dependent)
-        )
-
-    def run(self, gameobject: GameObject) -> None:
-        world = gameobject.world
-        character = gameobject.get_component(GameCharacter)
-        resident = gameobject.get_component(Resident)
-        residence = world.get_gameobject(resident.residence).get_component(Residence)
-
-        if not residence.is_owner(character.gameobject.id):
-            vacant_residence = self.find_vacant_residence(world)
-            if vacant_residence:
-                move_residence(character, vacant_residence)
-                return
-
-            new_residence = self.build_new_residence(world)
-            if new_residence:
-                move_residence(character, new_residence)
-                return
-
-            # No residence found leave the simulation
-            character.gameobject.handle_event(
-                DepartureEvent(
-                    timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                    character_id=character.gameobject.id,
-                    character_name=str(character.name),
-                )
-            )
-
-
-class MoveOutOfParents:
-    def __call__(self, world: World, **kwargs) -> None:
-        for _, (character, _, resident, _, _) in world.get_components(
+class MoveOutOfParents(ISystem):
+    def process(self, *args, **kwargs) -> None:
+        for _, (character, _, resident, _, _) in self.world.get_components(
             GameCharacter, Adult, Resident, Occupation, Dependent
         ):
             character = cast(GameCharacter, character)
             resident = cast(Resident, resident)
-            residence = world.get_gameobject(resident.residence).get_component(
+            residence = self.world.get_gameobject(resident.residence).get_component(
                 Residence
             )
 
             if not residence.is_owner(character.gameobject.id):
-                vacant_residence = self.find_vacant_residence(world)
+                vacant_residence = self.find_vacant_residence(self.world)
                 if vacant_residence:
                     move_residence(character, vacant_residence)
                     continue
 
-                new_residence = self.build_new_residence(world)
+                new_residence = self.build_new_residence(self.world)
                 if new_residence:
                     move_residence(character, new_residence)
                     continue
 
                 # No residence found leave the simulation
-                character.gameobject.handle_event(
-                    DepartureEvent(
-                        timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                        character_id=character.gameobject.id,
-                        character_name=str(character.name),
-                    )
-                )
+                # character.gameobject.handle_event(
+                #     DepartureEvent(
+                #         timestamp=world.get_resource(SimDateTime).to_iso_str(),
+                #         character_id=character.gameobject.id,
+                #         character_name=str(character.name),
+                #     )
+                # )
 
     def find_vacant_residence(self, world: World) -> Optional[Residence]:
         engine = world.get_resource(NeighborlyEngine)
@@ -485,11 +403,11 @@ class MoveOutOfParents:
         return residence.get_component(Residence)
 
 
-class BusinessSystem:
-    def __call__(self, world: World, **kwargs) -> None:
-        time = world.get_resource(SimDateTime)
-        rng = world.get_resource(random.Random)
-        for _, business in world.get_component(Business):
+class BusinessSystem(ISystem):
+    def process(self, *args, **kwargs) -> None:
+        time = self.world.get_resource(SimDateTime)
+        rng = self.world.get_resource(random.Random)
+        for _, business in self.world.get_component(Business):
             if business.status == BusinessStatus.OpenForBusiness:
                 # Increment the age of the business
                 business.increment_years_in_business(time.delta_time / HOURS_PER_YEAR)
@@ -501,7 +419,7 @@ class BusinessSystem:
                     business.set_owner(None)
                     for employee in business.get_employees():
                         business.remove_employee(employee)
-                        world.get_gameobject(employee).remove_component(Occupation)
+                        self.world.get_gameobject(employee).remove_component(Occupation)
 
 
 def create_character_archetype(
@@ -537,24 +455,39 @@ def create_character_archetype(
     )
 
 
-def behavior(*components: Type[Component], **resources: Type[object]):
-    """Function decorator for defining behaviors"""
-
-    def wrapper(behavior_fn) -> ISystem:
-        def fn(world: World, **kwargs) -> None:
-            for _, args in world.get_components(*components):
-                behavior_fn(
-                    *args, **{k: world.get_resource(v) for k, v in resources.items()}
-                )
-
-        return fn
-
-    return wrapper
+def say_hi(event: LifeEvent):
+    print(str(event))
 
 
-@behavior(GameCharacter, date=SimDateTime)
-def say_the_date(character: GameCharacter, date: SimDateTime) -> None:
-    print(f"{str(character.name)} says: 'It's {date.to_date_str()}'")
+def over_30(components, event: LifeEvent):
+    print("")
+
+
+class LifeEventPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        EventRoleDatabase.register(
+            "Parent", EventRoleType("Parent", components=[GameCharacter])
+        )
+
+        EventRoleDatabase.register("Child", EventRoleType("Child", components=[GameCharacter]))
+
+        EventRoleDatabase.register("Rando",
+                                   EventRoleType("Rando", components=[GameCharacter, Adult], filter_fn=over_30))
+
+        LifeEventDatabase.register(
+            "Child-Birth",
+            LifeEventType(
+                "Child-Birth",
+                [
+                    EventRoleDatabase.get("Child"),
+                    EventRoleDatabase.get("Parent"),
+                    EventRoleDatabase.get("Parent"),
+                ],
+                effect_fn=say_hi
+            ),
+        )
+
+        sim.add_system(LifeEventSimulator())
 
 
 def main():
@@ -572,10 +505,11 @@ def main():
         .add_system(FindEmployeesSystem())
         .add_system(MoveOutOfParents())
         .add_system(BusinessSystem())
+        .add_plugin(LifeEventPlugin())
     )
 
     sim.get_engine().add_character_archetype(
-        create_character_archetype("Human").add(LifeEventLogger).add(Routine)
+        create_character_archetype("Human").add(Routine)
     )
 
     sim.get_engine().add_business_archetype(

@@ -154,8 +154,7 @@ class NeighborlyEngine:
             except KeyError:
                 raise ArchetypeNotFoundError(archetype_name)
 
-            character = archetype.spawn(world)
-            world.add_gameobject(character)
+            character = world.spawn_archetype(archetype)
             return character
         else:
             archetype_choices: List[EntityArchetype] = []
@@ -170,8 +169,7 @@ class NeighborlyEngine:
                     population=archetype_choices, weights=archetype_weights, k=1
                 )[0]
 
-                character = archetype.spawn(world)
-                world.add_gameobject(character)
+                character = world.spawn_archetype(archetype)
                 return character
             else:
                 raise ArchetypeNotFoundError("")
@@ -185,8 +183,7 @@ class NeighborlyEngine:
             except KeyError:
                 raise ArchetypeNotFoundError(archetype_name)
 
-            business = archetype.spawn(world)
-            world.add_gameobject(business)
+            business = world.spawn_archetype(archetype)
             return business
         else:
             archetype_choices: List[EntityArchetype] = []
@@ -201,8 +198,7 @@ class NeighborlyEngine:
                     population=archetype_choices, weights=archetype_weights, k=1
                 )[0]
 
-                business = archetype.spawn(world)
-                world.add_gameobject(business)
+                business = world.spawn_archetype(archetype)
                 return business
 
     def spawn_residence(
@@ -214,8 +210,7 @@ class NeighborlyEngine:
             except KeyError:
                 raise ArchetypeNotFoundError(archetype_name)
 
-            residence = archetype.spawn(world)
-            world.add_gameobject(residence)
+            residence = world.spawn_archetype(archetype)
             return residence
         else:
             archetype_choices: List[EntityArchetype] = []
@@ -229,8 +224,7 @@ class NeighborlyEngine:
                 population=archetype_choices, weights=archetype_weights, k=1
             )[0]
 
-            residence = archetype.spawn(world)
-            world.add_gameobject(residence)
+            residence = world.spawn_archetype(archetype)
             return residence
 
     def get_eligible_business_archetypes(

@@ -1,4 +1,3 @@
-from ctypes import Union
 from typing import Dict, Tuple, Generator, TypeVar, List
 
 
@@ -57,7 +56,7 @@ _T = TypeVar("_T")
 def chunk_list(lst: List[_T], n: int) -> Generator[List[_T], None, None]:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
-        yield lst[i : i + n]
+        yield lst[i: i + n]
 
 
 _NT = TypeVar("_NT", int, float)

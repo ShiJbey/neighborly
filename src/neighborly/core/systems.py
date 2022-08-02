@@ -1,14 +1,14 @@
 import logging
 from typing import Dict, List, Optional, Set, cast
 
-from neighborly.core.builtin.events import (
-    HomePurchaseEvent,
-    MoveResidenceEvent,
-    SocializeEvent,
-)
+# from neighborly.core.builtin.events import (
+#     HomePurchaseEvent,
+#     MoveResidenceEvent,
+#     SocializeEvent,
+# )
 from neighborly.core.builtin.statuses import Child, InRelationship, YoungAdult
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import GameObject, World
+from neighborly.core.ecs import GameObject, World, ISystem
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.helpers import get_locations, move_to_location, try_generate_family
 from neighborly.core.life_event import LifeEventRule
@@ -23,12 +23,12 @@ from neighborly.core.utils.utilities import chunk_list
 logger = logging.getLogger(__name__)
 
 
-class RoutineSystem:
-    def __call__(self, world: World, **kwargs) -> None:
-        date = world.get_resource(SimDateTime)
-        engine = world.get_resource(NeighborlyEngine)
+class RoutineISystem(ISystem):
+    def process(self, *args, **kwargs) -> None:
+        date = self.world.get_resource(SimDateTime)
+        engine = self.world.get_resource(NeighborlyEngine)
 
-        for _, (character, routine) in world.get_components(GameCharacter, Routine):
+        for _, (character, routine) in self.world.get_components(GameCharacter, Routine):
             character = cast(GameCharacter, character)
             routine = cast(Routine, routine)
 
@@ -42,20 +42,20 @@ class RoutineSystem:
                     else chosen_entry.location
                 )
                 move_to_location(
-                    world,
+                    self.world,
                     character,
-                    world.get_gameobject(location_id).get_component(Location),
+                    self.world.get_gameobject(location_id).get_component(Location),
                 )
             else:
 
-                potential_locations = get_locations(world)
+                potential_locations = get_locations(self.world)
 
                 if potential_locations:
                     _, location = engine.rng.choice(potential_locations)
-                    move_to_location(world, character, location)
+                    move_to_location(self.world, character, location)
 
 
-class LinearTimeSystem:
+class LinearTimeISystem(ISystem):
     """
     Advances simulation time using a linear time increment
     """
@@ -65,13 +65,13 @@ class LinearTimeSystem:
     def __init__(self, increment: TimeDelta) -> None:
         self.increment: TimeDelta = increment
 
-    def __call__(self, world: World, **kwargs) -> None:
+    def process(self, *args, **kwargs) -> None:
         """Advance time"""
-        current_date = world.get_resource(SimDateTime)
+        current_date = self.world.get_resource(SimDateTime)
         current_date += self.increment
 
 
-class DynamicLoDTimeSystem:
+class DynamicLoDTimeISystem(ISystem):
     """
     Updates the current date/time in the simulation
     using a variable level-of-detail where a subset
@@ -96,9 +96,9 @@ class DynamicLoDTimeSystem:
         ), f"Days per year is greater than max: {DAYS_PER_YEAR}"
         assert days_per_year > 0, f"Days per year must be greater than 0"
 
-    def __call__(self, world: World, **kwargs):
-        current_date = world.get_resource(SimDateTime)
-        rng = world.get_resource(NeighborlyEngine).rng
+    def process(self, *args, **kwargs):
+        current_date = self.world.get_resource(SimDateTime)
+        rng = self.world.get_resource(NeighborlyEngine).rng
 
         if self._current_year != current_date.year:
             # Generate a new set of days to simulate this year
@@ -143,7 +143,7 @@ class DynamicLoDTimeSystem:
         return sampled_ordinal_dates
 
 
-class LifeEventSystem:
+class LifeEventISystem(ISystem):
     _event_registry: Dict[str, LifeEventRule] = {}
 
     def __init__(self, interval: int = 48) -> None:
@@ -156,9 +156,9 @@ class LifeEventSystem:
         for event in events:
             cls._event_registry[event.name] = event
 
-    def __call__(self, world: World, **kwargs) -> None:
+    def process(self, *args, **kwargs) -> None:
         """Check if life events will fire this round"""
-        delta_time = world.get_resource(SimDateTime).delta_time
+        delta_time = self.world.get_resource(SimDateTime).delta_time
         self.time_until_run -= delta_time
 
         # Run when timer reaches zero then reset
@@ -181,18 +181,18 @@ class LifeEventSystem:
         #                 event_rule.effect_fn(world)
 
 
-class SocializeSystem:
+class SocializeISystem(ISystem):
     def __init__(self, interval: int = 12) -> None:
         self.interval = interval
         self.time_until_run = interval
 
-    def __call__(self, world: World, **kwargs) -> None:
-        for pair in chunk_list(world.get_component(GameCharacter), 2):
+    def process(self, *args, **kwargs) -> None:
+        for pair in chunk_list(self.world.get_component(GameCharacter), 2):
             character_0 = pair[0][1].gameobject
             character_1 = pair[1][1].gameobject
 
             # choose an interaction type
-            interaction_type = world.get_resource(DefaultRNG).choice(
+            interaction_type = self.world.get_resource(DefaultRNG).choice(
                 [
                     "neutral",
                     "friendly",
@@ -204,43 +204,32 @@ class SocializeSystem:
                 ]
             )
 
-            socialize_event = SocializeEvent(
-                timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                character_names=(
-                    str(character_0.get_component(GameCharacter).name),
-                    str(character_1.get_component(GameCharacter).name),
-                ),
-                character_ids=(
-                    character_0.id,
-                    character_1.id,
-                ),
-                interaction_type=interaction_type,
-            )
+            # socialize_event = SocializeEvent(
+            #     timestamp=world.get_resource(SimDateTime).to_iso_str(),
+            #     character_names=(
+            #         str(character_0.get_component(GameCharacter).name),
+            #         str(character_1.get_component(GameCharacter).name),
+            #     ),
+            #     character_ids=(
+            #         character_0.id,
+            #         character_1.id,
+            #     ),
+            #     interaction_type=interaction_type,
+            # )
 
-            if character_0.will_handle_event(
-                socialize_event
-            ) and character_1.will_handle_event(socialize_event):
-                character_0.handle_event(socialize_event)
-                character_1.handle_event(socialize_event)
+            # if character_0.will_handle_event(
+            #     socialize_event
+            # ) and character_1.will_handle_event(socialize_event):
+            #     character_0.handle_event(socialize_event)
+            #     character_1.handle_event(socialize_event)
 
 
-class AddResidentsSystem:
-    """
-    Adds new characters to the simulation
+class AddResidentsISystem(ISystem):
+    """Adds new characters to the simulation"""
 
-    Attributes
-    ----------
-    character_weights: Optional[Dict[str, int]]
-        Relative frequency overrides for each of the character archetypes
-        registered in the engine instance
-    residence_weights: Optional[Dict[str, int]]
-        Relative frequency overrides for each of the character archetypes
-        registered in the engine instance
-    """
-
-    def __call__(self, world: World, **kwargs) -> None:
-        engine = world.get_resource(NeighborlyEngine)
-        date_time = world.get_resource(SimDateTime)
+    def process(self, *args, **kwargs) -> None:
+        engine = self.world.get_resource(NeighborlyEngine)
+        date_time = self.world.get_resource(SimDateTime)
 
         return
 

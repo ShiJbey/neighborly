@@ -1,12 +1,12 @@
 import logging
 
-from neighborly.core.builtin.events import (
-    BecomeAdolescentEvent,
-    BecomeAdultEvent,
-    BecomeElderEvent,
-    BecomeYoungAdultEvent,
-    DeathEvent,
-)
+# from neighborly.core.builtin.events import (
+#     BecomeAdolescentEvent,
+#     BecomeAdultEvent,
+#     BecomeElderEvent,
+#     BecomeYoungAdultEvent,
+#     DeathEvent,
+# )
 from neighborly.core.builtin.statuses import (
     Adult,
     Child,
@@ -16,91 +16,93 @@ from neighborly.core.builtin.statuses import (
     YoungAdult,
 )
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import World
+from neighborly.core.ecs import ISystem
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.time import HOURS_PER_YEAR, SimDateTime
 
 logger = logging.getLogger(__name__)
 
 
-def character_aging_system(world: World, **kwargs) -> None:
-    """Handles updating the ages of characters"""
+class CharacterAgingSystem(ISystem):
 
-    date_time = world.get_resource(SimDateTime)
-    engine = world.get_resource(NeighborlyEngine)
+    def process(self, *args, **kwargs) -> None:
+        """Handles updating the ages of characters"""
 
-    for _, character in world.get_component(GameCharacter):
-        if character.gameobject.has_component(Deceased):
-            continue
+        date_time = self.world.get_resource(SimDateTime)
+        engine = self.world.get_resource(NeighborlyEngine)
 
-        character.age += float(date_time.delta_time) / HOURS_PER_YEAR
+        for _, character in self.world.get_component(GameCharacter):
+            if character.gameobject.has_component(Deceased):
+                continue
 
-        if (
-            character.gameobject.has_component(Child)
-            and character.age >= character.character_def.aging.life_stages["teen"]
-        ):
-            character.gameobject.remove_component(Child)
-            character.gameobject.add_component(Teen())
+            character.age += float(date_time.delta_time) / HOURS_PER_YEAR
 
-            event = BecomeAdolescentEvent(
-                timestamp=date_time.to_iso_str(),
-                character_id=character.gameobject.id,
-                character_name=str(character.name),
-            )
-            character.gameobject.handle_event(event)
+            if (
+                character.gameobject.has_component(Child)
+                and character.age >= character.character_def.aging.life_stages["teen"]
+            ):
+                character.gameobject.remove_component(Child)
+                character.gameobject.add_component(Teen())
 
-        elif (
-            character.gameobject.has_component(Teen)
-            and character.age
-            >= character.character_def.aging.life_stages["young_adult"]
-        ):
-            character.gameobject.remove_component(Teen)
-            character.gameobject.add_component(YoungAdult())
-            character.gameobject.add_component(Adult())
+                # event = BecomeAdolescentEvent(
+                #     timestamp=date_time.to_iso_str(),
+                #     character_id=character.gameobject.id,
+                #     character_name=str(character.name),
+                # )
+                # character.gameobject.handle_event(event)
 
-            event = BecomeYoungAdultEvent(
-                timestamp=date_time.to_iso_str(),
-                character_id=character.gameobject.id,
-                character_name=str(character.name),
-            )
-            character.gameobject.handle_event(event)
+            elif (
+                character.gameobject.has_component(Teen)
+                and character.age
+                >= character.character_def.aging.life_stages["young_adult"]
+            ):
+                character.gameobject.remove_component(Teen)
+                character.gameobject.add_component(YoungAdult())
+                character.gameobject.add_component(Adult())
 
-        elif (
-            character.gameobject.has_component(YoungAdult)
-            and character.age >= character.character_def.aging.life_stages["adult"]
-        ):
-            character.gameobject.remove_component(YoungAdult)
+                # event = BecomeYoungAdultEvent(
+                #     timestamp=date_time.to_iso_str(),
+                #     character_id=character.gameobject.id,
+                #     character_name=str(character.name),
+                # )
+                # character.gameobject.handle_event(event)
 
-            event = BecomeAdultEvent(
-                timestamp=date_time.to_iso_str(),
-                character_id=character.gameobject.id,
-                character_name=str(character.name),
-            )
-            character.gameobject.handle_event(event)
+            elif (
+                character.gameobject.has_component(YoungAdult)
+                and character.age >= character.character_def.aging.life_stages["adult"]
+            ):
+                character.gameobject.remove_component(YoungAdult)
 
-        elif (
-            character.gameobject.has_component(Adult)
-            and character.age >= character.character_def.aging.life_stages["elder"]
-        ):
-            character.gameobject.add_component(Elder())
+                # event = BecomeAdultEvent(
+                #     timestamp=date_time.to_iso_str(),
+                #     character_id=character.gameobject.id,
+                #     character_name=str(character.name),
+                # )
+                # character.gameobject.handle_event(event)
 
-            event = BecomeElderEvent(
-                timestamp=date_time.to_iso_str(),
-                character_id=character.gameobject.id,
-                character_name=str(character.name),
-            )
-            character.gameobject.handle_event(event)
+            elif (
+                character.gameobject.has_component(Adult)
+                and character.age >= character.character_def.aging.life_stages["elder"]
+            ):
+                character.gameobject.add_component(Elder())
 
-        if (
-            character.age >= character.character_def.aging.lifespan
-            and engine.rng.random() < 0.8
-        ):
-            print(f"{str(character.name)} has died")
-            character.gameobject.handle_event(
-                DeathEvent(
-                    timestamp=date_time.to_iso_str(),
-                    character_name=str(character.name),
-                    character_id=character.gameobject.id,
-                )
-            )
-            world.delete_gameobject(character.gameobject.id)
+                # event = BecomeElderEvent(
+                #     timestamp=date_time.to_iso_str(),
+                #     character_id=character.gameobject.id,
+                #     character_name=str(character.name),
+                # )
+                # character.gameobject.handle_event(event)
+
+            if (
+                character.age >= character.character_def.aging.lifespan
+                and engine.rng.random() < 0.8
+            ):
+                print(f"{str(character.name)} has died")
+                # character.gameobject.handle_event(
+                #     DeathEvent(
+                #         timestamp=date_time.to_iso_str(),
+                #         character_name=str(character.name),
+                #         character_id=character.gameobject.id,
+                #     )
+                # )
+                self.world.delete_gameobject(character.gameobject.id)

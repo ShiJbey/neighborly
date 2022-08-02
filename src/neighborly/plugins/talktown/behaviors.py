@@ -1,9 +1,10 @@
+from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject
 from neighborly.core.life_event import LifeEvent, event_precondition
-from neighborly.core.character import GameCharacter
-from neighborly.core.relationship import RelationshipManager, RelationshipTag
-from neighborly.plugins.talktown.personality import BigFivePersonality
+from neighborly.core.relationship import RelationshipTag
 from neighborly.core.utils.utilities import clamp
+from neighborly.plugins.talktown.personality import BigFivePersonality
+
 
 # =========================================
 # PRECONDITIONS
