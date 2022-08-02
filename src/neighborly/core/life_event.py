@@ -219,8 +219,9 @@ class LifeEvent:
 
     def __getitem__(self, role_name: str) -> int:
         for role in self.roles:
-            if role == role_name:
+            if role.name == role_name:
                 return role.gid
+        raise KeyError(role_name)
 
     def __repr__(self) -> str:
         return f"LifeEvent(name={self.name}, timestamp={self.timestamp}, roles=[{self.roles}]"
@@ -373,7 +374,7 @@ class EventRole:
 class RoleFilterFn(Protocol):
     """Function that filters GameObjects for an EventRole"""
 
-    def __call__(self, event: LifeEvent, *components: Component) -> bool:
+    def __call__(self, event: LifeEvent, gameobject: GameObject) -> bool:
         raise NotImplementedError
 
 
@@ -411,7 +412,8 @@ class EventRoleType:
             else:
                 candidate_list = \
                     list(
-                        filter(lambda res: self.filter_fn(life_event, *res[1]), world.get_components(*self.components)))
+                        filter(lambda res: self.filter_fn(life_event, world.get_gameobject(res[0])),
+                               world.get_components(*self.components)))
 
             if any(candidate_list):
                 chosen_candidate = world.get_resource(NeighborlyEngine).rng.choice(
@@ -420,6 +422,13 @@ class EventRoleType:
                 return EventRole(self.name, chosen_candidate[0], self.components)
 
         return None
+
+
+class LifeEventEffectFn(Protocol):
+    """Callback function called when a life event is executed"""
+
+    def __call__(self, world: World, event: LifeEvent) -> None:
+        raise NotImplementedError
 
 
 class LifeEventType:
@@ -453,12 +462,12 @@ class LifeEventType:
         name: str,
         roles: List[EventRoleType],
         frequency: int = 1,
-        effect_fn: Optional[Callable[[LifeEvent], None]] = None,
+        effect_fn: Optional[LifeEventEffectFn] = None,
     ) -> None:
         self.name: str = name
         self.roles: List[EventRoleType] = roles
         self.frequency: float = frequency
-        self.effect_fn: Optional[Callable[[LifeEvent], None]] = effect_fn
+        self.effect_fn: Optional[LifeEventEffectFn] = effect_fn
 
     def instantiate(self, world: World, **kwargs: GameObject) -> Optional[LifeEvent]:
         """Attempts to create a new LifeEvent instance"""
@@ -552,7 +561,7 @@ class LifeEventSimulator(ISystem):
         event: LifeEvent = event_type.instantiate(world)
         if event is not None:
             if event_type.effect_fn is not None:
-                event_type.effect_fn(event)
+                event_type.effect_fn(world, event)
             self.event_history.append(event)
 
     def process(self, *args, **kwargs) -> None:

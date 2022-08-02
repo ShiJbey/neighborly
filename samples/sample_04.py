@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from typing import Dict, List, Optional, cast
 
+from neighborly.core.behavior_tree import selector
 from neighborly.core.builtin.statuses import Adult, BusinessOwner, Dependent, Unemployed
 from neighborly.core.business import (
     Business,
@@ -11,7 +12,7 @@ from neighborly.core.business import (
     OccupationDefinition,
 )
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import EntityArchetype, ISystem, World
+from neighborly.core.ecs import EntityArchetype, ISystem, World, GameObject
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.helpers import move_to_location
 from neighborly.core.life_event import (
@@ -455,12 +456,34 @@ def create_character_archetype(
     )
 
 
-def say_hi(event: LifeEvent):
-    print(str(event))
+def say_hi(world: World, event: LifeEvent) -> bool:
+    if world.get_resource(NeighborlyEngine).rng.random() < 0.5:
+        character = world.get_gameobject(event["Rando"]).get_component(GameCharacter)
+        print("{} says hello Overlord".format(str(character.name)))
+        return True
+    return False
 
 
-def over_30(components, event: LifeEvent):
-    print("")
+def say_kiss_my_ass(world: World, event: LifeEvent) -> bool:
+    if world.get_resource(NeighborlyEngine).rng.random() < 0.5:
+        character = world.get_gameobject(event["Rando"]).get_component(GameCharacter)
+        print("{} says kiss my ass Overlord".format(str(character.name)))
+        return True
+    return False
+
+
+def greet_overlord(world: World, event: LifeEvent):
+    selector(
+        say_hi,
+        say_kiss_my_ass
+    )(world, event)
+
+
+def over_age(age: int):
+    def fn(event: LifeEvent, gameobject: GameObject) -> bool:
+        return gameobject.get_component(GameCharacter).age > age
+
+    return fn
 
 
 class LifeEventPlugin(Plugin):
@@ -472,18 +495,27 @@ class LifeEventPlugin(Plugin):
         EventRoleDatabase.register("Child", EventRoleType("Child", components=[GameCharacter]))
 
         EventRoleDatabase.register("Rando",
-                                   EventRoleType("Rando", components=[GameCharacter, Adult], filter_fn=over_30))
+                                   EventRoleType("Rando", components=[GameCharacter], filter_fn=over_age(60)))
+
+        # LifeEventDatabase.register(
+        #     "Child-Birth",
+        #     LifeEventType(
+        #         "Child-Birth",
+        #         [
+        #             EventRoleDatabase.get("Child"),
+        #             EventRoleDatabase.get("Parent"),
+        #             EventRoleDatabase.get("Parent"),
+        #         ],
+        #         effect_fn=say_hi
+        #     ),
+        # )
 
         LifeEventDatabase.register(
-            "Child-Birth",
+            "GreetOverlord",
             LifeEventType(
-                "Child-Birth",
-                [
-                    EventRoleDatabase.get("Child"),
-                    EventRoleDatabase.get("Parent"),
-                    EventRoleDatabase.get("Parent"),
-                ],
-                effect_fn=say_hi
+                "GreetOverlord",
+                [EventRoleDatabase.get("Rando")],
+                effect_fn=greet_overlord
             ),
         )
 
