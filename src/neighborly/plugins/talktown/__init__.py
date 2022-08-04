@@ -2,16 +2,82 @@ import logging
 import os
 import pathlib
 
-from neighborly.core.ecs import GameObject, World
+from ordered_set import OrderedSet
+
+from neighborly.builtin.statuses import Child, Teen, YoungAdult
+from neighborly.core.ecs import GameObject, World, ISystem
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.life_event import LifeEventLog, LifeEvent, EventRole
 from neighborly.core.rng import DefaultRNG
+from neighborly.core.status import Status
+from neighborly.core.time import SimDateTime
 from neighborly.core.town import Town
-from neighborly.loaders import YamlDataLoader
 from neighborly.simulation import Plugin, Simulation
 
 logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent
+
+
+class School:
+    """A school is where Characters that are Children through Teen study"""
+
+    __slots__ = "students"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.students: OrderedSet[int] = OrderedSet()
+
+    def add_student(self, student: int) -> None:
+        """Add student to the school"""
+        self.students.add(student)
+
+    def remove_student(self, student: int) -> None:
+        """Remove student from the school"""
+        self.students.add(student)
+
+
+class Student(Status):
+
+    def __init__(self):
+        super().__init__("Student", "This character is a student at the local school")
+
+
+class SchoolSystem(ISystem):
+    """Enrolls new students and graduates old students"""
+
+    def process(self, *args, **kwargs) -> None:
+        try:
+            school = self.world.get_resource(School)
+        except KeyError:
+            return
+
+        event_logger = self.world.get_resource(LifeEventLog)
+        date = self.world.get_resource(SimDateTime)
+
+        # Enroll children
+        for gid, child in self.world.get_component(Child):
+            if not child.gameobject.has_component(Student):
+                school.add_student(gid)
+                child.gameobject.add_component(Student())
+
+        # Enroll teens
+        for gid, teen in self.world.get_component(Teen):
+            if not teen.gameobject.has_component(Student):
+                school.add_student(gid)
+                teen.gameobject.add_component(Student())
+
+        # Graduate young adults
+        for gid, (young_adult, _) in self.world.get_components(YoungAdult, Student):
+            school.remove_student(gid)
+            young_adult.gameobject.remove_component(Student)
+            event_logger.record_event(
+                LifeEvent(
+                    "GraduatedSchool",
+                    date.to_iso_str(),
+                    [EventRole("Student", gid)]
+                )
+            )
 
 
 def establish_town(world: World, **kwargs) -> None:
@@ -46,7 +112,7 @@ def establish_town(world: World, **kwargs) -> None:
     for _ in range(n_families_to_add - 1):
         # create residents
         # create Farm
-        farm = engine.spawn_business("Farm")
+        farm = engine.spawn_business(world, "Farm")
         # trigger hiring event
         # trigger home move event
 
@@ -66,10 +132,7 @@ def establish_town(world: World, **kwargs) -> None:
 
 class TalkOfTheTownPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        """Entry point for the plugin"""
-        # YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)
-        # sim.add_setup_system(establish_town)
-        ...
+        sim.add_system(SchoolSystem())
 
 
 def get_plugin() -> Plugin:

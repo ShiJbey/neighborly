@@ -1,31 +1,18 @@
 from __future__ import annotations
 
-import logging
+from dataclasses import dataclass
 from typing import (
     Any,
     ClassVar,
     Dict,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
+    Optional, Type, List,
 )
 
-from pydantic import BaseModel, Field, validator
 from typing_extensions import TypedDict
 
-from neighborly.core.ecs import Component, Event, IEventListener, World
+from neighborly.core.ecs import Component, World, EntityArchetype
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import (
-    EventCallbackDatabase,
-    ILifeEventCallback,
-    LifeEvent,
-    LifeEventHandler,
-)
-from neighborly.core.utils.utilities import parse_number_range
-
-logger = logging.getLogger(__name__)
+from neighborly.core.routine import Routine
 
 
 class LifeStages(TypedDict):
@@ -38,47 +25,8 @@ class LifeStages(TypedDict):
     elder: int
 
 
-class AgingConfig(BaseModel):
-    """Configuration parameters for a characters lifecycle
-
-    Fields
-    ------
-    can_age: bool
-        Will his character's age change during th simulation
-    can_die: bool
-        Can this character die when it reaches its max age
-    lifespan_mean: int
-        Average lifespan of characters with this configuration
-    lifespan_std: int
-        Standard deviation of the lifespans of characters with this
-        configuration
-    adult_age: int
-        Age that characters with thi config are considered adults
-        in society
-    romantic_feelings_age: int
-        The age that characters start to develop romantic feelings
-        for other characters
-    """
-
-    life_stages: LifeStages
-    lifespan: int
-
-
-class FamilyGenerationOptions(BaseModel):
-    """Options used when generating a family for a new character entering the town"""
-
-    probability_spouse: float
-    probability_children: float
-    num_children: Tuple[int, int]
-
-    @validator("num_children", pre=True)
-    def convert_age_ranges_to_tuples(cls, v):
-        if isinstance(v, str):
-            return parse_number_range(v)
-        return v
-
-
-class CharacterDefinition(BaseModel):
+@dataclass
+class CharacterDefinition:
     """Configuration parameters for characters
 
     Fields
@@ -90,34 +38,9 @@ class CharacterDefinition(BaseModel):
     _type_registry: ClassVar[Dict[str, CharacterDefinition]] = {}
 
     type_name: str
-    first_name: str
-    family_name: str
-    aging: AgingConfig
+    life_stages: LifeStages
+    lifespan: int
     chance_can_get_pregnant: float = 0.5
-    events: Dict[str, Dict[str, List[str]]] = Field(default_factory=dict)
-
-    @classmethod
-    def create(
-        cls, options: Dict[str, Any], base: Optional[CharacterDefinition] = None
-    ) -> CharacterDefinition:
-        """Create a new Character type
-
-        Parameters
-        ----------
-        options: Dict[str, Any]
-            data used to instantiate the CharacterType
-        base: CharacterType
-            Character type to base the new type off of
-        """
-
-        character_def = {}
-
-        if base:
-            character_def.update(base.dict())
-
-        character_def.update(options)
-
-        return CharacterDefinition(**character_def)
 
     @classmethod
     def register_type(cls, type_config: CharacterDefinition) -> None:
@@ -130,15 +53,21 @@ class CharacterDefinition(BaseModel):
         return cls._type_registry[name]
 
 
-class CharacterName(NamedTuple):
-    firstname: str
-    surname: str
+class CharacterName:
+    __slots__ = "firstname", "surname"
+
+    def __init__(self, firstname: str, surname: str) -> None:
+        self.firstname: str = firstname
+        self.surname: str = surname
+
+    def __repr__(self) -> str:
+        return f"{self.firstname} {self.surname}"
 
     def __str__(self) -> str:
         return f"{self.firstname} {self.surname}"
 
 
-class GameCharacter(Component, IEventListener):
+class GameCharacter(Component):
     """
     The state of a single character within the world
 
@@ -154,8 +83,6 @@ class GameCharacter(Component, IEventListener):
         Entity ID of the location where this character current is
     location_aliases: Dict[str, int]
         Maps string names to entity IDs of locations in the world
-    _event_handlers: Dict[str, LifeEventHandler]
-        Event handlers for the GameCharacter component
     """
 
     __slots__ = (
@@ -165,7 +92,6 @@ class GameCharacter(Component, IEventListener):
         "location",
         "location_aliases",
         "can_get_pregnant",
-        "_event_handlers",
     )
 
     character_def_registry: Dict[str, CharacterDefinition] = {}
@@ -175,8 +101,7 @@ class GameCharacter(Component, IEventListener):
         character_def: CharacterDefinition,
         name: CharacterName,
         age: float,
-        can_get_pregnant: bool = False,
-        events: Optional[Dict[str, Dict[str, List[ILifeEventCallback]]]] = None,
+        can_get_pregnant: bool = False
     ) -> None:
         super().__init__()
         self.character_def = character_def
@@ -185,78 +110,41 @@ class GameCharacter(Component, IEventListener):
         self.location: Optional[int] = None
         self.location_aliases: Dict[str, int] = {}
         self.can_get_pregnant: bool = can_get_pregnant
-        self._event_handlers: Dict[str, LifeEventHandler] = {}
-
-        if events:
-            for event_name, callbacks in events.items():
-                preconditions = callbacks.get("preconditions", [])
-                if event_name not in self._event_handlers:
-                    self._event_handlers[event_name] = LifeEventHandler()
-
-                for fn in preconditions:
-                    self._event_handlers[event_name].add_precondition(fn)
-                effects = callbacks.get("effects", [])
-                for fn in effects:
-                    self._event_handlers[event_name].add_effect(fn)
 
     @classmethod
     def create(cls, world: World, **kwargs) -> GameCharacter:
         """Create a new instance of a character"""
         engine: NeighborlyEngine = world.get_resource(NeighborlyEngine)
 
-        character_def = cls.get_character_def(CharacterDefinition(**kwargs))
+        character_type_name = kwargs["character_type"]
+        first_name, surname = kwargs.get("name_format", "#first_name# #family_name#").split(" ")
+        lifespan: int = kwargs["lifespan"]
+        life_stages: LifeStages = kwargs["life_stages"]
+        chance_can_get_pregnant: float = kwargs.get("chance_can_get_pregnant", 0.5)
+
+        character_def = cls.get_character_def(CharacterDefinition(
+            type_name=character_type_name,
+            lifespan=lifespan,
+            life_stages=life_stages,
+        ))
 
         name = CharacterName(
-            engine.name_generator.get_name(character_def.first_name),
-            engine.name_generator.get_name(character_def.family_name),
+            engine.name_generator.get_name(first_name),
+            engine.name_generator.get_name(surname),
         )
 
-        can_get_pregnant = engine.rng.random() < character_def.chance_can_get_pregnant
+        can_get_pregnant = engine.rng.random() < chance_can_get_pregnant
 
         # generate an age
-        age_range: Optional[Union[str, tuple[int, int]]] = kwargs.get("age_range")
-
-        if isinstance(age_range, str):
-            lower_bound: int = character_def.aging.life_stages[age_range]  # type: ignore
-
-            potential_upper_bounds = {
-                "child": character_def.aging.life_stages["teen"],
-                "teen": character_def.aging.life_stages["young_adult"],
-                "young_adult": character_def.aging.life_stages["adult"],
-                "adult": character_def.aging.life_stages["elder"],
-                "elder": character_def.aging.lifespan,
-            }
-
-            age = engine.rng.randint(lower_bound, potential_upper_bounds[age_range] - 1)
-        elif isinstance(age_range, tuple):
-            age = engine.rng.randint(age_range[0], age_range[1])
-        else:
-            age = engine.rng.randint(
-                character_def.aging.life_stages["young_adult"],
-                character_def.aging.life_stages["adult"] - 1,
-            )
-
-        event_handlers: Dict[str, Dict[str, List[ILifeEventCallback]]] = {}
-
-        for event_name, handler_config in character_def.events.items():
-            if event_name not in event_handlers:
-                event_handlers[event_name] = {"preconditions": [], "effects": []}
-
-            for callback_name in handler_config.get("preconditions", []):
-                event_handlers[event_name]["preconditions"].append(
-                    EventCallbackDatabase.get_precondition(callback_name)
-                )
-
-            for callback_name in handler_config.get("effects", []):
-                event_handlers[event_name]["effects"].append(
-                    EventCallbackDatabase.get_effect(callback_name)
-                )
+        age = engine.rng.randint(
+            character_def.life_stages["young_adult"],
+            character_def.life_stages["elder"] - 1,
+        )
 
         return GameCharacter(
             character_def=character_def,
             name=name,
             age=float(age),
-            events=event_handlers,
             can_get_pregnant=can_get_pregnant,
         )
 
@@ -277,56 +165,74 @@ class GameCharacter(Component, IEventListener):
             "age": self.age,
             "location": self.location,
             "location_aliases": self.location_aliases,
+            "can_get_pregnant": self.can_get_pregnant,
         }
 
-    def will_handle_event(self, event: Event) -> bool:
-        """
-        Check the preconditions for this event type to see if they pass
-
-        Returns
-        -------
-        bool
-            True if the event passes all the preconditions
-        """
-        if event.get_type() in self._event_handlers and isinstance(event, LifeEvent):
-            self._event_handlers[event.get_type()].check_preconditions(
-                self.gameobject, event
-            )
-
-        return True
-
-    def handle_event(self, event: LifeEvent) -> bool:
-        """
-        Perform logic when an event occurs
-
-        Returns
-        -------
-        bool
-            True if the event was handled successfully
-        """
-        if event.get_type() in self._event_handlers:
-            self._event_handlers[event.get_type()].handle_event(self.gameobject, event)
-
-        return True
-
-    def on(
-        self,
-        event_type: str,
-        precondition: Optional[ILifeEventCallback] = None,
-        effect: Optional[ILifeEventCallback] = None,
-    ) -> None:
-        """Add new event callbacks for a given event type"""
-        if precondition:
-            self._event_handlers[event_type].preconditions.append(precondition)
-        if effect:
-            self._event_handlers[event_type].effects.append(effect)
+    def __str__(self) -> str:
+        return f"{str(self.name)}({self.gameobject.id})"
 
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "{}(name={}, age={}, location={}, location_aliases={})".format(
+        return "{}(name={}, age={}, location={}, location_aliases={}, can_get_pregnant={})".format(
             self.__class__.__name__,
             str(self.name),
             round(self.age),
             self.location,
             self.location_aliases,
+            self.can_get_pregnant
         )
+
+
+class CharacterArchetype(EntityArchetype):
+    """
+    Archetype subclass for building characters
+    """
+
+    __slots__ = "name_format", "spawn_multiplier"
+
+    def __init__(
+        self,
+        name: str,
+        lifespan: int,
+        life_stages: LifeStages,
+        name_format: "#first_name# #family_name#",
+        chance_can_get_pregnant: float = 0.5,
+        spawn_multiplier: int = 1,
+        extra_components: Dict[Type[Component], Dict[str, Any]] = None
+    ) -> None:
+        super().__init__(name)
+        self.name_format: str = name_format
+        self.spawn_multiplier: int = spawn_multiplier
+
+        self.add(
+            GameCharacter,
+            character_type=name,
+            name_format=name_format,
+            lifespan=lifespan,
+            life_stages=life_stages,
+            chance_can_get_pregnant=chance_can_get_pregnant,
+        )
+
+        self.add(Routine)
+
+        if extra_components:
+            for component_type, params in extra_components.items():
+                self.add(component_type, **params)
+
+
+class CharacterArchetypeLibrary:
+    _registry: Dict[str, CharacterArchetype] = {}
+
+    @classmethod
+    def register(cls, archetype: CharacterArchetype, name: Optional[str] = None) -> None:
+        """Register a new LifeEventType mapped to a name"""
+        cls._registry[name if name else archetype.name] = archetype
+
+    @classmethod
+    def get_all(cls) -> List[CharacterArchetype]:
+        return list(cls._registry.values())
+
+    @classmethod
+    def get(cls, name: str) -> CharacterArchetype:
+        """Get a LifeEventType using a name"""
+        return cls._registry[name]

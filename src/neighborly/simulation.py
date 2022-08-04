@@ -5,9 +5,12 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Any, Literal, Optional, Tuple, Union
 
+from neighborly.builtin.systems import LinearTimeSystem, BuildBusinessSystem, SpawnResidentSystem, BuildResidenceSystem, \
+    RoutineSystem, CharacterAgingSystem
 from neighborly.core.ecs import World, ISystem
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.systems import LinearTimeISystem
+from neighborly.core.life_event import LifeEventSimulator, LifeEventLog
+from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import LandGrid, Town
 
@@ -96,7 +99,15 @@ class Simulation:
         sim = (
             Simulation(seed, World(), NeighborlyEngine(seed), start_date, end_date)
             .add_resource(start_date.copy())
-            .add_system(LinearTimeISystem(TimeDelta(hours=time_increment_hours)))
+            .add_system(LinearTimeSystem(TimeDelta(hours=time_increment_hours)))
+            .add_system(LifeEventSimulator())
+            .add_resource(LifeEventLog())
+            .add_system(BuildResidenceSystem())
+            .add_system(SpawnResidentSystem())
+            .add_system(BuildBusinessSystem())
+            .add_resource(RelationshipGraph())
+            .add_resource(CharacterAgingSystem())
+            .add_system(RoutineSystem(), 5)
         )
 
         sim._create_town(town_name, town_size)

@@ -12,14 +12,13 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import (
     Any,
     Dict,
     Iterable,
     List,
     Optional,
-    Protocol,
     Tuple,
     Type,
     TypeVar,
@@ -32,48 +31,6 @@ logger = logging.getLogger(__name__)
 
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
-
-
-class Event(Protocol):
-    """
-    Events are things that happen in the story world that GameObjects can react to.
-    """
-
-    def get_type(self) -> str:
-        """Return the type of this event"""
-        raise NotImplementedError
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize this LifeEvent to a dictionary"""
-        raise NotImplemented
-
-
-class IEventListener(ABC):
-    """Abstract interface that components inherit from when they want to listen for events"""
-
-    @abstractmethod
-    def will_handle_event(self, event: Event) -> bool:
-        """
-        Check the preconditions for this event type to see if they pass
-
-        Returns
-        -------
-        bool
-            True if the event passes all the preconditions
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def handle_event(self, event: Event) -> bool:
-        """
-        Perform logic when an event occurs
-
-        Returns
-        -------
-        bool
-            True if the event was handled successfully
-        """
-        raise NotImplementedError()
 
 
 class GameObject:
@@ -99,7 +56,6 @@ class GameObject:
         "_components",
         "_world",
         "_archetype",
-        "_event_listeners",
     )
 
     def __init__(
@@ -115,7 +71,6 @@ class GameObject:
         self._world: Optional[World] = world
         self._components: Dict[Type[_CT], Component] = {}
         self._archetype: Optional[EntityArchetype] = archetype
-        self._event_listeners: List[IEventListener] = []
 
         if components:
             for component in components:
@@ -155,8 +110,6 @@ class GameObject:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
         self._components[type(component)] = component
-        if isinstance(component, IEventListener):
-            self._event_listeners.append(component)
         self.world.ecs.add_component(self.id, component)
         component.on_add()
         return self
@@ -164,10 +117,8 @@ class GameObject:
     def remove_component(self, component_type: Type[_CT]) -> None:
         """Add a component to this GameObject"""
         component = self._components[component_type]
-        if isinstance(component, IEventListener):
-            self._event_listeners.remove(component)
-        self.world.ecs.remove_component(self.id, component_type)
         component.on_remove()
+        self.world.ecs.remove_component(self.id, component_type)
         del self._components[component_type]
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
@@ -186,22 +137,6 @@ class GameObject:
             "components": [c.to_dict() for c in self._components.values()],
             "archetype": self.archetype.name if self.archetype else "",
         }
-
-    def handle_event(self, event: Event) -> None:
-        """Handle an event acting on this gameobject"""
-        for listener in self._event_listeners:
-            listener.handle_event(event)
-
-    def will_handle_event(self, event: Event) -> bool:
-        """Return False if this gameobject rejects this event, True otherwise"""
-        if self._event_listeners:
-            return all(
-                [
-                    listener.will_handle_event(event)
-                    for listener in self._event_listeners
-                ]
-            )
-        return True
 
     def __hash__(self) -> int:
         return self._id
@@ -224,7 +159,7 @@ class Component(ABC):
 
     __slots__ = "_gameobject"
 
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__()
         self._gameobject: Optional[GameObject] = None
 
@@ -250,7 +185,7 @@ class Component(ABC):
     @classmethod
     def create(cls, world, **kwargs) -> Component:
         """Create an instance of the component using a reference to the World object and additional parameters"""
-        raise cls()
+        raise cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the component to a dict"""

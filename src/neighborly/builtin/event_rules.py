@@ -1,10 +1,9 @@
-from typing import cast
 import itertools
+
+from neighborly.builtin.statuses import Elder, Adult, InRelationship
+from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import World
 from neighborly.core.life_event import LifeEventRule
-from neighborly.core.builtin.statuses import Elder, Adult, InRelationship
-from neighborly.core.systems import LifeEventISystem
-from neighborly.core.character import GameCharacter
 
 
 def get_elder_characters(world: World, **kwargs):

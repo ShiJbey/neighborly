@@ -66,37 +66,37 @@ Residences:
     components:
       - type: Location
         options:
-          activities: [Rest]
+          activities: [ Rest ]
       - type: Residence
       - type: Position2D
 CharacterDefinitions:
   - name: Human
     generation:
       first_name: "#first_name#"
-      last_name: "#last_name#"
+      last_name: "#family_name#"
       family:
         probability_spouse: 0.5
         probability_children: 0.5
         num_children: "0-2"
     lifecycle:
       lifespan: 85
-        life_stages:
-          child: 0
-          teen: 13
-          young_adult: 18
-          adult: 30
-          elder: 65
+      life_stages:
+        child: 0
+        teen: 13
+        young_adult: 18
+        adult: 30
+        elder: 65
     events:
       marriage:
-        preconditions: [default/can_get_married]
-        effects: [default/marriage_behavior]
+        preconditions: [ default/can_get_married ]
+        effects: [ default/marriage_behavior ]
 Characters:
   - name: Human
     components:
       - type: GameCharacter
         options:
           first_name: "#first_name#"
-          last_name: "#last_name#"
+          last_name: "#family_name#"
           lifespan: 85
           life_stages:
             child: 0
@@ -105,7 +105,7 @@ Characters:
             adult: 30
             elder: 65
           probability_spouse: 0.5
-            probability_children: 0.5
-            num_children: "0-2"
+          probability_children: 0.5
+          num_children: "0-2"
       - type: RelationshipManager
       - type: Routine

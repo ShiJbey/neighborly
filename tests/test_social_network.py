@@ -4,9 +4,8 @@ import yaml
 from neighborly.core.relationship import (
     Relationship,
     RelationshipModifier,
-    RelationshipTag,
+    RelationshipTag, RelationshipGraph,
 )
-from neighborly.core.social_network import RelationshipNetwork
 
 
 @pytest.fixture
@@ -38,7 +37,7 @@ def test_relationship_network():
     maggie = 4
 
     # Construct the social graph
-    social_graph = RelationshipNetwork()
+    social_graph = RelationshipGraph()
 
     homer_to_lisa_rel = Relationship(homer, lisa)
     lisa_to_homer_rel = Relationship(lisa, homer)

@@ -1,6 +1,6 @@
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject
-from neighborly.core.life_event import LifeEvent, event_precondition
+from neighborly.core.life_event import LifeEvent
 from neighborly.core.relationship import RelationshipTag
 from neighborly.core.utils.utilities import clamp
 from neighborly.plugins.talktown.personality import BigFivePersonality

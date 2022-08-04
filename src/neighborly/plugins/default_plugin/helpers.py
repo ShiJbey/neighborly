@@ -6,8 +6,7 @@ import numpy as np
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.relationship import Relationship, RelationshipModifier
-
-from .activity import ActivityCenter, get_activity_flags, get_all_activities
+from .activity import get_activity_flags, get_all_activities
 from .character_values import CharacterValues
 
 

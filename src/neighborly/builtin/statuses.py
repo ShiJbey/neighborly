@@ -1,5 +1,5 @@
 from neighborly.core.business import Business
-from neighborly.core.ecs import Component, IEventListener, World, Event
+from neighborly.core.ecs import Component, World
 from neighborly.core.status import Status
 from neighborly.core.time import SimDateTime
 
@@ -212,7 +212,7 @@ class InRelationship(Status):
             married_status.duration += delta_time
 
 
-class BusinessOwner(Status, IEventListener):
+class BusinessOwner(Status):
     __slots__ = "duration", "business_id", "business_name"
 
     def __init__(self, business_id: int, business_name: str) -> None:
@@ -228,19 +228,12 @@ class BusinessOwner(Status, IEventListener):
     def create(cls, world, **kwargs) -> Component:
         return cls(**kwargs)
 
-    def will_handle_event(self, event: Event) -> bool:
-        return True
-
-    def handle_event(self, event: Event) -> bool:
-        event_type = event.get_type()
-        if event_type == "death":
-            print("Character died and are no longer a business owner.")
-            # Remove the character from their work position
-            world = self.gameobject.world
-            workplace = world.get_gameobject(self.business_id).get_component(Business)
-            workplace.set_owner(None)
-            self.gameobject.remove_component(BusinessOwner)
-        return True
+    def on_remove(self) -> None:
+        # Remove the character from their work position
+        world = self.gameobject.world
+        workplace = world.get_gameobject(self.business_id).get_component(Business)
+        workplace.set_owner(None)
+        self.gameobject.remove_component(BusinessOwner)
 
 
 class Pregnant(Status):
@@ -255,3 +248,18 @@ class Pregnant(Status):
     @classmethod
     def create(cls, world, **kwargs) -> Component:
         return cls(**kwargs)
+
+
+class Male(Status):
+    def __init__(self):
+        super().__init__("Male", "This character is perceived as masculine.")
+
+
+class Female(Status):
+    def __init__(self):
+        super().__init__("Female", "This character is perceived as feminine.")
+
+
+class NonBinary(Status):
+    def __init__(self):
+        super().__init__("NonBinary", "This character is perceived as non-binary.")

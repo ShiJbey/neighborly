@@ -1,19 +1,14 @@
+import random
 import re
-
-from neighborly.core.rng import DefaultRNG, IRandNumGenerator
 
 basestring = (str, bytes)
 
-__rng: IRandNumGenerator = DefaultRNG()
+_rng = random.Random()
 
 
-def set_grammar_rng(rng: IRandNumGenerator) -> None:
-    global __rng
-    __rng = rng
-
-
-def get_grammar_rng() -> IRandNumGenerator:
-    return __rng
+def set_grammar_rng(rng) -> None:
+    global _rng
+    _rng = rng
 
 
 class Node(object):
@@ -171,7 +166,7 @@ class RuleSet(object):
         # in kate's code there's a bunch of stuff for different methods of
         # selecting a rule, none of which seem to be implemented yet! so for
         # now I'm just going to ...
-        return get_grammar_rng().choice(self.default_rules)
+        return _rng.choice(self.default_rules)
 
     def clear_state(self):
         self.default_uses = []
@@ -316,7 +311,7 @@ def parse(rule):
                 errors.append(str(start) + ": empty action")
         raw_substring = None
         if last_escaped_char is not None:
-            raw_substring = escaped_substring + "\\" + rule[last_escaped_char + 1 : end]
+            raw_substring = escaped_substring + "\\" + rule[last_escaped_char + 1: end]
         else:
             raw_substring = rule[start:end]
         sections.append({"type": type_, "raw": raw_substring})

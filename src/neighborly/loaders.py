@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Protocol, Union
 
 import yaml
 
-from neighborly.core.business import BusinessDefinition
+from neighborly.core.business import BusinessArchetype
 from neighborly.core.character import CharacterDefinition
 from neighborly.core.ecs import EntityArchetype
 from neighborly.core.engine import NeighborlyEngine
@@ -103,7 +103,7 @@ def _load_business_definitions(
 ) -> None:
     """Process data related to defining activities"""
     for business_def in data:
-        BusinessDefinition.register_type(BusinessDefinition(**business_def))
+        BusinessArchetype.register(BusinessArchetype(**business_def))
 
 
 def _load_entity_archetype(

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Type, List
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, Event, IEventListener, World
+from neighborly.core.ecs import Component, World, EntityArchetype
+from neighborly.core.location import Location
+from neighborly.core.position import Position2D
 
 
 class Residence(Component):
@@ -66,7 +68,7 @@ class Residence(Component):
         return cls()
 
 
-class Resident(Component, IEventListener):
+class Resident(Component):
     """Component attached to characters indicating that they live in the town"""
 
     __slots__ = "residence"
@@ -75,21 +77,48 @@ class Resident(Component, IEventListener):
         super().__init__()
         self.residence: int = residence
 
+    def on_remove(self) -> None:
+        world = self.gameobject.world
+        residence = world.get_gameobject(self.residence).get_component(Residence)
+        residence.remove_resident(self.gameobject.id)
+        if residence.is_owner(self.gameobject.id):
+            residence.remove_owner(self.gameobject.id)
+
+
+class ResidenceArchetype(EntityArchetype):
+    __slots__ = "spawn_multiplier",
+
+    def __init__(
+        self,
+        name: str,
+        spawn_multiplier: int = 1,
+        extra_components: Dict[Type[Component], Dict[str, Any]] = None
+    ) -> None:
+        super().__init__(name)
+        self.spawn_multiplier: int = spawn_multiplier
+
+        self.add(Residence)
+        self.add(Location)
+        self.add(Position2D)
+
+        if extra_components:
+            for component_type, params in extra_components.items():
+                self.add(component_type, **params)
+
+
+class ResidenceArchetypeLibrary:
+    _registry: Dict[str, ResidenceArchetype] = {}
+
     @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return Resident(**kwargs)
+    def register(cls, archetype: ResidenceArchetype, name: str = None, ) -> None:
+        """Register a new LifeEventType mapped to a name"""
+        cls._registry[name if name else archetype.name] = archetype
 
-    def will_handle_event(self, event: Event) -> bool:
-        return True
+    @classmethod
+    def get_all(cls) -> List[ResidenceArchetype]:
+        return list(cls._registry.values())
 
-    def handle_event(self, event: Event) -> bool:
-        event_type = event.get_type()
-        if event_type == "death":
-            print("Character died and now we remove them from the house.")
-            # Remove the resident from the residence
-            world = self.gameobject.world
-            residence = world.get_gameobject(self.residence).get_component(Residence)
-            residence.remove_resident(self.gameobject.id)
-            if residence.is_owner(self.gameobject.id):
-                residence.remove_owner(self.gameobject.id)
-        return True
+    @classmethod
+    def get(cls, name: str) -> ResidenceArchetype:
+        """Get a LifeEventType using a name"""
+        return cls._registry[name]

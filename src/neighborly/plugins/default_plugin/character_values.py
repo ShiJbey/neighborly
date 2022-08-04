@@ -63,6 +63,7 @@ class CharacterValues(Component):
     def __init__(
         self, overrides: Optional[Dict[str, int]] = None, default: int = 0
     ) -> None:
+        super().__init__()
         self._traits: npt.NDArray[np.int32] = np.array(
             [default] * len(_VALUE_INDICES.keys()), dtype=np.int32
         )

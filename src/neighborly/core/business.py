@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from enum import Enum, Flag, auto
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
+from enum import Enum, IntFlag
+from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type
 
-from neighborly.core.ecs import Component, Event, GameObject, IEventListener, World
+from neighborly.core.ecs import Component, GameObject, World, EntityArchetype
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.location import Location
+from neighborly.core.position import Position2D
 from neighborly.core.routine import RoutineEntry, RoutinePriority
 
 
@@ -51,17 +53,11 @@ class OccupationDefinition:
         Name of the position
     level: int
         Prestige or socioeconomic status associated with the position
-    preconditions: List[OccupationPreconditionFn]
-        Preconditions functions that need to pass for a character
-        to qualify for this occupation type
 
     Class Attributes
     ----------------
     _type_registry: Dict[str, OccupationType]
         Registered instances of OccupationTypes
-    _precondition_registry: Dict[str, OccupationPreconditionFn]
-        Registered preconditions used to determine
-        if a character qualifies for a position
     """
 
     _type_registry: ClassVar[Dict[str, OccupationDefinition]] = {}
@@ -86,7 +82,7 @@ class OccupationDefinition:
         cls._precondition_registry[name] = precondition
 
 
-class Occupation(Component, IEventListener):
+class Occupation(Component):
     """
     Employment Information about a character
     """
@@ -145,89 +141,37 @@ class Occupation(Component, IEventListener):
             )
         return cls._definition_registry[name]
 
-    def will_handle_event(self, event: Event) -> bool:
-        return True
-
-    def handle_event(self, event: Event) -> bool:
-        event_type = event.get_type()
-        if event_type == "death":
-            print("Character died and now we remove them from their job.")
-            # Remove the character from their work position
-            self.gameobject.remove_component(Occupation)
-        return True
-
     def on_remove(self) -> None:
         """Run when the component is removed from the GameObject"""
         world = self.gameobject.world
         workplace = world.get_gameobject(self._business).get_component(Business)
-        if workplace.get_owner() != self.gameobject.id:
+        if workplace.owner != self.gameobject.id:
             workplace.remove_employee(self.gameobject.id)
 
 
-class BusinessServiceFlag(Flag):
+class BusinessServiceFlag(IntFlag):
     NONE = 0
-    ALCOHOL = auto()
-    BANKING = auto()
-    COLLEGE_EDUCATION = auto()
-    CONSTRUCTION = auto()
-    COSMETICS = auto()
-    CLOTHING = auto()
-    FIRE_EMERGENCY = auto()
-    FOOD = auto()
-    HARDWARE = auto()
-    HOME_IMPROVEMENT = auto()
-    HOUSING = auto()
-    LEGAL = auto()
-    MEDICAL_EMERGENCY = auto()
-    MORTICIAN = auto()
-    RECREATION = auto()
-    PUBLIC_SERVICE = auto()
-    PRIMARY_EDUCATION = auto()
-    REALTY = auto()
-    SECONDARY_EDUCATION = auto()
-    SHOPPING = auto()
-    SOCIALIZING = auto()
-
-
-@dataclass
-class BusinessDefinition:
-    """
-    Shared information about all businesses that
-    have this type
-    """
-
-    _type_registry: ClassVar[Dict[str, "BusinessDefinition"]] = {}
-
-    name: str
-    hours: str
-    name_pattern: Optional[str] = None
-    owner_type: str = ""
-    max_instances: int = 9999
-    instances: int = 0
-    min_population: int = 0
-    employees: Dict[str, int] = field(default_factory=dict)
-    services: List[str] = field(default_factory=list)
-    service_flags: BusinessServiceFlag = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.service_flags = BusinessServiceFlag.NONE
-        for service_name in self.services:
-            self.service_flags |= BusinessServiceFlag[
-                service_name.strip().upper().replace(" ", "_")
-            ]
-
-    @classmethod
-    def register_type(cls, business_type: "BusinessDefinition") -> None:
-        """Register one or more business types for later use"""
-        cls._type_registry[business_type.name] = business_type
-
-    @classmethod
-    def get_registered_type(cls, name: str) -> "BusinessDefinition":
-        return cls._type_registry[name]
-
-    @classmethod
-    def get_all_types(cls) -> List["BusinessDefinition"]:
-        return list(cls._type_registry.values())
+    ALCOHOL = 1 << 0
+    BANKING = 1 << 1
+    COLLEGE_EDUCATION = 1 << 2
+    CONSTRUCTION = 1 << 3
+    COSMETICS = 1 << 4
+    CLOTHING = 1 << 5
+    FIRE_EMERGENCY = 1 << 6
+    FOOD = 1 << 7
+    HARDWARE = 1 << 8
+    HOME_IMPROVEMENT = 1 << 9
+    HOUSING = 1 << 10
+    LEGAL = 1 << 11
+    MEDICAL_EMERGENCY = 1 << 12
+    MORTICIAN = 1 << 13
+    RECREATION = 1 << 14
+    PUBLIC_SERVICE = 1 << 15
+    PRIMARY_EDUCATION = 1 << 16
+    REALTY = 1 << 17
+    SECONDARY_EDUCATION = 1 << 18
+    SHOPPING = 1 << 19
+    SOCIALIZING = 1 << 20
 
 
 class BusinessStatus(Enum):
@@ -238,71 +182,63 @@ class BusinessStatus(Enum):
 
 class Business(Component):
     __slots__ = (
-        "business_def",
-        "_name",
+        "business_type",
+        "name",
         "_years_in_business",
-        "_operating_hours",
+        "operating_hours",
         "_employees",
         "_open_positions",
-        "_owner",
-        "_status",
+        "owner",
+        "owner_type",
+        "status",
+        "services"
     )
 
     def __init__(
-        self, business_def: BusinessDefinition, name: str, owner: Optional[int] = None
+        self,
+        business_type: str,
+        name: str,
+        owner_type: str = None,
+        owner: int = None,
+        open_positions: Dict[str, int] = None,
+        operating_hours: Dict[str, List[RoutineEntry]] = None,
+        services: BusinessServiceFlag = BusinessServiceFlag.NONE,
     ) -> None:
         super().__init__()
-        self.business_def: BusinessDefinition = business_def
-        self._name: str = name
+        self.business_type: str = business_type
+        self.owner_type: Optional[str] = owner_type
+        self.name: str = name
         # self._operating_hours: Dict[str, List[RoutineEntry]] = self._create_routines(
         #     parse_schedule_str(business_def.hours)
         # )
-        self._operating_hours: Dict[str, List[RoutineEntry]] = {}
-        self._open_positions: Dict[str, int] = {**business_def.employees}
+        self.operating_hours: Dict[str, List[RoutineEntry]] = operating_hours if operating_hours else {}
+        self._open_positions: Dict[str, int] = open_positions if open_positions else {}
         self._employees: Dict[int, str] = {}
-        self._owner: Optional[int] = owner
-        self._status: BusinessStatus = BusinessStatus.PendingOpening
+        self.owner: Optional[int] = owner
+        self.status: BusinessStatus = BusinessStatus.PendingOpening
         self._years_in_business: float = 0.0
-
-    @property
-    def status(self) -> BusinessStatus:
-        return self._status
+        self.services: BusinessServiceFlag = services
 
     @property
     def years_in_business(self) -> int:
         return math.floor(self._years_in_business)
 
-    def on_add(self) -> None:
-        self.get_type().instances += 1
-
-    def on_remove(self) -> None:
-        self.get_type().instances -= 1
-
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "business_def": self.business_def.name,
-            "name": self._name,
-            "operating_hours": self.business_def.hours,
-            "open_positions": self._open_positions,
-            "employees": self._employees,
-            "owner": self._owner if self._owner else -1,
+            "business_type": self.business_type,
+            "name": self.name,
+            "operating_hours": self.operating_hours,
+            "open_positions": self.operating_hours,
+            "employees": self.employees,
+            "owner": self.owner if self.owner is not None else -1,
         }
 
-    def get_owner(self) -> Optional[int]:
-        return self._owner
-
     def needs_owner(self) -> bool:
-        return self._owner is None and self.get_type().owner_type is not None
+        return self.owner is None and self.owner_type is not None
 
     def get_open_positions(self) -> List[str]:
         return [title for title, n in self._open_positions.items() if n > 0]
-
-    def get_type(self) -> BusinessDefinition:
-        return self.business_def
-
-    def get_name(self) -> str:
-        return self._name
 
     def get_employees(self) -> List[int]:
         """Return a list of IDs for current employees"""
@@ -319,23 +255,18 @@ class Business(Component):
         del self._employees[character]
         self._open_positions[position] += 1
 
-    def set_owner(self, character: Optional[int]) -> None:
-        """Set the owner for this business"""
-        self._owner = character
-
     def set_business_status(self, status: BusinessStatus) -> None:
-        self._status = status
+        self.status = status
 
     def increment_years_in_business(self, years: float) -> None:
         self._years_in_business += years
 
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "{}(type='{}', name='{}', owner={}, employees={}, openings={})".format(
-            self.__class__.__name__,
-            self.business_def.name,
-            self._name,
-            self._owner,
+        return "Business(type='{}', name='{}', owner={}, employees={}, openings={})".format(
+            self.business_type,
+            self.name,
+            self.owner,
             self._employees,
             self._open_positions,
         )
@@ -343,17 +274,23 @@ class Business(Component):
     @classmethod
     def create(cls, world: World, **kwargs) -> Business:
         engine = world.get_resource(NeighborlyEngine)
-        type_name: str = kwargs["business_type"]
 
-        business_type = BusinessDefinition.get_registered_type(type_name)
+        business_type: str = kwargs["business_type"]
+        business_name: str = engine.name_generator.get_name(kwargs.get("name_format", business_type))
+        owner_type: Optional[str] = kwargs.get("owner_type")
+        employee_types: Dict[str, int] = kwargs.get("employees_types", {})
+        services: BusinessServiceFlag = kwargs.get("services", BusinessServiceFlag.NONE)
+        # operating_hours: Dict[str, List[RoutineEntry]] = self._create_routines(
+        #     parse_schedule_str(business_def.hours)
+        # )
 
-        name = (
-            engine.name_generator.get_name(business_type.name_pattern)
-            if business_type.name_pattern
-            else type_name
+        return Business(
+            business_type=business_name,
+            name=business_name,
+            open_positions=employee_types,
+            services=services,
+            owner_type=owner_type
         )
-
-        return Business(business_type, name)
 
     @staticmethod
     def _create_routines(
@@ -404,3 +341,76 @@ class Business(Component):
             schedules[day] = routine_entries
 
         return schedules
+
+
+class BusinessArchetype(EntityArchetype):
+    """
+    Shared information about all businesses that
+    have this type
+    """
+
+    __slots__ = "hours", "name_format", "owner_type", "max_instances", \
+                "min_population", "employee_types", "services", "service_flags", \
+                "spawn_multiplier"
+
+    def __init__(
+        self,
+        name: str,
+        hours: str,
+        name_format: str = None,
+        owner_type: str = None,
+        max_instances: int = 9999,
+        min_population: int = 0,
+        employee_types: Dict[str, int] = None,
+        services: List[str] = None,
+        spawn_multiplier: int = 1,
+        extra_components: Dict[Type[Component], Dict[str, Any]] = None
+    ) -> None:
+        super().__init__(name)
+        self.hours: str = hours
+        self.name_format: str = name_format if name_format else name
+        self.owner_type: Optional[str] = owner_type
+        self.max_instances: int = max_instances
+        self.min_population: int = min_population
+        self.employee_types: Dict[str, int] = employee_types if employee_types else {}
+        self.services: List[str] = services if services else {}
+        self.service_flags: BusinessServiceFlag = BusinessServiceFlag.NONE
+        self.spawn_multiplier: int = spawn_multiplier
+        for service_name in self.services:
+            self.service_flags |= BusinessServiceFlag[
+                service_name.strip().upper().replace(" ", "_")
+            ]
+
+        self.add(
+            Business,
+            business_type=self.name,
+            name_format=self.name_format,
+            hours=self.hours,
+            owner_type=self.owner_type,
+            employee_types=self.employee_types,
+            services=self.service_flags
+        )
+        self.add(Location)
+        self.add(Position2D)
+
+        if extra_components:
+            for component_type, params in extra_components.items():
+                self.add(component_type, **params)
+
+
+class BusinessArchetypeLibrary:
+    _registry: Dict[str, BusinessArchetype] = {}
+
+    @classmethod
+    def register(cls, archetype: BusinessArchetype, name: str = None, ) -> None:
+        """Register a new LifeEventType mapped to a name"""
+        cls._registry[name if name else archetype.name] = archetype
+
+    @classmethod
+    def get_all(cls) -> List[BusinessArchetype]:
+        return list(cls._registry.values())
+
+    @classmethod
+    def get(cls, name: str) -> BusinessArchetype:
+        """Get a LifeEventType using a name"""
+        return cls._registry[name]

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntFlag
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.utils.graph import DirectedGraph
 
 FRIENDSHIP_MAX: float = 50
 FRIENDSHIP_MIN: float = -50
@@ -72,7 +72,7 @@ class RelationshipModifier:
         Flat value to apply when incrementing the salience value
     """
 
-    _tag_registry: ClassVar[Dict[str, "RelationshipModifier"]] = {}
+    _tag_registry: ClassVar[Dict[str, RelationshipModifier]] = {}
 
     name: str
     description: str = ""
@@ -84,12 +84,12 @@ class RelationshipModifier:
     salience_increment: float = 0
 
     @classmethod
-    def register_tag(cls, tag: "RelationshipModifier") -> None:
+    def register_tag(cls, tag: RelationshipModifier) -> None:
         """Add a tag to the internal registry for finding later"""
         cls._tag_registry[tag.name] = tag
 
     @classmethod
-    def get_tag(cls, name: str) -> "RelationshipModifier":
+    def get_tag(cls, name: str) -> RelationshipModifier:
         """Retrieve a tag from the internal registry of RelationshipModifiers"""
         return cls._tag_registry[name]
 
@@ -115,7 +115,7 @@ class Relationship:
         The character who this relationship is directed toward
     _friendship: float
         Friendship score on the scale [FRIENDSHIP_MIN, FRIENDSHIP_MAX]
-        where a max is best friends and the min is worst enemies
+        where a max means best friends and min means worst-enemies
     _friendship_base: float
         Friendship score without any modifiers from tags
     _friendship_increment: float
@@ -127,20 +127,12 @@ class Relationship:
         Romance score without any modifiers from tags
     _romance_increment: float
         Amount to increment the romance score by after each interaction
-    _salience: float
-        Salience score on the scale [SALIENCE_MIN, SALIENCE_MAX]
-        where a max is I know them well and the min is "I've never seen this
-        person in my life"
-    _salience_base: float
-        Salience score without any modifiers from tags
-    _salience_increment: float
-        Amount to increment the salience score by after each interaction
     _is_dirty: bool
         Used internally to mark when score need to be recalculated after a change
     _modifiers: Dict[str, RelationshipModifier]
         All the modifiers active on the Relationship instance
     _tags: RelationshipTag
-        All the tags that that are attached to this
+        All the tags that are attached to this
     """
 
     __slots__ = (
@@ -152,9 +144,6 @@ class Relationship:
         "_romance",
         "_romance_base",
         "_romance_increment",
-        "_salience",
-        "_salience_base",
-        "_salience_increment",
         "_is_dirty",
         "_modifiers",
         "_tags",
@@ -164,21 +153,19 @@ class Relationship:
         self,
         owner: int,
         target: int,
+        base_friendship: int = 0,
+        base_romance: int = 0,
+        tags: RelationshipTag = RelationshipTag.Acquaintance,
     ) -> None:
         self._owner: int = owner
         self._target: int = target
-        self._friendship: float = 0
+        self._friendship: float = base_friendship
         self._romance: float = 0
-        self._salience: float = 0
         self._friendship_base: float = 0
-        self._romance_base: float = 0
-        self._salience_base: float = 0
-        self._friendship_increment: float = 0
-        self._romance_increment: float = 0
-        self._salience_increment: float = 0
+        self._romance_base: float = base_romance
         self._is_dirty: bool = True
         self._modifiers: Dict[str, RelationshipModifier] = {}
-        self._tags: RelationshipTag = RelationshipTag.NONE
+        self._tags: RelationshipTag = tags
 
     @property
     def target(self) -> int:
@@ -199,12 +186,6 @@ class Relationship:
         if self._is_dirty:
             self._recalculate_stats()
         return self._romance
-
-    @property
-    def salience(self) -> float:
-        if self._is_dirty:
-            self._recalculate_stats()
-        return self._salience
 
     def increment_friendship(self, value: float) -> None:
         self._friendship_base += value
@@ -249,7 +230,6 @@ class Relationship:
         if self._is_dirty:
             self._recalculate_stats()
 
-        self._salience_base += self._salience_increment
         self._romance_base += self._romance_increment
         self._friendship_base += self._friendship_increment
 
@@ -261,7 +241,6 @@ class Relationship:
             "target": self.target,
             "friendship": self.friendship,
             "romance": self.romance,
-            "salience": self.salience,
             "tags": self._tags,
             "modifiers": [m for m in self._modifiers.keys()],
         }
@@ -271,7 +250,6 @@ class Relationship:
         # Reset the increments
         self._romance_increment = 0.0
         self._friendship_increment = 0.0
-        self._salience_increment = SALIENCE_INCREMENT
 
         # Reset final values back to base values
         self._friendship = self._friendship_base
@@ -292,13 +270,48 @@ class Relationship:
         self._is_dirty = False
 
     def __repr__(self) -> str:
-        return "{}(owner={}, target={}, romance={}, friendship={}, salience={}, tags={}, modifiers={})".format(
+        return "{}(owner={}, target={}, romance={}, friendship={}, tags={}, modifiers={})".format(
             self.__class__.__name__,
             self.owner,
             self.target,
             self.romance,
             self.friendship,
-            self.salience,
             self._tags,
             list(self._modifiers.keys()),
         )
+
+
+class RelationshipGraph(DirectedGraph[Relationship]):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def add_relationship(self, relationship: Relationship) -> None:
+        """Add a new relationship to the graph"""
+        self.add_connection(relationship.owner, relationship.target, relationship)
+
+    def get_relationships(self, owner: int) -> List[Relationship]:
+        """Get all the outgoing relationships for this character"""
+        owner_node = self._nodes[owner]
+        return [self._edges[owner, target] for target in owner_node.outgoing]
+
+    def get_all_relationships_with_tags(
+        self, owner: int, tags: RelationshipTag
+    ) -> List[Relationship]:
+        owner_node = self._nodes[owner]
+
+        return list(
+            filter(
+                lambda rel: rel.has_tags(tags),
+                [self._edges[owner, target] for target in owner_node.outgoing],
+            )
+        )
+
+    def to_dict(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
+        network_dict: Dict[int, Dict[int, Dict[str, Any]]] = {}
+
+        for character_id in self._nodes.keys():
+            network_dict[character_id] = {}
+            for relationship in self.get_relationships(character_id):
+                network_dict[character_id][relationship.target] = relationship.to_dict()
+
+        return network_dict

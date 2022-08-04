@@ -1,10 +1,10 @@
 import json
-import pathlib
 import os
+import pathlib
 from typing import Optional
 
 from neighborly.core.ecs import World
-from neighborly.core.social_network import RelationshipNetwork
+from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.town import Town
 
 
@@ -15,7 +15,7 @@ class NeighborlyJsonExporter:
         return json.dumps(
             {
                 "gameobjects": {g.id: g.to_dict() for g in world.get_gameobjects()},
-                "relationships": world.get_resource(RelationshipNetwork).to_dict(),
+                "relationships": world.get_resource(RelationshipGraph).to_dict(),
             }
         )
 

@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
-from neighborly.core.ecs import Component
 from neighborly.plugins.default_plugin.character_values import CharacterValues
 
 
@@ -16,9 +15,8 @@ class Activity:
     traits_names: Tuple[str, ...]
         Character values that associated with this activity
     character_traits: CharacterValues
-        CharacterValues instance that encodes the list of trait_names
-        as a vector of 0's and 1's for non-applicable and applicable
-        character values respectively.
+        The list of trait_names encoded as a vector of 0's and 1's
+        for non-applicable and applicable character values respectively.
     """
 
     name: str
@@ -57,19 +55,3 @@ def get_activity(activity: str) -> Activity:
 def get_all_activities() -> List[Activity]:
     """Return all activity instances in the registry"""
     return list(_activity_registry.values())
-
-
-class ActivityCenter(Component):
-    def __init__(self, activities: List[str]) -> None:
-        self.activities: List[str] = activities
-        self.activity_flags: int = 0
-
-        for activity in self.activities:
-            self.activity_flags |= get_activity_flags(activity)[0]
-
-    def has_flags(self, *flag_strs: str) -> bool:
-        flags = get_activity_flags(*flag_strs)
-        for flag in flags:
-            if self.activity_flags & flag == 0:
-                return False
-        return True

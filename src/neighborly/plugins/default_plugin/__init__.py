@@ -3,29 +3,19 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-from neighborly.core.builtin.systems import CharacterAgingSystem
-from neighborly.core.business import Business, BusinessDefinition, OccupationDefinition
-from neighborly.core.ecs import EntityArchetype
+from neighborly.core.business import OccupationDefinition
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.location import Location
-from neighborly.core.residence import Residence
-from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.systems import (
-    LifeEventISystem,
-)
+from neighborly.core.residence import ResidenceArchetypeLibrary, ResidenceArchetype
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins.default_plugin.activity import Activity, register_activity
 from neighborly.plugins.default_plugin.businesses import (
-    bar_type,
     bartender_type,
     cashier_type,
     cook_type,
-    department_store_type,
     dj_type,
     manager_type,
     owner_type,
     proprietor_type,
-    restaurant_type,
     sales_associate_type,
     security_type,
 )
@@ -83,10 +73,10 @@ class DefaultNameDataPlugin(Plugin):
 
 class DefaultBusinessesPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        BusinessDefinition.register_type(restaurant_type)
-        BusinessDefinition.register_type(bar_type)
-        BusinessDefinition.register_type(department_store_type)
-
+        # BusinessArchetype.register(restaurant_type)
+        # BusinessArchetype.register(bar_type)
+        # BusinessArchetype.register(department_store_type)
+        #
         OccupationDefinition.register_type(manager_type)
         OccupationDefinition.register_type(sales_associate_type)
         OccupationDefinition.register_type(cashier_type)
@@ -99,64 +89,39 @@ class DefaultBusinessesPlugin(Plugin):
         OccupationDefinition.register_type(OccupationDefinition(name="Server"))
         OccupationDefinition.register_type(OccupationDefinition(name="Host"))
 
-        sim.get_engine().add_business_archetype(
-            EntityArchetype("Department Store")
-            .add(
-                Business,
-                type_name="Department Store",
-                hours="MTWRF 9:00-17:00, SU 10:00-15:00",
-                owner_type="Owner",
-                employees={
-                    "Cashier": 1,
-                    "Sales Associate": 2,
-                    "Manager": 1,
-                },
-            )
-            .add(Location),
-            min_population=25,
-            max_instances=2,
-            spawn_multiplier=2,
-        )
+        # sim.get_engine().add_business_archetype(
+        #     EntityArchetype("Department Store")
+        #     .add(
+        #         Business,
+        #         business_type="Department Store",
+        #         hours="MTWRF 9:00-17:00, SU 10:00-15:00",
+        #         owner_type="Owner",
+        #         employees={
+        #             "Cashier": 1,
+        #             "Sales Associate": 2,
+        #             "Manager": 1,
+        #         },
+        #     )
+        #     .add(Location),
+        #     min_population=25,
+        #     max_instances=2,
+        #     spawn_multiplier=2,
+        # )
 
 
 class DefaultResidencesPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        sim.get_engine().add_residence_archetype(
-            EntityArchetype("House").add(Residence).add(Location)
-        )
+        ResidenceArchetypeLibrary.register(ResidenceArchetype(name="House"))
 
 
 class DefaultPlugin(Plugin):
-    def __init__(
-        self, time_system: str = "dynamic", dynamic_days_per_year: int = 10
-    ) -> None:
-        self.time_system: str = time_system
-        self.dynamic_days_per_year: int = dynamic_days_per_year
 
     def setup(self, sim: Simulation, **kwargs) -> None:
-        # time_system: str = kwargs.get("time_system", self.time_system)
-        # days_per_year: int = kwargs.get("days_per_year", self.dynamic_days_per_year)
-        #
-        # if time_system == "dynamic":
-        #     sim.add_system(DynamicLoDTimeSystem(days_per_year=days_per_year), 10)
-
-        # sim.add_system(RoutineSystem(), 5)
-        sim.add_system(LifeEventISystem())
-        # sim.add_system(AddResidentsSystem())
-        sim.add_system(CharacterAgingSystem())
-
-        # Add default resources
-        sim.add_resource(RelationshipNetwork())
-
+        pass
         # LifeEventProcessor.register_event(DeathEvent())
         # LifeEventProcessor.register_event(StartedDatingEvent())
         # LifeEventProcessor.register_event(DatingBreakUpEvent())
         # LifeEventProcessor.register_event(UnemploymentEvent())
         # LifeEventProcessor.register_event(BecameBusinessOwnerEvent())
-
-        sim.get_engine().add_residence_archetype(
-            EntityArchetype("House").add(Residence).add(Location)
-        )
-
         # Load additional data from yaml
         # YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)

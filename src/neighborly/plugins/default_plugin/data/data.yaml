@@ -2,7 +2,7 @@ CharacterDefinitions:
   - name: BaseCharacter
     generation:
       first_name: "#first_name#"
-      last_name: "#last_name#"
+      last_name: "#family_name#"
       family:
         probability_spouse: 0.5
         probability_children: 0.5
@@ -24,11 +24,11 @@ Characters:
           character_def: BaseCharacter
           events:
             marriage:
-              effect: [on_married_behavior]
+              effect: [ on_married_behavior ]
             child-birth:
-              effect: [on_child_birth_behavior]
+              effect: [ on_child_birth_behavior ]
             move:
-              effect: [on_move_behavior]
+              effect: [ on_move_behavior ]
       - type: Routine
 Residences:
   - name: House
@@ -47,7 +47,7 @@ Businesses:
     components:
       - type: Location
         options:
-          activities: [Shopping]
+          activities: [ Shopping ]
           max capacity: 60
       - type: Business
         options:
@@ -63,7 +63,7 @@ Businesses:
     components:
       - type: Location
         options:
-          activities: [Eating, Socializing]
+          activities: [ Eating, Socializing ]
           max capacity: 20
       - type: Business
         options:
@@ -73,7 +73,7 @@ Businesses:
       - type: Location
         options:
           name: "#bar_name#"
-          activities: [Eating, Drinking, Socializing]
+          activities: [ Eating, Drinking, Socializing ]
           max capacity: 35
       - type: Business
         options:

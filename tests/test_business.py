@@ -6,11 +6,11 @@ from typing import Any, Dict
 import pytest
 
 from neighborly.core.business import (
-    BusinessDefinition,
     Occupation,
     OccupationDefinition,
 )
-from neighborly.core.ecs import Component, GameObject
+from neighborly.core.ecs import GameObject
+from neighborly.core.engine import BusinessArchetype
 from neighborly.core.status import Status
 
 
@@ -35,7 +35,7 @@ def sample_occupation_types():
 
 @pytest.fixture
 def sample_business_types():
-    restaurant_type = BusinessDefinition(name="Restaurant", hours="MTWRFSU 10:00-21:00")
+    restaurant_type = BusinessArchetype(name="Restaurant", hours="MTWRFSU 10:00-21:00")
 
     return {"restaurant": restaurant_type}
 
@@ -43,7 +43,6 @@ def sample_business_types():
 def test_register_occupation_type(
     sample_occupation_types: Dict[str, OccupationDefinition]
 ):
-
     ceo_occupation_type = sample_occupation_types["ceo"]
 
     assert ceo_occupation_type.name == "CEO"
@@ -72,9 +71,9 @@ def test_occupation(sample_occupation_types: Dict[str, OccupationDefinition]):
     assert ceo.get_years_held() == 1
 
 
-def test_register_business_type(sample_business_types: Dict[str, BusinessDefinition]):
+def test_register_business_type(sample_business_types: Dict[str, BusinessArchetype]):
     restaurant_type = sample_business_types["restaurant"]
 
-    BusinessDefinition.register_type(restaurant_type)
+    BusinessArchetype.register(restaurant_type)
 
-    BusinessDefinition.get_registered_type("Restaurant").name = "Restaurant"
+    BusinessArchetype.get("Restaurant").name = "Restaurant"

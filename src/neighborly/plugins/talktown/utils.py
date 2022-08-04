@@ -1,6 +1,6 @@
-from typing import Generic, TypeVar, Union, List, Tuple
-from heapq import heappush
 from dataclasses import dataclass, field
+from heapq import heappush
+from typing import Generic, TypeVar, Union, List, Tuple
 
 _T = TypeVar("_T")
 
@@ -80,8 +80,8 @@ def roman_to_int(roman: str) -> int:
     i = 0
     num = 0
     while i < len(roman):
-        if i + 1 < len(roman) and roman[i : i + 2] in roman_lookup:
-            num += roman_lookup[roman[i : i + 2]]
+        if i + 1 < len(roman) and roman[i: i + 2] in roman_lookup:
+            num += roman_lookup[roman[i: i + 2]]
             i += 2
         else:
             # print(i)
@@ -116,7 +116,7 @@ class PrioritizedItem(Generic[_T]):
 
 class PriorityQueue(Generic[_T]):
     def __init__(self) -> None:
-        self._queue: list[PrioritizedItem[_T]] = []
+        self._queue: List[PrioritizedItem[_T]] = []
 
     def push(self, priority: float, item: _T) -> None:
         heappush(self._queue, PrioritizedItem[_T](priority, item))
