@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
 
-from neighborly.core.ecs import Component
-from neighborly.core.rng import IRandNumGenerator
+from neighborly.core.ecs import Component, World
+from neighborly.core.engine import NeighborlyEngine
 
 TRAIT_MAX = 50
 TRAIT_MIN = -50
@@ -45,7 +47,7 @@ _VALUE_INDICES: Dict[str, int] = {
 }
 
 
-class CharacterValues(Component):
+class PersonalValues(Component):
     """
     Values are what a character believes in. They are used
     for decision-making and relationship compatibility among
@@ -79,12 +81,12 @@ class CharacterValues(Component):
         return self._traits
 
     @staticmethod
-    def calculate_compatibility(
-        traits_a: "CharacterValues", traits_b: "CharacterValues"
+    def compatibility(
+        character_a: PersonalValues, character_b: PersonalValues
     ) -> float:
         # Cosine similarity is a value between -1 and 1
-        cos_sim: float = np.dot(traits_a.traits, traits_b.traits) / (
-            np.linalg.norm(traits_a.traits) * np.linalg.norm(traits_b.traits)
+        cos_sim: float = np.dot(character_a.traits, character_b.traits) / (
+            np.linalg.norm(character_a.traits) * np.linalg.norm(character_b.traits)
         )
 
         return cos_sim
@@ -111,29 +113,32 @@ class CharacterValues(Component):
     def __repr__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self._traits.__repr__())
 
+    @classmethod
+    def create(cls, world: World, **kwargs) -> Component:
+        engine = world.get_resource(NeighborlyEngine)
+        n_likes: int = kwargs.get("n_likes", 3)
+        n_dislikes: int = kwargs.get("n_dislikes", 3)
 
-def generate_character_values(
-    rng: IRandNumGenerator, n_likes: int = 3, n_dislikes: int = 3
-) -> CharacterValues:
-    """Generate a new set of character values"""
-    # Select Traits
-    total_traits: int = n_likes + n_dislikes
-    traits = [str(trait.value) for trait in rng.sample(list(ValueTrait), total_traits)]
+        total_traits: int = n_likes + n_dislikes
+        traits = [
+            str(trait.value)
+            for trait in engine.rng.sample(list(ValueTrait), total_traits)
+        ]
 
-    # select likes and dislikes
-    high_values = rng.sample(traits, n_likes)
+        # select likes and dislikes
+        high_values = engine.rng.sample(traits, n_likes)
 
-    map(lambda t: traits.remove(t), high_values)
+        map(lambda t: traits.remove(t), high_values)
 
-    low_values = [*traits]
+        low_values = [*traits]
 
-    # Generate values for each ([30,50] for high values, [-50,-30] for dislikes)
-    values_overrides: Dict[str, int] = {}
+        # Generate values for each ([30,50] for high values, [-50,-30] for dislikes)
+        values_overrides: Dict[str, int] = {}
 
-    for trait in high_values:
-        values_overrides[trait] = rng.randint(30, 50)
+        for trait in high_values:
+            values_overrides[trait] = engine.rng.randint(30, 50)
 
-    for trait in low_values:
-        values_overrides[trait] = rng.randint(-50, -30)
+        for trait in low_values:
+            values_overrides[trait] = engine.rng.randint(-50, -30)
 
-    return CharacterValues(values_overrides)
+        return PersonalValues(values_overrides)

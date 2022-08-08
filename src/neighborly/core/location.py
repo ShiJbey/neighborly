@@ -10,7 +10,14 @@ from neighborly.core.ecs import Component, World
 class Location(Component):
     """Anywhere where game characters may be"""
 
-    __slots__ = "characters_present", "max_capacity", "name", "whitelist", "is_private"
+    __slots__ = (
+        "characters_present",
+        "max_capacity",
+        "name",
+        "whitelist",
+        "is_private",
+        "activity_flags",
+    )
 
     def __init__(
         self,
@@ -25,6 +32,7 @@ class Location(Component):
         self.characters_present: OrderedSet[int] = OrderedSet([])
         self.whitelist: Set[int] = set(whitelist if whitelist else [])
         self.is_private: bool = is_private
+        self.activity_flags: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -51,6 +59,9 @@ class Location(Component):
     def has_character(self, character: int) -> bool:
         return character in self.characters_present
 
+    def has_flags(self, *flags: int):
+        return all([self.activity_flags & f for f in flags])
+
     def __repr__(self) -> str:
         return "{}(name={}, present={}, max_capacity={}, whitelist={}, is_private={})".format(
             self.__class__.__name__,
@@ -64,3 +75,6 @@ class Location(Component):
     @classmethod
     def create(cls, world: World, **kwargs) -> Location:
         return cls(max_capacity=kwargs.get("max capacity", 9999))
+
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))

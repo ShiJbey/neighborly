@@ -1,36 +1,30 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List
 
-from neighborly.core.business import OccupationDefinition
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.residence import ResidenceArchetypeLibrary, ResidenceArchetype
-from neighborly.loaders import YamlDataLoader
-from neighborly.plugins.default_plugin.activity import Activity, register_activity
-from neighborly.plugins.default_plugin.businesses import (
-    bartender_type,
-    cashier_type,
-    cook_type,
-    dj_type,
-    manager_type,
-    owner_type,
-    proprietor_type,
-    sales_associate_type,
-    security_type,
+from neighborly.builtin.events import (
+    become_enemies_event,
+    become_friends_event,
+    dating_break_up_event,
+    depart_due_to_unemployment,
+    divorce_event,
+    hire_employee_event,
+    hiring_business_role,
+    marriage_event,
+    potential_spouse_role,
+    pregnancy_event,
+    retire_event,
+    single_person_role_type,
+    start_dating_event,
+    unemployed_role,
 )
+from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.life_event import EventRoles, LifeEvents
 from neighborly.simulation import Plugin, Simulation
 
 logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
-
-
-@YamlDataLoader.section_loader("Activities")
-def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
-    """Process data related to defining activities"""
-    for entry in data:
-        register_activity(Activity(entry["name"], trait_names=entry["traits"]))
 
 
 class DefaultNameDataPlugin(Plugin):
@@ -71,57 +65,22 @@ class DefaultNameDataPlugin(Plugin):
         )
 
 
-class DefaultBusinessesPlugin(Plugin):
+class DefaultLifeEventPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        # BusinessArchetype.register(restaurant_type)
-        # BusinessArchetype.register(bar_type)
-        # BusinessArchetype.register(department_store_type)
-        #
-        OccupationDefinition.register_type(manager_type)
-        OccupationDefinition.register_type(sales_associate_type)
-        OccupationDefinition.register_type(cashier_type)
-        OccupationDefinition.register_type(dj_type)
-        OccupationDefinition.register_type(bartender_type)
-        OccupationDefinition.register_type(security_type)
-        OccupationDefinition.register_type(cook_type)
-        OccupationDefinition.register_type(owner_type)
-        OccupationDefinition.register_type(proprietor_type)
-        OccupationDefinition.register_type(OccupationDefinition(name="Server"))
-        OccupationDefinition.register_type(OccupationDefinition(name="Host"))
-
-        # sim.get_engine().add_business_archetype(
-        #     EntityArchetype("Department Store")
-        #     .add(
-        #         Business,
-        #         business_type="Department Store",
-        #         hours="MTWRF 9:00-17:00, SU 10:00-15:00",
-        #         owner_type="Owner",
-        #         employees={
-        #             "Cashier": 1,
-        #             "Sales Associate": 2,
-        #             "Manager": 1,
-        #         },
-        #     )
-        #     .add(Location),
-        #     min_population=25,
-        #     max_instances=2,
-        #     spawn_multiplier=2,
-        # )
-
-
-class DefaultResidencesPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
-        ResidenceArchetypeLibrary.register(ResidenceArchetype(name="House"))
-
-
-class DefaultPlugin(Plugin):
-
-    def setup(self, sim: Simulation, **kwargs) -> None:
-        pass
-        # LifeEventProcessor.register_event(DeathEvent())
-        # LifeEventProcessor.register_event(StartedDatingEvent())
-        # LifeEventProcessor.register_event(DatingBreakUpEvent())
-        # LifeEventProcessor.register_event(UnemploymentEvent())
-        # LifeEventProcessor.register_event(BecameBusinessOwnerEvent())
-        # Load additional data from yaml
-        # YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)
+        EventRoles.register(
+            name="PotentialSpouse", event_role_type=potential_spouse_role()
+        )
+        EventRoles.register("SinglePerson", single_person_role_type())
+        EventRoles.register("HiringBusiness", hiring_business_role())
+        EventRoles.register("Unemployed", unemployed_role())
+        LifeEvents.register(hire_employee_event())
+        LifeEvents.register(marriage_event())
+        LifeEvents.register(become_friends_event())
+        LifeEvents.register(become_enemies_event())
+        LifeEvents.register(start_dating_event())
+        LifeEvents.register(dating_break_up_event())
+        LifeEvents.register(divorce_event())
+        LifeEvents.register(marriage_event())
+        LifeEvents.register(pregnancy_event())
+        LifeEvents.register(depart_due_to_unemployment())
+        LifeEvents.register(retire_event())

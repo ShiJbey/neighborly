@@ -43,6 +43,7 @@ class RelationshipTag(IntFlag):
     SignificantOther = 1 << 18
     LoveInterest = 1 << 19
     Child = 1 << 20
+    NuclearFamily = 1 << 21
 
 
 @dataclass
@@ -141,12 +142,14 @@ class Relationship:
         "_friendship",
         "_friendship_base",
         "_friendship_increment",
+        "_compatibility",
         "_romance",
         "_romance_base",
         "_romance_increment",
         "_is_dirty",
         "_modifiers",
         "_tags",
+        "_romance_disabled",
     )
 
     def __init__(
@@ -156,6 +159,8 @@ class Relationship:
         base_friendship: int = 0,
         base_romance: int = 0,
         tags: RelationshipTag = RelationshipTag.Acquaintance,
+        compatibility: float = 0.1,
+        romance_disabled: bool = False,
     ) -> None:
         self._owner: int = owner
         self._target: int = target
@@ -166,6 +171,8 @@ class Relationship:
         self._is_dirty: bool = True
         self._modifiers: Dict[str, RelationshipModifier] = {}
         self._tags: RelationshipTag = tags
+        self._compatibility: float = compatibility
+        self._romance_disabled: bool = romance_disabled
 
     @property
     def target(self) -> int:
@@ -186,6 +193,9 @@ class Relationship:
         if self._is_dirty:
             self._recalculate_stats()
         return self._romance
+
+    def set_compatibility(self, value: float) -> None:
+        self._compatibility = value
 
     def increment_friendship(self, value: float) -> None:
         self._friendship_base += value

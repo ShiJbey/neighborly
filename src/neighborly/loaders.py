@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Protocol, Union
 
 import yaml
 
+from neighborly.core.activity import Activity, ActivityLibrary
 from neighborly.core.business import BusinessArchetype
 from neighborly.core.character import CharacterDefinition
 from neighborly.core.ecs import EntityArchetype
@@ -205,3 +206,12 @@ def _load_relationship_tag_data(
         # Convert the dictionary to an object
         tag = RelationshipModifier(**modifier)
         RelationshipModifier.register_tag(tag)
+
+
+@YamlDataLoader.section_loader("Activities")
+def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
+    """Process data related to defining activities"""
+    for entry in data:
+        ActivityLibrary.register_activity(
+            Activity(entry["name"], trait_names=entry["traits"])
+        )

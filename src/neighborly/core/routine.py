@@ -174,9 +174,8 @@ class Routine(Component):
         for day in days:
             self._daily_routines[day].remove_entries(*entries)
 
-    @classmethod
-    def create(cls, world: World, **kwargs) -> Routine:
-        return cls()
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))
 
 
 def time_str_to_int(s: str) -> int:

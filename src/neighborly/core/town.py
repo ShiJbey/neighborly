@@ -5,12 +5,25 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
 
 
-class Town(Component):
-    """Simulated town where characters live"""
+class Town:
+    """
+    Simulated town where characters live
+
+    Notes
+    -----
+    The town is stored in the ECS as a global resource
+
+    Attributes
+    ----------
+    name: str
+        The name of the town
+    population: int
+        The number of active town residents
+    """
 
     __slots__ = "name", "population"
 
@@ -20,11 +33,24 @@ class Town(Component):
         self.population: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "name": self.name, "population": self.population}
+        return {"name": self.name, "population": self.population}
+
+    def __str__(self) -> str:
+        return f"{self.name} (Pop. {self.population})"
+
+    def __repr__(self) -> str:
+        return self.to_dict().__repr__()
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Town:
-        """Create a town instance"""
+        """
+        Create a town instance
+
+        Parameters
+        ----------
+        kwargs.name: str
+            The name of the town as a string or Tracery pattern
+        """
         town_name = kwargs.get("name", "Town")
         town_name = world.get_resource(NeighborlyEngine).name_generator.get_name(
             town_name
@@ -130,7 +156,9 @@ class Grid(Generic[_GT]):
 
 
 class LandGrid:
-    """Manages an occupancy grid of what tiles in the town currently have places built on them
+    """
+    Manages an occupancy grid of what tiles in the town
+    currently have places built on them
 
     Attributes
     ----------

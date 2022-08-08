@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Type, List
+from typing import Any, Dict, List, Type
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, World, EntityArchetype
+from neighborly.core.ecs import Component, EntityArchetype, World
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 
@@ -21,6 +21,9 @@ class Residence(Component):
         self.residents: OrderedSet[int] = OrderedSet([])
         self.former_residents: OrderedSet[int] = OrderedSet([])
         self._vacant: bool = True
+
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -63,10 +66,6 @@ class Residence(Component):
         """Return True if the residence is vacant"""
         return self._vacant
 
-    @classmethod
-    def create(cls, world: World, **kwargs) -> Residence:
-        return cls()
-
 
 class Resident(Component):
     """Component attached to characters indicating that they live in the town"""
@@ -84,15 +83,18 @@ class Resident(Component):
         if residence.is_owner(self.gameobject.id):
             residence.remove_owner(self.gameobject.id)
 
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))
+
 
 class ResidenceArchetype(EntityArchetype):
-    __slots__ = "spawn_multiplier",
+    __slots__ = ("spawn_multiplier",)
 
     def __init__(
         self,
         name: str,
         spawn_multiplier: int = 1,
-        extra_components: Dict[Type[Component], Dict[str, Any]] = None
+        extra_components: Dict[Type[Component], Dict[str, Any]] = None,
     ) -> None:
         super().__init__(name)
         self.spawn_multiplier: int = spawn_multiplier
@@ -110,7 +112,11 @@ class ResidenceArchetypeLibrary:
     _registry: Dict[str, ResidenceArchetype] = {}
 
     @classmethod
-    def register(cls, archetype: ResidenceArchetype, name: str = None, ) -> None:
+    def register(
+        cls,
+        archetype: ResidenceArchetype,
+        name: str = None,
+    ) -> None:
         """Register a new LifeEventType mapped to a name"""
         cls._registry[name if name else archetype.name] = archetype
 

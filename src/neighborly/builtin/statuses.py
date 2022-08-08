@@ -71,10 +71,6 @@ class Deceased(Status):
             "This character is dead",
         )
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
-
 
 class Retired(Status):
     def __init__(self) -> None:
@@ -83,111 +79,51 @@ class Retired(Status):
             "This character retired from their last occupation",
         )
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
-
-
-class Resident(Status):
-    __slots__ = "duration", "town"
-
-    def __init__(self, town: str) -> None:
-        super().__init__(
-            "Resident",
-            "This character is a resident of a town",
-        )
-        self.duration: float = 0
-        self.town: str = town
-
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls(**kwargs)
-
-    @staticmethod
-    def system_fn(world: World, **kwargs) -> None:
-        delta_time: float = kwargs["delta_time"]
-        for _, resident_status in world.get_component(Resident):
-            resident_status.duration += delta_time
-
 
 class Dependent(Status):
     def __init__(self) -> None:
         super().__init__("Dependent", "This character is dependent on their parents")
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
-
 
 class Unemployed(Status):
-    __slots__ = "duration"
+    __slots__ = "duration_days"
 
     def __init__(self) -> None:
         super().__init__(
             "Unemployed",
             "Character doesn't have a job",
         )
-        self.duration: float = 0
-
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
-
-    @staticmethod
-    def system_fn(world: World, **kwargs) -> None:
-        delta_time: float = kwargs["delta_time"]
-        for _, unemployed_status in world.get_component(Unemployed):
-            unemployed_status.duration += delta_time
+        self.duration_days: float = 0
 
 
 class Dating(Status):
-    __slots__ = "duration", "partner_id", "partner_name"
+    __slots__ = "duration_years", "partner_id", "partner_name"
 
     def __init__(self, partner_id: int, partner_name: str) -> None:
         super().__init__(
             "Dating",
             "This character is in a relationship with another",
         )
-        self.duration: float = 0.0
+        self.duration_years: float = 0.0
         self.partner_id: int = partner_id
         self.partner_name: str = partner_name
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls(**kwargs)
-
-    @staticmethod
-    def system_fn(world: World, **kwargs) -> None:
-        delta_time: float = kwargs["delta_time"]
-        for _, dating_status in world.get_component(Dating):
-            dating_status.duration += delta_time
-
 
 class Married(Status):
-    __slots__ = "duration", "partner_id", "partner_name"
+    __slots__ = "duration_years", "partner_id", "partner_name"
 
     def __init__(self, partner_id: int, partner_name: str) -> None:
         super().__init__(
             "Married",
             "This character is married to another",
         )
-        self.duration = 0.0
+        self.duration_years = 0.0
         self.partner_id: int = partner_id
         self.partner_name: str = partner_name
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls(**kwargs)
-
-    @staticmethod
-    def system_fn(world: World, **kwargs) -> None:
-        delta_time: float = kwargs["delta_time"]
-        for _, married_status in world.get_component(Married):
-            married_status.duration += delta_time
-
 
 class InRelationship(Status):
-    __slots__ = "duration", "partner_id", "partner_name", "relationship_type"
+    __slots__ = "duration_years", "partner_id", "partner_name", "relationship_type"
 
     def __init__(
         self, relationship_type: str, partner_id: int, partner_name: str
@@ -197,19 +133,9 @@ class InRelationship(Status):
             "This character is married to another",
         )
         self.relationship_type: str = relationship_type
-        self.duration = 0.0
+        self.duration_years = 0.0
         self.partner_id: int = partner_id
         self.partner_name: str = partner_name
-
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls(**kwargs)
-
-    @staticmethod
-    def system_fn(world: World, **kwargs) -> None:
-        delta_time: float = world.get_resource(SimDateTime).delta_time
-        for _, married_status in world.get_component(Married):
-            married_status.duration += delta_time
 
 
 class BusinessOwner(Status):
@@ -223,17 +149,6 @@ class BusinessOwner(Status):
         self.duration = 0.0
         self.business_id: int = business_id
         self.business_name: str = business_name
-
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls(**kwargs)
-
-    def on_remove(self) -> None:
-        # Remove the character from their work position
-        world = self.gameobject.world
-        workplace = world.get_gameobject(self.business_id).get_component(Business)
-        workplace.set_owner(None)
-        self.gameobject.remove_component(BusinessOwner)
 
 
 class Pregnant(Status):
@@ -263,3 +178,16 @@ class Female(Status):
 class NonBinary(Status):
     def __init__(self):
         super().__init__("NonBinary", "This character is perceived as non-binary.")
+
+
+class CollegeGraduate(Status):
+    def __init__(self) -> None:
+        super().__init__("College Graduate", "This character graduated from college.")
+
+
+class InTheWorkforce(Status):
+    def __init__(self) -> None:
+        super().__init__(
+            "In the Workforce",
+            "This Character is eligible for employment opportunities.",
+        )

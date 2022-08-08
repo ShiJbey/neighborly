@@ -13,16 +13,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from abc import ABC
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-)
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 from uuid import uuid1
 
 import esper
@@ -130,6 +121,15 @@ class GameObject:
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
         return self._components.get(component_type)
 
+    def archive(self) -> None:
+        """
+        Deactivates the GameObject by removing excess components.
+
+        The GameObject stays in the ECS though.
+        """
+        for component in self.components:
+            component.on_archive()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -182,10 +182,14 @@ class Component(ABC):
         """Run when the component is removed from the GameObject"""
         return
 
+    def on_archive(self) -> None:
+        """Run when the GameObject this is connected to is archived"""
+        return
+
     @classmethod
-    def create(cls, world, **kwargs) -> Component:
+    def create(cls, world: World, **kwargs) -> Component:
         """Create an instance of the component using a reference to the World object and additional parameters"""
-        raise cls(**kwargs)
+        return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the component to a dict"""
@@ -233,11 +237,17 @@ class World:
     def ecs(self) -> esper.World:
         return self._ecs
 
-    def spawn_gameobject(self, *components: Component, name: Optional[str] = None) -> GameObject:
+    def spawn_gameobject(
+        self, *components: Component, name: Optional[str] = None
+    ) -> GameObject:
         """Create a new gameobject and attach any given component instances"""
         entity_id = self._ecs.create_entity(*components)
-        gameobject = GameObject(unique_id=entity_id, components=components, world=self,
-                                name=(name if name else f"GameObject({entity_id})"))
+        gameobject = GameObject(
+            unique_id=entity_id,
+            components=components,
+            world=self,
+            name=(name if name else f"GameObject({entity_id})"),
+        )
         self._gameobjects[gameobject.id] = gameobject
         return gameobject
 
@@ -247,8 +257,13 @@ class World:
             component_instances.append(component_type.create(self, **options))
 
         entity_id = self._ecs.create_entity(*component_instances)
-        gameobject = GameObject(unique_id=entity_id, components=component_instances, world=self,
-                                name=f"{archetype.name}({entity_id})", archetype=archetype)
+        gameobject = GameObject(
+            unique_id=entity_id,
+            components=component_instances,
+            world=self,
+            name=f"{archetype.name}({entity_id})",
+            archetype=archetype,
+        )
 
         archetype.increment_instances()
 
@@ -287,7 +302,9 @@ class World:
         """Get all game objects with the given components"""
         return self._ecs.get_components(*component_types)
 
-    def try_components(self, entity: int, *component_types: Type[_CT]) -> Optional[List[List[_CT]]]:
+    def try_components(
+        self, entity: int, *component_types: Type[_CT]
+    ) -> Optional[List[List[_CT]]]:
         """Try to get a multiple component types for a GameObject."""
         return self._ecs.try_components(entity, *component_types)
 
@@ -295,6 +312,8 @@ class World:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
             gameobject = self._gameobjects[gameobject_id]
+            for component in gameobject.components:
+                component.on_remove()
             if gameobject.archetype:
                 gameobject.archetype.decrement_instances()
             gameobject.set_world(None)

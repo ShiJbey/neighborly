@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import (
-    Any,
-    ClassVar,
-    Dict,
-    Optional, Type, List,
-)
+from typing import Any, ClassVar, Dict, List, Optional, Type
 
 from typing_extensions import TypedDict
 
-from neighborly.core.ecs import Component, World, EntityArchetype
+from neighborly.core.ecs import Component, EntityArchetype, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.location import Location
+from neighborly.core.personal_values import PersonalValues
 from neighborly.core.routine import Routine
 
 
@@ -101,7 +98,7 @@ class GameCharacter(Component):
         character_def: CharacterDefinition,
         name: CharacterName,
         age: float,
-        can_get_pregnant: bool = False
+        can_get_pregnant: bool = False,
     ) -> None:
         super().__init__()
         self.character_def = character_def
@@ -111,22 +108,32 @@ class GameCharacter(Component):
         self.location_aliases: Dict[str, int] = {}
         self.can_get_pregnant: bool = can_get_pregnant
 
+    def on_remove(self) -> None:
+        if self.location:
+            location = self.gameobject.world.get_gameobject(self.location)
+            location.get_component(Location).remove_character(self.gameobject.id)
+        self.location = None
+
     @classmethod
     def create(cls, world: World, **kwargs) -> GameCharacter:
         """Create a new instance of a character"""
         engine: NeighborlyEngine = world.get_resource(NeighborlyEngine)
 
         character_type_name = kwargs["character_type"]
-        first_name, surname = kwargs.get("name_format", "#first_name# #family_name#").split(" ")
+        first_name, surname = kwargs.get(
+            "name_format", "#first_name# #family_name#"
+        ).split(" ")
         lifespan: int = kwargs["lifespan"]
         life_stages: LifeStages = kwargs["life_stages"]
         chance_can_get_pregnant: float = kwargs.get("chance_can_get_pregnant", 0.5)
 
-        character_def = cls.get_character_def(CharacterDefinition(
-            type_name=character_type_name,
-            lifespan=lifespan,
-            life_stages=life_stages,
-        ))
+        character_def = cls.get_character_def(
+            CharacterDefinition(
+                type_name=character_type_name,
+                lifespan=lifespan,
+                life_stages=life_stages,
+            )
+        )
 
         name = CharacterName(
             engine.name_generator.get_name(first_name),
@@ -179,7 +186,7 @@ class GameCharacter(Component):
             round(self.age),
             self.location,
             self.location_aliases,
-            self.can_get_pregnant
+            self.can_get_pregnant,
         )
 
 
@@ -198,7 +205,7 @@ class CharacterArchetype(EntityArchetype):
         name_format: "#first_name# #family_name#",
         chance_can_get_pregnant: float = 0.5,
         spawn_multiplier: int = 1,
-        extra_components: Dict[Type[Component], Dict[str, Any]] = None
+        extra_components: Dict[Type[Component], Dict[str, Any]] = None,
     ) -> None:
         super().__init__(name)
         self.name_format: str = name_format
@@ -214,6 +221,7 @@ class CharacterArchetype(EntityArchetype):
         )
 
         self.add(Routine)
+        self.add(PersonalValues)
 
         if extra_components:
             for component_type, params in extra_components.items():
@@ -224,7 +232,9 @@ class CharacterArchetypeLibrary:
     _registry: Dict[str, CharacterArchetype] = {}
 
     @classmethod
-    def register(cls, archetype: CharacterArchetype, name: Optional[str] = None) -> None:
+    def register(
+        cls, archetype: CharacterArchetype, name: Optional[str] = None
+    ) -> None:
         """Register a new LifeEventType mapped to a name"""
         cls._registry[name if name else archetype.name] = archetype
 

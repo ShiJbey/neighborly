@@ -5,11 +5,23 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Any, Literal, Optional, Tuple, Union
 
-from neighborly.builtin.systems import LinearTimeSystem, BuildBusinessSystem, SpawnResidentSystem, BuildResidenceSystem, \
-    RoutineSystem, CharacterAgingSystem
-from neighborly.core.ecs import World, ISystem
+from neighborly.builtin.systems import (
+    BuildBusinessSystem,
+    BuildResidenceSystem,
+    BusinessUpdateSystem,
+    CharacterAgingSystem,
+    FindBusinessOwnerSystem,
+    FindEmployeesSystem,
+    LinearTimeSystem,
+    RelationshipStatusSystem,
+    RoutineSystem,
+    SocializeSystem,
+    SpawnResidentSystem,
+    UnemploymentSystem,
+)
+from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventSimulator, LifeEventLog
+from neighborly.core.life_event import LifeEventLog, LifeEventSimulator
 from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import LandGrid, Town
@@ -100,14 +112,20 @@ class Simulation:
             Simulation(seed, World(), NeighborlyEngine(seed), start_date, end_date)
             .add_resource(start_date.copy())
             .add_system(LinearTimeSystem(TimeDelta(hours=time_increment_hours)))
-            .add_system(LifeEventSimulator())
+            .add_system(LifeEventSimulator(interval=TimeDelta(months=1)))
             .add_resource(LifeEventLog())
-            .add_system(BuildResidenceSystem())
-            .add_system(SpawnResidentSystem())
-            .add_system(BuildBusinessSystem())
+            .add_system(BuildResidenceSystem(interval=TimeDelta(days=5)))
+            .add_system(SpawnResidentSystem(interval=TimeDelta(days=7)))
+            .add_system(BuildBusinessSystem(interval=TimeDelta(days=5)))
             .add_resource(RelationshipGraph())
-            .add_resource(CharacterAgingSystem())
+            .add_system(CharacterAgingSystem())
             .add_system(RoutineSystem(), 5)
+            .add_system(BusinessUpdateSystem())
+            .add_system(FindBusinessOwnerSystem())
+            .add_system(FindEmployeesSystem())
+            .add_system(UnemploymentSystem(days_to_departure=30))
+            .add_system(RelationshipStatusSystem())
+            .add_system(SocializeSystem())
         )
 
         sim._create_town(town_name, town_size)

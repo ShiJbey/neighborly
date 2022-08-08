@@ -6,11 +6,13 @@ from typing import Any, Dict
 import pytest
 
 from neighborly.core.business import (
+    Business,
+    BusinessArchetype,
+    BusinessStatus,
     Occupation,
-    OccupationDefinition,
+    OccupationType,
 )
-from neighborly.core.ecs import GameObject
-from neighborly.core.engine import BusinessArchetype
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.status import Status
 
 
@@ -24,7 +26,7 @@ def sample_occupation_types():
     def is_college_graduate(gameobject: GameObject, **kwargs: Any) -> bool:
         return gameobject.has_component(CollegeGraduate)
 
-    ceo_occupation_type = OccupationDefinition(
+    ceo_occupation_type = OccupationType(
         "CEO",
         5,
         [is_college_graduate],
@@ -40,23 +42,21 @@ def sample_business_types():
     return {"restaurant": restaurant_type}
 
 
-def test_register_occupation_type(
-    sample_occupation_types: Dict[str, OccupationDefinition]
-):
+def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationType]):
     ceo_occupation_type = sample_occupation_types["ceo"]
 
     assert ceo_occupation_type.name == "CEO"
     assert ceo_occupation_type.level == 5
 
-    OccupationDefinition.register_type(ceo_occupation_type)
+    OccupationType.register_type(ceo_occupation_type)
 
-    assert ceo_occupation_type == OccupationDefinition.get_registered_type("CEO")
+    assert ceo_occupation_type == OccupationTypeLibrary.get("CEO")
 
 
-def test_occupation(sample_occupation_types: Dict[str, OccupationDefinition]):
-    OccupationDefinition.register_type(sample_occupation_types["ceo"])
+def test_occupation(sample_occupation_types: Dict[str, OccupationType]):
+    OccupationType.register_type(sample_occupation_types["ceo"])
 
-    ceo = Occupation(OccupationDefinition.get_registered_type("CEO"), 1)
+    ceo = Occupation(OccupationTypeLibrary.get("CEO"), 1)
 
     assert ceo.get_type().name == "CEO"
     assert ceo.get_business() == 1
@@ -77,3 +77,34 @@ def test_register_business_type(sample_business_types: Dict[str, BusinessArchety
     BusinessArchetype.register(restaurant_type)
 
     BusinessArchetype.get("Restaurant").name = "Restaurant"
+
+
+def test_construct_occupation():
+    """Constructing Occupations from OccupationTypes"""
+    pass
+
+
+def test_construct_business():
+    """Constructing business components using BusinessArchetypes"""
+    restaurant_Archetype = BusinessArchetype(
+        "Restaurant",
+        name_format="#restaurant_name#",
+        hours=["day", "evening"],
+        owner_type="Proprietor",
+        employee_types={
+            "Cook": 1,
+            "Server": 2,
+            "Host": 1,
+        },
+    )
+
+    world = World()
+
+    restaurant = world.spawn_archetype(restaurant_Archetype)
+    restaurant_business = restaurant.get_component(Business)
+
+    assert restaurant_business.business_type == "Restaurant"
+    assert restaurant_business.owner_type == "Proprietor"
+    assert restaurant_business.status == BusinessStatus.PendingOpening
+    assert restaurant_business.owner is None
+    assert restaurant_business.needs_owner() is True

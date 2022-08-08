@@ -5,6 +5,13 @@ from neighborly.core.life_event import LifeEvent
 from neighborly.core.time import SimDateTime
 
 
+def over_age(age: int) -> RoleFilterFn:
+    def fn(world: World, event: LifeEvent, gameobject: GameObject) -> bool:
+        return gameobject.get_component(GameCharacter).age > age
+
+    return fn
+
+
 def before_year(year: int):
     """
     Returns precondition function that checks if the
@@ -38,12 +45,9 @@ def friendship_greater_than(value: int) -> ILifeEventCallback:
 
     def fn(gameobject: GameObject, event: LifeEvent) -> bool:
         other: GameObject = event.data["other"]
-        rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+        rel_graph = gameobject.world.get_resource(RelationshipGraph)
         if rel_graph.has_connection(gameobject.id, other.id):
-            return (
-                rel_graph.get_connection(gameobject.id, other.id).friendship
-                > value
-            )
+            return rel_graph.get_connection(gameobject.id, other.id).friendship > value
         return False
 
     return fn
@@ -58,12 +62,9 @@ def friendship_less_than(value: int) -> ILifeEventCallback:
 
     def fn(gameobject: GameObject, event: LifeEvent) -> bool:
         other: GameObject = event.data["other"]
-        rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+        rel_graph = gameobject.world.get_resource(RelationshipGraph)
         if rel_graph.has_connection(gameobject.id, other.id):
-            return (
-                rel_graph.get_connection(gameobject.id, other.id).friendship
-                < value
-            )
+            return rel_graph.get_connection(gameobject.id, other.id).friendship < value
         return False
 
     return fn
@@ -78,12 +79,9 @@ def friendship_equal_to(value: int) -> ILifeEventCallback:
 
     def fn(gameobject: GameObject, event: LifeEvent) -> bool:
         other: GameObject = event.data["other"]
-        rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+        rel_graph = gameobject.world.get_resource(RelationshipGraph)
         if rel_graph.has_connection(gameobject.id, other.id):
-            return (
-                rel_graph.get_connection(gameobject.id, other.id).friendship
-                == value
-            )
+            return rel_graph.get_connection(gameobject.id, other.id).friendship == value
         return False
 
     return fn
@@ -98,11 +96,9 @@ def romance_greater_than(value: int) -> ILifeEventCallback:
 
     def fn(gameobject: GameObject, event: LifeEvent) -> bool:
         other: GameObject = event.data["other"]
-        rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+        rel_graph = gameobject.world.get_resource(RelationshipGraph)
         if rel_graph.has_connection(gameobject.id, other.id):
-            return (
-                rel_graph.get_connection(gameobject.id, other.id).romance > value
-            )
+            return rel_graph.get_connection(gameobject.id, other.id).romance > value
         return False
 
     return fn
@@ -117,11 +113,9 @@ def romance_less_than(value: int) -> ILifeEventCallback:
 
     def fn(gameobject: GameObject, event: LifeEvent) -> bool:
         other: GameObject = event.data["other"]
-        rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+        rel_graph = gameobject.world.get_resource(RelationshipGraph)
         if rel_graph.has_connection(gameobject.id, other.id):
-            return (
-                rel_graph.get_connection(gameobject.id, other.id).romance < value
-            )
+            return rel_graph.get_connection(gameobject.id, other.id).romance < value
         return False
 
     return fn
@@ -136,12 +130,9 @@ def romance_equal_to(value: int) -> ILifeEventCallback:
 
     def fn(gameobject: GameObject, event: LifeEvent) -> bool:
         other: GameObject = event.data["other"]
-        rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+        rel_graph = gameobject.world.get_resource(RelationshipGraph)
         if rel_graph.has_connection(gameobject.id, other.id):
-            return (
-                rel_graph.get_connection(gameobject.id, other.id).romance
-                == value
-            )
+            return rel_graph.get_connection(gameobject.id, other.id).romance == value
         return False
 
     return fn
@@ -155,7 +146,7 @@ def relationship_has_tag(tag: str) -> ILifeEventCallback:
 
     def fn(gameobject: GameObject, event: LifeEvent) -> bool:
         other: GameObject = event.data["other"]
-        rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+        rel_graph = gameobject.world.get_resource(RelationshipGraph)
         if rel_graph.has_connection(gameobject.id, other.id):
             return rel_graph.get_connection(gameobject.id, other.id).has_tags(
                 RelationshipTag[tag]
@@ -167,7 +158,7 @@ def relationship_has_tag(tag: str) -> ILifeEventCallback:
 
 def is_single(gameobject: GameObject, event: LifeEvent) -> bool:
     """Return True if this character has no relationships tagged as significant others"""
-    rel_graph = gameobject.world.get_resource(RelationshipNetwork)
+    rel_graph = gameobject.world.get_resource(RelationshipGraph)
     significant_other_relationships = rel_graph.get_all_relationships_with_tags(
         gameobject.id, RelationshipTag.SignificantOther
     )
