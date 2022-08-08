@@ -161,4 +161,4 @@ def test_constructing_plugins():
 
     sim = Simulation(config)
 
-    sim.load_plugin("neighborly.plugins.default_plugin")
+    sim._dynamic_load_plugin("neighborly.plugins.default_plugin")

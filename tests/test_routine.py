@@ -13,20 +13,20 @@ from neighborly.core.routine import (
 def test_construct_routine_entry():
     """Test that routines entries are created properly"""
 
-    entry_0 = RoutineEntry(8, 12, "home", "liesure", RoutinePriority.HIGH)
+    entry_0 = RoutineEntry(8, 12, "home", "leisure", RoutinePriority.HIGH)
 
     assert entry_0.start == 8
     assert entry_0.end == 12
     assert entry_0.location == "home"
     assert entry_0.priority == RoutinePriority.HIGH
 
-    entry_1 = RoutineEntry(12, 15, "park", "liesure")
+    entry_1 = RoutineEntry(12, 15, "park", "leisure")
 
     assert entry_1.priority == RoutinePriority.LOW
 
     with pytest.raises(ValueError):
         # start greater than the end
-        RoutineEntry(6, 3, "home", "liesure")
+        RoutineEntry(6, 3, "home", "leisure")
         # start less than zero
         RoutineEntry(-1, 12, "work", "work")
         # end greater than 23
@@ -44,7 +44,7 @@ def test_daily_routine():
     assert daily_routine.get_entries(8) == []
 
     # Add a low priority entry
-    go_to_park = RoutineEntry(12, 15, "park", "liesure")
+    go_to_park = RoutineEntry(12, 15, "park", "leisure")
     daily_routine.add_entries(go_to_park)
     assert daily_routine.get_entries(12) == [go_to_park]
 
@@ -88,7 +88,7 @@ def test_routine():
     assert routine.get_entries("tuesday", 12) == [walk_dog]
 
 
-def test_timestr_to_int():
+def test_time_str_to_int():
     """Test converting 24-hour or 12-hour time strings to ints"""
     assert time_str_to_int("01:00") == 1
     assert time_str_to_int("1:00") == 1

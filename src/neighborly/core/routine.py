@@ -1,9 +1,9 @@
+from __future__ import annotations
+
 from enum import IntEnum
-from typing import Optional, Union, List, Dict, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
-from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
-
+from neighborly.core.ecs import Component, World
 
 TIME_ALIAS = {
     "early morning": "02:00",
@@ -174,13 +174,8 @@ class Routine(Component):
         for day in days:
             self._daily_routines[day].remove_entries(*entries)
 
-
-class RoutineFactory(AbstractFactory):
-    def __init__(self):
-        super().__init__("Routine")
-
-    def create(self, spec: ComponentDefinition, **kwargs) -> Routine:
-        return Routine()
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))
 
 
 def time_str_to_int(s: str) -> int:

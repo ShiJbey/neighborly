@@ -5,7 +5,7 @@
     src="https://user-images.githubusercontent.com/11076525/165836171-9ffdea6e-1633-440c-be06-b46e1e3e4e04.png"
   >
   <br>
-  Neighborly (W.I.P.)
+  Neighborly
 </h1>
 
 <h3 align="center"><b>Social simulation engine for procedurally generating towns of characters</b></h2>
@@ -16,8 +16,6 @@
   <img src="https://img.shields.io/pypi/v/neighborly">
   <img src="https://img.shields.io/pypi/pyversions/neighborly">
 </p>
-
-![pygame_sample_screenshot](https://user-images.githubusercontent.com/11076525/166522030-598a1fcd-3f9e-4203-ab50-8fa04722bd50.png)
 
 # Overview
 
@@ -81,16 +79,17 @@ python -m pip install -e "."
 
 # Running the Tests
 
-I am still working on providing a decent test suite, but the codebase
-changes so frequently that it hasn't been worth the time. As modules
-become more established, I will add proper tests for them. Feel free
-to contribute tests. Remember to fork the repo, add your test(s), and
-submit a pull request with a description of your test cases. Your commits
+The tests are currently out-of-date and may refer to systems
+and logic that no longer exists in Neighborly. The codebase
+changes so frequently that it hasn't been worth the time. 
+As modules  become more established, I will add proper tests for them. 
+Feel free to contribute tests by forking the repo, adding your test(s), and
+submitting a pull request with a description of your test cases. Your commits
 should only contain changes to files within the `tests` directory. If you
 change any files in other parts of the project, your PR will be rejected.
 
-Please follow the steps for how to use then run the following to download
-the dependencies for running tests.
+Please follow the steps below to run Neighborly's test suite. Neighborly uses
+[PyTest](https://docs.pytest.org/en/7.1.x/) to handle unit testing.
 
 ```bash
 # Step 1: Install dependencies for tests
@@ -102,8 +101,9 @@ pytest
 
 # Running the Samples
 
-Please follow the steps for how to use then run the following to download the
-dependencies for running the samples.
+Please follow the steps below to run the sample simulations.
+We also have examples for using Neighborly in a IPython
+notebook and with PyGame.
 
 ```bash
 # Step 1: Install dependencies for samples
@@ -115,7 +115,8 @@ python ./samples/<sample_name>.py
 
 # Documentation
 
-Neighborly uses Numpy-style docstrings and we generate the documentation using Sphinx.
+Neighborly uses Numpy-style docstrings in code and generates the full 
+documentation using Sphinx.
 
 When adding docstrings for existing or new bits of code please use the following
 references for how to format your contributions:
@@ -141,7 +142,7 @@ python -m http.server 8080 --directory _build/html
 
 If you are interested in contributing to Neighborly, feel free to fork this repository, make your changes, and submit a pull-request. Please keep in mind that this project is a tool for creativity and learning. We have a [code of conduct](./CODE_OF_CONDUCT.md) to encourage healthy collaboration, and will enforce it if we need to.
 
-**WARNING::** This repository's structure in in high flux. Parts of the code get shifted to make the API's cleaner for use.
+**WARNING::** This repository's structure in high flux. Parts of the code get shifted to make the APIs cleaner for use.
 
 Here are some ways that people can contribute to Neighborly:
 
@@ -150,7 +151,7 @@ Here are some ways that people can contribute to Neighborly:
 3. Providing optimizations
 4. Fixing typos
 5. Filing issues
-6. Contributing tutorials/how-to's to the wiki
+6. Contributing tutorials/how-tos to the wiki
 7. Fixing grammar and spelling in the wiki
 8. Creating new samples
 

@@ -47,7 +47,7 @@ def main():
     name_gen.register_rule("hitman_last_name", ["Wick", "47"])
 
     print(sim.get_engine().create_character("Assassin"))
-    print(sim.get_engine().create_place("The Continental Hotel"))
+    print(sim.get_engine().spawn_place("The Continental Hotel"))
 
 
 if __name__ == "__main__":

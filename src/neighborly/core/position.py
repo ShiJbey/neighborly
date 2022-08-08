@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
+from neighborly.core.ecs import Component, World
 
 
 @dataclass
@@ -13,10 +14,9 @@ class Position2D(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "x": self.x, "y": self.y}
 
+    @classmethod
+    def create(cls, world: World, **kwargs) -> Position2D:
+        return Position2D(x=kwargs.get("x", 0.0), y=kwargs.get("y", 0.0))
 
-class Position2DFactory(AbstractFactory):
-    def __init__(self):
-        super().__init__("Position2D")
-
-    def create(self, spec: ComponentDefinition, **kwargs) -> Position2D:
-        return Position2D()
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))

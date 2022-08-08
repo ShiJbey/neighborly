@@ -3,8 +3,9 @@ from enum import Enum
 
 import numpy as np
 
-from neighborly.core.ecs import World
-from neighborly.simulation import PluginContext
+from neighborly.core.ecs import ISystem
+from neighborly.core.time import SimDateTime
+from neighborly.simulation import Plugin, Simulation
 
 
 class Weather(Enum):
@@ -35,7 +36,7 @@ class WeatherManager:
         self.time_before_change: int = 0
 
 
-class WeatherProcessor:
+class WeatherSystem(ISystem):
     """Updates the current weather state
 
     Attributes
@@ -49,9 +50,9 @@ class WeatherProcessor:
         super().__init__()
         self.avg_change_interval: int = avg_change_interval
 
-    def __call__(self, world: World, **kwargs):
-        delta_time: int = kwargs["delta_time"]
-        weather_manager = world.get_resource(WeatherManager)
+    def process(self, *args, **kwargs):
+        delta_time = self.world.get_resource(SimDateTime).delta_time
+        weather_manager = self.world.get_resource(WeatherManager)
 
         if weather_manager.time_before_change <= 0:
             # Select the next weather pattern
@@ -63,6 +64,11 @@ class WeatherProcessor:
         weather_manager.time_before_change -= delta_time
 
 
-def setup(ctx: PluginContext, **kwargs) -> None:
-    ctx.world.add_system(WeatherProcessor(), 9)
-    ctx.world.add_resource(WeatherManager())
+class WeatherPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        sim.add_system(WeatherSystem(), 9)
+        sim.add_resource(WeatherManager())
+
+
+def get_plugin() -> Plugin:
+    return WeatherPlugin()

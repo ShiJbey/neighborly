@@ -7,4 +7,4 @@ def test_name_generation() -> None:
         "last_name", ["Pizza", "Apple", "Blueberry", "Avocado"]
     )
 
-    assert type(name_generator.get_name("#first_name# #last_name#")) == str
+    assert type(name_generator.get_name("#first_name# #family_name#")) == str

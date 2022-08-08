@@ -1,109 +1,86 @@
+import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List
 
-from neighborly.core.business import BusinessDefinition, OccupationDefinition
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.systems import LifeEventSystem
-from neighborly.core.relationship import RelationshipModifier
-from neighborly.loaders import YamlDataLoader, load_names
-from neighborly.plugins.default_plugin.activity import Activity, register_activity
-from neighborly.plugins.default_plugin.businesses import (
-    bar_type,
-    bartender_type,
-    cashier_type,
-    cook_type,
-    department_store_type,
-    dj_type,
-    manager_type,
-    owner_type,
-    proprietor_type,
-    restaurant_type,
-    sales_associate_type,
-    security_type,
+from neighborly.builtin.events import (
+    become_enemies_event,
+    become_friends_event,
+    dating_break_up_event,
+    depart_due_to_unemployment,
+    divorce_event,
+    hire_employee_event,
+    hiring_business_role,
+    marriage_event,
+    potential_spouse_role,
+    pregnancy_event,
+    retire_event,
+    single_person_role_type,
+    start_dating_event,
+    unemployed_role,
 )
+from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.life_event import EventRoles, LifeEvents
+from neighborly.simulation import Plugin, Simulation
 
-# from neighborly.plugins.default_plugin.events import (
-#     BecameAdolescentEvent,
-#     BecameAdultEvent,
-#     BecameBusinessOwnerEvent,
-#     BecameChildEvent,
-#     BecameSeniorEvent,
-#     BecameYoungAdultEvent,
-#     DatingBreakUpEvent,
-#     DeathEvent,
-#     StartedDatingEvent,
-#     UnemploymentEvent,
-# )
-
-from neighborly.simulation import PluginContext
+logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
 
-@YamlDataLoader.section_loader("Activities")
-def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
-    """Process data related to defining activities"""
-    for activity in data:
-        register_activity(Activity(activity["name"], trait_names=activity["traits"]))
+class DefaultNameDataPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        self.initialize_tracery_name_factory(sim.get_engine())
+
+    def initialize_tracery_name_factory(self, engine: NeighborlyEngine) -> None:
+        # Load character name data
+        engine.name_generator.load_names(
+            rule_name="family_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt"
+        )
+        engine.name_generator.load_names(
+            rule_name="first_name",
+            filepath=_RESOURCES_DIR / "names" / "neutral_names.txt",
+        )
+        engine.name_generator.load_names(
+            rule_name="feminine_first_name",
+            filepath=_RESOURCES_DIR / "names" / "feminine_names.txt",
+        )
+        engine.name_generator.load_names(
+            rule_name="masculine_first_name",
+            filepath=_RESOURCES_DIR / "names" / "masculine_names.txt",
+        )
+
+        # Load potential names for different structures in the town
+        engine.name_generator.load_names(
+            rule_name="restaurant_name",
+            filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt",
+        )
+        engine.name_generator.load_names(
+            rule_name="bar_name", filepath=_RESOURCES_DIR / "names" / "bar_names.txt"
+        )
+
+        # Load potential names for the town
+        engine.name_generator.load_names(
+            rule_name="town_name",
+            filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
+        )
 
 
-def setup(ctx: PluginContext, **kwargs) -> None:
-    # RelationshipModifier.register_tag(FriendModifier())
-
-    # LifeEventProcessor.register_event(DeathEvent())
-    # LifeEventProcessor.register_event(BecameChildEvent())
-    # LifeEventProcessor.register_event(BecameAdolescentEvent())
-    # LifeEventProcessor.register_event(BecameYoungAdultEvent())
-    # LifeEventProcessor.register_event(BecameAdultEvent())
-    # LifeEventProcessor.register_event(BecameSeniorEvent())
-    # LifeEventProcessor.register_event(StartedDatingEvent())
-    # LifeEventProcessor.register_event(DatingBreakUpEvent())
-    # LifeEventProcessor.register_event(UnemploymentEvent())
-    # LifeEventProcessor.register_event(BecameBusinessOwnerEvent())
-
-    # ctx.world.add_system(DatingStatus.system_fn, 1)
-    # ctx.world.add_system(MarriedStatus.system_fn, 1)
-    # ctx.world.add_system(UnemployedStatus.system_fn, 1)
-    # ctx.world.add_system(SocializeProcessor(), 2)
-
-    # BusinessDefinition.register_type(restaurant_type)
-    # BusinessDefinition.register_type(bar_type)
-    # BusinessDefinition.register_type(department_store_type)
-
-    # OccupationDefinition.register_type(manager_type)
-    # OccupationDefinition.register_type(sales_associate_type)
-    # OccupationDefinition.register_type(cashier_type)
-    # OccupationDefinition.register_type(dj_type)
-    # OccupationDefinition.register_type(bartender_type)
-    # OccupationDefinition.register_type(security_type)
-    # OccupationDefinition.register_type(cook_type)
-    # OccupationDefinition.register_type(owner_type)
-    # OccupationDefinition.register_type(proprietor_type)
-
-    # Load character name data
-    load_names("last_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt")
-    load_names("first_name", filepath=_RESOURCES_DIR / "names" / "neutral_names.txt")
-    load_names(
-        "feminine_first_name",
-        filepath=_RESOURCES_DIR / "names" / "feminine_names.txt",
-    )
-    load_names(
-        "masculine_first_name",
-        filepath=_RESOURCES_DIR / "names" / "masculine_names.txt",
-    )
-
-    # Load potential names for different structures in the town
-    load_names(
-        "restaurant_name",
-        filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt",
-    )
-    load_names("bar_name", filepath=_RESOURCES_DIR / "names" / "bar_names.txt")
-
-    # Load potential names for the town
-    load_names(
-        "town_name", filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt"
-    )
-
-    # Load additional data from yaml
-    # YamlDataLoader(filepath=_RESOURCES_DIR / "data.yaml").load(ctx.engine)
+class DefaultLifeEventPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        EventRoles.register(
+            name="PotentialSpouse", event_role_type=potential_spouse_role()
+        )
+        EventRoles.register("SinglePerson", single_person_role_type())
+        EventRoles.register("HiringBusiness", hiring_business_role())
+        EventRoles.register("Unemployed", unemployed_role())
+        LifeEvents.register(hire_employee_event())
+        LifeEvents.register(marriage_event())
+        LifeEvents.register(become_friends_event())
+        LifeEvents.register(become_enemies_event())
+        LifeEvents.register(start_dating_event())
+        LifeEvents.register(dating_break_up_event())
+        LifeEvents.register(divorce_event())
+        LifeEvents.register(marriage_event())
+        LifeEvents.register(pregnancy_event())
+        LifeEvents.register(depart_due_to_unemployment())
+        LifeEvents.register(retire_event())

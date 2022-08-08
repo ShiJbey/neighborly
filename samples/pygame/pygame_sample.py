@@ -1,15 +1,19 @@
+import os
+import random
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Set, Union, Sequence, cast, Iterable, Dict
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union, cast
 
 import pygame
 import pygame_gui
 
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import GameObject, Component
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import AbstractFactory, ComponentDefinition
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
-from neighborly.simulation import Simulation, NeighborlyConfig
+from neighborly.loaders import YamlDataLoader
+from neighborly.simulation import NeighborlyConfig, Simulation
 
 # COMMON COLORS
 SKY_BLUE = (153, 218, 232)
@@ -62,8 +66,8 @@ class BuildingFactory(AbstractFactory):
     def __init__(self):
         super().__init__("Building")
 
-    def create(self, spec: ComponentDefinition, **kwargs) -> Building:
-        return Building(size=spec.get_attributes().get("size", "small"))
+    def create(self, world: World, **kwargs) -> Building:
+        return Building(kwargs.get("size", "small"))
 
 
 class CharacterInfoWindow(pygame_gui.elements.UIWindow):
@@ -78,7 +82,7 @@ class CharacterInfoWindow(pygame_gui.elements.UIWindow):
         super().__init__(
             pygame.Rect((10, 10), (320, 240)),
             ui_manager,
-            window_display_title=character.name,
+            window_display_title=str(character.get_component(GameCharacter).name),
             object_id=f"{character.id}",
         )
         self.ui_manager = ui_manager
@@ -293,18 +297,18 @@ class PlaceSprite(pygame.sprite.Sprite):
         self.rect.topleft = (round(self.position.x), round(self.position.y))
 
         self.font = pygame.font.SysFont("Arial", 12)
-        self.textSurf = self.font.render(
-            place.name, True, (255, 255, 255), (0, 0, 0, 255)
-        )
-        text_width = self.textSurf.get_width()
-        text_height = self.textSurf.get_height()
-        self.image.blit(
-            self.textSurf,
-            [
-                (width * CHARACTER_SIZE) / 2 - text_width / 2,
-                (height * CHARACTER_SIZE) / 2 - text_height / 2,
-            ],
-        )
+        # self.textSurf = self.font.render(
+        #     place.name, True, (255, 255, 255), (0, 0, 0, 255)
+        # )
+        # text_width = self.textSurf.get_width()
+        # text_height = self.textSurf.get_height()
+        # self.image.blit(
+        #     self.textSurf,
+        #     [
+        #         (width * CHARACTER_SIZE) / 2 - text_width / 2,
+        #         (height * CHARACTER_SIZE) / 2 - text_height / 2,
+        #     ],
+        # )
 
         self.occupancy: OccupancyGrid = OccupancyGrid(width, height)
 
@@ -440,7 +444,10 @@ class GameScene:
 
         self._create_background(
             self.background_group,
-            (self.sim.config.town.width, self.sim.config.town.length),
+            (
+                self.sim.config.simulation.town.width,
+                self.sim.config.simulation.town.length,
+            ),
         )
 
         self.ui_elements = {
@@ -484,43 +491,24 @@ class GameScene:
 
     @staticmethod
     def _init_sim() -> Simulation:
-
-        structure_data = """
-        Places:
-        - name: Space Casino
-          components:
-            - type: Location
-              options:
-                activities: ["Gambling", "Drinking", "Eating", "Socializing"]
-        - name: Mars
-          components:
-            - type: Location
-              options:
-                activities: ["Reading", "Relaxing"]
-        - name: Kamino
-          components:
-            - type: Location
-              options:
-                activities: ["Recreation", "Studying"]
-        - name: House
-          inherits: House
-          components:
-            - type: Location
-              options:
-                activities: ["Rest"]
-            - type: Building
-              options:
-                size: small
-            - type: Position2D
-        """
-
-        sim = Simulation.create(
-            SimulationConfig(
-                hours_per_timestep=4, town=TownConfig(town_width=5, town_length=5)
-            )
+        NEIGHBORLY_CONFIG = NeighborlyConfig(
+            **{
+                "simulation": {
+                    "seed": random.randint(0, 999999),
+                    "hours_per_timestep": 6,
+                    "start_date": "0000-00-00T00:00.000z",
+                    "end_date": "0060-00-00T00:00.000z",
+                    "days_per_year": 10,
+                },
+                "plugins": [
+                    "neighborly.plugins.talktown",
+                ],
+            }
         )
-        default_plugin.initialize_plugin(sim.get_engine())
-        YamlDataLoader(str_data=structure_data).load(sim.get_engine())
+        sim = Simulation(NEIGHBORLY_CONFIG)
+        YamlDataLoader(
+            filepath=Path(os.path.abspath(__file__)).parent / "data.yaml"
+        ).load(sim.get_engine())
         sim.get_engine().add_component_factory(BuildingFactory())
 
         return sim

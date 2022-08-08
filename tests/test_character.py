@@ -14,7 +14,7 @@ def sample_definitions() -> str:
             name: BaseCharacter
             generation:
                 first_name: "#first_name#"
-                last_name: "#last_name#"
+                last_name: "#family_name#"
                 family:
                     probability_spouse: 0.5
                     probability_children: 0.5

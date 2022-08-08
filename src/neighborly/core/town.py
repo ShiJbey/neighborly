@@ -1,84 +1,70 @@
+from __future__ import annotations
+
 import itertools
-from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Protocol,
-    Set,
-    Tuple,
-    TypeVar,
-)
+from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
-from pydantic import BaseModel
-
-from neighborly.core.ecs import Component
-from neighborly.core.name_generation import get_name
+from neighborly.core.ecs import World
+from neighborly.core.engine import NeighborlyEngine
 
 
-class TownConfig(BaseModel):
+class Town:
     """
-    Static configuration parameters for Town instance
+    Simulated town where characters live
+
+    Notes
+    -----
+    The town is stored in the ECS as a global resource
 
     Attributes
     ----------
-    name : str
-        Tracery grammar used to generate a town's name
-    width : int
-        Number of space tiles wide the town will be
-    length : int
-        Number of space tile long the town will be
+    name: str
+        The name of the town
+    population: int
+        The number of active town residents
     """
 
-    name: str = "#town_name#"
-    width: int = 5
-    length: int = 5
+    __slots__ = "name", "population"
 
-
-class Town(Component):
-    """Simulated town where characters live"""
-
-    __slots__ = "name", "layout", "population"
-
-    def __init__(self, name: str, layout: "TownLayout") -> None:
+    def __init__(self, name: str) -> None:
         super().__init__()
         self.name: str = name
         self.population: int = 0
-        self.layout: "TownLayout" = layout
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "name": self.name, "population": self.population}
+        return {"name": self.name, "population": self.population}
+
+    def __str__(self) -> str:
+        return f"{self.name} (Pop. {self.population})"
+
+    def __repr__(self) -> str:
+        return self.to_dict().__repr__()
 
     @classmethod
-    def create(cls, config: TownConfig) -> "Town":
-        """Create a town instance"""
-        town_name = get_name(config.name)
-        layout = TownLayout(config.width, config.length)
-        return cls(name=town_name, layout=layout)
+    def create(cls, world: World, **kwargs) -> Town:
+        """
+        Create a town instance
+
+        Parameters
+        ----------
+        kwargs.name: str
+            The name of the town as a string or Tracery pattern
+        """
+        town_name = kwargs.get("name", "Town")
+        town_name = world.get_resource(NeighborlyEngine).name_generator.get_name(
+            town_name
+        )
+        return cls(name=town_name)
 
 
 @dataclass
 class LayoutGridSpace:
-    # Identifier given to this space
-    # space_id: int
-    # Position of the space in the grid
-    # position: Tuple[int, int]
     # ID of the gameobject for the place occupying this space
-    place_id: Optional[int] = None
+    occupant: Optional[int] = None
 
-
-class ISpaceSelectionStrategy(Protocol):
-    """Uses a heuristic to select a space within the town"""
-
-    @abstractmethod
-    def choose_space(self, spaces: List[LayoutGridSpace]) -> Tuple[int, int]:
-        """Choose a space based on an internal heuristic"""
-        raise NotImplementedError()
+    def reset(self) -> None:
+        self.occupant = None
 
 
 class CompassDirection(Enum):
@@ -169,8 +155,10 @@ class Grid(Generic[_GT]):
         }
 
 
-class TownLayout:
-    """Manages an occupancy grid of what tiles in the town currently have places built on them
+class LandGrid:
+    """
+    Manages an occupancy grid of what tiles in the town
+    currently have places built on them
 
     Attributes
     ----------
@@ -182,7 +170,8 @@ class TownLayout:
 
     __slots__ = "_unoccupied", "_occupied", "_grid"
 
-    def __init__(self, width: int, length: int) -> None:
+    def __init__(self, size: Tuple[int, int]) -> None:
+        width, length = size
         self._grid: Grid[LayoutGridSpace] = Grid(
             width, length, lambda: LayoutGridSpace()
         )
@@ -207,30 +196,23 @@ class TownLayout:
         """Returns True if there are empty spaces available in the town"""
         return bool(self._unoccupied)
 
-    def allocate_space(
+    def reserve_space(
         self,
-        place_id: int,
-        selection_strategy: Optional[ISpaceSelectionStrategy] = None,
-    ) -> Tuple[int, int]:
+        position: Tuple[int, int],
+        occupant_id: int,
+    ) -> None:
         """Allocates a space for a location, setting it as occupied"""
-        if self._unoccupied:
-            if selection_strategy:
-                space = selection_strategy.choose_space(
-                    [self._grid[i] for i in self._unoccupied]
-                )
-            else:
-                space = self._unoccupied[0]
 
-            self._grid[space].place_id = place_id
-            self._unoccupied.remove(space)
-            self._occupied.add(space)
+        if position in self._occupied:
+            raise RuntimeError("Grid space already occupied")
 
-            return space
-
-        raise RuntimeError("Attempting to get space from full town layout")
+        space = self._grid[position]
+        space.occupant = occupant_id
+        self._unoccupied.remove(position)
+        self._occupied.add(position)
 
     def free_space(self, space: Tuple[int, int]) -> None:
         """Frees up a space in the town to be used by another location"""
-        self._grid[space].place_id = None
+        self._grid[space].reset()
         self._unoccupied.append(space)
         self._occupied.remove(space)

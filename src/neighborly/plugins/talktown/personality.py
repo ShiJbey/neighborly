@@ -3,11 +3,12 @@ Talk of the Town uses a Big 5 personality model
 to make character decisions and determine
 compatibility in social interactions
 """
-from typing import Optional
+from __future__ import annotations
 
-from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentDefinition
+from typing import Any, Dict
 
+from neighborly.core.ecs import Component, World
+from neighborly.core.engine import NeighborlyEngine
 
 BIG_FIVE_FLOOR = -1.0
 BIG_FIVE_CAP = 1.0
@@ -39,36 +40,44 @@ class BigFivePersonality(Component):
         self.agreeableness: float = agreeableness
         self.neuroticism: float = neuroticism
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "openness": self.openness,
+            "conscientiousness": self.conscientiousness,
+            "extroversion": self.extroversion,
+            "agreeableness": self.agreeableness,
+            "neuroticism": self.neuroticism,
+        }
 
-class BigFivePersonalityFactory(AbstractFactory):
-    """Creates instances of BigFivePersonality components"""
-
-    def __init__(self) -> None:
-        super().__init__("BigFivePersonality")
-
-    def create(self, spec: ComponentDefinition, **kwargs) -> BigFivePersonality:
+    @classmethod
+    def create(cls, world: World, **kwargs) -> BigFivePersonality:
         """Create new instance given component spec"""
-        raise NotImplementedError()
+        engine: NeighborlyEngine = kwargs["engine"]
 
+        openness: float = (
+                              engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+                          ) + BIG_FIVE_FLOOR
 
-def personality_from_parents(
-    parent_a: BigFivePersonality, parent_b: Optional[BigFivePersonality] = None
-) -> BigFivePersonality:
-    """
-    Create a new BigFivePersonality instance using the personality
-    models from parents
+        conscientiousness: float = (
+                                       engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+                                   ) + BIG_FIVE_FLOOR
 
-    Parameters
-    ----------
-    parent_a : BigFivePersonality
-        Personality model for the first parent
-    parent_b : Optional[BigFivePersonality]
-        Optional personality model for a second parent
+        extroversion: float = (
+                                  engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+                              ) + BIG_FIVE_FLOOR
 
-    Returns
-    -------
-    BigFivePersonality
-        The final generated personality model
-    """
+        agreeableness: float = (
+                                   engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+                               ) + BIG_FIVE_FLOOR
 
-    raise NotImplementedError()
+        neuroticism: float = (
+                                 engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+                             ) + BIG_FIVE_FLOOR
+
+        return cls(
+            openness, conscientiousness, extroversion, agreeableness, neuroticism
+        )
+
+    def __repr__(self) -> str:
+        return self.to_dict().__repr__()

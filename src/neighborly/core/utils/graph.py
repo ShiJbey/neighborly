@@ -1,19 +1,7 @@
 from collections import defaultdict
-from typing import (
-    Any,
-    DefaultDict,
-    Dict,
-    Generic,
-    List,
-    NamedTuple,
-    Tuple,
-    TypeVar,
-    cast,
-)
+from typing import TypeVar, NamedTuple, Generic, DefaultDict, Dict, Tuple, cast
 
 from ordered_set import OrderedSet
-
-from neighborly.core.relationship import Relationship, RelationshipTag
 
 _T = TypeVar("_T")
 
@@ -23,7 +11,7 @@ class BDGraphNode(NamedTuple):
     outgoing: OrderedSet[int]
 
 
-class DirectedSocialGraph(Generic[_T]):
+class DirectedGraph(Generic[_T]):
     """Directed graph that represents information that connects characters"""
 
     __slots__ = "_nodes", "_edges"
@@ -69,7 +57,7 @@ class DirectedSocialGraph(Generic[_T]):
         del self._edges[owner, target]
 
 
-class UndirectedSocialGraph(Generic[_T]):
+class UndirectedGraph(Generic[_T]):
     """Manages information about characters shared feeling towards each other
 
     This class is for modeling symmetric social connections
@@ -115,35 +103,3 @@ class UndirectedSocialGraph(Generic[_T]):
         """Remove a connection from the social graph"""
         nodes = cast(Tuple[int, int], tuple(sorted((node_a, node_b))))
         del self._edges[nodes]
-
-
-class RelationshipNetwork(DirectedSocialGraph[Relationship]):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def get_relationships(self, owner: int) -> List[Relationship]:
-        """Get all the outgoing relationships for this character"""
-        owner_node = self._nodes[owner]
-        return [self._edges[owner, target] for target in owner_node.outgoing]
-
-    def get_all_relationships_with_tags(
-        self, owner: int, tags: RelationshipTag
-    ) -> List[Relationship]:
-        owner_node = self._nodes[owner]
-
-        return list(
-            filter(
-                lambda rel: rel.has_tags(tags),
-                [self._edges[owner, target] for target in owner_node.outgoing],
-            )
-        )
-
-    def to_dict(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
-        network_dict: Dict[int, Dict[int, Dict[str, Any]]] = {}
-
-        for character_id in self._nodes.keys():
-            network_dict[character_id] = {}
-            for relationship in self.get_relationships(character_id):
-                network_dict[character_id][relationship.target] = relationship.to_dict()
-
-        return network_dict

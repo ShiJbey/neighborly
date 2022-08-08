@@ -170,6 +170,14 @@ class SimDateTime:
     def weekday_str(self) -> str:
         return _DAYS_OF_WEEK[self._weekday]
 
+    def copy(self) -> SimDateTime:
+        return SimDateTime(
+            hour=self._hour,
+            day=self._day,
+            month=self._month,
+            year=self._year,
+        )
+
     def __repr__(self) -> str:
         return "{}(hour={}, day={}, month={}, year={}, weekday={})".format(
             self.__class__.__name__,
