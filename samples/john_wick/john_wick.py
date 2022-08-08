@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import neighborly.core.name_generation as name_gen
 from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentSpec
+from neighborly.core.engine import AbstractFactory, ComponentDefinition
 from neighborly.loaders import YamlDataLoader
 from neighborly.plugins import default_plugin
 from neighborly.simulation import Simulation
@@ -33,7 +33,7 @@ class AssassinFactory(AbstractFactory):
     def __init__(self) -> None:
         super().__init__("Assassin")
 
-    def create(self, spec: ComponentSpec, **kwargs) -> Assassin:
+    def create(self, spec: ComponentDefinition, **kwargs) -> Assassin:
         return Assassin(**spec.get_attributes())
 
 
@@ -47,7 +47,7 @@ def main():
     name_gen.register_rule("hitman_last_name", ["Wick", "47"])
 
     print(sim.get_engine().create_character("Assassin"))
-    print(sim.get_engine().create_place("The Continental Hotel"))
+    print(sim.get_engine().spawn_place("The Continental Hotel"))
 
 
 if __name__ == "__main__":

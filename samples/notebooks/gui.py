@@ -10,23 +10,25 @@ from neighborly.simulation import Simulation
 
 
 class SimulationGUIWidget(Protocol):
-
     def update(self, *args, **kwargs) -> None:
         raise NotImplementedError()
 
 
 class GameCharacterWidget:
     """Displays information about a GameCharacter instance"""
+
     ...
 
 
 class LocationWidget:
     """Displays information about a Location instance"""
+
     ...
 
 
 class RoutineWidget:
     """Displays information about a Routine instance"""
+
     ...
 
 
@@ -36,10 +38,15 @@ class RelationshipWidget:
 
 class SimulationState(Enum):
     """Tracks if the simulation is running or paused"""
+
     PAUSED = 0
     STEPPING = 1
     RUNNING = 2
     STOPPED = 3
+
+
+def create_character_tab():
+    """Create the GUI tab that"""
 
 
 class SimulationGUI:
@@ -57,43 +64,48 @@ class SimulationGUI:
         self.date_text = widgets.Text(
             value=self.simulation.get_time().to_date_str(),
             disabled=True,
-            layout=widgets.Layout(width='100%'),
+            layout=widgets.Layout(width="100%"),
         )
 
         self.play_button = widgets.Button(
-            description='Play',
+            description="Play",
             disabled=False,
         )
         self.play_button.on_click(self.play_simulation)
 
         self.step_button = widgets.Button(
-            description='Step',
+            description="Step",
             disabled=False,
         )
         self.step_button.on_click(self.step_simulation)
 
         self.pause_button = widgets.Button(
-            description='Pause',
+            description="Pause",
             disabled=True,
         )
         self.pause_button.on_click(self.pause_simulation)
 
         self.characters_tab = widgets.VBox(
-            [widgets.HTML(value=f"<h1>Characters</h1>")])  # type: ignore
+            [widgets.HTML(value=f"<h1>Characters</h1>")]
+        )  # type: ignore
         self.places_tab = widgets.VBox(
-            [widgets.HTML(value=f"<h1>Places</h1>")])  # type: ignore
+            [widgets.HTML(value=f"<h1>Places</h1>")]
+        )  # type: ignore
 
-        tabs = widgets.Tab(
-            [self.characters_tab, self.places_tab])  # type: ignore
+        tabs = widgets.Tab([self.characters_tab, self.places_tab])  # type: ignore
         tabs.set_title(0, "Characters")
         tabs.set_title(1, "Places")
 
-        self.root_widget = widgets.VBox([
-            widgets.HBox([self.play_button, self.step_button,
-                         self.pause_button]),  # type: ignore
-            self.date_text,
-            tabs,
-        ], layout=widgets.Layout(width='80%', padding='12px'),)  # type: ignore
+        self.root_widget = widgets.VBox(
+            [
+                widgets.HBox(
+                    [self.play_button, self.step_button, self.pause_button]
+                ),  # type: ignore
+                self.date_text,
+                tabs,
+            ],
+            layout=widgets.Layout(width="80%", padding="12px"),
+        )  # type: ignore
 
     def update_gui(self):
         self.date_text.value = self.simulation.get_time().to_date_str()

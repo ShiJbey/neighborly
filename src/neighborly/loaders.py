@@ -1,35 +1,22 @@
 """Utility functions to help users load configuration data from files
 """
 import copy
+import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Protocol
+from typing import Any, Dict, List, Optional, Protocol, Union
 
 import yaml
 
-from neighborly.core.activity import Activity, register_activity
-from neighborly.core.business import BusinessDefinition
-from neighborly.core.character.character import CharacterDefinition
-from neighborly.core.engine import NeighborlyEngine, ComponentSpec, EntityArchetypeSpec
+from neighborly.core.activity import Activity, ActivityLibrary
+from neighborly.core.business import BusinessArchetype
+from neighborly.core.character import CharacterDefinition
+from neighborly.core.ecs import EntityArchetype
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.relationship import RelationshipModifier
 
+logger = logging.getLogger(__name__)
+
 AnyPath = Union[str, Path]
-
-
-def load_names(
-    rule_name: str,
-    names: Optional[List[str]] = None,
-    filepath: Optional[AnyPath] = None,
-) -> None:
-    """Load names a list of names from a text file or given list"""
-    from neighborly.core.name_generation import register_rule
-
-    if names:
-        register_rule(rule_name, names)
-    elif filepath:
-        with open(filepath, "r") as f:
-            register_rule(rule_name, f.read().splitlines())
-    else:
-        raise ValueError("Need to supply names list or path to file containing names")
 
 
 class MissingComponentSpecError(Exception):
@@ -46,7 +33,12 @@ class MissingComponentSpecError(Exception):
         return self.message
 
 
-class SectionLoader(Protocol):
+class UnsupportedFileType(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+
+class ISectionLoader(Protocol):
     def __call__(self, engine: NeighborlyEngine, data: Any) -> None:
         raise NotImplementedError()
 
@@ -56,7 +48,7 @@ class YamlDataLoader:
 
     __slots__ = "_raw_data"
 
-    _section_loaders: Dict[str, SectionLoader] = {}
+    _section_loaders: Dict[str, ISectionLoader] = {}
 
     def __init__(
         self,
@@ -86,11 +78,11 @@ class YamlDataLoader:
             if section in self._section_loaders:
                 self._section_loaders[section](engine, data)
             else:
-                print(f"WARNING:: Skipping unsupported section '{section}'")
+                logger.warning(f"skipping unsupported YAML section '{section}'.")
 
     @classmethod
     def section_loader(cls, section_name: str):
-        def decorator(section_loader: SectionLoader):
+        def decorator(section_loader: ISectionLoader):
             YamlDataLoader._section_loaders[section_name] = section_loader
             return section_loader
 
@@ -112,32 +104,20 @@ def _load_business_definitions(
 ) -> None:
     """Process data related to defining activities"""
     for business_def in data:
-        BusinessDefinition.register_type(BusinessDefinition(**business_def))
-
-
-@YamlDataLoader.section_loader("Activities")
-def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
-    """Process data related to defining activities"""
-    for activity in data:
-        register_activity(Activity(activity["name"], trait_names=activity["traits"]))
+        BusinessArchetype.register(BusinessArchetype(**business_def))
 
 
 def _load_entity_archetype(
-    engine: NeighborlyEngine, data: Dict[str, Any]
-) -> EntityArchetypeSpec:
-    archetype = EntityArchetypeSpec(
+    engine: NeighborlyEngine,
+    data: Dict[str, Any],
+    parent: Optional[EntityArchetype] = None,
+) -> EntityArchetype:
+    archetype = EntityArchetype(
         data["name"],
         is_template=data.get("template", False),
-        attributes={
-            "name": data["name"],
-            "tags": data.get("tags", []),
-            "inherits": data.get("inherits", None),
-        },
     )
 
-    if archetype["inherits"]:
-        parent = engine.get_character_archetype(archetype["inherits"])
-
+    if parent:
         # Copy component specs from the parent
         for component_spec in parent.get_components().values():
             archetype.add_component(copy.deepcopy(component_spec))
@@ -154,7 +134,7 @@ def _load_entity_archetype(
         if component:
             component.update(options)
         else:
-            component = ComponentSpec(component_name, {**options})
+            component = ComponentDefinition(component_name, {**options})
 
         archetype.add_component(component)
 
@@ -165,12 +145,16 @@ def _load_entity_archetype(
 def _load_character_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process data related to defining character archetypes"""
     for character in data:
-        archetype = _load_entity_archetype(engine, character)
+        parent: Optional[EntityArchetype] = None
+        if character.get("inherits"):
+            parent = engine.get_character_archetype(character["inherits"])
 
-        character_component = archetype.try_component("GameCharacter")
-        if character_component:
-            character_component["config_name"] = archetype.get_type()
-        else:
+        archetype = _load_entity_archetype(engine, character, parent)
+
+        if (
+            archetype.try_component("GameCharacter") is None
+            and not archetype.is_template
+        ):
             raise MissingComponentSpecError("GameCharacter")
 
         engine.add_character_archetype(archetype)
@@ -180,7 +164,10 @@ def _load_character_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -
 def _load_place_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process information regarding place archetypes"""
     for place in data:
-        archetype = _load_entity_archetype(engine, place)
+        parent: Optional[EntityArchetype] = None
+        if place.get("inherits"):
+            parent = engine.get_place_archetype(place["inherits"])
+        archetype = _load_entity_archetype(engine, place, parent)
         engine.add_place_archetype(archetype)
 
 
@@ -188,23 +175,12 @@ def _load_place_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> No
 def _load_business_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process information regarding place archetypes"""
     for business in data:
-        archetype = _load_entity_archetype(engine, business)
+        parent: Optional[EntityArchetype] = None
+        if business.get("inherits"):
+            parent = engine.get_business_archetype(business["inherits"])
+        archetype = _load_entity_archetype(engine, business, parent)
 
-        business_component = archetype.try_component("Business")
-        if business_component:
-            # Create and register a new character config from
-            # the options
-            if business_component.get_attribute("business_type") is None:
-                BusinessDefinition.register_type(
-                    BusinessDefinition(
-                        **{
-                            **business_component.get_attributes(),
-                            "name": archetype.get_type(),
-                        }
-                    )
-                )
-                business_component.update({"business_type": archetype.get_type()})
-        elif not archetype.is_template:
+        if archetype.try_component("Business") is None and not archetype.is_template:
             raise MissingComponentSpecError("Business")
 
         engine.add_business_archetype(archetype)
@@ -214,7 +190,10 @@ def _load_business_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) ->
 def _load_residence_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
     """Process information regarding place archetypes"""
     for residence in data:
-        archetype = _load_entity_archetype(engine, residence)
+        parent: Optional[EntityArchetype] = None
+        if residence.get("inherits"):
+            parent = engine.get_residence_archetype(residence["inherits"])
+        archetype = _load_entity_archetype(engine, residence, parent)
         engine.add_residence_archetype(archetype)
 
 
@@ -227,3 +206,12 @@ def _load_relationship_tag_data(
         # Convert the dictionary to an object
         tag = RelationshipModifier(**modifier)
         RelationshipModifier.register_tag(tag)
+
+
+@YamlDataLoader.section_loader("Activities")
+def _load_activity_data(engine: NeighborlyEngine, data: List[Dict[str, Any]]) -> None:
+    """Process data related to defining activities"""
+    for entry in data:
+        ActivityLibrary.register_activity(
+            Activity(entry["name"], trait_names=entry["traits"])
+        )

@@ -2,23 +2,19 @@ CharacterDefinitions:
   - name: BaseCharacter
     generation:
       first_name: "#first_name#"
-      last_name: "#last_name#"
+      last_name: "#family_name#"
       family:
         probability_spouse: 0.5
         probability_children: 0.5
         num_children: "0-2"
     lifecycle:
-      can_age: yes
-      can_die: yes
-      chance_of_death: 0.8
-      romantic_feelings_age: 13
-      marriageable_age: 18
-      age_ranges:
-        child: "0-12"
-        teen: "13-19"
-        young_adult: "20-29"
-        adult: "30-65"
-        senior: "65-100"
+      lifespan: 85
+      life_stages:
+        child: 0
+        teen: 13
+        young_adult: 18
+        adult: 30
+        elder: 85
 Characters:
   - name: BaseCharacter
     default: yes
@@ -26,14 +22,20 @@ Characters:
       - type: GameCharacter
         options:
           character_def: BaseCharacter
+          events:
+            marriage:
+              effect: [ on_married_behavior ]
+            child-birth:
+              effect: [ on_child_birth_behavior ]
+            move:
+              effect: [ on_move_behavior ]
       - type: Routine
-      - type: LifeEventHandler
 Residences:
   - name: House
     components:
       - type: Location
         options:
-          activities: [ Rest ]
+          private: true
       - type: Residence
       - type: Position2D
 Businesses:
@@ -49,10 +51,10 @@ Businesses:
           max capacity: 60
       - type: Business
         options:
-          name: 'Grocery Store'
-          name_pattern: 'Department Store'
-          hours: 'MTWRF 9:00-17:00, SU 10:00-15:00'
-          owner_type: 'Owner'
+          name: "Grocery Store"
+          name_pattern: "Department Store"
+          hours: "MTWRF 9:00-17:00, SU 10:00-15:00"
+          owner_type: "Owner"
           employees:
             Cashier: 1
             Sales Associate: 2
@@ -70,25 +72,23 @@ Businesses:
     components:
       - type: Location
         options:
-          name: '#bar_name#'
+          name: "#bar_name#"
           activities: [ Eating, Drinking, Socializing ]
           max capacity: 35
       - type: Business
         options:
           business_type: Bar
-Places:
   - name: Park
     components:
       - type: Location
         options:
-          activities: [ Recreation ]
+          private: no
           max capacity: 200
-
   - name: Library
     components:
       - type: Location
         options:
-          activities: [ Reading, Studying ]
+          private: no
           max capacity: 35
 Activities:
   - name: Rest
@@ -143,7 +143,7 @@ Activities:
       - health
       - tranquility
       - leisure-time
-RelationshipTags:
+RelationshipModifiers:
   - name: Acquaintance
   - name: Friend
     salience_boost: 20

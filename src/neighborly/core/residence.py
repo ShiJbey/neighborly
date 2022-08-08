@@ -1,56 +1,130 @@
-from typing import Dict, Any
+from __future__ import annotations
+
+from typing import Any, Dict, List, Type
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component
-from neighborly.core.engine import AbstractFactory, ComponentSpec
+from neighborly.core.ecs import Component, EntityArchetype, World
+from neighborly.core.location import Location
+from neighborly.core.position import Position2D
 
 
 class Residence(Component):
-    __slots__ = 'owners', 'former_owners', 'residents', 'former_residents', '_vacant'
+    """Residence is a place where characters live"""
+
+    __slots__ = "owners", "former_owners", "residents", "former_residents", "_vacant"
 
     def __init__(self) -> None:
         super().__init__()
-        self.owners: OrderedSet[int] = OrderedSet()
-        self.former_owners: OrderedSet[int] = OrderedSet()
-        self.residents: OrderedSet[int] = OrderedSet()
-        self.former_residents: OrderedSet[int] = OrderedSet()
+        self.owners: OrderedSet[int] = OrderedSet([])
+        self.former_owners: OrderedSet[int] = OrderedSet([])
+        self.residents: OrderedSet[int] = OrderedSet([])
+        self.former_residents: OrderedSet[int] = OrderedSet([])
         self._vacant: bool = True
+
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            'owners': list(self.owners),
-            'former_owners': list(self.former_owners),
-            'residents': list(self.residents),
-            'former_residents': list(self.former_residents),
-            'vacant': self._vacant
+            "owners": list(self.owners),
+            "former_owners": list(self.former_owners),
+            "residents": list(self.residents),
+            "former_residents": list(self.former_residents),
+            "vacant": self._vacant,
         }
 
-    def add_tenant(self, person: int, is_owner: bool = False) -> None:
+    def add_owner(self, owner: int) -> None:
+        """Add owner to the residence"""
+        self.owners.add(owner)
+
+    def remove_owner(self, owner: int) -> None:
+        """Remove owner from residence"""
+        self.owners.remove(owner)
+
+    def is_owner(self, character: int) -> bool:
+        """Return True if the character is an owner of this residence"""
+        return character in self.owners
+
+    def add_resident(self, resident: int) -> None:
         """Add a tenant to this residence"""
-        self.residents.add(person)
-        if is_owner:
-            self.owners.add(person)
+        self.residents.add(resident)
         self._vacant = False
 
-    def remove_tenant(self, person: int) -> None:
+    def remove_resident(self, resident: int) -> None:
         """Remove a tenant rom this residence"""
-        self.residents.remove(person)
-        self.former_residents.add(person)
-        if person in self.owners:
-            self.owners.remove(person)
-            self.former_owners.add(person)
+        self.residents.remove(resident)
+        self.former_residents.add(resident)
         self._vacant = len(self.residents) == 0
 
+    def is_resident(self, character: int) -> bool:
+        """Return True if the given character is a resident"""
+        return character in self.residents
+
     def is_vacant(self) -> bool:
+        """Return True if the residence is vacant"""
         return self._vacant
 
 
-class ResidenceFactory(AbstractFactory):
+class Resident(Component):
+    """Component attached to characters indicating that they live in the town"""
 
-    def __init__(self):
-        super().__init__("Residence")
+    __slots__ = "residence"
 
-    def create(self, spec: ComponentSpec, **kwargs) -> Residence:
-        return Residence()
+    def __init__(self, residence: int) -> None:
+        super().__init__()
+        self.residence: int = residence
+
+    def on_remove(self) -> None:
+        world = self.gameobject.world
+        residence = world.get_gameobject(self.residence).get_component(Residence)
+        residence.remove_resident(self.gameobject.id)
+        if residence.is_owner(self.gameobject.id):
+            residence.remove_owner(self.gameobject.id)
+
+    def on_archive(self) -> None:
+        self.gameobject.remove_component(type(self))
+
+
+class ResidenceArchetype(EntityArchetype):
+    __slots__ = ("spawn_multiplier",)
+
+    def __init__(
+        self,
+        name: str,
+        spawn_multiplier: int = 1,
+        extra_components: Dict[Type[Component], Dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(name)
+        self.spawn_multiplier: int = spawn_multiplier
+
+        self.add(Residence)
+        self.add(Location)
+        self.add(Position2D)
+
+        if extra_components:
+            for component_type, params in extra_components.items():
+                self.add(component_type, **params)
+
+
+class ResidenceArchetypeLibrary:
+    _registry: Dict[str, ResidenceArchetype] = {}
+
+    @classmethod
+    def register(
+        cls,
+        archetype: ResidenceArchetype,
+        name: str = None,
+    ) -> None:
+        """Register a new LifeEventType mapped to a name"""
+        cls._registry[name if name else archetype.name] = archetype
+
+    @classmethod
+    def get_all(cls) -> List[ResidenceArchetype]:
+        return list(cls._registry.values())
+
+    @classmethod
+    def get(cls, name: str) -> ResidenceArchetype:
+        """Get a LifeEventType using a name"""
+        return cls._registry[name]

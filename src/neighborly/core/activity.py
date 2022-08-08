@@ -1,10 +1,12 @@
-from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from __future__ import annotations
 
-from neighborly.core.character.values import CharacterValues
+from typing import Dict, List, Tuple
+
+import numpy as np
+
+from neighborly.core.personal_values import PersonalValues
 
 
-@dataclass(frozen=True)
 class Activity:
     """Activities that a character can do at a location in the town
 
@@ -12,42 +14,46 @@ class Activity:
     ----------
     name: str
         The name of the activity
-    traits_names: Tuple[str, ...]
+    trait_names: Tuple[str, ...]
         Character values that associated with this activity
-    character_traits: CharacterValues
-        CharacterValues instance that encodes the list of trait_names
-        as a vector of 0's and 1's for non-applicable and applicable
-        character values respectively.
+    personal_values: PersonalValues
+        The list of trait_names encoded as a vector of 0's and 1's
+        for non-applicable and applicable character values respectively.
     """
 
-    name: str
-    trait_names: Tuple[str, ...]
-    character_traits: CharacterValues = field(init=False)
+    __slots__ = "name", "trait_names", "personal_values"
 
-    def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "character_traits",
-            CharacterValues({name: 1 for name in self.trait_names}, default=0),
-        )
+    def __init__(self, name: str, trait_names: List[str]) -> None:
+        self.name: str = name
+        self.trait_names: List[str] = trait_names
+        self.personal_values: np.array = PersonalValues(
+            {name: 1 for name in self.trait_names}, default=0
+        ).traits
 
 
-_activity_registry: Dict[str, Activity] = {}
-_activity_flags: Dict[str, int] = {}
+class ActivityLibrary:
 
+    _activity_registry: Dict[str, Activity] = {}
+    _activity_flags: Dict[str, int] = {}
 
-def register_activity(activity: Activity) -> None:
-    """Registers an activity instance for use in other places"""
-    next_flag = 1 << len(_activity_registry.keys())
-    _activity_registry[activity.name] = activity
-    _activity_flags[activity.name] = next_flag
+    @classmethod
+    def register_activity(cls, activity: Activity) -> None:
+        """Registers an activity instance for use in other places"""
+        next_flag = 1 << len(cls._activity_registry.keys())
+        cls._activity_registry[activity.name] = activity
+        cls._activity_flags[activity.name] = next_flag
 
+    @classmethod
+    def get_activity_flags(cls, *activities: str) -> Tuple[int, ...]:
+        """Return flags corresponding to given activities"""
+        return tuple([cls._activity_flags[activity] for activity in activities])
 
-def get_activity_flags(*activities: str) -> Tuple[int, ...]:
-    """Return flags corresponding to given activities"""
-    return tuple([_activity_flags[activity] for activity in activities])
+    @classmethod
+    def get_activity(cls, activity: str) -> Activity:
+        """Return Activity instance corresponding to a given string"""
+        return cls._activity_registry[activity]
 
-
-def get_activity(activity: str) -> Activity:
-    """Return Activity instance corresponding to a given string"""
-    return _activity_registry[activity]
+    @classmethod
+    def get_all_activities(cls) -> List[Activity]:
+        """Return all activity instances in the registry"""
+        return list(cls._activity_registry.values())

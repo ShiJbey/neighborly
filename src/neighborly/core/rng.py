@@ -1,11 +1,11 @@
 import random
 from abc import abstractmethod
-from typing import Protocol, Sequence, TypeVar, List, MutableSequence, Optional
+from typing import List, MutableSequence, Optional, Protocol, Sequence, TypeVar
 
 _T = TypeVar("_T")
 
 
-class RandNumGenerator(Protocol):
+class IRandNumGenerator(Protocol):
     """Abstract interface for a class that handles generating random numbers"""
 
     @abstractmethod
@@ -20,11 +20,11 @@ class RandNumGenerator(Protocol):
 
     @abstractmethod
     def choices(
-            self,
-            s: Sequence[_T],
-            weights: Optional[List[int]] = None,
-            cum_weights: Optional[List[int]] = None,
-            k: int = 1
+        self,
+        s: Sequence[_T],
+        weights: Optional[List[int]] = None,
+        cum_weights: Optional[List[int]] = None,
+        k: int = 1,
     ) -> List[_T]:
         """Return one or more items from a sequence using weighted random selection"""
         raise NotImplementedError()
@@ -72,11 +72,11 @@ class DefaultRNG:
         return self._rng.choice(s)
 
     def choices(
-            self,
-            s: Sequence[_T],
-            weights: Optional[List[int]] = None,
-            cum_weights: Optional[List[int]] = None,
-            k: int = 1
+        self,
+        s: Sequence[_T],
+        weights: Optional[List[int]] = None,
+        cum_weights: Optional[List[int]] = None,
+        k: int = 1,
     ) -> List[_T]:
         """Return one or more items from a sequence using weighted random selection"""
         return self._rng.choices(s, weights=weights, cum_weights=cum_weights, k=k)

@@ -1,20 +1,60 @@
-from typing import Dict, List, Union
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
 import neighborly.core.utils.tracery as tracery
-from neighborly.core.utils.tracery.modifiers import base_english
+import neighborly.core.utils.tracery.modifiers as tracery_modifiers
 
 _all_name_rules: Dict[str, Union[str, List[str]]] = {}
 _grammar: tracery.Grammar = tracery.Grammar(_all_name_rules)
 
+AnyPath = Union[str, Path]
 
-def register_rule(name: str, rule: Union[str, List[str]]) -> None:
+
+def register_rule(self, name: str, rule: Union[str, List[str]]) -> None:
     """Add a rule to the name factory"""
-    global _grammar, _all_name_rules
+    global _all_name_rules, _grammar
     _all_name_rules[name] = rule
-    _grammar = tracery.Grammar(_all_name_rules)
-    _grammar.add_modifiers(base_english)
+    _grammar = tracery.Grammar(self._all_name_rules)
+    _grammar.add_modifiers(tracery_modifiers.base_english)
 
 
-def get_name(seed_str: str) -> str:
+def get_name(self, seed_str: str) -> str:
     """Return a name generated using the grammar rules"""
-    return _grammar.flatten(seed_str)
+    return self._grammar.flatten(seed_str)
+
+
+class TraceryNameFactory:
+    """
+    Generates town names using Tracery
+    """
+
+    def __init__(self) -> None:
+        self._all_name_rules: Dict[str, Union[str, List[str]]] = {}
+        self._grammar: tracery.Grammar = tracery.Grammar(self._all_name_rules)
+
+    def register_rule(self, name: str, rule: Union[str, List[str]]) -> None:
+        """Add a rule to the name factory"""
+        self._all_name_rules[name] = rule
+        self._grammar = tracery.Grammar(self._all_name_rules)
+        self._grammar.add_modifiers(tracery_modifiers.base_english)
+
+    def get_name(self, seed_str: str) -> str:
+        """Return a name generated using the grammar rules"""
+        return self._grammar.flatten(seed_str)
+
+    def load_names(
+        self,
+        rule_name: str,
+        names: Optional[List[str]] = None,
+        filepath: Optional[AnyPath] = None,
+    ) -> None:
+        """Load names a list of names from a text file or given list"""
+        if names:
+            self.register_rule(rule_name, names)
+        elif filepath:
+            with open(filepath, "r") as f:
+                self.register_rule(rule_name, f.read().splitlines())
+        else:
+            raise ValueError(
+                "Need to supply names list or path to file containing names"
+            )

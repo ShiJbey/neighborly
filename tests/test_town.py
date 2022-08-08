@@ -1,21 +1,19 @@
-from neighborly.core.town import TownLayout
+from neighborly.core.town import LandGrid
 
 
 def test_town_layout():
-    layout = TownLayout(5, 4)
+    layout = LandGrid((5, 4))
 
-    assert layout.shape == (5, 4)
-    assert layout.width == 5
-    assert layout.length == 4
+    assert layout.grid.shape == (5, 4)
     assert layout.has_vacancy() is True
-    space = layout.allocate_space()
-    assert space.space_id == 0
+    space = layout.reserve_space(0)
+    assert space == (0, 0)
 
     for i in range(19):
-        layout.allocate_space()
+        layout.reserve_space(0)
 
     assert layout.has_vacancy() is False
 
-    layout.free_space(10)
+    layout.free_space((3, 3))
 
     assert layout.has_vacancy() is True

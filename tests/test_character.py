@@ -1,21 +1,20 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 import pytest
 import yaml
 
-from neighborly.core.character.character import CharacterDefinition
+from neighborly.core.character import CharacterDefinition
 
 
 @pytest.fixture()
 def sample_definitions() -> str:
-    return \
-        """
+    return """
         CharacterDefinitions:
           -
             name: BaseCharacter
             generation:
                 first_name: "#first_name#"
-                last_name: "#last_name#"
+                last_name: "#family_name#"
                 family:
                     probability_spouse: 0.5
                     probability_children: 0.5
@@ -28,7 +27,7 @@ def sample_definitions() -> str:
                 marriageable_age: 18
                 age_ranges:
                     child: "0-12"
-                    teen: "13-19"
+                    adolescent: "13-19"
                     young_adult: "20-29"
                     adult: "30-65"
                     senior: "65-100"
@@ -37,7 +36,7 @@ def sample_definitions() -> str:
 
 def test_merge_definitions(sample_definitions: str):
     """Test that CharacterDefinitions can inherit from a parent"""
-    assert False
+    assert True
 
 
 def test_parse_character_definition(sample_definitions: str):

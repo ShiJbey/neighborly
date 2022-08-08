@@ -38,6 +38,7 @@ def get_time_of_day(hour: int) -> str:
 @dataclass(frozen=True)
 class TimeDelta:
     """Represents a difference in time from one SimDateTime to Another"""
+
     years: int = 0
     months: int = 0
     days: int = 0
@@ -46,15 +47,21 @@ class TimeDelta:
     @property
     def total_days(self) -> int:
         """get the total number of days that this delta represents"""
-        return self.days + (self.months * DAYS_PER_MONTH) + (self.years * MONTHS_PER_YEAR * DAYS_PER_MONTH)
+        return (
+            self.days
+            + (self.months * DAYS_PER_MONTH)
+            + (self.years * MONTHS_PER_YEAR * DAYS_PER_MONTH)
+        )
 
     @property
     def total_hours(self) -> int:
         """get the total number of days that this delta represents"""
-        return self.hours \
-               + (self.days * HOURS_PER_DAY) \
-               + (self.months * DAYS_PER_MONTH * HOURS_PER_DAY) \
-               + (self.years * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+        return (
+            self.hours
+            + (self.days * HOURS_PER_DAY)
+            + (self.months * DAYS_PER_MONTH * HOURS_PER_DAY)
+            + (self.years * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+        )
 
 
 class SimDateTime:
@@ -66,37 +73,39 @@ class SimDateTime:
     __slots__ = "_hour", "_day", "_month", "_year", "_weekday", "_delta_time"
 
     def __init__(
-            self,
-            year: int = 0,
-            month: int = 0,
-            day: int = 0,
-            hour: int = 0,
+        self,
+        year: int = 0,
+        month: int = 0,
+        day: int = 0,
+        hour: int = 0,
     ) -> None:
         if 0 <= hour < HOURS_PER_DAY:
             self._hour: int = hour
         else:
-            raise ValueError(f"Parameter 'hours' must be between 0 and {HOURS_PER_DAY - 1}")
+            raise ValueError(
+                f"Parameter 'hours' must be between 0 and {HOURS_PER_DAY - 1}"
+            )
 
         if 0 <= day < DAYS_PER_MONTH:
             self._day: int = day
             self._weekday: int = day % 7
         else:
-            raise ValueError(f"Parameter 'day' must be between 0 and {DAYS_PER_MONTH - 1}")
+            raise ValueError(
+                f"Parameter 'day' must be between 0 and {DAYS_PER_MONTH - 1}"
+            )
 
         if 0 <= month < MONTHS_PER_YEAR:
             self._month: int = month
         else:
-            raise ValueError(f"Parameter 'month' must be between 0 and {MONTHS_PER_YEAR - 1}")
+            raise ValueError(
+                f"Parameter 'month' must be between 0 and {MONTHS_PER_YEAR - 1}"
+            )
 
         self._year: int = year
         self._delta_time: int = 0
 
     def increment(
-            self,
-            hours: int = 0,
-            days: int = 0,
-            months: int = 0,
-            years: int = 0
+        self, hours: int = 0, days: int = 0, months: int = 0, years: int = 0
     ) -> None:
         """Advance time by a given amount"""
 
@@ -126,11 +135,12 @@ class SimDateTime:
 
         self._year = self._year + years + carry_years
 
-        self._delta_time = \
-            hours \
-            + days * HOURS_PER_DAY \
-            + months * DAYS_PER_MONTH * HOURS_PER_DAY \
+        self._delta_time = (
+            hours
+            + days * HOURS_PER_DAY
+            + months * DAYS_PER_MONTH * HOURS_PER_DAY
             + years * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY
+        )
 
     @property
     def hour(self) -> int:
@@ -159,6 +169,14 @@ class SimDateTime:
     @property
     def weekday_str(self) -> str:
         return _DAYS_OF_WEEK[self._weekday]
+
+    def copy(self) -> SimDateTime:
+        return SimDateTime(
+            hour=self._hour,
+            day=self._day,
+            month=self._month,
+            year=self._year,
+        )
 
     def __repr__(self) -> str:
         return "{}(hour={}, day={}, month={}, year={}, weekday={})".format(
@@ -192,7 +210,9 @@ class SimDateTime:
         """Add a TimeDelta to this data"""
         if not isinstance(other, TimeDelta):
             raise TypeError(f"expected TimeDelta object but was {type(other)}")
-        self.increment(hours=other.hours, days=other.days, months=other.months, years=other.years)
+        self.increment(
+            hours=other.hours, days=other.days, months=other.months, years=other.years
+        )
         return self
 
     def __le__(self, other: SimDateTime) -> bool:
@@ -218,18 +238,20 @@ class SimDateTime:
 
     def to_hours(self) -> int:
         """Return the number of hours that have elapsed since 00-00-0000"""
-        return \
-            self.hour \
-            + (self.day * HOURS_PER_DAY) \
-            + (self.month * DAYS_PER_MONTH * HOURS_PER_DAY) \
+        return (
+            self.hour
+            + (self.day * HOURS_PER_DAY)
+            + (self.month * DAYS_PER_MONTH * HOURS_PER_DAY)
             + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+        )
 
     def to_ordinal(self) -> int:
         """Returns the number of elapsed days since 00-00-0000"""
-        return \
-            + self.day \
-            + (self.month * DAYS_PER_MONTH) \
+        return (
+            +self.day
+            + (self.month * DAYS_PER_MONTH)
             + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH)
+        )
 
     @classmethod
     def from_ordinal(cls, ordinal_date: int) -> SimDateTime:
@@ -240,11 +262,11 @@ class SimDateTime:
     @classmethod
     def from_iso_str(cls, iso_date: str) -> SimDateTime:
         """Return a SimDateTime object given an ISO format string"""
-        date_time = iso_date.strip().split('T')
+        date_time = iso_date.strip().split("T")
         date = date_time[0]
         time = date_time[1] if len(date_time) == 2 else "00:00.000z"
-        year, month, day = tuple(map(lambda s: int(s.strip()), date.split('-')))
-        hour = int(time.split(':')[0])
+        year, month, day = tuple(map(lambda s: int(s.strip()), date.split("-")))
+        hour = int(time.split(":")[0])
         return cls(year=year, month=month, day=day, hour=hour)
 
     @classmethod

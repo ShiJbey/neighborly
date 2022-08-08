@@ -1,16 +1,12 @@
 import pytest
 
-from neighborly.core.character.values import CharacterValues
+from neighborly.core.personal_values import PersonalValues
 
 
 def test_constructor():
-    base_values = CharacterValues(default=50)
+    base_values = PersonalValues(default=50)
 
-    overridden_values = CharacterValues({
-        "family": 42,
-        "power": 90,
-        "social": 36
-    })
+    overridden_values = PersonalValues({"family": 42, "power": 90, "social": 36})
 
     assert base_values["family"] == 50
     assert base_values["social"] == 50
@@ -20,7 +16,7 @@ def test_constructor():
 
 
 def test_setter():
-    base_values = CharacterValues()
+    base_values = PersonalValues()
 
     # Set to a value within bounds
     base_values["confidence"] = 75
@@ -39,7 +35,7 @@ def test_setter():
 
 
 def test_getter():
-    base_propensities = CharacterValues(default=0)
+    base_propensities = PersonalValues(default=0)
 
     assert base_propensities["confidence"] == 0
     assert base_propensities["friendship"] == 0

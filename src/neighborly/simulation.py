@@ -1,203 +1,199 @@
+from __future__ import annotations
+
 import random
-from typing import Optional, List, Dict
-from pydantic import BaseModel, Field
+from abc import ABC, abstractmethod
+from logging import getLogger
+from typing import Any, Literal, Optional, Tuple, Union
 
-from neighborly.core.business import BusinessFactory
-from neighborly.core.character.character import GameCharacterFactory
-from neighborly.core.ecs import World
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import EventLog, LifeEventHandlerFactory
-from neighborly.core.location import LocationFactory
-from neighborly.core.position import Position2DFactory
-from neighborly.core.processors import (
-    CharacterProcessor,
-    RoutineProcessor,
-    SocializeProcessor,
-    LifeEventProcessor,
-    TimeProcessor,
-    ResidentImmigrationSystem,
-    CityPlanner,
+from neighborly.builtin.systems import (
+    BuildBusinessSystem,
+    BuildResidenceSystem,
+    BusinessUpdateSystem,
+    CharacterAgingSystem,
+    FindBusinessOwnerSystem,
+    FindEmployeesSystem,
+    LinearTimeSystem,
+    RelationshipStatusSystem,
+    RoutineSystem,
+    SocializeSystem,
+    SpawnResidentSystem,
+    UnemploymentSystem,
 )
-from neighborly.core.residence import ResidenceFactory
-from neighborly.core.rng import DefaultRNG
-from neighborly.core.routine import RoutineFactory
-from neighborly.core.social_network import RelationshipNetwork
-from neighborly.core.time import SimDateTime, DAYS_PER_YEAR, HOURS_PER_DAY
-from neighborly.core.town import Town, TownConfig
-from neighborly.plugins import NeighborlyPlugin
-from neighborly.plugins.default_plugin import DefaultPlugin, PluginContext
+from neighborly.core.ecs import ISystem, World
+from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.life_event import LifeEventLog, LifeEventSimulator
+from neighborly.core.relationship import RelationshipGraph
+from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.core.town import LandGrid, Town
+
+logger = getLogger(__name__)
 
 
-class SimulationConfig(BaseModel):
-    """Configuration parameters for a Neighborly instance
+class PluginSetupError(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
 
-    Attributes
-    ----------
-    seed: int
-        The seed provided to the random number factory
-    hours_per_timestep: int
-        How many in-simulation hours elapse every simulation tic
-    town: TownConfig
-        Configuration settings for town creation
-    """
 
-    seed: int = random.randint(0, 99999)
-    hours_per_timestep: int = 6
-    start_date: str = "0000-00-00T00:00.000z"
-    end_date: str = "0100-00-00T00:00.000z"
-    town: TownConfig = Field(default_factory=TownConfig)
-    character_weights: Dict[str, int] = Field(default_factory=dict)
-    residence_weights: Dict[str, int] = Field(default_factory=dict)
-    business_wights: Dict[str, int] = Field(default_factory=dict)
+class Plugin(ABC):
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of this plugin"""
+        return cls.__name__
+
+    @abstractmethod
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        """Add the plugin data to the simulation"""
+        raise NotImplementedError
 
 
 class Simulation:
-    """A Neighborly simulation instance
+    """
+    A Neighborly simulation instance
 
     Attributes
     ----------
-    config: SimulationConfig
-        Configuration settings for how the simulation
     world: World
-        Entity-component system (ECS) that manages entities in the virtual world
+        Entity-component system (ECS) that manages entities and procedures in the virtual world
     """
 
-    __slots__ = "config", "world"
+    __slots__ = (
+        "world",
+        "engine",
+        "seed",
+        "world_gen_start",
+        "world_gen_end",
+        "town_size",
+        "time_system",
+    )
 
-    def __init__(self, config: SimulationConfig, engine: NeighborlyEngine) -> None:
-        self.config: SimulationConfig = config
-        self.world: World = World()
-        self.world.add_system(TimeProcessor(), 10)
-        self.world.add_system(RoutineProcessor(), 5)
-        self.world.add_system(CharacterProcessor(), 3)
-        self.world.add_system(SocializeProcessor(), 2)
-        self.world.add_system(CityPlanner())
-        self.world.add_system(
-            ResidentImmigrationSystem(
-                config.character_weights, config.residence_weights
-            )
-        )
-        self.world.add_system(LifeEventProcessor())
-        self.world.add_resource(SimDateTime())
+    def __init__(
+        self,
+        seed: int,
+        world: World,
+        engine: NeighborlyEngine,
+        world_gen_start: SimDateTime,
+        world_gen_end: SimDateTime,
+    ) -> None:
+        self.seed: int = seed
+        self.world: World = world
+        self.engine: NeighborlyEngine = engine
         self.world.add_resource(engine)
-        self.world.add_resource(RelationshipNetwork())
-        self.world.add_resource(EventLog())
+        self.world_gen_start: SimDateTime = world_gen_start
+        self.world_gen_end: SimDateTime = world_gen_end
 
     @classmethod
     def create(
         cls,
-        config: Optional[SimulationConfig] = None,
-        engine: Optional[NeighborlyEngine] = None,
-    ) -> "Simulation":
-        """Create new simulation instance"""
-        sim_config: SimulationConfig = config if config else SimulationConfig()
-        engine_instance: NeighborlyEngine = (
-            engine if engine else create_default_engine(sim_config.seed)
+        seed: Optional[int] = None,
+        world_gen_start: Union[str, SimDateTime] = "0000-00-00",
+        world_gen_end: Union[str, SimDateTime] = "0100-00-00",
+        time_increment_hours: int = 12,
+        town_name: str = "#town_name#",
+        town_size: Union[
+            Literal["small", "medium", "large"], Tuple[int, int]
+        ] = "medium",
+    ) -> Simulation:
+        """Creates an instance of a Neighborly simulation with an empty world and engine"""
+        seed = seed if seed is not None else random.randint(0, 99999999)
+
+        start_date = (
+            world_gen_start
+            if isinstance(world_gen_start, SimDateTime)
+            else SimDateTime.from_iso_str(world_gen_start)
         )
-        sim = cls(sim_config, engine_instance)
-        sim.world.add_resource(Town.create(sim_config.town))
+
+        end_date = (
+            world_gen_end
+            if isinstance(world_gen_end, SimDateTime)
+            else SimDateTime.from_iso_str(world_gen_end)
+        )
+
+        sim = (
+            Simulation(seed, World(), NeighborlyEngine(seed), start_date, end_date)
+            .add_resource(start_date.copy())
+            .add_system(LinearTimeSystem(TimeDelta(hours=time_increment_hours)))
+            .add_system(LifeEventSimulator(interval=TimeDelta(months=1)))
+            .add_resource(LifeEventLog())
+            .add_system(BuildResidenceSystem(interval=TimeDelta(days=5)))
+            .add_system(SpawnResidentSystem(interval=TimeDelta(days=7)))
+            .add_system(BuildBusinessSystem(interval=TimeDelta(days=5)))
+            .add_resource(RelationshipGraph())
+            .add_system(CharacterAgingSystem())
+            .add_system(RoutineSystem(), 5)
+            .add_system(BusinessUpdateSystem())
+            .add_system(FindBusinessOwnerSystem())
+            .add_system(FindEmployeesSystem())
+            .add_system(UnemploymentSystem(days_to_departure=30))
+            .add_system(RelationshipStatusSystem())
+            .add_system(SocializeSystem())
+        )
+
+        sim._create_town(town_name, town_size)
+
         return sim
 
-    @classmethod
-    def from_config(cls, config: "NeighborlyConfig") -> "Simulation":
-        """Create a new simulation from a Neighborly configuration"""
-        engine = create_default_engine(config.simulation.seed)
-        sim = cls(config.simulation, engine)
+    def add_system(self, system: ISystem, priority: int = 0) -> Simulation:
+        """Add a new system to the simulation"""
+        self.world.add_system(system, priority)
+        return self
 
-        for plugin in config.plugins:
-            plugin.apply(PluginContext(engine=engine, world=sim.world))
+    def add_resource(self, resource: Any) -> Simulation:
+        """Add a new resource to the simulation"""
+        self.world.add_resource(resource)
+        return self
 
-        town = Town.create(config.simulation.town)
-        sim.world.add_resource(town)
+    def add_plugin(self, plugin: Plugin, **kwargs) -> Simulation:
+        """Add plugin to simulation"""
+        plugin.setup(self, **kwargs)
+        logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
+        return self
 
-        return sim
+    def _create_town(
+        self,
+        name: str,
+        size: Union[Literal["small", "medium", "large"], Tuple[int, int]] = "medium",
+    ) -> Simulation:
+        """Create a new grid of land to build the town on"""
+        if self.world.has_resource(LandGrid) or self.world.has_resource(Town):
+            logger.error("Attempted to overwrite previously created town")
+            return self
 
-    def run(self) -> None:
+        # create town
+        self.add_resource(Town.create(self.world, name=name))
+
+        # Create the land
+        if isinstance(size, tuple):
+            land_size = size
+        else:
+            if size == "small":
+                land_size = (3, 3)
+            elif size == "medium":
+                land_size = (5, 5)
+            else:
+                land_size = (7, 7)
+
+        land_grid = LandGrid(land_size)
+
+        self.add_resource(land_grid)
+
+        return self
+
+    def establish_setting(self) -> None:
         """Run the simulation until it reaches the end date in the config"""
-        start_date: SimDateTime = SimDateTime.from_iso_str(self.config.start_date)
-        end_date: SimDateTime = SimDateTime.from_iso_str(self.config.end_date)
-
-        fully_simulated_days = set(
-            self._generate_sample_days(start_date, end_date, n=36)
-        )
-
-        total_days = (start_date - end_date).total_days
-        total_timesteps = (total_days - len(fully_simulated_days)) + (
-            len(fully_simulated_days)
-            * (HOURS_PER_DAY // self.config.hours_per_timestep)
-        )
-
         try:
-            while self.get_time() <= end_date:
-                if self.get_time().to_ordinal() in fully_simulated_days:
-                    self.step(hours=self.config.hours_per_timestep, full_sim=True)
-                else:
-                    self.step(hours=24)
+            while self.world_gen_end >= self.get_time():
+                self.step()
         except KeyboardInterrupt:
-            print("Stopping Simulation")
-        finally:
-            print(f"Current Date: {self.get_time().to_date_str()}")
+            print("\nStopping Simulation")
 
-    def step(self, hours: int, **kwargs) -> None:
+    def step(self) -> None:
         """Advance the simulation a single timestep"""
-        self.world.process(delta_time=self.config.hours_per_timestep, **kwargs)
+        self.world.step()
 
     def get_time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
         return self.world.get_resource(SimDateTime)
 
-    def get_town(self) -> Town:
-        """Get the Town instance"""
-        return self.world.get_resource(Town)
-
     def get_engine(self) -> NeighborlyEngine:
-        return self.world.get_resource(NeighborlyEngine)
-
-    @staticmethod
-    def _generate_sample_days(
-        start_date: SimDateTime, end_date: SimDateTime, n: int
-    ) -> list[int]:
-        """Samples n days from each year between the start and end dates"""
-        ordinal_start_date: int = start_date.to_ordinal()
-        ordinal_end_date: int = end_date.to_ordinal()
-
-        sampled_ordinal_dates: list[int] = []
-
-        current_date = ordinal_start_date
-
-        while current_date < ordinal_end_date:
-            sampled_dates = random.sample(
-                range(current_date, current_date + DAYS_PER_YEAR), k=n
-            )
-            sampled_ordinal_dates.extend(sorted(sampled_dates))
-            current_date = min(current_date + DAYS_PER_YEAR, ordinal_end_date)
-
-        return sampled_ordinal_dates
-
-
-def create_default_engine(seed: int) -> NeighborlyEngine:
-    engine = NeighborlyEngine(DefaultRNG(seed))
-    engine.add_component_factory(GameCharacterFactory())
-    engine.add_component_factory(RoutineFactory())
-    engine.add_component_factory(LocationFactory())
-    engine.add_component_factory(ResidenceFactory())
-    engine.add_component_factory(Position2DFactory())
-    engine.add_component_factory(LifeEventHandlerFactory())
-    engine.add_component_factory(BusinessFactory())
-    return engine
-
-
-class NeighborlyConfig(BaseModel):
-    simulation: SimulationConfig = Field(default_factory=lambda: SimulationConfig())
-    plugins: List[NeighborlyPlugin] = Field(default_factory=lambda: [DefaultPlugin()])
-
-    @staticmethod
-    def merge(
-        config_a: "NeighborlyConfig", config_b: "NeighborlyConfig"
-    ) -> "NeighborlyConfig":
-        """Merge config B into config A and return a new config"""
-        ret = NeighborlyConfig()
-        ret.simulation = SimulationConfig(
-            **{**config_a.simulation.dict(), **config_b.simulation.dict()}
-        )
-        return ret
+        """Get the NeighborlyEngine instance"""
+        return self.engine
