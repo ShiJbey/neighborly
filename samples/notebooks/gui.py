@@ -62,7 +62,7 @@ class SimulationGUI:
 
         # Create GUI
         self.date_text = widgets.Text(
-            value=self.simulation.get_time().to_date_str(),
+            value=self.simulation.time.to_date_str(),
             disabled=True,
             layout=widgets.Layout(width="100%"),
         )
@@ -108,7 +108,7 @@ class SimulationGUI:
         )  # type: ignore
 
     def update_gui(self):
-        self.date_text.value = self.simulation.get_time().to_date_str()
+        self.date_text.value = self.simulation.time.to_date_str()
         if self.active_widget:
             self.active_widget.update()
 

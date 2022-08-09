@@ -2,7 +2,6 @@ import json
 
 import yaml
 
-
 from neighborly.simulation import (
     NeighborlyConfig,
     PluginConfig,
@@ -32,8 +31,8 @@ def test_construct_simulation_config():
 
     assert 20203 == config_from_yaml.seed
     assert 8 == config_from_yaml.hours_per_timestep
-    assert "2000-00-00" == config_from_yaml.start_date
-    assert "2030-00-00" == config_from_yaml.end_date
+    assert "2000-00-00" == config_from_yaml.world_gen_start
+    assert "2030-00-00" == config_from_yaml.world_gen_end
     assert "Pizzaville" == config_from_yaml.town.name
 
     json_str = """
@@ -54,8 +53,8 @@ def test_construct_simulation_config():
 
     assert 20210 == config_from_json.seed
     assert 4 == config_from_json.hours_per_timestep
-    assert "2010-06-00" == config_from_json.start_date
-    assert "2035-00-00" == config_from_json.end_date
+    assert "2010-06-00" == config_from_json.world_gen_start
+    assert "2035-00-00" == config_from_json.world_gen_end
     assert "Apple World" == config_from_json.town.name
 
 

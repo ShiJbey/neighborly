@@ -46,6 +46,9 @@ class Plugin(ABC):
         raise NotImplementedError
 
 
+TownSize = Union[Literal["small", "medium", "large"], Tuple[int, int]]
+
+
 class Simulation:
     """
     A Neighborly simulation instance
@@ -63,7 +66,7 @@ class Simulation:
         "world_gen_start",
         "world_gen_end",
         "town_size",
-        "time_system",
+        "town_name",
     )
 
     def __init__(
@@ -73,6 +76,8 @@ class Simulation:
         engine: NeighborlyEngine,
         world_gen_start: SimDateTime,
         world_gen_end: SimDateTime,
+        town_size: TownSize,
+        town_name: str = None,
     ) -> None:
         self.seed: int = seed
         self.world: World = world
@@ -80,6 +85,8 @@ class Simulation:
         self.world.add_resource(engine)
         self.world_gen_start: SimDateTime = world_gen_start
         self.world_gen_end: SimDateTime = world_gen_end
+        self.town_size: TownSize = town_size
+        self.town_name: Optional[str] = town_name
 
     @classmethod
     def create(
@@ -89,9 +96,7 @@ class Simulation:
         world_gen_end: Union[str, SimDateTime] = "0100-00-00",
         time_increment_hours: int = 12,
         town_name: str = "#town_name#",
-        town_size: Union[
-            Literal["small", "medium", "large"], Tuple[int, int]
-        ] = "medium",
+        town_size: TownSize = "medium",
     ) -> Simulation:
         """Creates an instance of a Neighborly simulation with an empty world and engine"""
         seed = seed if seed is not None else random.randint(0, 99999999)
@@ -109,7 +114,15 @@ class Simulation:
         )
 
         sim = (
-            Simulation(seed, World(), NeighborlyEngine(seed), start_date, end_date)
+            Simulation(
+                seed,
+                World(),
+                NeighborlyEngine(seed),
+                start_date,
+                end_date,
+                town_size=town_size,
+                town_name=town_name,
+            )
             .add_resource(start_date.copy())
             .add_system(LinearTimeSystem(TimeDelta(hours=time_increment_hours)))
             .add_system(LifeEventSimulator(interval=TimeDelta(months=1)))
@@ -127,8 +140,6 @@ class Simulation:
             .add_system(RelationshipStatusSystem())
             .add_system(SocializeSystem())
         )
-
-        sim._create_town(town_name, town_size)
 
         return sim
 
@@ -151,7 +162,6 @@ class Simulation:
     def _create_town(
         self,
         name: str,
-        size: Union[Literal["small", "medium", "large"], Tuple[int, int]] = "medium",
     ) -> Simulation:
         """Create a new grid of land to build the town on"""
         if self.world.has_resource(LandGrid) or self.world.has_resource(Town):
@@ -162,12 +172,12 @@ class Simulation:
         self.add_resource(Town.create(self.world, name=name))
 
         # Create the land
-        if isinstance(size, tuple):
-            land_size = size
+        if isinstance(self.town_size, tuple):
+            land_size = self.town_size
         else:
-            if size == "small":
+            if self.town_size == "small":
                 land_size = (3, 3)
-            elif size == "medium":
+            elif self.town_size == "medium":
                 land_size = (5, 5)
             else:
                 land_size = (7, 7)
@@ -180,8 +190,10 @@ class Simulation:
 
     def establish_setting(self) -> None:
         """Run the simulation until it reaches the end date in the config"""
+        self._create_town(self.town_name if self.town_name else "#town_name#")
+
         try:
-            while self.world_gen_end >= self.get_time():
+            while self.world_gen_end >= self.time:
                 self.step()
         except KeyboardInterrupt:
             print("\nStopping Simulation")
@@ -190,10 +202,12 @@ class Simulation:
         """Advance the simulation a single timestep"""
         self.world.step()
 
-    def get_time(self) -> SimDateTime:
+    @property
+    def time(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
         return self.world.get_resource(SimDateTime)
 
-    def get_engine(self) -> NeighborlyEngine:
-        """Get the NeighborlyEngine instance"""
-        return self.engine
+    @property
+    def town(self) -> Town:
+        """Get a reference to the Town instance"""
+        return self.world.get_resource(Town)

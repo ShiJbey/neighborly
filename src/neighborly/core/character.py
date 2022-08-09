@@ -232,9 +232,7 @@ class CharacterArchetypeLibrary:
     _registry: Dict[str, CharacterArchetype] = {}
 
     @classmethod
-    def register(
-        cls, archetype: CharacterArchetype, name: Optional[str] = None
-    ) -> None:
+    def add(cls, archetype: CharacterArchetype, name: Optional[str] = None) -> None:
         """Register a new LifeEventType mapped to a name"""
         cls._registry[name if name else archetype.name] = archetype
 

@@ -40,14 +40,14 @@ class AssassinFactory(AbstractFactory):
 def main():
     data_path = pathlib.Path(os.path.abspath(__file__)).parent / "data.yaml"
     sim = Simulation.create()
-    default_plugin.initialize_plugin(sim.get_engine())
-    YamlDataLoader(filepath=data_path).load(sim.get_engine())
-    sim.get_engine().add_component_factory(AssassinFactory())
+    default_plugin.initialize_plugin(sim.engine)
+    YamlDataLoader(filepath=data_path).load(sim.engine)
+    sim.engine.add_component_factory(AssassinFactory())
     name_gen.register_rule("hitman_first_name", ["John", "Agent"])
     name_gen.register_rule("hitman_last_name", ["Wick", "47"])
 
-    print(sim.get_engine().create_character("Assassin"))
-    print(sim.get_engine().spawn_place("The Continental Hotel"))
+    print(sim.engine.create_character("Assassin"))
+    print(sim.engine.spawn_place("The Continental Hotel"))
 
 
 if __name__ == "__main__":

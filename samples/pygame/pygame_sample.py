@@ -483,7 +483,7 @@ class GameScene:
         )
         self.info_panel_text = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((0, 0), (self.display.get_width(), 50)),
-            text=f"Town: {self.sim.get_town().name}, Date: {self.sim.get_time().to_date_str()}",
+            text=f"Town: {self.sim.get_town().name}, Date: {self.sim.time.to_date_str()}",
             manager=self.ui_manager,
             container=self.info_panel,
             parent_element=self.info_panel,
@@ -508,8 +508,8 @@ class GameScene:
         sim = Simulation(NEIGHBORLY_CONFIG)
         YamlDataLoader(
             filepath=Path(os.path.abspath(__file__)).parent / "data.yaml"
-        ).load(sim.get_engine())
-        sim.get_engine().add_component_factory(BuildingFactory())
+        ).load(sim.engine)
+        sim.engine.add_component_factory(BuildingFactory())
 
         return sim
 
@@ -640,7 +640,7 @@ class GameScene:
         self.sim.step()
 
         self.info_panel_text.set_text(
-            f"Town: {self.sim.get_town().name}, Date: {self.sim.get_time().to_date_str()}"
+            f"Town: {self.sim.get_town().name}, Date: {self.sim.time.to_date_str()}"
         )
 
     def handle_event(self, event: pygame.event.Event) -> bool:

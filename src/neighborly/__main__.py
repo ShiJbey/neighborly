@@ -1,55 +1,26 @@
+from __future__ import annotations
+
 import argparse
+import importlib
 import json
 import logging
 import os
 import pathlib
 import random
 import sys
-import importlib
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import neighborly
-from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.loaders import UnsupportedFileType
-from neighborly.simulation import Simulation, PluginSetupError, Plugin
-from neighborly.server import NeighborlyServer
 import neighborly.core.utils.utilities as utilities
+from neighborly.core.life_event import LifeEventLog
+from neighborly.exporter import NeighborlyJsonExporter
+from neighborly.server import NeighborlyServer
+from neighborly.simulation import Plugin, PluginSetupError, Simulation
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_NEIGHBORLY_CONFIG = NeighborlyConfig(
-    simulation=SimulationConfig(
-        seed=random.randint(0, 999999),
-        hours_per_timestep=6,
-        start_date="0000-00-00T00:00.000z",
-        end_date="0001-00-00T00:00.000z",
-        days_per_year=10,
-    ),
-    plugins=["neighborly.plugins.default_plugin", "neighborly.plugins.talktown"],
-)
-
-
-class SimulationConfig(BaseModel):
-    """Configuration parameters for a Neighborly instance
-
-    Attributes
-    ----------
-    seed: int
-        The seed provided to the random number factory
-    hours_per_timestep: int
-        How many in-simulation hours elapse every simulation tic
-    town: TownConfig
-        Configuration settings for town creation
-    """
-
-    seed: int
-    hours_per_timestep: int
-    start_date: str
-    end_date: str
-    days_per_year: int
 
 
 class PluginConfig(BaseModel):
@@ -60,6 +31,8 @@ class PluginConfig(BaseModel):
     ----------
     name: str
         Name of the plugin to load
+    path: Optional[str]
+        The path where the plugin is located
     options: Dict[str, Any]
         Parameters to pass to the plugin when constructing
         and loading it
@@ -87,7 +60,12 @@ class NeighborlyConfig(BaseModel):
     """
 
     quiet: bool = False
-    simulation: SimulationConfig
+    seed: int
+    hours_per_timestep: int
+    world_gen_start: str
+    world_gen_end: str
+    town_name: str
+    town_size: Literal["small", "medium", "large"]
     plugins: List[Union[str, PluginConfig]] = Field(default_factory=list)
     path: str = "."
 
@@ -99,21 +77,7 @@ class NeighborlyConfig(BaseModel):
         return cls(**utilities.merge(data, defaults.dict()))
 
 
-def add_plugin(self, plugin: Union[str, PluginConfig, Plugin]) -> Simulation:
-    """Add plugin to simulation"""
-    if isinstance(plugin, str):
-        self._dynamic_load_plugin(plugin)
-    elif isinstance(plugin, PluginConfig):
-        self._dynamic_load_plugin(plugin.name, plugin.path, **plugin.options)
-    else:
-        plugin.setup(self)
-        logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
-    return self
-
-
-def _dynamic_load_plugin(
-    self, module_name: str, path: Optional[str] = None, **kwargs
-) -> None:
+def load_plugin(module_name: str, path: Optional[str] = None) -> Plugin:
     """
     Load a plugin
 
@@ -121,6 +85,8 @@ def _dynamic_load_plugin(
     ----------
     module_name: str
         Name of module to load
+    path: Optional[str]
+        Path where the Python module lives
     """
     path_prepended = False
 
@@ -133,8 +99,7 @@ def _dynamic_load_plugin(
     try:
         plugin_module = importlib.import_module(module_name)
         plugin: Plugin = plugin_module.__dict__["get_plugin"]()
-        plugin.setup(self, **kwargs)
-        logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
+        return plugin
     except KeyError:
         raise PluginSetupError(
             f"'get_plugin' function not found for plugin: {module_name}"
@@ -163,10 +128,9 @@ def load_config_from_path(config_path: str) -> Dict[str, Any]:
         elif path.suffix.lower() == ".yaml":
             return yaml.safe_load(f)
         else:
-            logging.error(
+            raise ValueError(
                 f"Attempted to load config from incorrect file type: {path.suffix}."
             )
-            raise UnsupportedFileType(path.suffix)
 
 
 def try_load_local_config() -> Optional[Dict[str, Any]]:
@@ -240,7 +204,16 @@ def main():
             filename="neighborly.log", filemode="w", level=logging.DEBUG
         )
 
-    config = DEFAULT_NEIGHBORLY_CONFIG
+    config: NeighborlyConfig = NeighborlyConfig(
+        seed=random.randint(0, 999999),
+        hours_per_timestep=6,
+        world_gen_start="1839-08-19T00:00.000z",
+        world_gen_end="1979-08-19T00:00.000z",
+        town_size="medium",
+        town_name="#town_name#",
+        plugins=["neighborly.plugins.default_plugin", "neighborly.plugins.talktown"],
+    )
+
     if args.config:
         config = NeighborlyConfig.from_partial(
             load_config_from_path(args.config), config
@@ -252,9 +225,24 @@ def main():
             logger.debug("Successfully loaded config from cwd.")
             config = NeighborlyConfig.from_partial(loaded_settings, config)
 
-    config.quiet = args.quiet
+    sim = Simulation.create(
+        seed=config.seed,
+        world_gen_start=config.world_gen_start,
+        world_gen_end=config.world_gen_end,
+        time_increment_hours=config.hours_per_timestep,
+    )
 
-    sim = Simulation(config)
+    for plugin_entry in config.plugins:
+        if isinstance(plugin_entry, str):
+            plugin = load_plugin(plugin_entry)
+            sim.add_plugin(plugin)
+        else:
+            plugin = load_plugin(plugin_entry.name, plugin_entry.path)
+            sim.add_plugin(plugin, **plugin_entry.options)
+
+    config.quiet = args.quiet
+    if not config.quiet:
+        sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
 
     if args.server:
         server = NeighborlyServer(sim)
@@ -266,25 +254,14 @@ def main():
             output_path = (
                 args.output
                 if args.output
-                else f"{sim.config.simulation.seed}_{sim.get_town().name.replace(' ', '_')}.json"
+                else f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
             )
 
             with open(output_path, "w") as f:
-                data = NeighborlyJsonExporter().export(sim.world)
+                data = NeighborlyJsonExporter().export(sim)
                 f.write(data)
                 logger.debug(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":
     main()
-
-
-# Load Plugins
-# for plugin in config.plugins:
-#     if isinstance(plugin, str):
-#         self._load_plugin(plugin)
-#     else:
-#         plugin_path = os.path.join(
-#             pathlib.Path(config.path).parent, plugin.path if plugin.path else ""
-#         )
-#         self._load_plugin(plugin.name, plugin_path, **plugin.options)

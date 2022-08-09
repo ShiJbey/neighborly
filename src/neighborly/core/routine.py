@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import Dict, List, Optional, Tuple, Union
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.ecs import Component
 
 TIME_ALIAS = {
     "early morning": "02:00",

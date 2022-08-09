@@ -944,7 +944,6 @@ class CharacterAgingSystem(ISystem):
 
                 # Archive GameObject instead of removing it
                 character.gameobject.archive()
-                # self.world.delete_gameobject(character.gameobject.id)
 
 
 class PregnancySystem(ISystem):

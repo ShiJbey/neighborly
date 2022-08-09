@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Type
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, EntityArchetype, World
+from neighborly.core.ecs import Component, EntityArchetype
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 
@@ -112,7 +112,7 @@ class ResidenceArchetypeLibrary:
     _registry: Dict[str, ResidenceArchetype] = {}
 
     @classmethod
-    def register(
+    def add(
         cls,
         archetype: ResidenceArchetype,
         name: str = None,

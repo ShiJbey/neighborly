@@ -115,27 +115,13 @@ python ./samples/<sample_name>.py
 
 # Documentation
 
-Neighborly uses Numpy-style docstrings in code and generates the full 
-documentation using Sphinx.
+Neighborly uses [Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html) docstrings in code and full documentation can be found in the [Wiki](https://github.com/ShiJbey/neighborly/wiki).
 
 When adding docstrings for existing or new bits of code please use the following
 references for how to format your contributions:
 
 * [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
 * [Example Numpy Style Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html#example-numpy)
-
-## Building the documentation
-
-```bash
-# Change to the docs directory
-cd docs
-
-# Call the make file
-make html
-
-# Serve via local http server
-python -m http.server 8080 --directory _build/html
-```
 
 
 # Contributing

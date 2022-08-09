@@ -1,4 +1,3 @@
 include LICENSE
 include CODE_OF_CONDUCT.md
 recursive-include src/neighborly/plugins/default_plugin/data *
-include src/neighborly/plugins/talktown/data.yaml

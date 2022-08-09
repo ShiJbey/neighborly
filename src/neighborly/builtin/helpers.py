@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Literal, Optional, Tuple, cast
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 
@@ -11,16 +11,12 @@ from neighborly.builtin.statuses import (
     Child,
     CollegeGraduate,
     Elder,
-    Female,
-    Male,
-    NonBinary,
     Teen,
     Unemployed,
     YoungAdult,
 )
 from neighborly.core.activity import ActivityLibrary
-from neighborly.core.behavior_tree import BehaviorNode
-from neighborly.core.business import Business, IOccupationPreconditionFn, WorkHistory
+from neighborly.core.business import Business
 from neighborly.core.character import CharacterArchetype, GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
@@ -37,112 +33,13 @@ from neighborly.core.time import SimDateTime
 
 logger = logging.getLogger(__name__)
 
-############################################
-# Occupation Precondition Functions
-############################################
-
-
-def before_year(year: int) -> IOccupationPreconditionFn:
-    """Return precondition function that checks if the date is before a given year"""
-
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        return world.get_resource(SimDateTime).year < year
-
-    return fn
-
-
-def after_year(year: int) -> IOccupationPreconditionFn:
-    """Return precondition function that checks if the date is after a given year"""
-
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        return world.get_resource(SimDateTime).year > year
-
-    return fn
-
-
-def is_gender(
-    gender: Literal["male", "female", "non-binary"]
-) -> IOccupationPreconditionFn:
-    """Return precondition function that checks if a character is a given gender"""
-    gender_component_types = {"male": Male, "female": Female, "non-binary": NonBinary}
-
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        return gameobject.has_component(gender_component_types[gender])
-
-    return fn
-
-
-def has_any_work_experience() -> IOccupationPreconditionFn:
-    """Return True if the character has any work experience at all"""
-
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        return len(gameobject.get_component(WorkHistory)) > 0
-
-    return fn
-
-
-def has_experience_as_a(
-    occupation_type: str, years_experience: int = 0
-) -> IOccupationPreconditionFn:
-    """
-    Returns Precondition function that returns true if the character
-    has experience as a given occupation type.
-
-    Parameters
-    ----------
-    occupation_type: str
-        The name of the occupation to check for
-    years_experience: int
-        The number of years of experience the character needs to have
-
-    Returns
-    -------
-    IOccupationPreconditionFn
-        The precondition function used when filling the occupation
-    """
-
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        work_history = gameobject.get_component(WorkHistory)
-        return (
-            work_history.has_experience_as_a(occupation_type)
-            and work_history.total_experience_as_a(occupation_type) >= years_experience
-        )
-
-    return fn
-
-
-def is_college_graduate() -> IOccupationPreconditionFn:
-    """Return True if the character is a college graduate"""
-
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        return gameobject.has_component(CollegeGraduate)
-
-    return fn
-
-
-############################################
-# Role Filter Functions
-############################################
-
-
-def is_single(world: World, event: LifeEvent, gameobject: GameObject) -> bool:
-    rel_graph = world.get_resource(RelationshipGraph)
-    return (
-        len(
-            rel_graph.get_all_relationships_with_tags(
-                gameobject.id, RelationshipTag.SignificantOther
-            )
-        )
-        == 0
-    )
-
 
 def get_top_activities(character_values: PersonalValues, n: int = 3) -> Tuple[str, ...]:
     """Return the top activities a character would enjoy given their values"""
 
     scores: List[Tuple[int, str]] = []
 
-    for activity in ActivityLibrary.get_all_activities():
+    for activity in ActivityLibrary.get_all():
         score: int = int(np.dot(character_values.traits, activity.personal_values))
         scores.append((score, activity.name))
 
@@ -161,7 +58,7 @@ def find_places_with_activities(world: World, *activities: str) -> List[int]:
     matches: List[int] = []
 
     for location_id, location in locations:
-        if location.has_flags(*ActivityLibrary.get_activity_flags(*activities)):
+        if location.has_flags(*ActivityLibrary.get_flags(*activities)):
             matches.append(location_id)
 
     return matches
@@ -173,7 +70,7 @@ def find_places_with_any_activities(world: World, *activities: str) -> List[int]
     Results are sorted by how many activities they match
     """
 
-    flags = ActivityLibrary.get_activity_flags(*activities)
+    flags = ActivityLibrary.get_flags(*activities)
 
     def score_location(loc: Location) -> int:
         location_score: int = 0

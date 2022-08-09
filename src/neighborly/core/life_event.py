@@ -42,7 +42,7 @@ class LifeEvent:
         return {
             "name": self.name,
             "timestamp": self.timestamp,
-            "roles": {role.name: role.gid for role in self.roles},
+            "roles": [role.to_dict() for role in self.roles],
         }
 
     def __getitem__(self, role_name: str) -> int:
@@ -52,7 +52,9 @@ class LifeEvent:
         raise KeyError(role_name)
 
     def __repr__(self) -> str:
-        return f"LifeEvent(name={self.name}, timestamp={self.timestamp}, roles=[{self.roles}], metadata={self.metadata})"
+        return "LifeEvent(name={}, timestamp={}, roles=[{}], metadata={})".format(
+            self.name, self.timestamp, self.roles, self.metadata
+        )
 
     def __str__(self) -> str:
         return f"{self.name} [at {self.timestamp}] : {', '.join(map(lambda r: f'{r.name}:{r.gid}', self.roles))}"
@@ -78,6 +80,9 @@ class EventRole:
         self.name: str = name
         self.gid: int = gid
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"name": self.name, "gid": self.gid}
+
 
 class RoleBinderFn(Protocol):
     """Callable that returns a GameObject that meets requirements for a given Role"""
@@ -89,17 +94,31 @@ class RoleBinderFn(Protocol):
 class RoleFilterFn(Protocol):
     """Function that filters GameObjects for an EventRole"""
 
-    def __call__(self, world: World, event: LifeEvent, gameobject: GameObject) -> bool:
+    def __call__(self, world: World, gameobject: GameObject, **kwargs) -> bool:
         raise NotImplementedError
 
 
 def join_filters(*filters: RoleFilterFn) -> RoleFilterFn:
     """Joins a bunch of filters into one function"""
 
-    def fn(world: World, event: LifeEvent, gameobject: GameObject) -> bool:
-        return all([f(world, event, gameobject) for f in filters])
+    def fn(world: World, gameobject: GameObject, **kwargs) -> bool:
+        return all([f(world, gameobject, **kwargs) for f in filters])
 
     return fn
+
+
+def or_filters(
+    *preconditions: RoleFilterFn,
+) -> RoleFilterFn:
+    """Only one of the given preconditions has to pass to return True"""
+
+    def wrapper(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+        for p in preconditions:
+            if p(world, gameobject, **kwargs):
+                return True
+        return False
+
+    return wrapper
 
 
 class AbstractEventRoleType(ABC):
@@ -145,7 +164,7 @@ class EventRoleType(AbstractEventRoleType):
     ) -> None:
         super().__init__(name)
         self.components: List[Type[Component]] = components if components else []
-        self.filter_fn: RoleFilterFn = filter_fn if filter_fn else lambda w, e, g: True
+        self.filter_fn: Optional[RoleFilterFn] = filter_fn
         self.binder_fn: Optional[RoleBinderFn] = binder_fn
 
     def fill_role(
@@ -163,8 +182,10 @@ class EventRoleType(AbstractEventRoleType):
                 lambda entry: entry[0],
                 filter(
                     lambda res: self.filter_fn(
-                        world, event, world.get_gameobject(res[0])
-                    ),
+                        world, world.get_gameobject(res[0]), event=event
+                    )
+                    if self.filter_fn
+                    else True,
                     world.get_components(*self.components),
                 ),
             )
@@ -185,7 +206,7 @@ class EventRoleType(AbstractEventRoleType):
         candidate: GameObject,
     ) -> Optional[EventRole]:
         if candidate.has_component(*self.components) and self.filter_fn(
-            world, event, candidate
+            world, candidate, event=event
         ):
             return EventRole(self.name, candidate.id)
 

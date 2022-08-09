@@ -9,7 +9,6 @@ from neighborly.core.character import CharacterArchetype, CharacterArchetypeLibr
 from neighborly.core.ecs import World
 from neighborly.core.residence import ResidenceArchetype, ResidenceArchetypeLibrary
 from neighborly.core.rng import DefaultRNG
-from neighborly.core.routine import Routine
 from neighborly.core.town import LandGrid
 from neighborly.plugins.talktown.school import SchoolSystem
 from neighborly.simulation import Plugin, Simulation
@@ -68,14 +67,13 @@ class TalkOfTheTownPlugin(Plugin):
         sim.add_system(SchoolSystem())
 
         # Talk of the town only has one residence archetype
-        ResidenceArchetypeLibrary.register(ResidenceArchetype(name="House"))
+        ResidenceArchetypeLibrary.add(ResidenceArchetype(name="House"))
 
         # Talk of the town only has one character archetype
-        CharacterArchetypeLibrary.register(
+        CharacterArchetypeLibrary.add(
             CharacterArchetype(
                 name="Person",
                 name_format="#first_name# #family_name#",
-                extra_components={Routine: {}},
                 lifespan=85,
                 life_stages={
                     "child": 0,
@@ -154,6 +152,7 @@ class TalkOfTheTownPlugin(Plugin):
         OccupationTypeLibrary.add(tot_occupations.puddler)
         OccupationTypeLibrary.add(tot_occupations.quarry_man)
         OccupationTypeLibrary.add(tot_occupations.realtor)
+        OccupationTypeLibrary.add(tot_occupations.seamstress)
         OccupationTypeLibrary.add(tot_occupations.secretary)
         OccupationTypeLibrary.add(tot_occupations.stocker)
         OccupationTypeLibrary.add(tot_occupations.shoemaker)

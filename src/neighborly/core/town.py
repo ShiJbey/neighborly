@@ -148,7 +148,6 @@ class Grid(Generic[_GT]):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "type": type(self).__name__,
             "height": self._length,
             "width": self._width,
             "grid": [str(cell) for cell in self._grid],
