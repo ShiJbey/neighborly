@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import Dict, List, Optional, Tuple, Union
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.ecs import Component
 
 TIME_ALIAS = {
     "early morning": "02:00",
@@ -132,9 +132,9 @@ class DailyRoutine:
                 track[hour].remove(entry)
 
     def __repr__(self) -> str:
-        return "{}([{}])".format(
+        return "{}({})".format(
             self.__class__.__name__,
-            {str(p): [len(h) for h in t] for p, t in self._tracks.items()},
+            self._entries,
         )
 
 
@@ -147,7 +147,7 @@ class Routine(Component):
 
     def __init__(self) -> None:
         super().__init__()
-        self._daily_routines: dict[str, DailyRoutine] = {
+        self._daily_routines: Dict[str, DailyRoutine] = {
             "monday": DailyRoutine(),
             "tuesday": DailyRoutine(),
             "wednesday": DailyRoutine(),
@@ -176,6 +176,9 @@ class Routine(Component):
 
     def on_archive(self) -> None:
         self.gameobject.remove_component(type(self))
+
+    def __repr__(self) -> str:
+        return f"Routine({self._daily_routines})"
 
 
 def time_str_to_int(s: str) -> int:

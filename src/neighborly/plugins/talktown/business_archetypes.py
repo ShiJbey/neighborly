@@ -1,4 +1,4 @@
-from neighborly.core.business import BusinessArchetype
+from neighborly.core.archetypes import BusinessArchetype
 
 apartment_complex = BusinessArchetype(
     name="Apartment Complex",

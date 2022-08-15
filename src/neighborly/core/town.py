@@ -39,7 +39,7 @@ class Town:
         return f"{self.name} (Pop. {self.population})"
 
     def __repr__(self) -> str:
-        return self.to_dict().__repr__()
+        return f"Town(name={self.name}, population={self.population})"
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Town:
@@ -148,7 +148,6 @@ class Grid(Generic[_GT]):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "type": type(self).__name__,
             "height": self._length,
             "width": self._width,
             "grid": [str(cell) for cell in self._grid],

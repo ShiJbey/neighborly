@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, List, Optional, Type
+from typing import Any, ClassVar, Dict, Optional
 
 from typing_extensions import TypedDict
 
-from neighborly.core.ecs import Component, EntityArchetype, World
+from neighborly.core.ecs import Component, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
-from neighborly.core.personal_values import PersonalValues
-from neighborly.core.routine import Routine
 
 
 class LifeStages(TypedDict):
@@ -188,61 +186,3 @@ class GameCharacter(Component):
             self.location_aliases,
             self.can_get_pregnant,
         )
-
-
-class CharacterArchetype(EntityArchetype):
-    """
-    Archetype subclass for building characters
-    """
-
-    __slots__ = "name_format", "spawn_multiplier"
-
-    def __init__(
-        self,
-        name: str,
-        lifespan: int,
-        life_stages: LifeStages,
-        name_format: "#first_name# #family_name#",
-        chance_can_get_pregnant: float = 0.5,
-        spawn_multiplier: int = 1,
-        extra_components: Dict[Type[Component], Dict[str, Any]] = None,
-    ) -> None:
-        super().__init__(name)
-        self.name_format: str = name_format
-        self.spawn_multiplier: int = spawn_multiplier
-
-        self.add(
-            GameCharacter,
-            character_type=name,
-            name_format=name_format,
-            lifespan=lifespan,
-            life_stages=life_stages,
-            chance_can_get_pregnant=chance_can_get_pregnant,
-        )
-
-        self.add(Routine)
-        self.add(PersonalValues)
-
-        if extra_components:
-            for component_type, params in extra_components.items():
-                self.add(component_type, **params)
-
-
-class CharacterArchetypeLibrary:
-    _registry: Dict[str, CharacterArchetype] = {}
-
-    @classmethod
-    def register(
-        cls, archetype: CharacterArchetype, name: Optional[str] = None
-    ) -> None:
-        """Register a new LifeEventType mapped to a name"""
-        cls._registry[name if name else archetype.name] = archetype
-
-    @classmethod
-    def get_all(cls) -> List[CharacterArchetype]:
-        return list(cls._registry.values())
-
-    @classmethod
-    def get(cls, name: str) -> CharacterArchetype:
-        """Get a LifeEventType using a name"""
-        return cls._registry[name]

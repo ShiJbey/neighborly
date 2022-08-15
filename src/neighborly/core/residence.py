@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Type
+from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, EntityArchetype, World
-from neighborly.core.location import Location
-from neighborly.core.position import Position2D
+from neighborly.core.ecs import Component
 
 
 class Residence(Component):
@@ -85,46 +83,3 @@ class Resident(Component):
 
     def on_archive(self) -> None:
         self.gameobject.remove_component(type(self))
-
-
-class ResidenceArchetype(EntityArchetype):
-    __slots__ = ("spawn_multiplier",)
-
-    def __init__(
-        self,
-        name: str,
-        spawn_multiplier: int = 1,
-        extra_components: Dict[Type[Component], Dict[str, Any]] = None,
-    ) -> None:
-        super().__init__(name)
-        self.spawn_multiplier: int = spawn_multiplier
-
-        self.add(Residence)
-        self.add(Location)
-        self.add(Position2D)
-
-        if extra_components:
-            for component_type, params in extra_components.items():
-                self.add(component_type, **params)
-
-
-class ResidenceArchetypeLibrary:
-    _registry: Dict[str, ResidenceArchetype] = {}
-
-    @classmethod
-    def register(
-        cls,
-        archetype: ResidenceArchetype,
-        name: str = None,
-    ) -> None:
-        """Register a new LifeEventType mapped to a name"""
-        cls._registry[name if name else archetype.name] = archetype
-
-    @classmethod
-    def get_all(cls) -> List[ResidenceArchetype]:
-        return list(cls._registry.values())
-
-    @classmethod
-    def get(cls, name: str) -> ResidenceArchetype:
-        """Get a LifeEventType using a name"""
-        return cls._registry[name]

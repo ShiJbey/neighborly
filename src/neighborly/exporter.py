@@ -1,38 +1,27 @@
 import json
-import os
-import pathlib
-from typing import Optional
 
-from neighborly.core.ecs import World
+from neighborly.core.life_event import LifeEventLog
 from neighborly.core.relationship import RelationshipGraph
-from neighborly.core.town import Town
+from neighborly.core.time import SimDateTime
+from neighborly.core.town import LandGrid, Town
+from neighborly.simulation import Simulation
 
 
 class NeighborlyJsonExporter:
     """Serializes the simulation to a JSON string"""
 
-    def export(self, world: World) -> str:
+    def export(self, sim: Simulation) -> str:
         return json.dumps(
             {
-                "gameobjects": {g.id: g.to_dict() for g in world.get_gameobjects()},
-                "relationships": world.get_resource(RelationshipGraph).to_dict(),
+                "seed": sim.seed,
+                "date": sim.world.get_resource(SimDateTime).to_iso_str(),
+                "gameobjects": {g.id: g.to_dict() for g in sim.world.get_gameobjects()},
+                "events": [
+                    f.to_dict()
+                    for f in sim.world.get_resource(LifeEventLog).event_history
+                ],
+                "relationships": sim.world.get_resource(RelationshipGraph).to_dict(),
+                "town": sim.world.get_resource(Town).to_dict(),
+                "land": sim.world.get_resource(LandGrid).grid.to_dict(),
             }
         )
-
-
-class NeighborlyHTMLExporter:
-    """Generates HTML Pages describing the generated town"""
-
-    def export(
-        self,
-        world: World,
-        output: Optional[str] = None,
-    ) -> None:
-        """Create HTML files for the town"""
-
-        # Step 1: Create a directory with the name of the town
-        output_dir = pathlib.Path(output if output else os.getcwd())
-        output_dir = output_dir / world.get_resource(Town).name
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Step 2: Create a main home page

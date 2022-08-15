@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import math
 from typing import List, Optional, Set, cast
 
 from neighborly.builtin.helpers import (
@@ -26,20 +27,21 @@ from neighborly.builtin.statuses import (
     Unemployed,
     YoungAdult,
 )
-from neighborly.core.business import (
-    Business,
+from neighborly.core.archetypes import (
     BusinessArchetype,
     BusinessArchetypeLibrary,
+    CharacterArchetype,
+    CharacterArchetypeLibrary,
+    ResidenceArchetype,
+    ResidenceArchetypeLibrary,
+)
+from neighborly.core.business import (
+    Business,
     BusinessStatus,
     Occupation,
     OccupationTypeLibrary,
 )
-from neighborly.core.character import (
-    CharacterArchetype,
-    CharacterArchetypeLibrary,
-    CharacterName,
-    GameCharacter,
-)
+from neighborly.core.character import CharacterName, GameCharacter
 from neighborly.core.ecs import GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import EventRole, LifeEvent, LifeEventLog
@@ -51,11 +53,7 @@ from neighborly.core.relationship import (
     RelationshipGraph,
     RelationshipTag,
 )
-from neighborly.core.residence import (
-    Residence,
-    ResidenceArchetype,
-    ResidenceArchetypeLibrary,
-)
+from neighborly.core.residence import Residence
 from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import Routine
 from neighborly.core.time import DAYS_PER_YEAR, HOURS_PER_YEAR, SimDateTime, TimeDelta
@@ -336,12 +334,82 @@ class SocializeSystem(ISystem):
     personal values.
     """
 
+    __slots__ = "chance_of_interaction"
+
+    def __init__(self, chance_of_interaction: float = 0.7) -> None:
+        super().__init__()
+        self.chance_of_interaction: float = chance_of_interaction
+
     @staticmethod
     def get_compatibility(character_a: GameObject, character_b: GameObject) -> float:
         """Return value [-1.0, 1.0] representing the compatibility of two characters"""
         return PersonalValues.compatibility(
             character_a.get_component(PersonalValues),
             character_b.get_component(PersonalValues),
+        )
+
+    @staticmethod
+    def job_level_difference_romance_debuff(
+        character_a: GameObject, character_b: GameObject
+    ) -> float:
+        """
+        This makes people with job-level differences less likely to develop romantic feelings
+        for one another (missing source)
+        """
+        character_a_job = character_a.try_component(Occupation)
+        character_b_job = character_b.try_component(Occupation)
+        character_a_level = character_a_job.get_type().level if character_a_job else 0
+        character_b_level = character_b_job.get_type().level if character_b_job else 0
+
+        return max(
+            0.05, 1 - (abs(math.sqrt(character_a_level) - math.sqrt(character_b_level)))
+        )
+
+    @staticmethod
+    def age_difference_romance_debuff(
+        character_a: GameObject, character_b: GameObject
+    ) -> float:
+        """How does age difference affect developing romantic feelings
+        People with larger age gaps are less likely to develop romantic feelings
+        (missing source)
+        """
+        character_a_age = character_a.get_component(GameCharacter).age
+        character_b_age = character_b.get_component(GameCharacter).age
+        return max(
+            0.01,
+            1 - (abs(math.sqrt(character_a_age) - math.sqrt(character_b_age)) / 1.5),
+        )
+
+    @staticmethod
+    def age_difference_friendship_debuff(
+        character_a: GameObject, character_b: GameObject
+    ) -> float:
+        """
+        This makes people with large age differences more indifferent about potentially
+        becoming friends or enemies
+        """
+        character_a_age = character_a.get_component(GameCharacter).age
+        character_b_age = character_b.get_component(GameCharacter).age
+        return max(
+            0.05,
+            1 - (abs(math.sqrt(character_a_age) - math.sqrt(character_b_age)) / 4.5),
+        )
+
+    @staticmethod
+    def job_level_difference_friendship_debuff(
+        character_a: GameObject, character_b: GameObject
+    ) -> float:
+        """This makes people with job-level differences more indifferent about potentially
+        becoming friends or enemies
+        """
+
+        character_a_job = character_a.try_component(Occupation)
+        character_b_job = character_b.try_component(Occupation)
+        character_a_level = character_a_job.get_type().level if character_a_job else 0
+        character_b_level = character_b_job.get_type().level if character_b_job else 0
+
+        return max(
+            0.05, 1 - (abs(math.sqrt(character_a_level) - math.sqrt(character_b_level)))
         )
 
     def process(self, *args, **kwargs) -> None:
@@ -354,32 +422,93 @@ class SocializeSystem(ISystem):
                 location.characters_present, 2
             ):
                 assert character_id != other_character_id
-                character = self.world.get_gameobject(character_id)
-                other_character = self.world.get_gameobject(other_character_id)
+                character = self.world.get_gameobject(character_id).get_component(
+                    GameCharacter
+                )
+                other_character = self.world.get_gameobject(
+                    other_character_id
+                ).get_component(GameCharacter)
 
-                if (
-                    character.get_component(GameCharacter).age < 3
-                    or other_character.get_component(GameCharacter).age < 3
+                if character.age < 3 or other_character.age < 3:
+                    continue
+
+                if engine.rng.random() >= self.chance_of_interaction:
+                    continue
+
+                if not rel_graph.has_connection(
+                    character.gameobject.id, other_character.gameobject.id
                 ):
-                    continue
+                    rel_graph.add_relationship(
+                        Relationship(
+                            character.gameobject.id, other_character.gameobject.id
+                        )
+                    )
 
-                chance_of_interaction: float = 0.7
-
-                if engine.rng.random() >= chance_of_interaction:
-                    continue
+                if not rel_graph.has_connection(
+                    other_character.gameobject.id, character.gameobject.id
+                ):
+                    rel_graph.add_relationship(
+                        Relationship(
+                            other_character.gameobject.id, character.gameobject.id
+                        )
+                    )
 
                 compatibility: float = SocializeSystem.get_compatibility(
-                    character, other_character
+                    character.gameobject, other_character.gameobject
                 )
 
                 # This should be replaced with something more intelligent that allows
                 # for other decision-making systems to decide how to interact
-                friendship_score = (
-                    engine.rng.uniform(0, 2) * (1 + compatibility) - 1.0
-                ) * 10
-                romance_score = (
-                    engine.rng.uniform(0, 2) * (1 + compatibility) - 1.0
-                ) * 10
+                friendship_score = engine.rng.randrange(-1, 1)
+                if (friendship_score < 0 and compatibility < 0) or (
+                    friendship_score > 0 and compatibility > 0
+                ):
+                    # negative social interaction should be buffed by negative compatibility
+                    friendship_score *= 1 + abs(compatibility)
+                else:
+                    # debuff the score if compatibility and friendship score signs differ
+                    friendship_score *= 1 - abs(compatibility)
+
+                friendship_score += (
+                    SocializeSystem.job_level_difference_friendship_debuff(
+                        character.gameobject, other_character.gameobject
+                    )
+                )
+                friendship_score += SocializeSystem.age_difference_friendship_debuff(
+                    character.gameobject, other_character.gameobject
+                )
+
+                if (
+                    character.age < character.character_def.life_stages["teen"]
+                    or other_character.age
+                    < other_character.character_def.life_stages["teen"]
+                ):
+                    romance_score = 0.0
+                elif (
+                    rel_graph.get_connection(character_id, other_character_id).has_tags(
+                        RelationshipTag.Parent
+                    )
+                    or rel_graph.get_connection(
+                        other_character_id, character_id
+                    ).has_tags(RelationshipTag.Parent)
+                    or rel_graph.get_connection(
+                        character_id, other_character_id
+                    ).has_tags(RelationshipTag.Sibling)
+                    or rel_graph.get_connection(
+                        other_character_id, character_id
+                    ).has_tags(RelationshipTag.Sibling)
+                ):
+                    romance_score = 0.0
+                else:
+                    romance_score = engine.rng.random() * compatibility
+                    romance_score += (
+                        SocializeSystem.job_level_difference_romance_debuff(
+                            character.gameobject, other_character.gameobject
+                        )
+                    )
+                    romance_score += SocializeSystem.age_difference_romance_debuff(
+                        character.gameobject, other_character.gameobject
+                    )
 
                 if not rel_graph.has_connection(character_id, other_character_id):
                     rel_graph.add_relationship(
@@ -882,6 +1011,7 @@ class CharacterAgingSystem(ISystem):
                 character.gameobject.remove_component(Teen)
                 character.gameobject.add_component(YoungAdult())
                 character.gameobject.add_component(Adult())
+                character.gameobject.add_component(InTheWorkforce())
 
                 if not character.gameobject.has_component(Occupation):
                     character.gameobject.add_component(Unemployed())
@@ -944,7 +1074,6 @@ class CharacterAgingSystem(ISystem):
 
                 # Archive GameObject instead of removing it
                 character.gameobject.archive()
-                # self.world.delete_gameobject(character.gameobject.id)
 
 
 class PregnancySystem(ISystem):
@@ -1062,7 +1191,9 @@ class PregnancySystem(ISystem):
             )
 
             character.gameobject.remove_component(Pregnant)
-            character.gameobject.remove_component(InTheWorkforce)
-            character.gameobject.remove_component(Occupation)
+            # character.gameobject.remove_component(InTheWorkforce)
+
+            # if character.gameobject.has_component(Occupation):
+            #     character.gameobject.remove_component(Occupation)
 
             # TODO: Birthing parent should also leave their job

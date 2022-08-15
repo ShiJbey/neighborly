@@ -32,28 +32,33 @@ class Activity:
 
 
 class ActivityLibrary:
+    """
+    Stores information about what kind of activities carious locations
+    are known for. Activities help characters make decisions about
+    where they want to travel when they have free time.
+    """
 
     _activity_registry: Dict[str, Activity] = {}
     _activity_flags: Dict[str, int] = {}
 
     @classmethod
-    def register_activity(cls, activity: Activity) -> None:
+    def add(cls, activity: Activity) -> None:
         """Registers an activity instance for use in other places"""
         next_flag = 1 << len(cls._activity_registry.keys())
         cls._activity_registry[activity.name] = activity
         cls._activity_flags[activity.name] = next_flag
 
     @classmethod
-    def get_activity_flags(cls, *activities: str) -> Tuple[int, ...]:
+    def get_flags(cls, *activities: str) -> Tuple[int, ...]:
         """Return flags corresponding to given activities"""
         return tuple([cls._activity_flags[activity] for activity in activities])
 
     @classmethod
-    def get_activity(cls, activity: str) -> Activity:
+    def get(cls, activity: str) -> Activity:
         """Return Activity instance corresponding to a given string"""
         return cls._activity_registry[activity]
 
     @classmethod
-    def get_all_activities(cls) -> List[Activity]:
+    def get_all(cls) -> List[Activity]:
         """Return all activity instances in the registry"""
         return list(cls._activity_registry.values())

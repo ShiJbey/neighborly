@@ -6,7 +6,7 @@ https://github.com/ShiJbey/talktown/blob/python3/talktown/occupation.py
 https://github.com/ShiJbey/talktown/blob/python3/talktown/config/businesses_config.py
 """
 
-from neighborly.builtin.helpers import (
+from neighborly.builtin.role_filters import (
     after_year,
     has_any_work_experience,
     has_experience_as_a,
@@ -123,7 +123,7 @@ stocker = OccupationType(
 )
 
 seamstress = OccupationType(
-    name="Waiter",
+    name="Seamstress",
     level=1,
     precondition=or_preconditions(is_gender("female")),
 )
@@ -273,7 +273,7 @@ woodworker = OccupationType(
 )
 
 stonecutter = OccupationType(
-    name="Stonecutter",
+    name="Stone Cutter",
     level=1,
     precondition=or_preconditions(is_gender("male")),
 )

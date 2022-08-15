@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 
@@ -8,28 +7,22 @@ from neighborly.builtin.events import (
     dating_break_up_event,
     depart_due_to_unemployment,
     divorce_event,
-    hire_employee_event,
-    hiring_business_role,
+    find_own_place_event,
     marriage_event,
-    potential_spouse_role,
     pregnancy_event,
     retire_event,
-    single_person_role_type,
     start_dating_event,
-    unemployed_role,
 )
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import EventRoles, LifeEvents
+from neighborly.core.life_event import LifeEventLibrary
 from neighborly.simulation import Plugin, Simulation
-
-logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
 
 class DefaultNameDataPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        self.initialize_tracery_name_factory(sim.get_engine())
+        self.initialize_tracery_name_factory(sim.engine)
 
     def initialize_tracery_name_factory(self, engine: NeighborlyEngine) -> None:
         # Load character name data
@@ -67,20 +60,27 @@ class DefaultNameDataPlugin(Plugin):
 
 class DefaultLifeEventPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        EventRoles.register(
-            name="PotentialSpouse", event_role_type=potential_spouse_role()
-        )
-        EventRoles.register("SinglePerson", single_person_role_type())
-        EventRoles.register("HiringBusiness", hiring_business_role())
-        EventRoles.register("Unemployed", unemployed_role())
-        LifeEvents.register(hire_employee_event())
-        LifeEvents.register(marriage_event())
-        LifeEvents.register(become_friends_event())
-        LifeEvents.register(become_enemies_event())
-        LifeEvents.register(start_dating_event())
-        LifeEvents.register(dating_break_up_event())
-        LifeEvents.register(divorce_event())
-        LifeEvents.register(marriage_event())
-        LifeEvents.register(pregnancy_event())
-        LifeEvents.register(depart_due_to_unemployment())
-        LifeEvents.register(retire_event())
+        LifeEventLibrary.add(marriage_event())
+        # LifeEvents.register(become_friends_event())
+        # LifeEvents.register(become_enemies_event())
+        LifeEventLibrary.add(start_dating_event())
+        LifeEventLibrary.add(dating_break_up_event())
+        LifeEventLibrary.add(divorce_event())
+        LifeEventLibrary.add(marriage_event())
+        LifeEventLibrary.add(pregnancy_event())
+        LifeEventLibrary.add(depart_due_to_unemployment())
+        LifeEventLibrary.add(retire_event())
+        LifeEventLibrary.add(find_own_place_event())
+
+
+class DefaultPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        name_data_plugin = DefaultNameDataPlugin()
+        life_event_plugin = DefaultLifeEventPlugin()
+
+        name_data_plugin.setup(sim, **kwargs)
+        life_event_plugin.setup(sim, **kwargs)
+
+
+def get_plugin() -> Plugin:
+    return DefaultPlugin()

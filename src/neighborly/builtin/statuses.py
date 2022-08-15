@@ -1,5 +1,3 @@
-from neighborly.core.business import Business
-from neighborly.core.ecs import Component, World
 from neighborly.core.status import Status
 from neighborly.core.time import SimDateTime
 
@@ -11,10 +9,6 @@ class Child(Status):
             "Character is seen as a child in the eyes of society",
         )
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
-
 
 class Teen(Status):
     def __init__(self) -> None:
@@ -22,10 +16,6 @@ class Teen(Status):
             "Adolescent",
             "Character is seen as an adolescent in the eyes of society",
         )
-
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
 
 
 class YoungAdult(Status):
@@ -35,10 +25,6 @@ class YoungAdult(Status):
             "Character is seen as a young adult in the eyes of society",
         )
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
-
 
 class Adult(Status):
     def __init__(self) -> None:
@@ -47,10 +33,6 @@ class Adult(Status):
             "Character is seen as an adult in the eyes of society",
         )
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
-
 
 class Elder(Status):
     def __init__(self) -> None:
@@ -58,10 +40,6 @@ class Elder(Status):
             "Senior",
             "Character is seen as a senior in the eyes of society",
         )
-
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls()
 
 
 class Deceased(Status):
@@ -108,6 +86,13 @@ class Dating(Status):
         self.partner_id: int = partner_id
         self.partner_name: str = partner_name
 
+    def on_archive(self) -> None:
+        """Remove status on this character and the partner"""
+        self.gameobject.remove_component(type(self))
+        self.gameobject.world.get_gameobject(self.partner_id).remove_component(
+            type(self)
+        )
+
 
 class Married(Status):
     __slots__ = "duration_years", "partner_id", "partner_name"
@@ -120,6 +105,13 @@ class Married(Status):
         self.duration_years = 0.0
         self.partner_id: int = partner_id
         self.partner_name: str = partner_name
+
+    def on_archive(self) -> None:
+        """Remove status on this character and the partner"""
+        self.gameobject.remove_component(type(self))
+        self.gameobject.world.get_gameobject(self.partner_id).remove_component(
+            type(self)
+        )
 
 
 class InRelationship(Status):
@@ -137,6 +129,13 @@ class InRelationship(Status):
         self.partner_id: int = partner_id
         self.partner_name: str = partner_name
 
+    def on_archive(self) -> None:
+        """Remove status on this character and the partner"""
+        self.gameobject.remove_component(type(self))
+        self.gameobject.world.get_gameobject(self.partner_id).remove_component(
+            type(self)
+        )
+
 
 class BusinessOwner(Status):
     __slots__ = "duration", "business_id", "business_name"
@@ -150,6 +149,10 @@ class BusinessOwner(Status):
         self.business_id: int = business_id
         self.business_name: str = business_name
 
+    def on_archive(self) -> None:
+        """Remove status on this character and the partner"""
+        self.gameobject.remove_component(type(self))
+
 
 class Pregnant(Status):
     def __init__(
@@ -160,9 +163,9 @@ class Pregnant(Status):
         self.partner_id: int = partner_id
         self.due_date: SimDateTime = due_date
 
-    @classmethod
-    def create(cls, world, **kwargs) -> Component:
-        return cls(**kwargs)
+    def on_archive(self) -> None:
+        """Remove status on this character and the partner"""
+        self.gameobject.remove_component(type(self))
 
 
 class Male(Status):
@@ -191,3 +194,7 @@ class InTheWorkforce(Status):
             "In the Workforce",
             "This Character is eligible for employment opportunities.",
         )
+
+    def on_archive(self) -> None:
+        """Remove status on this character and the partner"""
+        self.gameobject.remove_component(type(self))

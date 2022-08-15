@@ -5,14 +5,12 @@ import logging
 import math
 from dataclasses import dataclass
 from enum import Enum, IntFlag
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type
+from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
 
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, EntityArchetype, GameObject, World
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent
-from neighborly.core.location import Location
-from neighborly.core.position import Position2D
 from neighborly.core.residence import Resident
 from neighborly.core.routine import RoutineEntry, RoutinePriority
 from neighborly.core.time import SimDateTime
@@ -135,10 +133,10 @@ class OccupationTypeLibrary:
         overwrite_ok: bool = False,
     ) -> None:
         entry_key = name if name else occupation_type.name
-        if entry_key in cls._registry and not overwrite_ok:
-            logger.warning(f"Attempted to overwrite OcuppationType: ({entry_key})")
-            return
-        cls._registry[occupation_type.name] = occupation_type
+        # if entry_key in cls._registry and not overwrite_ok:
+        #     logger.warning(f"Attempted to overwrite OcuppationType: ({entry_key})")
+        #     return
+        cls._registry[entry_key] = occupation_type
 
     @classmethod
     def get(cls, name: str) -> OccupationType:
@@ -449,7 +447,9 @@ class Business(Component):
         owner_type: Optional[str] = kwargs.get("owner_type")
         employee_types: Dict[str, int] = kwargs.get("employee_types", {})
         services: BusinessService = kwargs.get("services", BusinessService.NONE)
-        operating_hours: List[RoutineEntry] = []
+        operating_hours: Dict[str, List[RoutineEntry]] = to_operating_hours(
+            kwargs.get("hours", [])
+        )
 
         return Business(
             business_type=business_type,
@@ -457,7 +457,7 @@ class Business(Component):
             open_positions=employee_types,
             services=services,
             owner_type=owner_type,
-            # operating_hours=operating_hours,
+            operating_hours=operating_hours,
         )
 
     @staticmethod
@@ -511,102 +511,7 @@ class Business(Component):
         return schedules
 
 
-class BusinessArchetype(EntityArchetype):
-    """
-    Shared information about all businesses that
-    have this type
-    """
-
-    __slots__ = (
-        "hours",
-        "name_format",
-        "owner_type",
-        "max_instances",
-        "min_population",
-        "employee_types",
-        "services",
-        "service_flags",
-        "spawn_multiplier",
-        "year_available",
-        "year_obsolete",
-    )
-
-    def __init__(
-        self,
-        name: str,
-        hours: List[str] = None,
-        name_format: str = None,
-        owner_type: str = None,
-        max_instances: int = 9999,
-        min_population: int = 0,
-        employee_types: Dict[str, int] = None,
-        services: List[str] = None,
-        spawn_multiplier: int = 1,
-        extra_components: Dict[Type[Component], Dict[str, Any]] = None,
-        year_available: int = -1,
-        year_obsolete: int = 9999,
-    ) -> None:
-        super().__init__(name)
-        self.hours: List[str] = hours if hours else ["day"]
-        self.name_format: str = name_format if name_format else name
-        self.owner_type: Optional[str] = owner_type
-        self.max_instances: int = max_instances
-        self.min_population: int = min_population
-        self.employee_types: Dict[str, int] = employee_types if employee_types else {}
-        self.services: List[str] = services if services else {}
-        self.service_flags: BusinessService = BusinessService.NONE
-        self.spawn_multiplier: int = spawn_multiplier
-        for service_name in self.services:
-            self.service_flags |= BusinessService[
-                service_name.strip().upper().replace(" ", "_")
-            ]
-        self.year_available: int = year_available
-        self.year_obsolete: int = year_obsolete
-
-        self.add(
-            Business,
-            business_type=self.name,
-            name_format=self.name_format,
-            hours=self.hours,
-            owner_type=self.owner_type,
-            employee_types=self.employee_types,
-            services=self.service_flags,
-        )
-        self.add(Location)
-        self.add(Position2D)
-
-        if extra_components:
-            for component_type, params in extra_components.items():
-                self.add(component_type, **params)
-
-
-class BusinessArchetypeLibrary:
-    _registry: Dict[str, BusinessArchetype] = {}
-
-    @classmethod
-    def add(
-        cls, archetype: BusinessArchetype, name: str = None, overwrite_ok: bool = False
-    ) -> None:
-        """Register a new LifeEventType mapped to a name"""
-        entry_key = name if name else archetype.name
-        if entry_key in cls._registry and not overwrite_ok:
-            logger.warning(f"Attempted to overwrite BusinessArchetype: ({entry_key})")
-            return
-        cls._registry[entry_key] = archetype
-
-    @classmethod
-    def get_all(cls) -> List[BusinessArchetype]:
-        return list(cls._registry.values())
-
-    @classmethod
-    def get(cls, name: str) -> BusinessArchetype:
-        """Get a LifeEventType using a name"""
-        return cls._registry[name]
-
-
-def tod_to_operating_hours(
-    str_hours: List[str], business_id: int
-) -> List[RoutineEntry]:
+def to_operating_hours(str_hours: List[str]) -> Dict[str, List[RoutineEntry]]:
     """
     Convert a list of string with times of day and convert
     them to a list of RoutineEntries for when employees
@@ -617,8 +522,6 @@ def tod_to_operating_hours(
     ----------
     str_hours: List[str]
         The times of day that this business is open
-    business_id: int
-        Unique ID for the business associated with these entries
 
     Returns
     -------
@@ -630,9 +533,19 @@ def tod_to_operating_hours(
         "late-morning": (11, 12),
         "early-morning": (5, 8),
         "day": (8, 11),
-        "afternoon": (12, 5),
-        "evening": (5, 9),
-        "night": (9, 12),
+        "afternoon": (12, 17),
+        "evening": (17, 21),
+        "night": (21, 23),
+    }
+
+    operating_hours: Dict[str, List[RoutineEntry]] = {
+        "monday": [],
+        "tuesday": [],
+        "wednesday": [],
+        "thursday": [],
+        "friday": [],
+        "saturday": [],
+        "sunday": [],
     }
 
     routines: List[RoutineEntry] = []
@@ -640,10 +553,11 @@ def tod_to_operating_hours(
     for time_of_day in str_hours:
         try:
             start, end = times_to_intervals[time_of_day]
-            routines.append(
-                RoutineEntry(start, end, location=business_id, activity="work")
-            )
+            routines.append(RoutineEntry(start, end, location="work", activity="work"))
         except KeyError:
             raise ValueError(f"{time_of_day} is not a valid time of day.")
 
-    return routines
+    for key in operating_hours:
+        operating_hours[key].extend(routines)
+
+    return operating_hours

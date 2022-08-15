@@ -119,18 +119,15 @@ class PersonalValues(Component):
         n_likes: int = kwargs.get("n_likes", 3)
         n_dislikes: int = kwargs.get("n_dislikes", 3)
 
-        total_traits: int = n_likes + n_dislikes
         traits = [
             str(trait.value)
-            for trait in engine.rng.sample(list(ValueTrait), total_traits)
+            for trait in engine.rng.sample(list(ValueTrait), n_likes + n_dislikes)
         ]
 
         # select likes and dislikes
         high_values = engine.rng.sample(traits, n_likes)
 
-        map(lambda t: traits.remove(t), high_values)
-
-        low_values = [*traits]
+        low_values = list(filter(lambda t: t not in high_values, traits))
 
         # Generate values for each ([30,50] for high values, [-50,-30] for dislikes)
         values_overrides: Dict[str, int] = {}

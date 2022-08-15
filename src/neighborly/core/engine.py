@@ -8,18 +8,6 @@ from neighborly.core.ecs import Component
 from neighborly.core.name_generation import TraceryNameFactory
 
 
-class ArchetypeNotFoundError(Exception):
-    """Error thrown when an archetype is not found in the engine"""
-
-    def __init__(self, archetype_name: str) -> None:
-        super().__init__()
-        self.archetype_name: str = archetype_name
-        self.message: str = f"Could not find archetype with name '{archetype_name}'"
-
-    def __str__(self) -> str:
-        return self.message
-
-
 class NeighborlyEngine:
     """
     An engine stores and instantiates entity archetypes for characters, businesses,
