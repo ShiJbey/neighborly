@@ -22,13 +22,11 @@
 Neighborly is a social simulation engine for procedurally generating towns of characters. It simulates
 the lives of each character, their jobs, routines, relationships, and life events. Neighborly utilizes
 an entity-component system architecture, and enables users to specify custom character types, businesses,
-occupations, life events, and AI components and simulation systems.
+occupations, and life events.
 
 Neighborly takes lessons learned from working with
 [_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
 and aims to give people better documentation, simpler interfaces, and more opportunities for extension and content authoring.
-
-<b>Neighborly is not fully functional yet. I am actively working toward a working release.</b>
 
 # Core Features
 
@@ -53,6 +51,23 @@ Neighborly is available to install via pip.
 ```bash
 pip install neighborly
 ```
+
+# Running the commandline tool
+
+Neighborly can be run as a module from the commandline. By default, it runs a
+builtin version of **Talk of the Town**. You can configure the simulation settings
+by creating a `neighborlyconfig.yaml` file in the same directory where you're
+running the application. When world generation concludes, Neighborly will write
+the final simulation data to a JSON file with the name of the town and the
+seed used for random number generation.
+
+```bash
+python -m neighborly
+
+# Please use the following command for additional help with running Neighborly's CLI
+python -m neighborly --help
+```
+
 
 # Installing for local development
 
