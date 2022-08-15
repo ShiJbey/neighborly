@@ -5,12 +5,13 @@ from typing import Any, Dict
 
 import pytest
 
+from neighborly.core.archetypes import BusinessArchetype
 from neighborly.core.business import (
     Business,
-    BusinessArchetype,
     BusinessStatus,
     Occupation,
     OccupationType,
+    OccupationTypeLibrary,
 )
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.status import Status
@@ -23,13 +24,15 @@ class CollegeGraduate(Status):
 
 @pytest.fixture
 def sample_occupation_types():
-    def is_college_graduate(gameobject: GameObject, **kwargs: Any) -> bool:
+    def is_college_graduate(
+        world: World, gameobject: GameObject, **kwargs: Any
+    ) -> bool:
         return gameobject.has_component(CollegeGraduate)
 
     ceo_occupation_type = OccupationType(
         "CEO",
         5,
-        [is_college_graduate],
+        is_college_graduate,
     )
 
     return {"ceo": ceo_occupation_type}
@@ -37,7 +40,7 @@ def sample_occupation_types():
 
 @pytest.fixture
 def sample_business_types():
-    restaurant_type = BusinessArchetype(name="Restaurant", hours="MTWRFSU 10:00-21:00")
+    restaurant_type = BusinessArchetype(name="Restaurant", hours=["day"])
 
     return {"restaurant": restaurant_type}
 
@@ -48,13 +51,13 @@ def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationT
     assert ceo_occupation_type.name == "CEO"
     assert ceo_occupation_type.level == 5
 
-    OccupationType.register_type(ceo_occupation_type)
+    OccupationTypeLibrary.add(ceo_occupation_type)
 
     assert ceo_occupation_type == OccupationTypeLibrary.get("CEO")
 
 
 def test_occupation(sample_occupation_types: Dict[str, OccupationType]):
-    OccupationType.register_type(sample_occupation_types["ceo"])
+    OccupationTypeLibrary.add(sample_occupation_types["ceo"])
 
     ceo = Occupation(OccupationTypeLibrary.get("CEO"), 1)
 
@@ -69,14 +72,6 @@ def test_occupation(sample_occupation_types: Dict[str, OccupationType]):
     ceo.increment_years_held(0.5)
 
     assert ceo.get_years_held() == 1
-
-
-def test_register_business_type(sample_business_types: Dict[str, BusinessArchetype]):
-    restaurant_type = sample_business_types["restaurant"]
-
-    BusinessArchetype.register(restaurant_type)
-
-    BusinessArchetype.get("Restaurant").name = "Restaurant"
 
 
 def test_construct_occupation():

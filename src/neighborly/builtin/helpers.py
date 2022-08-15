@@ -11,13 +11,15 @@ from neighborly.builtin.statuses import (
     Child,
     CollegeGraduate,
     Elder,
+    InTheWorkforce,
     Teen,
     Unemployed,
     YoungAdult,
 )
 from neighborly.core.activity import ActivityLibrary
+from neighborly.core.archetypes import CharacterArchetype
 from neighborly.core.business import Business
-from neighborly.core.character import CharacterArchetype, GameCharacter
+from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import EventRole, LifeEvent, LifeEventLog
@@ -230,6 +232,7 @@ def generate_young_adult_character(
     character = world.spawn_archetype(archetype)
     character.add_component(Unemployed())
     character.add_component(YoungAdult())
+    character.add_component(InTheWorkforce())
     return character
 
 
@@ -239,6 +242,7 @@ def generate_adult_character(
     character = world.spawn_archetype(archetype)
     character.add_component(Unemployed())
     character.add_component(Adult())
+    character.add_component(InTheWorkforce())
     return character
 
 
@@ -247,6 +251,7 @@ def generate_elderly_character(
 ) -> GameObject:
     character = world.spawn_archetype(archetype)
     character.add_component(Elder())
+    character.add_component(InTheWorkforce())
     return character
 
 

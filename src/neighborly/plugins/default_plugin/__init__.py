@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 
@@ -8,17 +7,15 @@ from neighborly.builtin.events import (
     dating_break_up_event,
     depart_due_to_unemployment,
     divorce_event,
-    hire_employee_event,
+    find_own_place_event,
     marriage_event,
     pregnancy_event,
     retire_event,
     start_dating_event,
 )
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvents
+from neighborly.core.life_event import LifeEventLibrary
 from neighborly.simulation import Plugin, Simulation
-
-logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
@@ -63,17 +60,17 @@ class DefaultNameDataPlugin(Plugin):
 
 class DefaultLifeEventPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        LifeEvents.register(hire_employee_event())
-        LifeEvents.register(marriage_event())
-        LifeEvents.register(become_friends_event())
-        LifeEvents.register(become_enemies_event())
-        LifeEvents.register(start_dating_event())
-        LifeEvents.register(dating_break_up_event())
-        LifeEvents.register(divorce_event())
-        LifeEvents.register(marriage_event())
-        LifeEvents.register(pregnancy_event())
-        LifeEvents.register(depart_due_to_unemployment())
-        LifeEvents.register(retire_event())
+        LifeEventLibrary.add(marriage_event())
+        # LifeEvents.register(become_friends_event())
+        # LifeEvents.register(become_enemies_event())
+        LifeEventLibrary.add(start_dating_event())
+        LifeEventLibrary.add(dating_break_up_event())
+        LifeEventLibrary.add(divorce_event())
+        LifeEventLibrary.add(marriage_event())
+        LifeEventLibrary.add(pregnancy_event())
+        LifeEventLibrary.add(depart_due_to_unemployment())
+        LifeEventLibrary.add(retire_event())
+        LifeEventLibrary.add(find_own_place_event())
 
 
 class DefaultPlugin(Plugin):

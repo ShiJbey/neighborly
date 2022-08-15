@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Type
 
 from neighborly.core.ecs import Component, GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.core.town import Town
 
 
 class LifeEvent:
@@ -216,7 +218,7 @@ class EventRoleType(AbstractEventRoleType):
 class LifeEventEffectFn(Protocol):
     """Callback function called when a life event is executed"""
 
-    def __call__(self, world: World, event: LifeEvent) -> None:
+    def __call__(self, world: World, event: LifeEvent) -> EventResult:
         raise NotImplementedError
 
 
@@ -270,6 +272,11 @@ class AbstractLifeEventType(ABC):
         return
 
 
+@dataclass
+class EventResult:
+    generated_events: List[LifeEvent] = field(default_factory=list)
+
+
 class LifeEventType(AbstractLifeEventType):
     """
     User-facing class for implementing behaviors around life events
@@ -305,16 +312,16 @@ class LifeEventType(AbstractLifeEventType):
         self.execute_fn(world, event)
 
 
-class EventRoles:
+class EventRoleLibrary:
     _registry: Dict[str, EventRoleType] = {}
 
     @classmethod
-    def register(cls, name: str, event_role_type: EventRoleType) -> None:
+    def add(cls, name: str, event_role_type: EventRoleType) -> None:
         """Register a new LifeEventType mapped to a name"""
         cls._registry[name] = event_role_type
 
     @classmethod
-    def roles(cls) -> List[EventRoleType]:
+    def get_all(cls) -> List[EventRoleType]:
         return list(cls._registry.values())
 
     @classmethod
@@ -323,7 +330,7 @@ class EventRoles:
         return cls._registry[name]
 
 
-class LifeEvents:
+class LifeEventLibrary:
     """
     Static class used to store instances of LifeEventTypes for
     use at runtime.
@@ -332,12 +339,12 @@ class LifeEvents:
     _registry: Dict[str, LifeEventType] = {}
 
     @classmethod
-    def register(cls, life_event_type: LifeEventType, name: str = None) -> None:
+    def add(cls, life_event_type: LifeEventType, name: str = None) -> None:
         """Register a new LifeEventType mapped to a name"""
         cls._registry[name if name else life_event_type.name] = life_event_type
 
     @classmethod
-    def events(cls) -> List[LifeEventType]:
+    def get_all(cls) -> List[LifeEventType]:
         return list(cls._registry.values())
 
     @classmethod
@@ -379,7 +386,7 @@ class LifeEventSimulator(ISystem):
 
     def __init__(self, interval: TimeDelta = None) -> None:
         super().__init__()
-        self.interval: TimeDelta = interval if interval else TimeDelta()
+        self.interval: TimeDelta = interval if interval else TimeDelta(days=14)
         self.next_trigger: SimDateTime = SimDateTime()
 
     def try_execute_event(self, world: World, event_type: LifeEventType) -> None:
@@ -387,8 +394,9 @@ class LifeEventSimulator(ISystem):
         event: LifeEvent = event_type.instantiate(world)
         if event is not None:
             if event_type.execute_fn is not None:
-                event_type.execute_fn(world, event)
-            world.get_resource(LifeEventLog).record_event(event)
+                result = event_type.execute_fn(world, event)
+                for e in result.generated_events:
+                    world.get_resource(LifeEventLog).record_event(e)
 
     def process(self, *args, **kwargs) -> None:
         """Simulate LifeEvents for characters"""
@@ -399,7 +407,15 @@ class LifeEventSimulator(ISystem):
         else:
             self.next_trigger = date.copy() + self.interval
 
+        town = self.world.get_resource(Town)
         rng = self.world.get_resource(NeighborlyEngine).rng
-        for event_type in LifeEvents.events():
+
+        # Perform number of events equal to 10% of the population
+        for _ in range(town.population // 10):
+            event_type = rng.choice(LifeEventLibrary.get_all())
             if rng.random() < event_type.probability:
                 self.try_execute_event(self.world, event_type)
+
+        # for event_type in LifeEvents.events():
+        #     if rng.random() < event_type.probability:
+        #         self.try_execute_event(self.world, event_type)

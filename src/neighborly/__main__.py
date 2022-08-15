@@ -18,7 +18,7 @@ import neighborly.core.utils.utilities as utilities
 from neighborly.core.life_event import LifeEventLog
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.server import NeighborlyServer
-from neighborly.simulation import Plugin, PluginSetupError, Simulation
+from neighborly.simulation import Plugin, PluginSetupError, SimulationBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +225,7 @@ def main():
             logger.debug("Successfully loaded config from cwd.")
             config = NeighborlyConfig.from_partial(loaded_settings, config)
 
-    sim = Simulation.create(
+    sim_builder = SimulationBuilder(
         seed=config.seed,
         world_gen_start=config.world_gen_start,
         world_gen_end=config.world_gen_end,
@@ -235,10 +235,12 @@ def main():
     for plugin_entry in config.plugins:
         if isinstance(plugin_entry, str):
             plugin = load_plugin(plugin_entry)
-            sim.add_plugin(plugin)
+            sim_builder.add_plugin(plugin)
         else:
             plugin = load_plugin(plugin_entry.name, plugin_entry.path)
-            sim.add_plugin(plugin, **plugin_entry.options)
+            sim_builder.add_plugin(plugin, **plugin_entry.options)
+
+    sim = sim_builder.build()
 
     config.quiet = args.quiet
     if not config.quiet:

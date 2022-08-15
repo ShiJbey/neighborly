@@ -4,10 +4,15 @@ import pathlib
 
 import neighborly.plugins.talktown.business_archetypes as tot_businesses
 import neighborly.plugins.talktown.occupation_types as tot_occupations
-from neighborly.core.business import BusinessArchetypeLibrary, OccupationTypeLibrary
-from neighborly.core.character import CharacterArchetype, CharacterArchetypeLibrary
+from neighborly.core.archetypes import (
+    BusinessArchetypeLibrary,
+    CharacterArchetype,
+    CharacterArchetypeLibrary,
+    ResidenceArchetype,
+    ResidenceArchetypeLibrary,
+)
+from neighborly.core.business import OccupationTypeLibrary
 from neighborly.core.ecs import World
-from neighborly.core.residence import ResidenceArchetype, ResidenceArchetypeLibrary
 from neighborly.core.rng import DefaultRNG
 from neighborly.core.town import LandGrid
 from neighborly.plugins.talktown.school import SchoolSystem
@@ -64,7 +69,7 @@ def establish_town(world: World, **kwargs) -> None:
 
 class TalkOfTheTownPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        sim.add_system(SchoolSystem())
+        sim.world.add_system(SchoolSystem())
 
         # Talk of the town only has one residence archetype
         ResidenceArchetypeLibrary.add(ResidenceArchetype(name="House"))

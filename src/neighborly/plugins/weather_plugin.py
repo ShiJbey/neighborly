@@ -1,9 +1,7 @@
-import random
 from enum import Enum
 
-import numpy as np
-
 from neighborly.core.ecs import ISystem
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.time import SimDateTime
 from neighborly.simulation import Plugin, Simulation
 
@@ -53,12 +51,13 @@ class WeatherSystem(ISystem):
     def process(self, *args, **kwargs):
         delta_time = self.world.get_resource(SimDateTime).delta_time
         weather_manager = self.world.get_resource(WeatherManager)
+        engine = self.world.get_resource(NeighborlyEngine)
 
         if weather_manager.time_before_change <= 0:
             # Select the next weather pattern
-            weather_manager.current_weather = random.choice(list(Weather))
+            weather_manager.current_weather = engine.rng.choice(list(Weather))
             weather_manager.time_before_change = round(
-                np.random.normal(self.avg_change_interval)
+                engine.rng.normalvariate(mu=self.avg_change_interval, sigma=1)
             )
 
         weather_manager.time_before_change -= delta_time
@@ -66,8 +65,8 @@ class WeatherSystem(ISystem):
 
 class WeatherPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        sim.add_system(WeatherSystem(), 9)
-        sim.add_resource(WeatherManager())
+        sim.world.add_system(WeatherSystem(), 9)
+        sim.world.add_resource(WeatherManager())
 
 
 def get_plugin() -> Plugin:

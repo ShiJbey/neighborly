@@ -39,7 +39,7 @@ class Town:
         return f"{self.name} (Pop. {self.population})"
 
     def __repr__(self) -> str:
-        return self.to_dict().__repr__()
+        return f"Town(name={self.name}, population={self.population})"
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Town:

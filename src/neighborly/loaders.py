@@ -9,9 +9,14 @@ from typing import Any, Dict, List, Optional, Protocol, Union
 import yaml
 
 from neighborly.core.activity import Activity, ActivityLibrary
-from neighborly.core.business import BusinessArchetype, BusinessArchetypeLibrary
-from neighborly.core.character import CharacterArchetype, CharacterArchetypeLibrary
-from neighborly.core.residence import ResidenceArchetype, ResidenceArchetypeLibrary
+from neighborly.core.archetypes import (
+    BusinessArchetype,
+    BusinessArchetypeLibrary,
+    CharacterArchetype,
+    CharacterArchetypeLibrary,
+    ResidenceArchetype,
+    ResidenceArchetypeLibrary,
+)
 
 logger = logging.getLogger(__name__)
 
