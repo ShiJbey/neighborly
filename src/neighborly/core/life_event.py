@@ -207,10 +207,11 @@ class EventRoleType(AbstractEventRoleType):
         event: LifeEvent,
         candidate: GameObject,
     ) -> Optional[EventRole]:
-        if candidate.has_component(*self.components) and self.filter_fn(
-            world, candidate, event=event
-        ):
-            return EventRole(self.name, candidate.id)
+        if candidate.has_component(*self.components):
+            if self.filter_fn and self.filter_fn(world, candidate, event=event):
+                return EventRole(self.name, candidate.id)
+            else:
+                return EventRole(self.name, candidate.id)
 
         return None
 
