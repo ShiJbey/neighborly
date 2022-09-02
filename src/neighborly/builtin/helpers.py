@@ -11,14 +11,15 @@ from neighborly.builtin.statuses import (
     Child,
     CollegeGraduate,
     Elder,
-    InTheWorkforce,
+    Female,
+    Male,
+    NonBinary,
     Teen,
-    Unemployed,
     YoungAdult,
 )
 from neighborly.core.activity import ActivityLibrary
 from neighborly.core.archetypes import CharacterArchetype
-from neighborly.core.business import Business
+from neighborly.core.business import Business, InTheWorkforce, Unemployed
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
@@ -174,16 +175,10 @@ def move_residence(character: GameCharacter, new_residence: Residence) -> None:
         old_residence.remove_resident(character.gameobject.id)
         if old_residence.is_owner(character.gameobject.id):
             old_residence.remove_owner(character.gameobject.id)
-        old_residence.gameobject.get_component(Location).whitelist.remove(
-            character.gameobject.id
-        )
 
     # Move into new residence
     new_residence.add_resident(character.gameobject.id)
     character.location_aliases["home"] = new_residence.gameobject.id
-    new_residence.gameobject.get_component(Location).whitelist.add(
-        character.gameobject.id
-    )
     character.gameobject.add_component(Resident(new_residence.gameobject.id))
 
 
@@ -192,20 +187,45 @@ def move_residence(character: GameCharacter, new_residence: Residence) -> None:
 ############################################
 
 
+def choose_gender(engine: NeighborlyEngine, character: GameCharacter) -> None:
+    if character.can_get_pregnant:
+        gender_type = engine.rng.choice([Female, NonBinary])
+        character.gameobject.add_component(gender_type())
+    else:
+        gender_type = engine.rng.choice([Male, NonBinary])
+        character.gameobject.add_component(gender_type())
+
+
 def generate_child_character(
     world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
 ) -> GameObject:
-    character = world.spawn_archetype(archetype)
-    character.add_component(Child())
-    return character
+    gameobject = world.spawn_archetype(archetype)
+    gameobject.add_component(Child())
+    character = gameobject.get_component(GameCharacter)
+
+    choose_gender(engine, character)
+
+    # generate an age
+    character.age = engine.rng.randint(
+        0, character.character_def.life_stages["teen"] - 1
+    )
+
+    return gameobject
 
 
 def generate_teen_character(
     world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
 ) -> GameObject:
-    character = world.spawn_archetype(archetype)
-    character.add_component(Teen())
-    return character
+    gameobject = world.spawn_archetype(archetype)
+    gameobject.add_component(Teen())
+    character = gameobject.get_component(GameCharacter)
+    choose_gender(engine, character)
+    character.age = engine.rng.randint(
+        character.character_def.life_stages["teen"],
+        character.character_def.life_stages["young_adult"] - 1,
+    )
+
+    return gameobject
 
 
 def generate_young_adult_character(
@@ -229,30 +249,50 @@ def generate_young_adult_character(
     GameObject
         The final generated gameobject
     """
-    character = world.spawn_archetype(archetype)
-    character.add_component(Unemployed())
-    character.add_component(YoungAdult())
-    character.add_component(InTheWorkforce())
-    return character
+    gameobject = world.spawn_archetype(archetype)
+    gameobject.add_component(Unemployed())
+    gameobject.add_component(YoungAdult())
+    gameobject.add_component(Adult())
+    gameobject.add_component(InTheWorkforce())
+    character = gameobject.get_component(GameCharacter)
+    choose_gender(engine, character)
+    character.age = engine.rng.randint(
+        character.character_def.life_stages["young_adult"],
+        character.character_def.life_stages["adult"] - 1,
+    )
+    return gameobject
 
 
 def generate_adult_character(
     world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
 ) -> GameObject:
-    character = world.spawn_archetype(archetype)
-    character.add_component(Unemployed())
-    character.add_component(Adult())
-    character.add_component(InTheWorkforce())
-    return character
+    gameobject = world.spawn_archetype(archetype)
+    gameobject.add_component(Unemployed())
+    gameobject.add_component(Adult())
+    gameobject.add_component(InTheWorkforce())
+    character = gameobject.get_component(GameCharacter)
+    choose_gender(engine, character)
+    character.age = engine.rng.randint(
+        character.character_def.life_stages["adult"],
+        character.character_def.life_stages["elder"] - 1,
+    )
+    return gameobject
 
 
 def generate_elderly_character(
     world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
 ) -> GameObject:
-    character = world.spawn_archetype(archetype)
-    character.add_component(Elder())
-    character.add_component(InTheWorkforce())
-    return character
+    gameobject = world.spawn_archetype(archetype)
+    gameobject.add_component(Elder())
+    gameobject.add_component(Adult())
+    gameobject.add_component(InTheWorkforce())
+    character = gameobject.get_component(GameCharacter)
+    choose_gender(engine, character)
+    character.age = engine.rng.randint(
+        character.character_def.life_stages["elder"],
+        character.character_def.lifespan - 1,
+    )
+    return gameobject
 
 
 ############################################

@@ -5,7 +5,9 @@ from neighborly.builtin.events import (
     become_enemies_event,
     become_friends_event,
     dating_break_up_event,
+    death_event,
     depart_due_to_unemployment,
+    die_of_old_age,
     divorce_event,
     find_own_place_event,
     marriage_event,
@@ -66,11 +68,11 @@ class DefaultLifeEventPlugin(Plugin):
         LifeEventLibrary.add(start_dating_event())
         LifeEventLibrary.add(dating_break_up_event())
         LifeEventLibrary.add(divorce_event())
-        LifeEventLibrary.add(marriage_event())
         LifeEventLibrary.add(pregnancy_event())
         LifeEventLibrary.add(depart_due_to_unemployment())
         LifeEventLibrary.add(retire_event())
         LifeEventLibrary.add(find_own_place_event())
+        LifeEventLibrary.add(die_of_old_age())
 
 
 class DefaultPlugin(Plugin):

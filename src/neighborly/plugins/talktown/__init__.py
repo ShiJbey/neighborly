@@ -48,6 +48,7 @@ def establish_town(world: World, **kwargs) -> None:
 
     for _ in range(n_families_to_add - 1):
         # create residents
+        house = world.spawn_archetype(ResidenceArchetypeLibrary.get("House"))
         # create Farm
         farm = world.spawn_archetype(BusinessArchetypeLibrary.get("Farm"))
         # trigger hiring event

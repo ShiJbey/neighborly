@@ -172,17 +172,7 @@ class SimulationBuilder:
         sim.world.add_resource(Town.create(sim.world, name=self.town_name))
 
         # Create the land
-        if isinstance(self.town_size, tuple):
-            land_size = self.town_size
-        else:
-            if self.town_size == "small":
-                land_size = (3, 3)
-            elif self.town_size == "medium":
-                land_size = (5, 5)
-            else:
-                land_size = (7, 7)
-
-        land_grid = LandGrid(land_size)
+        land_grid = LandGrid(self.town_size)
 
         sim.world.add_resource(land_grid)
 

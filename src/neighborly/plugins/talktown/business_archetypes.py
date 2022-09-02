@@ -2,7 +2,7 @@ from neighborly.core.archetypes import BusinessArchetype
 
 apartment_complex = BusinessArchetype(
     name="Apartment Complex",
-    hours=["day"],
+    hours="day",
     owner_type="Landlord",
     max_instances=99,
     min_population=50,
@@ -24,7 +24,7 @@ bakery = BusinessArchetype(
 
 bank = BusinessArchetype(
     name="Bank",
-    hours=["day", "afternoon"],
+    hours="day",
     owner_type="Banker",
     services=["errands"],
     employee_types={"Bank Teller": 3, "Janitor": 1, "Manager": 1},
@@ -32,19 +32,19 @@ bank = BusinessArchetype(
 
 bar = BusinessArchetype(
     name="Bar",
-    hours=["evening", "night"],
+    hours="evening",
     owner_type="Owner",
     employee_types={"Bartender": 4, "Manager": 1},
     services=["drinking", "socializing"],
 )
 
 barbershop = BusinessArchetype(
-    name="Barbershop", hours=["day"], owner_type="Barber", employee_types={"Cashier": 1}
+    name="Barbershop", hours="day", owner_type="Barber", employee_types={"Cashier": 1}
 )
 
 bus_depot = BusinessArchetype(
     name="Bus Depot",
-    hours=["day", "evening"],
+    hours="day",
     employee_types={
         "Secretary": 1,
         "Bus Driver": 3,
@@ -381,12 +381,12 @@ tattoo_parlor = BusinessArchetype(
     max_instances=1,
     owner_type="Tattoo Artist",
     employee_types={"Cashier": 1},
-    hours=["afternoon"],
+    hours="afternoon",
 )
 
 tavern = BusinessArchetype(
     name="Tavern",
-    hours=["evening", "night"],
+    hours="evening",
     employee_types={"Cook": 1, "Bartender": 1, "Waiter": 1},
     min_population=20,
     services=["drinking", "socializing"],
@@ -400,5 +400,5 @@ taxi_depot = BusinessArchetype(
     max_instances=1,
     year_available=1930,
     year_obsolete=9999,
-    hours=["day", "evening"],
+    hours="day",
 )

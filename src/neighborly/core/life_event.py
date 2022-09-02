@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Protocol, Type
+from asyncio.log import logger
+from collections import defaultdict
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Protocol, Type
 
 from neighborly.core.ecs import Component, GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
@@ -160,7 +161,7 @@ class EventRoleType(AbstractEventRoleType):
     def __init__(
         self,
         name: str,
-        components: List[Type[Component]] = None,
+        components: Optional[List[Type[Component]]] = None,
         filter_fn: Optional[RoleFilterFn] = None,
         binder_fn: Optional[RoleBinderFn] = None,
     ) -> None:
@@ -207,34 +208,60 @@ class EventRoleType(AbstractEventRoleType):
         event: LifeEvent,
         candidate: GameObject,
     ) -> Optional[EventRole]:
-        if candidate.has_component(*self.components) and self.filter_fn(
-            world, candidate, event=event
-        ):
-            return EventRole(self.name, candidate.id)
+        has_components = (
+            candidate.has_component(*self.components) if self.components else True
+        )
 
-        return None
+        passes_filter = (
+            self.filter_fn(world, candidate, event=event) if self.filter_fn else True
+        )
+
+        return (
+            EventRole(self.name, candidate.id)
+            if has_components and passes_filter
+            else None
+        )
 
 
 class LifeEventEffectFn(Protocol):
     """Callback function called when a life event is executed"""
 
-    def __call__(self, world: World, event: LifeEvent) -> EventResult:
+    def __call__(self, world: World, event: LifeEvent) -> None:
         raise NotImplementedError
 
 
-class AbstractLifeEventType(ABC):
+class LifeEventType:
     """
-    Abstract base class for defining LifeEventTypes
+    User-facing class for implementing behaviors around life events
+
+    This is adapted from:
+    https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
+
+    Attributes
+    ----------
+    name: str
+        Name of the LifeEventType and the LifeEvent it instantiates
+    roles: List[EventRoleType]
+        The roles that need to be cast for this event to be executed
+    probability: int (default: 1)
+        The relative frequency of this event compared to other events
+    execute_fn: Callable[..., None]
+        Function that executes changes to the world state base don the event
     """
 
-    __slots__ = "name", "probability", "roles"
+    __slots__ = "name", "probability", "roles", "execute_fn"
 
     def __init__(
-        self, name: str, roles: List[EventRoleType], frequency: float = 1.0
+        self,
+        name: str,
+        roles: List[EventRoleType],
+        probability: float = 1.0,
+        execute_fn: Optional[LifeEventEffectFn] = None,
     ) -> None:
         self.name: str = name
         self.roles: List[EventRoleType] = roles
-        self.probability: float = frequency
+        self.probability: float = probability
+        self.execute_fn: Optional[LifeEventEffectFn] = execute_fn
 
     def instantiate(self, world: World, **kwargs: GameObject) -> Optional[LifeEvent]:
         """
@@ -269,47 +296,18 @@ class AbstractLifeEventType(ABC):
         return life_event
 
     def execute(self, world: World, event: LifeEvent) -> None:
-        return
+        """Execute the effect function for this event"""
+        rng = world.get_resource(NeighborlyEngine).rng
+        if self.execute_fn and rng.random() < self.probability:
+            self.execute_fn(world, event)
 
-
-@dataclass
-class EventResult:
-    generated_events: List[LifeEvent] = field(default_factory=list)
-
-
-class LifeEventType(AbstractLifeEventType):
-    """
-    User-facing class for implementing behaviors around life events
-
-    This is adapted from:
-    https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
-
-    Attributes
-    ----------
-    name: str
-        Name of the LifeEventType and the LifeEvent it instantiates
-    roles: List[EventRoleType]
-        The roles that need to be cast for this event to be executed
-    probability: int (default: 1)
-        The relative frequency of this event compared to other events
-    execute_fn: Callable[..., None]
-        Function that executes changes to the world state base don the event
-    """
-
-    __slots__ = "execute_fn"
-
-    def __init__(
-        self,
-        name: str,
-        roles: List[EventRoleType],
-        probability: float = 1.0,
-        execute_fn: Optional[LifeEventEffectFn] = None,
-    ) -> None:
-        super().__init__(name, roles, probability)
-        self.execute_fn: Optional[LifeEventEffectFn] = execute_fn
-
-    def execute(self, world: World, event: LifeEvent) -> None:
-        self.execute_fn(world, event)
+    def try_execute_event(self, world: World, **kwargs: GameObject) -> bool:
+        """Execute the given LifeEventType if successfully instantiated"""
+        event = self.instantiate(world, **kwargs)
+        if event is not None:
+            self.execute(world, event)
+            return True
+        return False
 
 
 class EventRoleLibrary:
@@ -339,9 +337,12 @@ class LifeEventLibrary:
     _registry: Dict[str, LifeEventType] = {}
 
     @classmethod
-    def add(cls, life_event_type: LifeEventType, name: str = None) -> None:
+    def add(cls, life_event_type: LifeEventType, name: Optional[str] = None) -> None:
         """Register a new LifeEventType mapped to a name"""
-        cls._registry[name if name else life_event_type.name] = life_event_type
+        key_name = name if name else life_event_type.name
+        if key_name in cls._registry:
+            logger.debug(f"Overwriting LifeEventType: ({key_name})")
+        cls._registry[key_name] = life_event_type
 
     @classmethod
     def get_all(cls) -> List[LifeEventType]:
@@ -358,14 +359,17 @@ class LifeEventLog:
     Global resource for storing and accessing LifeEvents
     """
 
-    __slots__ = "event_history", "_subscribers"
+    __slots__ = "event_history", "_subscribers", "_per_gameobject"
 
     def __init__(self) -> None:
         self.event_history: List[LifeEvent] = []
+        self._per_gameobject: DefaultDict[int, List[LifeEvent]] = defaultdict(list)
         self._subscribers: List[Callable[[LifeEvent], None]] = []
 
     def record_event(self, event: LifeEvent) -> None:
         self.event_history.append(event)
+        for role in event.roles:
+            self._per_gameobject[role.gid].append(event)
         for cb in self._subscribers:
             cb(event)
 
@@ -374,6 +378,12 @@ class LifeEventLog:
 
     def unsubscribe(self, cb: Callable[[LifeEvent], None]) -> None:
         self._subscribers.remove(cb)
+
+    def get_events_for(self, gid: int) -> List[LifeEvent]:
+        """
+        Get all the LifeEvents where the GameObject with the given gid played a role
+        """
+        return self._per_gameobject[gid]
 
 
 class LifeEventSimulator(ISystem):
@@ -384,19 +394,10 @@ class LifeEventSimulator(ISystem):
 
     __slots__ = "interval", "next_trigger"
 
-    def __init__(self, interval: TimeDelta = None) -> None:
+    def __init__(self, interval: Optional[TimeDelta] = None) -> None:
         super().__init__()
         self.interval: TimeDelta = interval if interval else TimeDelta(days=14)
         self.next_trigger: SimDateTime = SimDateTime()
-
-    def try_execute_event(self, world: World, event_type: LifeEventType) -> None:
-        """Execute the given LifeEventType if successfully instantiated"""
-        event: LifeEvent = event_type.instantiate(world)
-        if event is not None:
-            if event_type.execute_fn is not None:
-                result = event_type.execute_fn(world, event)
-                for e in result.generated_events:
-                    world.get_resource(LifeEventLog).record_event(e)
 
     def process(self, *args, **kwargs) -> None:
         """Simulate LifeEvents for characters"""
@@ -413,9 +414,4 @@ class LifeEventSimulator(ISystem):
         # Perform number of events equal to 10% of the population
         for _ in range(town.population // 10):
             event_type = rng.choice(LifeEventLibrary.get_all())
-            if rng.random() < event_type.probability:
-                self.try_execute_event(self.world, event_type)
-
-        # for event_type in LifeEvents.events():
-        #     if rng.random() < event_type.probability:
-        #         self.try_execute_event(self.world, event_type)
+            event_type.try_execute_event(self.world)

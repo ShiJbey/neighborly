@@ -6,13 +6,12 @@ from neighborly.builtin.statuses import (
     CollegeGraduate,
     Dating,
     Female,
-    InTheWorkforce,
     Male,
     Married,
     NonBinary,
     Retired,
 )
-from neighborly.core.business import Occupation, WorkHistory
+from neighborly.core.business import InTheWorkforce, Occupation, WorkHistory
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.life_event import RoleFilterFn
@@ -124,11 +123,19 @@ def has_experience_as_a(
     """
 
     def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+        total_experience: int = 0
+
         work_history = gameobject.get_component(WorkHistory)
-        return (
-            work_history.has_experience_as_a(occupation_type)
-            and work_history.total_experience_as_a(occupation_type) >= years_experience
-        )
+        for entry in work_history.entries[:-1]:
+            if entry.occupation_type == occupation_type:
+                total_experience += entry.years_held
+
+        if gameobject.has_component(Occupation):
+            occupation = gameobject.get_component(Occupation)
+            if occupation.occupation_type == occupation_type:
+                total_experience += occupation.years_held
+
+        return total_experience >= years_experience
 
     return fn
 

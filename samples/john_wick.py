@@ -24,6 +24,7 @@ from neighborly.core.archetypes import (
     BusinessArchetype,
     BusinessArchetypeLibrary,
     CharacterArchetype,
+    CharacterArchetypeLibrary,
 )
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
@@ -70,8 +71,7 @@ def assassin_character_archetype() -> CharacterArchetype:
             "adult": 30,
             "elder": 65,
         },
-        extra_components={Assassin: {}},
-    )
+    ).add(Assassin)
 
 
 def continental_hotel() -> BusinessArchetype:
@@ -145,7 +145,6 @@ def hire_assassin_event(
             )
 
     def execute_fn(world: World, event: LifeEvent):
-        event_log = world.get_resource(LifeEventLog)
         date_time = world.get_resource(SimDateTime)
         assassin = world.get_gameobject(event["Assassin"])
         assassin.get_component(Assassin).kills += 1
@@ -166,7 +165,9 @@ def hire_assassin_event(
         name="HireAssassin",
         probability=probability,
         roles=[
-            EventRoleType(name="Client", components=[GameCharacter, Adult]),
+            EventRoleType(
+                name="Client", components=[GameCharacter, Adult], binder_fn=bind_client
+            ),
             EventRoleType(name="Target", binder_fn=bind_target),
             EventRoleType(name="Assassin", components=[Assassin, Adult]),
         ],
@@ -179,14 +180,15 @@ class JohnWickPlugin(Plugin):
         LifeEventLibrary.add(hire_assassin_event(-30))
         LifeEventLibrary.add(become_an_assassin())
         BusinessArchetypeLibrary.add(continental_hotel())
+        # CharacterArchetypeLibrary.add(assassin_character_archetype())
 
 
 def main():
     sim = (
         SimulationBuilder(
             seed=random.randint(0, 999999),
-            world_gen_start=SimDateTime(year=1839, month=8, day=19),
-            world_gen_end=SimDateTime(year=1979, month=8, day=19),
+            world_gen_start=SimDateTime(year=1990, month=0, day=0),
+            world_gen_end=SimDateTime(year=2030, month=0, day=0),
         )
         .add_plugin(DefaultPlugin())
         .add_plugin(WeatherPlugin())

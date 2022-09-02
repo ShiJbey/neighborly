@@ -7,9 +7,10 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Typ
 
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.serializable import ISerializable
 
 
-class Town:
+class Town(ISerializable):
     """
     Simulated town where characters live
 
@@ -148,7 +149,7 @@ class Grid(Generic[_GT]):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "height": self._length,
+            "length": self._length,
             "width": self._width,
             "grid": [str(cell) for cell in self._grid],
         }

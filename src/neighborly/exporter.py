@@ -2,6 +2,7 @@ import json
 
 from neighborly.core.life_event import LifeEventLog
 from neighborly.core.relationship import RelationshipGraph
+from neighborly.core.serializable import ISerializable
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import LandGrid, Town
 from neighborly.simulation import Simulation
@@ -20,6 +21,11 @@ class NeighborlyJsonExporter:
                     f.to_dict()
                     for f in sim.world.get_resource(LifeEventLog).event_history
                 ],
+                "resources": {
+                    r.__class__.__name__: r.to_dict()
+                    for r in sim.world.get_all_resources()
+                    if isinstance(r, ISerializable)
+                },
                 "relationships": sim.world.get_resource(RelationshipGraph).to_dict(),
                 "town": sim.world.get_resource(Town).to_dict(),
                 "land": sim.world.get_resource(LandGrid).grid.to_dict(),

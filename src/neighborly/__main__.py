@@ -17,7 +17,6 @@ import neighborly
 import neighborly.core.utils.utilities as utilities
 from neighborly.core.life_event import LifeEventLog
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.server import NeighborlyServer
 from neighborly.simulation import Plugin, PluginSetupError, SimulationBuilder
 
 logger = logging.getLogger(__name__)
@@ -49,9 +48,20 @@ class NeighborlyConfig(BaseModel):
 
     Attributes
     ----------
-    simulation: SimulationConfig
-        Static configuration settings specifically for
-        the simulation instance
+    quiet: bool
+        Should the simulation not print to the console
+    seed: int
+        Seed used for random number generation
+    hours_per_timestep: str
+        How many hours elapse each simulation step
+    world_gen_start: str
+        Date when world generation starts (YYYY-MM-DD)
+    world_gen_end: str
+        Date when world generation ends (YYYY-MM-DD)
+    town_name: str
+        Name to give the generated town
+    town_size: Literal["small", "medium", "large"]
+        The size of th town to create
     plugins: List[Union[str, PluginConfig]]
         Names of plugins to load or names combined with
         instantiation parameters
@@ -186,9 +196,6 @@ def get_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable all printing to stdout",
     )
-    parser.add_argument(
-        "--server", default=False, action="store_true", help="Run web server UI"
-    )
     return parser
 
 
@@ -246,23 +253,19 @@ def main():
     if not config.quiet:
         sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
 
-    if args.server:
-        server = NeighborlyServer(sim)
-        server.run()
-    else:
-        sim.establish_setting()
+    sim.establish_setting()
 
-        if not args.no_emit:
-            output_path = (
-                args.output
-                if args.output
-                else f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
-            )
+    if not args.no_emit:
+        output_path = (
+            args.output
+            if args.output
+            else f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
+        )
 
-            with open(output_path, "w") as f:
-                data = NeighborlyJsonExporter().export(sim)
-                f.write(data)
-                logger.debug(f"Simulation data written to: '{output_path}'")
+        with open(output_path, "w") as f:
+            data = NeighborlyJsonExporter().export(sim)
+            f.write(data)
+            logger.debug(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":

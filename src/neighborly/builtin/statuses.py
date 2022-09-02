@@ -63,19 +63,10 @@ class Dependent(Status):
         super().__init__("Dependent", "This character is dependent on their parents")
 
 
-class Unemployed(Status):
-    __slots__ = "duration_days"
-
-    def __init__(self) -> None:
-        super().__init__(
-            "Unemployed",
-            "Character doesn't have a job",
-        )
-        self.duration_days: float = 0
-
-
 class Dating(Status):
     __slots__ = "duration_years", "partner_id", "partner_name"
+
+    remove_on_archive: bool = True
 
     def __init__(self, partner_id: int, partner_name: str) -> None:
         super().__init__(
@@ -88,7 +79,6 @@ class Dating(Status):
 
     def on_archive(self) -> None:
         """Remove status on this character and the partner"""
-        self.gameobject.remove_component(type(self))
         self.gameobject.world.get_gameobject(self.partner_id).remove_component(
             type(self)
         )
@@ -96,6 +86,8 @@ class Dating(Status):
 
 class Married(Status):
     __slots__ = "duration_years", "partner_id", "partner_name"
+
+    remove_on_archive: bool = True
 
     def __init__(self, partner_id: int, partner_name: str) -> None:
         super().__init__(
@@ -108,7 +100,6 @@ class Married(Status):
 
     def on_archive(self) -> None:
         """Remove status on this character and the partner"""
-        self.gameobject.remove_component(type(self))
         self.gameobject.world.get_gameobject(self.partner_id).remove_component(
             type(self)
         )
@@ -116,6 +107,8 @@ class Married(Status):
 
 class InRelationship(Status):
     __slots__ = "duration_years", "partner_id", "partner_name", "relationship_type"
+
+    remove_on_archive: bool = True
 
     def __init__(
         self, relationship_type: str, partner_id: int, partner_name: str
@@ -131,30 +124,15 @@ class InRelationship(Status):
 
     def on_archive(self) -> None:
         """Remove status on this character and the partner"""
-        self.gameobject.remove_component(type(self))
         self.gameobject.world.get_gameobject(self.partner_id).remove_component(
             type(self)
         )
 
 
-class BusinessOwner(Status):
-    __slots__ = "duration", "business_id", "business_name"
-
-    def __init__(self, business_id: int, business_name: str) -> None:
-        super().__init__(
-            "Business Owner",
-            "This character owns a business",
-        )
-        self.duration = 0.0
-        self.business_id: int = business_id
-        self.business_name: str = business_name
-
-    def on_archive(self) -> None:
-        """Remove status on this character and the partner"""
-        self.gameobject.remove_component(type(self))
-
-
 class Pregnant(Status):
+
+    remove_on_archive: bool = True
+
     def __init__(
         self, partner_name: str, partner_id: int, due_date: SimDateTime
     ) -> None:
@@ -162,10 +140,6 @@ class Pregnant(Status):
         self.partner_name: str = partner_name
         self.partner_id: int = partner_id
         self.due_date: SimDateTime = due_date
-
-    def on_archive(self) -> None:
-        """Remove status on this character and the partner"""
-        self.gameobject.remove_component(type(self))
 
 
 class Male(Status):
@@ -188,13 +162,11 @@ class CollegeGraduate(Status):
         super().__init__("College Graduate", "This character graduated from college.")
 
 
-class InTheWorkforce(Status):
+class Present(Status):
+
+    remove_on_archive: bool = True
+
     def __init__(self) -> None:
         super().__init__(
-            "In the Workforce",
-            "This Character is eligible for employment opportunities.",
+            "Present", "This character is in the town and active in the simulation"
         )
-
-    def on_archive(self) -> None:
-        """Remove status on this character and the partner"""
-        self.gameobject.remove_component(type(self))

@@ -15,9 +15,20 @@ class Status(Component, ABC):
         Brief description of what the status does
     """
 
-    __slots__ = "name", "description"
+    __slots__ = "_name", "_description"
 
     def __init__(self, name: str, description: str) -> None:
         super().__init__()
-        self.name: str = name
-        self.description: str = description
+        self._name: str = name
+        self._description: str = description
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    def __repr__(self) -> str:
+        return f"{self.name}({self.gameobject.id})"

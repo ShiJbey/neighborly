@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import List
 
 HOURS_PER_DAY = 24
@@ -19,15 +20,43 @@ _TIME_OF_DAY: List[str] = [
     *(["night"] * 5),  # (19:00-23:59)
 ]
 
-_DAYS_OF_WEEK: List[str] = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-]
+
+class Weekday(IntEnum):
+    Sunday = 0
+    Monday = 1
+    Tuesday = 2
+    Wednesday = 3
+    Thursday = 4
+    Friday = 5
+    Saturday = 6
+
+    def __str__(self) -> str:
+        return self.name
+
+    def abbr(self) -> str:
+        abbreviations = [
+            "M",
+            "T",
+            "W",
+            "R",
+            "F",
+            "S",
+            "U",
+        ]
+        return abbreviations[self.value()]
+
+    @classmethod
+    def from_abbr(cls, value: str) -> Weekday:
+        abbreviations = {
+            "M": Weekday.Monday,
+            "T": Weekday.Tuesday,
+            "W": Weekday.Wednesday,
+            "R": Weekday.Thursday,
+            "F": Weekday.Friday,
+            "S": Weekday.Saturday,
+            "U": Weekday.Sunday,
+        }
+        return abbreviations[value]
 
 
 def get_time_of_day(hour: int) -> str:
@@ -168,7 +197,7 @@ class SimDateTime:
 
     @property
     def weekday_str(self) -> str:
-        return _DAYS_OF_WEEK[self._weekday]
+        return str(Weekday(self._weekday))
 
     def copy(self) -> SimDateTime:
         return SimDateTime(
@@ -218,7 +247,17 @@ class SimDateTime:
     def __le__(self, other: SimDateTime) -> bool:
         if not isinstance(other, SimDateTime):
             raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        return self.to_iso_str() <= other.to_iso_str()
+
+    def __lt__(self, other: SimDateTime) -> bool:
+        if not isinstance(other, SimDateTime):
+            raise TypeError(f"expected TimeDelta object but was {type(other)}")
         return self.to_iso_str() < other.to_iso_str()
+
+    def __ge__(self, other: SimDateTime) -> bool:
+        if not isinstance(other, SimDateTime):
+            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        return self.to_iso_str() >= other.to_iso_str()
 
     def __gt__(self, other) -> bool:
         if not isinstance(other, SimDateTime):

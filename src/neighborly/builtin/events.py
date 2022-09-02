@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from neighborly.builtin.helpers import move_residence
 from neighborly.builtin.role_filters import is_single
 from neighborly.builtin.statuses import (
     Adult,
     Dating,
+    Deceased,
     Elder,
     Married,
     Pregnant,
+    Present,
     Retired,
-    Unemployed,
 )
-from neighborly.core.business import Occupation
+from neighborly.core.business import Occupation, Unemployed
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
-    EventResult,
     EventRole,
     EventRoleType,
     LifeEvent,
@@ -46,8 +46,9 @@ def become_friends_event(
         person_a_relationships = rel_graph.get_relationships(event["PersonA"])
         eligible_characters: List[GameObject] = []
         for rel in person_a_relationships:
+            other_character = world.get_gameobject(rel.target)
             if (
-                world.has_gameobject(rel.target)
+                other_character.has_component(Present)
                 and rel_graph.has_connection(rel.target, event["PersonA"])
                 and (
                     rel_graph.get_connection(rel.target, event["PersonA"]).friendship
@@ -59,13 +60,13 @@ def become_friends_event(
                 and not rel.has_tags(RelationshipTag.Friend)
                 and rel.friendship >= threshold
             ):
-                eligible_characters.append(world.get_gameobject(rel.target))
+                eligible_characters.append(other_character)
 
         if eligible_characters:
             return engine.rng.choice(eligible_characters)
         return None
 
-    def execute(world: World, event: LifeEvent) -> EventResult:
+    def execute(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
         rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
             RelationshipTag.Friend
@@ -73,12 +74,12 @@ def become_friends_event(
         rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
             RelationshipTag.Friend
         )
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="BecomeFriends",
         roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter]),
+            EventRoleType(name="PersonA", components=[GameCharacter, Present]),
             EventRoleType(name="PersonB", binder_fn=bind_potential_friend),
         ],
         execute_fn=execute,
@@ -128,7 +129,7 @@ def become_enemies_event(
         rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
             RelationshipTag.Enemy
         )
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="BecomeEnemies",
@@ -189,7 +190,7 @@ def start_dating_event(threshold: int = 25, probability: float = 0.8) -> LifeEve
                 partner_name=str(person_a.get_component(GameCharacter).name),
             )
         )
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="StartDating",
@@ -245,10 +246,10 @@ def dating_break_up_event(
         rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tags(
             RelationshipTag.SignificantOther
         )
+        world.get_resource(LifeEventLog).record_event(event)
 
         world.get_gameobject(event["PersonA"]).remove_component(Dating)
         world.get_gameobject(event["PersonB"]).remove_component(Dating)
-        return EventResult(generated_events=[event])
 
     return LifeEventType(
         name="DatingBreakUp",
@@ -289,7 +290,7 @@ def divorce_event(threshold: int = -25, probability: float = 0.5) -> LifeEventTy
 
         world.get_gameobject(event["PersonA"]).remove_component(Married)
         world.get_gameobject(event["PersonB"]).remove_component(Married)
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="GotDivorced",
@@ -359,7 +360,7 @@ def marriage_event(threshold: int = 35, probability: float = 0.5) -> LifeEventTy
                 partner_name=str(person_a.get_component(GameCharacter).name),
             )
         )
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="GotMarried",
@@ -384,7 +385,7 @@ def depart_due_to_unemployment() -> LifeEventType:
 
     def effect(world: World, event: LifeEvent):
         world.get_gameobject(event["Person"]).archive()
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="DepartTown",
@@ -424,7 +425,7 @@ def pregnancy_event(probability: float = 0.3) -> LifeEventType:
                 due_date=due_date,
             )
         )
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="GotPregnant",
@@ -471,7 +472,7 @@ def retire_event(probability: float = 0.4) -> LifeEventType:
         retiree = world.get_gameobject(event["Retiree"])
         retiree.remove_component(Occupation)
         retiree.add_component(Retired())
-        return EventResult(generated_events=[event])
+        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="Retire",
@@ -483,15 +484,18 @@ def retire_event(probability: float = 0.4) -> LifeEventType:
 
 def find_own_place_event(probability: float = 0.1) -> LifeEventType:
     def bind_potential_mover(world: World, event: LifeEvent):
-        eligible: List[int] = []
+        eligible: List[GameObject] = []
         for gid, (_, _, _, resident) in world.get_components(
             GameCharacter, Occupation, Adult, Resident
         ):
+            resident = cast(Resident, resident)
             residence = world.get_gameobject(resident.residence).get_component(
                 Residence
             )
             if gid not in residence.owners:
-                eligible.append(gid)
+                eligible.append(resident.gameobject)
+        if eligible:
+            return world.get_resource(NeighborlyEngine).rng.choice(eligible)
         return None
 
     def find_vacant_residences(world: World) -> List[Residence]:
@@ -512,27 +516,103 @@ def find_own_place_event(probability: float = 0.1) -> LifeEventType:
 
     def execute(world: World, event: LifeEvent):
         # Try to find somewhere to live
+        rel_graph = world.get_resource(RelationshipGraph)
         character = world.get_gameobject(event["Character"])
         vacant_residence = choose_random_vacant_residence(world)
         if vacant_residence:
             # Move into house with any dependent children
             move_residence(character.get_component(GameCharacter), vacant_residence)
+            world.get_resource(LifeEventLog).record_event(event)
 
         # Depart if no housing could be found
         else:
-            world.get_gameobject(event["Person"]).archive()
-            world.get_resource(LifeEventLog).record_event(
-                LifeEvent(
-                    "DepartTown",
-                    timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                    roles=[EventRole("Departee", event["Person"])],
-                )
+            depart = depart_event()
+
+            residence = world.get_gameobject(
+                character.get_component(Resident).residence
+            ).get_component(Residence)
+
+            depart.try_execute_event(world, Character=character)
+
+            # Have all spouses depart
+            # Allows for polygamy
+            spouses = rel_graph.get_all_relationships_with_tags(
+                character.id, RelationshipTag.Spouse
             )
-        return EventResult(generated_events=[event])
+            for rel in spouses:
+                spouse = world.get_gameobject(rel.target)
+                depart.try_execute_event(world, Character=spouse)
+
+            # Have all children living in the same house depart
+            children = rel_graph.get_all_relationships_with_tags(
+                character.id, RelationshipTag.Child
+            )
+            for rel in children:
+                child = world.get_gameobject(rel.target)
+                if child.id in residence.residents and child.id not in residence.owners:
+                    depart.try_execute_event(world, Character=child)
 
     return LifeEventType(
         name="FindOwnPlace",
         probability=probability,
         roles=[EventRoleType("Character", binder_fn=bind_potential_mover)],
+        execute_fn=execute,
+    )
+
+
+def depart_event() -> LifeEventType:
+    def execute(world: World, event: LifeEvent):
+        rel_graph = world.get_resource(RelationshipGraph)
+        character = world.get_gameobject(event["Character"])
+        character.remove_component(Present)
+        # Archive GameObject instead of removing it
+        character.archive()
+        world.get_resource(LifeEventLog).record_event(event)
+
+    return LifeEventType(
+        name="Depart",
+        roles=[EventRoleType("Character")],
+        execute_fn=execute,
+    )
+
+
+def die_of_old_age(probability: float = 0.8) -> LifeEventType:
+    def bind_character(world: World, event: LifeEvent):
+        eligible_characters: List[GameObject] = []
+        for _, (character, _) in world.get_components(GameCharacter, Present):
+            character = cast(GameCharacter, character)
+            if character.age >= character.character_def.lifespan:
+                eligible_characters.append(character.gameobject)
+
+        if eligible_characters:
+            return world.get_resource(NeighborlyEngine).rng.choice(eligible_characters)
+
+        return None
+
+    def execute(world: World, event: LifeEvent):
+        death_event().try_execute_event(
+            world, Deceased=world.get_gameobject(event["Character"])
+        )
+
+    return LifeEventType(
+        name="DieOfOldAge",
+        probability=probability,
+        roles=[EventRoleType("Character", binder_fn=bind_character)],
+        execute_fn=execute,
+    )
+
+
+def death_event() -> LifeEventType:
+    def execute(world: World, event: LifeEvent):
+        deceased = world.get_gameobject(event["Deceased"])
+        deceased.add_component(Deceased())
+        deceased.remove_component(Present)
+        # Archive GameObject instead of removing it
+        deceased.archive()
+        world.get_resource(LifeEventLog).record_event(event)
+
+    return LifeEventType(
+        name="Death",
+        roles=[EventRoleType("Deceased")],
         execute_fn=execute,
     )

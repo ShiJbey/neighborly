@@ -2,7 +2,15 @@ from dataclasses import dataclass
 
 import pytest
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.ecs import (
+    Component,
+    ComponentNotFoundError,
+    EntityArchetype,
+    GameObjectNotFoundError,
+    ISystem,
+    ResourceNotFoundError,
+    World,
+)
 
 
 class SimpleGameCharacter(Component):
@@ -45,6 +53,254 @@ class FakeResource:
     config_value: int = 5
 
 
+@dataclass
+class AnotherFakeResource:
+    config_value: int = 43
+
+
+class FakeSystemA(ISystem):
+    def process(self, *args, **kwargs):
+        for _, a in self.world.get_component(A):
+            a.value += 1
+
+
+#########################################
+# TEST WORLD GAMEOBJECT-RELATED METHODS
+#########################################
+
+
+def test_spawn_gameobject():
+    world = World()
+
+    adrian = world.spawn_gameobject(
+        [SimpleRoutine(False), SimpleGameCharacter("Adrian")]
+    )
+
+    assert world.ecs.entity_exists(adrian.id)
+
+    jamie = world.spawn_gameobject([SimpleRoutine(False), SimpleGameCharacter("Jamie")])
+
+    assert world.ecs.entity_exists(jamie.id)
+
+    park = world.spawn_gameobject([SimpleLocation()], name="Park")
+
+    assert world.ecs.entity_exists(park.id)
+
+    office_building = world.spawn_gameobject(
+        [SimpleLocation(18)], name="Office Building"
+    )
+
+    assert world.ecs.entity_exists(office_building.id)
+
+    assert jamie.get_component(SimpleGameCharacter).name == "Jamie"
+
+    assert len(world.get_component(SimpleGameCharacter)) == 2
+    assert len(world.get_component(SimpleLocation)) == 2
+
+    assert park.get_component(SimpleLocation).capacity == 999
+    assert office_building.get_component(SimpleLocation).capacity == 18
+
+    assert len(world.get_components(SimpleGameCharacter, SimpleRoutine)) == 2
+
+
+def test_spawn_archetype():
+    world = World()
+
+    archetype = (
+        EntityArchetype("testing")
+        .add(SimpleRoutine, free=False)
+        .add(SimpleGameCharacter, name="Astrid")
+    )
+
+    assert archetype.instances == 0
+
+    gameobject = world.spawn_archetype(archetype)
+
+    assert archetype.instances == 1
+
+    assert gameobject.get_component(SimpleRoutine).free == False
+    assert gameobject.get_component(SimpleGameCharacter).name == "Astrid"
+
+
+def test_get_gameobject():
+    world = World()
+    gameobject = world.spawn_gameobject()
+    assert world.get_gameobject(gameobject.id) == gameobject
+
+
+def test_get_gameobject_raises_exception():
+    with pytest.raises(GameObjectNotFoundError):
+        world = World()
+        world.get_gameobject(7)
+
+
+def test_has_gameobject():
+    world = World()
+    assert world.has_gameobject(1) == False
+    gameobject = world.spawn_gameobject()
+    assert world.has_gameobject(gameobject.id) == True
+
+
+def test_get_gameobjects():
+    world = World()
+    g1 = world.spawn_gameobject()
+    g2 = world.spawn_gameobject()
+    g3 = world.spawn_gameobject()
+    assert world.get_gameobjects() == [g1, g2, g3]
+
+
+def test_try_gameobject():
+    world = World()
+    assert world.try_gameobject(1) is None
+    world.spawn_gameobject()
+    assert world.try_gameobject(1) is not None
+
+
+def test_delete_gameobject():
+
+    world = World()
+
+    archetype = EntityArchetype("testing").add(A, value=4)
+
+    assert archetype.instances == 0
+
+    g1 = world.spawn_archetype(archetype)
+
+    assert archetype.instances == 1
+
+    # Make sure that the game objects exists
+    assert world.has_gameobject(g1.id) is True
+
+    world.delete_gameobject(g1.id)
+
+    # the GameObject should still exist and be removed
+    # at the start of the next step
+    assert world.has_gameobject(g1.id) is True
+
+    world.step()
+
+    # Now the gameobject should be deleted
+    assert world.has_gameobject(g1.id) is False
+
+    assert archetype.instances == 0
+
+    # Ensure that GameObjects that were always empty
+    # are properly removed
+    g2 = world.spawn_gameobject()
+    assert world.has_gameobject(g2.id) is True
+    world.delete_gameobject(g2.id)
+    world.step()
+    assert world.has_gameobject(g2.id) is False
+
+    # Ensure that GameObjects that are empty, but
+    # once held components are properly removed
+    g3 = world.spawn_gameobject([A()])
+    assert g3.has_component(A) is True
+    g3.remove_component(A)
+    assert g3.has_component(A) is False
+    assert world.has_gameobject(g3.id) is True
+    # When you remove the last component from an entity,
+    # it technically does not exist within esper anymore
+    assert world.ecs.entity_exists(g3.id) is False
+    world.delete_gameobject(g3.id)
+    world.step()
+    assert world.has_gameobject(g3.id) is False
+
+
+#########################################
+# TEST WORLD COMPONENT-RELATED METHODS
+#########################################
+
+
+def test_world_get_component():
+    world = World()
+    world.spawn_gameobject([A()])
+    world.spawn_gameobject([B()])
+    world.spawn_gameobject([A(), B()])
+
+    with_a = world.get_component(A)
+
+    assert list(zip(*with_a))[0] == (1, 3)
+
+    with_b = world.get_component(B)
+
+    assert list(zip(*with_b))[0] == (2, 3)
+
+
+def test_world_get_components():
+    world = World()
+    world.spawn_gameobject([A()])
+    world.spawn_gameobject([B()])
+    world.spawn_gameobject([A(), B()])
+
+    with_a = world.get_components(A)
+
+    assert list(zip(*with_a))[0] == (1, 3)
+
+    with_b = world.get_components(B)
+
+    assert list(zip(*with_b))[0] == (2, 3)
+
+    with_a_and_b = world.get_components(A, B)
+
+    assert list(zip(*with_b))[0] == (2, 3)
+
+
+#########################################
+# TEST WORLD SYSTEM-RELATED METHODS
+#########################################
+
+
+def test_world_add_get_system():
+    world = World()
+
+    assert world.get_system(FakeSystemA) is None
+    world.add_system(FakeSystemA())
+    assert world.get_system(FakeSystemA) is not None
+
+
+def test_world_remove_system():
+    world = World()
+
+    assert world.get_system(FakeSystemA) is None
+    world.add_system(FakeSystemA())
+    assert world.get_system(FakeSystemA) is not None
+    world.remove_system(FakeSystemA)
+    assert world.get_system(FakeSystemA) is None
+
+
+def test_world_step():
+    world = World()
+    world.add_system(FakeSystemA())
+
+    g1 = world.spawn_gameobject([A(1)])
+    g2 = world.spawn_gameobject([A(2)])
+    g3 = world.spawn_gameobject([A(3), B()])
+
+    world.step()
+
+    assert g1.get_component(A).value == 2
+    assert g2.get_component(A).value == 3
+    assert g3.get_component(A).value == 4
+
+
+#########################################
+# TEST WORLD RESOURCE-RELATED METHODS
+#########################################
+
+
+def test_get_all_resources():
+    world = World()
+
+    fake_resource = FakeResource()
+    another_fake_resource = AnotherFakeResource
+
+    world.add_resource(fake_resource)
+    world.add_resource(another_fake_resource)
+
+    assert world.get_all_resources() == [fake_resource, another_fake_resource]
+
+
 def test_has_resource():
     world = World()
     assert world.has_resource(FakeResource) is False
@@ -56,11 +312,19 @@ def test_get_resource():
     world = World()
     fake_resource = FakeResource()
     assert world.has_resource(FakeResource) is False
-    # This should throw a key error when not present
-    with pytest.raises(KeyError):
-        assert world.get_resource(FakeResource)
     world.add_resource(fake_resource)
     assert world.get_resource(FakeResource) == fake_resource
+
+
+def test_get_resource_raises_exception():
+    """
+    Test that the .get_resource(...) method throws
+    a ResourceNotFoundError when attempting to get
+    a resource that does not exist in the world instance.
+    """
+    world = World()
+    with pytest.raises(ResourceNotFoundError):
+        assert world.get_resource(FakeResource)
 
 
 def test_remove_resource():
@@ -69,9 +333,27 @@ def test_remove_resource():
     assert world.has_resource(FakeResource) is True
     world.remove_resource(FakeResource)
     assert world.has_resource(FakeResource) is False
-    # This should throw a key error when not present
-    with pytest.raises(KeyError):
+
+
+def test_remove_resource_raises_exception():
+    """
+    Test that .remove_resource(...) method throws a
+    ResourceNotFoundError when attempting to remove a
+    resource that does not exist in the World instance.
+    """
+    world = World()
+    with pytest.raises(ResourceNotFoundError):
         world.remove_resource(FakeResource)
+
+
+def test_try_resource():
+    world = World()
+
+    assert world.try_resource(FakeResource) is None
+
+    world.add_resource(FakeResource())
+
+    assert world.try_resource(FakeResource) is not None
 
 
 def test_add_resource():
@@ -82,19 +364,53 @@ def test_add_resource():
     assert world.has_resource(FakeResource) is True
 
 
-def test_gameobject() -> None:
+#########################################
+# TEST GAMEOBJECT METHODS
+#########################################
+
+
+def test_add_component():
     world = World()
-    adrian = world.spawn_gameobject(SimpleRoutine(False), SimpleGameCharacter("Adrian"), name="Adrian")
-    jamie = world.spawn_gameobject(SimpleRoutine(False), SimpleGameCharacter("Jamie"), name="Jamie")
-    park = world.spawn_gameobject(SimpleLocation(), name="Park")
-    office_building = world.spawn_gameobject(SimpleLocation(18), name="Office Building")
+    g1 = world.spawn_gameobject()
+    assert g1.has_component(A) is False
+    g1.add_component(A())
+    assert g1.has_component(A) is True
 
-    assert jamie.get_component(SimpleGameCharacter).name == "Jamie"
 
-    assert len(world.get_component(SimpleGameCharacter)) == 2
-    assert len(world.get_component(SimpleLocation)) == 2
+def test_get_component():
+    world = World()
+    a_component = A()
+    g1 = world.spawn_gameobject([a_component])
+    assert g1.get_component(A) == a_component
 
-    assert park.get_component(SimpleLocation).capacity == 999
-    assert office_building.get_component(SimpleLocation).capacity == 18
 
-    assert len(world.get_components(SimpleGameCharacter, SimpleRoutine)) == 2
+def test_get_component_raises_exception():
+    with pytest.raises(ComponentNotFoundError):
+        world = World()
+        g1 = world.spawn_gameobject()
+        g1.get_component(A)
+        g1.get_component(B)
+
+
+def test_remove_component():
+    world = World()
+    g1 = world.spawn_gameobject([A(), B()])
+    assert g1.has_component(A) is True
+    g1.remove_component(A)
+    assert g1.has_component(A) is False
+
+
+def test_remove_component_raises_exception():
+    with pytest.raises(ComponentNotFoundError):
+        world = World()
+        g1 = world.spawn_gameobject()
+        g1.remove_component(A)
+        g1.remove_component(B)
+
+
+def test_try_component():
+    world = World()
+    g1 = world.spawn_gameobject()
+    assert g1.try_component(A) is None
+    g1.add_component(A())
+    assert g1.try_component(A) is not None

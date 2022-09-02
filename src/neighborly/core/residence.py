@@ -12,6 +12,8 @@ class Residence(Component):
 
     __slots__ = "owners", "former_owners", "residents", "former_residents", "_vacant"
 
+    remove_on_archive: bool = True
+
     def __init__(self) -> None:
         super().__init__()
         self.owners: OrderedSet[int] = OrderedSet([])
@@ -19,9 +21,6 @@ class Residence(Component):
         self.residents: OrderedSet[int] = OrderedSet([])
         self.former_residents: OrderedSet[int] = OrderedSet([])
         self._vacant: bool = True
-
-    def on_archive(self) -> None:
-        self.gameobject.remove_component(type(self))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -70,6 +69,8 @@ class Resident(Component):
 
     __slots__ = "residence"
 
+    remove_on_archive: bool = True
+
     def __init__(self, residence: int) -> None:
         super().__init__()
         self.residence: int = residence
@@ -80,6 +81,3 @@ class Resident(Component):
         residence.remove_resident(self.gameobject.id)
         if residence.is_owner(self.gameobject.id):
             residence.remove_owner(self.gameobject.id)
-
-    def on_archive(self) -> None:
-        self.gameobject.remove_component(type(self))
