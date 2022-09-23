@@ -1,3 +1,5 @@
+from pprint import pformat
+
 import pygame
 import pygame_gui
 
@@ -98,3 +100,31 @@ class PlaceInfoWindow(pygame_gui.elements.UIWindow):
             pygame.event.post(window_selected_event)
 
         return handled
+
+
+class GameObjectInfoWindow(pygame_gui.elements.UIWindow):
+    def __init__(
+        self,
+        gameobject: GameObject,
+        manager: pygame_gui.UIManager,
+    ):
+        super().__init__(
+            rect=pygame.Rect(0, 0, 320, 240),
+            manager=manager,
+            window_display_title=str(gameobject),
+            element_id=f"window_{gameobject.id}",
+            resizable=True,
+        )
+        self.text = pygame_gui.elements.UITextBox(
+            pformat(gameobject.to_dict()).replace("\n", "<br>"),
+            relative_rect=pygame.Rect(0, 0, 320, 240),
+            anchors={
+                "left": "left",
+                "right": "right",
+                "top": "top",
+                "bottom": "bottom",
+            },
+            manager=manager,
+            container=self,
+            parent_element=self,
+        )

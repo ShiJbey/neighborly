@@ -15,8 +15,8 @@ from neighborly.core.town import LandGrid
 from neighborly.plugins.default_plugin import DefaultPlugin
 from neighborly.plugins.talktown import TalkOfTheTownPlugin
 from neighborly.simulation import Simulation, SimulationBuilder
-from samples.pygame.input_handler import InputHandler
-from samples.pygame.settings import (
+from input_handler import InputHandler
+from settings import (
     BACKGROUND_COLOR,
     BUILDING_COLORS,
     BUILDING_SIZE,
@@ -30,7 +30,7 @@ from samples.pygame.settings import (
     WINDOW_WIDTH,
     WORLD_SEED,
 )
-from samples.pygame.ui_windows import PlaceInfoWindow
+from ui_windows import GameObjectInfoWindow
 
 
 @dataclass
@@ -51,8 +51,9 @@ class BoxSprite(pygame.sprite.Sprite):
         height: int,
         x: int = 0,
         y: int = 0,
+        *groups: pygame.sprite.Group,
     ) -> None:
-        super().__init__()
+        super().__init__(*groups)
         self.image = pygame.Surface([width, height])
         self.image.fill(color)
         self.rect = self.image.get_rect()
@@ -66,9 +67,9 @@ class BuildingSprite(pygame.sprite.Sprite):
     def __init__(
         self,
         gameobject: GameObject,
-        group: Optional[pygame.sprite.Group],
+        *groups: pygame.sprite.Group,
     ) -> None:
-        super().__init__(group)
+        super().__init__(*groups)
         self.gameobject = gameobject
         self.image = pygame.Surface((BUILDING_SIZE, BUILDING_SIZE))
         self.image.fill(
@@ -89,7 +90,7 @@ class BuildingSprite(pygame.sprite.Sprite):
 class CameraSpriteGroup(pygame.sprite.Group):
     def __init__(
         self,
-        surface: pygame.Surface,
+        surface: pygame.surface.Surface,
         *sprites: Union[BuildingSprite, Sequence[BuildingSprite]],
     ) -> None:
         super().__init__(*sprites)
@@ -127,7 +128,7 @@ class Scene(ABC):
 
     def __init__(self) -> None:
         self.next: Scene = self
-        self.display_surface: pygame.Surface = pygame.display.get_surface()
+        self.display_surface: pygame.surface.Surface = pygame.display.get_surface()
 
     @abstractmethod
     def update(self, delta_time: float) -> None:
@@ -159,7 +160,7 @@ class Camera:
 
     __slots__ = "position", "speed"
 
-    def __init__(self, position: pygame.math.Vector2 = None) -> None:
+    def __init__(self, position: Optional[pygame.math.Vector2] = None) -> None:
         self.position: pygame.math.Vector2 = (
             position if position else pygame.math.Vector2()
         )
@@ -375,6 +376,7 @@ class GameScene(Scene):
         self.info_panel_text.set_text(
             f"Town: {self.sim.town.name}, Date: {self.sim.time.to_date_str()}"
         )
+        self.ui_manager.update(delta_time)
 
     def _setup_input_handlers(self) -> None:
         self.input_handler.on(pygame_gui.UI_BUTTON_PRESSED, self._handle_button_click)
@@ -430,6 +432,7 @@ class GameScene(Scene):
             ):
                 pprint(building_sprite.gameobject.to_dict())
                 # PlaceInfoWindow(building_sprite.gameobject, self.sim, self.ui_manager)
+                GameObjectInfoWindow(building_sprite.gameobject, self.ui_manager)
                 return
 
     def _toggle_simulation_running(self, event) -> None:
@@ -440,6 +443,8 @@ class GameScene(Scene):
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         """Handle PyGame events while active"""
+        if self.ui_manager.process_events(event):
+            return True
         self.input_handler.emit(event)
         return True
 
@@ -468,7 +473,7 @@ class Game:
         # Need to initialize pygame before anything else
         pygame.init()
         self.config: GameConfig = config
-        self.window: pygame.Surface = pygame.display.set_mode(
+        self.window: pygame.surface.Surface = pygame.display.set_mode(
             (config.width, config.height)
         )
         pygame.display.set_caption("Neighborly PyGame Sample")

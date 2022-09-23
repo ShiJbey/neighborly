@@ -26,7 +26,7 @@ class PluginConfig(BaseModel):
     """
     Settings for loading and constructing a plugin
 
-    Attributes
+    Fields
     ----------
     name: str
         Name of the plugin to load
@@ -46,7 +46,7 @@ class NeighborlyConfig(BaseModel):
     """
     Static configuration setting for the Neighborly
 
-    Attributes
+    Fields
     ----------
     quiet: bool
         Should the simulation not print to the console
@@ -70,7 +70,7 @@ class NeighborlyConfig(BaseModel):
     """
 
     quiet: bool = False
-    seed: int
+    seed: Union[int, str]
     hours_per_timestep: int
     world_gen_start: str
     world_gen_end: str

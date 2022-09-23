@@ -5,6 +5,7 @@ import logging
 import math
 from typing import Callable, List, Optional, Protocol, Set, Tuple, Type, cast
 
+from neighborly.builtin.events import depart_event
 from neighborly.builtin.helpers import (
     generate_child_character,
     generate_young_adult_character,
@@ -37,10 +38,14 @@ from neighborly.core.building import Building
 from neighborly.core.business import (
     Business,
     BusinessStatus,
+    ClosedForBusiness,
     InTheWorkforce,
     Occupation,
     OccupationTypeLibrary,
+    OpenForBusiness,
+    PendingOpening,
     Unemployed,
+    WorkHistory,
     start_job,
 )
 from neighborly.core.character import CharacterName, GameCharacter
@@ -55,10 +60,17 @@ from neighborly.core.relationship import (
     RelationshipGraph,
     RelationshipTag,
 )
-from neighborly.core.residence import Residence
+from neighborly.core.residence import Residence, Resident
 from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import Routine
-from neighborly.core.time import DAYS_PER_YEAR, HOURS_PER_YEAR, SimDateTime, TimeDelta
+from neighborly.core.time import (
+    DAYS_PER_YEAR,
+    HOURS_PER_DAY,
+    HOURS_PER_YEAR,
+    SimDateTime,
+    TimeDelta,
+    Weekday,
+)
 from neighborly.core.town import LandGrid, Town
 
 logger = logging.getLogger(__name__)
@@ -198,14 +210,16 @@ class FindBusinessOwnerSystem(ISystem):
         event_log = self.world.get_resource(LifeEventLog)
         date = self.world.get_resource(SimDateTime)
 
-        for _, (business, _) in self.world.get_components(Business, Building):
+        for _, (business, _, _) in self.world.get_components(
+            Business, PendingOpening, Building
+        ):
             business = cast(Business, business)
 
             if not business.needs_owner():
-                continue
-
-            if business.status == BusinessStatus.ClosedForBusiness:
-                continue
+                # This business is free to hire employees and does not need to hire an
+                # owner first
+                business.gameobject.add_component(OpenForBusiness())
+                business.gameobject.remove_component(PendingOpening)
 
             result = OccupationTypeLibrary.get(business.owner_type).fill_role(
                 self.world, business
@@ -257,14 +271,55 @@ class UnemploymentSystem(ISystem):
 
     def process(self, *args, **kwargs):
         date = self.world.get_resource(SimDateTime)
-        for _, (unemployed, _) in self.world.get_components(Unemployed, Present):
+        rel_graph = self.world.get_resource(RelationshipGraph)
+        for gid, (unemployed, _) in self.world.get_components(Unemployed, Present):
             # Convert delta time from hours to days
             unemployed.duration_days += date.delta_time / 24
 
             # Trigger the DepartAction and cast this character
             # as the departee
             if unemployed.duration_days >= self.days_to_departure:
-                pass  # TODO: Add DepartAction constructor and execute
+                spouses = rel_graph.get_all_relationships_with_tags(
+                    gid, RelationshipTag.Spouse
+                )
+                if any(
+                    [
+                        self.world.get_gameobject(rel.target).has_component(Occupation)
+                        for rel in spouses
+                    ]
+                ):
+                    continue
+                else:
+                    depart = depart_event()
+
+                    residence = self.world.get_gameobject(
+                        unemployed.gameobject.get_component(Resident).residence
+                    ).get_component(Residence)
+
+                    depart.try_execute_event(
+                        self.world, Character=unemployed.gameobject
+                    )
+
+                    # Have all spouses depart
+                    # Allows for polygamy
+                    spouses = rel_graph.get_all_relationships_with_tags(
+                        unemployed.gameobject.id, RelationshipTag.Spouse
+                    )
+                    for rel in spouses:
+                        spouse = self.world.get_gameobject(rel.target)
+                        depart.try_execute_event(self.world, Character=spouse)
+
+                    # Have all children living in the same house depart
+                    children = rel_graph.get_all_relationships_with_tags(
+                        unemployed.gameobject.id, RelationshipTag.Child
+                    )
+                    for rel in children:
+                        child = self.world.get_gameobject(rel.target)
+                        if (
+                            child.id in residence.residents
+                            and child.id not in residence.owners
+                        ):
+                            depart.try_execute_event(self.world, Character=child)
 
 
 class RelationshipStatusSystem(ISystem):
@@ -289,14 +344,9 @@ class FindEmployeesSystem(ISystem):
         date = self.world.get_resource(SimDateTime)
         event_log = self.world.get_resource(LifeEventLog)
 
-        for _, (business, _) in self.world.get_components(Business, Building):
-            # You need to hire an owner before hiring additional employees
-            if business.needs_owner():
-                continue
-
-            if business.status == BusinessStatus.ClosedForBusiness:
-                continue
-
+        for _, (business, _, _) in self.world.get_components(
+            Business, OpenForBusiness, Building
+        ):
             open_positions = business.get_open_positions()
 
             for position in open_positions:
@@ -694,6 +744,7 @@ class BuildBusinessSystem(ISystem):
 
         # Give the business a building
         business.add_component(Building(building_type="commercial"))
+        business.add_component(PendingOpening())
 
 
 class SpawnResidentSystem(ISystem):
@@ -978,7 +1029,9 @@ class BusinessUpdateSystem(ISystem):
                     business.gameobject.archive()
 
                 # Open/Close based on operating hours
-                business.is_open = business.operating_hours.get(date.weekday_str)
+                business.is_open = business.operating_hours.get(
+                    Weekday[date.weekday_str]
+                )
 
 
 class CharacterAgingSystem(ISystem):
@@ -1094,10 +1147,15 @@ class PregnancySystem(ISystem):
         rel_graph = self.world.get_resource(RelationshipGraph)
         event_logger = self.world.get_resource(LifeEventLog)
 
-        for _, (pregnancy, _) in self.world.get_components(Pregnant, Present):
-            character = pregnancy.gameobject.get_component(GameCharacter)
+        for _, (character, pregnancy, _) in self.world.get_components(
+            GameCharacter, Pregnant, Present
+        ):
 
-            if current_date > pregnancy.due_date:
+            # Cast for the type-checker
+            character = cast(GameCharacter, character)
+            pregnancy = cast(Pregnant, pregnancy)
+
+            if current_date >= pregnancy.due_date:
                 continue
 
             assert character.gameobject.archetype is not None
@@ -1215,3 +1273,133 @@ class PregnancySystem(ISystem):
             #     character.gameobject.remove_component(Occupation)
 
             # TODO: Birthing parent should also leave their job
+
+
+class PendingOpeningSystem(ISystem):
+
+    __slots__ = "days_before_demolishing", "last_update"
+
+    def __init__(self, days_before_demolishing: int = 30) -> None:
+        super().__init__()
+        self.days_before_demolishing: int = days_before_demolishing
+        self.last_update: SimDateTime = SimDateTime()
+
+    def process(self, *args, **kwargs):
+        date = self.world.get_resource(SimDateTime)
+        elapsed_hours = (date - self.last_update).total_hours
+        self.last_update = date.copy()
+
+        for _, pending_opening in self.world.get_component(PendingOpening):
+            pending_opening.duration += elapsed_hours / HOURS_PER_DAY
+
+            if pending_opening.duration >= self.days_before_demolishing:
+                demolish_building(pending_opening.gameobject)
+
+
+class OpenForBusinessSystem(ISystem):
+
+    __slots__ = "last_update"
+
+    def __init__(self, days_before_demolishing: int = 30) -> None:
+        super().__init__()
+        self.days_before_demolishing: int = days_before_demolishing
+        self.last_update: SimDateTime = SimDateTime()
+
+    def process(self, *args, **kwargs):
+        date = self.world.get_resource(SimDateTime)
+        elapsed_hours = (date - self.last_update).total_hours
+        self.last_update = date.copy()
+
+        rng = self.world.get_resource(NeighborlyEngine).rng
+
+        for _, (business, open_for_business) in self.world.get_components(
+            Business, OpenForBusiness
+        ):
+            # Cast to help the type-checker
+            business = cast(Business, business)
+            open_for_business = cast(OpenForBusiness, open_for_business)
+
+            # Increment the amount of time that the business has been open
+            open_for_business.duration += elapsed_hours / HOURS_PER_DAY
+
+            # Calculate probability of going out of business
+            if rng.random() < 0.3:
+                close_for_business(business)
+
+
+class ClosedForBusinessSystem(ISystem):
+
+    __slots__ = "days_before_demolishing", "last_update"
+
+    def __init__(self, days_before_demolishing: int = 30) -> None:
+        super().__init__()
+        self.days_before_demolishing: int = days_before_demolishing
+        self.last_update: SimDateTime = SimDateTime()
+
+    def process(self, *args, **kwargs):
+        date = self.world.get_resource(SimDateTime)
+        elapsed_hours = (date - self.last_update).total_hours
+        self.last_update = date.copy()
+        for _, out_of_business in self.world.get_component(ClosedForBusiness):
+            out_of_business.duration += elapsed_hours / HOURS_PER_DAY
+
+            if out_of_business.duration >= self.days_before_demolishing:
+                demolish_building(out_of_business.gameobject)
+
+
+###############################
+# HELPERS
+###############################
+
+
+def demolish_building(gameobject: GameObject) -> None:
+    """Remove the building component and free the land grid space"""
+    world = gameobject.world
+    gameobject.remove_component(Building)
+    position = gameobject.get_component(Position2D)
+    land_grid = world.get_resource(LandGrid)
+    land_grid.free_space((int(position.x), int(position.y)))
+
+
+def close_for_business(business: Business) -> None:
+    """Close a business and remove all employees and the owner"""
+    world = business.gameobject.world
+
+    business.gameobject.add_component(ClosedForBusiness())
+
+    for employee in business.get_employees():
+        layoff_employee(business, world.get_gameobject(employee))
+
+    if business.owner_type is not None:
+        layoff_employee(business, world.get_gameobject(business.owner))
+        business.owner = None
+
+
+def layoff_employee(business: Business, employee: GameObject) -> None:
+    """Remove an employee"""
+    world = business.gameobject.world
+    date = world.get_resource(SimDateTime)
+    business.remove_employee(employee.id)
+
+    occupation = employee.get_component(Occupation)
+
+    fired_event = LifeEvent(
+        name="LaidOffFromJob",
+        timestamp=date.to_date_str(),
+        roles=[
+            EventRole("Business", business.gameobject.id),
+            EventRole("Character", employee.id),
+        ],
+    )
+
+    world.get_resource(LifeEventLog).record_event(fired_event)
+
+    employee.get_component(WorkHistory).add_entry(
+        occupation_type=occupation.occupation_type,
+        business=business.gameobject.id,
+        start_date=occupation.start_date,
+        end_date=date.copy(),
+        reason_for_leaving=fired_event,
+    )
+
+    employee.remove_component(Occupation)

@@ -5,7 +5,15 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Module",
+      "name": "Sample: Talk of the Town",
+      "type": "python",
+      "request": "launch",
+      "program": "samples/talktown.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Module - Neighborly",
       "type": "python",
       "request": "launch",
       "module": "neighborly",

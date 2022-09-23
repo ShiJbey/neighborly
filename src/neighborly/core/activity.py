@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-import numpy as np
+import numpy.typing as npt
 
 from neighborly.core.personal_values import PersonalValues
 
@@ -26,7 +26,7 @@ class Activity:
     def __init__(self, name: str, trait_names: List[str]) -> None:
         self.name: str = name
         self.trait_names: List[str] = trait_names
-        self.personal_values: np.array = PersonalValues(
+        self.personal_values: npt.NDArray = PersonalValues(
             {name: 1 for name in self.trait_names}, default=0
         ).traits
 

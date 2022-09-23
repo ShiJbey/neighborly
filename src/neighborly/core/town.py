@@ -188,10 +188,6 @@ class LandGrid:
         """Return the positions that are unoccupied in town"""
         return self._unoccupied
 
-    def get_num_vacancies(self) -> int:
-        """Return number of vacant spaces"""
-        return len(self._unoccupied)
-
     def has_vacancy(self) -> bool:
         """Returns True if there are empty spaces available in the town"""
         return bool(self._unoccupied)

@@ -1,19 +1,28 @@
 from neighborly.core.town import LandGrid
 
 
-def test_town_layout():
-    layout = LandGrid((5, 4))
+def test_land_grid():
+    land_grid = LandGrid((5, 3))
 
-    assert layout.grid.shape == (5, 4)
-    assert layout.has_vacancy() is True
-    space = layout.reserve_space(0)
-    assert space == (0, 0)
+    assert land_grid.grid.shape == (5, 3)
 
-    for i in range(19):
-        layout.reserve_space(0)
+    assert land_grid.has_vacancy()
 
-    assert layout.has_vacancy() is False
+    assert len(land_grid.get_vacancies()) == 15
 
-    layout.free_space((3, 3))
+    land_grid.reserve_space((2, 2), 8080)
 
-    assert layout.has_vacancy() is True
+    assert len(land_grid.get_vacancies()) == 14
+
+    for pos in land_grid.get_vacancies():
+        land_grid.reserve_space(pos, 8080)
+
+    assert land_grid.has_vacancy() is False
+
+    assert len(land_grid.get_vacancies()) == 0
+
+    land_grid.free_space((2, 2))
+
+    assert land_grid.has_vacancy() is True
+
+    assert len(land_grid.get_vacancies()) == 1

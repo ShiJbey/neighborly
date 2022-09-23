@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 from neighborly.builtin.statuses import Present
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.ecs import Component, GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.routine import (
@@ -19,7 +19,7 @@ from neighborly.core.routine import (
     time_str_to_int,
 )
 from neighborly.core.status import Status
-from neighborly.core.time import SimDateTime, Weekday
+from neighborly.core.time import HOURS_PER_DAY, SimDateTime, Weekday
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +243,10 @@ class Occupation(Component):
     def occupation_type(self) -> str:
         return self._occupation_type
 
+    @property
+    def start_date(self) -> SimDateTime:
+        return self._start_date
+
     def increment_years_held(self, years: float) -> None:
         self._years_held += years
 
@@ -397,6 +401,42 @@ class BusinessStatus(Enum):
     PendingOpening = 0
     OpenForBusiness = 1
     ClosedForBusiness = 2
+
+
+class ClosedForBusiness(Status):
+
+    __slots__ = "duration"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Closed For Business",
+            "This business is no longer open and nobody works here.",
+        )
+        self.duration: float = 0.0
+
+
+class OpenForBusiness(Status):
+
+    __slots__ = "duration"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Open For Business",
+            "This business open for business and people can travel here.",
+        )
+        self.duration: float = 0.0
+
+
+class PendingOpening(Status):
+
+    __slots__ = "duration"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Pending Opening",
+            "This business is built, but has no owner.",
+        )
+        self.duration: float = 0.0
 
 
 class Business(Component):
