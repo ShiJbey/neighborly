@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from asyncio.log import logger
-from collections import defaultdict
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Protocol, Type
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Protocol, Type
 
 from neighborly.core.ecs import Component, GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
@@ -161,7 +160,7 @@ class EventRoleType(AbstractEventRoleType):
     def __init__(
         self,
         name: str,
-        components: Optional[List[Type[Component]]] = None,
+        components: List[Type[Component]] = None,
         filter_fn: Optional[RoleFilterFn] = None,
         binder_fn: Optional[RoleBinderFn] = None,
     ) -> None:
@@ -296,10 +295,47 @@ class LifeEventType:
         return life_event
 
     def execute(self, world: World, event: LifeEvent) -> None:
-        """Execute the effect function for this event"""
-        rng = world.get_resource(NeighborlyEngine).rng
-        if self.execute_fn and rng.random() < self.probability:
-            self.execute_fn(world, event)
+        return
+
+
+@dataclass
+class EventResult:
+    generated_events: List[LifeEvent] = field(default_factory=list)
+
+
+class LifeEventType(AbstractLifeEventType):
+    """
+    User-facing class for implementing behaviors around life events
+
+    This is adapted from:
+    https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
+
+    Attributes
+    ----------
+    name: str
+        Name of the LifeEventType and the LifeEvent it instantiates
+    roles: List[EventRoleType]
+        The roles that need to be cast for this event to be executed
+    probability: int (default: 1)
+        The relative frequency of this event compared to other events
+    execute_fn: Callable[..., None]
+        Function that executes changes to the world state base don the event
+    """
+
+    __slots__ = "execute_fn"
+
+    def __init__(
+        self,
+        name: str,
+        roles: List[EventRoleType],
+        probability: float = 1.0,
+        execute_fn: Optional[LifeEventEffectFn] = None,
+    ) -> None:
+        super().__init__(name, roles, probability)
+        self.execute_fn: Optional[LifeEventEffectFn] = execute_fn
+
+    def execute(self, world: World, event: LifeEvent) -> None:
+        self.execute_fn(world, event)
 
     def try_execute_event(self, world: World, **kwargs: GameObject) -> bool:
         """Execute the given LifeEventType if successfully instantiated"""
