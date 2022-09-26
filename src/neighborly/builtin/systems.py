@@ -51,7 +51,7 @@ from neighborly.core.business import (
 from neighborly.core.character import CharacterName, GameCharacter
 from neighborly.core.ecs import Component, GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import EventRole, LifeEvent, LifeEventLog
+from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.location import Location
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.position import Position2D
@@ -220,6 +220,7 @@ class FindBusinessOwnerSystem(ISystem):
                 # owner first
                 business.gameobject.add_component(OpenForBusiness())
                 business.gameobject.remove_component(PendingOpening)
+                continue
 
             result = OccupationTypeLibrary.get(business.owner_type).fill_role(
                 self.world, business
@@ -240,8 +241,8 @@ class FindBusinessOwnerSystem(ISystem):
                         name="BecameBusinessOwner",
                         timestamp=date.to_iso_str(),
                         roles=[
-                            EventRole("Business", business.gameobject.id),
-                            EventRole("Owner", candidate.id),
+                            Role("Business", business.gameobject.id),
+                            Role("Owner", candidate.id),
                         ],
                         position=business.owner_type,
                     )
@@ -366,8 +367,8 @@ class FindEmployeesSystem(ISystem):
                             "HiredAtBusiness",
                             date.to_iso_str(),
                             roles=[
-                                EventRole("Business", business.gameobject.id),
-                                EventRole("Employee", candidate.id),
+                                Role("Business", business.gameobject.id),
+                                Role("Employee", candidate.id),
                             ],
                             position=position,
                         )
@@ -973,7 +974,7 @@ class SpawnResidentSystem(ISystem):
                     name="MoveIntoTown",
                     timestamp=date.to_iso_str(),
                     roles=[
-                        EventRole("resident", r.id)
+                        Role("resident", r.id)
                         for r in [character, spouse, *children]
                         if r is not None
                     ],
@@ -1076,7 +1077,7 @@ class CharacterAgingSystem(ISystem):
                         name="BecomeTeen",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            EventRole("Character", character.gameobject.id),
+                            Role("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -1098,7 +1099,7 @@ class CharacterAgingSystem(ISystem):
                         name="BecomeYoungAdult",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            EventRole("Character", character.gameobject.id),
+                            Role("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -1113,7 +1114,7 @@ class CharacterAgingSystem(ISystem):
                         name="BecomeAdult",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            EventRole("Character", character.gameobject.id),
+                            Role("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -1129,7 +1130,7 @@ class CharacterAgingSystem(ISystem):
                         name="BecomeElder",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            EventRole("Character", character.gameobject.id),
+                            Role("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -1259,9 +1260,9 @@ class PregnancySystem(ISystem):
                     name="ChildBirth",
                     timestamp=pregnancy.due_date.to_iso_str(),
                     roles=[
-                        EventRole("Parent", character.gameobject.id),
-                        EventRole("Parent", pregnancy.partner_id),
-                        EventRole("Child", baby.id),
+                        Role("Parent", character.gameobject.id),
+                        Role("Parent", pregnancy.partner_id),
+                        Role("Child", baby.id),
                     ],
                 )
             )
@@ -1387,8 +1388,8 @@ def layoff_employee(business: Business, employee: GameObject) -> None:
         name="LaidOffFromJob",
         timestamp=date.to_date_str(),
         roles=[
-            EventRole("Business", business.gameobject.id),
-            EventRole("Character", employee.id),
+            Role("Business", business.gameobject.id),
+            Role("Character", employee.id),
         ],
     )
 

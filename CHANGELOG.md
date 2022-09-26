@@ -9,6 +9,14 @@ incrementing to a completely new version number.
 
 ## [Unreleased]
 
+### Added
+- **Neighborly Viewer** GUI application for inspecting
+  and stepping through simulation data
+- `pyqt6` as an application dependency
+
+### Fixed
+- `setup.cfg` did not properly include data files in the wheel build.
+
 ## [0.9.4]
 ### Added
 * `Building` class to identify when a business currently exists within the town vs.

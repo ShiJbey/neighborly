@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional, cast
 
-from neighborly.builtin.helpers import move_residence
+from neighborly.builtin.helpers import constant_probability, move_residence
 from neighborly.builtin.role_filters import is_single
 from neighborly.builtin.statuses import (
     Adult,
@@ -19,11 +19,10 @@ from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
-    EventRole,
-    EventRoleType,
     LifeEvent,
     LifeEventLog,
     LifeEventType,
+    RoleType,
     join_filters,
 )
 from neighborly.core.relationship import RelationshipGraph, RelationshipTag
@@ -79,11 +78,11 @@ def become_friends_event(
     return LifeEventType(
         name="BecomeFriends",
         roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter, Present]),
-            EventRoleType(name="PersonB", binder_fn=bind_potential_friend),
+            RoleType(name="PersonA", components=[GameCharacter, Present]),
+            RoleType(name="PersonB", binder_fn=bind_potential_friend),
         ],
-        execute_fn=execute,
-        probability=probability,
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -134,14 +133,14 @@ def become_enemies_event(
     return LifeEventType(
         name="BecomeEnemies",
         roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter]),
-            EventRoleType(
+            RoleType(name="PersonA", components=[GameCharacter]),
+            RoleType(
                 name="PersonB",
                 binder_fn=bind_potential_enemy,
             ),
         ],
-        execute_fn=execute,
-        probability=probability,
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -195,17 +194,15 @@ def start_dating_event(threshold: int = 25, probability: float = 0.8) -> LifeEve
     return LifeEventType(
         name="StartDating",
         roles=[
-            EventRoleType(
-                name="PersonA", components=[GameCharacter], filter_fn=is_single
-            ),
-            EventRoleType(
+            RoleType(name="PersonA", components=[GameCharacter], filter_fn=is_single),
+            RoleType(
                 name="PersonB",
                 components=[GameCharacter],
                 filter_fn=join_filters(potential_partner_filter, is_single),
             ),
         ],
-        execute_fn=execute,
-        probability=probability,
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -254,11 +251,11 @@ def dating_break_up_event(
     return LifeEventType(
         name="DatingBreakUp",
         roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter, Dating]),
-            EventRoleType(name="PersonB", binder_fn=bind_potential_ex),
+            RoleType(name="PersonA", components=[GameCharacter, Dating]),
+            RoleType(name="PersonB", binder_fn=bind_potential_ex),
         ],
-        execute_fn=execute,
-        probability=probability,
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -295,15 +292,15 @@ def divorce_event(threshold: int = -25, probability: float = 0.5) -> LifeEventTy
     return LifeEventType(
         name="GotDivorced",
         roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter]),
-            EventRoleType(
+            RoleType(name="PersonA", components=[GameCharacter]),
+            RoleType(
                 name="PersonB",
                 components=[GameCharacter],
                 filter_fn=current_partner_filter,
             ),
         ],
-        execute_fn=execute,
-        probability=probability,
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -365,11 +362,11 @@ def marriage_event(threshold: int = 35, probability: float = 0.5) -> LifeEventTy
     return LifeEventType(
         name="GotMarried",
         roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter, Dating]),
-            EventRoleType(name="PersonB", binder_fn=bind_potential_spouse),
+            RoleType(name="PersonA", components=[GameCharacter, Dating]),
+            RoleType(name="PersonB", binder_fn=bind_potential_spouse),
         ],
-        execute_fn=execute,
-        probability=probability,
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -389,8 +386,9 @@ def depart_due_to_unemployment() -> LifeEventType:
 
     return LifeEventType(
         name="DepartTown",
-        roles=[EventRoleType(name="Person", binder_fn=bind_unemployed_character)],
-        execute_fn=effect,
+        roles=[RoleType(name="Person", binder_fn=bind_unemployed_character)],
+        effects=effect,
+        probability=constant_probability(1),
     )
 
 
@@ -430,15 +428,15 @@ def pregnancy_event(probability: float = 0.3) -> LifeEventType:
     return LifeEventType(
         name="GotPregnant",
         roles=[
-            EventRoleType(
+            RoleType(
                 name="PersonA",
                 components=[GameCharacter],
                 filter_fn=can_get_pregnant_filter,
             ),
-            EventRoleType(name="PersonB", binder_fn=bind_current_partner),
+            RoleType(name="PersonB", binder_fn=bind_current_partner),
         ],
-        execute_fn=execute,
-        probability=probability,
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -476,9 +474,9 @@ def retire_event(probability: float = 0.4) -> LifeEventType:
 
     return LifeEventType(
         name="Retire",
-        roles=[EventRoleType(name="Retiree", binder_fn=bind_retiree)],
-        execute_fn=execute,
-        probability=probability,
+        roles=[RoleType(name="Retiree", binder_fn=bind_retiree)],
+        effects=execute,
+        probability=constant_probability(probability),
     )
 
 
@@ -554,9 +552,9 @@ def find_own_place_event(probability: float = 0.1) -> LifeEventType:
 
     return LifeEventType(
         name="FindOwnPlace",
-        probability=probability,
-        roles=[EventRoleType("Character", binder_fn=bind_potential_mover)],
-        execute_fn=execute,
+        probability=constant_probability(probability),
+        roles=[RoleType("Character", binder_fn=bind_potential_mover)],
+        effects=execute,
     )
 
 
@@ -571,8 +569,9 @@ def depart_event() -> LifeEventType:
 
     return LifeEventType(
         name="Depart",
-        roles=[EventRoleType("Character")],
-        execute_fn=execute,
+        roles=[RoleType("Character")],
+        effects=execute,
+        probability=constant_probability(1),
     )
 
 
@@ -596,9 +595,9 @@ def die_of_old_age(probability: float = 0.8) -> LifeEventType:
 
     return LifeEventType(
         name="DieOfOldAge",
-        probability=probability,
-        roles=[EventRoleType("Character", binder_fn=bind_character)],
-        execute_fn=execute,
+        probability=constant_probability(probability),
+        roles=[RoleType("Character", binder_fn=bind_character)],
+        effects=execute,
     )
 
 
@@ -613,6 +612,7 @@ def death_event() -> LifeEventType:
 
     return LifeEventType(
         name="Death",
-        roles=[EventRoleType("Deceased")],
-        execute_fn=execute,
+        roles=[RoleType("Deceased")],
+        effects=execute,
+        probability=constant_probability(1),
     )

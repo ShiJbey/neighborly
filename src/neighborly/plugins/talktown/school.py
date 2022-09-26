@@ -2,7 +2,7 @@ from ordered_set import OrderedSet
 
 from neighborly.builtin.statuses import Child, Teen, YoungAdult
 from neighborly.core.ecs import Component, ISystem
-from neighborly.core.life_event import EventRole, LifeEvent, LifeEventLog
+from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.status import Status
 from neighborly.core.time import SimDateTime
 
@@ -58,6 +58,6 @@ class SchoolSystem(ISystem):
                     LifeEvent(
                         "GraduatedSchool",
                         date.to_iso_str(),
-                        [EventRole("Student", gid)],
+                        [Role("Student", gid)],
                     )
                 )

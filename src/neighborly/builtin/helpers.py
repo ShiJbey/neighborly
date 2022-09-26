@@ -23,7 +23,12 @@ from neighborly.core.business import Business, InTheWorkforce, Unemployed
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import EventRole, LifeEvent, LifeEventLog
+from neighborly.core.life_event import (
+    LifeEvent,
+    LifeEventLog,
+    LifeEventProbabilityFn,
+    Role,
+)
 from neighborly.core.location import Location
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.relationship import (
@@ -300,6 +305,13 @@ def generate_elderly_character(
 ############################################
 
 
+def constant_probability(probability: float) -> LifeEventProbabilityFn:
+    def fn(world: World, event: LifeEvent) -> float:
+        return probability
+
+    return fn
+
+
 def become_adult_behavior(chance_depart: float) -> bt.BehaviorNode:
     return bt.sequence(chance_node(chance_depart), depart_action)
 
@@ -331,7 +343,7 @@ def go_to_college(world: World, event: LifeEvent, **kwargs) -> None:
     world.get_resource(LifeEventLog).record_event(
         LifeEvent(
             name="GraduatedCollege",
-            roles=[EventRole("Graduate", gameobject.id)],
+            roles=[Role("Graduate", gameobject.id)],
             timestamp=world.get_resource(SimDateTime).to_iso_str(),
         )
     )
@@ -345,7 +357,7 @@ def death_action(world: World, event: LifeEvent, **kwargs) -> None:
     world.get_resource(LifeEventLog).record_event(
         LifeEvent(
             name="Death",
-            roles=[EventRole("Deceased", gameobject.id)],
+            roles=[Role("Deceased", gameobject.id)],
             timestamp=world.get_resource(SimDateTime).to_iso_str(),
         )
     )
@@ -365,14 +377,14 @@ def depart_action(world: World, event: LifeEvent, **kwargs) -> None:
 
     if spouse_rel:
         world.get_gameobject(spouse_rel[0].target).archive()
-        event.roles.append(EventRole("Departee", spouse_rel[0].target))
+        event.roles.append(Role("Departee", spouse_rel[0].target))
 
     children = rel_graph.get_all_relationships_with_tags(
         gameobject.id, RelationshipTag.Child | RelationshipTag.NuclearFamily
     )
     for child_rel in children:
         world.get_gameobject(child_rel.target).archive()
-        event.roles.append(EventRole("Departee", child_rel.target))
+        event.roles.append(Role("Departee", child_rel.target))
 
     world.get_resource(LifeEventLog).record_event(
         LifeEvent(

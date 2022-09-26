@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Protocol, Type
+from collections import defaultdict
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Protocol, Type
 
 from neighborly.core.ecs import Component, GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.serializable import ISerializable
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import Town
+
+logger = logging.getLogger(__name__)
 
 
 class LifeEvent:
@@ -21,19 +25,27 @@ class LifeEvent:
         Name of the event
     timestamp: str
         Timestamp for when the event occurred
-    roles: List[EventRole]
-        Roles that were involved in this event
+    roles: List[neighborly.core.life_event.Role]
+        GameObjects involved with this event
+    metadata: Dict[str, Any]
+        Additional information about this event
+    _sorted_roles: Dict[str, List[Role]]
+        (Internal us only) Roles divided by name since there may
+        be multiple of the same role present
     """
 
-    __slots__ = "timestamp", "name", "roles", "metadata"
+    __slots__ = "timestamp", "name", "roles", "metadata", "_sorted_roles"
 
-    def __init__(
-        self, name: str, timestamp: str, roles: List[EventRole], **kwargs
-    ) -> None:
+    def __init__(self, name: str, timestamp: str, roles: List[Role], **kwargs) -> None:
         self.name: str = name
         self.timestamp: str = timestamp
-        self.roles: List[EventRole] = [*roles]
+        self.roles: List[Role] = [*roles]
         self.metadata: Dict[str, Any] = {**kwargs}
+        self._sorted_roles: Dict[str, List[Role]] = {}
+        for role in self.roles:
+            if role.name not in self._sorted_roles:
+                self._sorted_roles[role.name] = []
+            self._sorted_roles[role.name].append(role)
 
     def get_type(self) -> str:
         """Return the type of this event"""
@@ -45,13 +57,15 @@ class LifeEvent:
             "name": self.name,
             "timestamp": self.timestamp,
             "roles": [role.to_dict() for role in self.roles],
+            "metadata": {**self.metadata},
         }
 
+    def get_all(self, role_name: str) -> List[int]:
+        """Return the IDs of all GameObjects bound to the given role name"""
+        return list(map(lambda role: role.gid, self._sorted_roles[role_name]))
+
     def __getitem__(self, role_name: str) -> int:
-        for role in self.roles:
-            if role.name == role_name:
-                return role.gid
-        raise KeyError(role_name)
+        return self._sorted_roles[role_name][0].gid
 
     def __repr__(self) -> str:
         return "LifeEvent(name={}, timestamp={}, roles=[{}], metadata={})".format(
@@ -62,170 +76,17 @@ class LifeEvent:
         return f"{self.name} [at {self.timestamp}] : {', '.join(map(lambda r: f'{r.name}:{r.gid}', self.roles))}"
 
 
-class EventRole:
-    """
-    EventRole is a role that has a GameObject bound to it.
-    It does not contain any information about filtering for
-    the role.
-
-    Attributes
-    ----------
-    name: str
-        Name of the role
-    gid: int
-        Unique identifier for the GameObject bound to this role
-    """
-
-    __slots__ = "name", "gid"
-
-    def __init__(self, name: str, gid: int) -> None:
-        self.name: str = name
-        self.gid: int = gid
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"name": self.name, "gid": self.gid}
-
-
-class RoleBinderFn(Protocol):
-    """Callable that returns a GameObject that meets requirements for a given Role"""
-
-    def __call__(self, world: World, event: LifeEvent) -> Optional[GameObject]:
-        raise NotImplementedError
-
-
-class RoleFilterFn(Protocol):
-    """Function that filters GameObjects for an EventRole"""
-
-    def __call__(self, world: World, gameobject: GameObject, **kwargs) -> bool:
-        raise NotImplementedError
-
-
-def join_filters(*filters: RoleFilterFn) -> RoleFilterFn:
-    """Joins a bunch of filters into one function"""
-
-    def fn(world: World, gameobject: GameObject, **kwargs) -> bool:
-        return all([f(world, gameobject, **kwargs) for f in filters])
-
-    return fn
-
-
-def or_filters(
-    *preconditions: RoleFilterFn,
-) -> RoleFilterFn:
-    """Only one of the given preconditions has to pass to return True"""
-
-    def wrapper(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        for p in preconditions:
-            if p(world, gameobject, **kwargs):
-                return True
-        return False
-
-    return wrapper
-
-
-class AbstractEventRoleType(ABC):
-    """
-    Abstract base class for defining roles that
-    GameObjects can be bound to when executing
-    LifeEvents
-    """
-
-    __slots__ = "name"
-
-    def __init__(self, name: str) -> None:
-        self.name: str = name
-
-    @abstractmethod
-    def fill_role(self, world: World, event: LifeEvent) -> Optional[EventRole]:
-        """Find a GameObject to bind to this role given the event"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def fill_role_with(
-        self, world: World, event: LifeEvent, candidate: GameObject
-    ) -> Optional[EventRole]:
-        """Attempt to bind the candidate GameObject to this role given the event"""
-        raise NotImplementedError
-
-
-class EventRoleType(AbstractEventRoleType):
-    """
-    Information about a role within a LifeEvent, and logic
-    for how to filter which gameobjects can be bound to the
-    role.
-    """
-
-    __slots__ = "binder_fn", "components", "filter_fn"
-
-    def __init__(
-        self,
-        name: str,
-        components: List[Type[Component]] = None,
-        filter_fn: Optional[RoleFilterFn] = None,
-        binder_fn: Optional[RoleBinderFn] = None,
-    ) -> None:
-        super().__init__(name)
-        self.components: List[Type[Component]] = components if components else []
-        self.filter_fn: Optional[RoleFilterFn] = filter_fn
-        self.binder_fn: Optional[RoleBinderFn] = binder_fn
-
-    def fill_role(
-        self,
-        world: World,
-        event: LifeEvent,
-    ) -> Optional[EventRole]:
-
-        if self.binder_fn is not None:
-            obj = self.binder_fn(world, event)
-            return EventRole(self.name, obj.id) if obj is not None else None
-
-        candidate_list: List[int] = list(
-            map(
-                lambda entry: entry[0],
-                filter(
-                    lambda res: self.filter_fn(
-                        world, world.get_gameobject(res[0]), event=event
-                    )
-                    if self.filter_fn
-                    else True,
-                    world.get_components(*self.components),
-                ),
-            )
-        )
-
-        if any(candidate_list):
-            chosen_candidate = world.get_resource(NeighborlyEngine).rng.choice(
-                candidate_list
-            )
-            return EventRole(self.name, chosen_candidate)
-
-        return None
-
-    def fill_role_with(
-        self,
-        world: World,
-        event: LifeEvent,
-        candidate: GameObject,
-    ) -> Optional[EventRole]:
-        has_components = (
-            candidate.has_component(*self.components) if self.components else True
-        )
-
-        passes_filter = (
-            self.filter_fn(world, candidate, event=event) if self.filter_fn else True
-        )
-
-        return (
-            EventRole(self.name, candidate.id)
-            if has_components and passes_filter
-            else None
-        )
-
-
 class LifeEventEffectFn(Protocol):
     """Callback function called when a life event is executed"""
 
     def __call__(self, world: World, event: LifeEvent) -> None:
+        raise NotImplementedError
+
+
+class LifeEventProbabilityFn(Protocol):
+    """Function called to determine the probability of an event executing"""
+
+    def __call__(self, world: World, event: LifeEvent) -> float:
         raise NotImplementedError
 
 
@@ -240,32 +101,41 @@ class LifeEventType:
     ----------
     name: str
         Name of the LifeEventType and the LifeEvent it instantiates
-    roles: List[EventRoleType]
+    roles: List[neighborly.core.life_event.RoleType]
         The roles that need to be cast for this event to be executed
-    probability: int (default: 1)
+    probability: LifeEventProbabilityFn
         The relative frequency of this event compared to other events
-    execute_fn: Callable[..., None]
+    effects: LifeEventEffectFn
         Function that executes changes to the world state base don the event
     """
 
-    __slots__ = "name", "probability", "roles", "execute_fn"
+    __slots__ = "name", "probability", "roles", "effects"
 
     def __init__(
         self,
         name: str,
-        roles: List[EventRoleType],
-        probability: float = 1.0,
-        execute_fn: Optional[LifeEventEffectFn] = None,
+        roles: List[RoleType],
+        probability: LifeEventProbabilityFn,
+        effects: Optional[LifeEventEffectFn] = None,
     ) -> None:
         self.name: str = name
-        self.roles: List[EventRoleType] = roles
-        self.probability: float = probability
-        self.execute_fn: Optional[LifeEventEffectFn] = execute_fn
+        self.roles: List[RoleType] = roles
+        self.probability: LifeEventProbabilityFn = probability
+        self.effects: Optional[LifeEventEffectFn] = effects
 
     def instantiate(self, world: World, **kwargs: GameObject) -> Optional[LifeEvent]:
         """
         Attempts to create a new LifeEvent instance
 
+        Parameters
+        ----------
+        world: World
+            Neighborly world instance
+        **kwargs: Dict[str, GameObject]
+            Attempted bindings of GameObjects to RoleTypes
+
+        Notes
+        -----
         **Do Not Override this method unless absolutely necessary**
         """
         life_event = LifeEvent(
@@ -295,50 +165,25 @@ class LifeEventType:
         return life_event
 
     def execute(self, world: World, event: LifeEvent) -> None:
-        return
-
-
-@dataclass
-class EventResult:
-    generated_events: List[LifeEvent] = field(default_factory=list)
-
-
-class LifeEventType(AbstractLifeEventType):
-    """
-    User-facing class for implementing behaviors around life events
-
-    This is adapted from:
-    https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
-
-    Attributes
-    ----------
-    name: str
-        Name of the LifeEventType and the LifeEvent it instantiates
-    roles: List[EventRoleType]
-        The roles that need to be cast for this event to be executed
-    probability: int (default: 1)
-        The relative frequency of this event compared to other events
-    execute_fn: Callable[..., None]
-        Function that executes changes to the world state base don the event
-    """
-
-    __slots__ = "execute_fn"
-
-    def __init__(
-        self,
-        name: str,
-        roles: List[EventRoleType],
-        probability: float = 1.0,
-        execute_fn: Optional[LifeEventEffectFn] = None,
-    ) -> None:
-        super().__init__(name, roles, probability)
-        self.execute_fn: Optional[LifeEventEffectFn] = execute_fn
-
-    def execute(self, world: World, event: LifeEvent) -> None:
-        self.execute_fn(world, event)
+        """Run the effects function using the given event"""
+        self.effects(world, event)
 
     def try_execute_event(self, world: World, **kwargs: GameObject) -> bool:
-        """Execute the given LifeEventType if successfully instantiated"""
+        """
+        Attempt to instantiate and execute this LifeEventType
+
+        Parameters
+        ----------
+        world: World
+            Neighborly world instance
+        **kwargs: Dict[str, GameObject]
+            Attempted bindings of GameObjects to RoleTypes
+
+        Returns
+        -------
+        bool
+            Returns True if the event is instantiated successfully and executed
+        """
         event = self.instantiate(world, **kwargs)
         if event is not None:
             self.execute(world, event)
@@ -347,19 +192,19 @@ class LifeEventType(AbstractLifeEventType):
 
 
 class EventRoleLibrary:
-    _registry: Dict[str, EventRoleType] = {}
+    _registry: Dict[str, RoleType] = {}
 
     @classmethod
-    def add(cls, name: str, event_role_type: EventRoleType) -> None:
+    def add(cls, name: str, event_role_type: RoleType) -> None:
         """Register a new LifeEventType mapped to a name"""
         cls._registry[name] = event_role_type
 
     @classmethod
-    def get_all(cls) -> List[EventRoleType]:
+    def get_all(cls) -> List[RoleType]:
         return list(cls._registry.values())
 
     @classmethod
-    def get(cls, name: str) -> EventRoleType:
+    def get(cls, name: str) -> RoleType:
         """Get a LifeEventType using a name"""
         return cls._registry[name]
 
@@ -451,3 +296,171 @@ class LifeEventSimulator(ISystem):
         for _ in range(town.population // 10):
             event_type = rng.choice(LifeEventLibrary.get_all())
             event_type.try_execute_event(self.world)
+
+
+class Role(ISerializable):
+    """
+    Role is a role that has a GameObject bound to it.
+    It does not contain any information about filtering for
+    the role.
+
+    Attributes
+    ----------
+    name: str
+        Name of the role
+    gid: int
+        Unique identifier for the GameObject bound to this role
+    """
+
+    __slots__ = "name", "gid"
+
+    def __init__(self, name: str, gid: int) -> None:
+        self.name: str = name
+        self.gid: int = gid
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"name": self.name, "gid": self.gid}
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(name={self.name}, gid={self.gid})"
+
+
+class RoleBinderFn(Protocol):
+    """Callable that returns a GameObject that meets requirements for a given Role"""
+
+    def __call__(self, world: World, event: LifeEvent) -> Optional[GameObject]:
+        raise NotImplementedError
+
+
+class RoleFilterFn(Protocol):
+    """Function that filters GameObjects for an EventRole"""
+
+    def __call__(self, world: World, gameobject: GameObject, **kwargs) -> bool:
+        raise NotImplementedError
+
+
+class RoleTypeBase(ABC):
+    """
+    Abstract base class for defining roles that
+    GameObjects can be bound to when executing
+    LifeEvents
+
+    Attributes
+    ----------
+    name:
+    """
+
+    __slots__ = "name"
+
+    def __init__(self, name: str) -> None:
+        self.name: str = name
+
+    @abstractmethod
+    def fill_role(self, world: World, event: LifeEvent) -> Optional[Role]:
+        """Find a GameObject to bind to this role given the event"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def fill_role_with(
+        self, world: World, event: LifeEvent, candidate: GameObject
+    ) -> Optional[Role]:
+        """Attempt to bind the candidate GameObject to this role given the event"""
+        raise NotImplementedError
+
+
+class RoleType(RoleTypeBase):
+    """
+    Information about a role within a LifeEvent, and logic
+    for how to filter which gameobjects can be bound to the
+    role.
+    """
+
+    __slots__ = "binder_fn", "components", "filter_fn"
+
+    def __init__(
+        self,
+        name: str,
+        components: List[Type[Component]] = None,
+        filter_fn: Optional[RoleFilterFn] = None,
+        binder_fn: Optional[RoleBinderFn] = None,
+    ) -> None:
+        super().__init__(name)
+        self.components: List[Type[Component]] = components if components else []
+        self.filter_fn: Optional[RoleFilterFn] = filter_fn
+        self.binder_fn: Optional[RoleBinderFn] = binder_fn
+
+    def fill_role(
+        self,
+        world: World,
+        event: LifeEvent,
+    ) -> Optional[Role]:
+
+        if self.binder_fn is not None:
+            obj = self.binder_fn(world, event)
+            return Role(self.name, obj.id) if obj is not None else None
+
+        candidate_list: List[int] = list(
+            map(
+                lambda entry: entry[0],
+                filter(
+                    lambda res: self.filter_fn(
+                        world, world.get_gameobject(res[0]), event=event
+                    )
+                    if self.filter_fn
+                    else True,
+                    world.get_components(*self.components),
+                ),
+            )
+        )
+
+        if any(candidate_list):
+            chosen_candidate = world.get_resource(NeighborlyEngine).rng.choice(
+                candidate_list
+            )
+            return Role(self.name, chosen_candidate)
+
+        return None
+
+    def fill_role_with(
+        self,
+        world: World,
+        event: LifeEvent,
+        candidate: GameObject,
+    ) -> Optional[Role]:
+        has_components = (
+            candidate.has_component(*self.components) if self.components else True
+        )
+
+        passes_filter = (
+            self.filter_fn(world, candidate, event=event) if self.filter_fn else True
+        )
+
+        return (
+            Role(self.name, candidate.id) if has_components and passes_filter else None
+        )
+
+
+def join_filters(*filters: RoleFilterFn) -> RoleFilterFn:
+    """Joins a bunch of filters into one function"""
+
+    def fn(world: World, gameobject: GameObject, **kwargs) -> bool:
+        return all([f(world, gameobject, **kwargs) for f in filters])
+
+    return fn
+
+
+def or_filters(
+    *preconditions: RoleFilterFn,
+) -> RoleFilterFn:
+    """Only one of the given preconditions has to pass to return True"""
+
+    def wrapper(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+        for p in preconditions:
+            if p(world, gameobject, **kwargs):
+                return True
+        return False
+
+    return wrapper

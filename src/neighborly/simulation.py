@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import random
 from abc import ABC, abstractmethod
 from logging import getLogger
@@ -193,7 +192,7 @@ class SimulationBuilder:
 
     def _hash_seed(self, seed: Union[str, int]) -> int:
         """Create an int hash from the given seed value"""
-        return int.from_bytes(hashlib.sha256(str(seed)).digest()[:8], "little")
+        return hash(seed)
 
     def add_system(self, system: ISystem, priority: int = 0) -> SimulationBuilder:
         """Add a new system to the simulation"""

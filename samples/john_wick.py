@@ -19,6 +19,7 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
+from neighborly.builtin.helpers import constant_probability
 from neighborly.builtin.statuses import Adult
 from neighborly.core.archetypes import (
     BusinessArchetype,
@@ -30,13 +31,12 @@ from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
-    EventResult,
-    EventRole,
-    EventRoleType,
     LifeEvent,
     LifeEventLibrary,
     LifeEventLog,
     LifeEventType,
+    Role,
+    RoleType,
 )
 from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.residence import Resident
@@ -102,13 +102,12 @@ def become_an_assassin(probability: float = 0.3) -> LifeEventType:
     def execute(world: World, event: LifeEvent):
         new_assassin = world.get_gameobject(event["Character"])
         new_assassin.add_component(Assassin())
-        return EventResult(generated_events=[event])
 
     return LifeEventType(
         name="BecomeAssassin",
-        probability=probability,
-        execute_fn=execute,
-        roles=[EventRoleType(name="Character", binder_fn=bind_character)],
+        probability=constant_probability(probability),
+        effects=execute,
+        roles=[RoleType(name="Character", binder_fn=bind_character)],
     )
 
 
@@ -149,29 +148,27 @@ def hire_assassin_event(
         assassin = world.get_gameobject(event["Assassin"])
         assassin.get_component(Assassin).kills += 1
 
-        death_event = LifeEvent(
+        LifeEvent(
             name="Death",
             timestamp=date_time.to_iso_str(),
             roles=[
-                EventRole("Character", event["Target"]),
+                Role("Character", event["Target"]),
             ],
         )
 
         world.get_gameobject(event["Target"]).archive()
 
-        return EventResult(generated_events=[event, death_event])
-
     return LifeEventType(
         name="HireAssassin",
-        probability=probability,
+        probability=constant_probability(probability),
         roles=[
-            EventRoleType(
+            RoleType(
                 name="Client", components=[GameCharacter, Adult], binder_fn=bind_client
             ),
-            EventRoleType(name="Target", binder_fn=bind_target),
-            EventRoleType(name="Assassin", components=[Assassin, Adult]),
+            RoleType(name="Target", binder_fn=bind_target),
+            RoleType(name="Assassin", components=[Assassin, Adult]),
         ],
-        execute_fn=execute_fn,
+        effects=execute_fn,
     )
 
 
