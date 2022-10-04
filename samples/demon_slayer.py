@@ -44,7 +44,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly.builtin.helpers import constant_probability
 from neighborly.builtin.statuses import Deceased
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
@@ -54,7 +53,7 @@ from neighborly.core.life_event import (
     LifeEventLibrary,
     LifeEventLog,
     LifeEventType,
-    RoleType,
+    RoleType, constant_probability,
 )
 from neighborly.core.location import Location
 from neighborly.plugins.default_plugin import DefaultPlugin

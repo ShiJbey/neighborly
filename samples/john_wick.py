@@ -19,13 +19,11 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from neighborly.builtin.helpers import constant_probability
 from neighborly.builtin.statuses import Adult
 from neighborly.core.archetypes import (
     BusinessArchetype,
     BusinessArchetypeLibrary,
     CharacterArchetype,
-    CharacterArchetypeLibrary,
 )
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
@@ -36,7 +34,7 @@ from neighborly.core.life_event import (
     LifeEventLog,
     LifeEventType,
     Role,
-    RoleType,
+    RoleType, constant_probability,
 )
 from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.residence import Resident

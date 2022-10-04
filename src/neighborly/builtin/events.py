@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional, cast
 
-from neighborly.builtin.helpers import constant_probability, move_residence
+from neighborly.builtin.helpers import move_residence
 from neighborly.builtin.role_filters import is_single
 from neighborly.builtin.statuses import (
     Adult,
@@ -23,7 +23,7 @@ from neighborly.core.life_event import (
     LifeEventLog,
     LifeEventType,
     RoleType,
-    join_filters,
+    join_filters, constant_probability,
 )
 from neighborly.core.relationship import RelationshipGraph, RelationshipTag
 from neighborly.core.residence import Residence, Resident
@@ -50,12 +50,12 @@ def become_friends_event(
                 other_character.has_component(Present)
                 and rel_graph.has_connection(rel.target, event["PersonA"])
                 and (
-                    rel_graph.get_connection(rel.target, event["PersonA"]).friendship
-                    >= threshold
-                )
+                rel_graph.get_connection(rel.target, event["PersonA"]).friendship
+                >= threshold
+            )
                 and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tags(
-                    RelationshipTag.Friend
-                )
+                RelationshipTag.Friend
+            )
                 and not rel.has_tags(RelationshipTag.Friend)
                 and rel.friendship >= threshold
             ):
@@ -105,12 +105,12 @@ def become_enemies_event(
                 world.has_gameobject(rel.target)
                 and rel_graph.has_connection(rel.target, event["PersonA"])
                 and (
-                    rel_graph.get_connection(rel.target, event["PersonA"]).friendship
-                    <= threshold
-                )
+                rel_graph.get_connection(rel.target, event["PersonA"]).friendship
+                <= threshold
+            )
                 and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tags(
-                    RelationshipTag.Friend
-                )
+                RelationshipTag.Friend
+            )
                 and not rel.has_tags(RelationshipTag.Friend)
                 and rel.friendship <= threshold
             ):
@@ -392,7 +392,7 @@ def depart_due_to_unemployment() -> LifeEventType:
     )
 
 
-def pregnancy_event(probability: float = 0.3) -> LifeEventType:
+def pregnancy_event() -> LifeEventType:
     """Defines an event where two characters stop dating"""
 
     def can_get_pregnant_filter(world: World, gameobject: GameObject, **kwargs) -> bool:
@@ -425,6 +425,14 @@ def pregnancy_event(probability: float = 0.3) -> LifeEventType:
         )
         world.get_resource(LifeEventLog).record_event(event)
 
+    def prob_fn(world: World, event: LifeEvent):
+        rel_graph = world.get_resource(RelationshipGraph)
+        children = rel_graph.get_all_relationships_with_tags(event["PersonA"], RelationshipTag.Child)
+        if len(children) >= 5:
+            return 0.0
+        else:
+            return 5.0 - len(children) / 5.0
+
     return LifeEventType(
         name="GotPregnant",
         roles=[
@@ -436,7 +444,7 @@ def pregnancy_event(probability: float = 0.3) -> LifeEventType:
             RoleType(name="PersonB", binder_fn=bind_current_partner),
         ],
         effects=execute,
-        probability=constant_probability(probability),
+        probability=prob_fn,
     )
 
 

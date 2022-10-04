@@ -5,11 +5,9 @@ from typing import List, Optional, Tuple, cast
 
 import numpy as np
 
-import neighborly.core.behavior_tree as bt
 from neighborly.builtin.statuses import (
     Adult,
     Child,
-    CollegeGraduate,
     Elder,
     Female,
     Male,
@@ -23,12 +21,6 @@ from neighborly.core.business import Business, InTheWorkforce, Unemployed
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import (
-    LifeEvent,
-    LifeEventLog,
-    LifeEventProbabilityFn,
-    Role,
-)
 from neighborly.core.location import Location
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.relationship import (
@@ -37,7 +29,6 @@ from neighborly.core.relationship import (
     RelationshipTag,
 )
 from neighborly.core.residence import Residence, Resident
-from neighborly.core.time import SimDateTime
 
 logger = logging.getLogger(__name__)
 
@@ -298,98 +289,3 @@ def generate_elderly_character(
         character.character_def.lifespan - 1,
     )
     return gameobject
-
-
-############################################
-# Actions
-############################################
-
-
-def constant_probability(probability: float) -> LifeEventProbabilityFn:
-    def fn(world: World, event: LifeEvent) -> float:
-        return probability
-
-    return fn
-
-
-def become_adult_behavior(chance_depart: float) -> bt.BehaviorNode:
-    return bt.sequence(chance_node(chance_depart), depart_action)
-
-
-def chance_node(chance: float) -> bt.BehaviorNode:
-    """Returns BehaviorTree node that returns True with a given probability"""
-
-    def fn(world: World, event: LifeEvent, **kwargs) -> bool:
-        return world.get_resource(NeighborlyEngine).rng.random() < chance
-
-    return fn
-
-
-def action_node(fn) -> bt.BehaviorNode:
-    def wrapper(world: World, event: LifeEvent, **kwargs) -> bool:
-        fn(world, event, **kwargs)
-        return True
-
-    return wrapper
-
-
-@action_node
-def go_to_college(world: World, event: LifeEvent, **kwargs) -> None:
-    gameobject = world.get_gameobject(event["Unemployed"])
-    gameobject.add_component(CollegeGraduate())
-    # Reset the unemployment counter since they graduate from school
-    gameobject.get_component(Unemployed).duration_days = 0
-
-    world.get_resource(LifeEventLog).record_event(
-        LifeEvent(
-            name="GraduatedCollege",
-            roles=[Role("Graduate", gameobject.id)],
-            timestamp=world.get_resource(SimDateTime).to_iso_str(),
-        )
-    )
-
-
-@action_node
-def death_action(world: World, event: LifeEvent, **kwargs) -> None:
-    gameobject = world.get_gameobject(event["Deceased"])
-    gameobject.archive()
-
-    world.get_resource(LifeEventLog).record_event(
-        LifeEvent(
-            name="Death",
-            roles=[Role("Deceased", gameobject.id)],
-            timestamp=world.get_resource(SimDateTime).to_iso_str(),
-        )
-    )
-
-
-@action_node
-def depart_action(world: World, event: LifeEvent, **kwargs) -> None:
-    gameobject = world.get_gameobject(event["Departee"])
-    gameobject.archive()
-
-    # Get the character's dependent nuclear family
-    rel_graph = world.get_resource(RelationshipGraph)
-
-    spouse_rel = rel_graph.get_all_relationships_with_tags(
-        gameobject.id, RelationshipTag.Spouse
-    )
-
-    if spouse_rel:
-        world.get_gameobject(spouse_rel[0].target).archive()
-        event.roles.append(Role("Departee", spouse_rel[0].target))
-
-    children = rel_graph.get_all_relationships_with_tags(
-        gameobject.id, RelationshipTag.Child | RelationshipTag.NuclearFamily
-    )
-    for child_rel in children:
-        world.get_gameobject(child_rel.target).archive()
-        event.roles.append(Role("Departee", child_rel.target))
-
-    world.get_resource(LifeEventLog).record_event(
-        LifeEvent(
-            name="Depart",
-            roles=event.roles,
-            timestamp=world.get_resource(SimDateTime).to_iso_str(),
-        )
-    )

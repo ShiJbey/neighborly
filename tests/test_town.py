@@ -14,7 +14,7 @@ def test_land_grid():
 
     assert len(land_grid.get_vacancies()) == 14
 
-    for pos in land_grid.get_vacancies():
+    for pos in sorted(list(land_grid.get_vacancies())):
         land_grid.reserve_space(pos, 8080)
 
     assert land_grid.has_vacancy() is False

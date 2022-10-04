@@ -238,7 +238,7 @@ class SimulationBuilder:
 
         self.add_resource(self.world_gen_start.copy())
         self.add_system(LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)))
-        self.add_system(LifeEventSimulator(interval=TimeDelta(months=1)))
+        self.add_system(LifeEventSimulator(interval=TimeDelta(days=3)))
         self.add_resource(LifeEventLog())
         self.add_system(BuildResidenceSystem(interval=TimeDelta(days=5)))
         self.add_system(SpawnResidentSystem(interval=TimeDelta(days=7)))

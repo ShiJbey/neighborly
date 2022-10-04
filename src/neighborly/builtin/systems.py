@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import logging
 import math
-from typing import Callable, List, Optional, Protocol, Set, Tuple, Type, cast
+from typing import List, Optional, Set, Tuple, cast
 
 from neighborly.builtin.events import depart_event
 from neighborly.builtin.helpers import (
@@ -17,7 +17,6 @@ from neighborly.builtin.statuses import (
     Adult,
     Child,
     Dating,
-    Deceased,
     Elder,
     InRelationship,
     Married,
@@ -49,7 +48,7 @@ from neighborly.core.business import (
     start_job,
 )
 from neighborly.core.character import CharacterName, GameCharacter
-from neighborly.core.ecs import Component, GameObject, ISystem, World
+from neighborly.core.ecs import GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.location import Location
@@ -538,14 +537,14 @@ class SocializeSystem(ISystem):
                         RelationshipTag.Parent
                     )
                     or rel_graph.get_connection(
-                        other_character_id, character_id
-                    ).has_tags(RelationshipTag.Parent)
+                    other_character_id, character_id
+                ).has_tags(RelationshipTag.Parent)
                     or rel_graph.get_connection(
-                        character_id, other_character_id
-                    ).has_tags(RelationshipTag.Sibling)
+                    character_id, other_character_id
+                ).has_tags(RelationshipTag.Sibling)
                     or rel_graph.get_connection(
-                        other_character_id, character_id
-                    ).has_tags(RelationshipTag.Sibling)
+                    other_character_id, character_id
+                ).has_tags(RelationshipTag.Sibling)
                 ):
                     romance_score = 0.0
                 else:
@@ -658,6 +657,7 @@ class BuildResidenceSystem(ISystem):
         # Set the position of the residence
         residence.add_component(Position2D(lot[0], lot[1]))
         residence.add_component(Building(building_type="residential"))
+        logger.debug(f"Built residential building at {str(residence.get_component(Position2D))}")
 
 
 class BuildBusinessSystem(ISystem):
@@ -1164,8 +1164,8 @@ class PregnancySystem(ISystem):
             baby = self.world.spawn_archetype(character.gameobject.archetype)
 
             baby.get_component(GameCharacter).age = (
-                current_date - pregnancy.due_date
-            ).hours / HOURS_PER_YEAR
+                                                        current_date - pregnancy.due_date
+                                                    ).hours / HOURS_PER_YEAR
 
             baby.get_component(GameCharacter).name = CharacterName(
                 baby.get_component(GameCharacter).name.firstname, character.name.surname
@@ -1277,7 +1277,6 @@ class PregnancySystem(ISystem):
 
 
 class PendingOpeningSystem(ISystem):
-
     __slots__ = "days_before_demolishing", "last_update"
 
     def __init__(self, days_before_demolishing: int = 30) -> None:
@@ -1298,7 +1297,6 @@ class PendingOpeningSystem(ISystem):
 
 
 class OpenForBusinessSystem(ISystem):
-
     __slots__ = "last_update"
 
     def __init__(self, days_before_demolishing: int = 30) -> None:
@@ -1329,7 +1327,6 @@ class OpenForBusinessSystem(ISystem):
 
 
 class ClosedForBusinessSystem(ISystem):
-
     __slots__ = "days_before_demolishing", "last_update"
 
     def __init__(self, days_before_demolishing: int = 30) -> None:

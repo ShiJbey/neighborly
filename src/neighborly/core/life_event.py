@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Protocol, Type
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Protocol, Type, Union
 
 from neighborly.core.ecs import Component, GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
@@ -39,13 +39,18 @@ class LifeEvent:
     def __init__(self, name: str, timestamp: str, roles: List[Role], **kwargs) -> None:
         self.name: str = name
         self.timestamp: str = timestamp
-        self.roles: List[Role] = [*roles]
+        self.roles: List[Role] = []
         self.metadata: Dict[str, Any] = {**kwargs}
         self._sorted_roles: Dict[str, List[Role]] = {}
-        for role in self.roles:
-            if role.name not in self._sorted_roles:
-                self._sorted_roles[role.name] = []
-            self._sorted_roles[role.name].append(role)
+        for role in roles:
+            self.add_role(role)
+
+    def add_role(self, role: Role) -> None:
+        """Add role to the event"""
+        self.roles.append(role)
+        if role.name not in self._sorted_roles:
+            self._sorted_roles[role.name] = []
+        self._sorted_roles[role.name].append(role)
 
     def get_type(self) -> str:
         """Return the type of this event"""
@@ -115,12 +120,16 @@ class LifeEventType:
         self,
         name: str,
         roles: List[RoleType],
-        probability: LifeEventProbabilityFn,
+        probability: Union[LifeEventProbabilityFn, float],
         effects: Optional[LifeEventEffectFn] = None,
     ) -> None:
         self.name: str = name
         self.roles: List[RoleType] = roles
-        self.probability: LifeEventProbabilityFn = probability
+        self.probability: LifeEventProbabilityFn = (
+            constant_probability(probability)
+            if type(probability) == float
+            else probability
+        )
         self.effects: Optional[LifeEventEffectFn] = effects
 
     def instantiate(self, world: World, **kwargs: GameObject) -> Optional[LifeEvent]:
@@ -149,14 +158,14 @@ class LifeEventType:
                     world, life_event, candidate=bound_object
                 )
                 if temp is not None:
-                    life_event.roles.append(temp)
+                    life_event.add_role(temp)
                 else:
                     # Return none if the role candidate is not a fit
                     return None
             else:
                 temp = role_type.fill_role(world, life_event)
                 if temp is not None:
-                    life_event.roles.append(temp)
+                    life_event.add_role(temp)
                 else:
                     # Return None if there are no available entities to fill
                     # the current role
@@ -185,7 +194,8 @@ class LifeEventType:
             Returns True if the event is instantiated successfully and executed
         """
         event = self.instantiate(world, **kwargs)
-        if event is not None:
+        rng = world.get_resource(NeighborlyEngine).rng
+        if event is not None and rng.random() < self.probability(world, event):
             self.execute(world, event)
             return True
         return False
@@ -464,3 +474,10 @@ def or_filters(
         return False
 
     return wrapper
+
+
+def constant_probability(probability: float) -> LifeEventProbabilityFn:
+    def fn(world: World, event: LifeEvent) -> float:
+        return probability
+
+    return fn
