@@ -3,9 +3,19 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Protocol, Type, Union
+from typing import (
+    Any,
+    Callable,
+    DefaultDict,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    Type,
+    Union,
+)
 
-from neighborly.core.ecs import Component, GameObject, ISystem, World
+from neighborly.core.ecs import Component, GameObject, SystemBase, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.serializable import ISerializable
 from neighborly.core.time import SimDateTime, TimeDelta
@@ -277,10 +287,10 @@ class LifeEventLog:
         return self._per_gameobject[gid]
 
 
-class LifeEventSimulator(ISystem):
+class LifeEventSimulator(SystemBase):
     """
     LifeEventSimulator handles firing LifeEvents for characters
-    and performing character behaviors
+    and performing entity behaviors
     """
 
     __slots__ = "interval", "next_trigger"

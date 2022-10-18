@@ -10,7 +10,7 @@ class Building(Component):
 
     Attributes
     ----------
-    building_type: str
+    _building_type: str
         What kind of building is this
     """
 

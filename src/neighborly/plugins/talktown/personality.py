@@ -1,6 +1,6 @@
 """
 Talk of the Town uses a Big 5 personality model
-to make character decisions and determine
+to make entity decisions and determine
 compatibility in social interactions
 """
 from __future__ import annotations
@@ -56,24 +56,24 @@ class BigFivePersonality(Component):
         engine: NeighborlyEngine = kwargs["engine"]
 
         openness: float = (
-                              engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
-                          ) + BIG_FIVE_FLOOR
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
 
         conscientiousness: float = (
-                                       engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
-                                   ) + BIG_FIVE_FLOOR
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
 
         extroversion: float = (
-                                  engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
-                              ) + BIG_FIVE_FLOOR
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
 
         agreeableness: float = (
-                                   engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
-                               ) + BIG_FIVE_FLOOR
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
 
         neuroticism: float = (
-                                 engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
-                             ) + BIG_FIVE_FLOOR
+            engine.rng.random() * (BIG_FIVE_CAP - BIG_FIVE_FLOOR)
+        ) + BIG_FIVE_FLOOR
 
         return cls(
             openness, conscientiousness, extroversion, agreeableness, neuroticism

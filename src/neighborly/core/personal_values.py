@@ -49,14 +49,14 @@ _VALUE_INDICES: Dict[str, int] = {
 
 class PersonalValues(Component):
     """
-    Values are what a character believes in. They are used
+    Values are what a entity believes in. They are used
     for decision-making and relationship compatibility among
     other things.
 
     Individual values are integers on the range [-50,50], inclusive.
 
-    This model of character values is borrowed from Dwarf Fortress'
-    model of character beliefs/values outlined at the following link
+    This model of entity values is borrowed from Dwarf Fortress'
+    model of entity beliefs/values outlined at the following link
     https://dwarffortresswiki.org/index.php/DF2014:Personality_trait
     """
 

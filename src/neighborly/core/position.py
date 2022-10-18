@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict
+from typing import Any, Dict
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.ecs import Component, World, remove_on_archive
 
 
+@remove_on_archive
 @dataclass
 class Position2D(Component):
-    remove_on_archive: ClassVar[bool] = True
 
     x: float = 0.0
     y: float = 0.0

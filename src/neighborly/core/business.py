@@ -4,12 +4,17 @@ import logging
 import math
 import re
 from dataclasses import dataclass
-from enum import Enum, IntFlag
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Set, Tuple
 
-from neighborly.builtin.statuses import Present
+from neighborly.builtin.components import Active
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, GameObject, ISystem, World
+from neighborly.core.ecs import (
+    Component,
+    GameObject,
+    World,
+    component_info,
+    remove_on_archive,
+)
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.routine import (
@@ -18,15 +23,24 @@ from neighborly.core.routine import (
     RoutinePriority,
     time_str_to_int,
 )
-from neighborly.core.status import Status
-from neighborly.core.time import HOURS_PER_DAY, SimDateTime, Weekday
+from neighborly.core.time import SimDateTime, Weekday
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class BusinessInfo:
+    min_population: int
+    max_instances: int
+    demise: int
+
+
+__business_info_registry: Dict[str, BusinessInfo] = {}
+
+
 class IOccupationPreconditionFn(Protocol):
     """
-    A function that must evaluate to True for a character to
+    A function that must evaluate to True for a entity to
     be eligible to hold the occupation.
 
     Notes
@@ -38,7 +52,7 @@ class IOccupationPreconditionFn(Protocol):
 
     def __call__(self, world: World, gameobject: GameObject, **kwargs: Any) -> bool:
         """
-        A function that must evaluate to True for a character to
+        A function that must evaluate to True for a entity to
         be eligible to hold the occupation.
 
         Arguments
@@ -50,7 +64,7 @@ class IOccupationPreconditionFn(Protocol):
 
         Returns
         -------
-        bool: True if the character is eligible for the occupation
+        bool: True if the entity is eligible for the occupation
             False otherwise
         """
         raise NotImplementedError()
@@ -106,7 +120,7 @@ class OccupationType:
         self, world: World, business: Business
     ) -> Optional[Tuple[GameObject, Occupation]]:
         """
-        Attempt to find a component character that meets the preconditions
+        Attempt to find a component entity that meets the preconditions
         for this occupation
         """
         candidate_list: List[GameObject] = list(
@@ -114,7 +128,7 @@ class OccupationType:
                 lambda g: self.precondition(world, g) if self.precondition else True,
                 map(
                     lambda res: world.get_gameobject(res[0]),
-                    world.get_components(GameCharacter, Unemployed, Present),
+                    world.get_components(GameCharacter, Unemployed, Active),
                 ),
             )
         )
@@ -195,14 +209,13 @@ class OccupationTypeLibrary:
         return cls._registry[name]
 
 
+@remove_on_archive
 class Occupation(Component):
     """
-    Employment Information about a character
+    Employment Information about a entity
     """
 
     __slots__ = "_occupation_type", "_years_held", "_business", "_level", "_start_date"
-
-    remove_on_archive: bool = True
 
     def __init__(
         self,
@@ -264,7 +277,7 @@ class Occupation(Component):
 
 @dataclass
 class WorkHistoryEntry:
-    """Record of a job held by a character"""
+    """Record of a job held by a entity"""
 
     occupation_type: str
     business: int
@@ -306,7 +319,7 @@ class WorkHistoryEntry:
 
 class WorkHistory(Component):
     """
-    Stores information about all the jobs that a character
+    Stores information about all the jobs that a entity
     has held
 
     Attributes
@@ -371,125 +384,128 @@ class WorkHistory(Component):
         )
 
 
-class BusinessService(IntFlag):
-    NONE = 0
-    DRINKING = 1 << 0
-    BANKING = 1 << 1
-    COLLEGE_EDUCATION = 1 << 2
-    CONSTRUCTION = 1 << 3
-    COSMETICS = 1 << 4
-    CLOTHING = 1 << 5
-    FIRE_EMERGENCY = 1 << 6
-    FOOD = 1 << 7
-    HARDWARE = 1 << 8
-    HOME_IMPROVEMENT = 1 << 9
-    HOUSING = 1 << 10
-    LEGAL = 1 << 11
-    MEDICAL_EMERGENCY = 1 << 12
-    MORTICIAN = 1 << 13
-    RECREATION = 1 << 14
-    PUBLIC_SERVICE = 1 << 15
-    PRIMARY_EDUCATION = 1 << 16
-    REALTY = 1 << 17
-    SECONDARY_EDUCATION = 1 << 18
-    SHOPPING = 1 << 19
-    SOCIALIZING = 1 << 20
-    ERRANDS = 1 << 21
+class ServiceType:
+    """A service that can be offered by a business establishment"""
+
+    __slots__ = "_uid", "_name"
+
+    def __init__(self, uid: int, name: str) -> None:
+        self._uid = uid
+        self._name = name
+
+    @property
+    def uid(self) -> int:
+        return self._uid
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def __hash__(self) -> int:
+        return self._uid
+
+    def __eq__(self, other: ServiceType) -> bool:
+        return self.uid == other.uid
 
 
-class BusinessStatus(Enum):
-    PendingOpening = 0
-    OpenForBusiness = 1
-    ClosedForBusiness = 2
+class ServiceTypeLibrary:
+
+    _next_id: int = 1
+    _name_to_service: Dict[str, ServiceType] = {}
+    _id_to_name: Dict[int, str] = {}
+
+    @classmethod
+    def add_service_type(cls, service_name: str) -> None:
+        if service_name in cls._name_to_service:
+            raise RuntimeError(f"Duplicate service type: {service_name}")
+
+        uid = cls._next_id
+        cls._next_id = cls._next_id + 1
+        service_type = ServiceType(uid, service_name)
+        cls._name_to_service[service_name] = service_type
+        cls._id_to_name[uid] = service_name
+
+    @classmethod
+    def get(cls, service_name) -> ServiceType:
+        return cls._name_to_service[service_name]
 
 
-class ClosedForBusiness(Status):
+class Services(Component):
+
+    __slots__ = "_services"
+
+    def __init__(self, *services: str) -> None:
+        super().__init__()
+        self._services: Set[ServiceType] = set()
+        for service in services:
+            self._services.add(ServiceTypeLibrary.get(service))
+
+    def has_service(self, service: ServiceType) -> bool:
+        return service in self._services
+
+
+@component_info(
+    "Closed For Business",
+    "This business is no longer open and nobody works here.",
+)
+class ClosedForBusiness(Component):
+    pass
+
+
+@component_info(
+    "Open For Business",
+    "This business open for business and people can travel here.",
+)
+class OpenForBusiness(Component):
 
     __slots__ = "duration"
 
     def __init__(self) -> None:
-        super().__init__(
-            "Closed For Business",
-            "This business is no longer open and nobody works here.",
-        )
+        super().__init__()
         self.duration: float = 0.0
 
 
-class OpenForBusiness(Status):
+@component_info(
+    "Pending Opening",
+    "This business is built, but has no owner.",
+)
+class PendingOpening(Component):
 
     __slots__ = "duration"
 
     def __init__(self) -> None:
-        super().__init__(
-            "Open For Business",
-            "This business open for business and people can travel here.",
-        )
-        self.duration: float = 0.0
-
-
-class PendingOpening(Status):
-
-    __slots__ = "duration"
-
-    def __init__(self) -> None:
-        super().__init__(
-            "Pending Opening",
-            "This business is built, but has no owner.",
-        )
+        super().__init__()
         self.duration: float = 0.0
 
 
 class Business(Component):
     __slots__ = (
-        "business_type",
-        "name",
-        "_years_in_business",
         "operating_hours",
         "_employees",
         "_open_positions",
         "owner",
         "owner_type",
-        "status",
-        "services",
-        "is_open",
     )
 
     def __init__(
         self,
-        business_type: str,
-        name: str,
         owner_type: Optional[str] = None,
         owner: Optional[int] = None,
         open_positions: Optional[Dict[str, int]] = None,
         operating_hours: Optional[Dict[Weekday, Tuple[int, int]]] = None,
-        services: BusinessService = BusinessService.NONE,
     ) -> None:
         super().__init__()
-        self.business_type: str = business_type
         self.owner_type: Optional[str] = owner_type
-        self.name: str = name
         self.operating_hours: Dict[Weekday, Tuple[int, int]] = (
             operating_hours if operating_hours else {}
         )
         self._open_positions: Dict[str, int] = open_positions if open_positions else {}
         self._employees: Dict[int, str] = {}
         self.owner: Optional[int] = owner
-        self.status: BusinessStatus = BusinessStatus.PendingOpening
-        self._years_in_business: float = 0.0
-        self.services: BusinessService = services
-        self.is_open: bool = False
-
-    @property
-    def years_in_business(self) -> int:
-        return math.floor(self._years_in_business)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "business_type": self.business_type,
-            "name": self.name,
-            "status": str(self.status),
-            "years_in_business": self._years_in_business,
             "operating_hours": self.operating_hours,
             "open_positions": self._open_positions,
             "employees": self.get_employees(),
@@ -508,27 +524,19 @@ class Business(Component):
         return list(self._employees.keys())
 
     def add_employee(self, character: int, position: str) -> None:
-        """Add character to employees and remove a vacant position"""
+        """Add entity to employees and remove a vacant position"""
         self._employees[character] = position
         self._open_positions[position] -= 1
 
     def remove_employee(self, character: int) -> None:
-        """Remove a character as an employee and add a vacant position"""
+        """Remove a entity as an employee and add a vacant position"""
         position = self._employees[character]
         del self._employees[character]
         self._open_positions[position] += 1
 
-    def set_business_status(self, status: BusinessStatus) -> None:
-        self.status = status
-
-    def increment_years_in_business(self, years: float) -> None:
-        self._years_in_business += years
-
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "Business(type='{}', name='{}', owner={}, employees={}, openings={})".format(
-            self.business_type,
-            self.name,
+        return "Business(owner={}, employees={}, openings={})".format(
             self.owner,
             self._employees,
             self._open_positions,
@@ -536,24 +544,15 @@ class Business(Component):
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Business:
-        engine = world.get_resource(NeighborlyEngine)
 
-        business_type: str = kwargs["business_type"]
-        business_name: str = engine.name_generator.get_name(
-            kwargs.get("name_format", business_type)
-        )
         owner_type: Optional[str] = kwargs.get("owner_type")
         employee_types: Dict[str, int] = kwargs.get("employee_types", {})
-        services: BusinessService = kwargs.get("services", BusinessService.NONE)
         operating_hours: Dict[Weekday, Tuple[int, int]] = parse_operating_hour_str(
             kwargs.get("hours", "day")
         )
 
         return Business(
-            business_type=business_type,
-            name=business_name,
             open_positions=employee_types,
-            services=services,
             owner_type=owner_type,
             operating_hours=operating_hours,
         )
@@ -574,26 +573,26 @@ class Business(Component):
         return routine_entries
 
 
-class Unemployed(Status):
+@component_info(
+    "Unemployed",
+    "Character doesn't have a job",
+)
+@remove_on_archive
+class Unemployed(Component):
     __slots__ = "duration_days"
 
     def __init__(self) -> None:
-        super().__init__(
-            "Unemployed",
-            "Character doesn't have a job",
-        )
+        super().__init__()
         self.duration_days: float = 0
 
 
-class InTheWorkforce(Status):
-
-    remove_on_archive: bool = True
-
-    def __init__(self) -> None:
-        super().__init__(
-            "In the Workforce",
-            "This Character is eligible for employment opportunities.",
-        )
+@component_info(
+    "In the Workforce",
+    "This Character is eligible for employment opportunities.",
+)
+@remove_on_archive
+class InTheWorkforce(Component):
+    pass
 
 
 def start_job(
@@ -639,7 +638,7 @@ def end_job(
     character.gameobject.get_component(WorkHistory).add_entry(
         occupation_type=occupation.occupation_type,
         business=business.gameobject.id,
-        start_date=occupation._start_date,
+        start_date=occupation.start_date,
         end_date=world.get_resource(SimDateTime).copy(),
     )
 

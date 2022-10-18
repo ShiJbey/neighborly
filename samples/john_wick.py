@@ -3,7 +3,7 @@ John Wick Neighborly Sample
 Author: Shi Johnson-Bey
 
 John Wick is a movie franchise staring Keanu Reeves, in which
-his character, John Wick, is part of an underground society of
+his entity, John Wick, is part of an underground society of
 assassins and hit-people. The member of the criminal underworld
 follow specific social norms that regular civilians don't. All
 favors come at the cost of coins, and no work-for-hire killing
@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from neighborly.builtin.statuses import Adult
+from neighborly.builtin.components import Adult
 from neighborly.core.archetypes import (
     BusinessArchetype,
     BusinessArchetypeLibrary,
@@ -31,14 +31,15 @@ from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
     LifeEvent,
     LifeEventLibrary,
-    LifeEventLog,
     LifeEventType,
     Role,
-    RoleType, constant_probability,
+    RoleType,
+    constant_probability,
 )
 from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.residence import Resident
 from neighborly.core.time import SimDateTime
+from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins.default_plugin import DefaultPlugin
 from neighborly.plugins.talktown import TalkOfTheTownPlugin
 from neighborly.plugins.weather_plugin import WeatherPlugin
@@ -47,7 +48,7 @@ from neighborly.simulation import Plugin, Simulation, SimulationBuilder
 
 @dataclass
 class Assassin(Component):
-    """Assassin component to be attached to a character
+    """Assassin component to be attached to a entity
 
     Assassins mark people who are part of the criminal
     underworld and who may exchange coins for assassinations
@@ -113,7 +114,7 @@ def hire_assassin_event(
     dislike_threshold: int, probability: float = 0.2
 ) -> LifeEventType:
     def bind_client(world: World, event: LifeEvent) -> Optional[GameObject]:
-        """Find someone who hates another character"""
+        """Find someone who hates another entity"""
         rel_graph = world.get_resource(RelationshipGraph)
         candidates: List[int] = []
         for gid, _ in world.get_components(Component, Resident):
@@ -178,12 +179,16 @@ class JohnWickPlugin(Plugin):
         # CharacterArchetypeLibrary.add(assassin_character_archetype())
 
 
+EXPORT_WORLD = False
+
+
 def main():
     sim = (
         SimulationBuilder(
             seed=random.randint(0, 999999),
             world_gen_start=SimDateTime(year=1990, month=0, day=0),
             world_gen_end=SimDateTime(year=2030, month=0, day=0),
+            print_events=True,
         )
         .add_plugin(DefaultPlugin())
         .add_plugin(WeatherPlugin())
@@ -192,14 +197,20 @@ def main():
         .build()
     )
 
-    sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
-
     st = time.time()
     sim.establish_setting()
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.time.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")
+
+    if EXPORT_WORLD:
+        output_path = f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
+
+        with open(output_path, "w") as f:
+            data = NeighborlyJsonExporter().export(sim)
+            f.write(data)
+            print(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":

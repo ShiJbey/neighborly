@@ -15,6 +15,7 @@ from neighborly.builtin.events import (
     retire_event,
     start_dating_event,
 )
+from neighborly.core.business import ServiceTypeLibrary
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEventLibrary
 from neighborly.simulation import Plugin, Simulation
@@ -27,7 +28,7 @@ class DefaultNameDataPlugin(Plugin):
         self.initialize_tracery_name_factory(sim.engine)
 
     def initialize_tracery_name_factory(self, engine: NeighborlyEngine) -> None:
-        # Load character name data
+        # Load entity name data
         engine.name_generator.load_names(
             rule_name="family_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt"
         )
@@ -62,17 +63,42 @@ class DefaultNameDataPlugin(Plugin):
 
 class DefaultLifeEventPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        LifeEventLibrary.add(marriage_event())
+        # LifeEventLibrary.add(marriage_event())
         # LifeEvents.register(become_friends_event())
         # LifeEvents.register(become_enemies_event())
-        LifeEventLibrary.add(start_dating_event())
-        LifeEventLibrary.add(dating_break_up_event())
-        LifeEventLibrary.add(divorce_event())
-        LifeEventLibrary.add(pregnancy_event())
-        LifeEventLibrary.add(depart_due_to_unemployment())
+        # LifeEventLibrary.add(start_dating_event())
+        # LifeEventLibrary.add(dating_break_up_event())
+        # LifeEventLibrary.add(divorce_event())
+        # LifeEventLibrary.add(pregnancy_event())
+        # LifeEventLibrary.add(depart_due_to_unemployment())
         LifeEventLibrary.add(retire_event())
-        LifeEventLibrary.add(find_own_place_event())
+        # LifeEventLibrary.add(find_own_place_event())
         LifeEventLibrary.add(die_of_old_age())
+
+
+class DefaultServicesPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs) -> None:
+        ServiceTypeLibrary.add_service_type("Drinking")
+        ServiceTypeLibrary.add_service_type("Banking")
+        ServiceTypeLibrary.add_service_type("College Education")
+        ServiceTypeLibrary.add_service_type("Construction")
+        ServiceTypeLibrary.add_service_type("Cosmetics")
+        ServiceTypeLibrary.add_service_type("Clothing")
+        ServiceTypeLibrary.add_service_type("Fire Emergency")
+        ServiceTypeLibrary.add_service_type("Food")
+        ServiceTypeLibrary.add_service_type("Hardware")
+        ServiceTypeLibrary.add_service_type("Errands")
+        ServiceTypeLibrary.add_service_type("Socializing")
+        ServiceTypeLibrary.add_service_type("Shopping")
+        ServiceTypeLibrary.add_service_type("Secondary Education")
+        ServiceTypeLibrary.add_service_type("Realty")
+        ServiceTypeLibrary.add_service_type("Public Service")
+        ServiceTypeLibrary.add_service_type("Recreation")
+        ServiceTypeLibrary.add_service_type("Mortuary")
+        ServiceTypeLibrary.add_service_type("Medical Emergency")
+        ServiceTypeLibrary.add_service_type("Legal")
+        ServiceTypeLibrary.add_service_type("Lodging")
+        ServiceTypeLibrary.add_service_type("Home Improvement")
 
 
 class DefaultPlugin(Plugin):

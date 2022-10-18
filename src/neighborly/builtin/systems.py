@@ -3,40 +3,44 @@ from __future__ import annotations
 import itertools
 import logging
 import math
+from abc import abstractmethod
 from typing import List, Optional, Set, Tuple, cast
 
-from neighborly.builtin.events import depart_event
-from neighborly.builtin.helpers import (
-    generate_child_character,
-    generate_young_adult_character,
-    get_locations,
-    move_residence,
-    move_to_location,
-)
-from neighborly.builtin.statuses import (
+from neighborly.builtin.components import (
+    Active,
     Adult,
+    Age,
+    CanAge,
     Child,
+    CurrentLocation,
     Dating,
     Elder,
-    InRelationship,
+    LifeStages,
+    LocationAliases,
     Married,
+    OpenToPublic,
     Pregnant,
-    Present,
     Teen,
     YoungAdult,
+)
+from neighborly.builtin.events import depart_event
+from neighborly.builtin.helpers import (
+    choose_random_character_archetype,
+    demolish_building,
+    generate_child_character,
+    generate_young_adult_character,
+    move_residence,
+    move_to_location,
 )
 from neighborly.core.archetypes import (
     BusinessArchetype,
     BusinessArchetypeLibrary,
-    CharacterArchetype,
-    CharacterArchetypeLibrary,
     ResidenceArchetype,
     ResidenceArchetypeLibrary,
 )
 from neighborly.core.building import Building
 from neighborly.core.business import (
     Business,
-    BusinessStatus,
     ClosedForBusiness,
     InTheWorkforce,
     Occupation,
@@ -44,11 +48,10 @@ from neighborly.core.business import (
     OpenForBusiness,
     PendingOpening,
     Unemployed,
-    WorkHistory,
     start_job,
 )
 from neighborly.core.character import CharacterName, GameCharacter
-from neighborly.core.ecs import GameObject, ISystem, World
+from neighborly.core.ecs import GameObject, SystemBase
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.location import Location
@@ -60,7 +63,6 @@ from neighborly.core.relationship import (
     RelationshipTag,
 )
 from neighborly.core.residence import Residence, Resident
-from neighborly.core.rng import DefaultRNG
 from neighborly.core.routine import Routine
 from neighborly.core.time import (
     DAYS_PER_YEAR,
@@ -75,10 +77,50 @@ from neighborly.core.town import LandGrid, Town
 logger = logging.getLogger(__name__)
 
 
-class RoutineSystem(ISystem):
+class System(SystemBase):
     """
-    Moves characters based on their Routine component
-    characters with routines move to positions
+    System is a more fully-featured System abstraction that
+    handles common calculations like calculating the elapsed
+    time between calls.
+    """
+
+    __slots__ = "_interval", "_last_run", "_elapsed_time", "_next_run"
+
+    def __init__(
+        self,
+        interval: Optional[TimeDelta] = None,
+    ) -> None:
+        super().__init__()
+        self._last_run: SimDateTime = SimDateTime()
+        self._interval: TimeDelta = interval if interval else TimeDelta()
+        self._next_run: SimDateTime = SimDateTime() + self._interval
+        self._elapsed_time: TimeDelta = TimeDelta()
+
+    @property
+    def elapsed_time(self) -> TimeDelta:
+        """Returns the amount of simulation time since the last update"""
+        return self._elapsed_time
+
+    def process(self, *args, **kwargs) -> None:
+        """Handles internal bookkeeping before running the system"""
+        date = self.world.get_resource(SimDateTime)
+
+        if date >= self._next_run:
+            self._last_run = date.copy()
+            self._elapsed_time = date - self._last_run
+            self._next_run = date + self._interval
+            self.run(*args, **kwargs)
+
+    @abstractmethod
+    def run(self, *args, **kwargs) -> None:
+        raise NotImplementedError
+
+
+class RoutineSystem(SystemBase):
+    """
+    GameCharacters with Routine components move to locations designated by their
+    routines. If they do not have a routine entry, then they move to a location
+    that is open to the public.
     """
 
     def process(self, *args, **kwargs) -> None:
@@ -86,37 +128,51 @@ class RoutineSystem(ISystem):
         engine = self.world.get_resource(NeighborlyEngine)
 
         for _, (character, routine, _) in self.world.get_components(
-            GameCharacter, Routine, Present
+            GameCharacter, Routine, Active
         ):
             character = cast(GameCharacter, character)
             routine = cast(Routine, routine)
+            location_aliases = character.gameobject.try_component(LocationAliases)
 
-            routine_entries = routine.get_entries(date.weekday, date.hour)
+            routine_entry = routine.get_entry(date.weekday, date.hour)
 
-            if routine_entries:
-                chosen_entry = engine.rng.choice(routine_entries)
-                location_id = (
-                    character.location_aliases[str(chosen_entry.location)]
-                    if isinstance(chosen_entry.location, str)
-                    else chosen_entry.location
-                )
+            if (
+                routine_entry
+                and isinstance(routine_entry.location, str)
+                and location_aliases
+            ):
                 move_to_location(
                     self.world,
-                    character,
-                    self.world.get_gameobject(location_id).get_component(Location),
+                    character.gameobject,
+                    location_aliases.aliases[routine_entry.location],
                 )
-            else:
 
-                potential_locations = get_locations(self.world)
+            elif routine_entry:
+                move_to_location(
+                    self.world, character.gameobject, routine_entry.location
+                )
+
+            else:
+                potential_locations: List[int] = list(
+                    map(
+                        lambda res: res[0],
+                        self.world.get_components(Location, OpenToPublic),
+                    )
+                )
 
                 if potential_locations:
-                    _, location = engine.rng.choice(potential_locations)
-                    move_to_location(self.world, character, location)
+                    location = engine.rng.choice(potential_locations)
+                    move_to_location(self.world, character.gameobject, location)
 
 
-class LinearTimeSystem(ISystem):
+class LinearTimeSystem(SystemBase):
     """
     Advances simulation time using a linear time increment
+
+    Attributes
+    ----------
+    increment: TimeDelta
+        How much should time be progressed each simulation step
     """
 
     __slots__ = "increment"
@@ -131,23 +187,48 @@ class LinearTimeSystem(ISystem):
         current_date += self.increment
 
 
-class DynamicLoDTimeSystem(ISystem):
+class DynamicLoDTimeSystem(SystemBase):
     """
     Updates the current date/time in the simulation
-    using a variable level-of-detail where a subset
+    using a variable level-of-detail (LOD) where a subset
     of the days during a year receive more simulation
-    ticks
+    ticks.
 
     Attributes
     ----------
-    days_per_year: int
+    _low_lod_time_increment: TimeDelta
+       The amount to increment time by during low LOD phases
+    _high_lod_time_increment: TimeDelta
+       The amount to increment time by during high LOD phases
+    _days_per_year: int
         How many high LoD days to simulate per year
-
+    _high_lod_days_for_year: Set[int]
+        Ordinal dates of days in the current year that will be simulated in higher LOD
+    _current_year: int
+        The current year in the simulation
     """
 
-    def __init__(self, days_per_year: int) -> None:
+    __slots__ = (
+        "_low_lod_time_increment",
+        "_high_lod_time_increment",
+        "days_per_year",
+        "_high_lod_days_for_year",
+        "_current_year",
+    )
+
+    def __init__(
+        self,
+        days_per_year: int,
+        low_lod_time_increment: Optional[TimeDelta] = None,
+        high_lod_time_increment: Optional[TimeDelta] = None,
+    ) -> None:
         super().__init__()
-        self._low_lod_delta_time: int = 6
+        self._low_lod_time_increment: TimeDelta = (
+            low_lod_time_increment if low_lod_time_increment else TimeDelta(hours=24)
+        )
+        self._high_lod_time_increment: TimeDelta = (
+            high_lod_time_increment if high_lod_time_increment else TimeDelta(hours=6)
+        )
         self._days_per_year: int = days_per_year
         self._high_lod_days_for_year: Set[int] = set()
         self._current_year: int = -1
@@ -176,35 +257,13 @@ class DynamicLoDTimeSystem(ISystem):
 
         if current_date.to_ordinal() in self._high_lod_days_for_year:
             # Increment the time using a smaller time increment (High LoD)
-            current_date.increment(hours=self._low_lod_delta_time)
-            return
+            current_date += self._high_lod_time_increment
         else:
             # Increment by one whole day (Low LoD)
-            current_date.increment(hours=24)
-
-    @staticmethod
-    def _generate_sample_days(
-        world: World, start_date: SimDateTime, end_date: SimDateTime, n: int
-    ) -> List[int]:
-        """Samples n days from each year between the start and end dates"""
-        ordinal_start_date: int = start_date.to_ordinal()
-        ordinal_end_date: int = end_date.to_ordinal()
-
-        sampled_ordinal_dates: List[int] = []
-
-        current_date = ordinal_start_date
-
-        while current_date < ordinal_end_date:
-            sampled_dates = world.get_resource(DefaultRNG).sample(
-                range(current_date, current_date + DAYS_PER_YEAR), n
-            )
-            sampled_ordinal_dates.extend(sorted(sampled_dates))
-            current_date = min(current_date + DAYS_PER_YEAR, ordinal_end_date)
-
-        return sampled_ordinal_dates
+            current_date += self._low_lod_time_increment
 
 
-class FindBusinessOwnerSystem(ISystem):
+class FindBusinessOwnerSystem(SystemBase):
     def process(self, *args, **kwargs) -> None:
         event_log = self.world.get_resource(LifeEventLog)
         date = self.world.get_resource(SimDateTime)
@@ -248,17 +307,17 @@ class FindBusinessOwnerSystem(ISystem):
                 )
 
 
-class UnemploymentSystem(ISystem):
+class UnemploymentSystem(SystemBase):
     """
-    Handles updating the amount of time that a character
-    has been unemployed. If a character has been unemployed
+    Handles updating the amount of time that a entity
+    has been unemployed. If a entity has been unemployed
     for longer than a specified amount of time, they will
     depart from the simulation.
 
     Attributes
     ----------
     days_to_departure: int
-        The number of days a character is allowed to be
+        The number of days a entity is allowed to be
         unemployed before they choose to depart from
         the simulation
     """
@@ -272,16 +331,18 @@ class UnemploymentSystem(ISystem):
     def process(self, *args, **kwargs):
         date = self.world.get_resource(SimDateTime)
         rel_graph = self.world.get_resource(RelationshipGraph)
-        for gid, (unemployed, _) in self.world.get_components(Unemployed, Present):
+        for gid, (unemployed, _) in self.world.get_components(Unemployed, Active):
             # Convert delta time from hours to days
             unemployed.duration_days += date.delta_time / 24
 
-            # Trigger the DepartAction and cast this character
+            # Trigger the DepartAction and cast this entity
             # as the departee
             if unemployed.duration_days >= self.days_to_departure:
                 spouses = rel_graph.get_all_relationships_with_tags(
                     gid, RelationshipTag.Spouse
                 )
+
+                # Do not depart if one or more of the entity's spouses has a job
                 if any(
                     [
                         self.world.get_gameobject(rel.target).has_component(Occupation)
@@ -289,6 +350,7 @@ class UnemploymentSystem(ISystem):
                     ]
                 ):
                     continue
+
                 else:
                     depart = depart_event()
 
@@ -322,24 +384,22 @@ class UnemploymentSystem(ISystem):
                             depart.try_execute_event(self.world, Character=child)
 
 
-class RelationshipStatusSystem(ISystem):
+class RelationshipStatusSystem(SystemBase):
     def process(self, *args, **kwargs):
         date = self.world.get_resource(SimDateTime)
 
-        for _, (marriage, _) in self.world.get_components(Married, Present):
+        for _, (marriage, _) in self.world.get_components(Married, Active):
             # Convert delta time from hours to days
+            marriage = cast(Married, marriage)
             marriage.duration_years += date.delta_time / HOURS_PER_YEAR
 
-        for _, (dating, _) in self.world.get_components(Dating, Present):
+        for _, (dating, _) in self.world.get_components(Dating, Active):
             # Convert delta time from hours to days
+            dating = cast(Dating, dating)
             dating.duration_years += date.delta_time / HOURS_PER_YEAR
 
-        for _, (relationship, _) in self.world.get_components(InRelationship, Present):
-            # Convert delta time from hours to days
-            relationship.duration_years += date.delta_time / HOURS_PER_YEAR
 
-
-class FindEmployeesSystem(ISystem):
+class FindEmployeesSystem(SystemBase):
     def process(self, *args, **kwargs) -> None:
         date = self.world.get_resource(SimDateTime)
         event_log = self.world.get_resource(LifeEventLog)
@@ -374,7 +434,7 @@ class FindEmployeesSystem(ISystem):
                     )
 
 
-class SocializeSystem(ISystem):
+class SocializeSystem(SystemBase):
     """
     Every timestep, characters interact with other characters
     at the same location. Characters meeting for the first time
@@ -467,7 +527,7 @@ class SocializeSystem(ISystem):
 
         for _, location in self.world.get_component(Location):
             for character_id, other_character_id in itertools.combinations(
-                location.characters_present, 2
+                location.entities, 2
             ):
                 assert character_id != other_character_id
                 character = self.world.get_gameobject(character_id).get_component(
@@ -537,14 +597,14 @@ class SocializeSystem(ISystem):
                         RelationshipTag.Parent
                     )
                     or rel_graph.get_connection(
-                    other_character_id, character_id
-                ).has_tags(RelationshipTag.Parent)
+                        other_character_id, character_id
+                    ).has_tags(RelationshipTag.Parent)
                     or rel_graph.get_connection(
-                    character_id, other_character_id
-                ).has_tags(RelationshipTag.Sibling)
+                        character_id, other_character_id
+                    ).has_tags(RelationshipTag.Sibling)
                     or rel_graph.get_connection(
-                    other_character_id, character_id
-                ).has_tags(RelationshipTag.Sibling)
+                        other_character_id, character_id
+                    ).has_tags(RelationshipTag.Sibling)
                 ):
                     romance_score = 0.0
                 else:
@@ -590,16 +650,24 @@ class SocializeSystem(ISystem):
                 ).increment_friendship(friendship_score)
 
 
-class BuildResidenceSystem(ISystem):
-    __slots__ = "chance_of_build", "interval", "next_trigger"
+class BuildHousingSystem(System):
+    """
+    Builds housing archetypes on unoccupied spaces on the land grid
+
+    Attributes
+    ----------
+    chance_of_build: float
+        Probability that a new residential building will be built
+        if there is space available
+    """
+
+    __slots__ = "chance_of_build"
 
     def __init__(
         self, chance_of_build: float = 0.5, interval: Optional[TimeDelta] = None
     ) -> None:
-        super().__init__()
+        super().__init__(interval=interval)
         self.chance_of_build: float = chance_of_build
-        self.interval: TimeDelta = interval if interval else TimeDelta()
-        self.next_trigger: SimDateTime = SimDateTime()
 
     def choose_random_archetype(
         self, engine: NeighborlyEngine
@@ -620,15 +688,8 @@ class BuildResidenceSystem(ISystem):
 
         return None
 
-    def process(self, *args, **kwargs) -> None:
+    def run(self, *args, **kwargs) -> None:
         """Build a new residence when there is space"""
-        date = self.world.get_resource(SimDateTime)
-
-        if date < self.next_trigger:
-            return
-        else:
-            self.next_trigger = date.copy() + self.interval
-
         land_grid = self.world.get_resource(LandGrid)
         engine = self.world.get_resource(NeighborlyEngine)
 
@@ -652,24 +713,33 @@ class BuildResidenceSystem(ISystem):
         residence = self.world.spawn_archetype(archetype)
 
         # Reserve the space
-        land_grid.reserve_space(lot, residence.id)
+        land_grid[lot] = residence.id
 
         # Set the position of the residence
         residence.add_component(Position2D(lot[0], lot[1]))
         residence.add_component(Building(building_type="residential"))
-        logger.debug(f"Built residential building at {str(residence.get_component(Position2D))}")
+        logger.debug(
+            f"Built residential building at {str(residence.get_component(Position2D))}"
+        )
 
 
-class BuildBusinessSystem(ISystem):
-    __slots__ = "chance_of_build", "interval", "next_trigger"
+class BuildBusinessSystem(System):
+    """
+    Build a new business building at a random free space on the land grid.
+
+    Attributes
+    ----------
+    chance_of_build: float
+        The probability that a new business may be built this timestep
+    """
+
+    __slots__ = "chance_of_build"
 
     def __init__(
         self, chance_of_build: float = 0.5, interval: Optional[TimeDelta] = None
     ) -> None:
-        super().__init__()
+        super().__init__(interval)
         self.chance_of_build: float = chance_of_build
-        self.interval: TimeDelta = interval if interval else TimeDelta()
-        self.next_trigger: SimDateTime = SimDateTime()
 
     def choose_random_eligible_business(
         self, engine: NeighborlyEngine
@@ -703,18 +773,10 @@ class BuildBusinessSystem(ISystem):
 
         return None
 
-    def process(self, *args, **kwargs) -> None:
+    def run(self, *args, **kwargs) -> None:
         """Build a new business when there is space"""
-        date = self.world.get_resource(SimDateTime)
-
-        if date < self.next_trigger:
-            return
-        else:
-            self.next_trigger = date.copy() + self.interval
-
         land_grid = self.world.get_resource(LandGrid)
         engine = self.world.get_resource(NeighborlyEngine)
-        event_log = self.world.get_resource(LifeEventLog)
 
         # Return early if the random-roll is not sufficient
         if engine.rng.random() > self.chance_of_build:
@@ -737,7 +799,7 @@ class BuildBusinessSystem(ISystem):
         business = self.world.spawn_archetype(archetype)
 
         # Reserve the space
-        land_grid.reserve_space(lot, business.id)
+        land_grid[lot] = business.id
 
         # Set the position of the residence
         business.get_component(Position2D).x = lot[0]
@@ -746,53 +808,27 @@ class BuildBusinessSystem(ISystem):
         # Give the business a building
         business.add_component(Building(building_type="commercial"))
         business.add_component(PendingOpening())
+        logger.debug(
+            f"Built commercial building at {str(business.get_component(Position2D))}"
+        )
 
 
-class SpawnResidentSystem(ISystem):
+class SpawnResidentSystem(System):
     """Adds new characters to the simulation"""
 
-    __slots__ = "chance_spawn", "chance_married", "max_kids", "interval", "next_trigger"
+    __slots__ = "chance_spawn"
 
     def __init__(
         self,
         chance_spawn: float = 0.5,
-        chance_married: float = 0.5,
-        max_kids: int = 3,
         interval: Optional[TimeDelta] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(interval=interval)
         self.chance_spawn: float = chance_spawn
-        self.chance_married: float = chance_married
-        self.max_kids: int = max_kids
-        self.interval: TimeDelta = interval if interval else TimeDelta()
-        self.next_trigger: SimDateTime = SimDateTime()
 
-    def choose_random_character_archetype(self, engine: NeighborlyEngine):
-        archetype_choices: List[CharacterArchetype] = []
-        archetype_weights: List[int] = []
-        for archetype in CharacterArchetypeLibrary.get_all():
-            archetype_choices.append(archetype)
-            archetype_weights.append(archetype.spawn_multiplier)
-
-        if archetype_choices:
-            # Choose an archetype at random
-            archetype: CharacterArchetype = engine.rng.choices(
-                population=archetype_choices, weights=archetype_weights, k=1
-            )[0]
-
-            return archetype
-        else:
-            return None
-
-    def process(self, *args, **kwargs) -> None:
+    def run(self, *args, **kwargs) -> None:
 
         date = self.world.get_resource(SimDateTime)
-
-        if date < self.next_trigger:
-            return
-        else:
-            self.next_trigger = date.copy() + self.interval
-
         town = self.world.get_resource(Town)
         engine = self.world.get_resource(NeighborlyEngine)
         rel_graph = self.world.get_resource(RelationshipGraph)
@@ -807,40 +843,38 @@ class SpawnResidentSystem(ISystem):
             if engine.rng.random() > self.chance_spawn:
                 return
 
-            archetype = self.choose_random_character_archetype(engine)
+            archetype = choose_random_character_archetype(engine)
 
+            # There are no archetypes available to spawn
             if archetype is None:
                 return
 
-            # Create a new character
+            # Create a new entity using the archetype
             character = generate_young_adult_character(self.world, engine, archetype)
-            character.add_component(Present())
+
+            character.add_component(Active())
             residence.add_owner(character.id)
-            town.population += 1
+            town.increment_population()
 
             move_residence(character.get_component(GameCharacter), residence)
-            move_to_location(
-                self.world,
-                character.get_component(GameCharacter),
-                residence.gameobject.get_component(Location),
-            )
+            move_to_location(self.world, character, residence.gameobject.id)
 
             spouse: Optional[GameObject] = None
-            # Potentially generate a spouse for this character
-            if engine.rng.random() < self.chance_married:
+            # Potentially generate a spouse for this entity
+            if engine.rng.random() < archetype.chance_spawn_with_spouse:
                 spouse = generate_young_adult_character(self.world, engine, archetype)
                 spouse.get_component(
                     GameCharacter
                 ).name.surname = character.get_component(GameCharacter).name.surname
-                character.add_component(Present())
+                character.add_component(Active())
                 residence.add_owner(spouse.id)
-                town.population += 1
+                town.increment_population()
 
                 move_residence(spouse.get_component(GameCharacter), residence)
                 move_to_location(
                     self.world,
-                    spouse.get_component(GameCharacter),
-                    residence.gameobject.get_component(Location),
+                    spouse,
+                    residence.gameobject.id,
                 )
 
                 character.add_component(
@@ -857,7 +891,7 @@ class SpawnResidentSystem(ISystem):
                     )
                 )
 
-                # character to spouse
+                # entity to spouse
                 rel_graph.add_relationship(
                     Relationship(
                         character.id,
@@ -872,7 +906,7 @@ class SpawnResidentSystem(ISystem):
                     )
                 )
 
-                # spouse to character
+                # spouse to entity
                 rel_graph.add_relationship(
                     Relationship(
                         spouse.id,
@@ -888,15 +922,15 @@ class SpawnResidentSystem(ISystem):
                 )
 
             # Note: Characters can spawn as single parents with kids
-            num_kids = engine.rng.randint(0, self.max_kids)
+            num_kids = engine.rng.randint(0, archetype.max_children_at_spawn)
             children: List[GameObject] = []
             for _ in range(num_kids):
                 child = generate_child_character(self.world, engine, archetype)
-                character.add_component(Present())
+                character.add_component(Active())
                 child.get_component(
                     GameCharacter
                 ).name.surname = character.get_component(GameCharacter).name.surname
-                town.population += 1
+                town.increment_population()
 
                 move_residence(child.get_component(GameCharacter), residence)
                 move_to_location(
@@ -906,7 +940,7 @@ class SpawnResidentSystem(ISystem):
                 )
                 children.append(child)
 
-                # child to character
+                # child to entity
                 rel_graph.add_relationship(
                     Relationship(
                         child.id,
@@ -916,7 +950,7 @@ class SpawnResidentSystem(ISystem):
                     )
                 )
 
-                # character to child
+                # entity to child
                 rel_graph.add_relationship(
                     Relationship(
                         character.id,
@@ -982,13 +1016,7 @@ class SpawnResidentSystem(ISystem):
             )
 
 
-class BusinessUpdateSystem(ISystem):
-    __slots__ = "_last_update"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._last_update: SimDateTime = SimDateTime()
-
+class BusinessUpdateSystem(System):
     @staticmethod
     def is_within_operating_hours(current_hour: int, hours: Tuple[int, int]) -> bool:
         """Return True if the given hour is within the hours 24-hour time interval"""
@@ -999,76 +1027,51 @@ class BusinessUpdateSystem(ISystem):
             # The time interval overflows to the next day
             return current_hour <= end or current_hour >= start
 
-    def process(self, *args, **kwargs) -> None:
+    def run(self, *args, **kwargs) -> None:
         date = self.world.get_resource(SimDateTime)
         rng = self.world.get_resource(NeighborlyEngine).rng
-        land_grid = self.world.get_resource(LandGrid)
 
-        elapsed_hours = (date - self._last_update).total_hours
-        self._last_update = date.copy()
+        for _, (business, _, _) in self.world.get_components(
+            Business, Building, OpenForBusiness
+        ):
+            # Check if this business is going to close
+            if rng.random() < 0.3:
+                # Go Out of business
+                business.gameobject.add_component(ClosedForBusiness)
+                business.gameobject.remove_component(OpenForBusiness)
+                if business.gameobject.has_component(OpenToPublic):
+                    business.gameobject.remove_component(OpenToPublic)
 
-        years_in_business_increment = float(elapsed_hours) / HOURS_PER_YEAR
-
-        for _, (business, _) in self.world.get_components(Business, Building):
-            business = cast(Business, business)
-            if business.status == BusinessStatus.OpenForBusiness:
-                # Increment the age of the business
-                business.increment_years_in_business(years_in_business_increment)
-
-                # Check if this business is going to close
-                if rng.random() < 0.3:
-                    # Go Out of business
-                    business.set_business_status(BusinessStatus.ClosedForBusiness)
-                    business.owner = None
-                    for employee in business.get_employees():
-                        business.remove_employee(employee)
-                        self.world.get_gameobject(employee).remove_component(Occupation)
-                    business_position = business.gameobject.get_component(Position2D)
-                    land_grid.free_space(
-                        (int(business_position.x), int(business_position.y))
-                    )
-                    business.gameobject.archive()
-
-                # Open/Close based on operating hours
-                business.is_open = business.operating_hours.get(
-                    Weekday[date.weekday_str]
-                )
+            # Open/Close based on operating hours
+            if business.operating_hours.get(Weekday[date.weekday_str]) is not None:
+                business.gameobject.add_component(OpenToPublic())
 
 
-class CharacterAgingSystem(ISystem):
+class CharacterAgingSystem(System):
     """
     Updates the ages of characters, adds/removes life
     stage components (Adult, Child, Elder, ...), and
-    handles character deaths.
+    handles entity deaths.
 
     Notes
     -----
     This system runs every time step
     """
 
-    __slots__ = "_last_update"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._last_update: SimDateTime = SimDateTime()
-
-    def process(self, *args, **kwargs) -> None:
+    def run(self, *args, **kwargs) -> None:
         current_date = self.world.get_resource(SimDateTime)
         event_log = self.world.get_resource(LifeEventLog)
 
-        elapsed_hours = (current_date - self._last_update).total_hours
-        self._last_update = current_date.copy()
+        age_increment = float(self.elapsed_time.total_hours) / HOURS_PER_YEAR
 
-        age_increment = float(elapsed_hours) / HOURS_PER_YEAR
-
-        for _, (character, _) in self.world.get_components(GameCharacter, Present):
-            character = cast(GameCharacter, character)
-
-            character.age += age_increment
+        for _, (character, age, life_stages, _, _) in self.world.get_components(
+            GameCharacter, Age, LifeStages, CanAge, Active
+        ):
+            age.age += age_increment
 
             if (
                 character.gameobject.has_component(Child)
-                and character.age >= character.character_def.life_stages["teen"]
+                and character.age >= life_stages.stages["teen"]
             ):
                 character.gameobject.add_component(Teen())
                 character.gameobject.remove_component(Child)
@@ -1084,7 +1087,7 @@ class CharacterAgingSystem(ISystem):
 
             elif (
                 character.gameobject.has_component(Teen)
-                and character.age >= character.character_def.life_stages["young_adult"]
+                and character.age >= life_stages.stages["young_adult"]
             ):
                 character.gameobject.remove_component(Teen)
                 character.gameobject.add_component(YoungAdult())
@@ -1106,7 +1109,7 @@ class CharacterAgingSystem(ISystem):
 
             elif (
                 character.gameobject.has_component(YoungAdult)
-                and character.age >= character.character_def.life_stages["adult"]
+                and character.age >= life_stages.stages["adult"]
             ):
                 character.gameobject.remove_component(YoungAdult)
                 event_log.record_event(
@@ -1122,7 +1125,7 @@ class CharacterAgingSystem(ISystem):
             elif (
                 character.gameobject.has_component(Adult)
                 and not character.gameobject.has_component(Elder)
-                and character.age >= character.character_def.life_stages["elder"]
+                and character.age >= life_stages.stages["elder"]
             ):
                 character.gameobject.add_component(Elder())
                 event_log.record_event(
@@ -1136,11 +1139,11 @@ class CharacterAgingSystem(ISystem):
                 )
 
 
-class PregnancySystem(ISystem):
+class PregnancySystem(SystemBase):
     """
     Pregnancy system is responsible for managing ChildBirth events.
-    It checks if the current date is after pregnant characters'
-    due dates, and triggers childbirths if it is.
+    It checks if the current date is after a pregnant entity's
+    due date, and triggers a childbirth if it is.
     """
 
     def process(self, *args, **kwargs):
@@ -1149,7 +1152,7 @@ class PregnancySystem(ISystem):
         event_logger = self.world.get_resource(LifeEventLog)
 
         for _, (character, pregnancy, _) in self.world.get_components(
-            GameCharacter, Pregnant, Present
+            GameCharacter, Pregnant, Active
         ):
 
             # Cast for the type-checker
@@ -1164,26 +1167,29 @@ class PregnancySystem(ISystem):
             baby = self.world.spawn_archetype(character.gameobject.archetype)
 
             baby.get_component(GameCharacter).age = (
-                                                        current_date - pregnancy.due_date
-                                                    ).hours / HOURS_PER_YEAR
+                current_date - pregnancy.due_date
+            ).hours / HOURS_PER_YEAR
 
             baby.get_component(GameCharacter).name = CharacterName(
                 baby.get_component(GameCharacter).name.firstname, character.name.surname
             )
 
-            if character.location is not None:
+            if character.gameobject.has_component(CurrentLocation):
+                current_location = character.gameobject.get_component(CurrentLocation)
                 move_to_location(
                     self.world,
                     baby.get_component(GameCharacter),
-                    self.world.get_gameobject(character.location).get_component(
+                    self.world.get_gameobject(current_location.location).get_component(
                         Location
                     ),
                 )
 
+                character.gameobject.add_component(LocationAliases())
+
                 move_residence(
                     baby.get_component(GameCharacter),
                     self.world.get_gameobject(
-                        character.location_aliases["home"]
+                        character.gameobject.get_component(Resident).residence
                     ).get_component(Residence),
                 )
 
@@ -1268,136 +1274,62 @@ class PregnancySystem(ISystem):
             )
 
             character.gameobject.remove_component(Pregnant)
-            # character.gameobject.remove_component(InTheWorkforce)
+            # entity.gameobject.remove_component(InTheWorkforce)
 
-            # if character.gameobject.has_component(Occupation):
-            #     character.gameobject.remove_component(Occupation)
+            # if entity.gameobject.has_component(Occupation):
+            #     entity.gameobject.remove_component(Occupation)
 
             # TODO: Birthing parent should also leave their job
 
 
-class PendingOpeningSystem(ISystem):
-    __slots__ = "days_before_demolishing", "last_update"
+class PendingOpeningSystem(System):
+    """
+    Tracks how long a business has been present in the town, but not
+    officially open. If a business stays in the pending state for longer
+    than a given amount of time, it will go out of business
+
+    Attributes
+    ----------
+    days_before_demolishing: int
+        The number of days that a business can be in the pending state before it is
+        demolished.
+    """
+
+    __slots__ = "days_before_demolishing"
 
     def __init__(self, days_before_demolishing: int = 30) -> None:
         super().__init__()
         self.days_before_demolishing: int = days_before_demolishing
-        self.last_update: SimDateTime = SimDateTime()
 
-    def process(self, *args, **kwargs):
-        date = self.world.get_resource(SimDateTime)
-        elapsed_hours = (date - self.last_update).total_hours
-        self.last_update = date.copy()
-
-        for _, pending_opening in self.world.get_component(PendingOpening):
-            pending_opening.duration += elapsed_hours / HOURS_PER_DAY
+    def run(self, *args, **kwargs):
+        for gid, pending_opening in self.world.get_component(PendingOpening):
+            pending_opening.duration += self.elapsed_time.total_hours / HOURS_PER_DAY
 
             if pending_opening.duration >= self.days_before_demolishing:
-                demolish_building(pending_opening.gameobject)
+                pending_opening.gameobject.remove_component(PendingOpening)
+                pending_opening.gameobject.add_component(ClosedForBusiness())
 
 
-class OpenForBusinessSystem(ISystem):
-    __slots__ = "last_update"
+class OpenForBusinessSystem(System):
+    """
+    Tracks how long a business has been active
+    """
 
-    def __init__(self, days_before_demolishing: int = 30) -> None:
-        super().__init__()
-        self.days_before_demolishing: int = days_before_demolishing
-        self.last_update: SimDateTime = SimDateTime()
-
-    def process(self, *args, **kwargs):
-        date = self.world.get_resource(SimDateTime)
-        elapsed_hours = (date - self.last_update).total_hours
-        self.last_update = date.copy()
-
-        rng = self.world.get_resource(NeighborlyEngine).rng
-
-        for _, (business, open_for_business) in self.world.get_components(
-            Business, OpenForBusiness
+    def run(self, *args, **kwargs):
+        for _, (open_for_business, age) in self.world.get_components(
+            OpenForBusiness, Age
         ):
-            # Cast to help the type-checker
-            business = cast(Business, business)
-            open_for_business = cast(OpenForBusiness, open_for_business)
-
             # Increment the amount of time that the business has been open
-            open_for_business.duration += elapsed_hours / HOURS_PER_DAY
-
-            # Calculate probability of going out of business
-            if rng.random() < 0.3:
-                close_for_business(business)
+            age.age += self.elapsed_time.total_hours / HOURS_PER_DAY
 
 
-class ClosedForBusinessSystem(ISystem):
-    __slots__ = "days_before_demolishing", "last_update"
-
-    def __init__(self, days_before_demolishing: int = 30) -> None:
-        super().__init__()
-        self.days_before_demolishing: int = days_before_demolishing
-        self.last_update: SimDateTime = SimDateTime()
+class ClosedForBusinessSystem(SystemBase):
+    """
+    This system is responsible for removing Businesses from play that are marked as
+    ClosedForBusiness. It removes the building from play, keeps the GameObject for
+    sifting purposes, and displaces the characters within the building.
+    """
 
     def process(self, *args, **kwargs):
-        date = self.world.get_resource(SimDateTime)
-        elapsed_hours = (date - self.last_update).total_hours
-        self.last_update = date.copy()
         for _, out_of_business in self.world.get_component(ClosedForBusiness):
-            out_of_business.duration += elapsed_hours / HOURS_PER_DAY
-
-            if out_of_business.duration >= self.days_before_demolishing:
-                demolish_building(out_of_business.gameobject)
-
-
-###############################
-# HELPERS
-###############################
-
-
-def demolish_building(gameobject: GameObject) -> None:
-    """Remove the building component and free the land grid space"""
-    world = gameobject.world
-    gameobject.remove_component(Building)
-    position = gameobject.get_component(Position2D)
-    land_grid = world.get_resource(LandGrid)
-    land_grid.free_space((int(position.x), int(position.y)))
-
-
-def close_for_business(business: Business) -> None:
-    """Close a business and remove all employees and the owner"""
-    world = business.gameobject.world
-
-    business.gameobject.add_component(ClosedForBusiness())
-
-    for employee in business.get_employees():
-        layoff_employee(business, world.get_gameobject(employee))
-
-    if business.owner_type is not None:
-        layoff_employee(business, world.get_gameobject(business.owner))
-        business.owner = None
-
-
-def layoff_employee(business: Business, employee: GameObject) -> None:
-    """Remove an employee"""
-    world = business.gameobject.world
-    date = world.get_resource(SimDateTime)
-    business.remove_employee(employee.id)
-
-    occupation = employee.get_component(Occupation)
-
-    fired_event = LifeEvent(
-        name="LaidOffFromJob",
-        timestamp=date.to_date_str(),
-        roles=[
-            Role("Business", business.gameobject.id),
-            Role("Character", employee.id),
-        ],
-    )
-
-    world.get_resource(LifeEventLog).record_event(fired_event)
-
-    employee.get_component(WorkHistory).add_entry(
-        occupation_type=occupation.occupation_type,
-        business=business.gameobject.id,
-        start_date=occupation.start_date,
-        end_date=date.copy(),
-        reason_for_leaving=fired_event,
-    )
-
-    employee.remove_component(Occupation)
+            demolish_building(out_of_business.gameobject)

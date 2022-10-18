@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import numpy.typing as npt
 
+from neighborly.core.ecs import Component
 from neighborly.core.personal_values import PersonalValues
 
 
 class Activity:
-    """Activities that a character can do at a location in the town
+    """Activities that a entity can do at a location in the town
 
     Attributes
     ----------
@@ -18,7 +19,7 @@ class Activity:
         Character values that associated with this activity
     personal_values: PersonalValues
         The list of trait_names encoded as a vector of 0's and 1's
-        for non-applicable and applicable character values respectively.
+        for non-applicable and applicable entity values respectively.
     """
 
     __slots__ = "name", "trait_names", "personal_values"
@@ -62,3 +63,18 @@ class ActivityLibrary:
     def get_all(cls) -> List[Activity]:
         """Return all activity instances in the registry"""
         return list(cls._activity_registry.values())
+
+
+class Activities(Component):
+    """Tracks what activities are available to do at a location"""
+
+    __slots__ = "activities"
+
+    def __init__(self, *activities: str) -> None:
+        super().__init__()
+        self.activities: Set[Activity] = set()
+        for activity in activities:
+            self.activities.add(ActivityLibrary.get(activity))
+
+    def has_activity(self, activity: str) -> bool:
+        return activity in self.activities

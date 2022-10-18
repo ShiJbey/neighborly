@@ -7,31 +7,32 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
-## [Unreleased]
-
-### Added
-- **Neighborly Viewer** GUI application for inspecting
-  and stepping through simulation data
-- `pyqt6` as an application dependency
-
-### Fixed
-- `setup.cfg` did not properly include data files in the wheel build.
-
 ## [0.9.4]
+
 ### Added
-* `Building` class to identify when a business currently exists within the town vs.
+
+- `Building` class to identify when a business currently exists within the town vs.
 when it is archived within the ECS for story sifting.
-* Systems to update business components when they are pending opening, open for business, and closed for business and awaiting demolition.
-* New status components to identify Businesses at different phases in their lifecycle:
+- Systems to update business components when they are pending opening, open for business, and closed for business and awaiting demolition.
+- New status components to identify Businesses at different phases in their lifecycle:
 `ClosedForBusiness`, `OpenForBusiness`, `PendingOpening`
-* New PyGame UI elements for displaying information about a GameObject
-* Strings may be used as world seeds
+- New PyGame UI elements for displaying information about a GameObject
+- Strings may be used as world seeds
+- `CHANGELOG.md` file
 
 ### Updated
-* PyGame sample to use the new API
-* Docstrings for `Simulation` and `SimulationBuilder` classes
+
+- PyGame sample to use the new API
+- Docstrings for `Simulation` and `SimulationBuilder` classes
 
 ### Removed
 
+- Jupyter notebook and pygame samples
+- samples category from dependencies within `setup.cfg`
+- `events`, `town`, `land grid`, and `relationships` fields from `NeighborlyJsonExporter`.
+These are duplicated when serializing the resources.
+
 ### Fixed
-* Bug in Business operating hours regex that did not recognize
+
+- Bug in Business operating hours regex that did not recognize AM/PM strings
+- `setup.cfg` did not properly include data files in the wheel build.

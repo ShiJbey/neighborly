@@ -1,4 +1,5 @@
 from neighborly.core.archetypes import BusinessArchetype
+from neighborly.core.ecs import GameObject, World
 
 apartment_complex = BusinessArchetype(
     name="Apartment Complex",

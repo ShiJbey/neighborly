@@ -13,15 +13,13 @@ from neighborly.core.business import (
     OccupationTypeLibrary,
     parse_operating_hour_str,
 )
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.status import Status
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.time import Weekday
 from neighborly.simulation import SimulationBuilder
 
 
-class CollegeGraduate(Status):
-    def __init__(self) -> None:
-        super().__init__("College Graduate", "This character graduated from college.")
+class CollegeGraduate(Component):
+    pass
 
 
 @pytest.fixture

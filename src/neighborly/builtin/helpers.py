@@ -5,36 +5,60 @@ from typing import List, Optional, Tuple, cast
 
 import numpy as np
 
-from neighborly.builtin.statuses import (
+from neighborly.builtin.components import (
     Adult,
+    CanGetPregnant,
     Child,
+    CurrentLocation,
     Elder,
     Female,
+    LocationAliases,
     Male,
     NonBinary,
     Teen,
     YoungAdult,
 )
-from neighborly.core.activity import ActivityLibrary
-from neighborly.core.archetypes import CharacterArchetype
-from neighborly.core.business import Business, InTheWorkforce, Unemployed
+from neighborly.core.activity import Activities, ActivityLibrary
+from neighborly.core.archetypes import CharacterArchetype, CharacterArchetypeLibrary
+from neighborly.core.building import Building
+from neighborly.core.business import (
+    Business,
+    ClosedForBusiness,
+    InTheWorkforce,
+    Occupation,
+    Unemployed,
+    WorkHistory,
+)
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.location import Location
 from neighborly.core.personal_values import PersonalValues
+from neighborly.core.position import Position2D
 from neighborly.core.relationship import (
     Relationship,
     RelationshipGraph,
     RelationshipTag,
 )
 from neighborly.core.residence import Residence, Resident
+from neighborly.core.time import SimDateTime
+from neighborly.core.town import LandGrid
 
 logger = logging.getLogger(__name__)
 
 
+def at_same_location(a: GameObject, b: GameObject) -> bool:
+    """Return True if these characters are at the same location"""
+    a_location = a.get_component(CurrentLocation).location
+    b_location = b.get_component(CurrentLocation).location
+    return (
+        a_location is not None and b_location is not None and a_location == b_location
+    )
+
+
 def get_top_activities(character_values: PersonalValues, n: int = 3) -> Tuple[str, ...]:
-    """Return the top activities a character would enjoy given their values"""
+    """Return the top activities a entity would enjoy given their values"""
 
     scores: List[Tuple[int, str]] = []
 
@@ -52,12 +76,14 @@ def get_top_activities(character_values: PersonalValues, n: int = 3) -> Tuple[st
 
 def find_places_with_activities(world: World, *activities: str) -> List[int]:
     """Return a list of entity ID for locations that have the given activities"""
-    locations = world.get_component(Location)
+    locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
+        Location, Activities
+    )
 
     matches: List[int] = []
 
-    for location_id, location in locations:
-        if location.has_flags(*ActivityLibrary.get_flags(*activities)):
+    for location_id, (_, activities_comp) in locations:
+        if all([activities_comp.has_activity(a) for a in activities]):
             matches.append(location_id)
 
     return matches
@@ -71,19 +97,17 @@ def find_places_with_any_activities(world: World, *activities: str) -> List[int]
 
     flags = ActivityLibrary.get_flags(*activities)
 
-    def score_location(loc: Location) -> int:
-        location_score: int = 0
-        for flag in flags:
-            if loc.activity_flags & flag > 0:
-                location_score += 1
-        return location_score
+    def score_location(act_comp: Activities) -> int:
+        return sum([act_comp.has_activity(a) for a in activities])
 
-    locations = world.get_component(Location)
+    locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
+        Location, Activities
+    )
 
     matches: List[Tuple[int, int]] = []
 
-    for location_id, location in locations:
-        score = score_location(location)
+    for location_id, (_, activities_comp) in locations:
+        score = score_location(activities_comp)
         if score > 0:
             matches.append((score, location_id))
 
@@ -135,19 +159,26 @@ def remove_coworkers(character: GameObject, business: Business) -> None:
             )
 
 
-def move_to_location(
-    world: World, character: GameCharacter, destination: Location
-) -> None:
-    if destination.gameobject.id == character.location:
+def move_to_location(world: World, gameobject: GameObject, destination_id: int) -> None:
+    # A location cant move to itself
+    if destination_id == gameobject.id:
         return
 
-    if character.location is not None:
-        current_location: Location = world.get_gameobject(
-            character.location
-        ).get_component(Location)
-        current_location.remove_character(character.gameobject.id)
+    # Check if they
+    current_location_comp = gameobject.try_component(CurrentLocation)
 
-    destination.add_character(character.gameobject.id)
+    if current_location_comp is not None:
+        current_location = world.get_gameobject(
+            current_location_comp.location
+        ).get_component(Location)
+    else:
+        gameobject.add_component(CurrentLocation)
+
+    if character.location is not None:
+
+        current_location.remove_entity(character.gameobject.id)
+
+    destination.add_entity(gameobject.id)
     character.location = destination.gameobject.id
 
 
@@ -159,14 +190,15 @@ def get_locations(world: World) -> List[Tuple[int, Location]]:
 
 
 def move_residence(character: GameCharacter, new_residence: Residence) -> None:
-    """Move a character into a residence"""
+    """Move a entity into a residence"""
 
     world = character.gameobject.world
+    location_aliases = character.gameobject.get_component(LocationAliases)
 
     # Move out of the old residence
-    if "home" in character.location_aliases:
+    if "home" in location_aliases.aliases:
         old_residence = world.get_gameobject(
-            character.location_aliases["home"]
+            location_aliases.aliases["home"]
         ).get_component(Residence)
         old_residence.remove_resident(character.gameobject.id)
         if old_residence.is_owner(character.gameobject.id):
@@ -174,7 +206,7 @@ def move_residence(character: GameCharacter, new_residence: Residence) -> None:
 
     # Move into new residence
     new_residence.add_resident(character.gameobject.id)
-    character.location_aliases["home"] = new_residence.gameobject.id
+    location_aliases.aliases["home"] = new_residence.gameobject.id
     character.gameobject.add_component(Resident(new_residence.gameobject.id))
 
 
@@ -184,7 +216,7 @@ def move_residence(character: GameCharacter, new_residence: Residence) -> None:
 
 
 def choose_gender(engine: NeighborlyEngine, character: GameCharacter) -> None:
-    if character.can_get_pregnant:
+    if character.gameobject.has_component(CanGetPregnant):
         gender_type = engine.rng.choice([Female, NonBinary])
         character.gameobject.add_component(gender_type())
     else:
@@ -228,14 +260,14 @@ def generate_young_adult_character(
     world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
 ) -> GameObject:
     """
-    Create a new Young-adult-aged character
+    Create a new Young-adult-aged entity
 
     Parameters
     ----------
     world: World
-        The world to spawn the character into
+        The world to spawn the entity into
     engine: NeighborlyEngine
-        The engine instance that holds the character archetypes
+        The engine instance that holds the entity archetypes
     archetype: Optional[str]
         The name of the archetype to generate. A random archetype
         will be generated if not provided
@@ -289,3 +321,90 @@ def generate_elderly_character(
         character.character_def.lifespan - 1,
     )
     return gameobject
+
+
+def demolish_building(gameobject: GameObject) -> None:
+    """Remove the building component and free the land grid space"""
+    world = gameobject.world
+    gameobject.remove_component(Building)
+    position = gameobject.get_component(Position2D)
+    land_grid = world.get_resource(LandGrid)
+    land_grid[int(position.x), int(position.y)] = None
+    logger.debug(f"Demolished building at {str(position)}")
+
+
+def close_for_business(business: Business) -> None:
+    """Close a business and remove all employees and the owner"""
+    world = business.gameobject.world
+    date = world.get_resource(SimDateTime)
+
+    business.gameobject.add_component(ClosedForBusiness())
+
+    close_for_business_event = LifeEvent(
+        name="ClosedForBusiness",
+        timestamp=date.to_date_str(),
+        roles=[
+            Role("Business", business.gameobject.id),
+        ],
+    )
+
+    world.get_resource(LifeEventLog).record_event(close_for_business_event)
+
+    for employee in business.get_employees():
+        layoff_employee(business, world.get_gameobject(employee))
+
+    if business.owner_type is not None:
+        layoff_employee(business, world.get_gameobject(business.owner))
+        business.owner = None
+
+
+def layoff_employee(business: Business, employee: GameObject) -> None:
+    """Remove an employee"""
+    world = business.gameobject.world
+    date = world.get_resource(SimDateTime)
+    business.remove_employee(employee.id)
+
+    occupation = employee.get_component(Occupation)
+
+    fired_event = LifeEvent(
+        name="LaidOffFromJob",
+        timestamp=date.to_date_str(),
+        roles=[
+            Role("Business", business.gameobject.id),
+            Role("Character", employee.id),
+        ],
+    )
+
+    world.get_resource(LifeEventLog).record_event(fired_event)
+
+    employee.get_component(WorkHistory).add_entry(
+        occupation_type=occupation.occupation_type,
+        business=business.gameobject.id,
+        start_date=occupation.start_date,
+        end_date=date.copy(),
+        reason_for_leaving=fired_event,
+    )
+
+    employee.remove_component(Occupation)
+
+
+def choose_random_character_archetype(
+    engine: NeighborlyEngine,
+) -> Optional[CharacterArchetype]:
+    """Performs a weighted random selection across all character archetypes"""
+    archetype_choices: List[CharacterArchetype] = []
+    archetype_weights: List[int] = []
+
+    for archetype in CharacterArchetypeLibrary.get_all():
+        archetype_choices.append(archetype)
+        archetype_weights.append(archetype.spawn_multiplier)
+
+    if archetype_choices:
+        # Choose an archetype at random
+        archetype: CharacterArchetype = engine.rng.choices(
+            population=archetype_choices, weights=archetype_weights, k=1
+        )[0]
+
+        return archetype
+    else:
+        return None

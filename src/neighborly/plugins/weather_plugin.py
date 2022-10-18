@@ -1,6 +1,6 @@
 from enum import Enum
 
-from neighborly.core.ecs import ISystem
+from neighborly.core.ecs import SystemBase
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.time import SimDateTime
 from neighborly.simulation import Plugin, Simulation
@@ -34,7 +34,7 @@ class WeatherManager:
         self.time_before_change: int = 0
 
 
-class WeatherSystem(ISystem):
+class WeatherSystem(SystemBase):
     """Updates the current weather state
 
     Attributes

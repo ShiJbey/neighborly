@@ -15,7 +15,7 @@ class RoutinePriority(IntEnum):
 
 class RoutineEntry:
     """
-    An entry within a routine for when a character needs to be
+    An entry within a routine for when a entity needs to be
     at a specific location and for how long
 
     Attributes
@@ -75,7 +75,7 @@ class RoutineEntry:
 class DailyRoutine:
     """
     A collection of RoutineEntries that manage where a
-    character should be for a given day
+    entity should be for a given day
 
     Attributes
     ----------
@@ -169,7 +169,7 @@ class DailyRoutine:
 
 class Routine(Component):
     """
-    Collection of DailyRoutine Instances that manages a character's
+    Collection of DailyRoutine Instances that manages a entity's
     behavior for a 7-day week
 
     Attributes
@@ -185,7 +185,7 @@ class Routine(Component):
 
     def __init__(self) -> None:
         super().__init__()
-        self._daily_routines = (
+        self._daily_routines: List[DailyRoutine] = [
             DailyRoutine(),
             DailyRoutine(),
             DailyRoutine(),
@@ -193,7 +193,14 @@ class Routine(Component):
             DailyRoutine(),
             DailyRoutine(),
             DailyRoutine(),
-        )
+        ]
+
+    def get_entry(self, day: int, hour: int) -> Optional[RoutineEntry]:
+        """Get a single activity for a given day and time"""
+        entries = self._daily_routines[day].get(hour)
+        if entries:
+            return entries[-1]
+        return None
 
     def get_entries(self, day: int, hour: int) -> List[RoutineEntry]:
         """Get the scheduled activity for a given day and time"""

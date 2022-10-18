@@ -75,7 +75,7 @@ class TalkOfTheTownPlugin(Plugin):
         # Talk of the town only has one residence archetype
         ResidenceArchetypeLibrary.add(ResidenceArchetype(name="House"))
 
-        # Talk of the town only has one character archetype
+        # Talk of the town only has one entity archetype
         CharacterArchetypeLibrary.add(
             CharacterArchetype(
                 name="Person",

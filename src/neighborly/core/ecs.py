@@ -10,16 +10,36 @@ https://github.com/bevyengine/bevy
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 from abc import ABC
-from os import remove
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
-from uuid import uuid1
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+)
 
 import esper
 
 logger = logging.getLogger(__name__)
+
+# Component types that should be removed when archiving a GameObject
+__components_removed_on_archive: Set[Type[Component]] = set()
+
+
+# Store string names of components for lookup later
+__component_names: Dict[Type[Component], str] = {}
+
+
+# Text descriptions of components (mostly used by GUI applications)
+__component_descriptions: Dict[Type[Component], str] = {}
+
 
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
@@ -73,23 +93,16 @@ class GameObject:
     Attributes
     ----------
     id: int
-        unique identifier
-    name: str
+      unique identifier
+    _name: str
         name of the GameObject
-    world: World
+    _world: World
         the World instance this GameObject belongs to
-    components: List[Components]
+    _components: List[Components]
         Components attached to this GameObject
     """
 
-    __slots__ = (
-        "_id",
-        "_name",
-        "_components",
-        "_world",
-        "_archetype",
-        "_active",
-    )
+    __slots__ = ("_id", "_name", "_components", "_world", "_archetype")
 
     def __init__(
         self,
@@ -99,7 +112,6 @@ class GameObject:
         components: Optional[Iterable[Component]] = None,
         archetype: Optional[EntityArchetype] = None,
     ) -> None:
-        self._active: bool = True
         self._name: str = name if name else f"GameObject ({unique_id})"
         self._id: int = unique_id
         self._world: World = world
@@ -133,10 +145,6 @@ class GameObject:
     @property
     def components(self) -> List[Component]:
         return list(self._components.values())
-
-    @property
-    def is_active(self) -> bool:
-        return self._active
 
     def add_component(self, component: Component) -> GameObject:
         """Add a component to this GameObject"""
@@ -175,12 +183,13 @@ class GameObject:
 
         The GameObject stays in the ECS though.
         """
+        global __components_removed_on_archive
         for component in self.components:
             component.on_archive()
         components = self.components
         components.reverse()
         for component in components:
-            if type(component).remove_on_archive:
+            if type(component) in __components_removed_on_archive:
                 self.remove_component(type(component))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -204,11 +213,6 @@ class GameObject:
     def __repr__(self) -> str:
         return f"GameObject(id={self.id})"
 
-    @staticmethod
-    def generate_id() -> int:
-        """Create a new unique int ID"""
-        return int.from_bytes(hashlib.sha256(uuid1().bytes).digest()[:8], "little")
-
 
 class Component(ABC):
     """
@@ -221,8 +225,6 @@ class Component(ABC):
     """
 
     __slots__ = "_gameobject"
-
-    remove_on_archive: bool = False
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
@@ -260,8 +262,36 @@ class Component(ABC):
         """Serialize the component to a dict"""
         return {"type": self.__class__.__name__}
 
+    def __repr__(self) -> str:
+        return "{}".format(self.__class__.__name__)
 
-class ISystem(ABC, esper.Processor):
+
+def component_info(
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+) -> Callable[[Type[_CT]], Type[_CT]]:
+    """Decorator that registers a name for this component"""
+
+    def decorator(cls: Type[_CT]) -> Type[_CT]:
+        if name is not None:
+            __component_names[cls] = name
+        if description is not None:
+            __component_descriptions[cls] = description
+        return cls
+
+    return decorator
+
+
+def remove_on_archive(cls: Type[_CT]) -> Type[_CT]:
+    """
+    Decorator that marks a component type that should be removed when archiving
+    the GameObject
+    """
+    __components_removed_on_archive.add(cls)
+    return cls
+
+
+class SystemBase(ABC, esper.Processor):
     world: World
 
     def __init__(self):
@@ -386,7 +416,7 @@ class World:
 
         self._dead_gameobjects.clear()
 
-    def add_system(self, system: ISystem, priority: int = 0) -> None:
+    def add_system(self, system: SystemBase, priority: int = 0) -> None:
         """Add a System instance to the World"""
         self._ecs.add_processor(system, priority=priority)
         system.world = self
@@ -395,7 +425,7 @@ class World:
         """Get a System of the given type"""
         return self._ecs.get_processor(system_type)
 
-    def remove_system(self, system: Type[ISystem]) -> None:
+    def remove_system(self, system: Type[SystemBase]) -> None:
         """Remove a System from the World"""
         self._ecs.remove_processor(system)
 

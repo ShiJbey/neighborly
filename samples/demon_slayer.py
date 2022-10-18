@@ -44,7 +44,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly.builtin.statuses import Deceased
+from neighborly.builtin.components import Deceased
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
@@ -53,9 +53,11 @@ from neighborly.core.life_event import (
     LifeEventLibrary,
     LifeEventLog,
     LifeEventType,
-    RoleType, constant_probability,
+    RoleType,
+    constant_probability,
 )
 from neighborly.core.location import Location
+from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins.default_plugin import DefaultPlugin
 from neighborly.plugins.talktown import TalkOfTheTownPlugin
 from neighborly.plugins.weather_plugin import WeatherPlugin
@@ -111,7 +113,7 @@ class DemonSlayer(Component):
         This slayer's power level (used to calculate
         chance of winning a battle).
     breathing_style: BreathingStyle
-        What style of breathing does this character use
+        What style of breathing does this entity use
     """
 
     __slots__ = "rank", "kills", "power_level", "breathing_style"
@@ -432,9 +434,9 @@ def probability_of_winning(rating_a: int, rating_b: int) -> float:
     Parameters
     ----------
     rating_a: int
-        Rating of character A
+        Rating of entity A
     rating_b: int
-        Rating of character B
+        Rating of entity B
     """
     return 1.0 / (1 + math.pow(10, (rating_a - rating_b) / ELO_SCALE))
 
@@ -447,6 +449,7 @@ def update_power_level(
     k: int = 16,
 ) -> Tuple[int, int]:
     """
+    Perform ELO calculation for new ratings
 
     Parameters
     ----------
@@ -523,14 +526,6 @@ def power_level_to_demon_rank(power_level: int) -> DemonRank:
         return DemonRank.Demon
     else:
         return DemonRank.LowerDemon
-
-
-def at_same_location(a: GameObject, b: GameObject) -> bool:
-    """Return True if these characters are at the same location"""
-    return (
-        a.get_component(GameCharacter).location
-        == b.get_component(GameCharacter).location
-    )
 
 
 ########################################
@@ -632,7 +627,7 @@ def challenge_for_power(probability: float = 1.0) -> LifeEventType:
         challenger = world.get_gameobject(event["Challenger"]).get_component(Demon)
         opponent = world.get_gameobject(event["Opponent"]).get_component(Demon)
         rng = world.get_resource(NeighborlyEngine).rng
-        death_event_type = LifeEventLibrary.get("Death")
+        _death_event_type = LifeEventLibrary.get("Death")
         generated_events = [event]
 
         slayer_success_chance = probability_of_winning(
@@ -654,12 +649,12 @@ def challenge_for_power(probability: float = 1.0) -> LifeEventType:
 
             opponent.power_level = new_slayer_pl
 
-            death_event = death_event_type.instantiate(
+            death_event = _death_event_type.instantiate(
                 world, Deceased=challenger.gameobject
             )
 
             if death_event:
-                death_event_type.execute(world, death_event)
+                _death_event_type.execute(world, death_event)
                 generated_events.append(death_event)
 
         else:
@@ -673,12 +668,12 @@ def challenge_for_power(probability: float = 1.0) -> LifeEventType:
 
             challenger.power_level = new_demon_pl
 
-            death_event = death_event_type.instantiate(
+            death_event = _death_event_type.instantiate(
                 world, Deceased=opponent.gameobject
             )
 
             if death_event:
-                death_event_type.execute(world, death_event)
+                _death_event_type.execute(world, death_event)
                 generated_events.append(death_event)
 
     return LifeEventType(
@@ -703,14 +698,17 @@ def devour_human(probability: float = 1.0) -> LifeEventType:
             )
             if battle_event:
                 battle_event_type.execute(world, battle_event)
+
         else:
             demon.get_component(Demon).power_level += 1
             demon.get_component(Demon).rank = power_level_to_demon_rank(
                 demon.get_component(Demon).power_level
             )
-            death_event = LifeEventLibrary.get("Death").instantiate(
-                world, Deceased=victim
-            )
+            _death_event_type = LifeEventLibrary.get("Death")
+            death_event = _death_event_type.instantiate(world, Deceased=victim)
+
+            if death_event:
+                _death_event_type.execute(world, death_event)
 
     def bind_victim(world: World, event: LifeEvent):
         """Get all people at the same location who are not demons"""
@@ -721,7 +719,7 @@ def devour_human(probability: float = 1.0) -> LifeEventType:
 
         candidates: List[GameObject] = []
 
-        for character_id in demon_location.characters_present:
+        for character_id in demon_location.entities:
             character = world.get_gameobject(character_id)
             if character_id == demon.id:
                 continue
@@ -756,7 +754,7 @@ def battle(probability: float = 1.0) -> LifeEventType:
         demon = world.get_gameobject(event["Demon"]).get_component(Demon)
         slayer = world.get_gameobject(event["Slayer"]).get_component(DemonSlayer)
         rng = world.get_resource(NeighborlyEngine).rng
-        death_event_type = LifeEventLibrary.get("Death")
+        _death_event_type = LifeEventLibrary.get("Death")
 
         slayer_success_chance = probability_of_winning(
             slayer.power_level, demon.power_level
@@ -778,10 +776,12 @@ def battle(probability: float = 1.0) -> LifeEventType:
             slayer.power_level = new_slayer_pl
             slayer.rank = power_level_to_slayer_rank(slayer.power_level)
 
-            death_event = death_event_type.instantiate(world, Deceased=demon.gameobject)
+            death_event = _death_event_type.instantiate(
+                world, Deceased=demon.gameobject
+            )
 
             if death_event:
-                death_event_type.execute(world, death_event)
+                _death_event_type.execute(world, death_event)
 
         else:
             # Demon wins
@@ -795,12 +795,12 @@ def battle(probability: float = 1.0) -> LifeEventType:
             demon.power_level = new_demon_pl
             demon.rank = power_level_to_demon_rank(demon.power_level)
 
-            death_event = death_event_type.instantiate(
+            death_event = _death_event_type.instantiate(
                 world, Deceased=slayer.gameobject
             )
 
             if death_event:
-                death_event_type.execute(world, death_event)
+                _death_event_type.execute(world, death_event)
 
     return LifeEventType(
         "Battle",
@@ -850,7 +850,7 @@ def death_event_type() -> LifeEventType:
 
     return LifeEventType(
         "Death",
-        roles=[RoleType("Deceased")],
+        roles=[RoleType("Deceased", components=[GameCharacter])],
         effects=execute,
         probability=constant_probability(0),
     )
@@ -925,7 +925,7 @@ class DemonSlayerPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
         LifeEventLibrary.add(promotion_to_upper_moon())
         LifeEventLibrary.add(promotion_to_lower_moon())
-        LifeEventLibrary.add(turn_into_demon(0.3))
+        LifeEventLibrary.add(turn_into_demon(0.8))
         LifeEventLibrary.add(battle(0.7))
         LifeEventLibrary.add(devour_human(0.3))
         LifeEventLibrary.add(challenge_for_power(0.4))
@@ -940,6 +940,8 @@ class DemonSlayerPlugin(Plugin):
 # MAIN FUNCTION
 ########################################
 
+EXPORT_WORLD = False
+
 
 def main():
     sim = (
@@ -951,14 +953,20 @@ def main():
         .build()
     )
 
-    sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
-
     st = time.time()
     sim.establish_setting()
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.time.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")
+
+    if EXPORT_WORLD:
+        output_path = f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
+
+        with open(output_path, "w") as f:
+            data = NeighborlyJsonExporter().export(sim)
+            f.write(data)
+            print(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":

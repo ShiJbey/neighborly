@@ -7,8 +7,8 @@ from neighborly.core.ecs import (
     ComponentNotFoundError,
     EntityArchetype,
     GameObjectNotFoundError,
-    ISystem,
     ResourceNotFoundError,
+    SystemBase,
     World,
 )
 
@@ -58,7 +58,7 @@ class AnotherFakeResource:
     config_value: int = 43
 
 
-class FakeSystemA(ISystem):
+class FakeSystemBaseA(SystemBase):
     def process(self, *args, **kwargs):
         for _, a in self.world.get_component(A):
             a.value += 1
@@ -254,24 +254,24 @@ def test_world_get_components():
 def test_world_add_get_system():
     world = World()
 
-    assert world.get_system(FakeSystemA) is None
-    world.add_system(FakeSystemA())
-    assert world.get_system(FakeSystemA) is not None
+    assert world.get_system(FakeSystemBaseA) is None
+    world.add_system(FakeSystemBaseA())
+    assert world.get_system(FakeSystemBaseA) is not None
 
 
 def test_world_remove_system():
     world = World()
 
-    assert world.get_system(FakeSystemA) is None
-    world.add_system(FakeSystemA())
-    assert world.get_system(FakeSystemA) is not None
-    world.remove_system(FakeSystemA)
-    assert world.get_system(FakeSystemA) is None
+    assert world.get_system(FakeSystemBaseA) is None
+    world.add_system(FakeSystemBaseA())
+    assert world.get_system(FakeSystemBaseA) is not None
+    world.remove_system(FakeSystemBaseA)
+    assert world.get_system(FakeSystemBaseA) is None
 
 
 def test_world_step():
     world = World()
-    world.add_system(FakeSystemA())
+    world.add_system(FakeSystemBaseA())
 
     g1 = world.spawn_gameobject([A(1)])
     g2 = world.spawn_gameobject([A(2)])

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
 
-from neighborly.builtin.statuses import Present
-from neighborly.core.business import Business, BusinessService, WorkHistory, logger
-from neighborly.core.character import GameCharacter, LifeStages
-from neighborly.core.ecs import Component, EntityArchetype
+from neighborly.builtin.components import Active, Age, CanGetPregnant, Name
+from neighborly.core.business import Business, Services, WorkHistory, logger
+from neighborly.core.character import GameCharacter, LifeStageAges
+from neighborly.core.ecs import Component, EntityArchetype, GameObject, World
 from neighborly.core.location import Location
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.position import Position2D
@@ -13,40 +14,98 @@ from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 
 
-class CharacterArchetype(EntityArchetype):
-    """
-    Archetype subclass for building characters
-    """
+def spawns_character(name: str, spawn_frequency: int = 1):
+    def decorator(fn):
+        ...
 
-    __slots__ = "name_format", "spawn_multiplier"
+    return decorator
+
+
+@spawns_character("Human")
+def create_human(world: World) -> None:
+    ...
+
+
+class Prefab(ABC):
+    """A specification for a hierarchy of GameObjects"""
+
+    @abstractmethod
+    def instantiate(self, world: World) -> GameObject:
+        raise NotImplementedError
+
+
+class CharacterPrefab(Prefab):
+    __slots__ = (
+        "name_format",
+        "spawn_multiplier",
+        "chance_spawn_with_spouse",
+        "max_children_at_spawn",
+        "archetype",
+    )
 
     def __init__(
         self,
-        name: str,
-        lifespan: int,
-        life_stages: LifeStages,
         name_format: str = "#first_name# #family_name#",
-        chance_can_get_pregnant: float = 0.5,
         spawn_multiplier: int = 1,
+        chance_spawn_with_spouse: float = 0.5,
+        max_children_at_spawn: int = 0,
         extra_components: Optional[Dict[Type[Component], Dict[str, Any]]] = None,
     ) -> None:
         super().__init__(name)
         self.name_format: str = name_format
         self.spawn_multiplier: int = spawn_multiplier
+        self.chance_spawn_with_spouse: float = chance_spawn_with_spouse
+        self.max_children_at_spawn: int = max_children_at_spawn
+        self.archetype = EntityArchetype("")
 
-        self.add(
-            GameCharacter,
-            character_type=name,
-            name_format=name_format,
-            lifespan=lifespan,
-            life_stages=life_stages,
-            chance_can_get_pregnant=chance_can_get_pregnant,
-        )
+        self.archetype.add(GameCharacter)
+        self.archetype.add(Routine, presets="default")
+        self.archetype.add(PersonalValues)
+        self.archetype.add(WorkHistory)
+        self.archetype.add(Age)
+        self.archetype.add(CanGetPregnant)
 
+        if extra_components:
+            for component_type, params in extra_components.items():
+                self.archetype.add(component_type, **params)
+
+    def instantiate(self, world: World) -> GameObject:
+        return world.spawn_archetype(self.archetype)
+
+
+class CharacterArchetype(EntityArchetype):
+    """
+    Archetype subclass for building characters
+    """
+
+    __slots__ = (
+        "name_format",
+        "spawn_multiplier",
+        "chance_spawn_with_spouse",
+        "max_children_at_spawn",
+    )
+
+    def __init__(
+        self,
+        name: str,
+        name_format: str = "#first_name# #family_name#",
+        spawn_multiplier: int = 1,
+        chance_spawn_with_spouse: float = 0.5,
+        max_children_at_spawn: int = 0,
+        extra_components: Optional[Dict[Type[Component], Dict[str, Any]]] = None,
+    ) -> None:
+        super().__init__(name)
+        self.name_format: str = name_format
+        self.spawn_multiplier: int = spawn_multiplier
+        self.chance_spawn_with_spouse: float = chance_spawn_with_spouse
+        self.max_children_at_spawn: int = max_children_at_spawn
+
+        self.add(GameCharacter)
         self.add(Routine, presets="default")
         self.add(PersonalValues)
         self.add(WorkHistory)
-        self.add(Present)
+        self.add(Age)
+        self.add(CanGetPregnant)
 
         if extra_components:
             for component_type, params in extra_components.items():
@@ -91,7 +150,6 @@ class BusinessArchetype(EntityArchetype):
         "min_population",
         "employee_types",
         "services",
-        "service_flags",
         "spawn_multiplier",
         "year_available",
         "year_obsolete",
@@ -120,26 +178,22 @@ class BusinessArchetype(EntityArchetype):
         self.min_population: int = min_population
         self.employee_types: Dict[str, int] = employee_types if employee_types else {}
         self.services: List[str] = services if services else []
-        self.service_flags: BusinessService = BusinessService.NONE
         self.spawn_multiplier: int = spawn_multiplier
-        for service_name in self.services:
-            self.service_flags |= BusinessService[
-                service_name.strip().upper().replace(" ", "_")
-            ]
         self.year_available: int = year_available
         self.year_obsolete: int = year_obsolete
 
         self.add(
             Business,
-            business_type=self.name,
             name_format=self.name_format,
             hours=self.hours,
             owner_type=self.owner_type,
             employee_types=self.employee_types,
-            services=self.service_flags,
         )
         self.add(Location)
         self.add(Position2D)
+        self.add(Name, name=self.name)
+        self.add(Age)
+        self.add(Services, services=services)
 
         if extra_components:
             for component_type, params in extra_components.items():

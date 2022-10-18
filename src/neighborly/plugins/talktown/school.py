@@ -1,9 +1,8 @@
 from ordered_set import OrderedSet
 
-from neighborly.builtin.statuses import Child, Teen, YoungAdult
-from neighborly.core.ecs import Component, ISystem
+from neighborly.builtin.components import Child, Teen, YoungAdult
+from neighborly.core.ecs import Component, SystemBase, component_info
 from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
-from neighborly.core.status import Status
 from neighborly.core.time import SimDateTime
 
 
@@ -25,12 +24,12 @@ class School(Component):
         self.students.add(student)
 
 
-class Student(Status):
-    def __init__(self):
-        super().__init__("Student", "This character is a student at the local school")
+@component_info("Student", "This entity is a student at the local school")
+class Student(Component):
+    pass
 
 
-class SchoolSystem(ISystem):
+class SchoolSystem(SystemBase):
     """Enrolls new students and graduates old students"""
 
     def process(self, *args, **kwargs) -> None:

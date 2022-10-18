@@ -1,14 +1,12 @@
 <h1 align="center">
   <img
-    width="300"
-    height="300"
+    width="150"
+    height="150"
     src="https://user-images.githubusercontent.com/11076525/165836171-9ffdea6e-1633-440c-be06-b46e1e3e4e04.png"
   >
   <br>
   Neighborly
 </h1>
-
-<h3 align="center"><b>Social simulation engine for procedurally generating towns of characters</b></h2>
 
 <p align="center">
   <img src="https://img.shields.io/pypi/dm/neighborly">
@@ -28,8 +26,6 @@ Neighborly takes lessons learned from working with
 [_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
 and aims to give people better documentation, simpler interfaces, and more opportunities for extension and content authoring.
 
-<b>Neighborly is not fully functional yet. I am actively working toward a working release.</b>
-
 # Core Features
 
 * Create custom Character Archetypes and have them all interact within the same simulation
@@ -40,6 +36,15 @@ and aims to give people better documentation, simpler interfaces, and more oppor
 * Export simulation state to JSON for further data processing
 
 # How to use
+
+Neighborly can be used as a Python module within another project, or it can be used
+as social data generator. Simulation data can be serialized to JSON for later processing.
+
+Users can also new event types, entities (characters, businesses, residences), and 
+social systems. Neighborly is designed for end-user configurability allowing users
+to model arbitrary social contexts.
+
+## Installation
 
 Neighborly is available to install from PyPI.
 
@@ -55,14 +60,9 @@ way. Please refer to them when creating new Plugins and other content.
 
 ## Running the CLI
 
-Neighborly can be run as a module from the commandline.
-
-```bash
-python -m neighborly
-
-# Please use the following command for additional help with running Neighborly's CLI
-python -m neighborly --help
-```
+Neighborly can be run as a module `$ python -m neighborly` or commandline `$ neighborly`
+script. If you require additional help while running, please use 
+`python -m neighborly --help`.
 
 By default, it runs a builtin version of **Talk of the Town**. However, you can
 configure the simulation settings by creating a `neighborlyconfig.yaml` file in
@@ -74,67 +74,17 @@ When world generation concludes, Neighborly can write the final simulation data
 to a JSON file with the name of the town and the seed used for random number
 generation.
 
-# Running the Samples
+## Running the Samples
 
 Neighborly provides sample simulations to show users how to customize
 it to create new story world themes.
 
-Please follow the steps below to run the sample simulations.
-We also have examples for using Neighborly in a IPython
-notebook and with PyGame.
-
 ```bash
 # Make sure that you've activated your python virtual environment
-#  created in "Installing For Local Development" Step-2
-
-# Step 1: Install dependencies for samples
-python -m pip install -e ".[samples]"
-
-# Step 2: Run desired sample
-#   Replace <sample_name>.py with the name of the
-#   sample you want to run
+# Replace <sample_name>.py with the name of the
+# sample you want to run
 python ./samples/<sample_name>.py
-
-# (Optional: IPython Notebook)
-# Step 3: Start Jupyter, navigate the sample.ipynb file,
-#   and follow the instructions in the notebook
-jupyter notebook
 ```
-
-# Documentation
-
-Most of Neighborly's documentation lives within the code. Neighborly uses
-[Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html) docstrings for
-functions and classes.
-
-The extended documentation can be found in the
-[Wiki](https://github.com/ShiJbey/neighborly/wiki).
-
-When adding docstrings for existing or new bits of code please use the following
-references for how to format your contributions. Please note that **Neighborly does
-not use Sphinx** for documentation. We reference them here for the clear examples of
-Numpy-style docstrings.
-
-* [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
-* [Example Numpy Style Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html#example-numpy)
-
-# Contributing
-
-If you are interested in contributing to Neighborly, feel free to fork this repository,
-make your changes, and submit a pull-request. Please keep in mind that this project is
-a tool for creativity and learning. We have a [code of conduct](./CODE_OF_CONDUCT.md)
-to encourage healthy collaboration, and will enforce it if we need to.
-
-Here are some ways that people can contribute to Neighborly:
-
-1. Proposing/Implementing features
-2. Fixing bugs
-3. Providing optimizations
-4. Fixing typos
-5. Filing issues
-6. Contributing tutorials/how-tos to the wiki
-7. Fixing grammar and spelling
-8. Creating new samples
 
 ## Installing for local development
 
@@ -184,20 +134,6 @@ pytest
 pytest --cov=neighborly tests/
 ```
 
-# Running the Samples
-
-Please follow the steps below to run the sample simulations.
-We also have examples for using Neighborly in a IPython
-notebook and with PyGame.
-
-```bash
-# Step 1: Install dependencies for samples
-python -m pip install -e ".[samples]"
-
-# Step 2: Run desired sample
-python ./samples/<sample_name>.py
-```
-
 # Documentation
 
 Neighborly uses [Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html) docstrings in code and full documentation can be found in the [Wiki](https://github.com/ShiJbey/neighborly/wiki).
@@ -207,7 +143,6 @@ references for how to format your contributions:
 
 * [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
 * [Example Numpy Style Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html#example-numpy)
-
 
 # Contributing
 

@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 
 import neighborly
 import neighborly.core.utils.utilities as utilities
-from neighborly.core.life_event import LifeEventLog
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.simulation import Plugin, PluginSetupError, SimulationBuilder
 
@@ -237,6 +236,7 @@ def main():
         world_gen_start=config.world_gen_start,
         world_gen_end=config.world_gen_end,
         time_increment_hours=config.hours_per_timestep,
+        print_events=not args.quiet,
     )
 
     for plugin_entry in config.plugins:
@@ -248,10 +248,6 @@ def main():
             sim_builder.add_plugin(plugin, **plugin_entry.options)
 
     sim = sim_builder.build()
-
-    config.quiet = args.quiet
-    if not config.quiet:
-        sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
 
     sim.establish_setting()
 

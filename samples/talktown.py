@@ -10,7 +10,6 @@ import logging
 import random
 import time
 
-from neighborly.core.life_event import LifeEventLog
 from neighborly.core.time import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins.default_plugin import DefaultPlugin
@@ -28,14 +27,13 @@ if __name__ == "__main__":
             seed=random.randint(0, 999999),
             world_gen_start=SimDateTime(year=1839, month=8, day=19),
             world_gen_end=SimDateTime(year=1979, month=8, day=19),
+            print_events=True,
         )
         .add_plugin(DefaultPlugin())
         .add_plugin(WeatherPlugin())
         .add_plugin(TalkOfTheTownPlugin())
         .build()
     )
-
-    sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
 
     st = time.time()
     sim.establish_setting()

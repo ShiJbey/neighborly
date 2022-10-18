@@ -99,7 +99,7 @@ class Relationship:
     """
     Relationships are one of the core factors of a
     social simulation next to the characters. They
-    track how one character feels about another. And
+    track how one entity feels about another. And
     they evolve as a function of how many times two
     characters interact.
 
@@ -113,7 +113,7 @@ class Relationship:
     _owner: int
         Character who owns the relationship
     _target: int
-        The character who this relationship is directed toward
+        The entity who this relationship is directed toward
     _friendship: float
         Friendship score on the scale [FRIENDSHIP_MIN, FRIENDSHIP_MAX]
         where a max means best friends and min means worst-enemies
@@ -300,7 +300,7 @@ class RelationshipGraph(DirectedGraph[Relationship]):
         self.add_connection(relationship.owner, relationship.target, relationship)
 
     def get_relationships(self, owner: int) -> List[Relationship]:
-        """Get all the outgoing relationships for this character"""
+        """Get all the outgoing relationships for this entity"""
         owner_node = self._nodes[owner]
         return [self._edges[owner, target] for target in owner_node.outgoing]
 

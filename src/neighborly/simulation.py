@@ -7,12 +7,15 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from neighborly.builtin.systems import (
     BuildBusinessSystem,
-    BuildResidenceSystem,
+    BuildHousingSystem,
     BusinessUpdateSystem,
     CharacterAgingSystem,
+    ClosedForBusinessSystem,
     FindBusinessOwnerSystem,
     FindEmployeesSystem,
     LinearTimeSystem,
+    OpenForBusinessSystem,
+    PendingOpeningSystem,
     PregnancySystem,
     RelationshipStatusSystem,
     RoutineSystem,
@@ -20,7 +23,14 @@ from neighborly.builtin.systems import (
     SpawnResidentSystem,
     UnemploymentSystem,
 )
-from neighborly.core.ecs import ISystem, World
+from neighborly.core.constants import (
+    BUSINESS_UPDATE_PHASE,
+    CHARACTER_ACTION_PHASE,
+    CHARACTER_UPDATE_PHASE,
+    TIME_UPDATE_PHASE,
+    TOWN_SYSTEMS_PHASE,
+)
+from neighborly.core.ecs import SystemBase, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEventLog, LifeEventSimulator
 from neighborly.core.relationship import RelationshipGraph
@@ -139,7 +149,7 @@ class SimulationBuilder:
         Tuple containing the width and length of the grid of land the town is built on
     seed: int
         The value used to seed the random number generator
-    systems: List[Tuple[ISystem, int]]
+    systems: List[Tuple[SystemBase, int]]
         The systems to add to the simulation instance and their associated priorities
     resources: List[Any]
         Resource instances to add to the simulation instance
@@ -157,6 +167,7 @@ class SimulationBuilder:
         "systems",
         "resources",
         "plugins",
+        "print_events",
     )
 
     def __init__(
@@ -167,6 +178,7 @@ class SimulationBuilder:
         time_increment_hours: int = 12,
         town_name: str = "#town_name#",
         town_size: TownSize = "medium",
+        print_events: bool = True,
     ) -> None:
         self.seed: int = self._hash_seed(
             seed if seed is not None else random.randint(0, 99999999)
@@ -186,15 +198,16 @@ class SimulationBuilder:
         self.town_size: Tuple[int, int] = SimulationBuilder._convert_town_size(
             town_size
         )
-        self.systems: List[Tuple[ISystem, int]] = []
+        self.systems: List[Tuple[SystemBase, int]] = []
         self.resources: List[Any] = []
         self.plugins: List[Tuple[Plugin, Dict[str, Any]]] = []
+        self.print_events: bool = print_events
 
     def _hash_seed(self, seed: Union[str, int]) -> int:
         """Create an int hash from the given seed value"""
         return hash(seed)
 
-    def add_system(self, system: ISystem, priority: int = 0) -> SimulationBuilder:
+    def add_system(self, system: SystemBase, priority: int = 0) -> SimulationBuilder:
         """Add a new system to the simulation"""
         self.systems.append((system, priority))
         return self
@@ -237,22 +250,38 @@ class SimulationBuilder:
         )
 
         self.add_resource(self.world_gen_start.copy())
-        self.add_system(LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)))
-        self.add_system(LifeEventSimulator(interval=TimeDelta(days=3)))
+        self.add_system(
+            LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)),
+            TIME_UPDATE_PHASE,
+        )
+        self.add_system(
+            LifeEventSimulator(interval=TimeDelta(days=3)), priority=TOWN_SYSTEMS_PHASE
+        )
         self.add_resource(LifeEventLog())
-        self.add_system(BuildResidenceSystem(interval=TimeDelta(days=5)))
-        self.add_system(SpawnResidentSystem(interval=TimeDelta(days=7)))
-        self.add_system(BuildBusinessSystem(interval=TimeDelta(days=5)))
+        self.add_system(
+            BuildHousingSystem(chance_of_build=0.5), priority=TOWN_SYSTEMS_PHASE
+        )
+        self.add_system(
+            SpawnResidentSystem(interval=TimeDelta(days=7)), priority=TOWN_SYSTEMS_PHASE
+        )
+        self.add_system(
+            BuildBusinessSystem(interval=TimeDelta(days=5)), priority=TOWN_SYSTEMS_PHASE
+        )
         self.add_resource(RelationshipGraph())
-        self.add_system(CharacterAgingSystem())
-        self.add_system(RoutineSystem(), 5)
-        self.add_system(BusinessUpdateSystem())
-        self.add_system(FindBusinessOwnerSystem())
-        self.add_system(FindEmployeesSystem())
-        self.add_system(UnemploymentSystem(days_to_departure=30))
-        self.add_system(RelationshipStatusSystem())
-        self.add_system(SocializeSystem())
-        self.add_system(PregnancySystem())
+        self.add_system(CharacterAgingSystem(), priority=CHARACTER_UPDATE_PHASE)
+        self.add_system(RoutineSystem(), priority=CHARACTER_UPDATE_PHASE)
+        self.add_system(BusinessUpdateSystem(), priority=BUSINESS_UPDATE_PHASE)
+        self.add_system(FindBusinessOwnerSystem(), priority=BUSINESS_UPDATE_PHASE)
+        self.add_system(FindEmployeesSystem(), priority=BUSINESS_UPDATE_PHASE)
+        self.add_system(
+            UnemploymentSystem(days_to_departure=30), priority=CHARACTER_UPDATE_PHASE
+        )
+        self.add_system(RelationshipStatusSystem(), priority=CHARACTER_UPDATE_PHASE)
+        self.add_system(SocializeSystem(), priority=CHARACTER_ACTION_PHASE)
+        self.add_system(PregnancySystem(), priority=CHARACTER_UPDATE_PHASE)
+        self.add_system(PendingOpeningSystem(), priority=BUSINESS_UPDATE_PHASE)
+        self.add_system(OpenForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
+        self.add_system(ClosedForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
 
         for system, priority in self.systems:
             sim.world.add_system(system, priority)
@@ -263,6 +292,9 @@ class SimulationBuilder:
         for plugin, options in self.plugins:
             plugin.setup(sim, **options)
             logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
+
+        if self.print_events:
+            sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
 
         self._create_town(sim)
 

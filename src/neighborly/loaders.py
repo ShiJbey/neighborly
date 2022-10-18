@@ -82,7 +82,7 @@ class YamlDataLoader:
 
 @YamlDataLoader.section_loader("Characters")
 def _load_character_archetypes(data: List[Dict[str, Any]]) -> None:
-    """Process data defining character archetypes"""
+    """Process data defining entity archetypes"""
     for archetype_data in data:
         CharacterArchetypeLibrary.add(CharacterArchetype(**archetype_data))
 

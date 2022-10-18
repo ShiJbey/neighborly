@@ -4,15 +4,14 @@ from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, remove_on_archive
 
 
+@remove_on_archive
 class Residence(Component):
     """Residence is a place where characters live"""
 
     __slots__ = "owners", "former_owners", "residents", "former_residents", "_vacant"
-
-    remove_on_archive: bool = True
 
     def __init__(self) -> None:
         super().__init__()
@@ -41,7 +40,7 @@ class Residence(Component):
         self.owners.remove(owner)
 
     def is_owner(self, character: int) -> bool:
-        """Return True if the character is an owner of this residence"""
+        """Return True if the entity is an owner of this residence"""
         return character in self.owners
 
     def add_resident(self, resident: int) -> None:
@@ -56,7 +55,7 @@ class Residence(Component):
         self._vacant = len(self.residents) == 0
 
     def is_resident(self, character: int) -> bool:
-        """Return True if the given character is a resident"""
+        """Return True if the given entity is a resident"""
         return character in self.residents
 
     def is_vacant(self) -> bool:
@@ -64,12 +63,11 @@ class Residence(Component):
         return self._vacant
 
 
+@remove_on_archive
 class Resident(Component):
     """Component attached to characters indicating that they live in the town"""
 
     __slots__ = "residence"
-
-    remove_on_archive: bool = True
 
     def __init__(self, residence: int) -> None:
         super().__init__()
