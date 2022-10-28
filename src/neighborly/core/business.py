@@ -3,18 +3,13 @@ from __future__ import annotations
 import logging
 import math
 import re
+from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Protocol, Set, Tuple
 
 from neighborly.builtin.components import Active
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import (
-    Component,
-    GameObject,
-    World,
-    component_info,
-    remove_on_archive,
-)
+from neighborly.core.ecs import Component, GameObject, World, component_info
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.routine import (
@@ -40,7 +35,7 @@ __business_info_registry: Dict[str, BusinessInfo] = {}
 
 class IOccupationPreconditionFn(Protocol):
     """
-    A function that must evaluate to True for a entity to
+    A function that must evaluate to True for an entity to
     be eligible to hold the occupation.
 
     Notes
@@ -52,7 +47,7 @@ class IOccupationPreconditionFn(Protocol):
 
     def __call__(self, world: World, gameobject: GameObject, **kwargs: Any) -> bool:
         """
-        A function that must evaluate to True for a entity to
+        A function that must evaluate to True for an entity to
         be eligible to hold the occupation.
 
         Arguments
@@ -170,7 +165,7 @@ class OccupationType:
         return f"OccupationType(name={self.name}, level={self.level})"
 
 
-class OccupationTypeLibrary:
+class OccupationTypes:
     """Stores OccupationType instances mapped to strings for lookup at runtime"""
 
     _registry: Dict[str, OccupationType] = {}
@@ -209,10 +204,9 @@ class OccupationTypeLibrary:
         return cls._registry[name]
 
 
-@remove_on_archive
 class Occupation(Component):
     """
-    Employment Information about a entity
+    Employment Information about an entity
     """
 
     __slots__ = "_occupation_type", "_years_held", "_business", "_level", "_start_date"
@@ -263,12 +257,6 @@ class Occupation(Component):
     def increment_years_held(self, years: float) -> None:
         self._years_held += years
 
-    def on_remove(self) -> None:
-        """Run when the component is removed from the GameObject"""
-        world = self.gameobject.world
-        business = world.get_gameobject(self.business).get_component(Business)
-        end_job(business, self.gameobject.get_component(GameCharacter), self)
-
     def __repr__(self) -> str:
         return "Occupation(occupation_type={}, business={}, level={}, years_held={})".format(
             self.occupation_type, self.business, self.level, self.years_held
@@ -277,7 +265,7 @@ class Occupation(Component):
 
 @dataclass
 class WorkHistoryEntry:
-    """Record of a job held by a entity"""
+    """Record of a job held by an entity"""
 
     occupation_type: str
     business: int
@@ -319,7 +307,7 @@ class WorkHistoryEntry:
 
 class WorkHistory(Component):
     """
-    Stores information about all the jobs that a entity
+    Stores information about all the jobs that an entity
     has held
 
     Attributes
@@ -408,37 +396,44 @@ class ServiceType:
         return self.uid == other.uid
 
 
-class ServiceTypeLibrary:
+class ServiceTypes:
+    """
+    Repository of various services offered
+    """
 
     _next_id: int = 1
     _name_to_service: Dict[str, ServiceType] = {}
     _id_to_name: Dict[int, str] = {}
 
     @classmethod
-    def add_service_type(cls, service_name: str) -> None:
-        if service_name in cls._name_to_service:
-            raise RuntimeError(f"Duplicate service type: {service_name}")
+    def __contains__(cls, service_name: str) -> bool:
+        """Return True if a service type exists with the given name"""
+        return service_name.lower() in cls._name_to_service
+
+    @classmethod
+    def get(cls, service_name: str) -> ServiceType:
+        lc_service_name = service_name.lower()
+
+        if lc_service_name in cls._name_to_service:
+            return cls._name_to_service[lc_service_name]
 
         uid = cls._next_id
         cls._next_id = cls._next_id + 1
-        service_type = ServiceType(uid, service_name)
-        cls._name_to_service[service_name] = service_type
-        cls._id_to_name[uid] = service_name
-
-    @classmethod
-    def get(cls, service_name) -> ServiceType:
-        return cls._name_to_service[service_name]
+        service_type = ServiceType(uid, lc_service_name)
+        cls._name_to_service[lc_service_name] = service_type
+        cls._id_to_name[uid] = lc_service_name
 
 
 class Services(Component):
 
     __slots__ = "_services"
 
-    def __init__(self, *services: str) -> None:
+    def __init__(self, services: Set[ServiceType]) -> None:
         super().__init__()
-        self._services: Set[ServiceType] = set()
-        for service in services:
-            self._services.add(ServiceTypeLibrary.get(service))
+        self._services: Set[ServiceType] = services
+
+    def __contains__(self, service_name: str) -> bool:
+        return ServiceTypes.get(service_name) in self._services
 
     def has_service(self, service: ServiceType) -> bool:
         return service in self._services
@@ -476,6 +471,12 @@ class PendingOpening(Component):
     def __init__(self) -> None:
         super().__init__()
         self.duration: float = 0.0
+
+
+class IBusinessType(Component, ABC):
+    """Empty interface for creating types of businesses like Restaurants, ETC"""
+
+    pass
 
 
 class Business(Component):
@@ -523,13 +524,17 @@ class Business(Component):
         """Return a list of IDs for current employees"""
         return list(self._employees.keys())
 
+    def set_owner(self, owner: Optional[int]) -> None:
+        """Set the ID for the owner of the business"""
+        self.owner = owner
+
     def add_employee(self, character: int, position: str) -> None:
         """Add entity to employees and remove a vacant position"""
         self._employees[character] = position
         self._open_positions[position] -= 1
 
     def remove_employee(self, character: int) -> None:
-        """Remove a entity as an employee and add a vacant position"""
+        """Remove an entity as an employee and add a vacant position"""
         position = self._employees[character]
         del self._employees[character]
         self._open_positions[position] += 1
@@ -577,7 +582,6 @@ class Business(Component):
     "Unemployed",
     "Character doesn't have a job",
 )
-@remove_on_archive
 class Unemployed(Component):
     __slots__ = "duration_days"
 
@@ -590,7 +594,6 @@ class Unemployed(Component):
     "In the Workforce",
     "This Character is eligible for employment opportunities.",
 )
-@remove_on_archive
 class InTheWorkforce(Component):
     pass
 
@@ -625,17 +628,20 @@ def start_job(
         )
 
 
-def end_job(
-    business: Business, character: GameCharacter, occupation: Occupation
-) -> None:
-    world = character.gameobject.world
+def end_job(business: Business, character: GameObject, occupation: Occupation) -> None:
+    world = character.world
 
-    if business.owner_type is not None and business.owner == character.gameobject.id:
-        business.owner = None
+    if business.owner_type is not None and business.owner == character.id:
+        business.set_owner(None)
     else:
-        business.remove_employee(character.gameobject.id)
+        business.remove_employee(character.id)
 
-    character.gameobject.get_component(WorkHistory).add_entry(
+    if not character.has_component(WorkHistory):
+        character.add_component(WorkHistory())
+
+    character.remove_component(Occupation)
+
+    character.get_component(WorkHistory).add_entry(
         occupation_type=occupation.occupation_type,
         business=business.gameobject.id,
         start_date=occupation.start_date,
@@ -643,7 +649,7 @@ def end_job(
     )
 
     # Remove routine entries
-    character_routine = character.gameobject.get_component(Routine)
+    character_routine = character.get_component(Routine)
     for day, _ in business.operating_hours.items():
         character_routine.remove_entries(
             [day],

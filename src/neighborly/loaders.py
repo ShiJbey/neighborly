@@ -10,13 +10,14 @@ import yaml
 
 from neighborly.core.activity import Activity, ActivityLibrary
 from neighborly.core.archetypes import (
-    BusinessArchetype,
-    BusinessArchetypeLibrary,
-    CharacterArchetype,
-    CharacterArchetypeLibrary,
-    ResidenceArchetype,
-    ResidenceArchetypeLibrary,
+    BaseBusinessArchetype,
+    BaseCharacterArchetype,
+    BaseResidenceArchetype,
+    BusinessArchetypes,
+    CharacterArchetypes,
+    ResidenceArchetypes,
 )
+from neighborly.core.business import ServiceTypes
 
 logger = logging.getLogger(__name__)
 
@@ -84,21 +85,27 @@ class YamlDataLoader:
 def _load_character_archetypes(data: List[Dict[str, Any]]) -> None:
     """Process data defining entity archetypes"""
     for archetype_data in data:
-        CharacterArchetypeLibrary.add(CharacterArchetype(**archetype_data))
+        CharacterArchetypes.add(
+            archetype_data["name"], BaseCharacterArchetype(**archetype_data)
+        )
 
 
 @YamlDataLoader.section_loader("Businesses")
 def _load_business_archetypes(data: List[Dict[str, Any]]) -> None:
     """Process data defining business archetypes"""
     for archetype_data in data:
-        BusinessArchetypeLibrary.add(BusinessArchetype(**archetype_data))
+        BusinessArchetypes.add(
+            archetype_data["name"], BaseBusinessArchetype(**archetype_data)
+        )
 
 
 @YamlDataLoader.section_loader("Residences")
 def _load_residence_data(data: List[Dict[str, Any]]) -> None:
     """Process data defining residence archetypes"""
     for archetype_data in data:
-        ResidenceArchetypeLibrary.add(ResidenceArchetype(**archetype_data))
+        ResidenceArchetypes.add(
+            archetype_data["name"], BaseResidenceArchetype(**archetype_data)
+        )
 
 
 @YamlDataLoader.section_loader("Activities")
@@ -106,3 +113,10 @@ def _load_activity_data(data: List[Dict[str, Any]]) -> None:
     """Process data defining activities"""
     for entry in data:
         ActivityLibrary.add(Activity(entry["name"], trait_names=entry["traits"]))
+
+
+@YamlDataLoader.section_loader("Services")
+def _load_business_services(data: List[Dict[str, Any]]) -> None:
+    """Load business services from YAML"""
+    for entry in data:
+        ServiceTypes.add(entry["name"])

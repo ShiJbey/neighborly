@@ -29,6 +29,9 @@ class CharacterName(Component):
     def __str__(self) -> str:
         return f"{self.firstname} {self.surname}"
 
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\tname: {str(self)}")
+
     @classmethod
     def create(cls, world: World, **kwargs) -> Component:
         first_name, surname = kwargs.get(
@@ -38,4 +41,7 @@ class CharacterName(Component):
 
 
 class GameCharacter(Component):
+
+    __slots__ = ()
+
     pass

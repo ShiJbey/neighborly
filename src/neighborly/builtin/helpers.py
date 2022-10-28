@@ -1,46 +1,33 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple, cast
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 import numpy as np
 
-from neighborly.builtin.components import (
-    Adult,
-    CanGetPregnant,
-    Child,
-    CurrentLocation,
-    Elder,
-    Female,
-    LocationAliases,
-    Male,
-    NonBinary,
-    Teen,
-    YoungAdult,
-)
+from neighborly.builtin.components import CurrentLocation, LocationAliases, Vacant
 from neighborly.core.activity import Activities, ActivityLibrary
-from neighborly.core.archetypes import CharacterArchetype, CharacterArchetypeLibrary
+from neighborly.core.archetypes import (
+    BaseCharacterArchetype,
+    CharacterArchetypes,
+    ICharacterArchetype,
+)
 from neighborly.core.building import Building
 from neighborly.core.business import (
     Business,
     ClosedForBusiness,
-    InTheWorkforce,
     Occupation,
-    Unemployed,
     WorkHistory,
 )
-from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import GameObject, World
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.location import Location
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.position import Position2D
-from neighborly.core.relationship import (
-    Relationship,
-    RelationshipGraph,
-    RelationshipTag,
-)
+from neighborly.core.relationship import Relationship, RelationshipGraph
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import LandGrid
@@ -58,7 +45,7 @@ def at_same_location(a: GameObject, b: GameObject) -> bool:
 
 
 def get_top_activities(character_values: PersonalValues, n: int = 3) -> Tuple[str, ...]:
-    """Return the top activities a entity would enjoy given their values"""
+    """Return the top activities an entity would enjoy given their values"""
 
     scores: List[Tuple[int, str]] = []
 
@@ -95,8 +82,6 @@ def find_places_with_any_activities(world: World, *activities: str) -> List[int]
     Results are sorted by how many activities they match
     """
 
-    flags = ActivityLibrary.get_flags(*activities)
-
     def score_location(act_comp: Activities) -> int:
         return sum([act_comp.has_activity(a) for a in activities])
 
@@ -130,13 +115,9 @@ def add_coworkers(character: GameObject, business: Business) -> None:
         if not rel_graph.has_connection(employee_id, character.id):
             rel_graph.add_relationship(Relationship(employee_id, character.id))
 
-        rel_graph.get_connection(character.id, employee_id).add_tags(
-            RelationshipTag.Coworker
-        )
+        rel_graph.get_connection(character.id, employee_id).add_tag("Coworker")
 
-        rel_graph.get_connection(employee_id, character.id).add_tags(
-            RelationshipTag.Coworker
-        )
+        rel_graph.get_connection(employee_id, character.id).add_tag("Coworker")
 
 
 def remove_coworkers(character: GameObject, business: Business) -> None:
@@ -149,20 +130,18 @@ def remove_coworkers(character: GameObject, business: Business) -> None:
             continue
 
         if rel_graph.has_connection(character.id, employee_id):
-            rel_graph.get_connection(character.id, employee_id).remove_tags(
-                RelationshipTag.Coworker
-            )
+            rel_graph.get_connection(character.id, employee_id).remove_tag("Coworker")
 
         if rel_graph.has_connection(employee_id, character.id):
-            rel_graph.get_connection(employee_id, character.id).remove_tags(
-                RelationshipTag.Coworker
-            )
+            rel_graph.get_connection(employee_id, character.id).remove_tag("Coworker")
 
 
 def move_to_location(world: World, gameobject: GameObject, destination_id: int) -> None:
     # A location cant move to itself
     if destination_id == gameobject.id:
         return
+
+    destination = world.get_gameobject(destination_id).get_component(Location)
 
     # Check if they
     current_location_comp = gameobject.try_component(CurrentLocation)
@@ -171,15 +150,12 @@ def move_to_location(world: World, gameobject: GameObject, destination_id: int) 
         current_location = world.get_gameobject(
             current_location_comp.location
         ).get_component(Location)
+        current_location.remove_entity(gameobject.id)
+        current_location_comp.location = destination_id
+        destination.add_entity(gameobject.id)
     else:
-        gameobject.add_component(CurrentLocation)
-
-    if character.location is not None:
-
-        current_location.remove_entity(character.gameobject.id)
-
-    destination.add_entity(gameobject.id)
-    character.location = destination.gameobject.id
+        gameobject.add_component(CurrentLocation(destination_id))
+        destination.add_entity(gameobject.id)
 
 
 def get_locations(world: World) -> List[Tuple[int, Location]]:
@@ -189,138 +165,88 @@ def get_locations(world: World) -> List[Tuple[int, Location]]:
     )
 
 
-def move_residence(character: GameCharacter, new_residence: Residence) -> None:
-    """Move a entity into a residence"""
-
-    world = character.gameobject.world
-    location_aliases = character.gameobject.get_component(LocationAliases)
-
-    # Move out of the old residence
-    if "home" in location_aliases.aliases:
-        old_residence = world.get_gameobject(
-            location_aliases.aliases["home"]
-        ).get_component(Residence)
-        old_residence.remove_resident(character.gameobject.id)
-        if old_residence.is_owner(character.gameobject.id):
-            old_residence.remove_owner(character.gameobject.id)
-
-    # Move into new residence
-    new_residence.add_resident(character.gameobject.id)
-    location_aliases.aliases["home"] = new_residence.gameobject.id
-    character.gameobject.add_component(Resident(new_residence.gameobject.id))
-
-
-############################################
-# GENERATING CHARACTERS OF DIFFERENT AGES
-############################################
-
-
-def choose_gender(engine: NeighborlyEngine, character: GameCharacter) -> None:
-    if character.gameobject.has_component(CanGetPregnant):
-        gender_type = engine.rng.choice([Female, NonBinary])
-        character.gameobject.add_component(gender_type())
-    else:
-        gender_type = engine.rng.choice([Male, NonBinary])
-        character.gameobject.add_component(gender_type())
-
-
-def generate_child_character(
-    world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
-) -> GameObject:
-    gameobject = world.spawn_archetype(archetype)
-    gameobject.add_component(Child())
-    character = gameobject.get_component(GameCharacter)
-
-    choose_gender(engine, character)
-
-    # generate an age
-    character.age = engine.rng.randint(
-        0, character.character_def.life_stages["teen"] - 1
-    )
-
-    return gameobject
-
-
-def generate_teen_character(
-    world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
-) -> GameObject:
-    gameobject = world.spawn_archetype(archetype)
-    gameobject.add_component(Teen())
-    character = gameobject.get_component(GameCharacter)
-    choose_gender(engine, character)
-    character.age = engine.rng.randint(
-        character.character_def.life_stages["teen"],
-        character.character_def.life_stages["young_adult"] - 1,
-    )
-
-    return gameobject
-
-
-def generate_young_adult_character(
-    world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
-) -> GameObject:
+def remove_residence_owner(character: GameObject, residence: GameObject) -> None:
     """
-    Create a new Young-adult-aged entity
+    Remove a character as the owner of a residence
 
     Parameters
     ----------
-    world: World
-        The world to spawn the entity into
-    engine: NeighborlyEngine
-        The engine instance that holds the entity archetypes
-    archetype: Optional[str]
-        The name of the archetype to generate. A random archetype
-        will be generated if not provided
+    character: GameObject
+        Character to remove as owner
+    residence: GameObject
+        Residence to remove them from
+    """
+    residence.get_component(Residence).remove_owner(character.id)
+
+
+def add_residence_owner(character: GameObject, residence: GameObject) -> None:
+    """
+    Add an entity as the new owner of a residence
+
+    Parameters
+    ----------
+    character: GameObject
+        entity that purchased the residence
+
+    residence: GameObject
+        residence that was purchased
+    """
+    residence.get_component(Residence).add_owner(character.id)
+
+
+def move_out_of_residence(character: GameObject, former_residence: GameObject) -> None:
+    """
+    Removes a character as a resident at a given residence
+
+    Parameters
+    ----------
+    character: GameObject
+        Character to remove
+    former_residence: GameObject
+        Residence to remove the character from
+    """
+    former_residence.get_component(Residence).remove_resident(character.id)
+    character.remove_component(Resident)
+
+    if len(former_residence.get_component(Residence).residents) <= 0:
+        former_residence.add_component(Vacant())
+
+    if location_aliases := character.try_component(LocationAliases):
+        del location_aliases["home"]
+
+
+def move_residence(character: GameObject, new_residence: GameObject) -> None:
+    """
+    Sets an entity's primary residence, possibly replacing the previous
+
+    Parameters
+    ----------
+    character
+    new_residence
 
     Returns
     -------
-    GameObject
-        The final generated gameobject
+
     """
-    gameobject = world.spawn_archetype(archetype)
-    gameobject.add_component(Unemployed())
-    gameobject.add_component(YoungAdult())
-    gameobject.add_component(Adult())
-    gameobject.add_component(InTheWorkforce())
-    character = gameobject.get_component(GameCharacter)
-    choose_gender(engine, character)
-    character.age = engine.rng.randint(
-        character.character_def.life_stages["young_adult"],
-        character.character_def.life_stages["adult"] - 1,
-    )
-    return gameobject
 
+    world = character.world
 
-def generate_adult_character(
-    world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
-) -> GameObject:
-    gameobject = world.spawn_archetype(archetype)
-    gameobject.add_component(Unemployed())
-    gameobject.add_component(Adult())
-    gameobject.add_component(InTheWorkforce())
-    character = gameobject.get_component(GameCharacter)
-    choose_gender(engine, character)
-    character.age = engine.rng.randint(
-        character.character_def.life_stages["adult"],
-        character.character_def.life_stages["elder"] - 1,
-    )
-    return gameobject
+    if resident := character.try_component(Resident):
+        # This character is currently a resident at another location
+        former_residence = world.get_gameobject(resident.residence)
+        move_out_of_residence(character, former_residence)
 
+    # Move into new residence
+    new_residence.get_component(Residence).add_resident(character.id)
 
-def generate_elderly_character(
-    world: World, engine: NeighborlyEngine, archetype: CharacterArchetype
-) -> GameObject:
-    gameobject = world.spawn_archetype(archetype)
-    gameobject.add_component(Elder())
-    gameobject.add_component(Adult())
-    gameobject.add_component(InTheWorkforce())
-    character = gameobject.get_component(GameCharacter)
-    choose_gender(engine, character)
-    character.age = engine.rng.randint(
-        character.character_def.life_stages["elder"],
-        character.character_def.lifespan - 1,
-    )
-    return gameobject
+    if not character.has_component(LocationAliases):
+        character.add_component(LocationAliases())
+
+    character.get_component(LocationAliases)["home"] = new_residence.id
+    character.add_component(Resident(new_residence.id))
+
+    if new_residence.has_component(Vacant):
+        new_residence.remove_component(Vacant)
 
 
 def demolish_building(gameobject: GameObject) -> None:
@@ -330,7 +256,7 @@ def demolish_building(gameobject: GameObject) -> None:
     position = gameobject.get_component(Position2D)
     land_grid = world.get_resource(LandGrid)
     land_grid[int(position.x), int(position.y)] = None
-    logger.debug(f"Demolished building at {str(position)}")
+    gameobject.remove_component(Position2D)
 
 
 def close_for_business(business: Business) -> None:
@@ -368,7 +294,7 @@ def layoff_employee(business: Business, employee: GameObject) -> None:
 
     fired_event = LifeEvent(
         name="LaidOffFromJob",
-        timestamp=date.to_date_str(),
+        timestamp=date.to_iso_str(),
         roles=[
             Role("Business", business.gameobject.id),
             Role("Character", employee.id),
@@ -376,6 +302,9 @@ def layoff_employee(business: Business, employee: GameObject) -> None:
     )
 
     world.get_resource(LifeEventLog).record_event(fired_event)
+
+    if not employee.has_component(WorkHistory):
+        employee.add_component(WorkHistory())
 
     employee.get_component(WorkHistory).add_entry(
         occupation_type=occupation.occupation_type,
@@ -390,21 +319,187 @@ def layoff_employee(business: Business, employee: GameObject) -> None:
 
 def choose_random_character_archetype(
     engine: NeighborlyEngine,
-) -> Optional[CharacterArchetype]:
+) -> Optional[ICharacterArchetype]:
     """Performs a weighted random selection across all character archetypes"""
-    archetype_choices: List[CharacterArchetype] = []
+    archetype_choices: List[ICharacterArchetype] = []
     archetype_weights: List[int] = []
 
-    for archetype in CharacterArchetypeLibrary.get_all():
+    for archetype in CharacterArchetypes.get_all():
         archetype_choices.append(archetype)
-        archetype_weights.append(archetype.spawn_multiplier)
+        archetype_weights.append(archetype.get_spawn_frequency())
 
     if archetype_choices:
         # Choose an archetype at random
-        archetype: CharacterArchetype = engine.rng.choices(
+        archetype: ICharacterArchetype = engine.rng.choices(
             population=archetype_choices, weights=archetype_weights, k=1
         )[0]
 
         return archetype
     else:
         return None
+
+
+@dataclass()
+class InheritableComponentInfo:
+    """
+    Fields
+    ------
+    inheritance_chance: Tuple[float, float]
+        Probability that a character inherits a component when only on parent has
+        it and the probability if both characters have it
+    always_inherited: bool
+        Indicates that a component should be inherited regardless of
+    """
+
+    inheritance_chance: Tuple[float, float]
+    always_inherited: bool
+    requires_both_parents: bool
+
+
+_inheritable_components: Dict[Type[Component], InheritableComponentInfo] = {}
+
+
+class IInheritable(ABC):
+    @classmethod
+    @abstractmethod
+    def from_parents(
+        cls, parent_a: Optional[Component], parent_b: Optional[Component]
+    ) -> Component:
+        """Build a new instance of the component using instances from the parents"""
+        raise NotImplementedError
+
+
+_CT = TypeVar("_CT", bound="Component")
+
+
+def inheritable(
+    requires_both_parents: bool = False,
+    inheritance_chance: Union[int, Tuple[float, float]] = (0.5, 0.5),
+    always_inherited: bool = False,
+):
+    """Class decorator for components that can be inherited from characters' parents"""
+
+    def wrapped(cls: Type[_CT]) -> Type[_CT]:
+        if not callable(getattr(cls, "from_parents", None)):
+            raise RuntimeError("Component does not implement IInheritable interface.")
+
+        _inheritable_components[cls] = InheritableComponentInfo(
+            requires_both_parents=requires_both_parents,
+            inheritance_chance=(
+                inheritance_chance
+                if type(inheritance_chance) == tuple
+                else (inheritance_chance, inheritance_chance)
+            ),
+            always_inherited=always_inherited,
+        )
+        return cls
+
+    return wrapped
+
+
+def is_inheritable(component_type: Type[Component]) -> bool:
+    """Returns True if a component is inheritable from parent to child"""
+    return component_type in _inheritable_components
+
+
+def get_inheritable_components(gameobject: GameObject) -> List[Type[Component]]:
+    """Returns all the component type associated with the GameObject that are inheritable"""
+    inheritable_components = list()
+    # Get inheritable components from parent_a
+    for component_type in gameobject.get_component_types():
+        if is_inheritable(component_type):
+            inheritable_components.append(component_type)
+    return inheritable_components
+
+
+def get_inheritable_traits_given_parents(
+    parent_a: GameObject, parent_b: GameObject
+) -> Tuple[List[Type[Component]], List[Tuple[float, Type[Component]]]]:
+    """
+    Returns a
+    Parameters
+    ----------
+    parent_a
+    parent_b
+
+    Returns
+    -------
+    List[Type[Component]]
+        The component types that can be inherited from
+    """
+
+    parent_a_inheritables = set(get_inheritable_components(parent_a))
+
+    parent_b_inheritables = set(get_inheritable_components(parent_b))
+
+    shared_inheritables = parent_a_inheritables.intersection(parent_b_inheritables)
+
+    all_inheritables = parent_a_inheritables.union(parent_b_inheritables)
+
+    required_components = []
+    random_pool = []
+
+    for component_type in all_inheritables:
+        if _inheritable_components[component_type].always_inherited:
+            required_components.append(component_type)
+            continue
+
+        if _inheritable_components[component_type].requires_both_parents:
+            if component_type in shared_inheritables:
+                required_components.append(component_type)
+                continue
+
+        if component_type in shared_inheritables:
+            random_pool.append(
+                (
+                    _inheritable_components[component_type].inheritance_chance[1],
+                    component_type,
+                )
+            )
+        else:
+            random_pool.append(
+                (
+                    _inheritable_components[component_type].inheritance_chance[0],
+                    component_type,
+                )
+            )
+
+    return required_components, random_pool
+
+
+def generate_child(
+    world: World, parent_a: GameObject, parent_b: GameObject
+) -> GameObject:
+    child = BaseCharacterArchetype().create(world)
+
+    required_components, random_pool = get_inheritable_traits_given_parents(
+        parent_a, parent_b
+    )
+
+    for component_type in required_components:
+        component = cast(IInheritable, component_type).from_parents(
+            parent_a.try_component(component_type),
+            parent_b.try_component(component_type),
+        )
+        child.add_component(component)
+
+    rng = world.get_resource(NeighborlyEngine).rng
+
+    rng.shuffle(random_pool)
+
+    remaining_traits = 3
+
+    for probability, component_type in random_pool:
+        if rng.random() < probability:
+            child.add_component(
+                component_type.from_parents(
+                    parent_a.try_component(component_type),
+                    parent_b.try_component(component_type),
+                )
+            )
+            remaining_traits -= 1
+
+        if remaining_traits <= 0:
+            break
+
+    return child

@@ -5,29 +5,29 @@ from typing import List, Optional, cast
 from neighborly.builtin.components import (
     Active,
     Adult,
+    Age,
     CanGetPregnant,
-    Dating,
     Deceased,
+    Departed,
     Elder,
-    Married,
+    Lifespan,
     Pregnant,
     Retired,
 )
 from neighborly.builtin.helpers import move_residence
 from neighborly.builtin.role_filters import is_single
 from neighborly.core.business import Occupation, Unemployed
-from neighborly.core.character import GameCharacter
+from neighborly.core.character import CharacterName, GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
     LifeEvent,
-    LifeEventLog,
     LifeEventType,
     RoleType,
     constant_probability,
     join_filters,
 )
-from neighborly.core.relationship import RelationshipGraph, RelationshipTag
+from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.time import SimDateTime
 
@@ -55,10 +55,10 @@ def become_friends_event(
                     rel_graph.get_connection(rel.target, event["PersonA"]).friendship
                     >= threshold
                 )
-                and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tags(
-                    RelationshipTag.Friend
+                and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tag(
+                    "Friend"
                 )
-                and not rel.has_tags(RelationshipTag.Friend)
+                and not rel.has_tag("Friend")
                 and rel.friendship >= threshold
             ):
                 eligible_characters.append(other_character)
@@ -69,13 +69,8 @@ def become_friends_event(
 
     def execute(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.Friend
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.Friend
-        )
-        world.get_resource(LifeEventLog).record_event(event)
+        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tag("Friend")
+        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tag("Friend")
 
     return LifeEventType(
         name="BecomeFriends",
@@ -110,10 +105,10 @@ def become_enemies_event(
                     rel_graph.get_connection(rel.target, event["PersonA"]).friendship
                     <= threshold
                 )
-                and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tags(
-                    RelationshipTag.Friend
+                and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tag(
+                    "Friend"
                 )
-                and not rel.has_tags(RelationshipTag.Friend)
+                and not rel.has_tag("Friend")
                 and rel.friendship <= threshold
             ):
                 eligible_characters.append(world.get_gameobject(rel.target))
@@ -124,13 +119,8 @@ def become_enemies_event(
 
     def execute(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.Enemy
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.Enemy
-        )
-        world.get_resource(LifeEventLog).record_event(event)
+        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tag("Enemy")
+        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tag("Enemy")
 
     return LifeEventType(
         name="BecomeEnemies",
@@ -169,29 +159,9 @@ def start_dating_event(threshold: int = 25, probability: float = 0.8) -> LifeEve
     def execute(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
 
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.SignificantOther
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.SignificantOther
-        )
+        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tag("Dating")
 
-        person_a = world.get_gameobject(event["PersonA"])
-        person_b = world.get_gameobject(event["PersonB"])
-
-        person_a.add_component(
-            Dating(
-                partner_id=person_b.id,
-                partner_name=str(person_b.get_component(GameCharacter).name),
-            )
-        )
-        person_b.add_component(
-            Dating(
-                partner_id=person_a.id,
-                partner_name=str(person_a.get_component(GameCharacter).name),
-            )
-        )
-        world.get_resource(LifeEventLog).record_event(event)
+        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tag("Dating")
 
     return LifeEventType(
         name="StartDating",
@@ -215,45 +185,37 @@ def dating_break_up_event(
 
     def bind_potential_ex(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
-        dating = world.get_gameobject(event["PersonA"]).get_component(Dating)
-        partner = world.get_gameobject(dating.partner_id)
+        candidates: List[int] = []
 
-        if (
-            rel_graph.get_connection(event["PersonA"], dating.partner_id).romance
-            < threshold
+        for rel in rel_graph.get_all_relationships_with_tags(
+            event["PersonA"], "Dating"
         ):
-            return partner
+            if rel.romance < threshold:
+                candidates.append(rel.target)
 
-        if (
-            rel_graph.get_connection(dating.partner_id, event["PersonA"]).romance
-            < threshold
-        ):
-            return partner
+            # Just break up for no reason at all
+            if world.get_resource(NeighborlyEngine).rng.random() < 0.15:
+                return candidates.append(rel.target)
 
-        # Just break up for no reason at all
-        if world.get_resource(NeighborlyEngine).rng.random() < 0.15:
-            return partner
+        if candidates:
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
     def execute(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
 
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).remove_tags(
-            RelationshipTag.SignificantOther
+        rel_graph.get_connection(event["PersonA"], event["PersonB"]).remove_tag(
+            "Dating"
         )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tags(
-            RelationshipTag.SignificantOther
+        rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tag(
+            "Dating"
         )
-        world.get_resource(LifeEventLog).record_event(event)
-
-        world.get_gameobject(event["PersonA"]).remove_component(Dating)
-        world.get_gameobject(event["PersonB"]).remove_component(Dating)
 
     return LifeEventType(
         name="DatingBreakUp",
         roles=[
-            RoleType(name="PersonA", components=[GameCharacter, Dating]),
+            RoleType(name="PersonA", components=[GameCharacter]),
             RoleType(name="PersonB", binder_fn=bind_potential_ex),
         ],
         effects=execute,
@@ -264,32 +226,34 @@ def dating_break_up_event(
 def divorce_event(threshold: int = -25, probability: float = 0.5) -> LifeEventType:
     """Defines an event where two characters stop dating"""
 
-    def current_partner_filter(world: World, gameobject: GameObject, **kwargs) -> bool:
-        event: LifeEvent = kwargs["event"]
+    def current_partner_filter(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
+        candidates: List[int] = []
 
-        if gameobject.has_component(Married):
-            if gameobject.get_component(Married).partner_id == event["PersonA"]:
-                return (
-                    rel_graph.get_connection(event["PersonA"], gameobject.id).romance
-                    < threshold
-                )
+        for rel in rel_graph.get_all_relationships_with_tags(
+            event["PersonA"], "Dating"
+        ):
+            if rel.romance < threshold:
+                candidates.append(rel.target)
 
-        return False
+            # Just break up for no reason at all
+            if world.get_resource(NeighborlyEngine).rng.random() < 0.15:
+                return candidates.append(rel.target)
+
+        if candidates:
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
+
+        return None
 
     def execute(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
 
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).remove_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
+        rel_graph.get_connection(event["PersonA"], event["PersonB"]).remove_tag(
+            "Married"
         )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
+        rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tag(
+            "Married"
         )
-
-        world.get_gameobject(event["PersonA"]).remove_component(Married)
-        world.get_gameobject(event["PersonB"]).remove_component(Married)
-        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="GotDivorced",
@@ -298,7 +262,7 @@ def divorce_event(threshold: int = -25, probability: float = 0.5) -> LifeEventTy
             RoleType(
                 name="PersonB",
                 components=[GameCharacter],
-                filter_fn=current_partner_filter,
+                binder_fn=current_partner_filter,
             ),
         ],
         effects=execute,
@@ -311,60 +275,46 @@ def marriage_event(threshold: int = 35, probability: float = 0.5) -> LifeEventTy
 
     def bind_potential_spouse(world: World, event: LifeEvent):
         character = world.get_gameobject(event["PersonA"])
-        potential_spouse = world.get_gameobject(
-            character.get_component(Dating).partner_id
-        )
         rel_graph = world.get_resource(RelationshipGraph)
 
-        character_meets_thresh = (
-            rel_graph.get_connection(character.id, potential_spouse.id).romance
-            >= threshold
+        potential_spouses = rel_graph.get_all_relationships_with_tags(
+            event["PersonA"], "Dating"
         )
 
-        potential_spouse_meets_thresh = (
-            rel_graph.get_connection(potential_spouse.id, character.id).romance
-            >= threshold
-        )
+        candidates = []
 
-        if character_meets_thresh and potential_spouse_meets_thresh:
-            return potential_spouse
+        for rel in potential_spouses:
+            character_meets_thresh = rel.romance >= threshold
+
+            potential_spouse_meets_thresh = (
+                rel_graph.get_connection(rel.target, character.id).romance >= threshold
+            )
+
+            if character_meets_thresh and potential_spouse_meets_thresh:
+                candidates.append(world.get_gameobject(rel.target))
+
+        if candidates:
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
     def execute(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
 
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
-        )
+        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tag("Spouse")
+        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tag("Spouse")
 
-        person_a = world.get_gameobject(event["PersonA"])
-        person_b = world.get_gameobject(event["PersonB"])
-
-        person_a.remove_component(Dating)
-        person_b.remove_component(Dating)
-
-        person_a.add_component(
-            Married(
-                partner_id=person_b.id,
-                partner_name=str(person_b.get_component(GameCharacter).name),
-            )
+        rel_graph.get_connection(event["PersonA"], event["PersonB"]).remove_tag(
+            "Dating"
         )
-        person_b.add_component(
-            Married(
-                partner_id=person_a.id,
-                partner_name=str(person_a.get_component(GameCharacter).name),
-            )
+        rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tag(
+            "Dating"
         )
-        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="GotMarried",
         roles=[
-            RoleType(name="PersonA", components=[GameCharacter, Dating]),
+            RoleType(name="PersonA", components=[GameCharacter]),
             RoleType(name="PersonB", binder_fn=bind_potential_spouse),
         ],
         effects=execute,
@@ -383,11 +333,12 @@ def depart_due_to_unemployment() -> LifeEventType:
         return None
 
     def effect(world: World, event: LifeEvent):
-        world.get_gameobject(event["Person"]).archive()
-        world.get_resource(LifeEventLog).record_event(event)
+        departed = world.get_gameobject(event["Person"])
+        departed.remove_component(Active)
+        departed.add_component(Departed())
 
     return LifeEventType(
-        name="DepartTown",
+        name="DepartDueToUnemployment",
         roles=[RoleType(name="Person", binder_fn=bind_unemployed_character)],
         effects=effect,
         probability=constant_probability(1),
@@ -403,9 +354,20 @@ def pregnancy_event() -> LifeEventType:
         ) and not gameobject.has_component(Pregnant)
 
     def bind_current_partner(world: World, event: LifeEvent) -> Optional[GameObject]:
-        person_a = world.get_gameobject(event["PersonA"])
-        if person_a.has_component(Married):
-            return world.get_gameobject(person_a.get_component(Married).partner_id)
+        rel_graph = world.get_resource(RelationshipGraph)
+        potential_partners = [
+            *rel_graph.get_all_relationships_with_tags(event["PersonA"], "Dating"),
+            *rel_graph.get_all_relationships_with_tags(event["PersonA"], "Married"),
+        ]
+
+        candidates = []
+
+        for rel in potential_partners:
+            candidates.append(world.get_gameobject(rel.target))
+
+        if candidates:
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
+
         return None
 
     def execute(world: World, event: LifeEvent):
@@ -417,21 +379,16 @@ def pregnancy_event() -> LifeEventType:
         world.get_gameobject(event["PersonA"]).add_component(
             Pregnant(
                 partner_name=str(
-                    world.get_gameobject(event["PersonB"])
-                    .get_component(GameCharacter)
-                    .name
+                    world.get_gameobject(event["PersonB"]).get_component(CharacterName)
                 ),
                 partner_id=event["PersonB"],
                 due_date=due_date,
             )
         )
-        world.get_resource(LifeEventLog).record_event(event)
 
     def prob_fn(world: World, event: LifeEvent):
         rel_graph = world.get_resource(RelationshipGraph)
-        children = rel_graph.get_all_relationships_with_tags(
-            event["PersonA"], RelationshipTag.Child
-        )
+        children = rel_graph.get_all_relationships_with_tags(event["PersonA"], "Child")
         if len(children) >= 5:
             return 0.0
         else:
@@ -459,7 +416,7 @@ def retire_event(probability: float = 0.4) -> LifeEventType:
     Parameters
     ----------
     probability: float
-        Probability that a entity will retire from their job
+        Probability that an entity will retire from their job
         when they are an elder
 
     Returns
@@ -478,15 +435,21 @@ def retire_event(probability: float = 0.4) -> LifeEventType:
             return world.get_resource(NeighborlyEngine).rng.choice(eligible_characters)
         return None
 
+    def bind_business(world: World, event: LifeEvent):
+        return world.get_gameobject(
+            world.get_gameobject(event["Retiree"]).get_component(Occupation).business
+        )
+
     def execute(world: World, event: LifeEvent):
         retiree = world.get_gameobject(event["Retiree"])
-        retiree.remove_component(Occupation)
         retiree.add_component(Retired())
-        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="Retire",
-        roles=[RoleType(name="Retiree", binder_fn=bind_retiree)],
+        roles=[
+            RoleType(name="Retiree", binder_fn=bind_retiree),
+            RoleType(name="Business", binder_fn=bind_business),
+        ],
         effects=execute,
         probability=constant_probability(probability),
     )
@@ -531,8 +494,7 @@ def find_own_place_event(probability: float = 0.1) -> LifeEventType:
         vacant_residence = choose_random_vacant_residence(world)
         if vacant_residence:
             # Move into house with any dependent children
-            move_residence(character.get_component(GameCharacter), vacant_residence)
-            world.get_resource(LifeEventLog).record_event(event)
+            move_residence(character, vacant_residence.gameobject)
 
         # Depart if no housing could be found
         else:
@@ -546,17 +508,13 @@ def find_own_place_event(probability: float = 0.1) -> LifeEventType:
 
             # Have all spouses depart
             # Allows for polygamy
-            spouses = rel_graph.get_all_relationships_with_tags(
-                character.id, RelationshipTag.Spouse
-            )
+            spouses = rel_graph.get_all_relationships_with_tags(character.id, "Spouse")
             for rel in spouses:
                 spouse = world.get_gameobject(rel.target)
                 depart.try_execute_event(world, Character=spouse)
 
             # Have all children living in the same house depart
-            children = rel_graph.get_all_relationships_with_tags(
-                character.id, RelationshipTag.Child
-            )
+            children = rel_graph.get_all_relationships_with_tags(character.id, "Child")
             for rel in children:
                 child = world.get_gameobject(rel.target)
                 if child.id in residence.residents and child.id not in residence.owners:
@@ -574,9 +532,7 @@ def depart_event() -> LifeEventType:
     def execute(world: World, event: LifeEvent):
         character = world.get_gameobject(event["Character"])
         character.remove_component(Active)
-        # Archive GameObject instead of removing it
-        character.archive()
-        world.get_resource(LifeEventLog).record_event(event)
+        character.add_component(Departed())
 
     return LifeEventType(
         name="Depart",
@@ -589,9 +545,11 @@ def depart_event() -> LifeEventType:
 def die_of_old_age(probability: float = 0.8) -> LifeEventType:
     def bind_character(world: World, event: LifeEvent):
         eligible_characters: List[GameObject] = []
-        for _, (character, _) in world.get_components(GameCharacter, Active):
+        for _, (character, age, lifespan, _) in world.get_components(
+            GameCharacter, Age, Lifespan, Active
+        ):
             character = cast(GameCharacter, character)
-            if character.age >= character.character_def.lifespan:
+            if age.value >= lifespan.value:
                 eligible_characters.append(character.gameobject)
 
         if eligible_characters:
@@ -600,14 +558,14 @@ def die_of_old_age(probability: float = 0.8) -> LifeEventType:
         return None
 
     def execute(world: World, event: LifeEvent):
-        death_event().try_execute_event(
-            world, Deceased=world.get_gameobject(event["Character"])
-        )
+        deceased = world.get_gameobject(event["Deceased"])
+        deceased.add_component(Deceased())
+        deceased.remove_component(Active)
 
     return LifeEventType(
         name="DieOfOldAge",
         probability=constant_probability(probability),
-        roles=[RoleType("Character", binder_fn=bind_character)],
+        roles=[RoleType("Deceased", binder_fn=bind_character)],
         effects=execute,
     )
 
@@ -617,9 +575,6 @@ def death_event() -> LifeEventType:
         deceased = world.get_gameobject(event["Deceased"])
         deceased.add_component(Deceased())
         deceased.remove_component(Active)
-        # Archive GameObject instead of removing it
-        deceased.archive()
-        world.get_resource(LifeEventLog).record_event(event)
 
     return LifeEventType(
         name="Death",

@@ -5,119 +5,76 @@ problems with previous interfaces. For this iteration, we are breaking apart the
 of characters into more individual components and placing probabilities on those
 components being present at spawn-time.
 """
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Type, Union
+from __future__ import annotations
 
-from neighborly.builtin.components import CanGetPregnant, Gender, GenderValue
+import random
+from typing import List, Optional, Set
+
+from neighborly.builtin.helpers import IInheritable, generate_child, inheritable
+from neighborly.core.archetypes import BaseCharacterArchetype
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.plugins.default_plugin import DefaultNameDataPlugin
 from neighborly.simulation import SimulationBuilder
 
 
-class Actor(Component):
-    pass
+@inheritable(always_inherited=True)
+class FurColor(Component, IInheritable):
 
+    __slots__ = "values"
 
-class Shape(Component):
-    def __init__(self, shape_type: str) -> None:
+    def __init__(self, colors: List[str]) -> None:
         super().__init__()
-        self.shape_type: str = shape_type
+        self.values: Set[str] = set(colors)
 
-
-class Color(Component):
-    def __init__(self, color: str) -> None:
-        super().__init__()
-        self.color: str = color
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\tcolors: {self.values}")
 
     @classmethod
-    def create(cls, world: World, **kwargs) -> Component:
-        color_frequencies = [("red", 1), ("blue", 1), ("yellow", 1), ("green", 1)]
-        options, weights = tuple(zip(*color_frequencies))
-        choice: str = world.get_resource(NeighborlyEngine).rng.choices(
-            options, weights=weights
-        )[0]
+    def from_parents(cls, *components: FurColor) -> FurColor:
+        all_colors = set()
+        for parent in components:
+            for color in parent.values:
+                all_colors.add(color)
 
-        return Color(choice)
-
-
-class LongHair(Component):
-    pass
+        return FurColor(list(all_colors))
 
 
-class Popular(Component):
-    pass
+class FuzzCharacterArchetype(BaseCharacterArchetype):
+    def create(self, world: World, **kwargs) -> GameObject:
+        gameobject = super().create(world, **kwargs)
 
-
-class LargeLeftEar(Component):
-    pass
-
-
-class ComponentProbabilityFn(Protocol):
-    def __call__(self, world: World, gameobject: GameObject) -> float:
-        raise NotImplementedError
-
-
-def const_prob(probability: float):
-    def probability_fn(world: World, gameobject: GameObject) -> float:
-        return probability
-
-    return probability_fn
-
-
-@dataclass
-class ArchetypeEntry:
-    component_type: Type[Component]
-    probability: ComponentProbabilityFn
-    options: Dict[str, Any]
-
-
-class AdvancedArchetype:
-    def __init__(self) -> None:
-        self.components: List[ArchetypeEntry] = []
-
-    def add_component(
-        self,
-        component_type: Type[Component],
-        probability: Union[float, ComponentProbabilityFn] = 1.0,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        self.components.append(
-            ArchetypeEntry(
-                component_type,
-                const_prob(probability) if type(probability) == float else probability,
-                options if options else {},
-            )
+        fur_color = random.choice(
+            ["Red", "Green", "Blue", "Yellow", "Orange", "White", "Black", "Purple"]
         )
 
+        gameobject.add_component(FurColor([fur_color]))
 
-def can_get_pregnant_based_on_gender(world: World, gameobject: GameObject) -> float:
-    if gameobject.has_component(Gender):
-        gender = gameobject.get_component(Gender)
-        if gender.gender == GenderValue.Female:
-            return 0.8
-        if gender.gender == GenderValue.Male:
-            return 0.0
-    return 0.5
+        if world.get_resource(NeighborlyEngine).rng.random() < 0.3:
+            gameobject.add_component(HasHorns())
+
+        return gameobject
+
+
+@inheritable(inheritance_chance=(0.5, 0.7))
+class HasHorns(Component, IInheritable):
+    @classmethod
+    def from_parents(
+        cls, parent_a: Optional[Component], parent_b: Optional[Component]
+    ) -> Component:
+        return HasHorns()
 
 
 def main():
-    aa_0 = AdvancedArchetype()
-    aa_0.add_component(Actor)
-    aa_0.add_component(Gender)
-    aa_0.add_component(CanGetPregnant, probability=can_get_pregnant_based_on_gender)
-    aa_0.add_component(Popular, 0.5)
-    aa_0.add_component(LongHair, 0.3)
-    aa_0.add_component(LargeLeftEar, 0.1)
+    sim = SimulationBuilder().add_plugin(DefaultNameDataPlugin()).build()
 
-    sim = SimulationBuilder().build()
+    c1 = FuzzCharacterArchetype().create(sim.world)
+    c2 = FuzzCharacterArchetype().create(sim.world)
+    c3 = generate_child(sim.world, c1, c2)
 
-    go = sim.world.spawn_gameobject()
-    rng = sim.world.get_resource(NeighborlyEngine).rng
-    for entry in aa_0.components:
-        if rng.random() < entry.probability(sim.world, go):
-            go.add_component(entry.component_type.create(sim.world, **entry.options))
-
-    print(go.components)
+    c1.pprint()
+    c2.pprint()
+    c3.pprint()
 
 
 if __name__ == "__main__":

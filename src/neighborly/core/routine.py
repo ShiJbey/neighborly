@@ -181,8 +181,6 @@ class Routine(Component):
 
     __slots__ = "_daily_routines"
 
-    remove_on_archive: bool = True
-
     def __init__(self) -> None:
         super().__init__()
         self._daily_routines: List[DailyRoutine] = [

@@ -4,10 +4,9 @@ from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, remove_on_archive
+from neighborly.core.ecs import Component
 
 
-@remove_on_archive
 class Residence(Component):
     """Residence is a place where characters live"""
 
@@ -19,7 +18,6 @@ class Residence(Component):
         self.former_owners: OrderedSet[int] = OrderedSet([])
         self.residents: OrderedSet[int] = OrderedSet([])
         self.former_residents: OrderedSet[int] = OrderedSet([])
-        self._vacant: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -28,7 +26,6 @@ class Residence(Component):
             "former_owners": list(self.former_owners),
             "residents": list(self.residents),
             "former_residents": list(self.former_residents),
-            "vacant": self._vacant,
         }
 
     def add_owner(self, owner: int) -> None:
@@ -46,24 +43,17 @@ class Residence(Component):
     def add_resident(self, resident: int) -> None:
         """Add a tenant to this residence"""
         self.residents.add(resident)
-        self._vacant = False
 
     def remove_resident(self, resident: int) -> None:
         """Remove a tenant rom this residence"""
         self.residents.remove(resident)
         self.former_residents.add(resident)
-        self._vacant = len(self.residents) == 0
 
     def is_resident(self, character: int) -> bool:
         """Return True if the given entity is a resident"""
         return character in self.residents
 
-    def is_vacant(self) -> bool:
-        """Return True if the residence is vacant"""
-        return self._vacant
 
-
-@remove_on_archive
 class Resident(Component):
     """Component attached to characters indicating that they live in the town"""
 
@@ -72,10 +62,3 @@ class Resident(Component):
     def __init__(self, residence: int) -> None:
         super().__init__()
         self.residence: int = residence
-
-    def on_remove(self) -> None:
-        world = self.gameobject.world
-        residence = world.get_gameobject(self.residence).get_component(Residence)
-        residence.remove_resident(self.gameobject.id)
-        if residence.is_owner(self.gameobject.id):
-            residence.remove_owner(self.gameobject.id)

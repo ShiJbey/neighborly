@@ -10,7 +10,7 @@ from neighborly.core.business import (
     Business,
     BusinessStatus,
     OccupationType,
-    OccupationTypeLibrary,
+    OccupationTypes,
     parse_operating_hour_str,
 )
 from neighborly.core.ecs import Component, GameObject, World
@@ -51,9 +51,9 @@ def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationT
     assert ceo_occupation_type.name == "CEO"
     assert ceo_occupation_type.level == 5
 
-    OccupationTypeLibrary.add(ceo_occupation_type)
+    OccupationTypes.add(ceo_occupation_type)
 
-    assert ceo_occupation_type == OccupationTypeLibrary.get("CEO")
+    assert ceo_occupation_type == OccupationTypes.get("CEO")
 
 
 # def test_occupation(sample_occupation_types: Dict[str, OccupationType]):

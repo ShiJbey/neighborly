@@ -96,6 +96,9 @@ class LandGrid(ISerializable):
         """Returns True if there are empty spaces available in the town"""
         return bool(self._unoccupied)
 
+    def __len__(self) -> int:
+        return self.shape[0] * self.shape[1]
+
     def __setitem__(self, position: Tuple[int, int], value: Optional[int]) -> None:
         if value is None:
             self._grid[position] = None
@@ -107,6 +110,9 @@ class LandGrid(ISerializable):
             self._grid[position] = value
             self._unoccupied.remove(position)
             self._occupied.add(position)
+
+    def __repr__(self) -> str:
+        return f"Land Grid(shape={self.shape}, vacant: {len(self._unoccupied)}, occupied: {len(self._occupied)})"
 
     def to_dict(self) -> Dict[str, Any]:
         return {

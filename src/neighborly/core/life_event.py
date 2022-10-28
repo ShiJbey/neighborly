@@ -15,9 +15,10 @@ from typing import (
     Union,
 )
 
-from neighborly.core.ecs import Component, GameObject, SystemBase, World
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.serializable import ISerializable
+from neighborly.core.system import System
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import Town
 
@@ -185,6 +186,7 @@ class LifeEventType:
 
     def execute(self, world: World, event: LifeEvent) -> None:
         """Run the effects function using the given event"""
+        world.get_resource(LifeEventLog).record_event(event)
         self.effects(world, event)
 
     def try_execute_event(self, world: World, **kwargs: GameObject) -> bool:
@@ -211,25 +213,7 @@ class LifeEventType:
         return False
 
 
-class EventRoleLibrary:
-    _registry: Dict[str, RoleType] = {}
-
-    @classmethod
-    def add(cls, name: str, event_role_type: RoleType) -> None:
-        """Register a new LifeEventType mapped to a name"""
-        cls._registry[name] = event_role_type
-
-    @classmethod
-    def get_all(cls) -> List[RoleType]:
-        return list(cls._registry.values())
-
-    @classmethod
-    def get(cls, name: str) -> RoleType:
-        """Get a LifeEventType using a name"""
-        return cls._registry[name]
-
-
-class LifeEventLibrary:
+class LifeEvents:
     """
     Static class used to store instances of LifeEventTypes for
     use at runtime.
@@ -247,6 +231,7 @@ class LifeEventLibrary:
 
     @classmethod
     def get_all(cls) -> List[LifeEventType]:
+        """Get all LifeEventTypes stores in the Library"""
         return list(cls._registry.values())
 
     @classmethod
@@ -257,64 +242,148 @@ class LifeEventLibrary:
 
 class LifeEventLog:
     """
-    Global resource for storing and accessing LifeEvents
+    Global resource that manages all the LifeEvents that have occurred in the simulation.
+
+    This component should always be present in the simulation.
+
+    Attributes
+    ----------
+    event_history: List[LifeEvent]
+        All the events that have occurred thus far in the simulation
+    _per_gameobject: DefaultDict[int, List[LifeEvent]]
+        Dictionary of all the LifEvents that have occurred divided by participant ID
+    _subscribers: List[Callable[[LifeEvent], None]]
+        Callback functions executed everytime a LifeEvent occurs
+    _per_gameobject_subscribers: DefaultDict[int, List[Callable[[LifeEvent], None]]
+        Callback functions divided by the GameObject to which they are subscribed
     """
 
-    __slots__ = "event_history", "_subscribers", "_per_gameobject"
+    __slots__ = (
+        "event_history",
+        "_subscribers",
+        "_per_gameobject",
+        "_per_gameobject_subscribers",
+    )
 
     def __init__(self) -> None:
         self.event_history: List[LifeEvent] = []
         self._per_gameobject: DefaultDict[int, List[LifeEvent]] = defaultdict(list)
         self._subscribers: List[Callable[[LifeEvent], None]] = []
+        self._per_gameobject_subscribers: DefaultDict[
+            int, List[Callable[[LifeEvent], None]]
+        ] = defaultdict(list)
 
     def record_event(self, event: LifeEvent) -> None:
+        """
+        Adds a LifeEvent to the history and calls all registered callback functions
+
+        Parameters
+        ----------
+        event: LifeEvent
+            Event that occurred
+        """
         self.event_history.append(event)
+
         for role in event.roles:
             self._per_gameobject[role.gid].append(event)
+            if role.gid in self._per_gameobject_subscribers:
+                for cb in self._per_gameobject_subscribers[role.gid]:
+                    cb(event)
+
         for cb in self._subscribers:
             cb(event)
 
     def subscribe(self, cb: Callable[[LifeEvent], None]) -> None:
+        """
+        Add a function to be called whenever a LifeEvent occurs
+
+        Parameters
+        ----------
+        cb: Callable[[LifeEvent], None]
+            Function to call
+        """
         self._subscribers.append(cb)
 
     def unsubscribe(self, cb: Callable[[LifeEvent], None]) -> None:
+        """
+        Remove a function from being called whenever a LifeEvent occurs
+
+        Parameters
+        ----------
+        cb: Callable[[LifeEvent], None]
+            Function to call
+        """
         self._subscribers.remove(cb)
+
+    def subscribe_to_gameobject(
+        self, gid: int, cb: Callable[[LifeEvent], None]
+    ) -> None:
+        """
+        Add a function to be called whenever the gameobject with the given gid
+        is involved in a LifeEvent
+
+        Parameters
+        ----------
+        gid: int
+            ID of the GameObject to subscribe to
+
+        cb: Callable[[LifeEvent], None]
+            Callback function executed when a life event occurs
+        """
+        self._per_gameobject_subscribers[gid].append(cb)
+
+    def unsubscribe_from_gameobject(
+        self, gid: int, cb: Callable[[LifeEvent], None]
+    ) -> None:
+        """
+        Remove a function from being called whenever the gameobject with the given gid
+        is involved in a LifeEvent
+
+        Parameters
+        ----------
+        gid: int
+            ID of the GameObject to subscribe to
+
+        cb: Callable[[LifeEvent], None]
+            Callback function executed when a life event occurs
+        """
+        if gid in self._per_gameobject_subscribers:
+            self._per_gameobject_subscribers[gid].remove(cb)
 
     def get_events_for(self, gid: int) -> List[LifeEvent]:
         """
         Get all the LifeEvents where the GameObject with the given gid played a role
+
+        Parameters
+        ----------
+        gid: int
+            ID of the GameObject to retrieve events for
+
+        Returns
+        -------
+        List[LifeEvent]
+            Events recorded for the given GameObject
         """
         return self._per_gameobject[gid]
 
 
-class LifeEventSimulator(SystemBase):
+class LifeEventSimulator(System):
     """
     LifeEventSimulator handles firing LifeEvents for characters
     and performing entity behaviors
     """
 
-    __slots__ = "interval", "next_trigger"
-
     def __init__(self, interval: Optional[TimeDelta] = None) -> None:
-        super().__init__()
-        self.interval: TimeDelta = interval if interval else TimeDelta(days=14)
-        self.next_trigger: SimDateTime = SimDateTime()
+        super().__init__(interval=interval)
 
-    def process(self, *args, **kwargs) -> None:
+    def run(self, *args, **kwargs) -> None:
         """Simulate LifeEvents for characters"""
-        date = self.world.get_resource(SimDateTime)
-
-        if date < self.next_trigger:
-            return
-        else:
-            self.next_trigger = date.copy() + self.interval
-
         town = self.world.get_resource(Town)
         rng = self.world.get_resource(NeighborlyEngine).rng
 
         # Perform number of events equal to 10% of the population
         for _ in range(town.population // 10):
-            event_type = rng.choice(LifeEventLibrary.get_all())
+            event_type = rng.choice(LifeEvents.get_all())
             event_type.try_execute_event(self.world)
 
 

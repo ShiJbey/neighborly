@@ -19,18 +19,15 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from neighborly.builtin.components import Adult
-from neighborly.core.archetypes import (
-    BusinessArchetype,
-    BusinessArchetypeLibrary,
-    CharacterArchetype,
-)
+from neighborly.builtin.components import Adult, Deceased
+from neighborly.core.archetypes import BaseBusinessArchetype, BusinessArchetypes
+from neighborly.core.business import IBusinessType
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
     LifeEvent,
-    LifeEventLibrary,
+    LifeEvents,
     LifeEventType,
     Role,
     RoleType,
@@ -48,7 +45,7 @@ from neighborly.simulation import Plugin, Simulation, SimulationBuilder
 
 @dataclass
 class Assassin(Component):
-    """Assassin component to be attached to a entity
+    """Assassin component to be attached to an entity
 
     Assassins mark people who are part of the criminal
     underworld and who may exchange coins for assassinations
@@ -59,23 +56,13 @@ class Assassin(Component):
     kills: int = 0
 
 
-def assassin_character_archetype() -> CharacterArchetype:
-    return CharacterArchetype(
-        name="Assassin",
-        lifespan=85,
-        life_stages={
-            "child": 0,
-            "teen": 13,
-            "young_adult": 18,
-            "adult": 30,
-            "elder": 65,
-        },
-    ).add(Assassin)
+class Hotel(IBusinessType):
+    pass
 
 
-def continental_hotel() -> BusinessArchetype:
-    return BusinessArchetype(
-        name="The Continental Hotel",
+def continental_hotel() -> BaseBusinessArchetype:
+    return BaseBusinessArchetype(
+        name_format="The Continental Hotel",
         max_instances=1,
         min_population=40,
         employee_types={
@@ -83,6 +70,7 @@ def continental_hotel() -> BusinessArchetype:
             "Concierge": 1,
             "Bartender": 2,
         },
+        business_type=Hotel,
     )
 
 
@@ -155,7 +143,7 @@ def hire_assassin_event(
             ],
         )
 
-        world.get_gameobject(event["Target"]).archive()
+        world.get_gameobject(event["Target"]).add_component(Deceased())
 
     return LifeEventType(
         name="HireAssassin",
@@ -173,9 +161,9 @@ def hire_assassin_event(
 
 class JohnWickPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        LifeEventLibrary.add(hire_assassin_event(-30))
-        LifeEventLibrary.add(become_an_assassin())
-        BusinessArchetypeLibrary.add(continental_hotel())
+        LifeEvents.add(hire_assassin_event(-30))
+        LifeEvents.add(become_an_assassin())
+        BusinessArchetypes.add("The Continental Hotel", continental_hotel())
         # CharacterArchetypeLibrary.add(assassin_character_archetype())
 
 

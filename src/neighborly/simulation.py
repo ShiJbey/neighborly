@@ -17,7 +17,11 @@ from neighborly.builtin.systems import (
     OpenForBusinessSystem,
     PendingOpeningSystem,
     PregnancySystem,
-    RelationshipStatusSystem,
+    RemoveDeceasedFromOccupation,
+    RemoveDeceasedFromResidences,
+    RemoveDepartedFromOccupation,
+    RemoveDepartedFromResidences,
+    RemoveRetiredFromOccupation,
     RoutineSystem,
     SocializeSystem,
     SpawnResidentSystem,
@@ -30,7 +34,7 @@ from neighborly.core.constants import (
     TIME_UPDATE_PHASE,
     TOWN_SYSTEMS_PHASE,
 )
-from neighborly.core.ecs import SystemBase, World
+from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEventLog, LifeEventSimulator
 from neighborly.core.relationship import RelationshipGraph
@@ -149,7 +153,7 @@ class SimulationBuilder:
         Tuple containing the width and length of the grid of land the town is built on
     seed: int
         The value used to seed the random number generator
-    systems: List[Tuple[SystemBase, int]]
+    systems: List[Tuple[ISystem, int]]
         The systems to add to the simulation instance and their associated priorities
     resources: List[Any]
         Resource instances to add to the simulation instance
@@ -198,7 +202,7 @@ class SimulationBuilder:
         self.town_size: Tuple[int, int] = SimulationBuilder._convert_town_size(
             town_size
         )
-        self.systems: List[Tuple[SystemBase, int]] = []
+        self.systems: List[Tuple[ISystem, int]] = []
         self.resources: List[Any] = []
         self.plugins: List[Tuple[Plugin, Dict[str, Any]]] = []
         self.print_events: bool = print_events
@@ -207,7 +211,7 @@ class SimulationBuilder:
         """Create an int hash from the given seed value"""
         return hash(seed)
 
-    def add_system(self, system: SystemBase, priority: int = 0) -> SimulationBuilder:
+    def add_system(self, system: ISystem, priority: int = 0) -> SimulationBuilder:
         """Add a new system to the simulation"""
         self.systems.append((system, priority))
         return self
@@ -257,12 +261,14 @@ class SimulationBuilder:
         self.add_system(
             LifeEventSimulator(interval=TimeDelta(days=3)), priority=TOWN_SYSTEMS_PHASE
         )
+        # LifeEventLog is required for the system to run properly
         self.add_resource(LifeEventLog())
         self.add_system(
-            BuildHousingSystem(chance_of_build=0.5), priority=TOWN_SYSTEMS_PHASE
+            BuildHousingSystem(chance_of_build=1.0), priority=TOWN_SYSTEMS_PHASE
         )
         self.add_system(
-            SpawnResidentSystem(interval=TimeDelta(days=7)), priority=TOWN_SYSTEMS_PHASE
+            SpawnResidentSystem(interval=TimeDelta(days=7), chance_spawn=1.0),
+            priority=TOWN_SYSTEMS_PHASE,
         )
         self.add_system(
             BuildBusinessSystem(interval=TimeDelta(days=5)), priority=TOWN_SYSTEMS_PHASE
@@ -273,15 +279,22 @@ class SimulationBuilder:
         self.add_system(BusinessUpdateSystem(), priority=BUSINESS_UPDATE_PHASE)
         self.add_system(FindBusinessOwnerSystem(), priority=BUSINESS_UPDATE_PHASE)
         self.add_system(FindEmployeesSystem(), priority=BUSINESS_UPDATE_PHASE)
-        self.add_system(
-            UnemploymentSystem(days_to_departure=30), priority=CHARACTER_UPDATE_PHASE
-        )
-        self.add_system(RelationshipStatusSystem(), priority=CHARACTER_UPDATE_PHASE)
-        self.add_system(SocializeSystem(), priority=CHARACTER_ACTION_PHASE)
+        # self.add_system(
+        #     UnemploymentSystem(days_to_departure=30), priority=CHARACTER_UPDATE_PHASE
+        # )
+        # self.add_system(SocializeSystem(), priority=CHARACTER_ACTION_PHASE)
         self.add_system(PregnancySystem(), priority=CHARACTER_UPDATE_PHASE)
-        self.add_system(PendingOpeningSystem(), priority=BUSINESS_UPDATE_PHASE)
+        self.add_system(
+            PendingOpeningSystem(days_before_demolishing=9999),
+            priority=BUSINESS_UPDATE_PHASE,
+        )
         self.add_system(OpenForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
         self.add_system(ClosedForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
+        self.add_system(RemoveDeceasedFromResidences())
+        self.add_system(RemoveDepartedFromResidences())
+        self.add_system(RemoveDepartedFromOccupation())
+        self.add_system(RemoveDeceasedFromOccupation())
+        self.add_system(RemoveRetiredFromOccupation())
 
         for system, priority in self.systems:
             sim.world.add_system(system, priority)

@@ -1,27 +1,8 @@
-from ordered_set import OrderedSet
-
 from neighborly.builtin.components import Child, Teen, YoungAdult
-from neighborly.core.ecs import Component, SystemBase, component_info
+from neighborly.core.ecs import Component, ISystem, component_info
 from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.time import SimDateTime
-
-
-class School(Component):
-    """A school is where Characters that are Children through Teen study"""
-
-    __slots__ = "students"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.students: OrderedSet[int] = OrderedSet()
-
-    def add_student(self, student: int) -> None:
-        """Add student to the school"""
-        self.students.add(student)
-
-    def remove_student(self, student: int) -> None:
-        """Remove student from the school"""
-        self.students.add(student)
+from neighborly.plugins.talktown.business_components import School
 
 
 @component_info("Student", "This entity is a student at the local school")
@@ -29,7 +10,7 @@ class Student(Component):
     pass
 
 
-class SchoolSystem(SystemBase):
+class SchoolSystem(ISystem):
     """Enrolls new students and graduates old students"""
 
     def process(self, *args, **kwargs) -> None:

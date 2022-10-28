@@ -5,7 +5,6 @@ from neighborly.builtin.events import (
     become_enemies_event,
     become_friends_event,
     dating_break_up_event,
-    death_event,
     depart_due_to_unemployment,
     die_of_old_age,
     divorce_event,
@@ -15,9 +14,9 @@ from neighborly.builtin.events import (
     retire_event,
     start_dating_event,
 )
-from neighborly.core.business import ServiceTypeLibrary
+from neighborly.core.business import ServiceTypes
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventLibrary
+from neighborly.core.life_event import LifeEvents
 from neighborly.simulation import Plugin, Simulation
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
@@ -63,42 +62,16 @@ class DefaultNameDataPlugin(Plugin):
 
 class DefaultLifeEventPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        # LifeEventLibrary.add(marriage_event())
-        # LifeEvents.register(become_friends_event())
-        # LifeEvents.register(become_enemies_event())
-        # LifeEventLibrary.add(start_dating_event())
-        # LifeEventLibrary.add(dating_break_up_event())
-        # LifeEventLibrary.add(divorce_event())
-        # LifeEventLibrary.add(pregnancy_event())
-        # LifeEventLibrary.add(depart_due_to_unemployment())
-        LifeEventLibrary.add(retire_event())
-        # LifeEventLibrary.add(find_own_place_event())
-        LifeEventLibrary.add(die_of_old_age())
-
-
-class DefaultServicesPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
-        ServiceTypeLibrary.add_service_type("Drinking")
-        ServiceTypeLibrary.add_service_type("Banking")
-        ServiceTypeLibrary.add_service_type("College Education")
-        ServiceTypeLibrary.add_service_type("Construction")
-        ServiceTypeLibrary.add_service_type("Cosmetics")
-        ServiceTypeLibrary.add_service_type("Clothing")
-        ServiceTypeLibrary.add_service_type("Fire Emergency")
-        ServiceTypeLibrary.add_service_type("Food")
-        ServiceTypeLibrary.add_service_type("Hardware")
-        ServiceTypeLibrary.add_service_type("Errands")
-        ServiceTypeLibrary.add_service_type("Socializing")
-        ServiceTypeLibrary.add_service_type("Shopping")
-        ServiceTypeLibrary.add_service_type("Secondary Education")
-        ServiceTypeLibrary.add_service_type("Realty")
-        ServiceTypeLibrary.add_service_type("Public Service")
-        ServiceTypeLibrary.add_service_type("Recreation")
-        ServiceTypeLibrary.add_service_type("Mortuary")
-        ServiceTypeLibrary.add_service_type("Medical Emergency")
-        ServiceTypeLibrary.add_service_type("Legal")
-        ServiceTypeLibrary.add_service_type("Lodging")
-        ServiceTypeLibrary.add_service_type("Home Improvement")
+        # LifeEvents.add(marriage_event())
+        # LifeEvents.add(become_friends_event())
+        # LifeEvents.add(become_enemies_event())
+        # LifeEvents.add(start_dating_event())
+        # LifeEvents.add(dating_break_up_event())
+        # LifeEvents.add(divorce_event())
+        LifeEvents.add(pregnancy_event())
+        LifeEvents.add(retire_event())
+        # LifeEvents.add(find_own_place_event())
+        LifeEvents.add(die_of_old_age())
 
 
 class DefaultPlugin(Plugin):

@@ -18,9 +18,12 @@ from neighborly.plugins.weather_plugin import WeatherPlugin
 from neighborly.simulation import SimulationBuilder
 
 EXPORT_WORLD = False
+DEBUG_LOGGING = False
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+
+    if DEBUG_LOGGING:
+        logging.basicConfig(level=logging.DEBUG)
 
     sim = (
         SimulationBuilder(

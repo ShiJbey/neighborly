@@ -1,272 +1,104 @@
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type
+from enum import Enum
+from typing import Dict, List, Optional, Set, Type
 
-from neighborly.builtin.components import Active, Age, CanGetPregnant, Name
-from neighborly.core.business import Business, Services, WorkHistory, logger
-from neighborly.core.character import GameCharacter, LifeStageAges
-from neighborly.core.ecs import Component, EntityArchetype, GameObject, World
+from neighborly.builtin.components import Active, Age, Name
+from neighborly.core.business import (
+    Business,
+    IBusinessType,
+    Services,
+    ServiceType,
+    ServiceTypes,
+    parse_operating_hour_str,
+)
+from neighborly.core.character import CharacterName, GameCharacter
+from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
-from neighborly.core.personal_values import PersonalValues
 from neighborly.core.position import Position2D
 from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 
-
-def spawns_character(name: str, spawn_frequency: int = 1):
-    def decorator(fn):
-        ...
-
-    return decorator
+logger = logging.getLogger(__name__)
 
 
-@spawns_character("Human")
-def create_human(world: World) -> None:
-    ...
+class CharacterArchetypes:
+    """Static class that manages factories that create character archetypes"""
 
-
-class Prefab(ABC):
-    """A specification for a hierarchy of GameObjects"""
-
-    @abstractmethod
-    def instantiate(self, world: World) -> GameObject:
-        raise NotImplementedError
-
-
-class CharacterPrefab(Prefab):
-    __slots__ = (
-        "name_format",
-        "spawn_multiplier",
-        "chance_spawn_with_spouse",
-        "max_children_at_spawn",
-        "archetype",
-    )
-
-    def __init__(
-        self,
-        name_format: str = "#first_name# #family_name#",
-        spawn_multiplier: int = 1,
-        chance_spawn_with_spouse: float = 0.5,
-        max_children_at_spawn: int = 0,
-        extra_components: Optional[Dict[Type[Component], Dict[str, Any]]] = None,
-    ) -> None:
-        super().__init__(name)
-        self.name_format: str = name_format
-        self.spawn_multiplier: int = spawn_multiplier
-        self.chance_spawn_with_spouse: float = chance_spawn_with_spouse
-        self.max_children_at_spawn: int = max_children_at_spawn
-        self.archetype = EntityArchetype("")
-
-        self.archetype.add(GameCharacter)
-        self.archetype.add(Routine, presets="default")
-        self.archetype.add(PersonalValues)
-        self.archetype.add(WorkHistory)
-        self.archetype.add(Age)
-        self.archetype.add(CanGetPregnant)
-
-        if extra_components:
-            for component_type, params in extra_components.items():
-                self.archetype.add(component_type, **params)
-
-    def instantiate(self, world: World) -> GameObject:
-        return world.spawn_archetype(self.archetype)
-
-
-class CharacterArchetype(EntityArchetype):
-    """
-    Archetype subclass for building characters
-    """
-
-    __slots__ = (
-        "name_format",
-        "spawn_multiplier",
-        "chance_spawn_with_spouse",
-        "max_children_at_spawn",
-    )
-
-    def __init__(
-        self,
-        name: str,
-        name_format: str = "#first_name# #family_name#",
-        spawn_multiplier: int = 1,
-        chance_spawn_with_spouse: float = 0.5,
-        max_children_at_spawn: int = 0,
-        extra_components: Optional[Dict[Type[Component], Dict[str, Any]]] = None,
-    ) -> None:
-        super().__init__(name)
-        self.name_format: str = name_format
-        self.spawn_multiplier: int = spawn_multiplier
-        self.chance_spawn_with_spouse: float = chance_spawn_with_spouse
-        self.max_children_at_spawn: int = max_children_at_spawn
-
-        self.add(GameCharacter)
-        self.add(Routine, presets="default")
-        self.add(PersonalValues)
-        self.add(WorkHistory)
-        self.add(Age)
-        self.add(CanGetPregnant)
-
-        if extra_components:
-            for component_type, params in extra_components.items():
-                self.add(component_type, **params)
-
-
-class CharacterArchetypeLibrary:
-    _registry: Dict[str, CharacterArchetype] = {}
+    _registry: Dict[str, ICharacterArchetype] = {}
 
     @classmethod
-    def add(cls, archetype: CharacterArchetype, name: Optional[str] = None) -> None:
-        """Register a new LifeEventType mapped to a name"""
-        entry_key = name if name else archetype.name
-        if entry_key in cls._registry:
-            logger.debug(f"Overwrote CharacterArchetype: ({entry_key})")
-        cls._registry[entry_key] = archetype
+    def add(cls, name: str, archetype: ICharacterArchetype) -> None:
+        """Register a new archetype by name"""
+        if name in cls._registry:
+            logger.debug(f"Overwrote ICharacterPrefab: ({name})")
+        cls._registry[name] = archetype
 
     @classmethod
-    def get_all(cls) -> List[CharacterArchetype]:
+    def get_all(cls) -> List[ICharacterArchetype]:
+        """Get all stored archetypes"""
         return list(cls._registry.values())
 
     @classmethod
-    def get(cls, name: str) -> CharacterArchetype:
-        """Get a LifeEventType using a name"""
+    def get(cls, name: str) -> ICharacterArchetype:
+        """Get an archetype by name"""
         try:
             return cls._registry[name]
         except KeyError:
             raise ArchetypeNotFoundError(name)
 
 
-class BusinessArchetype(EntityArchetype):
-    """
-    Shared information about all businesses that
-    have this type
-    """
+class BusinessArchetypes:
+    """Static class that manages factories that create business archetypes"""
 
-    __slots__ = (
-        "hours",
-        "name_format",
-        "owner_type",
-        "max_instances",
-        "min_population",
-        "employee_types",
-        "services",
-        "spawn_multiplier",
-        "year_available",
-        "year_obsolete",
-    )
-
-    def __init__(
-        self,
-        name: str,
-        hours: Optional[str] = None,
-        name_format: Optional[str] = None,
-        owner_type: Optional[str] = None,
-        max_instances: int = 9999,
-        min_population: int = 0,
-        employee_types: Optional[Dict[str, int]] = None,
-        services: Optional[List[str]] = None,
-        spawn_multiplier: int = 1,
-        extra_components: Optional[Dict[Type[Component], Dict[str, Any]]] = None,
-        year_available: int = -1,
-        year_obsolete: int = 9999,
-    ) -> None:
-        super().__init__(name)
-        self.hours: str = hours if hours else "day"
-        self.name_format: str = name_format if name_format else name
-        self.owner_type: Optional[str] = owner_type
-        self.max_instances: int = max_instances
-        self.min_population: int = min_population
-        self.employee_types: Dict[str, int] = employee_types if employee_types else {}
-        self.services: List[str] = services if services else []
-        self.spawn_multiplier: int = spawn_multiplier
-        self.year_available: int = year_available
-        self.year_obsolete: int = year_obsolete
-
-        self.add(
-            Business,
-            name_format=self.name_format,
-            hours=self.hours,
-            owner_type=self.owner_type,
-            employee_types=self.employee_types,
-        )
-        self.add(Location)
-        self.add(Position2D)
-        self.add(Name, name=self.name)
-        self.add(Age)
-        self.add(Services, services=services)
-
-        if extra_components:
-            for component_type, params in extra_components.items():
-                self.add(component_type, **params)
-
-
-class BusinessArchetypeLibrary:
-    _registry: Dict[str, BusinessArchetype] = {}
+    _registry: Dict[str, IBusinessArchetype] = {}
 
     @classmethod
-    def add(cls, archetype: BusinessArchetype, name: Optional[str] = None) -> None:
-        """Register a new LifeEventType mapped to a name"""
-        entry_key = name if name else archetype.name
-        if entry_key in cls._registry:
-            logger.debug(f"Overwrote BusinessArchetype: ({entry_key})")
-        cls._registry[entry_key] = archetype
+    def add(cls, name: str, archetype: IBusinessArchetype) -> None:
+        """Register a new archetype by name"""
+        if name in cls._registry:
+            logger.debug(f"Overwrote Business Archetype: ({name})")
+        cls._registry[name] = archetype
 
     @classmethod
-    def get_all(cls) -> List[BusinessArchetype]:
+    def get_all(cls) -> List[IBusinessArchetype]:
+        """Get all stored archetypes"""
         return list(cls._registry.values())
 
     @classmethod
-    def get(cls, name: str) -> BusinessArchetype:
-        """Get a LifeEventType using a name"""
+    def get(cls, name: str) -> IBusinessArchetype:
+        """Get an archetype by name"""
         try:
             return cls._registry[name]
         except KeyError:
             raise ArchetypeNotFoundError(name)
 
 
-class ResidenceArchetype(EntityArchetype):
-    __slots__ = ("spawn_multiplier",)
-
-    def __init__(
-        self,
-        name: str,
-        spawn_multiplier: int = 1,
-        extra_components: Optional[Dict[Type[Component], Dict[str, Any]]] = None,
-    ) -> None:
-        super().__init__(name)
-        self.spawn_multiplier: int = spawn_multiplier
-
-        self.add(Residence)
-        self.add(Location)
-        self.add(Position2D)
-
-        if extra_components:
-            for component_type, params in extra_components.items():
-                self.add(component_type, **params)
-
-
-class ResidenceArchetypeLibrary:
-    _registry: Dict[str, ResidenceArchetype] = {}
+class ResidenceArchetypes:
+    _registry: Dict[str, IResidenceArchetype] = {}
 
     @classmethod
     def add(
         cls,
-        archetype: ResidenceArchetype,
-        name: Optional[str] = None,
+        name: str,
+        archetype: IResidenceArchetype,
     ) -> None:
-        """Register a new LifeEventType mapped to a name"""
-        entry_key = name if name else archetype.name
-        if entry_key in cls._registry:
-            logger.debug(f"Overwrote ResidenceArchetype: ({entry_key})")
-        cls._registry[entry_key] = archetype
+        """Register a new archetype by name"""
+        if name in cls._registry:
+            logger.debug(f"Overwrote Residence Archetype: ({name})")
+        cls._registry[name] = archetype
 
     @classmethod
-    def get_all(cls) -> List[ResidenceArchetype]:
+    def get_all(cls) -> List[IResidenceArchetype]:
+        """Get all stored archetypes"""
         return list(cls._registry.values())
 
     @classmethod
-    def get(cls, name: str) -> ResidenceArchetype:
-        """Get a LifeEventType using a name"""
+    def get(cls, name: str) -> IResidenceArchetype:
+        """Get an archetype by name"""
         try:
             return cls._registry[name]
         except KeyError:
@@ -283,3 +115,258 @@ class ArchetypeNotFoundError(Exception):
 
     def __str__(self) -> str:
         return self.message
+
+
+class IEntityArchetype(ABC):
+    @abstractmethod
+    def get_spawn_frequency(self) -> int:
+        """Return the relative frequency that this prefab appears"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def create(self, world: World, **kwargs) -> GameObject:
+        """Create a new instance of this prefab"""
+        raise NotImplementedError
+
+
+class ICharacterArchetype(IEntityArchetype):
+    """Interface for archetypes that construct characters"""
+
+    @abstractmethod
+    def get_max_children_at_spawn(self) -> int:
+        """Return the maximum amount of children this prefab can have when spawning"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_chance_spawn_with_spouse(self) -> float:
+        """Return the chance that a character from this prefab spawns with a spouse"""
+        raise NotImplementedError
+
+
+class BaseCharacterArchetype(ICharacterArchetype):
+    """Base factory class for constructing new characters"""
+
+    __slots__ = (
+        "spawn_frequency",
+        "chance_spawn_with_spouse",
+        "max_children_at_spawn",
+    )
+
+    def __init__(
+        self,
+        spawn_frequency: int = 1,
+        chance_spawn_with_spouse: float = 0.5,
+        max_children_at_spawn: int = 0,
+    ) -> None:
+        self.spawn_frequency: int = spawn_frequency
+        self.max_children_at_spawn: int = max_children_at_spawn
+        self.chance_spawn_with_spouse: float = chance_spawn_with_spouse
+
+    def get_spawn_frequency(self) -> int:
+        return self.spawn_frequency
+
+    def get_max_children_at_spawn(self) -> int:
+        """Return the maximum amount of children this prefab can have when spawning"""
+        return self.max_children_at_spawn
+
+    def get_chance_spawn_with_spouse(self) -> float:
+        """Return the chance that a character from this prefab spawns with a spouse"""
+        return self.chance_spawn_with_spouse
+
+    def create(self, world: World, **kwargs) -> GameObject:
+        # Perform calculations first and return the base character GameObject
+        return world.spawn_gameobject(
+            [
+                Active(),
+                GameCharacter(),
+                Routine(),
+                Age(),
+                CharacterName("First", "Last"),
+            ]
+        )
+
+
+class IBusinessArchetype(IEntityArchetype):
+    """Interface for archetypes that construct businesses"""
+
+    @abstractmethod
+    def get_business_type(self) -> Type[IBusinessType]:
+        """Get the IBusiness Type that the archetype constructs"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_min_population(self) -> int:
+        """Return the minimum population needed for this business to be constructed"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_year_available(self) -> int:
+        """Return the year that this business is available to construct"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_year_obsolete(self) -> int:
+        """Return the year that this business is no longer available to construct"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_instances(self) -> int:
+        """Get the number of active instances of this archetype"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_instances(self, value: int) -> None:
+        """Set the number of active instances of this archetype"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_max_instances(self) -> int:
+        """Return the maximum instances of this prefab that may exist"""
+        raise NotImplementedError
+
+
+class BaseBusinessArchetype(IBusinessArchetype):
+    """
+    Shared information about all businesses that
+    have this type
+    """
+
+    __slots__ = (
+        "business_type",
+        "hours",
+        "name_format",
+        "owner_type",
+        "max_instances",
+        "min_population",
+        "employee_types",
+        "services",
+        "spawn_frequency",
+        "year_available",
+        "year_obsolete",
+        "instances",
+    )
+
+    def __init__(
+        self,
+        business_type: Type[IBusinessType],
+        name_format: str,
+        hours: str = "day",
+        owner_type: Optional[str] = None,
+        max_instances: int = 9999,
+        min_population: int = 0,
+        employee_types: Optional[Dict[str, int]] = None,
+        services: Optional[List[str]] = None,
+        spawn_frequency: int = 1,
+        year_available: int = -1,
+        year_obsolete: int = 9999,
+    ) -> None:
+        self.business_type: Type[IBusinessType] = business_type
+        self.hours: str = hours
+        self.name_format: str = name_format
+        self.owner_type: Optional[str] = owner_type
+        self.max_instances: int = max_instances
+        self.min_population: int = min_population
+        self.employee_types: Dict[str, int] = employee_types if employee_types else {}
+        self.services: List[str] = services if services else []
+        self.spawn_frequency: int = spawn_frequency
+        self.year_available: int = year_available
+        self.year_obsolete: int = year_obsolete
+        self.instances: int = 0
+
+    def get_spawn_frequency(self) -> int:
+        """Return the relative frequency that this prefab appears"""
+        return self.spawn_frequency
+
+    def get_min_population(self) -> int:
+        """Return the minimum population needed for this business to be constructed"""
+        return self.min_population
+
+    def get_year_available(self) -> int:
+        """Return the year that this business is available to construct"""
+        return self.year_available
+
+    def get_year_obsolete(self) -> int:
+        """Return the year that this business is no longer available to construct"""
+        return self.year_obsolete
+
+    def get_business_type(self) -> Type[IBusinessType]:
+        return self.business_type
+
+    def get_instances(self) -> int:
+        return self.instances
+
+    def set_instances(self, value: int) -> None:
+        self.instances = value
+
+    def get_max_instances(self) -> int:
+        return self.max_instances
+
+    def create(self, world: World, **kwargs) -> GameObject:
+        engine = world.get_resource(NeighborlyEngine)
+
+        services: Set[ServiceType] = set()
+
+        for service in self.services:
+            services.add(ServiceTypes.get(service))
+
+        return world.spawn_gameobject(
+            [
+                self.business_type(),
+                Business(
+                    operating_hours=parse_operating_hour_str(self.hours),
+                    owner_type=self.owner_type,
+                    open_positions=self.employee_types,
+                ),
+                Age(0),
+                Services(services),
+                Name(engine.name_generator.get_name(self.name_format)),
+                Position2D(),
+                Location(),
+            ]
+        )
+
+
+class ResidentialZoning(Enum):
+    SingleFamily = 0
+    MultiFamily = 0
+
+
+class IResidenceArchetype(IEntityArchetype):
+    """Interface for archetypes that construct residences"""
+
+    @abstractmethod
+    def get_zoning(self) -> ResidentialZoning:
+        raise NotImplementedError
+
+
+class BaseResidenceArchetype(IResidenceArchetype):
+    __slots__ = ("spawn_frequency", "zoning")
+
+    def __init__(
+        self,
+        zoning: ResidentialZoning = ResidentialZoning.SingleFamily,
+        spawn_frequency: int = 1,
+    ) -> None:
+        self.spawn_frequency: int = spawn_frequency
+        self.zoning: ResidentialZoning = zoning
+
+    def get_spawn_frequency(self) -> int:
+        return self.spawn_frequency
+
+    def get_zoning(self) -> ResidentialZoning:
+        return self.zoning
+
+    def create(self, world: World, **kwargs) -> GameObject:
+        return world.spawn_gameobject([Residence(), Location(), Position2D()])
+
+
+class ArchetypeRef(Component):
+
+    __slots__ = "name"
+
+    def __init__(self, name: str) -> None:
+        super().__init__()
+        self.name: str = name
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.name})"

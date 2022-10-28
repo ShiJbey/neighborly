@@ -50,8 +50,8 @@ from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
     LifeEvent,
-    LifeEventLibrary,
     LifeEventLog,
+    LifeEvents,
     LifeEventType,
     RoleType,
     constant_probability,
@@ -627,7 +627,7 @@ def challenge_for_power(probability: float = 1.0) -> LifeEventType:
         challenger = world.get_gameobject(event["Challenger"]).get_component(Demon)
         opponent = world.get_gameobject(event["Opponent"]).get_component(Demon)
         rng = world.get_resource(NeighborlyEngine).rng
-        _death_event_type = LifeEventLibrary.get("Death")
+        _death_event_type = LifeEvents.get("Death")
         generated_events = [event]
 
         slayer_success_chance = probability_of_winning(
@@ -692,7 +692,7 @@ def devour_human(probability: float = 1.0) -> LifeEventType:
         demon = world.get_gameobject(event["Demon"])
         victim = world.get_gameobject(event["Victim"])
         if victim.has_component(DemonSlayer):
-            battle_event_type = LifeEventLibrary.get("Battle")
+            battle_event_type = LifeEvents.get("Battle")
             battle_event = battle_event_type.instantiate(
                 world, Demon=demon, Slayer=victim
             )
@@ -704,7 +704,7 @@ def devour_human(probability: float = 1.0) -> LifeEventType:
             demon.get_component(Demon).rank = power_level_to_demon_rank(
                 demon.get_component(Demon).power_level
             )
-            _death_event_type = LifeEventLibrary.get("Death")
+            _death_event_type = LifeEvents.get("Death")
             death_event = _death_event_type.instantiate(world, Deceased=victim)
 
             if death_event:
@@ -754,7 +754,7 @@ def battle(probability: float = 1.0) -> LifeEventType:
         demon = world.get_gameobject(event["Demon"]).get_component(Demon)
         slayer = world.get_gameobject(event["Slayer"]).get_component(DemonSlayer)
         rng = world.get_resource(NeighborlyEngine).rng
-        _death_event_type = LifeEventLibrary.get("Death")
+        _death_event_type = LifeEvents.get("Death")
 
         slayer_success_chance = probability_of_winning(
             slayer.power_level, demon.power_level
@@ -846,7 +846,6 @@ def death_event_type() -> LifeEventType:
     def execute(world: World, event: LifeEvent):
         deceased = world.get_gameobject(event["Deceased"])
         deceased.add_component(Deceased())
-        deceased.archive()
 
     return LifeEventType(
         "Death",
@@ -923,15 +922,15 @@ def promotion_to_upper_moon(probability: float = 1.0) -> LifeEventType:
 
 class DemonSlayerPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        LifeEventLibrary.add(promotion_to_upper_moon())
-        LifeEventLibrary.add(promotion_to_lower_moon())
-        LifeEventLibrary.add(turn_into_demon(0.8))
-        LifeEventLibrary.add(battle(0.7))
-        LifeEventLibrary.add(devour_human(0.3))
-        LifeEventLibrary.add(challenge_for_power(0.4))
-        LifeEventLibrary.add(demon_slayer_promotion(0.7))
-        LifeEventLibrary.add(become_demon_slayer(0.3))
-        LifeEventLibrary.add(death_event_type())
+        LifeEvents.add(promotion_to_upper_moon())
+        LifeEvents.add(promotion_to_lower_moon())
+        LifeEvents.add(turn_into_demon(0.8))
+        LifeEvents.add(battle(0.7))
+        LifeEvents.add(devour_human(0.3))
+        LifeEvents.add(challenge_for_power(0.4))
+        LifeEvents.add(demon_slayer_promotion(0.7))
+        LifeEvents.add(become_demon_slayer(0.3))
+        LifeEvents.add(death_event_type())
         sim.world.add_resource(DemonSlayerCorps())
         sim.world.add_resource(DemonKingdom())
 

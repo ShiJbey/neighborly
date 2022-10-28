@@ -239,10 +239,11 @@ class SimDateTime:
         """Add a TimeDelta to this data"""
         if not isinstance(other, TimeDelta):
             raise TypeError(f"expected TimeDelta object but was {type(other)}")
-        self.increment(
+        date_copy = self.copy()
+        date_copy.increment(
             hours=other.hours, days=other.days, months=other.months, years=other.years
         )
-        return self
+        return date_copy
 
     def __le__(self, other: SimDateTime) -> bool:
         if not isinstance(other, SimDateTime):

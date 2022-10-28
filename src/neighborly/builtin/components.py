@@ -1,10 +1,19 @@
-import enum
-from typing import Dict, Optional
+from typing import Dict
 
 from neighborly.core.character import LifeStageAges
-from neighborly.core.ecs import Component, World, component_info, remove_on_archive
-from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.ecs import Component, component_info
 from neighborly.core.time import SimDateTime
+
+
+class Departed(Component):
+
+    pass
+
+
+class Vacant(Component):
+    """A tag component for residences that do not currently have any one living there"""
+
+    pass
 
 
 class Human(Component):
@@ -21,17 +30,26 @@ class MaxCapacity(Component):
         super().__init__()
         self.capacity = capacity
 
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\tcapacity: {self.capacity}")
+
 
 class Name(Component):
     """
     The string name of an entity
     """
 
-    __slots__ = "name"
+    __slots__ = "value"
 
     def __init__(self, name: str = "") -> None:
         super().__init__()
-        self.name = name
+        self.value = name
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.value})"
+
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\tvalue: {self.value}")
 
 
 class Age(Component):
@@ -39,11 +57,17 @@ class Age(Component):
     Tracks the number of years old that an entity is
     """
 
-    __slots__ = "age"
+    __slots__ = "value"
 
     def __init__(self, age: float = 0.0) -> None:
         super().__init__()
-        self.age: float = age
+        self.value: float = age
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.value})"
+
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\tvalue: {self.value}")
 
 
 class CanAge(Component):
@@ -71,51 +95,36 @@ class OpenToPublic(Component):
     pass
 
 
-class GenderValue(enum.Enum):
-    Male = "male"
-    Female = "female"
-    NonBinary = "non-binary"
-
-
-class Gender(Component):
-
-    __slots__ = "gender"
-
-    def __init__(self, gender: GenderValue) -> None:
-        super().__init__()
-        self.gender: GenderValue = gender
-
-    @classmethod
-    def create(cls, world: World, **kwargs) -> Component:
-        rng = world.get_resource(NeighborlyEngine).rng
-        choice = rng.choice(list(GenderValue))
-        return cls(gender=choice)
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(gender={self.gender})"
-
-
 class CurrentLocation(Component):
     """Tracks the current location of this game object"""
 
     __slots__ = "location"
 
-    def __init__(self) -> None:
+    def __init__(self, location: int) -> None:
         super().__init__()
-        self.location: Optional[int] = None
+        self.location: int = location
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.location})"
+
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\tlocation: {self.location}")
 
 
 class Lifespan(Component):
     """How long this entity usually lives"""
 
-    __slots__ = "lifespan"
+    __slots__ = "value"
 
     def __init__(self, lifespan: float) -> None:
         super().__init__()
-        self.lifespan: float = lifespan
+        self.value: float = lifespan
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.value})"
+
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\tvalue: {self.value}")
 
 
 class LocationAliases(Component):
@@ -129,6 +138,24 @@ class LocationAliases(Component):
         super().__init__()
         self.aliases: Dict[str, int] = {}
 
+    def __contains__(self, item: str) -> bool:
+        return item in self.aliases
+
+    def __getitem__(self, item: str) -> int:
+        return self.aliases[item]
+
+    def __setitem__(self, key: str, value: int) -> None:
+        self.aliases[key] = value
+
+    def __delitem__(self, key) -> None:
+        del self.aliases[key]
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.aliases})"
+
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n" f"\taliases: {self.aliases}")
+
 
 class LifeStages(Component):
     """Tracks what stage of life an entity is in"""
@@ -139,6 +166,9 @@ class LifeStages(Component):
         super().__init__()
         self.stages: LifeStageAges = stages
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.stages})"
+
 
 class CanGetPregnant(Component):
     """Indicates that an entity is capable of giving birth"""
@@ -146,9 +176,7 @@ class CanGetPregnant(Component):
     pass
 
 
-@component_info(
-    name="child", description="Character is seen as a child in the eyes of society"
-)
+@component_info("Child", "Character is seen as a child in the eyes of society")
 class Child(Component):
     pass
 
@@ -203,52 +231,18 @@ class Dependent(Component):
     pass
 
 
-@component_info(
-    "Dating",
-    "This entity is in a relationship with another",
-)
-@remove_on_archive
-class Dating(Component):
-    __slots__ = "duration_years", "partner_id", "partner_name"
-
-    def __init__(self, partner_id: int, partner_name: str) -> None:
-        super().__init__()
-        self.duration_years: float = 0.0
-        self.partner_id: int = partner_id
-        self.partner_name: str = partner_name
-
-    def on_archive(self) -> None:
-        """Remove status on this entity and the partner"""
-        self.gameobject.world.get_gameobject(self.partner_id).remove_component(
-            type(self)
-        )
+class CanDate(Component):
+    pass
 
 
-@component_info(
-    "Married",
-    "This entity is married to another",
-)
-@remove_on_archive
-class Married(Component):
-    __slots__ = "duration_years", "partner_id", "partner_name"
-
-    def __init__(self, partner_id: int, partner_name: str) -> None:
-        super().__init__()
-        self.duration_years: float = 0.0
-        self.partner_id: int = partner_id
-        self.partner_name: str = partner_name
-
-    def on_archive(self) -> None:
-        """Remove status on this entity and the partner"""
-        if self.gameobject.world.get_gameobject(self.partner_id).has_component(
-            type(self)
-        ):
-            self.gameobject.world.get_gameobject(self.partner_id).remove_component(
-                type(self)
-            )
+class CanGetMarried(Component):
+    pass
 
 
-@remove_on_archive
+class IsSingle(Component):
+    pass
+
+
 class Pregnant(Component):
 
     __slots__ = "partner_name", "partner_id", "due_date"
@@ -260,6 +254,13 @@ class Pregnant(Component):
         self.partner_name: str = partner_name
         self.partner_id: int = partner_id
         self.due_date: SimDateTime = due_date
+
+    def pprint(self) -> None:
+        print(
+            f"{self.__class__.__name__}:\n"
+            f"\tpartner: {self.partner_namer}({self.partner_id})"
+            f"\tdue date: {self.due_date.to_date_str()}"
+        )
 
 
 @component_info("Male", "This entity is perceived as masculine.")
@@ -283,6 +284,5 @@ class CollegeGraduate(Component):
 
 
 @component_info("Active", "This entity is in the town and active in the simulation")
-@remove_on_archive
 class Active(Component):
     pass

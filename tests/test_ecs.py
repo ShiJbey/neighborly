@@ -2,13 +2,13 @@ from dataclasses import dataclass
 
 import pytest
 
+from neighborly.core.archetypes import EntityArchetype
 from neighborly.core.ecs import (
     Component,
     ComponentNotFoundError,
-    EntityArchetype,
     GameObjectNotFoundError,
+    ISystem,
     ResourceNotFoundError,
-    SystemBase,
     World,
 )
 
@@ -58,7 +58,7 @@ class AnotherFakeResource:
     config_value: int = 43
 
 
-class FakeSystemBaseA(SystemBase):
+class FakeSystemBaseA(ISystem):
     def process(self, *args, **kwargs):
         for _, a in self.world.get_component(A):
             a.value += 1

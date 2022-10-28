@@ -12,33 +12,19 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-)
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 
 import esper
 
 logger = logging.getLogger(__name__)
 
-# Component types that should be removed when archiving a GameObject
-__components_removed_on_archive: Set[Type[Component]] = set()
-
 
 # Store string names of components for lookup later
-__component_names: Dict[Type[Component], str] = {}
+_component_names: Dict[Type[Component], str] = {}
 
 
 # Text descriptions of components (mostly used by GUI applications)
-__component_descriptions: Dict[Type[Component], str] = {}
+_component_descriptions: Dict[Type[Component], str] = {}
 
 
 _CT = TypeVar("_CT", bound="Component")
@@ -102,7 +88,7 @@ class GameObject:
         Components attached to this GameObject
     """
 
-    __slots__ = ("_id", "_name", "_components", "_world", "_archetype")
+    __slots__ = "_id", "_name", "_components", "_world"
 
     def __init__(
         self,
@@ -110,13 +96,11 @@ class GameObject:
         world: World,
         name: Optional[str] = None,
         components: Optional[Iterable[Component]] = None,
-        archetype: Optional[EntityArchetype] = None,
     ) -> None:
         self._name: str = name if name else f"GameObject ({unique_id})"
         self._id: int = unique_id
         self._world: World = world
         self._components: Dict[Type[Component], Component] = {}
-        self._archetype: Optional[EntityArchetype] = archetype
 
         if components:
             for component in components:
@@ -133,35 +117,30 @@ class GameObject:
         return self._name
 
     @property
-    def archetype(self) -> Optional[EntityArchetype]:
-        """Return the name of the archetype for creating this GameObject"""
-        return self._archetype
-
-    @property
     def world(self) -> World:
         """Return the world that this GameObject belongs to"""
         return self._world
 
     @property
     def components(self) -> List[Component]:
+        """Returns the component instances associated with this GameObject"""
         return list(self._components.values())
+
+    def get_component_types(self) -> List[Type[Component]]:
+        """Returns the types of components attached to this character"""
+        return list(self._components.keys())
 
     def add_component(self, component: Component) -> GameObject:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
         self._components[type(component)] = component
         self.world.ecs.add_component(self.id, component)
-        component.on_add()
         return self
 
     def remove_component(self, component_type: Type[Component]) -> None:
         """Add a component to this GameObject"""
-        try:
-            component = self._components[component_type]
-        except KeyError:
-            raise ComponentNotFoundError(component_type)
-
-        component.on_remove()
+        if not self.has_component(component_type):
+            return
         del self._components[component_type]
         self.world.ecs.remove_component(self.id, component_type)
 
@@ -177,21 +156,6 @@ class GameObject:
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
         return self._components.get(component_type)  # type: ignore
 
-    def archive(self) -> None:
-        """
-        Deactivates the GameObject by removing excess components.
-
-        The GameObject stays in the ECS though.
-        """
-        global __components_removed_on_archive
-        for component in self.components:
-            component.on_archive()
-        components = self.components
-        components.reverse()
-        for component in components:
-            if type(component) in __components_removed_on_archive:
-                self.remove_component(type(component))
-
     def to_dict(self) -> Dict[str, Any]:
         ret = {
             "id": self.id,
@@ -199,10 +163,12 @@ class GameObject:
             "components": [c.to_dict() for c in self._components.values()],
         }
 
-        if self.archetype:
-            ret["archetype"] = self.archetype.name
-
         return ret
+
+    def pprint(self) -> None:
+        print(f"== GameObject({self.id}) ==\n")
+        for c in self.components:
+            c.pprint()
 
     def __hash__(self) -> int:
         return self._id
@@ -241,17 +207,8 @@ class Component(ABC):
         """set the gameobject instance for this component"""
         self._gameobject = gameobject
 
-    def on_add(self) -> None:
-        """Run when the component is added to the GameObject"""
-        return
-
-    def on_remove(self) -> None:
-        """Run when the component is removed from the GameObject"""
-        return
-
-    def on_archive(self) -> None:
-        """Run when the GameObject this is connected to is archived"""
-        return
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n")
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Component:
@@ -274,24 +231,15 @@ def component_info(
 
     def decorator(cls: Type[_CT]) -> Type[_CT]:
         if name is not None:
-            __component_names[cls] = name
+            _component_names[cls] = name
         if description is not None:
-            __component_descriptions[cls] = description
+            _component_descriptions[cls] = description
         return cls
 
     return decorator
 
 
-def remove_on_archive(cls: Type[_CT]) -> Type[_CT]:
-    """
-    Decorator that marks a component type that should be removed when archiving
-    the GameObject
-    """
-    __components_removed_on_archive.add(cls)
-    return cls
-
-
-class SystemBase(ABC, esper.Processor):
+class ISystem(ABC, esper.Processor):
     world: World
 
     def __init__(self):
@@ -346,26 +294,6 @@ class World:
         self._gameobjects[gameobject.id] = gameobject
         return gameobject
 
-    def spawn_archetype(self, archetype: EntityArchetype) -> GameObject:
-        component_instances: List[Component] = []
-        for component_type, options in archetype.components.items():
-            component_instances.append(component_type.create(self, **options))
-
-        entity_id = self._ecs.create_entity(*component_instances)
-        gameobject = GameObject(
-            unique_id=entity_id,
-            components=component_instances,
-            world=self,
-            name=f"{archetype.name}({entity_id})",
-            archetype=archetype,
-        )
-
-        archetype.increment_instances()
-
-        self._gameobjects[gameobject.id] = gameobject
-
-        return gameobject
-
     def get_gameobject(self, gid: int) -> GameObject:
         """Retrieve the GameObject with the given id"""
         try:
@@ -403,10 +331,6 @@ class World:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
             gameobject = self._gameobjects[gameobject_id]
-            for component in gameobject.components:
-                component.on_remove()
-            if gameobject.archetype:
-                gameobject.archetype.decrement_instances()
             del self._gameobjects[gameobject_id]
 
             # You need to check if the gameobject has any components
@@ -416,7 +340,7 @@ class World:
 
         self._dead_gameobjects.clear()
 
-    def add_system(self, system: SystemBase, priority: int = 0) -> None:
+    def add_system(self, system: ISystem, priority: int = 0) -> None:
         """Add a System instance to the World"""
         self._ecs.add_processor(system, priority=priority)
         system.world = self
@@ -425,7 +349,7 @@ class World:
         """Get a System of the given type"""
         return self._ecs.get_processor(system_type)
 
-    def remove_system(self, system: Type[SystemBase]) -> None:
+    def remove_system(self, system: Type[ISystem]) -> None:
         """Remove a System from the World"""
         self._ecs.remove_processor(system)
 
@@ -471,66 +395,4 @@ class World:
         return "World(gameobjects={}, resources={})".format(
             len(self._gameobjects),
             list(self._resources.values()),
-        )
-
-
-class EntityArchetype:
-    """
-    Organizes information for constructing components that compose GameObjects.
-
-    Attributes
-    ----------
-    _name: str
-        (Read-only) The name of the entity archetype
-    _components: Dict[Type[Component], Dict[str, Any]]
-        Dict of components used to construct this archetype
-    _instances: int
-        Number of instances of this Archetype that are active
-        within the simulation
-    """
-
-    __slots__ = "_name", "_components", "_instances"
-
-    def __init__(self, name: str) -> None:
-        self._name: str = name
-        self._components: Dict[Type[Component], Dict[str, Any]] = {}
-        self._instances: int = 0
-
-    @property
-    def name(self) -> str:
-        """Returns the name of this archetype"""
-        return self._name
-
-    @property
-    def components(self) -> Dict[Type[Component], Dict[str, Any]]:
-        """Returns a list of components in this archetype"""
-        return {**self._components}
-
-    @property
-    def instances(self) -> int:
-        return self._instances
-
-    def add(self, component_type: Type[Component], **kwargs: Any) -> EntityArchetype:
-        """
-        Add a component to this archetype
-
-        Parameters
-        ----------
-        component_type: subclass of neighborly.core.ecs.Component
-            The component type to add to the entity archetype
-        **kwargs: Dict[str, Any]
-            Attribute overrides to pass to the component
-        """
-        self._components[component_type] = {**kwargs}
-        return self
-
-    def increment_instances(self) -> None:
-        self._instances += 1
-
-    def decrement_instances(self) -> None:
-        self._instances -= 1
-
-    def __repr__(self) -> str:
-        return "{}(name={}, components={})".format(
-            self.__class__.__name__, self._name, self._components
         )

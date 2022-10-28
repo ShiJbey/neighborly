@@ -3,10 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from neighborly.core.ecs import Component, World, remove_on_archive
+from neighborly.core.ecs import Component, World
 
 
-@remove_on_archive
 @dataclass
 class Position2D(Component):
 
