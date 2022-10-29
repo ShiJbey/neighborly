@@ -44,13 +44,21 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly.builtin.components import Deceased
+from neighborly.builtin.components import (
+    Active,
+    Age,
+    CanAge,
+    CanGetPregnant,
+    CurrentLocation,
+    Deceased,
+    LifeStages,
+)
+from neighborly.builtin.helpers import move_to_location
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
     LifeEvent,
-    LifeEventLog,
     LifeEvents,
     LifeEventType,
     RoleType,
@@ -543,7 +551,10 @@ def become_demon_slayer(probability: float = 1) -> LifeEventType:
                 continue
             if character.gameobject.has_component(Demon):
                 continue
-            if character.age >= character.character_def.life_stages["teen"]:
+            if (
+                character.gameobject.get_component(Age).value
+                >= character.gameobject.get_component(LifeStages).stages["teen"]
+            ):
                 candidates.append(character.gameobject)
 
         if candidates:
@@ -705,16 +716,17 @@ def devour_human(probability: float = 1.0) -> LifeEventType:
                 demon.get_component(Demon).power_level
             )
             _death_event_type = LifeEvents.get("Death")
-            death_event = _death_event_type.instantiate(world, Deceased=victim)
-
-            if death_event:
-                _death_event_type.execute(world, death_event)
+            _death_event_type.try_execute_event(world, Deceased=victim)
 
     def bind_victim(world: World, event: LifeEvent):
         """Get all people at the same location who are not demons"""
         demon = world.get_gameobject(event["Demon"])
+
+        if not demon.has_component(CurrentLocation):
+            return None
+
         demon_location = world.get_gameobject(
-            demon.get_component(GameCharacter).location
+            demon.get_component(CurrentLocation).location
         ).get_component(Location)
 
         candidates: List[GameObject] = []
@@ -822,7 +834,10 @@ def turn_into_demon(probability: float = 1.0) -> LifeEventType:
             if character.gameobject.has_component(DemonSlayer):
                 continue
 
-            if character.age >= character.character_def.life_stages["teen"]:
+            if (
+                character.gameobject.get_component(Age).value
+                >= character.gameobject.get_component(LifeStages).stages["teen"]
+            ):
                 candidates.append(character.gameobject)
 
         if candidates:
@@ -833,6 +848,8 @@ def turn_into_demon(probability: float = 1.0) -> LifeEventType:
     def execute(world: World, event: LifeEvent):
         character = world.get_gameobject(event["Character"])
         character.add_component(Demon.create(world))
+        character.remove_component(CanAge)
+        character.remove_component(CanGetPregnant)
 
     return LifeEventType(
         "TurnIntoDemon",
@@ -846,6 +863,8 @@ def death_event_type() -> LifeEventType:
     def execute(world: World, event: LifeEvent):
         deceased = world.get_gameobject(event["Deceased"])
         deceased.add_component(Deceased())
+        deceased.remove_component(Active)
+        move_to_location(world, deceased, None)
 
     return LifeEventType(
         "Death",

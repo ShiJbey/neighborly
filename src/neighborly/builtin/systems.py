@@ -822,9 +822,9 @@ class SpawnResidentSystem(System):
                 ).surname
 
                 # Move them into the home with the first character
-                add_residence_owner(character, residence.gameobject)
-                move_residence(character, residence.gameobject)
-                move_to_location(self.world, character, residence.gameobject.id)
+                add_residence_owner(spouse, residence.gameobject)
+                move_residence(spouse, residence.gameobject)
+                move_to_location(self.world, spouse, residence.gameobject.id)
                 town.increment_population()
 
                 # Configure relationship from character to spouse
@@ -1126,33 +1126,26 @@ class PregnancySystem(ISystem):
                 )
 
             # Birthing parent to child
-            rel_graph.add_relationship(
-                Relationship(
-                    character.gameobject.id,
-                    baby.id,
-                )
+            rel_graph.get_relationship(character.gameobject.id, baby.id).add_tag(
+                "Child"
             )
 
             # Child to birthing parent
-            rel_graph.add_relationship(
-                Relationship(baby.id, character.gameobject.id),
+            rel_graph.get_relationship(baby.id, character.gameobject.id).add_tag(
+                "Parent"
             )
 
             # Other parent to child
-            rel_graph.add_relationship(
-                Relationship(
-                    pregnancy.partner_id,
-                    baby.id,
-                )
-            )
+            rel_graph.get_relationship(
+                pregnancy.partner_id,
+                baby.id,
+            ).add_tag("Child")
 
             # Child to other parent
-            rel_graph.add_relationship(
-                Relationship(
-                    baby.id,
-                    pregnancy.partner_id,
-                ),
-            )
+            rel_graph.get_relationship(
+                baby.id,
+                pregnancy.partner_id,
+            ).add_tag("Parent")
 
             # Create relationships with children of birthing parent
             for rel in rel_graph.get_all_relationships_with_tags(
@@ -1161,10 +1154,8 @@ class PregnancySystem(ISystem):
                 if rel.target == baby.id:
                     continue
                 # Baby to sibling
-                rel_graph.add_relationship(Relationship(baby.id, rel.target))
                 rel_graph.get_relationship(baby.id, rel.target).add_tag("Sibling")
                 # Sibling to baby
-                rel_graph.add_relationship(Relationship(rel.target, baby.id))
                 rel_graph.get_relationship(rel.target, baby.id).add_tag("Sibling")
 
             # Create relationships with children of other parent
@@ -1174,9 +1165,10 @@ class PregnancySystem(ISystem):
                 if rel.target == baby.id:
                     continue
                 # Baby to sibling
-                rel_graph.add_relationship(Relationship(baby.id, rel.target))
+                rel_graph.get_relationship(baby.id, rel.target).add_tag("Sibling")
+
                 # Sibling to baby
-                rel_graph.add_relationship(Relationship(rel.target, baby.id))
+                rel_graph.get_relationship(rel.target, baby.id).add_tag("Sibling")
 
             # Pregnancy event dates are retconned to be the actual date that the
             # child was due.
@@ -1255,9 +1247,6 @@ class ClosedForBusinessSystem(ISystem):
     """
 
     def process(self, *args, **kwargs):
-        event_logger = self.world.get_resource(LifeEventLog)
-        date = self.world.get_resource(SimDateTime)
-
         for gid, (out_of_business, location, business, _) in self.world.get_components(
             ClosedForBusiness, Location, Business, Active
         ):
@@ -1270,7 +1259,7 @@ class ClosedForBusinessSystem(ISystem):
                     move_to_location(
                         self.world,
                         entity,
-                        entity.get_component(LocationAliases)["home"],
+                        None,
                     )
                 else:
                     # Delete everything that is not a character
@@ -1285,14 +1274,6 @@ class ClosedForBusinessSystem(ISystem):
             demolish_building(out_of_business.gameobject)
 
             business.gameobject.remove_component(Active)
-
-            event_logger.record_event(
-                LifeEvent(
-                    "ClosedForBusiness",
-                    timestamp=date.to_iso_str(),
-                    roles=[Role("Business", gid)],
-                )
-            )
 
 
 class RemoveDeceasedFromResidences(ISystem):

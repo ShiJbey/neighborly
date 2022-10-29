@@ -164,7 +164,6 @@ class JohnWickPlugin(Plugin):
         LifeEvents.add(hire_assassin_event(-30))
         LifeEvents.add(become_an_assassin())
         BusinessArchetypes.add("The Continental Hotel", continental_hotel())
-        # CharacterArchetypeLibrary.add(assassin_character_archetype())
 
 
 EXPORT_WORLD = False

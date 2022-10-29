@@ -5,13 +5,14 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Set, Type
 
-from neighborly.builtin.components import Active, Age, Name
+from neighborly.builtin.components import Active, Age, Lifespan, LifeStages, Name
 from neighborly.core.business import (
     Business,
     IBusinessType,
     Services,
     ServiceType,
     ServiceTypes,
+    WorkHistory,
     parse_operating_hour_str,
 )
 from neighborly.core.character import CharacterName, GameCharacter
@@ -182,6 +183,16 @@ class BaseCharacterArchetype(ICharacterArchetype):
                 Routine(),
                 Age(),
                 CharacterName("First", "Last"),
+                WorkHistory(),
+                LifeStages(
+                    {
+                        "child": 0,
+                        "teen": 13,
+                        "young_adult": 18,
+                        "adult": 30,
+                        "elder": 65,
+                    }
+                ),
             ]
         )
 
@@ -259,6 +270,7 @@ class BaseBusinessArchetype(IBusinessArchetype):
         spawn_frequency: int = 1,
         year_available: int = -1,
         year_obsolete: int = 9999,
+        average_lifespan: int = 20,
     ) -> None:
         self.business_type: Type[IBusinessType] = business_type
         self.hours: str = hours
@@ -272,6 +284,7 @@ class BaseBusinessArchetype(IBusinessArchetype):
         self.year_available: int = year_available
         self.year_obsolete: int = year_obsolete
         self.instances: int = 0
+        self.average_lifespan: int = average_lifespan
 
     def get_spawn_frequency(self) -> int:
         """Return the relative frequency that this prefab appears"""
@@ -322,6 +335,7 @@ class BaseBusinessArchetype(IBusinessArchetype):
                 Name(engine.name_generator.get_name(self.name_format)),
                 Position2D(),
                 Location(),
+                Lifespan(self.average_lifespan),
             ]
         )
 

@@ -136,26 +136,26 @@ def remove_coworkers(character: GameObject, business: Business) -> None:
             rel_graph.get_connection(employee_id, character.id).remove_tag("Coworker")
 
 
-def move_to_location(world: World, gameobject: GameObject, destination_id: int) -> None:
+def move_to_location(
+    world: World, gameobject: GameObject, destination_id: Optional[int]
+) -> None:
     # A location cant move to itself
     if destination_id == gameobject.id:
         return
 
-    destination = world.get_gameobject(destination_id).get_component(Location)
-
-    # Check if they
-    current_location_comp = gameobject.try_component(CurrentLocation)
-
-    if current_location_comp is not None:
+    # Update old location if needed
+    if current_location_comp := gameobject.try_component(CurrentLocation):
         current_location = world.get_gameobject(
             current_location_comp.location
         ).get_component(Location)
         current_location.remove_entity(gameobject.id)
-        current_location_comp.location = destination_id
+        gameobject.remove_component(CurrentLocation)
+
+    # Move to new location if needed
+    if destination_id is not None:
+        destination = world.get_gameobject(destination_id).get_component(Location)
         destination.add_entity(gameobject.id)
-    else:
         gameobject.add_component(CurrentLocation(destination_id))
-        destination.add_entity(gameobject.id)
 
 
 def get_locations(world: World) -> List[Tuple[int, Location]]:

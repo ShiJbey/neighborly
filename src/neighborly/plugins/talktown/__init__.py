@@ -155,6 +155,7 @@ class TalkOfTheTownPlugin(Plugin):
         OccupationTypes.add(tot_occupations.plastic_surgeon)
         OccupationTypes.add(tot_occupations.plumber)
         OccupationTypes.add(tot_occupations.police_chief)
+        OccupationTypes.add(tot_occupations.police_officer)
         OccupationTypes.add(tot_occupations.principal)
         OccupationTypes.add(tot_occupations.professor)
         OccupationTypes.add(tot_occupations.proprietor)

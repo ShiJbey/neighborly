@@ -9,12 +9,12 @@ from neighborly.builtin.events import (
     die_of_old_age,
     divorce_event,
     find_own_place_event,
+    go_out_of_business_event,
     marriage_event,
     pregnancy_event,
     retire_event,
     start_dating_event,
 )
-from neighborly.core.business import ServiceTypes
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvents
 from neighborly.simulation import Plugin, Simulation
@@ -70,8 +70,9 @@ class DefaultLifeEventPlugin(Plugin):
         # LifeEvents.add(divorce_event())
         LifeEvents.add(pregnancy_event())
         LifeEvents.add(retire_event())
-        # LifeEvents.add(find_own_place_event())
+        LifeEvents.add(find_own_place_event())
         LifeEvents.add(die_of_old_age())
+        LifeEvents.add(go_out_of_business_event())
 
 
 class DefaultPlugin(Plugin):
