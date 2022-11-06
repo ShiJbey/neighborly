@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 import neighborly
 import neighborly.core.utils.utilities as utilities
+from neighborly import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.simulation import Plugin, PluginSetupError, SimulationBuilder
 
@@ -107,7 +108,7 @@ def load_plugin(module_name: str, path: Optional[str] = None) -> Plugin:
 
     try:
         plugin_module = importlib.import_module(module_name)
-        plugin: Plugin = plugin_module.__dict__["get_plugin"]()
+        plugin: Plugin = getattr(plugin_module, "get_plugin")()
         return plugin
     except KeyError:
         raise PluginSetupError(
@@ -233,8 +234,7 @@ def main():
 
     sim_builder = SimulationBuilder(
         seed=config.seed,
-        world_gen_start=config.world_gen_start,
-        world_gen_end=config.world_gen_end,
+        starting_date=config.world_gen_start,
         time_increment_hours=config.hours_per_timestep,
         print_events=not args.quiet,
     )
@@ -249,7 +249,7 @@ def main():
 
     sim = sim_builder.build()
 
-    sim.establish_setting()
+    sim.run_until(SimDateTime.from_str(config.world_gen_end))
 
     if not args.no_emit:
         output_path = (

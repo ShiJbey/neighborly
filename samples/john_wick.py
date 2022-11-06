@@ -19,11 +19,19 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
+from neighborly import (
+    Component,
+    GameObject,
+    Plugin,
+    SimDateTime,
+    Simulation,
+    SimulationBuilder,
+    World,
+)
 from neighborly.builtin.components import Adult, Deceased
 from neighborly.core.archetypes import BaseBusinessArchetype, BusinessArchetypes
 from neighborly.core.business import IBusinessType
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import (
     LifeEvent,
@@ -35,12 +43,8 @@ from neighborly.core.life_event import (
 )
 from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.residence import Resident
-from neighborly.core.time import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.plugins.default_plugin import DefaultPlugin
-from neighborly.plugins.talktown import TalkOfTheTownPlugin
-from neighborly.plugins.weather_plugin import WeatherPlugin
-from neighborly.simulation import Plugin, Simulation, SimulationBuilder
+from neighborly.plugins import defaults, talktown, weather
 
 
 @dataclass
@@ -173,22 +177,21 @@ def main():
     sim = (
         SimulationBuilder(
             seed=random.randint(0, 999999),
-            world_gen_start=SimDateTime(year=1990, month=0, day=0),
-            world_gen_end=SimDateTime(year=2030, month=0, day=0),
+            starting_date=SimDateTime(year=1990, month=0, day=0),
             print_events=True,
         )
-        .add_plugin(DefaultPlugin())
-        .add_plugin(WeatherPlugin())
-        .add_plugin(TalkOfTheTownPlugin())
+        .add_plugin(defaults.get_plugin())
+        .add_plugin(weather.get_plugin())
+        .add_plugin(talktown.get_plugin())
         .add_plugin(JohnWickPlugin())
         .build()
     )
 
     st = time.time()
-    sim.establish_setting()
+    sim.run_for(40)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {sim.time.to_iso_str()}")
+    print(f"World Date: {sim.date.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_WORLD:

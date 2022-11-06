@@ -4,6 +4,7 @@ import pathlib
 
 import neighborly.plugins.talktown.business_archetypes as tot_businesses
 import neighborly.plugins.talktown.occupation_types as tot_occupations
+from neighborly import NeighborlyEngine
 from neighborly.builtin.archetypes import HumanArchetype
 from neighborly.core.archetypes import (
     BaseCharacterArchetype,
@@ -14,7 +15,6 @@ from neighborly.core.archetypes import (
 )
 from neighborly.core.business import OccupationTypes
 from neighborly.core.ecs import ISystem, World
-from neighborly.core.rng import DefaultRNG
 from neighborly.core.town import LandGrid
 from neighborly.plugins.talktown.school import SchoolSystem
 from neighborly.simulation import Plugin, Simulation
@@ -56,7 +56,7 @@ class EstablishTownSystem(ISystem):
             # trigger hiring event
             # trigger home move event
 
-        random_num = world.get_resource(DefaultRNG).random()
+        random_num = world.get_resource(NeighborlyEngine).rng.random()
         if random_num < 0.2:
             # Create a Coalmine 20% of the time
             coal_mine = BusinessArchetypes.get("Coal Mine").create(self.world)

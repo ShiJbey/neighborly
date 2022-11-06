@@ -6,37 +6,17 @@ from logging import getLogger
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from neighborly.builtin.systems import (
-    BuildBusinessSystem,
-    BuildHousingSystem,
-    BusinessUpdateSystem,
-    CharacterAgingSystem,
-    ClosedForBusinessSystem,
-    FindBusinessOwnerSystem,
-    FindEmployeesSystem,
     LinearTimeSystem,
-    OpenForBusinessSystem,
-    PendingOpeningSystem,
-    PregnancySystem,
     RemoveDeceasedFromOccupation,
     RemoveDeceasedFromResidences,
     RemoveDepartedFromOccupation,
     RemoveDepartedFromResidences,
     RemoveRetiredFromOccupation,
-    RoutineSystem,
-    SocializeSystem,
-    SpawnResidentSystem,
-    UnemploymentSystem,
 )
-from neighborly.core.constants import (
-    BUSINESS_UPDATE_PHASE,
-    CHARACTER_ACTION_PHASE,
-    CHARACTER_UPDATE_PHASE,
-    TIME_UPDATE_PHASE,
-    TOWN_SYSTEMS_PHASE,
-)
+from neighborly.core.constants import TIME_UPDATE_PHASE
 from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventLog, LifeEventSimulator
+from neighborly.core.life_event import LifeEventLog
 from neighborly.core.relationship import RelationshipGraph
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import LandGrid, Town
@@ -84,7 +64,7 @@ class Simulation:
         Engine instance used for PRNG and name generation
     seed: int
         The seed passed to the random number generator
-    world_gen_start: SimDateTime
+    starting_date: SimDateTime
         The starting date for the simulation
     world_gen_end: SimDateTime
         The date that the simulation stops continuously updating and all following updates
@@ -95,8 +75,7 @@ class Simulation:
         "world",
         "engine",
         "seed",
-        "world_gen_start",
-        "world_gen_end",
+        "starting_date",
     )
 
     def __init__(
@@ -104,20 +83,23 @@ class Simulation:
         seed: int,
         world: World,
         engine: NeighborlyEngine,
-        world_gen_start: SimDateTime,
-        world_gen_end: SimDateTime,
+        starting_date: SimDateTime,
     ) -> None:
         self.seed: int = seed
         self.world: World = world
         self.engine: NeighborlyEngine = engine
         self.world.add_resource(engine)
-        self.world_gen_start: SimDateTime = world_gen_start
-        self.world_gen_end: SimDateTime = world_gen_end
+        self.starting_date: SimDateTime = starting_date
 
-    def establish_setting(self) -> None:
-        """Run the simulation until it reaches the end date in the config"""
+    def run_for(self, years: int) -> None:
+        """Run the simulation for a given number of years"""
+        stop_date = self.date.copy() + TimeDelta(years=years)
+        self.run_until(stop_date)
+
+    def run_until(self, stop_date: SimDateTime) -> None:
+        """Run the simulation until a specific date is reached"""
         try:
-            while self.world_gen_end >= self.time:
+            while stop_date >= self.date:
                 self.step()
         except KeyboardInterrupt:
             print("\nStopping Simulation")
@@ -127,7 +109,7 @@ class Simulation:
         self.world.step()
 
     @property
-    def time(self) -> SimDateTime:
+    def date(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
         return self.world.get_resource(SimDateTime)
 
@@ -145,7 +127,7 @@ class SimulationBuilder:
     ----------
     time_increment_hours: int
         How many hours should time advance each tick of the simulation
-    world_gen_start: SimDateTime
+    starting_date: SimDateTime
         What date should the simulation start from
     world_gen_end: SimDateTime
         What date should the simulation stop automatically advancing time
@@ -163,8 +145,7 @@ class SimulationBuilder:
 
     __slots__ = (
         "time_increment_hours",
-        "world_gen_start",
-        "world_gen_end",
+        "starting_date",
         "town_name",
         "town_size",
         "seed",
@@ -177,26 +158,18 @@ class SimulationBuilder:
     def __init__(
         self,
         seed: Optional[Union[int, str]] = None,
-        world_gen_start: Union[str, SimDateTime] = "0000-00-00",
-        world_gen_end: Union[str, SimDateTime] = "0100-00-00",
+        starting_date: Union[str, SimDateTime] = "0000-00-00",
         time_increment_hours: int = 12,
         town_name: str = "#town_name#",
         town_size: TownSize = "medium",
         print_events: bool = True,
     ) -> None:
-        self.seed: int = self._hash_seed(
-            seed if seed is not None else random.randint(0, 99999999)
-        )
+        self.seed: int = hash(seed if seed is not None else random.randint(0, 99999999))
         self.time_increment_hours: int = time_increment_hours
-        self.world_gen_start: SimDateTime = (
-            world_gen_start
-            if isinstance(world_gen_start, SimDateTime)
-            else SimDateTime.from_iso_str(world_gen_start)
-        )
-        self.world_gen_end: SimDateTime = (
-            world_gen_end
-            if isinstance(world_gen_end, SimDateTime)
-            else SimDateTime.from_iso_str(world_gen_end)
+        self.starting_date: SimDateTime = (
+            starting_date
+            if isinstance(starting_date, SimDateTime)
+            else SimDateTime.from_iso_str(starting_date)
         )
         self.town_name: str = town_name
         self.town_size: Tuple[int, int] = SimulationBuilder._convert_town_size(
@@ -206,20 +179,6 @@ class SimulationBuilder:
         self.resources: List[Any] = []
         self.plugins: List[Tuple[Plugin, Dict[str, Any]]] = []
         self.print_events: bool = print_events
-
-    def _hash_seed(self, seed: Union[str, int]) -> int:
-        """Create an int hash from the given seed value"""
-        return hash(seed)
-
-    def add_system(self, system: ISystem, priority: int = 0) -> SimulationBuilder:
-        """Add a new system to the simulation"""
-        self.systems.append((system, priority))
-        return self
-
-    def add_resource(self, resource: Any) -> SimulationBuilder:
-        """Add a new resource to the simulation"""
-        self.resources.append(resource)
-        return self
 
     def add_plugin(self, plugin: Plugin, **kwargs) -> SimulationBuilder:
         """Add plugin to simulation"""
@@ -249,58 +208,24 @@ class SimulationBuilder:
             seed=self.seed,
             world=World(),
             engine=NeighborlyEngine(),
-            world_gen_start=self.world_gen_start,
-            world_gen_end=self.world_gen_end,
+            starting_date=self.starting_date,
         )
 
-        self.add_resource(self.world_gen_start.copy())
-        self.add_system(
+        # These resources are required by all games
+        sim.world.add_resource(self.starting_date.copy())
+        sim.world.add_resource(LifeEventLog())
+        sim.world.add_resource(RelationshipGraph())
+
+        # The following systems are loaded by default
+        sim.world.add_system(
             LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)),
             TIME_UPDATE_PHASE,
         )
-        self.add_system(
-            LifeEventSimulator(interval=TimeDelta(days=3)), priority=TOWN_SYSTEMS_PHASE
-        )
-        # LifeEventLog is required for the system to run properly
-        self.add_resource(LifeEventLog())
-        self.add_system(
-            BuildHousingSystem(chance_of_build=1.0), priority=TOWN_SYSTEMS_PHASE
-        )
-        self.add_system(
-            SpawnResidentSystem(interval=TimeDelta(days=7), chance_spawn=1.0),
-            priority=TOWN_SYSTEMS_PHASE,
-        )
-        self.add_system(
-            BuildBusinessSystem(interval=TimeDelta(days=5)), priority=TOWN_SYSTEMS_PHASE
-        )
-        self.add_resource(RelationshipGraph())
-        self.add_system(CharacterAgingSystem(), priority=CHARACTER_UPDATE_PHASE)
-        self.add_system(RoutineSystem(), priority=CHARACTER_UPDATE_PHASE)
-        self.add_system(BusinessUpdateSystem(), priority=BUSINESS_UPDATE_PHASE)
-        self.add_system(FindBusinessOwnerSystem(), priority=BUSINESS_UPDATE_PHASE)
-        self.add_system(FindEmployeesSystem(), priority=BUSINESS_UPDATE_PHASE)
-        # self.add_system(
-        #     UnemploymentSystem(days_to_departure=30), priority=CHARACTER_UPDATE_PHASE
-        # )
-        # self.add_system(SocializeSystem(), priority=CHARACTER_ACTION_PHASE)
-        self.add_system(PregnancySystem(), priority=CHARACTER_UPDATE_PHASE)
-        self.add_system(
-            PendingOpeningSystem(days_before_demolishing=9999),
-            priority=BUSINESS_UPDATE_PHASE,
-        )
-        self.add_system(OpenForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
-        self.add_system(ClosedForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
-        self.add_system(RemoveDeceasedFromResidences())
-        self.add_system(RemoveDepartedFromResidences())
-        self.add_system(RemoveDepartedFromOccupation())
-        self.add_system(RemoveDeceasedFromOccupation())
-        self.add_system(RemoveRetiredFromOccupation())
-
-        for system, priority in self.systems:
-            sim.world.add_system(system, priority)
-
-        for resource in self.resources:
-            sim.world.add_resource(resource)
+        sim.world.add_system(RemoveDeceasedFromResidences())
+        sim.world.add_system(RemoveDepartedFromResidences())
+        sim.world.add_system(RemoveDepartedFromOccupation())
+        sim.world.add_system(RemoveDeceasedFromOccupation())
+        sim.world.add_system(RemoveRetiredFromOccupation())
 
         for plugin, options in self.plugins:
             plugin.setup(sim, **options)

@@ -24,6 +24,7 @@ when it is archived within the ECS for story sifting.
 
 - PyGame sample to use the new API
 - Docstrings for `Simulation` and `SimulationBuilder` classes
+- `SimulationBuilder` class 
 
 ### Removed
 
@@ -31,6 +32,8 @@ when it is archived within the ECS for story sifting.
 - samples category from dependencies within `setup.cfg`
 - `events`, `town`, `land grid`, and `relationships` fields from `NeighborlyJsonExporter`.
 These are duplicated when serializing the resources.
+- `SimulationBuilder.add_system()` and  `SimulationBuilder.add_resource()`. To add
+these, users need to encapsulate their content within a plugin
 
 ### Fixed
 

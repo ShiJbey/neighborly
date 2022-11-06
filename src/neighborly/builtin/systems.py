@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import itertools
 import logging
-import math
-from typing import List, Optional, Set, Tuple, cast
+from typing import List, Optional, Protocol, Set, Tuple, cast
 
 from neighborly.builtin.components import (
     Active,
@@ -57,7 +56,7 @@ from neighborly.core.business import (
     start_job,
 )
 from neighborly.core.character import CharacterName, GameCharacter
-from neighborly.core.ecs import GameObject, ISystem
+from neighborly.core.ecs import GameObject, ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
 from neighborly.core.location import Location
@@ -379,6 +378,25 @@ class FindEmployeesSystem(ISystem):
                     )
 
 
+class Action:
+    """
+    Actions are interactions that characters can have with other characters
+
+    """
+
+
+class CompatibilityFn(Protocol):
+    """
+    Callable that returns a tuple containing the platonic and romantic
+    compatibilities of two characters respectively
+    """
+
+    def __call__(
+        self, world: World, subject_id: int, target_id: int
+    ) -> Optional[Tuple[int, int]]:
+        raise NotImplementedError
+
+
 class SocializeSystem(ISystem):
     """
     Every timestep, characters interact with other characters
@@ -387,83 +405,29 @@ class SocializeSystem(ISystem):
     personal values.
     """
 
+    _compatibility_fns: List[CompatibilityFn] = []
+    _social_actions: List[Action] = []
+
     __slots__ = "chance_of_interaction"
 
     def __init__(self, chance_of_interaction: float = 0.7) -> None:
         super().__init__()
         self.chance_of_interaction: float = chance_of_interaction
 
-    @staticmethod
-    def get_compatibility(character_a: GameObject, character_b: GameObject) -> float:
-        """Return value [-1.0, 1.0] representing the compatibility of two characters"""
-        return PersonalValues.compatibility(
-            character_a.get_component(PersonalValues),
-            character_b.get_component(PersonalValues),
-        )
-
-    @staticmethod
-    def job_level_difference_romance_debuff(
-        character_a: GameObject, character_b: GameObject
-    ) -> float:
+    @classmethod
+    def add_compatibility_check(cls, fn: CompatibilityFn) -> None:
         """
-        This makes people with job-level differences less likely to develop romantic feelings
-        for one another (missing source)
+        Add a function that modifies the platonic and romantic compatibility of two
+        characters
         """
-        character_a_job = character_a.try_component(Occupation)
-        character_b_job = character_b.try_component(Occupation)
-        character_a_level = character_a_job.level if character_a_job else 0
-        character_b_level = character_b_job.level if character_b_job else 0
+        cls._compatibility_fns.append(fn)
 
-        return max(
-            0.05, 1 - (abs(math.sqrt(character_a_level) - math.sqrt(character_b_level)))
-        )
-
-    @staticmethod
-    def age_difference_romance_debuff(
-        character_a: GameObject, character_b: GameObject
-    ) -> float:
-        """How does age difference affect developing romantic feelings
-        People with larger age gaps are less likely to develop romantic feelings
-        (missing source)
+    @classmethod
+    def add_social_action(cls, action: Action) -> None:
         """
-        character_a_age = character_a.get_component(Age).value
-        character_b_age = character_b.get_component(Age).value
-        return max(
-            0.01,
-            1 - (abs(math.sqrt(character_a_age) - math.sqrt(character_b_age)) / 1.5),
-        )
-
-    @staticmethod
-    def age_difference_friendship_debuff(
-        character_a: GameObject, character_b: GameObject
-    ) -> float:
+        Add an action that a character can perform while at a location
         """
-        This makes people with large age differences more indifferent about potentially
-        becoming friends or enemies
-        """
-        character_a_age = character_a.get_component(Age).value
-        character_b_age = character_b.get_component(Age).value
-        return max(
-            0.05,
-            1 - (abs(math.sqrt(character_a_age) - math.sqrt(character_b_age)) / 4.5),
-        )
-
-    @staticmethod
-    def job_level_difference_friendship_debuff(
-        character_a: GameObject, character_b: GameObject
-    ) -> float:
-        """This makes people with job-level differences more indifferent about potentially
-        becoming friends or enemies
-        """
-
-        character_a_job = character_a.try_component(Occupation)
-        character_b_job = character_b.try_component(Occupation)
-        character_a_level = character_a_job.level if character_a_job else 0
-        character_b_level = character_b_job.level if character_b_job else 0
-
-        return max(
-            0.05, 1 - (abs(math.sqrt(character_a_level) - math.sqrt(character_b_level)))
-        )
+        cls._social_actions.append(action)
 
     def process(self, *args, **kwargs) -> None:
 
@@ -471,6 +435,7 @@ class SocializeSystem(ISystem):
         rel_graph = self.world.get_resource(RelationshipGraph)
 
         for _, location in self.world.get_component(Location):
+
             for character_id, other_character_id in itertools.combinations(
                 location.entities, 2
             ):
@@ -572,10 +537,10 @@ class SocializeSystem(ISystem):
 
                 rel_graph.get_connection(
                     character_id, other_character_id
-                ).increment_romance(int(romance_score))
+                ).romance.increase(int(romance_score))
                 rel_graph.get_connection(
                     character_id, other_character_id
-                ).increment_friendship(friendship_score)
+                ).friendship.increase(friendship_score)
 
                 if not rel_graph.has_connection(other_character_id, character_id):
                     rel_graph.add_relationship(
@@ -586,10 +551,10 @@ class SocializeSystem(ISystem):
                     )
                 rel_graph.get_connection(
                     other_character_id, character_id
-                ).increment_romance(int(romance_score))
+                ).romance.increase(int(romance_score))
                 rel_graph.get_connection(
                     other_character_id, character_id
-                ).increment_friendship(friendship_score)
+                ).friendship.increase(friendship_score)
 
 
 class BuildHousingSystem(System):
@@ -835,11 +800,11 @@ class SpawnResidentSystem(System):
                 rel_graph.get_relationship(
                     character.id,
                     spouse.id,
-                ).increment_romance(45)
+                ).romance.increase(45)
                 rel_graph.get_relationship(
                     character.id,
                     spouse.id,
-                ).increment_friendship(30)
+                ).friendship.increase(30)
 
                 # Configure relationship from spouse to character
                 rel_graph.get_relationship(
@@ -849,11 +814,11 @@ class SpawnResidentSystem(System):
                 rel_graph.get_relationship(
                     spouse.id,
                     character.id,
-                ).increment_romance(45)
+                ).romance.increase(45)
                 rel_graph.get_relationship(
                     spouse.id,
                     character.id,
-                ).increment_friendship(30)
+                ).friendship.increase(30)
 
             # Note: Characters can spawn as single parents with kids
             num_kids = engine.rng.randint(0, archetype.get_max_children_at_spawn())
@@ -881,7 +846,7 @@ class SpawnResidentSystem(System):
                 rel_graph.get_relationship(
                     child.id,
                     character.id,
-                ).increment_friendship(20)
+                ).friendship.increase(20)
 
                 # Relationship of character to child
                 rel_graph.get_relationship(
@@ -891,7 +856,7 @@ class SpawnResidentSystem(System):
                 rel_graph.get_relationship(
                     character.id,
                     child.id,
-                ).increment_friendship(20)
+                ).friendship.increase(20)
 
                 if spouse:
                     # Relationship of child to spouse
@@ -902,7 +867,7 @@ class SpawnResidentSystem(System):
                     rel_graph.get_relationship(
                         child.id,
                         spouse.id,
-                    ).increment_friendship(20)
+                    ).friendship.increase(20)
 
                     # Relationship of spouse to child
                     rel_graph.get_relationship(
@@ -912,7 +877,7 @@ class SpawnResidentSystem(System):
                     rel_graph.get_relationship(
                         spouse.id,
                         child.id,
-                    ).increment_friendship(20)
+                    ).friendship.increase(20)
 
                 for sibling in children:
                     # Relationship of child to sibling
@@ -923,7 +888,7 @@ class SpawnResidentSystem(System):
                     rel_graph.get_relationship(
                         child.id,
                         sibling.id,
-                    ).increment_friendship(20)
+                    ).friendship.increase(20)
 
                     # Relationship of sibling to child
                     rel_graph.get_relationship(
@@ -933,7 +898,7 @@ class SpawnResidentSystem(System):
                     rel_graph.get_relationship(
                         sibling.id,
                         child.id,
-                    ).increment_friendship(20)
+                    ).friendship.increase(20)
 
             # Record a life event
             event_logger.record_event(

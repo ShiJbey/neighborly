@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Dict, List, Set
 
+from neighborly.core.ecs import Component
 from neighborly.core.utils.graph import DirectedGraph
-
-FRIENDSHIP_MAX: int = 50
-FRIENDSHIP_MIN: int = -50
-
-ROMANCE_MAX: int = 50
-ROMANCE_MIN: int = -50
 
 
 def clamp(value: int, minimum: int, maximum: int) -> int:
@@ -17,38 +11,92 @@ def clamp(value: int, minimum: int, maximum: int) -> int:
     return min(maximum, max(minimum, value))
 
 
-@dataclass
-class RelationshipModifier:
-    """
-    Modifiers apply buffs to the friendship, romance, and salience
-    stats on relationship instances
+class RelationshipStat:
 
-    Attributes
-    ----------
-    name: str
-        Name of the tag (used when searching for relationships with
-        specific tags)
-    description: str
-        String description of what this relationship modifier means
-    friendship_boost: float, default 0
-        Flat value to apply the friendship value by
-    romance_boost: float, default 0
-        Flat value to apply the romance value
-    salience_boost: float, default 0
-        Flat value to apply to the salience value
-    friendship_increment: float, default 0
-        Flat value to apply when incrementing the friendship value
-    romance_increment: float, default 0
-        Flat value to apply when incrementing the romance value
-    salience_increment: float, default 0
-        Flat value to apply when incrementing the salience value
-    """
+    STAT_MAX: int = 50
+    STAT_MIN: int = -50
 
-    reason: str
-    friendship_up: int
-    friendship_down: int
-    romance_up: int
-    romance_down: int
+    __slots__ = (
+        "_raw_value",
+        "_clamped_value",
+        "_normalized_value",
+        "_total_changes",
+        "_positive_changes",
+        "_negative_changes",
+        "_increment",
+    )
+
+    def __init__(self) -> None:
+        self._raw_value: int = 0
+        self._increment: int = 1
+        self._clamped_value: int = 0
+        self._normalized_value: float = 0.5
+        self._total_changes: int = 0
+        self._positive_changes: int = 0
+        self._negative_changes: int = 0
+
+    @property
+    def raw(self) -> int:
+        return self._raw_value
+
+    @property
+    def clamped(self) -> int:
+        return self._clamped_value
+
+    @property
+    def value(self) -> float:
+        return self._normalized_value
+
+    def set_increment(self, value: int) -> None:
+        """Set how much this stat should increment by"""
+        self._increment = value
+
+    def increase(self, n: int) -> None:
+        """Increase the stat by n-times the increment value"""
+        change = self._increment * n
+        self._total_changes += change
+        self._positive_changes += change
+        self._normalized_value = self._positive_changes / self._total_changes
+        self._raw_value += change
+        self._clamped_value = clamp(self._raw_value, self.STAT_MIN, self.STAT_MAX)
+
+    def decrease(self, n: int) -> None:
+        """Increase the stat by n-times the increment value"""
+        change = self._increment * n
+        self._total_changes += change
+        self._negative_changes += change
+        self._normalized_value = self._positive_changes / self._total_changes
+        self._raw_value -= change
+        self._clamped_value = clamp(self._raw_value, self.STAT_MIN, self.STAT_MAX)
+
+    def __repr__(self) -> str:
+        return "{}(value={}, clamped={}, raw={})".format(
+            self.__class__.__name__, self.value, self.clamped, self.raw
+        )
+
+    def __lt__(self, other: float) -> bool:
+        return self._normalized_value < other
+
+    def __gt__(self, other: float) -> bool:
+        return self._normalized_value > other
+
+    def __le__(self, other: float) -> bool:
+        return self._normalized_value <= other
+
+    def __ge__(self, other: float) -> bool:
+        return self._normalized_value <= other
+
+    def __eq__(self, other: float) -> bool:
+        return self._normalized_value == other
+
+    def __ne__(self, other: float) -> bool:
+        return self._normalized_value != other
+
+    def __int__(self) -> int:
+        return self._clamped_value
+
+    def __float__(self) -> float:
+        return self._normalized_value
 
 
 class Relationship:
@@ -70,24 +118,12 @@ class Relationship:
         Character who owns the relationship
     _target: int
         The entity who this relationship is directed toward
-    _friendship: float
+    _friendship: RelationshipStat
         Friendship score on the scale [FRIENDSHIP_MIN, FRIENDSHIP_MAX]
         where a max means best friends and min means worst-enemies
-    _friendship_base: float
-        Friendship score without any modifiers from tags
-    _friendship_increment: float
-        Amount to increment the friendship score by after each interaction
-    _romance: float
+    _romance: RelationshipStat
         Romance score on the scale [ROMANCE_MIN, ROMANCE_MAX]
         where a max is complete infatuation and the min is repulsion
-    _romance_base: float
-        Romance score without any modifiers from tags
-    _romance_increment: float
-        Amount to increment the romance score by after each interaction
-    _is_dirty: bool
-        Used internally to mark when score need to be recalculated after a change
-    _modifiers: Dict[str, RelationshipModifier]
-        All the modifiers active on the Relationship instance
     _tags: RelationshipTag
         All the tags that are attached to this
     """
@@ -96,31 +132,15 @@ class Relationship:
         "_owner",
         "_target",
         "_friendship",
-        "_friendship_base",
-        "_friendship_increment",
         "_romance",
-        "_romance_base",
-        "_romance_increment",
-        "_is_dirty",
-        "_modifiers",
         "_tags",
     )
 
-    def __init__(
-        self,
-        owner: int,
-        target: int,
-        base_friendship: int = 0,
-        base_romance: int = 0,
-    ) -> None:
+    def __init__(self, owner: int, target: int) -> None:
         self._owner: int = owner
         self._target: int = target
-        self._friendship: int = 0
-        self._romance: int = 0
-        self._friendship_base: int = base_friendship
-        self._romance_base: int = base_romance
-        self._is_dirty: bool = True
-        self._modifiers: Dict[str, RelationshipModifier] = {}
+        self._friendship: RelationshipStat = RelationshipStat()
+        self._romance: RelationshipStat = RelationshipStat()
         self._tags: Set[str] = set()
 
     @property
@@ -132,38 +152,12 @@ class Relationship:
         return self._owner
 
     @property
-    def friendship(self) -> float:
-        if self._is_dirty:
-            self._recalculate_stats()
+    def friendship(self) -> RelationshipStat:
         return self._friendship
 
     @property
-    def normalized_friendship(self) -> float:
-        """Returns the friendship score normalized as a value [0.0, 1.0]"""
-
-        # The score is a ratio of friendly and unfriendly interactions between characters
-        return 0.0
-
-    @property
-    def romance(self) -> float:
-        if self._is_dirty:
-            self._recalculate_stats()
+    def romance(self) -> RelationshipStat:
         return self._romance
-
-    @property
-    def normalized_romance(self) -> float:
-        """Returns the romance score normalized on the interval [0.0, 1.0]"""
-
-        # The score is a ratio of romantic and unromantic interactions between characters
-        return 0.0
-
-    def increment_friendship(self, value: int) -> None:
-        self._friendship_base += value
-        self._is_dirty = True
-
-    def increment_romance(self, value: int) -> None:
-        self._romance_base += value
-        self._is_dirty = True
 
     def add_tag(self, tag: str) -> None:
         """Return add a tag to this Relationship"""
@@ -177,78 +171,43 @@ class Relationship:
         """Return True if a relationship has a tag"""
         self._tags.remove(tag)
 
-    def get_modifiers(self) -> List[RelationshipModifier]:
-        """Return a list of the modifiers attached to this Relationship instance"""
-        return list(self._modifiers.values())
-
-    def has_modifier(self, name: str) -> bool:
-        """Return true if the relationship has a modifier with the given name"""
-        return name in self._modifiers
-
-    def add_modifier(self, modifier: RelationshipModifier) -> None:
-        """Add a RelationshipModifier to the relationship instance"""
-        self._modifiers[modifier.name] = modifier
-        self._is_dirty = True
-
-    def remove_modifier(self, name: str) -> None:
-        """Remove modifier with the given name"""
-        del self._modifiers[name]
-        self._is_dirty = True
-
-    def update(self) -> None:
-        """Update the relationship when the two characters interact"""
-        if self._is_dirty:
-            self._recalculate_stats()
-
-        self._romance_base += self._romance_increment
-        self._friendship_base += self._friendship_increment
-
-        self._recalculate_stats()
-
     def to_dict(self) -> Dict[str, Any]:
         return {
             "owner": self.owner,
             "target": self.target,
-            "friendship": self.friendship,
-            "romance": self.romance,
+            "friendship": float(self.friendship),
+            "romance": float(self.romance),
             "tags": self._tags,
-            "modifiers": [m for m in self._modifiers.keys()],
         }
 
-    def _recalculate_stats(self) -> None:
-        """Recalculate all the stats after a change"""
-        # Reset the increments
-        self._romance_increment = 0.0
-        self._friendship_increment = 0.0
-
-        # Reset final values back to base values
-        self._friendship = self._friendship_base
-        self._romance = self._romance_base
-
-        # Apply modifiers in tags
-        for modifier in self._modifiers.values():
-            # Apply boosts to relationship scores
-            self._romance += modifier.romance_boost
-            self._friendship += modifier.friendship_boost
-            # Apply increment boosts
-            self._romance_increment += modifier.romance_increment
-            self._friendship_increment += modifier.friendship_increment
-
-        self._romance = clamp(self._romance, ROMANCE_MIN, ROMANCE_MAX)
-        self._friendship = clamp(self._friendship, FRIENDSHIP_MIN, FRIENDSHIP_MAX)
-
-        self._is_dirty = False
-
     def __repr__(self) -> str:
-        return "{}(owner={}, target={}, romance={}, friendship={}, tags={}, modifiers={})".format(
+        return "{}(owner={}, target={}, romance={}, friendship={}, tags={})".format(
             self.__class__.__name__,
             self.owner,
             self.target,
             self.romance,
             self.friendship,
             self._tags,
-            list(self._modifiers.keys()),
         )
+
+
+class Relationships(Component):
+    """Manages relationship instances between this GameObject and others"""
+
+    __slots__ = "_relationships"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._relationships: Dict[int, Relationship] = {}
+
+    def get_relationship(self, target: int) -> Relationship:
+        """Get an existing or new relationship to the target GameObject"""
+        if target not in self._relationships:
+            self._relationships[target] = Relationship(self.gameobject.id, target)
+        return self._relationships[target]
+
+    def get_all(self) -> List[Relationship]:
+        return list(self._relationships.values())
 
 
 class RelationshipGraph(DirectedGraph[Relationship]):

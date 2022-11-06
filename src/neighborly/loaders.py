@@ -15,9 +15,11 @@ from neighborly.core.archetypes import (
     BaseResidenceArchetype,
     BusinessArchetypes,
     CharacterArchetypes,
+    ICharacterArchetype,
     ResidenceArchetypes,
 )
 from neighborly.core.business import ServiceTypes
+from neighborly.core.ecs import GameObject, World
 
 logger = logging.getLogger(__name__)
 
@@ -115,8 +117,39 @@ def _load_activity_data(data: List[Dict[str, Any]]) -> None:
         ActivityLibrary.add(Activity(entry["name"], trait_names=entry["traits"]))
 
 
-@YamlDataLoader.section_loader("Services")
-def _load_business_services(data: List[Dict[str, Any]]) -> None:
-    """Load business services from YAML"""
-    for entry in data:
-        ServiceTypes.add(entry["name"])
+class YamlDefinedCharacterArchetype(ICharacterArchetype):
+    def __init__(
+        self,
+        base: ICharacterArchetype,
+        options: Dict[str, Any],
+        max_children_at_spawn: Optional[int] = None,
+        chance_spawn_with_spouse: Optional[int] = None,
+        spawn_frequency: Optional[int] = None,
+    ) -> None:
+        self._base: ICharacterArchetype = base
+        self._max_children_at_spawn: int = (
+            max_children_at_spawn
+            if max_children_at_spawn
+            else base.get_max_children_at_spawn()
+        )
+        self._chance_spawn_with_spouse: float = (
+            chance_spawn_with_spouse
+            if chance_spawn_with_spouse
+            else base.get_chance_spawn_with_spouse()
+        )
+        self._spawn_frequency: int = (
+            spawn_frequency if spawn_frequency else base.get_spawn_frequency()
+        )
+        self._options = options
+
+    def get_max_children_at_spawn(self) -> int:
+        return self._base.get_max_children_at_spawn()
+
+    def get_chance_spawn_with_spouse(self) -> float:
+        return self._base.get_chance_spawn_with_spouse()
+
+    def get_spawn_frequency(self) -> int:
+        return self._base.get_spawn_frequency()
+
+    def create(self, world: World, **kwargs) -> GameObject:
+        return self._base.create(world, **{**self._options, **kwargs})

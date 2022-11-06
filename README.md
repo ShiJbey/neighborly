@@ -9,10 +9,12 @@
 </h1>
 
 <p align="center">
-  <img src="https://img.shields.io/pypi/dm/neighborly">
-  <img src="https://img.shields.io/pypi/l/neighborly">
+  <img src="https://img.shields.io/badge/Unstable-critical?style=flat">
   <img src="https://img.shields.io/pypi/v/neighborly">
   <img src="https://img.shields.io/pypi/pyversions/neighborly">
+  <img src="https://img.shields.io/pypi/l/neighborly">
+  <img src="https://img.shields.io/pypi/dm/neighborly">
+  <img src="https://img.shields.io/badge/code%20style-Black-black">
 </p>
 
 # Overview

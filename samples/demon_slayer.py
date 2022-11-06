@@ -44,6 +44,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
+from neighborly import Plugin, Simulation, SimulationBuilder
 from neighborly.builtin.components import (
     Active,
     Age,
@@ -66,10 +67,9 @@ from neighborly.core.life_event import (
 )
 from neighborly.core.location import Location
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.plugins.default_plugin import DefaultPlugin
+from neighborly.plugins.defaults import DefaultPlugin
 from neighborly.plugins.talktown import TalkOfTheTownPlugin
 from neighborly.plugins.weather_plugin import WeatherPlugin
-from neighborly.simulation import Plugin, Simulation, SimulationBuilder
 
 
 class DemonSlayerRank(IntEnum):
@@ -972,10 +972,10 @@ def main():
     )
 
     st = time.time()
-    sim.establish_setting()
+    sim.run_for(50)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {sim.time.to_iso_str()}")
+    print(f"World Date: {sim.date.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_WORLD:

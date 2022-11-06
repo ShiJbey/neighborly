@@ -10,10 +10,11 @@ from __future__ import annotations
 import random
 from typing import List, Optional, Set
 
-from neighborly.builtin.helpers import IInheritable, generate_child, inheritable
+from neighborly.builtin.helpers import IInheritable, inheritable
 from neighborly.core.archetypes import BaseCharacterArchetype
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.relationship import Relationships
 from neighborly.plugins.defaults import DefaultNameDataPlugin
 from neighborly.simulation import SimulationBuilder
 
@@ -53,6 +54,8 @@ class FuzzCharacterArchetype(BaseCharacterArchetype):
         if world.get_resource(NeighborlyEngine).rng.random() < 0.3:
             gameobject.add_component(HasHorns())
 
+        gameobject.add_component(Relationships())
+
         return gameobject
 
 
@@ -70,11 +73,12 @@ def main():
 
     c1 = FuzzCharacterArchetype().create(sim.world)
     c2 = FuzzCharacterArchetype().create(sim.world)
-    c3 = generate_child(sim.world, c1, c2)
 
-    c1.pprint()
-    c2.pprint()
-    c3.pprint()
+    print(c1.get_component(Relationships).get_relationship(c2.id))
+    c1.get_component(Relationships).get_relationship(c2.id).friendship.increase(3)
+    print(c1.get_component(Relationships).get_relationship(c2.id))
+    c1.get_component(Relationships).get_relationship(c2.id).friendship.decrease(1)
+    print(c1.get_component(Relationships).get_relationship(c2.id))
 
 
 if __name__ == "__main__":

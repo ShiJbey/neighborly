@@ -8,7 +8,8 @@ from neighborly.core.archetypes import BaseCharacterArchetype
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.plugins.default_plugin import DefaultNameDataPlugin
+from neighborly.core.relationship import Relationships
+from neighborly.plugins.defaults import DefaultNameDataPlugin
 from neighborly.simulation import SimulationBuilder
 from samples.inheritance_system import FurColor
 
@@ -16,6 +17,42 @@ from samples.inheritance_system import FurColor
 class EcsFindClause(Protocol):
     def __call__(self, world: World) -> Set[int]:
         raise NotImplementedError
+
+
+def friendship_gt(threshold: float, other: int) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World) -> Set[int]:
+        return set(
+            map(
+                lambda result: result[0],
+                filter(
+                    lambda res: float(res[1].get_relationship(other).friendship)
+                    > threshold,
+                    world.get_component(Relationships),
+                ),
+            )
+        )
+
+    return precondition
+
+
+def friendship_lt(threshold: float, other: int) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World) -> Set[int]:
+        return set(
+            map(
+                lambda result: result[0],
+                filter(
+                    lambda res: float(res[1].get_relationship(other).friendship)
+                    < threshold,
+                    world.get_component(Relationships),
+                ),
+            )
+        )
+
+    return precondition
 
 
 def has_component(component_type: Type[Component]) -> EcsFindClause:
@@ -75,6 +112,7 @@ class FuzzCharacterArchetype(BaseCharacterArchetype):
         )
 
         gameobject.add_component(FurColor([fur_color]))
+        gameobject.add_component(Relationships())
 
         if world.get_resource(NeighborlyEngine).rng.random() < 0.3:
             gameobject.add_component(HasHorns())
@@ -195,6 +233,15 @@ def main():
         assert "Red" in fur_color.values or "Orange" in fur_color.values
 
     print(query.test(sim.world, 1))
+
+    sim.world.get_gameobject(1).get_component(Relationships).get_relationship(
+        2
+    ).friendship.increase(1)
+    sim.world.get_gameobject(3).get_component(Relationships).get_relationship(
+        5
+    ).friendship.decrease(1)
+
+    print(Query().where(friendship_gt(0.6, 2)).execute(sim.world))
 
 
 if __name__ == "__main__":
