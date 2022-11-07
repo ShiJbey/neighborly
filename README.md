@@ -20,10 +20,10 @@
 
 # Overview
 
-Neighborly is a Python framework for generating and forward simulating towns of 
+Neighborly is a Python framework for generating and forward simulating towns of
 characters over large periods of time (decades to centuries). It uses a character-driven
-social simulation that forward-simulates the lives of each character, their jobs, 
-routines, relationships, and life events. Users can specify custom characters, 
+social simulation that forward-simulates the lives of each character, their jobs,
+routines, relationships, and life events. Users can specify custom characters,
 residential/commercial buildings, occupations, life events, social actions, and more.
 
 Currently, _Neighborly_ works best as narrative data generator. When the simulation
@@ -46,8 +46,8 @@ for extension and content authoring.
 
 Below are instructions for installing Neighborly and the options one has for using it
 in their projects. If you want examples of how to use Neighborly and how to extend it
-with custom content, please refer to 
-[Neighborly's wiki](https://github.com/ShiJbey/neighborly/wiki) and the sample scripts 
+with custom content, please refer to
+[Neighborly's wiki](https://github.com/ShiJbey/neighborly/wiki) and the sample scripts
 in the [_samples_ directory](https://github.com/ShiJbey/neighborly/tree/main/samples).
 
 ## Installation
@@ -77,7 +77,7 @@ way. Please refer to them when creating new Plugins and other content.
 ## Running the CLI
 
 Neighborly can be run as a module `$ python -m neighborly` or commandline `$ neighborly`
-script. If you require additional help while running, please use 
+script. If you require additional help while running, please use
 `python -m neighborly --help` or `neighborly --help`.
 
 By default, Neighborly runs a builtin version of **Talk of the Town**. However, you can
@@ -131,8 +131,8 @@ python -m pip install -e "."
 
 The tests are currently out-of-date and may refer to systems
 and logic that no longer exists in Neighborly. The codebase
-changes so frequently that it hasn't been worth the time. 
-As modules  become more established, I will add proper tests for them. 
+changes so frequently that it hasn't been worth the time.
+As modules  become more established, I will add proper tests for them.
 Feel free to contribute tests by forking the repo, adding your test(s), and
 submitting a pull request with a description of your test cases. Your commits
 should only contain changes to files within the `tests` directory. If you
@@ -154,8 +154,8 @@ pytest --cov=neighborly tests/
 
 # Documentation
 
-Neighborly uses [Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html) 
-docstrings in code and full documentation can be found in the 
+Neighborly uses [Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html)
+docstrings in code and full documentation can be found in the
 [Wiki](https://github.com/ShiJbey/neighborly/wiki).
 
 When adding docstrings for existing or new bits of code please use the following
@@ -182,25 +182,25 @@ involved, and not all of them require you to be proficient with GitHub. Interest
 parties can contribute to the core code base of Neighborly and/or create nre content
 in the way of plugins. I love feedback, and if you have any questions, create a new
 issue, and I will do my best to answer. If you want to constribute to the core code,
-free to fork this repository, make your changes, and submit a pull-request with a 
+free to fork this repository, make your changes, and submit a pull-request with a
 description of your contribution. Please keep in mind that this project is a
-tool for creativity and learning. I have a [code of conduct](./CODE_OF_CONDUCT.md) to 
+tool for creativity and learning. I have a [code of conduct](./CODE_OF_CONDUCT.md) to
 encourage healthy collaboration, and will enforce it if I need to.
 
 ## Code Style
 
-Neighborly uses [_Black_](https://black.readthedocs.io/en/stable/) to handle code style 
-and sorts imports using [_isort_](https://pycqa.github.io/isort/). You can follow 
-[these instructions](https://black.readthedocs.io/en/stable/integrations/editors.html) 
+Neighborly uses [_Black_](https://black.readthedocs.io/en/stable/) to handle code style
+and sorts imports using [_isort_](https://pycqa.github.io/isort/). You can follow
+[these instructions](https://black.readthedocs.io/en/stable/integrations/editors.html)
 for setting up both black and isort.
 
 # Notes
 
 ## Non-Deterministic Behavior
 
-The goal of having a seeded pseudo random simulation is so that users experience 
-deterministic behavior when using the same starting seed. I try to remove all forms of 
-non-determinism, but some slip through. The known areas are listed below. If you find 
+The goal of having a seeded pseudo random simulation is so that users experience
+deterministic behavior when using the same starting seed. I try to remove all forms of
+non-determinism, but some slip through. The known areas are listed below. If you find
 any, please make a new issue with details of the behavior.
 
 * Neighborly uses [Tracery](https://github.com/aparrish/pytracery) to generate names for
@@ -209,11 +209,11 @@ rng seed value.
 
 ## DMCA Statement
 
-Upon receipt of a notice alleging copyright infringement, I will take whatever action it 
-deems appropriate within its sole discretion, including removal of the allegedly 
+Upon receipt of a notice alleging copyright infringement, I will take whatever action it
+deems appropriate within its sole discretion, including removal of the allegedly
 infringing materials.
 
 The repo image is something fun that I made. I love _The Simpsons_, and I couldn't think
-of anyone more neighborly than Ned Flanders. If the copyright owner for _The Simpsons_ 
-would like me to take it down, please contact me. The same takedown policy applies to 
+of anyone more neighborly than Ned Flanders. If the copyright owner for _The Simpsons_
+would like me to take it down, please contact me. The same takedown policy applies to
 any code samples inspired by TV shows, movies, and games.
