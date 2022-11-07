@@ -24,7 +24,8 @@ when it is archived within the ECS for story sifting.
 
 - PyGame sample to use the new API
 - Docstrings for `Simulation` and `SimulationBuilder` classes
-- `SimulationBuilder` class 
+- `SimulationBuilder` class
+- Moved isort configuration to `pyproject.toml`
 
 ### Removed
 
@@ -34,6 +35,7 @@ when it is archived within the ECS for story sifting.
 These are duplicated when serializing the resources.
 - `SimulationBuilder.add_system()` and  `SimulationBuilder.add_resource()`. To add
 these, users need to encapsulate their content within a plugin
+- Flake8 configuration from `setup.cfg`
 
 ### Fixed
 
