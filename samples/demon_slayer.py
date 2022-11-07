@@ -67,9 +67,7 @@ from neighborly.core.life_event import (
 )
 from neighborly.core.location import Location
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.plugins.defaults import DefaultPlugin
-from neighborly.plugins.talktown import TalkOfTheTownPlugin
-from neighborly.plugins.weather_plugin import WeatherPlugin
+from neighborly.plugins import defaults, weather, talktown
 
 
 class DemonSlayerRank(IntEnum):
@@ -964,9 +962,9 @@ EXPORT_WORLD = False
 def main():
     sim = (
         SimulationBuilder()
-        .add_plugin(DefaultPlugin())
-        .add_plugin(WeatherPlugin())
-        .add_plugin(TalkOfTheTownPlugin())
+        .add_plugin(defaults.get_plugin())
+        .add_plugin(weather.get_plugin())
+        .add_plugin(talktown.get_plugin())
         .add_plugin(DemonSlayerPlugin())
         .build()
     )

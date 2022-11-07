@@ -11,7 +11,6 @@ from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.relationship import Relationships
 from neighborly.plugins.defaults import DefaultNameDataPlugin
 from neighborly.simulation import SimulationBuilder
-from samples.inheritance_system import FurColor
 
 
 class EcsFindClause(Protocol):

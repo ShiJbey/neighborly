@@ -13,7 +13,6 @@ from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.relationship import Relationships
 from neighborly.plugins.defaults import DefaultNameDataPlugin
 from neighborly.simulation import SimulationBuilder
-from samples.inheritance_system import FurColor
 
 
 class EcsFindClause(Protocol):
@@ -214,6 +213,10 @@ class Relation:
             new_data.drop_duplicates()
             return Relation(new_data)
 
+    def copy(self) -> Relation:
+        """Create a deep copy of the relation"""
+        return Relation(self._data_frame.copy())
+
     def __bool__(self) -> bool:
         return self.is_empty()
 
@@ -270,12 +273,41 @@ def where_not(fn: EcsFindClause, *symbols: str):
         results = fn(world)
         values_per_symbol = list(zip(*results))
         data = pd.DataFrame({s: values_per_symbol[i] for i, s in enumerate(symbols)})
+        new_data = ctx.get_data_frame().merge(data, how="outer", indicator=True)
+        new_data = new_data.loc[new_data["_merge"] == "left_only"]
+        new_data = new_data.drop(columns=["_merge"])
+        new_relation = Relation(new_data)
+        return new_relation
+
+    return run
+
+
+def where_either(clauses: List[Tuple[EcsFindClause, Tuple[str, ...]]]):
+    def run(ctx: Relation, world: World) -> Relation:
+        """Evaluates each clause, unifies it with the ctx, and unions the results"""
+
+        relations: List[Relation] = []
+
+        # Run evaluate each clause, union the result
+        for clause in clauses:
+            fn, symbols = clause
+
+            results = fn(world)
+            values_per_symbol = list(zip(*results))
+            data = pd.DataFrame(
+                {s: values_per_symbol[i] for i, s in enumerate(symbols)}
+            )
+            relation = ctx.unify(Relation(data))
+            if not relation.is_empty():
+                relations.append(relation)
+
         new_relation = Relation(
-            ctx.get_data_frame()
-            .merge(data, how="outer", indicator=True)
-            .loc[lambda x: x["_merge"] == "left_only"]
-            .drop(columns=["_merge"])
+            pd.concat(
+                [ctx.copy().get_data_frame(), *[r.get_data_frame() for r in relations]],
+                ignore_index=True,
+            )
         )
+
         return new_relation
 
     return run
@@ -356,8 +388,11 @@ def main():
 
     result = bind_roles(sim.world, query)
 
-    for r in result:
-        r.pprint()
+    if result:
+        for r in result:
+            r.pprint()
+    else:
+        print(None)
 
 
 if __name__ == "__main__":
