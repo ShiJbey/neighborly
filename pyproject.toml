@@ -5,8 +5,11 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.black]
+line-length = 88
 
 [tool.isort]
-profile = black
-default_section = THIRDPARTY
-known_first_party = neighborly
+profile = "black"
+default_section = "THIRDPARTY"
+known_first_party = "neighborly"
+src_paths = ["src/neighborly", "test", "samples"]
