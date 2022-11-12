@@ -28,21 +28,21 @@ from neighborly import (
     SimulationBuilder,
     World,
 )
-from neighborly.builtin.components import Adult, Deceased
+from neighborly.builtin.components import Active, Adult, Deceased
+from neighborly.builtin.role_filters import friendship_lt
+from neighborly.core import query
 from neighborly.core.archetypes import BaseBusinessArchetype, BusinessArchetypes
 from neighborly.core.business import IBusinessType
 from neighborly.core.character import GameCharacter
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.event import Event, EventRole
 from neighborly.core.life_event import (
+    ILifeEvent,
     LifeEvent,
+    LifeEventRoleType,
     LifeEvents,
-    LifeEventType,
-    Role,
-    RoleType,
-    constant_probability,
+    PatternLifeEvent,
 )
-from neighborly.core.relationship import RelationshipGraph
-from neighborly.core.residence import Resident
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins import defaults, talktown, weather
 
@@ -78,10 +78,12 @@ def continental_hotel() -> BaseBusinessArchetype:
     )
 
 
-def become_an_assassin(probability: float = 0.3) -> LifeEventType:
+def become_an_assassin(probability: float = 0.3) -> ILifeEvent:
     """Turns ordinary people into assassins"""
 
-    def bind_character(world: World, event: LifeEvent) -> Optional[GameObject]:
+    def bind_character(
+        world: World, event: Event, candidate: Optional[None]
+    ) -> Optional[GameObject]:
         candidates: List[GameObject] = []
         for gid, (character, _) in world.get_components(GameCharacter, Adult):
             if not character.gameobject.has_component(Assassin):
@@ -90,76 +92,52 @@ def become_an_assassin(probability: float = 0.3) -> LifeEventType:
         if candidates:
             return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         new_assassin = world.get_gameobject(event["Character"])
         new_assassin.add_component(Assassin())
 
-    return LifeEventType(
+    return LifeEvent(
         name="BecomeAssassin",
-        probability=constant_probability(probability),
-        effects=execute,
-        roles=[RoleType(name="Character", binder_fn=bind_character)],
+        probability=probability,
+        effect=execute,
+        roles=[LifeEventRoleType(name="Character", binder_fn=bind_character)],
     )
 
 
 def hire_assassin_event(
-    dislike_threshold: int, probability: float = 0.2
-) -> LifeEventType:
-    def bind_client(world: World, event: LifeEvent) -> Optional[GameObject]:
-        """Find someone who hates another entity"""
-        rel_graph = world.get_resource(RelationshipGraph)
-        candidates: List[int] = []
-        for gid, _ in world.get_components(Component, Resident):
-            for relationship in rel_graph.get_relationships(gid):
-                if relationship.friendship < dislike_threshold:
-                    candidates.append(gid)
-
-        if candidates:
-            return world.get_gameobject(
-                world.get_resource(NeighborlyEngine).rng.choice(candidates)
-            )
-
-    def bind_target(world: World, event: LifeEvent) -> Optional[GameObject]:
-        """Find someone that the client would want dead"""
-        rel_graph = world.get_resource(RelationshipGraph)
-        candidates: List[int] = []
-        for relationship in rel_graph.get_relationships(event["Client"]):
-            if relationship.friendship < dislike_threshold:
-                candidate = world.get_gameobject(relationship.target)
-                if candidate.has_component(Resident):
-                    candidates.append(relationship.target)
-
-        if candidates:
-            return world.get_gameobject(
-                world.get_resource(NeighborlyEngine).rng.choice(candidates)
-            )
-
-    def execute_fn(world: World, event: LifeEvent):
+    dislike_threshold: float = 0.3, probability: float = 0.2
+) -> ILifeEvent:
+    def execute_fn(world: World, event: Event):
         date_time = world.get_resource(SimDateTime)
         assassin = world.get_gameobject(event["Assassin"])
         assassin.get_component(Assassin).kills += 1
 
-        LifeEvent(
+        Event(
             name="Death",
             timestamp=date_time.to_iso_str(),
             roles=[
-                Role("Character", event["Target"]),
+                EventRole("Character", event["Target"]),
             ],
         )
 
         world.get_gameobject(event["Target"]).add_component(Deceased())
 
-    return LifeEventType(
+    return PatternLifeEvent(
         name="HireAssassin",
-        probability=constant_probability(probability),
-        roles=[
-            RoleType(
-                name="Client", components=[GameCharacter, Adult], binder_fn=bind_client
-            ),
-            RoleType(name="Target", binder_fn=bind_target),
-            RoleType(name="Assassin", components=[Assassin, Adult]),
-        ],
-        effects=execute_fn,
+        probability=probability,
+        effect=execute_fn,
+        pattern=query.Query(
+            find=("Client", "Target", "Assassin"),
+            clauses=[
+                query.where(query.has_components(GameCharacter, Active), "Client"),
+                query.where(query.has_components(GameCharacter, Active), "Target"),
+                query.where(query.has_components(Assassin, Active), "Assassin"),
+                query.where(friendship_lt(dislike_threshold), "Client", "Target"),
+                query.ne_(("Client", "Target")),
+                query.ne_(("Target", "Assassin")),
+                query.ne_(("Client", "Assassin")),
+            ],
+        ),
     )
 
 

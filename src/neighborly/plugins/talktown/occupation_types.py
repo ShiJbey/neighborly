@@ -427,7 +427,7 @@ plastic_surgeon = OccupationType(
 police_chief = OccupationType(
     name="Police Chief",
     level=3,
-    precondition=join_preconditions(has_experience_as_a("Police Cheif")),
+    precondition=join_preconditions(has_experience_as_a("Police Chief")),
 )
 
 police_officer = OccupationType(

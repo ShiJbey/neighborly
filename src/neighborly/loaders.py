@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Protocol, Union
 
 import yaml
 
-from neighborly.core.activity import Activity, ActivityLibrary
 from neighborly.core.archetypes import (
     BaseBusinessArchetype,
     BaseCharacterArchetype,
@@ -18,7 +17,6 @@ from neighborly.core.archetypes import (
     ICharacterArchetype,
     ResidenceArchetypes,
 )
-from neighborly.core.business import ServiceTypes
 from neighborly.core.ecs import GameObject, World
 
 logger = logging.getLogger(__name__)
@@ -108,13 +106,6 @@ def _load_residence_data(data: List[Dict[str, Any]]) -> None:
         ResidenceArchetypes.add(
             archetype_data["name"], BaseResidenceArchetype(**archetype_data)
         )
-
-
-@YamlDataLoader.section_loader("Activities")
-def _load_activity_data(data: List[Dict[str, Any]]) -> None:
-    """Process data defining activities"""
-    for entry in data:
-        ActivityLibrary.add(Activity(entry["name"], trait_names=entry["traits"]))
 
 
 class YamlDefinedCharacterArchetype(ICharacterArchetype):

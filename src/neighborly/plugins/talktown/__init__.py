@@ -4,71 +4,20 @@ import pathlib
 
 import neighborly.plugins.talktown.business_archetypes as tot_businesses
 import neighborly.plugins.talktown.occupation_types as tot_occupations
-from neighborly import NeighborlyEngine
 from neighborly.builtin.archetypes import HumanArchetype
 from neighborly.core.archetypes import (
-    BaseCharacterArchetype,
     BaseResidenceArchetype,
     BusinessArchetypes,
     CharacterArchetypes,
     ResidenceArchetypes,
 )
 from neighborly.core.business import OccupationTypes
-from neighborly.core.ecs import ISystem, World
-from neighborly.core.town import LandGrid
 from neighborly.plugins.talktown.school import SchoolSystem
 from neighborly.simulation import Plugin, Simulation
 
 logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent
-
-
-class EstablishTownSystem(ISystem):
-    def process(self, world: World, **kwargs) -> None:
-        """
-        Adds an initial set of families and businesses
-        to the start of the town.
-
-        This system runs once, then removes itself from
-        the ECS to free resources.
-
-        Parameters
-        ----------
-        world : World
-            The world instance of the simulation
-
-        Notes
-        -----
-        This function is based on the original Simulation.establish_setting
-        method in talktown.
-        """
-        vacant_lots = town.get_component(LandGrid).layout.get_vacancies()
-        # Each family requires 2 lots (1 for a house, 1 for a business)
-        # Save two lots for either a coalmine, quarry, or farm
-        n_families_to_add = (len(vacant_lots) // 2) - 1
-
-        for _ in range(n_families_to_add - 1):
-            # create residents
-            house = ResidenceArchetypes.get("House").create(self.world)
-            # create Farm
-            farm = BusinessArchetypes.get("Farm").create(self.world)
-            # trigger hiring event
-            # trigger home move event
-
-        random_num = world.get_resource(NeighborlyEngine).rng.random()
-        if random_num < 0.2:
-            # Create a Coalmine 20% of the time
-            coal_mine = BusinessArchetypes.get("Coal Mine").create(self.world)
-        elif 0.2 <= random_num < 0.35:
-            # Create a Quarry 15% of the time
-            quarry = BusinessArchetypes.get("Quarry").create(self.world)
-        else:
-            # Create Farm 65% of the time
-            farm = BusinessArchetypes.get("Farm").create(self.world)
-
-        self.world.remove_system(type(self))
-        logger.debug("Town established. 'establish_town' function removed from systems")
 
 
 class TalkOfTheTownPlugin(Plugin):

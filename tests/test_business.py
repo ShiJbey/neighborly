@@ -5,16 +5,16 @@ from typing import Any, Dict
 
 import pytest
 
-from neighborly.core.archetypes import BusinessArchetype
+from neighborly.core.archetypes import BaseBusinessArchetype
 from neighborly.core.business import (
     Business,
-    BusinessStatus,
     OccupationType,
     OccupationTypes,
     parse_operating_hour_str,
 )
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.time import Weekday
+from neighborly.plugins.talktown.business_components import Restaurant
 from neighborly.simulation import SimulationBuilder
 
 
@@ -29,20 +29,9 @@ def sample_occupation_types():
     ) -> bool:
         return gameobject.has_component(CollegeGraduate)
 
-    ceo_occupation_type = OccupationType(
-        "CEO",
-        5,
-        is_college_graduate,
-    )
+    ceo_occupation_type = OccupationType("CEO", 5)
 
     return {"ceo": ceo_occupation_type}
-
-
-@pytest.fixture
-def sample_business_types():
-    restaurant_type = BusinessArchetype(name="Restaurant", hours=["day"])
-
-    return {"restaurant": restaurant_type}
 
 
 def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationType]):
@@ -75,15 +64,10 @@ def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationT
 #
 
 
-def test_construct_occupation():
-    """Constructing Occupations from OccupationTypes"""
-    pass
-
-
 def test_construct_business():
     """Constructing business components using BusinessArchetypes"""
-    restaurant_archetype = BusinessArchetype(
-        "Restaurant",
+    restaurant_archetype = BaseBusinessArchetype(
+        business_type=Restaurant,
         name_format="#restaurant_name#",
         hours="11AM - 10PM",
         owner_type="Proprietor",
@@ -96,12 +80,10 @@ def test_construct_business():
 
     sim = SimulationBuilder().build()
 
-    restaurant = sim.world.spawn_archetype(restaurant_archetype)
+    restaurant = restaurant_archetype.create(world=sim.world)
     restaurant_business = restaurant.get_component(Business)
 
-    assert restaurant_business.business_type == "Restaurant"
     assert restaurant_business.owner_type == "Proprietor"
-    assert restaurant_business.status == BusinessStatus.PendingOpening
     assert restaurant_business.owner is None
     assert restaurant_business.needs_owner() is True
     assert restaurant_business.operating_hours[Weekday.Monday] == (11, 22)

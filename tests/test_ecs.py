@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 import pytest
 
-from neighborly.core.archetypes import EntityArchetype
 from neighborly.core.ecs import (
     Component,
     ComponentNotFoundError,
@@ -103,25 +102,6 @@ def test_spawn_gameobject():
     assert len(world.get_components(SimpleGameCharacter, SimpleRoutine)) == 2
 
 
-def test_spawn_archetype():
-    world = World()
-
-    archetype = (
-        EntityArchetype("testing")
-        .add(SimpleRoutine, free=False)
-        .add(SimpleGameCharacter, name="Astrid")
-    )
-
-    assert archetype.instances == 0
-
-    gameobject = world.spawn_archetype(archetype)
-
-    assert archetype.instances == 1
-
-    assert gameobject.get_component(SimpleRoutine).free == False
-    assert gameobject.get_component(SimpleGameCharacter).name == "Astrid"
-
-
 def test_get_gameobject():
     world = World()
     gameobject = world.spawn_gameobject()
@@ -136,9 +116,9 @@ def test_get_gameobject_raises_exception():
 
 def test_has_gameobject():
     world = World()
-    assert world.has_gameobject(1) == False
+    assert world.has_gameobject(1) is False
     gameobject = world.spawn_gameobject()
-    assert world.has_gameobject(gameobject.id) == True
+    assert world.has_gameobject(gameobject.id) is True
 
 
 def test_get_gameobjects():
@@ -160,13 +140,7 @@ def test_delete_gameobject():
 
     world = World()
 
-    archetype = EntityArchetype("testing").add(A, value=4)
-
-    assert archetype.instances == 0
-
-    g1 = world.spawn_archetype(archetype)
-
-    assert archetype.instances == 1
+    g1 = world.spawn_gameobject([A()])
 
     # Make sure that the game objects exists
     assert world.has_gameobject(g1.id) is True
@@ -181,8 +155,6 @@ def test_delete_gameobject():
 
     # Now the gameobject should be deleted
     assert world.has_gameobject(g1.id) is False
-
-    assert archetype.instances == 0
 
     # Ensure that GameObjects that were always empty
     # are properly removed
@@ -238,10 +210,6 @@ def test_world_get_components():
     assert list(zip(*with_a))[0] == (1, 3)
 
     with_b = world.get_components(B)
-
-    assert list(zip(*with_b))[0] == (2, 3)
-
-    with_a_and_b = world.get_components(A, B)
 
     assert list(zip(*with_b))[0] == (2, 3)
 
@@ -398,14 +366,6 @@ def test_remove_component():
     assert g1.has_component(A) is True
     g1.remove_component(A)
     assert g1.has_component(A) is False
-
-
-def test_remove_component_raises_exception():
-    with pytest.raises(ComponentNotFoundError):
-        world = World()
-        g1 = world.spawn_gameobject()
-        g1.remove_component(A)
-        g1.remove_component(B)
 
 
 def test_try_component():

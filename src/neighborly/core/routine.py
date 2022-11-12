@@ -15,7 +15,7 @@ class RoutinePriority(IntEnum):
 
 class RoutineEntry:
     """
-    An entry within a routine for when a entity needs to be
+    An entry within a routine for when an entity needs to be
     at a specific location and for how long
 
     Attributes
@@ -74,7 +74,7 @@ class RoutineEntry:
 
 class DailyRoutine:
     """
-    A collection of RoutineEntries that manage where a
+    A collection of RoutineEntries that manage where an
     entity should be for a given day
 
     Attributes
@@ -169,7 +169,7 @@ class DailyRoutine:
 
 class Routine(Component):
     """
-    Collection of DailyRoutine Instances that manages a entity's
+    Collection of DailyRoutine Instances that manages an entity's
     behavior for a 7-day week
 
     Attributes

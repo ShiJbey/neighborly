@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import itertools
 import logging
-from typing import List, Optional, Protocol, Set, Tuple, cast
+from typing import List, Optional, Set, Tuple, cast
 
 from neighborly.builtin.components import (
     Active,
@@ -56,13 +55,12 @@ from neighborly.core.business import (
     start_job,
 )
 from neighborly.core.character import CharacterName, GameCharacter
-from neighborly.core.ecs import GameObject, ISystem, World
+from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
+from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.location import Location
-from neighborly.core.personal_values import PersonalValues
 from neighborly.core.position import Position2D
-from neighborly.core.relationship import Relationship, RelationshipGraph
+from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.routine import Routine
 from neighborly.core.system import System
@@ -228,7 +226,7 @@ class DynamicLoDTimeSystem(ISystem):
 
 class FindBusinessOwnerSystem(ISystem):
     def process(self, *args, **kwargs) -> None:
-        event_log = self.world.get_resource(LifeEventLog)
+        event_log = self.world.get_resource(EventLog)
         date = self.world.get_resource(SimDateTime)
 
         for _, (business, _, _) in self.world.get_components(
@@ -258,12 +256,12 @@ class FindBusinessOwnerSystem(ISystem):
                 )
 
                 event_log.record_event(
-                    LifeEvent(
+                    Event(
                         name="BecameBusinessOwner",
                         timestamp=date.to_iso_str(),
                         roles=[
-                            Role("Business", business.gameobject.id),
-                            Role("Owner", candidate.id),
+                            EventRole("Business", business.gameobject.id),
+                            EventRole("Owner", candidate.id),
                         ],
                         position=business.owner_type,
                     )
@@ -293,7 +291,6 @@ class UnemploymentSystem(ISystem):
 
     def process(self, *args, **kwargs):
         date = self.world.get_resource(SimDateTime)
-        rel_graph = self.world.get_resource(RelationshipGraph)
         for gid, (unemployed, _) in self.world.get_components(Unemployed, Active):
             # Convert delta time from hours to days
             unemployed.duration_days += date.delta_time / 24
@@ -301,7 +298,9 @@ class UnemploymentSystem(ISystem):
             # Trigger the DepartAction and cast this entity
             # as the departee
             if unemployed.duration_days >= self.days_to_departure:
-                spouses = rel_graph.get_all_relationships_with_tags(gid, "Spouse")
+                spouses = unemployed.gameobject.get_component(
+                    Relationships
+                ).get_all_with_tags("Spouse")
 
                 # Do not depart if one or more of the entity's spouses has a job
                 if any(
@@ -325,17 +324,14 @@ class UnemploymentSystem(ISystem):
 
                     # Have all spouses depart
                     # Allows for polygamy
-                    spouses = rel_graph.get_all_relationships_with_tags(
-                        unemployed.gameobject.id, "Spouse"
-                    )
                     for rel in spouses:
                         spouse = self.world.get_gameobject(rel.target)
                         depart.try_execute_event(self.world, Character=spouse)
 
                     # Have all children living in the same house depart
-                    children = rel_graph.get_all_relationships_with_tags(
-                        unemployed.gameobject.id, "Child"
-                    )
+                    children = unemployed.gameobject.get_component(
+                        Relationships
+                    ).get_all_with_tags("Child")
                     for rel in children:
                         child = self.world.get_gameobject(rel.target)
                         if (
@@ -348,7 +344,7 @@ class UnemploymentSystem(ISystem):
 class FindEmployeesSystem(ISystem):
     def process(self, *args, **kwargs) -> None:
         date = self.world.get_resource(SimDateTime)
-        event_log = self.world.get_resource(LifeEventLog)
+        event_log = self.world.get_resource(EventLog)
 
         for _, (business, _, _, _) in self.world.get_components(
             Business, OpenForBusiness, Building, Active
@@ -366,195 +362,16 @@ class FindEmployeesSystem(ISystem):
                     )
 
                     event_log.record_event(
-                        LifeEvent(
+                        Event(
                             "HiredAtBusiness",
                             date.to_iso_str(),
                             roles=[
-                                Role("Business", business.gameobject.id),
-                                Role("Employee", candidate.id),
+                                EventRole("Business", business.gameobject.id),
+                                EventRole("Employee", candidate.id),
                             ],
                             position=position,
                         )
                     )
-
-
-class Action:
-    """
-    Actions are interactions that characters can have with other characters
-
-    """
-
-
-class CompatibilityFn(Protocol):
-    """
-    Callable that returns a tuple containing the platonic and romantic
-    compatibilities of two characters respectively
-    """
-
-    def __call__(
-        self, world: World, subject_id: int, target_id: int
-    ) -> Optional[Tuple[int, int]]:
-        raise NotImplementedError
-
-
-class SocializeSystem(ISystem):
-    """
-    Every timestep, characters interact with other characters
-    at the same location. Characters meeting for the first time
-    form relationships based on the compatibility of their
-    personal values.
-    """
-
-    _compatibility_fns: List[CompatibilityFn] = []
-    _social_actions: List[Action] = []
-
-    __slots__ = "chance_of_interaction"
-
-    def __init__(self, chance_of_interaction: float = 0.7) -> None:
-        super().__init__()
-        self.chance_of_interaction: float = chance_of_interaction
-
-    @classmethod
-    def add_compatibility_check(cls, fn: CompatibilityFn) -> None:
-        """
-        Add a function that modifies the platonic and romantic compatibility of two
-        characters
-        """
-        cls._compatibility_fns.append(fn)
-
-    @classmethod
-    def add_social_action(cls, action: Action) -> None:
-        """
-        Add an action that a character can perform while at a location
-        """
-        cls._social_actions.append(action)
-
-    def process(self, *args, **kwargs) -> None:
-
-        engine = self.world.get_resource(NeighborlyEngine)
-        rel_graph = self.world.get_resource(RelationshipGraph)
-
-        for _, location in self.world.get_component(Location):
-
-            for character_id, other_character_id in itertools.combinations(
-                location.entities, 2
-            ):
-                assert character_id != other_character_id
-                character = self.world.get_gameobject(character_id).get_component(
-                    GameCharacter
-                )
-                other_character = self.world.get_gameobject(
-                    other_character_id
-                ).get_component(GameCharacter)
-
-                if (
-                    character.gameobject.try_component(Age).value < 3
-                    or character.gameobject.try_component(Age).value < 3
-                ):
-                    continue
-
-                if engine.rng.random() >= self.chance_of_interaction:
-                    continue
-
-                if not rel_graph.has_connection(
-                    character.gameobject.id, other_character.gameobject.id
-                ):
-                    rel_graph.add_relationship(
-                        Relationship(
-                            character.gameobject.id, other_character.gameobject.id
-                        )
-                    )
-
-                if not rel_graph.has_connection(
-                    other_character.gameobject.id, character.gameobject.id
-                ):
-                    rel_graph.add_relationship(
-                        Relationship(
-                            other_character.gameobject.id, character.gameobject.id
-                        )
-                    )
-
-                compatibility: float = SocializeSystem.get_compatibility(
-                    character.gameobject, other_character.gameobject
-                )
-
-                # This should be replaced with something more intelligent that allows
-                # for other decision-making systems to decide how to interact
-                friendship_score = engine.rng.randrange(-1, 1)
-                if (friendship_score < 0 and compatibility < 0) or (
-                    friendship_score > 0 and compatibility > 0
-                ):
-                    # negative social interaction should be buffed by negative compatibility
-                    friendship_score *= 1 + abs(compatibility)
-                else:
-                    # debuff the score if compatibility and friendship score signs differ
-                    friendship_score *= 1 - abs(compatibility)
-
-                friendship_score += (
-                    SocializeSystem.job_level_difference_friendship_debuff(
-                        character.gameobject, other_character.gameobject
-                    )
-                )
-                friendship_score += SocializeSystem.age_difference_friendship_debuff(
-                    character.gameobject, other_character.gameobject
-                )
-
-                if character.gameobject.has_component(Child):
-                    romance_score = 0.0
-                elif (
-                    rel_graph.get_connection(character_id, other_character_id).has_tag(
-                        "Parent"
-                    )
-                    or rel_graph.get_connection(
-                        other_character_id, character_id
-                    ).has_tag("Parent")
-                    or rel_graph.get_connection(
-                        character_id, other_character_id
-                    ).has_tag("Sibling")
-                    or rel_graph.get_connection(
-                        other_character_id, character_id
-                    ).has_tag("Sibling")
-                ):
-                    romance_score = 0.0
-                else:
-                    romance_score = engine.rng.random() * compatibility
-                    romance_score += (
-                        SocializeSystem.job_level_difference_romance_debuff(
-                            character.gameobject, other_character.gameobject
-                        )
-                    )
-                    romance_score += SocializeSystem.age_difference_romance_debuff(
-                        character.gameobject, other_character.gameobject
-                    )
-
-                if not rel_graph.has_connection(character_id, other_character_id):
-                    rel_graph.add_relationship(
-                        Relationship(
-                            character_id,
-                            other_character_id,
-                        )
-                    )
-
-                rel_graph.get_connection(
-                    character_id, other_character_id
-                ).romance.increase(int(romance_score))
-                rel_graph.get_connection(
-                    character_id, other_character_id
-                ).friendship.increase(friendship_score)
-
-                if not rel_graph.has_connection(other_character_id, character_id):
-                    rel_graph.add_relationship(
-                        Relationship(
-                            other_character_id,
-                            character_id,
-                        ),
-                    )
-                rel_graph.get_connection(
-                    other_character_id, character_id
-                ).romance.increase(int(romance_score))
-                rel_graph.get_connection(
-                    other_character_id, character_id
-                ).friendship.increase(friendship_score)
 
 
 class BuildHousingSystem(System):
@@ -751,8 +568,7 @@ class SpawnResidentSystem(System):
         date = self.world.get_resource(SimDateTime)
         town = self.world.get_resource(Town)
         engine = self.world.get_resource(NeighborlyEngine)
-        rel_graph = self.world.get_resource(RelationshipGraph)
-        event_logger = self.world.get_resource(LifeEventLog)
+        event_logger = self.world.get_resource(EventLog)
 
         for _, (residence, _, _, _) in self.world.get_components(
             Residence, Building, Active, Vacant
@@ -793,31 +609,21 @@ class SpawnResidentSystem(System):
                 town.increment_population()
 
                 # Configure relationship from character to spouse
-                rel_graph.get_relationship(
-                    character.id,
-                    spouse.id,
-                ).add_tag("Married")
-                rel_graph.get_relationship(
-                    character.id,
-                    spouse.id,
-                ).romance.increase(45)
-                rel_graph.get_relationship(
-                    character.id,
-                    spouse.id,
+                character.get_component(Relationships).get(spouse.id).add_tags("Spouse")
+                character.get_component(Relationships).get(spouse.id).romance.increase(
+                    45
+                )
+                character.get_component(Relationships).get(
+                    spouse.id
                 ).friendship.increase(30)
 
                 # Configure relationship from spouse to character
-                rel_graph.get_relationship(
-                    spouse.id,
-                    character.id,
-                ).add_tag("Married")
-                rel_graph.get_relationship(
-                    spouse.id,
-                    character.id,
-                ).romance.increase(45)
-                rel_graph.get_relationship(
-                    spouse.id,
-                    character.id,
+                spouse.get_component(Relationships).get(character.id).add_tags("Spouse")
+                spouse.get_component(Relationships).get(character.id).romance.increase(
+                    45
+                )
+                spouse.get_component(Relationships).get(
+                    character.id
                 ).friendship.increase(30)
 
             # Note: Characters can spawn as single parents with kids
@@ -839,76 +645,66 @@ class SpawnResidentSystem(System):
                 children.append(child)
 
                 # Relationship of child to character
-                rel_graph.get_relationship(
-                    child.id,
-                    character.id,
-                ).add_tag("Parent")
-                rel_graph.get_relationship(
-                    child.id,
-                    character.id,
+                child.get_component(Relationships).get(character.id).add_tags("Parent")
+                child.get_component(Relationships).get(character.id).add_tags("Family")
+                child.get_component(Relationships).get(
+                    character.id
                 ).friendship.increase(20)
 
                 # Relationship of character to child
-                rel_graph.get_relationship(
-                    character.id,
-                    child.id,
-                ).add_tag("Child")
-                rel_graph.get_relationship(
-                    character.id,
-                    child.id,
+                character.get_component(Relationships).get(child.id).add_tags("Child")
+                character.get_component(Relationships).get(child.id).add_tags("Family")
+                character.get_component(Relationships).get(
+                    child.id
                 ).friendship.increase(20)
 
                 if spouse:
                     # Relationship of child to spouse
-                    rel_graph.get_relationship(
-                        child.id,
-                        spouse.id,
-                    ).add_tag("Parent")
-                    rel_graph.get_relationship(
-                        child.id,
-                        spouse.id,
+                    child.get_component(Relationships).get(spouse.id).add_tags("Parent")
+                    child.get_component(Relationships).get(spouse.id).add_tags("Family")
+                    child.get_component(Relationships).get(
+                        spouse.id
                     ).friendship.increase(20)
 
                     # Relationship of spouse to child
-                    rel_graph.get_relationship(
-                        spouse.id,
-                        child.id,
-                    ).add_tag("Child")
-                    rel_graph.get_relationship(
-                        spouse.id,
-                        child.id,
+                    spouse.get_component(Relationships).get(child.id).add_tags("Child")
+                    spouse.get_component(Relationships).get(child.id).add_tags("Family")
+                    spouse.get_component(Relationships).get(
+                        child.id
                     ).friendship.increase(20)
 
                 for sibling in children:
                     # Relationship of child to sibling
-                    rel_graph.get_relationship(
-                        child.id,
-                        sibling.id,
-                    ).add_tag("Sibling")
-                    rel_graph.get_relationship(
-                        child.id,
-                        sibling.id,
+                    child.get_component(Relationships).get(sibling.id).add_tags(
+                        "Sibling"
+                    )
+                    child.get_component(Relationships).get(sibling.id).add_tags(
+                        "Family"
+                    )
+                    child.get_component(Relationships).get(
+                        sibling.id
                     ).friendship.increase(20)
 
                     # Relationship of sibling to child
-                    rel_graph.get_relationship(
-                        sibling.id,
-                        child.id,
-                    ).add_tag("Sibling")
-                    rel_graph.get_relationship(
-                        sibling.id,
-                        child.id,
+                    sibling.get_component(Relationships).get(child.id).add_tags(
+                        "Sibling"
+                    )
+                    sibling.get_component(Relationships).get(child.id).add_tags(
+                        "Family"
+                    )
+                    sibling.get_component(Relationships).get(
+                        child.id
                     ).friendship.increase(20)
 
             # Record a life event
             event_logger.record_event(
-                LifeEvent(
+                Event(
                     name="MoveIntoTown",
                     timestamp=date.to_iso_str(),
                     roles=[
-                        Role("Residence", residence.gameobject.id),
+                        EventRole("Residence", residence.gameobject.id),
                         *[
-                            Role("Resident", r.id)
+                            EventRole("Resident", r.id)
                             for r in [character, spouse, *children]
                             if r is not None
                         ],
@@ -952,7 +748,7 @@ class CharacterAgingSystem(System):
 
     def run(self, *args, **kwargs) -> None:
         current_date = self.world.get_resource(SimDateTime)
-        event_log = self.world.get_resource(LifeEventLog)
+        event_log = self.world.get_resource(EventLog)
 
         age_increment = float(self.elapsed_time.total_hours) / HOURS_PER_YEAR
 
@@ -968,11 +764,11 @@ class CharacterAgingSystem(System):
                 character.gameobject.add_component(Teen())
                 character.gameobject.remove_component(Child)
                 event_log.record_event(
-                    LifeEvent(
+                    Event(
                         name="BecomeTeen",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            Role("Character", character.gameobject.id),
+                            EventRole("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -990,11 +786,11 @@ class CharacterAgingSystem(System):
                     character.gameobject.add_component(Unemployed())
 
                 event_log.record_event(
-                    LifeEvent(
+                    Event(
                         name="BecomeYoungAdult",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            Role("Character", character.gameobject.id),
+                            EventRole("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -1005,11 +801,11 @@ class CharacterAgingSystem(System):
             ):
                 character.gameobject.remove_component(YoungAdult)
                 event_log.record_event(
-                    LifeEvent(
+                    Event(
                         name="BecomeAdult",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            Role("Character", character.gameobject.id),
+                            EventRole("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -1021,11 +817,11 @@ class CharacterAgingSystem(System):
             ):
                 character.gameobject.add_component(Elder())
                 event_log.record_event(
-                    LifeEvent(
+                    Event(
                         name="BecomeElder",
                         timestamp=current_date.to_iso_str(),
                         roles=[
-                            Role("Character", character.gameobject.id),
+                            EventRole("Character", character.gameobject.id),
                         ],
                     )
                 )
@@ -1040,17 +836,18 @@ class PregnancySystem(ISystem):
 
     def process(self, *args, **kwargs):
         current_date = self.world.get_resource(SimDateTime)
-        rel_graph = self.world.get_resource(RelationshipGraph)
-        event_logger = self.world.get_resource(LifeEventLog)
+        event_logger = self.world.get_resource(EventLog)
         town = self.world.get_resource(Town)
 
         for _, (character, pregnancy, _) in self.world.get_components(
             GameCharacter, Pregnant, Active
         ):
-
             # Cast for the type-checker
             character = cast(GameCharacter, character)
             pregnancy = cast(Pregnant, pregnancy)
+
+            birthing_parent = character.gameobject
+            other_parent = self.world.get_gameobject(pregnancy.partner_id)
 
             birthing_parent_name = character.gameobject.get_component(CharacterName)
 
@@ -1071,9 +868,11 @@ class PregnancySystem(ISystem):
 
             baby.get_component(CharacterName).surname = birthing_parent_name.surname
 
-            if character.gameobject.has_component(CurrentLocation):
+            move_to_location(self.world, birthing_parent, "home")
 
-                current_location = character.gameobject.get_component(CurrentLocation)
+            if birthing_parent.has_component(CurrentLocation):
+
+                current_location = birthing_parent.get_component(CurrentLocation)
 
                 move_to_location(
                     self.world,
@@ -1091,71 +890,75 @@ class PregnancySystem(ISystem):
                 )
 
             # Birthing parent to child
-            rel_graph.get_relationship(character.gameobject.id, baby.id).add_tag(
+            character.gameobject.get_component(Relationships).get(baby.id).add_tags(
                 "Child"
             )
 
             # Child to birthing parent
-            rel_graph.get_relationship(baby.id, character.gameobject.id).add_tag(
+            baby.get_component(Relationships).get(character.gameobject.id).add_tags(
                 "Parent"
             )
 
             # Other parent to child
-            rel_graph.get_relationship(
-                pregnancy.partner_id,
-                baby.id,
-            ).add_tag("Child")
+            other_parent.get_component(Relationships).get(baby.id).add_tags("Child")
+            other_parent.get_component(Relationships).get(baby.id).add_tags("Family")
 
             # Child to other parent
-            rel_graph.get_relationship(
-                baby.id,
-                pregnancy.partner_id,
-            ).add_tag("Parent")
+            baby.get_component(Relationships).get(other_parent.id).add_tags("Parent")
+            baby.get_component(Relationships).get(other_parent.id).add_tags("Family")
 
             # Create relationships with children of birthing parent
-            for rel in rel_graph.get_all_relationships_with_tags(
-                character.gameobject.id, Child
+            for rel in birthing_parent.get_component(Relationships).get_all_with_tags(
+                "Child"
             ):
                 if rel.target == baby.id:
                     continue
+
                 # Baby to sibling
-                rel_graph.get_relationship(baby.id, rel.target).add_tag("Sibling")
+                baby.get_component(Relationships).get(rel.target).add_tags("Sibling")
+                baby.get_component(Relationships).get(rel.target).add_tags("Family")
                 # Sibling to baby
-                rel_graph.get_relationship(rel.target, baby.id).add_tag("Sibling")
+                self.world.get_gameobject(rel.target).get_component(Relationships).get(
+                    baby.id
+                ).add_tags("Sibling")
+                self.world.get_gameobject(rel.target).get_component(Relationships).get(
+                    baby.id
+                ).add_tags("Family")
 
             # Create relationships with children of other parent
-            for rel in rel_graph.get_all_relationships_with_tags(
-                pregnancy.partner_id, Child
+            for rel in other_parent.get_component(Relationships).get_all_with_tags(
+                "Child"
             ):
                 if rel.target == baby.id:
                     continue
+
+                sibling = self.world.get_gameobject(rel.target)
+
                 # Baby to sibling
-                rel_graph.get_relationship(baby.id, rel.target).add_tag("Sibling")
+                baby.get_component(Relationships).get(rel.target).add_tags("Sibling")
 
                 # Sibling to baby
-                rel_graph.get_relationship(rel.target, baby.id).add_tag("Sibling")
+                sibling.get_component(Relationships).get(baby.id).add_tags("Sibling")
 
             # Pregnancy event dates are retconned to be the actual date that the
             # child was due.
             event_logger.record_event(
-                LifeEvent(
+                Event(
                     name="ChildBirth",
                     timestamp=pregnancy.due_date.to_iso_str(),
                     roles=[
-                        Role("Parent", character.gameobject.id),
-                        Role("Parent", pregnancy.partner_id),
-                        Role("Child", baby.id),
+                        EventRole("Parent", character.gameobject.id),
+                        EventRole("Parent", pregnancy.partner_id),
+                        EventRole("Child", baby.id),
                     ],
                 )
             )
 
-            character.gameobject.remove_component(Pregnant)
-            # entity.gameobject.remove_component(InTheWorkforce)
-
-            # if entity.gameobject.has_component(Occupation):
-            #     entity.gameobject.remove_component(Occupation)
-
-            # TODO: Birthing parent should also leave their job
+            birthing_parent.remove_component(Pregnant)
+            # birthing_parent.remove_component(InTheWorkforce)
+            #
+            # if birthing_parent.has_component(Occupation):
+            #     leave_job(self.world, birthing_parent)
 
 
 class PendingOpeningSystem(System):

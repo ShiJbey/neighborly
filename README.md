@@ -181,7 +181,7 @@ If you are interested in contributing to Neighborly, there are multiple ways to 
 involved, and not all of them require you to be proficient with GitHub. Interested
 parties can contribute to the core code base of Neighborly and/or create nre content
 in the way of plugins. I love feedback, and if you have any questions, create a new
-issue, and I will do my best to answer. If you want to constribute to the core code,
+issue, and I will do my best to answer. If you want to contribute to the core code,
 free to fork this repository, make your changes, and submit a pull-request with a
 description of your contribution. Please keep in mind that this project is a
 tool for creativity and learning. I have a [code of conduct](./CODE_OF_CONDUCT.md) to

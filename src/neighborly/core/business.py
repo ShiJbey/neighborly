@@ -11,7 +11,7 @@ from neighborly.builtin.components import Active
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World, component_info
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvent
+from neighborly.core.event import Event
 from neighborly.core.routine import (
     Routine,
     RoutineEntry,
@@ -271,7 +271,7 @@ class WorkHistoryEntry:
     business: int
     start_date: SimDateTime
     end_date: SimDateTime
-    reason_for_leaving: Optional[LifeEvent] = None
+    reason_for_leaving: Optional[Event] = None
 
     @property
     def years_held(self) -> int:
@@ -284,7 +284,7 @@ class WorkHistoryEntry:
             "occupation_type": self.occupation_type,
             "business": self.business,
             "start_date": self.start_date.to_iso_str(),
-            "end_date": self.end_date.to_date_str(),
+            "end_date": self.end_date.to_iso_str(),
         }
 
         if self.reason_for_leaving:
@@ -333,7 +333,7 @@ class WorkHistory(Component):
         business: int,
         start_date: SimDateTime,
         end_date: SimDateTime,
-        reason_for_leaving: Optional[LifeEvent] = None,
+        reason_for_leaving: Optional[Event] = None,
     ) -> None:
         """Add an entry to the work history"""
         entry = WorkHistoryEntry(
@@ -588,6 +588,9 @@ class Unemployed(Component):
     def __init__(self) -> None:
         super().__init__()
         self.duration_days: float = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "duration_days": self.duration_days}
 
 
 @component_info(

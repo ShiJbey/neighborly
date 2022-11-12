@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -49,7 +49,7 @@ _VALUE_INDICES: Dict[str, int] = {
 
 class PersonalValues(Component):
     """
-    Values are what a entity believes in. They are used
+    Values are what an entity believes in. They are used
     for decision-making and relationship compatibility among
     other things.
 
@@ -112,6 +112,15 @@ class PersonalValues(Component):
 
     def __repr__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self._traits.__repr__())
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "traits": {
+                str(p_value.value): self._traits[_VALUE_INDICES[str(p_value.value)]]
+                for p_value in list(PersonalValues)
+            },
+        }
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Component:

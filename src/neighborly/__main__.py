@@ -29,7 +29,7 @@ class PluginConfig(BaseModel):
     Fields
     ----------
     name: str
-        Name of the plugin to load
+        Name of the plugin's python module
     path: Optional[str]
         The path where the plugin is located
     options: Dict[str, Any]
@@ -74,6 +74,7 @@ class NeighborlyConfig(BaseModel):
     hours_per_timestep: int
     world_gen_start: str
     world_gen_end: str
+    years_to_simulate: int
     town_name: str
     town_size: Literal["small", "medium", "large"]
     plugins: List[Union[str, PluginConfig]] = Field(default_factory=list)
@@ -214,11 +215,12 @@ def main():
     config: NeighborlyConfig = NeighborlyConfig(
         seed=random.randint(0, 999999),
         hours_per_timestep=6,
-        world_gen_start="1839-08-19T00:00.000z",
-        world_gen_end="1979-08-19T00:00.000z",
+        world_gen_start="1839-08-19",
+        world_gen_end="1979-08-19",
+        years_to_simulate=100,
         town_size="medium",
         town_name="#town_name#",
-        plugins=["neighborly.plugins.default_plugin", "neighborly.plugins.talktown"],
+        plugins=["neighborly.plugins.defaults", "neighborly.plugins.talktown"],
     )
 
     if args.config:

@@ -1,16 +1,16 @@
 import pytest
 
-from neighborly.core.life_event import LifeEvent, Role
+from neighborly.core.event import Event, EventRole
 
 
 @pytest.fixture
 def sample_event():
-    return LifeEvent(
+    return Event(
         name="Price Dispute",
         timestamp="2022-01-01T00:00:00.000000",
         roles=[
-            Role("Merchant", 1),
-            Role("Customer", 2),
+            EventRole("Merchant", 1),
+            EventRole("Customer", 2),
         ],
         quoted_price=34,
         asking_price=65,
@@ -19,12 +19,12 @@ def sample_event():
 
 @pytest.fixture
 def shared_role_event():
-    return LifeEvent(
+    return Event(
         name="Declare Rivalry",
         timestamp="2022-01-01T00:00:00.000000",
         roles=[
-            Role("Actor", 1),
-            Role("Actor", 2),
+            EventRole("Actor", 1),
+            EventRole("Actor", 2),
         ],
     )
 

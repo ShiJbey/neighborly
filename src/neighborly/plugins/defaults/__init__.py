@@ -4,9 +4,6 @@ from typing import Optional, Tuple
 
 from neighborly.builtin.components import Age
 from neighborly.builtin.events import (
-    become_enemies_event,
-    become_friends_event,
-    dating_break_up_event,
     depart_due_to_unemployment,
     die_of_old_age,
     divorce_event,
@@ -16,6 +13,7 @@ from neighborly.builtin.events import (
     pregnancy_event,
     retire_event,
     start_dating_event,
+    stop_dating_event,
 )
 from neighborly.builtin.systems import (
     BuildBusinessSystem,
@@ -25,24 +23,21 @@ from neighborly.builtin.systems import (
     ClosedForBusinessSystem,
     FindBusinessOwnerSystem,
     FindEmployeesSystem,
-    LinearTimeSystem,
     OpenForBusinessSystem,
     PendingOpeningSystem,
     PregnancySystem,
     RoutineSystem,
-    SocializeSystem,
     SpawnResidentSystem,
 )
 from neighborly.core.business import Occupation
 from neighborly.core.constants import (
     BUSINESS_UPDATE_PHASE,
     CHARACTER_UPDATE_PHASE,
-    TIME_UPDATE_PHASE,
     TOWN_SYSTEMS_PHASE,
 )
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvents, LifeEventSimulator
+from neighborly.core.life_event import LifeEvents, LifeEventSystem
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.time import TimeDelta
 from neighborly.simulation import Plugin, Simulation
@@ -90,12 +85,13 @@ class DefaultNameDataPlugin(Plugin):
 
 class DefaultLifeEventPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        # LifeEvents.add(marriage_event())
+        LifeEvents.add(marriage_event())
         # LifeEvents.add(become_friends_event())
         # LifeEvents.add(become_enemies_event())
-        # LifeEvents.add(start_dating_event())
-        # LifeEvents.add(dating_break_up_event())
-        # LifeEvents.add(divorce_event())
+        LifeEvents.add(depart_due_to_unemployment())
+        LifeEvents.add(start_dating_event())
+        LifeEvents.add(stop_dating_event())
+        LifeEvents.add(divorce_event())
         LifeEvents.add(pregnancy_event())
         LifeEvents.add(retire_event())
         LifeEvents.add(find_own_place_event())
@@ -162,9 +158,9 @@ class DefaultPlugin(Plugin):
         name_data_plugin.setup(sim, **kwargs)
         life_event_plugin.setup(sim, **kwargs)
 
-        SocializeSystem.add_compatibility_check(get_values_compatibility)
-        SocializeSystem.add_compatibility_check(job_level_difference_debuff)
-        SocializeSystem.add_compatibility_check(age_difference_debuff)
+        # SocializeSystem.add_compatibility_check(get_values_compatibility)
+        # SocializeSystem.add_compatibility_check(job_level_difference_debuff)
+        # SocializeSystem.add_compatibility_check(age_difference_debuff)
 
         sim.world.add_system(CharacterAgingSystem(), priority=CHARACTER_UPDATE_PHASE)
         sim.world.add_system(RoutineSystem(), priority=CHARACTER_UPDATE_PHASE)
@@ -183,7 +179,7 @@ class DefaultPlugin(Plugin):
         sim.world.add_system(OpenForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
         sim.world.add_system(ClosedForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
         sim.world.add_system(
-            LifeEventSimulator(interval=TimeDelta(days=3)), priority=TOWN_SYSTEMS_PHASE
+            LifeEventSystem(interval=TimeDelta(months=2)), priority=TOWN_SYSTEMS_PHASE
         )
 
         sim.world.add_system(

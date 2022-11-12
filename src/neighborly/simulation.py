@@ -16,8 +16,7 @@ from neighborly.builtin.systems import (
 from neighborly.core.constants import TIME_UPDATE_PHASE
 from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventLog
-from neighborly.core.relationship import RelationshipGraph
+from neighborly.core.event import EventLog
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import LandGrid, Town
 
@@ -66,9 +65,6 @@ class Simulation:
         The seed passed to the random number generator
     starting_date: SimDateTime
         The starting date for the simulation
-    world_gen_end: SimDateTime
-        The date that the simulation stops continuously updating and all following updates
-        are manual calls to .step().
     """
 
     __slots__ = (
@@ -129,8 +125,6 @@ class SimulationBuilder:
         How many hours should time advance each tick of the simulation
     starting_date: SimDateTime
         What date should the simulation start from
-    world_gen_end: SimDateTime
-        What date should the simulation stop automatically advancing time
     town_size: Tuple[int, int]
         Tuple containing the width and length of the grid of land the town is built on
     seed: int
@@ -191,7 +185,10 @@ class SimulationBuilder:
     ) -> SimulationBuilder:
         """Create a new grid of land to build the town on"""
         # create town
-        sim.world.add_resource(Town.create(sim.world, name=self.town_name))
+        generated_name = sim.world.get_resource(
+            NeighborlyEngine
+        ).name_generator.get_name(self.town_name)
+        sim.world.add_resource(Town(generated_name))
 
         # Create the land
         land_grid = LandGrid(self.town_size)
@@ -213,8 +210,7 @@ class SimulationBuilder:
 
         # These resources are required by all games
         sim.world.add_resource(self.starting_date.copy())
-        sim.world.add_resource(LifeEventLog())
-        sim.world.add_resource(RelationshipGraph())
+        sim.world.add_resource(EventLog())
 
         # The following systems are loaded by default
         sim.world.add_system(
@@ -232,7 +228,7 @@ class SimulationBuilder:
             logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
 
         if self.print_events:
-            sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
+            sim.world.get_resource(EventLog).subscribe(lambda e: print(str(e)))
 
         self._create_town(sim)
 

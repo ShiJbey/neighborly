@@ -62,3 +62,6 @@ class Resident(Component):
     def __init__(self, residence: int) -> None:
         super().__init__()
         self.residence: int = residence
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "residence": self.residence}

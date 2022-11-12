@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Dict, List, Set
 
 from neighborly.core.ecs import Component
-from neighborly.core.utils.graph import DirectedGraph
 
 
 def clamp(value: int, minimum: int, maximum: int) -> int:
@@ -23,12 +22,10 @@ class RelationshipStat:
         "_total_changes",
         "_positive_changes",
         "_negative_changes",
-        "_increment",
     )
 
     def __init__(self) -> None:
         self._raw_value: int = 0
-        self._increment: int = 1
         self._clamped_value: int = 0
         self._normalized_value: float = 0.5
         self._total_changes: int = 0
@@ -47,22 +44,16 @@ class RelationshipStat:
     def value(self) -> float:
         return self._normalized_value
 
-    def set_increment(self, value: int) -> None:
-        """Set how much this stat should increment by"""
-        self._increment = value
-
-    def increase(self, n: int) -> None:
+    def increase(self, change: int) -> None:
         """Increase the stat by n-times the increment value"""
-        change = self._increment * n
         self._total_changes += change
         self._positive_changes += change
         self._normalized_value = self._positive_changes / self._total_changes
         self._raw_value += change
         self._clamped_value = clamp(self._raw_value, self.STAT_MIN, self.STAT_MAX)
 
-    def decrease(self, n: int) -> None:
+    def decrease(self, change: int) -> None:
         """Increase the stat by n-times the increment value"""
-        change = self._increment * n
         self._total_changes += change
         self._negative_changes += change
         self._normalized_value = self._positive_changes / self._total_changes
@@ -159,25 +150,29 @@ class Relationship:
     def romance(self) -> RelationshipStat:
         return self._romance
 
-    def add_tag(self, tag: str) -> None:
+    def add_tags(self, *tags: str) -> None:
         """Return add a tag to this Relationship"""
-        self._tags.add(tag)
+        for tag in tags:
+            self._tags.add(tag)
 
     def has_tag(self, tag: str) -> bool:
         """Return True if a relationship has a tag"""
         return tag in self._tags
 
-    def remove_tag(self, tag: str) -> None:
+    def remove_tags(self, *tags: str) -> None:
         """Return True if a relationship has a tag"""
-        self._tags.remove(tag)
+        for tag in tags:
+            self._tags.remove(tag)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "owner": self.owner,
             "target": self.target,
             "friendship": float(self.friendship),
+            "friendship_clamped": self.friendship.clamped,
             "romance": float(self.romance),
-            "tags": self._tags,
+            "romance_clamped": self.romance.clamped,
+            "tags": list(self._tags),
         }
 
     def __repr__(self) -> str:
@@ -200,7 +195,7 @@ class Relationships(Component):
         super().__init__()
         self._relationships: Dict[int, Relationship] = {}
 
-    def get_relationship(self, target: int) -> Relationship:
+    def get(self, target: int) -> Relationship:
         """Get an existing or new relationship to the target GameObject"""
         if target not in self._relationships:
             self._relationships[target] = Relationship(self.gameobject.id, target)
@@ -209,40 +204,24 @@ class Relationships(Component):
     def get_all(self) -> List[Relationship]:
         return list(self._relationships.values())
 
-
-class RelationshipGraph(DirectedGraph[Relationship]):
-    def add_relationship(self, relationship: Relationship) -> None:
-        """Add a new relationship to the graph"""
-        self.add_connection(relationship.owner, relationship.target, relationship)
-
-    def get_relationships(self, owner: int) -> List[Relationship]:
-        """Get all the outgoing relationships for this entity"""
-        owner_node = self._nodes[owner]
-        return [self._edges[owner, target] for target in owner_node.outgoing]
-
-    def get_relationship(self, owner: int, target: int) -> Relationship:
-        """Get a relationship instance between the owner and target"""
-        if not self.has_connection(owner, target):
-            self.add_connection(owner, target, Relationship(owner, target))
-        return self.get_connection(owner, target)
-
-    def get_all_relationships_with_tags(
-        self, owner: int, *tags: str
-    ) -> List[Relationship]:
-        """Get all the relationships between a character and others with specific tags"""
+    def get_all_with_tags(self, *tags: str) -> List[Relationship]:
+        """
+        Get all the relationships between a character and others with specific tags
+        """
         return list(
             filter(
                 lambda rel: all([rel.has_tag(t) for t in tags]),
-                self.get_relationships(owner),
+                self._relationships.values(),
             )
         )
 
-    def to_dict(self) -> Dict[int, Dict[int, Dict[str, Any]]]:
-        network_dict: Dict[int, Dict[int, Dict[str, Any]]] = {}
+    def to_dict(self) -> Dict[str, Any]:
+        return {k: v.to_dict() for k, v in self._relationships.items()}
 
-        for character_id in self._nodes.keys():
-            network_dict[character_id] = {}
-            for relationship in self.get_relationships(character_id):
-                network_dict[character_id][relationship.target] = relationship.to_dict()
+    def __getitem__(self, item: int) -> Relationship:
+        if item not in self._relationships:
+            self._relationships[item] = Relationship(self.gameobject.id, item)
+        return self._relationships[item]
 
-        return network_dict
+    def __contains__(self, item: int) -> bool:
+        return item in self._relationships

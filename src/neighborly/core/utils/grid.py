@@ -27,6 +27,53 @@ class Grid(Generic[_GT]):
     def shape(self) -> Tuple[int, int]:
         return self._width, self._length
 
+    def in_bounds(self, point: Tuple[int, int]) -> bool:
+        """Returns True if the given point is within the grid"""
+        return 0 <= point[0] < self._width and 0 <= point[1] < self._length
+
+    def get_neighbors(
+        self, point: Tuple[int, int], include_diagonals: bool = False
+    ) -> List[Tuple[int, int]]:
+        neighbors: List[Tuple[int, int]] = []
+
+        # North-West (Diagonal)
+        if self.in_bounds((point[0] - 1, point[1] - 1)) and include_diagonals:
+            neighbors.append((point[0] - 1, point[1] - 1))
+
+        # North
+        if self.in_bounds((point[0], point[1] - 1)):
+            neighbors.append((point[0], point[1] - 1))
+
+        # North-East (Diagonal)
+        if self.in_bounds((point[0] + 1, point[1] - 1)) and include_diagonals:
+            neighbors.append((point[0] + 1, point[1] - 1))
+
+        # East
+        if self.in_bounds((point[0] + 1, point[1])):
+            neighbors.append((point[0] + 1, point[1]))
+
+        # South-East (Diagonal)
+        if self.in_bounds((point[0] + 1, point[1] + 1)) and include_diagonals:
+            neighbors.append((point[0] + 1, point[1] + 1))
+
+        # South
+        if self.in_bounds((point[0], point[1] + 1)):
+            neighbors.append((point[0], point[1] + 1))
+
+        # South-West (Diagonal)
+        if self.in_bounds((point[0] - 1, point[1] + 1)) and include_diagonals:
+            neighbors.append((point[0] - 1, point[1] + 1))
+
+        # West
+        if self.in_bounds((point[0] - 1, point[1])):
+            neighbors.append((point[0] - 1, point[1]))
+
+        return neighbors
+
+    def get_cells(self) -> List[_GT]:
+        """Return all the cells in the grid"""
+        return self._grid
+
     def __setitem__(self, point: Tuple[int, int], value: _GT) -> None:
         if 0 <= point[0] <= self._width and 0 <= point[1] <= self._length:
             index = (point[0] * self.shape[1]) + point[1]

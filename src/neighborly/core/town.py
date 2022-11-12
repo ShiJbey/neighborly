@@ -3,8 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from neighborly.core.ecs import World
-from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.serializable import ISerializable
 from neighborly.core.utils.grid import Grid
 
@@ -21,16 +19,16 @@ class Town(ISerializable):
     ----------
     name: str
         The name of the town
-    population: int
+    _population: int
         The number of active town residents
     """
 
     __slots__ = "name", "_population"
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, population: int = 0) -> None:
         super().__init__()
         self.name: str = name
-        self._population: int = 0
+        self._population: int = population
 
     @property
     def population(self) -> int:
@@ -51,22 +49,6 @@ class Town(ISerializable):
     def __repr__(self) -> str:
         return f"Town(name={self.name}, population={self.population})"
 
-    @classmethod
-    def create(cls, world: World, **kwargs) -> Town:
-        """
-        Create a town instance
-
-        Parameters
-        ----------
-        kwargs.name: str
-            The name of the town as a string or Tracery pattern
-        """
-        town_name = kwargs.get("name", "Town")
-        town_name = world.get_resource(NeighborlyEngine).name_generator.get_name(
-            town_name
-        )
-        return cls(name=town_name)
-
 
 class LandGrid(ISerializable):
     """
@@ -78,6 +60,7 @@ class LandGrid(ISerializable):
     def __init__(self, size: Tuple[int, int]) -> None:
         super().__init__()
         width, length = size
+        assert width >= 0 and length >= 0
         self._grid: Grid[Optional[int]] = Grid(size, lambda: None)
         self._unoccupied: List[Tuple[int, int]] = list(
             itertools.product(list(range(width)), list(range(length)))
@@ -87,6 +70,15 @@ class LandGrid(ISerializable):
     @property
     def shape(self) -> Tuple[int, int]:
         return self._grid.shape
+
+    def in_bounds(self, point: Tuple[int, int]) -> bool:
+        """Returns True if the given point is within the grid"""
+        return self._grid.in_bounds(point)
+
+    def get_neighbors(
+        self, point: Tuple[int, int], include_diagonals: bool = False
+    ) -> List[Tuple[int, int]]:
+        return self._grid.get_neighbors(point, include_diagonals)
 
     def get_vacancies(self) -> List[Tuple[int, int]]:
         """Return the positions that are unoccupied in town"""
@@ -118,5 +110,5 @@ class LandGrid(ISerializable):
         return {
             "width": self._grid.shape[0],
             "length": self._grid.shape[1],
-            "grid": [str(cell) for cell in self._grid],
+            "grid": [cell for cell in self._grid.get_cells()],
         }

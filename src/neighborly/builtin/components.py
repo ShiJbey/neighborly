@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 
 from neighborly.core.character import LifeStageAges
 from neighborly.core.ecs import Component, component_info
@@ -30,6 +30,9 @@ class MaxCapacity(Component):
         super().__init__()
         self.capacity = capacity
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "capacity": self.capacity}
+
     def pprint(self) -> None:
         print(f"{self.__class__.__name__}:\n" f"\tcapacity: {self.capacity}")
 
@@ -44,6 +47,9 @@ class Name(Component):
     def __init__(self, name: str = "") -> None:
         super().__init__()
         self.value = name
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "value": self.value}
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
@@ -62,6 +68,9 @@ class Age(Component):
     def __init__(self, age: float = 0.0) -> None:
         super().__init__()
         self.value: float = age
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "value": self.value}
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
@@ -104,6 +113,9 @@ class CurrentLocation(Component):
         super().__init__()
         self.location: int = location
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"location": self.location}
+
     def __repr__(self):
         return f"{self.__class__.__name__}({self.location})"
 
@@ -119,6 +131,9 @@ class Lifespan(Component):
     def __init__(self, lifespan: float) -> None:
         super().__init__()
         self.value: float = lifespan
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "value": self.value}
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
@@ -137,6 +152,9 @@ class LocationAliases(Component):
     def __init__(self) -> None:
         super().__init__()
         self.aliases: Dict[str, int] = {}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "aliases": {**self.aliases}}
 
     def __contains__(self, item: str) -> bool:
         return item in self.aliases
@@ -165,6 +183,9 @@ class LifeStages(Component):
     def __init__(self, stages: LifeStageAges) -> None:
         super().__init__()
         self.stages: LifeStageAges = stages
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "stages": {**self.stages}}
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.stages})"
@@ -255,10 +276,18 @@ class Pregnant(Component):
         self.partner_id: int = partner_id
         self.due_date: SimDateTime = due_date
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "partner_name": self.partner_name,
+            "partner_id": self.partner_id,
+            "due_date": self.partner_id,
+        }
+
     def pprint(self) -> None:
         print(
             f"{self.__class__.__name__}:\n"
-            f"\tpartner: {self.partner_namer}({self.partner_id})"
+            f"\tpartner: {self.partner_name}({self.partner_id})"
             f"\tdue date: {self.due_date.to_date_str()}"
         )
 

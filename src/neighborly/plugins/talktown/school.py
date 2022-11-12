@@ -1,6 +1,6 @@
 from neighborly.builtin.components import Child, Teen, YoungAdult
 from neighborly.core.ecs import Component, ISystem, component_info
-from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
+from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.talktown.business_components import School
 
@@ -14,7 +14,7 @@ class SchoolSystem(ISystem):
     """Enrolls new students and graduates old students"""
 
     def process(self, *args, **kwargs) -> None:
-        event_logger = self.world.get_resource(LifeEventLog)
+        event_logger = self.world.get_resource(EventLog)
         date = self.world.get_resource(SimDateTime)
 
         for _, school in self.world.get_component(School):
@@ -35,9 +35,9 @@ class SchoolSystem(ISystem):
                 school.remove_student(gid)
                 young_adult.gameobject.remove_component(Student)
                 event_logger.record_event(
-                    LifeEvent(
+                    Event(
                         "GraduatedSchool",
                         date.to_iso_str(),
-                        [Role("Student", gid)],
+                        [EventRole("Student", gid)],
                     )
                 )

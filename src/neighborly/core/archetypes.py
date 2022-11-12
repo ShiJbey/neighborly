@@ -19,7 +19,9 @@ from neighborly.core.character import CharacterName, GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
+from neighborly.core.personal_values import PersonalValues
 from neighborly.core.position import Position2D
+from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
 
@@ -193,6 +195,8 @@ class BaseCharacterArchetype(ICharacterArchetype):
                         "elder": 65,
                     }
                 ),
+                PersonalValues.create(world),
+                Relationships(),
             ]
         )
 

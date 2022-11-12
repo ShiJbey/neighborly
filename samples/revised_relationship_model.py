@@ -74,11 +74,11 @@ def main():
     c1 = FuzzCharacterArchetype().create(sim.world)
     c2 = FuzzCharacterArchetype().create(sim.world)
 
-    print(c1.get_component(Relationships).get_relationship(c2.id))
-    c1.get_component(Relationships).get_relationship(c2.id).friendship.increase(3)
-    print(c1.get_component(Relationships).get_relationship(c2.id))
-    c1.get_component(Relationships).get_relationship(c2.id).friendship.decrease(1)
-    print(c1.get_component(Relationships).get_relationship(c2.id))
+    print(c1.get_component(Relationships).get(c2.id))
+    c1.get_component(Relationships).get(c2.id).friendship.increase(3)
+    print(c1.get_component(Relationships).get(c2.id))
+    c1.get_component(Relationships).get(c2.id).friendship.decrease(1)
+    print(c1.get_component(Relationships).get(c2.id))
 
 
 if __name__ == "__main__":

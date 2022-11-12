@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Dict
+
 from typing_extensions import TypedDict
 
 from neighborly.core.ecs import Component, World
@@ -23,6 +25,13 @@ class CharacterName(Component):
         self.firstname: str = firstname
         self.surname: str = surname
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "firstname": self.firstname,
+            "surname": self.surname,
+        }
+
     def __repr__(self) -> str:
         return f"{self.firstname} {self.surname}"
 
@@ -41,7 +50,4 @@ class CharacterName(Component):
 
 
 class GameCharacter(Component):
-
-    __slots__ = ()
-
     pass

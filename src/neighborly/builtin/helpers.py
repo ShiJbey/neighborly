@@ -5,10 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-import numpy as np
-
 from neighborly.builtin.components import CurrentLocation, LocationAliases, Vacant
-from neighborly.core.activity import Activities, ActivityLibrary
 from neighborly.core.archetypes import (
     BaseCharacterArchetype,
     CharacterArchetypes,
@@ -23,11 +20,10 @@ from neighborly.core.business import (
 )
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvent, LifeEventLog, Role
+from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.location import Location
-from neighborly.core.personal_values import PersonalValues
 from neighborly.core.position import Position2D
-from neighborly.core.relationship import Relationship, RelationshipGraph
+from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import LandGrid
@@ -44,101 +40,101 @@ def at_same_location(a: GameObject, b: GameObject) -> bool:
     )
 
 
-def get_top_activities(character_values: PersonalValues, n: int = 3) -> Tuple[str, ...]:
-    """Return the top activities an entity would enjoy given their values"""
+# def get_top_activities(character_values: PersonalValues, n: int = 3) -> Tuple[str, ...]:
+#     """Return the top activities an entity would enjoy given their values"""
+#
+#     scores: List[Tuple[int, str]] = []
+#
+#     for activity in ActivityLibrary.get_all():
+#         score: int = int(np.dot(character_values.traits, activity.personal_values))
+#         scores.append((score, activity.name))
+#
+#     return tuple(
+#         [
+#             activity_score[1]
+#             for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)
+#         ][:n]
+#     )
+#
+#
+# def find_places_with_activities(world: World, *activities: str) -> List[int]:
+#     """Return a list of entity ID for locations that have the given activities"""
+#     locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
+#         Location, Activities
+#     )
+#
+#     matches: List[int] = []
+#
+#     for location_id, (_, activities_comp) in locations:
+#         if all([activities_comp.has_activity(a) for a in activities]):
+#             matches.append(location_id)
+#
+#     return matches
+#
+#
+# def find_places_with_any_activities(world: World, *activities: str) -> List[int]:
+#     """Return a list of entity ID for locations that have any of the given activities
+#
+#     Results are sorted by how many activities they match
+#     """
+#
+#     def score_location(act_comp: Activities) -> int:
+#         return sum([act_comp.has_activity(a) for a in activities])
+#
+#     locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
+#         Location, Activities
+#     )
+#
+#     matches: List[Tuple[int, int]] = []
+#
+#     for location_id, (_, activities_comp) in locations:
+#         score = score_location(activities_comp)
+#         if score > 0:
+#             matches.append((score, location_id))
+#
+#     return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
 
-    scores: List[Tuple[int, str]] = []
 
-    for activity in ActivityLibrary.get_all():
-        score: int = int(np.dot(character_values.traits, activity.personal_values))
-        scores.append((score, activity.name))
-
-    return tuple(
-        [
-            activity_score[1]
-            for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)
-        ][:n]
-    )
-
-
-def find_places_with_activities(world: World, *activities: str) -> List[int]:
-    """Return a list of entity ID for locations that have the given activities"""
-    locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
-        Location, Activities
-    )
-
-    matches: List[int] = []
-
-    for location_id, (_, activities_comp) in locations:
-        if all([activities_comp.has_activity(a) for a in activities]):
-            matches.append(location_id)
-
-    return matches
-
-
-def find_places_with_any_activities(world: World, *activities: str) -> List[int]:
-    """Return a list of entity ID for locations that have any of the given activities
-
-    Results are sorted by how many activities they match
-    """
-
-    def score_location(act_comp: Activities) -> int:
-        return sum([act_comp.has_activity(a) for a in activities])
-
-    locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
-        Location, Activities
-    )
-
-    matches: List[Tuple[int, int]] = []
-
-    for location_id, (_, activities_comp) in locations:
-        score = score_location(activities_comp)
-        if score > 0:
-            matches.append((score, location_id))
-
-    return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
-
-
-def add_coworkers(character: GameObject, business: Business) -> None:
+def add_coworkers(world: World, character: GameObject, business: Business) -> None:
     """Add coworker tags to current coworkers in relationship network"""
-
-    world: World = character.world
-    rel_graph = world.get_resource(RelationshipGraph)
-
     for employee_id in business.get_employees():
         if employee_id == character.id:
             continue
 
-        if not rel_graph.has_connection(character.id, employee_id):
-            rel_graph.add_relationship(Relationship(character.id, employee_id))
+        coworker = world.get_gameobject(employee_id)
 
-        if not rel_graph.has_connection(employee_id, character.id):
-            rel_graph.add_relationship(Relationship(employee_id, character.id))
+        character.get_component(Relationships).get(employee_id).add_tags("Coworker")
 
-        rel_graph.get_connection(character.id, employee_id).add_tag("Coworker")
-
-        rel_graph.get_connection(employee_id, character.id).add_tag("Coworker")
+        coworker.get_component(Relationships).get(character.id).add_tags("Coworker")
 
 
-def remove_coworkers(character: GameObject, business: Business) -> None:
+def remove_coworkers(world: World, character: GameObject, business: Business) -> None:
     """Remove coworker tags from current coworkers in relationship network"""
-    world = character.world
-    rel_graph = world.get_resource(RelationshipGraph)
-
     for employee_id in business.get_employees():
         if employee_id == character.id:
             continue
 
-        if rel_graph.has_connection(character.id, employee_id):
-            rel_graph.get_connection(character.id, employee_id).remove_tag("Coworker")
+        coworker = world.get_gameobject(employee_id)
 
-        if rel_graph.has_connection(employee_id, character.id):
-            rel_graph.get_connection(employee_id, character.id).remove_tag("Coworker")
+        character.get_component(Relationships).get(employee_id).remove_tags("Coworker")
+
+        coworker.get_component(Relationships).get(character.id).remove_tags("Coworker")
 
 
 def move_to_location(
-    world: World, gameobject: GameObject, destination_id: Optional[int]
+    world: World, gameobject: GameObject, destination: Optional[Union[int, str]]
 ) -> None:
+    if type(destination) == str:
+        # Check for a location aliases component
+        if location_aliases := gameobject.try_component(LocationAliases):
+            destination_id = location_aliases[destination]
+        else:
+            raise RuntimeError(
+                "Gameobject does not have a LocationAliases component. Destination cannot be a string."
+            )
+    else:
+        destination_id = destination
+
     # A location cant move to itself
     if destination_id == gameobject.id:
         return
@@ -156,13 +152,6 @@ def move_to_location(
         destination = world.get_gameobject(destination_id).get_component(Location)
         destination.add_entity(gameobject.id)
         gameobject.add_component(CurrentLocation(destination_id))
-
-
-def get_locations(world: World) -> List[Tuple[int, Location]]:
-    return sorted(
-        cast(List[Tuple[int, Location]], world.get_component(Location)),
-        key=lambda pair: pair[0],
-    )
 
 
 def remove_residence_owner(character: GameObject, residence: GameObject) -> None:
@@ -266,15 +255,15 @@ def close_for_business(business: Business) -> None:
 
     business.gameobject.add_component(ClosedForBusiness())
 
-    close_for_business_event = LifeEvent(
+    close_for_business_event = Event(
         name="ClosedForBusiness",
         timestamp=date.to_date_str(),
         roles=[
-            Role("Business", business.gameobject.id),
+            EventRole("Business", business.gameobject.id),
         ],
     )
 
-    world.get_resource(LifeEventLog).record_event(close_for_business_event)
+    world.get_resource(EventLog).record_event(close_for_business_event)
 
     for employee in business.get_employees():
         layoff_employee(business, world.get_gameobject(employee))
@@ -282,6 +271,39 @@ def close_for_business(business: Business) -> None:
     if business.owner_type is not None:
         layoff_employee(business, world.get_gameobject(business.owner))
         business.owner = None
+
+
+def leave_job(world: World, employee: GameObject) -> None:
+    """Character leaves the job of their own free will"""
+    occupation = employee.get_component(Occupation)
+
+    business = world.get_gameobject(occupation.business)
+
+    fired_event = Event(
+        name="LeaveJob",
+        timestamp=world.get_resource(SimDateTime).to_iso_str(),
+        roles=[
+            EventRole("Business", business.id),
+            EventRole("Character", employee.id),
+        ],
+    )
+
+    world.get_resource(EventLog).record_event(fired_event)
+
+    business.get_component(Business).remove_employee(employee.id)
+
+    if not employee.has_component(WorkHistory):
+        employee.add_component(WorkHistory())
+
+    employee.get_component(WorkHistory).add_entry(
+        occupation_type=occupation.occupation_type,
+        business=business.id,
+        start_date=occupation.start_date,
+        end_date=world.get_resource(SimDateTime).copy(),
+        reason_for_leaving=fired_event,
+    )
+
+    employee.remove_component(Occupation)
 
 
 def layoff_employee(business: Business, employee: GameObject) -> None:
@@ -292,16 +314,16 @@ def layoff_employee(business: Business, employee: GameObject) -> None:
 
     occupation = employee.get_component(Occupation)
 
-    fired_event = LifeEvent(
+    fired_event = Event(
         name="LaidOffFromJob",
         timestamp=date.to_iso_str(),
         roles=[
-            Role("Business", business.gameobject.id),
-            Role("Character", employee.id),
+            EventRole("Business", business.gameobject.id),
+            EventRole("Character", employee.id),
         ],
     )
 
-    world.get_resource(LifeEventLog).record_event(fired_event)
+    world.get_resource(EventLog).record_event(fired_event)
 
     if not employee.has_component(WorkHistory):
         employee.add_component(WorkHistory())
