@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 from typing import Dict, Optional, Type
 
-import neighborly.core.utils.tracery as tracery
 from neighborly.core.ecs import Component
 from neighborly.core.name_generation import TraceryNameFactory
 
@@ -26,9 +25,9 @@ class NeighborlyEngine:
     )
 
     def __init__(self, seed: Optional[int] = None) -> None:
+        random.seed(seed)
         self._rng: random.Random = random.Random(seed)
         self._name_generator: TraceryNameFactory = TraceryNameFactory()
-        tracery.set_grammar_rng(self._rng)
         self._component_types: Dict[str, Type[Component]] = {}
 
     @property

@@ -3,7 +3,7 @@ John Wick Neighborly Sample
 Author: Shi Johnson-Bey
 
 John Wick is a movie franchise staring Keanu Reeves, in which
-his character, John Wick, is part of an underground society of
+his entity, John Wick, is part of an underground society of
 assassins and hit-people. The member of the criminal underworld
 follow specific social norms that regular civilians don't. All
 favors come at the cost of coins, and no work-for-hire killing
@@ -19,36 +19,37 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from neighborly.builtin.statuses import Adult
-from neighborly.core.archetypes import (
-    BusinessArchetype,
-    BusinessArchetypeLibrary,
-    CharacterArchetype,
+from neighborly import (
+    Component,
+    GameObject,
+    Plugin,
+    SimDateTime,
+    Simulation,
+    SimulationBuilder,
+    World,
 )
+from neighborly.builtin.components import Active, Adult, Deceased
+from neighborly.builtin.role_filters import friendship_lt
+from neighborly.core import query
+from neighborly.core.archetypes import BaseBusinessArchetype, BusinessArchetypes
+from neighborly.core.business import IBusinessType
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.event import Event, EventRole
 from neighborly.core.life_event import (
-    EventResult,
-    EventRole,
-    EventRoleType,
+    ILifeEvent,
     LifeEvent,
-    LifeEventLibrary,
-    LifeEventLog,
-    LifeEventType,
+    LifeEventRoleType,
+    LifeEvents,
+    PatternLifeEvent,
 )
-from neighborly.core.relationship import RelationshipGraph
-from neighborly.core.residence import Resident
-from neighborly.core.time import SimDateTime
-from neighborly.plugins.default_plugin import DefaultPlugin
-from neighborly.plugins.talktown import TalkOfTheTownPlugin
-from neighborly.plugins.weather_plugin import WeatherPlugin
-from neighborly.simulation import Plugin, Simulation, SimulationBuilder
+from neighborly.exporter import NeighborlyJsonExporter
+from neighborly.plugins import defaults, talktown, weather
 
 
 @dataclass
 class Assassin(Component):
-    """Assassin component to be attached to a character
+    """Assassin component to be attached to an entity
 
     Assassins mark people who are part of the criminal
     underworld and who may exchange coins for assassinations
@@ -59,24 +60,13 @@ class Assassin(Component):
     kills: int = 0
 
 
-def assassin_character_archetype() -> CharacterArchetype:
-    return CharacterArchetype(
-        name="Assassin",
-        lifespan=85,
-        life_stages={
-            "child": 0,
-            "teen": 13,
-            "young_adult": 18,
-            "adult": 30,
-            "elder": 65,
-        },
-        extra_components={Assassin: {}},
-    )
+class Hotel(IBusinessType):
+    pass
 
 
-def continental_hotel() -> BusinessArchetype:
-    return BusinessArchetype(
-        name="The Continental Hotel",
+def continental_hotel() -> BaseBusinessArchetype:
+    return BaseBusinessArchetype(
+        name_format="The Continental Hotel",
         max_instances=1,
         min_population=40,
         employee_types={
@@ -84,13 +74,16 @@ def continental_hotel() -> BusinessArchetype:
             "Concierge": 1,
             "Bartender": 2,
         },
+        business_type=Hotel,
     )
 
 
-def become_an_assassin(probability: float = 0.3) -> LifeEventType:
+def become_an_assassin(probability: float = 0.3) -> ILifeEvent:
     """Turns ordinary people into assassins"""
 
-    def bind_character(world: World, event: LifeEvent) -> Optional[GameObject]:
+    def bind_character(
+        world: World, event: Event, candidate: Optional[None]
+    ) -> Optional[GameObject]:
         candidates: List[GameObject] = []
         for gid, (character, _) in world.get_components(GameCharacter, Adult):
             if not character.gameobject.has_component(Assassin):
@@ -99,58 +92,27 @@ def become_an_assassin(probability: float = 0.3) -> LifeEventType:
         if candidates:
             return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         new_assassin = world.get_gameobject(event["Character"])
         new_assassin.add_component(Assassin())
-        return EventResult(generated_events=[event])
 
-    return LifeEventType(
+    return LifeEvent(
         name="BecomeAssassin",
         probability=probability,
-        execute_fn=execute,
-        roles=[EventRoleType(name="Character", binder_fn=bind_character)],
+        effect=execute,
+        roles=[LifeEventRoleType(name="Character", binder_fn=bind_character)],
     )
 
 
 def hire_assassin_event(
-    dislike_threshold: int, probability: float = 0.2
-) -> LifeEventType:
-    def bind_client(world: World, event: LifeEvent) -> Optional[GameObject]:
-        """Find someone who hates another character"""
-        rel_graph = world.get_resource(RelationshipGraph)
-        candidates: List[int] = []
-        for gid, _ in world.get_components(Component, Resident):
-            for relationship in rel_graph.get_relationships(gid):
-                if relationship.friendship < dislike_threshold:
-                    candidates.append(gid)
-
-        if candidates:
-            return world.get_gameobject(
-                world.get_resource(NeighborlyEngine).rng.choice(candidates)
-            )
-
-    def bind_target(world: World, event: LifeEvent) -> Optional[GameObject]:
-        """Find someone that the client would want dead"""
-        rel_graph = world.get_resource(RelationshipGraph)
-        candidates: List[int] = []
-        for relationship in rel_graph.get_relationships(event["Client"]):
-            if relationship.friendship < dislike_threshold:
-                candidate = world.get_gameobject(relationship.target)
-                if candidate.has_component(Resident):
-                    candidates.append(relationship.target)
-
-        if candidates:
-            return world.get_gameobject(
-                world.get_resource(NeighborlyEngine).rng.choice(candidates)
-            )
-
-    def execute_fn(world: World, event: LifeEvent):
-        event_log = world.get_resource(LifeEventLog)
+    dislike_threshold: float = 0.3, probability: float = 0.2
+) -> ILifeEvent:
+    def execute_fn(world: World, event: Event):
         date_time = world.get_resource(SimDateTime)
         assassin = world.get_gameobject(event["Assassin"])
         assassin.get_component(Assassin).kills += 1
 
-        death_event = LifeEvent(
+        Event(
             name="Death",
             timestamp=date_time.to_iso_str(),
             roles=[
@@ -158,51 +120,65 @@ def hire_assassin_event(
             ],
         )
 
-        world.get_gameobject(event["Target"]).archive()
+        world.get_gameobject(event["Target"]).add_component(Deceased())
 
-        return EventResult(generated_events=[event, death_event])
-
-    return LifeEventType(
+    return PatternLifeEvent(
         name="HireAssassin",
         probability=probability,
-        roles=[
-            EventRoleType(name="Client", components=[GameCharacter, Adult]),
-            EventRoleType(name="Target", binder_fn=bind_target),
-            EventRoleType(name="Assassin", components=[Assassin, Adult]),
-        ],
-        execute_fn=execute_fn,
+        effect=execute_fn,
+        pattern=query.Query(
+            find=("Client", "Target", "Assassin"),
+            clauses=[
+                query.where(query.has_components(GameCharacter, Active), "Client"),
+                query.where(query.has_components(GameCharacter, Active), "Target"),
+                query.where(query.has_components(Assassin, Active), "Assassin"),
+                query.where(friendship_lt(dislike_threshold), "Client", "Target"),
+                query.ne_(("Client", "Target")),
+                query.ne_(("Target", "Assassin")),
+                query.ne_(("Client", "Assassin")),
+            ],
+        ),
     )
 
 
 class JohnWickPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        LifeEventLibrary.add(hire_assassin_event(-30))
-        LifeEventLibrary.add(become_an_assassin())
-        BusinessArchetypeLibrary.add(continental_hotel())
+        LifeEvents.add(hire_assassin_event(-30))
+        LifeEvents.add(become_an_assassin())
+        BusinessArchetypes.add("The Continental Hotel", continental_hotel())
+
+
+EXPORT_WORLD = False
 
 
 def main():
     sim = (
         SimulationBuilder(
             seed=random.randint(0, 999999),
-            world_gen_start=SimDateTime(year=1839, month=8, day=19),
-            world_gen_end=SimDateTime(year=1979, month=8, day=19),
+            starting_date=SimDateTime(year=1990, month=0, day=0),
+            print_events=True,
         )
-        .add_plugin(DefaultPlugin())
-        .add_plugin(WeatherPlugin())
-        .add_plugin(TalkOfTheTownPlugin())
+        .add_plugin(defaults.get_plugin())
+        .add_plugin(weather.get_plugin())
+        .add_plugin(talktown.get_plugin())
         .add_plugin(JohnWickPlugin())
         .build()
     )
 
-    sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
-
     st = time.time()
-    sim.establish_setting()
+    sim.run_for(40)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {sim.time.to_iso_str()}")
+    print(f"World Date: {sim.date.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")
+
+    if EXPORT_WORLD:
+        output_path = f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
+
+        with open(output_path, "w") as f:
+            data = NeighborlyJsonExporter().export(sim)
+            f.write(data)
+            print(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":

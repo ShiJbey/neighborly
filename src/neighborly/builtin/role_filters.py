@@ -1,75 +1,138 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Type
+from typing import Any, List, Literal, Tuple
 
-from neighborly.builtin.statuses import (
-    CollegeGraduate,
-    Dating,
-    Female,
-    InTheWorkforce,
-    Male,
-    Married,
-    NonBinary,
-    Retired,
-)
-from neighborly.core.business import Occupation, WorkHistory
-from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, GameObject, World
-from neighborly.core.life_event import RoleFilterFn
-from neighborly.core.relationship import RelationshipGraph, RelationshipTag
+from neighborly.builtin.components import Age, CollegeGraduate, Female, Male, NonBinary
+from neighborly.core.business import Occupation, Unemployed, WorkHistory
+from neighborly.core.ecs import GameObject, World
+from neighborly.core.query import EcsFindClause
+from neighborly.core.relationship import Relationships
+from neighborly.core.role import RoleFilterFn
 from neighborly.core.time import SimDateTime
 
 
+def friendship_gt(threshold: float) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World):
+        results: List[Tuple[int, ...]] = []
+        for gid, relationships in world.get_component(Relationships):
+            for r in relationships.get_all():
+                if r.friendship > threshold:
+                    results.append((gid, r.target))
+        return results
+
+    return precondition
+
+
+def friendship_lt(threshold: float) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World):
+        results: List[Tuple[int, ...]] = []
+        for gid, relationships in world.get_component(Relationships):
+            for r in relationships.get_all():
+                if r.friendship < threshold:
+                    results.append((gid, r.target))
+        return results
+
+    return precondition
+
+
+def romance_gt(threshold: float) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World):
+        results: List[Tuple[int, ...]] = []
+        for gid, relationships in world.get_component(Relationships):
+            for r in relationships.get_all():
+                if r.romance > threshold:
+                    results.append((gid, r.target))
+        return results
+
+    return precondition
+
+
+def romance_lt(threshold: float) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World):
+        results: List[Tuple[int, ...]] = []
+        for gid, relationships in world.get_component(Relationships):
+            for r in relationships.get_all():
+                if r.romance < threshold:
+                    results.append((gid, r.target))
+        return results
+
+    return precondition
+
+
+def relationship_has_tags(*tags: str) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World):
+        results: List[Tuple[int, ...]] = []
+        for gid, relationships in world.get_component(Relationships):
+            for r in relationships.get_all_with_tags(*tags):
+                results.append((gid, r.target))
+        return results
+
+    return precondition
+
+
+def has_relationship_with_tags(*tags: str) -> EcsFindClause:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World):
+        results: List[Tuple[int, ...]] = []
+        for gid, relationships in world.get_component(Relationships):
+            if relationships.get_all_with_tags(*tags):
+                results.append((gid,))
+        return results
+
+    return precondition
+
+
 def over_age(age: int) -> RoleFilterFn:
-    def fn(world: World, gameobject: GameObject, **kwargs) -> bool:
-        return gameobject.get_component(GameCharacter).age > age
+    def fn(world: World, gameobject: GameObject) -> bool:
+        age_component = gameobject.try_component(Age)
+        if age_component is not None:
+            return age_component.value > age
 
     return fn
 
 
-def is_man(world: World, gameobject: GameObject, **kwargs) -> bool:
+def is_man(world: World, gameobject: GameObject) -> bool:
     """Return true if GameObject is a man"""
     return gameobject.has_component(Male)
 
 
-def older_than(age: int):
-    def precondition_fn(world: World, gameobject: GameObject, **kwargs) -> bool:
-        return gameobject.get_component(GameCharacter).age > age
-
-    return precondition_fn
-
-
-def is_single(world: World, gameobject: GameObject, **kwargs) -> bool:
-    """Return True if this character has no relationships tagged as significant others"""
-    rel_graph = world.get_resource(RelationshipGraph)
-    significant_other_relationships = rel_graph.get_all_relationships_with_tags(
-        gameobject.id, RelationshipTag.SignificantOther
-    )
+def is_single(world: World, gameobject: GameObject) -> bool:
+    """Return True if this entity has no relationships tagged as significant others"""
     return (
-        bool(significant_other_relationships)
-        and not gameobject.has_component(Married)
-        and not gameobject.has_component(Dating)
+        len(
+            gameobject.get_component(Relationships).get_all_with_tags(
+                "Significant Other"
+            )
+        )
+        == 0
     )
 
 
-def is_unemployed(world: World, gameobject: GameObject, **kwargs) -> bool:
-    """Returns True if this character does not have a job"""
-    return (
-        not gameobject.has_component(Occupation)
-        and gameobject.has_component(InTheWorkforce)
-        and not gameobject.has_component(Retired)
-    )
+def is_unemployed(world: World, gameobject: GameObject) -> bool:
+    """Returns True if this entity does not have a job"""
+    return gameobject.has_component(Unemployed)
 
 
-def is_employed(world: World, gameobject: GameObject, **kwargs) -> bool:
-    """Returns True if this character has a job"""
+def is_employed(world: World, gameobject: GameObject) -> bool:
+    """Returns True if this entity has a job"""
     return gameobject.has_component(Occupation)
 
 
 def before_year(year: int) -> RoleFilterFn:
     """Return precondition function that checks if the date is before a given year"""
 
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+    def fn(world: World, gameobject: GameObject) -> bool:
         return world.get_resource(SimDateTime).year < year
 
     return fn
@@ -85,19 +148,19 @@ def after_year(year: int) -> RoleFilterFn:
 
 
 def is_gender(gender: Literal["male", "female", "non-binary"]) -> RoleFilterFn:
-    """Return precondition function that checks if a character is a given gender"""
+    """Return precondition function that checks if an entity is a given gender"""
     gender_component_types = {"male": Male, "female": Female, "non-binary": NonBinary}
 
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+    def fn(world: World, gameobject: GameObject) -> bool:
         return gameobject.has_component(gender_component_types[gender])
 
     return fn
 
 
 def has_any_work_experience() -> RoleFilterFn:
-    """Return True if the character has any work experience at all"""
+    """Return True if the entity has any work experience at all"""
 
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+    def fn(world: World, gameobject: GameObject) -> bool:
         return len(gameobject.get_component(WorkHistory)) > 0
 
     return fn
@@ -107,7 +170,7 @@ def has_experience_as_a(
     occupation_type: str, years_experience: int = 0
 ) -> RoleFilterFn:
     """
-    Returns Precondition function that returns true if the character
+    Returns Precondition function that returns true if the entity
     has experience as a given occupation type.
 
     Parameters
@@ -115,7 +178,7 @@ def has_experience_as_a(
     occupation_type: str
         The name of the occupation to check for
     years_experience: int
-        The number of years of experience the character needs to have
+        The number of years of experience the entity needs to have
 
     Returns
     -------
@@ -123,29 +186,32 @@ def has_experience_as_a(
         The precondition function used when filling the occupation
     """
 
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        work_history = gameobject.get_component(WorkHistory)
-        return (
-            work_history.has_experience_as_a(occupation_type)
-            and work_history.total_experience_as_a(occupation_type) >= years_experience
-        )
+    def fn(world: World, gameobject: GameObject) -> bool:
+        total_experience: int = 0
+
+        work_history = gameobject.try_component(WorkHistory)
+
+        if work_history is None:
+            return False
+
+        for entry in work_history.entries[:-1]:
+            if entry.occupation_type == occupation_type:
+                total_experience += entry.years_held
+
+        if gameobject.has_component(Occupation):
+            occupation = gameobject.get_component(Occupation)
+            if occupation.occupation_type == occupation_type:
+                total_experience += occupation.years_held
+
+        return total_experience >= years_experience
 
     return fn
 
 
 def is_college_graduate() -> RoleFilterFn:
-    """Return True if the character is a college graduate"""
+    """Return True if the entity is a college graduate"""
 
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+    def fn(world: World, gameobject: GameObject) -> bool:
         return gameobject.has_component(CollegeGraduate)
-
-    return fn
-
-
-def has_component(component_type: Type[Component]) -> RoleFilterFn:
-    """Return tru if the gameobject has a component"""
-
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        return gameobject.has_component(component_type)
 
     return fn

@@ -1,40 +1,20 @@
-from ordered_set import OrderedSet
-
-from neighborly.builtin.statuses import Child, Teen, YoungAdult
-from neighborly.core.ecs import Component, ISystem
-from neighborly.core.life_event import EventRole, LifeEvent, LifeEventLog
-from neighborly.core.status import Status
+from neighborly.builtin.components import Child, Teen, YoungAdult
+from neighborly.core.ecs import Component, ISystem, component_info
+from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.time import SimDateTime
+from neighborly.plugins.talktown.business_components import School
 
 
-class School(Component):
-    """A school is where Characters that are Children through Teen study"""
-
-    __slots__ = "students"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.students: OrderedSet[int] = OrderedSet()
-
-    def add_student(self, student: int) -> None:
-        """Add student to the school"""
-        self.students.add(student)
-
-    def remove_student(self, student: int) -> None:
-        """Remove student from the school"""
-        self.students.add(student)
-
-
-class Student(Status):
-    def __init__(self):
-        super().__init__("Student", "This character is a student at the local school")
+@component_info("Student", "This entity is a student at the local school")
+class Student(Component):
+    pass
 
 
 class SchoolSystem(ISystem):
     """Enrolls new students and graduates old students"""
 
     def process(self, *args, **kwargs) -> None:
-        event_logger = self.world.get_resource(LifeEventLog)
+        event_logger = self.world.get_resource(EventLog)
         date = self.world.get_resource(SimDateTime)
 
         for _, school in self.world.get_component(School):
@@ -55,7 +35,8 @@ class SchoolSystem(ISystem):
                 school.remove_student(gid)
                 young_adult.gameobject.remove_component(Student)
                 event_logger.record_event(
-                    LifeEvent(
+                    self.world,
+                    Event(
                         "GraduatedSchool",
                         date.to_iso_str(),
                         [EventRole("Student", gid)],

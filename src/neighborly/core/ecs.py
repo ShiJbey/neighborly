@@ -10,18 +10,65 @@ https://github.com/bevyengine/bevy
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 from abc import ABC
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
-from uuid import uuid1
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 
 import esper
 
 logger = logging.getLogger(__name__)
 
+
+# Store string names of components for lookup later
+_component_names: Dict[Type[Component], str] = {}
+
+
+# Text descriptions of components (mostly used by GUI applications)
+_component_descriptions: Dict[Type[Component], str] = {}
+
+
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
+_ST = TypeVar("_ST", bound="ISystem")
+
+
+class ResourceNotFoundError(Exception):
+    def __init__(self, resource_type: Type[Any]) -> None:
+        super().__init__()
+        self.resource_type: Type = resource_type
+        self.message = f"Could not find resource with type: {resource_type.__name__}"
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.resource_type})"
+
+
+class GameObjectNotFoundError(Exception):
+    def __init__(self, gid: int) -> None:
+        super().__init__()
+        self.gid: int = gid
+        self.message = f"Could not find GameObject with id: {gid}."
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.gid})"
+
+
+class ComponentNotFoundError(Exception):
+    def __init__(self, component_type: Type[Component]) -> None:
+        super().__init__()
+        self.component_type: Type[Component] = component_type
+        self.message = f"Could not find Component with type: {component_type.__name__}."
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.component_type})"
 
 
 class GameObject:
@@ -32,36 +79,28 @@ class GameObject:
     Attributes
     ----------
     id: int
-        unique identifier
-    name: str
+      unique identifier
+    _name: str
         name of the GameObject
-    world: World
+    _world: World
         the World instance this GameObject belongs to
-    components: List[Components]
+    _components: List[Components]
         Components attached to this GameObject
     """
 
-    __slots__ = (
-        "_id",
-        "_name",
-        "_components",
-        "_world",
-        "_archetype",
-    )
+    __slots__ = "_id", "_name", "_components", "_world"
 
     def __init__(
         self,
-        unique_id: Optional[int] = None,
-        name: str = "GameObject",
-        components: Iterable[Component] = (),
-        world: Optional[World] = None,
-        archetype: Optional[EntityArchetype] = None,
+        unique_id: int,
+        world: World,
+        name: Optional[str] = None,
+        components: Optional[Iterable[Component]] = None,
     ) -> None:
-        self._name: str = name
-        self._id: int = unique_id if unique_id else self.generate_id()
-        self._world: Optional[World] = world
-        self._components: Dict[Type[_CT], Component] = {}
-        self._archetype: Optional[EntityArchetype] = archetype
+        self._name: str = name if name else f"GameObject ({unique_id})"
+        self._id: int = unique_id
+        self._world: World = world
+        self._components: Dict[Type[Component], Component] = {}
 
         if components:
             for component in components:
@@ -78,73 +117,67 @@ class GameObject:
         return self._name
 
     @property
-    def archetype(self) -> Optional[EntityArchetype]:
-        """Return the name of the archetype for creating this GameObject"""
-        return self._archetype
-
-    @property
     def world(self) -> World:
         """Return the world that this GameObject belongs to"""
-        if self._world:
-            return self._world
-        raise TypeError("World is None for GameObject")
+        return self._world
 
     @property
     def components(self) -> List[Component]:
+        """Returns the component instances associated with this GameObject"""
         return list(self._components.values())
 
-    def set_world(self, world: Optional[World]) -> None:
-        """set the world instance"""
-        self._world = world
+    def get_component_types(self) -> List[Type[Component]]:
+        """Returns the types of components attached to this character"""
+        return list(self._components.keys())
 
     def add_component(self, component: Component) -> GameObject:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
         self._components[type(component)] = component
         self.world.ecs.add_component(self.id, component)
-        component.on_add()
         return self
 
-    def remove_component(self, component_type: Type[_CT]) -> None:
+    def remove_component(self, component_type: Type[Component]) -> None:
         """Add a component to this GameObject"""
-        component = self._components[component_type]
-        component.on_remove()
-        self.world.ecs.remove_component(self.id, component_type)
+        if not self.has_component(component_type):
+            return
         del self._components[component_type]
+        self.world.ecs.remove_component(self.id, component_type)
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
-        return self._components[component_type]
+        try:
+            return self._components[component_type]  # type: ignore
+        except KeyError:
+            raise ComponentNotFoundError(component_type)
 
-    def has_component(self, *component_type: Type[_CT]) -> bool:
+    def has_component(self, *component_type: Type[Component]) -> bool:
         return all([ct in self._components for ct in component_type])
 
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
-        return self._components.get(component_type)
-
-    def archive(self) -> None:
-        """
-        Deactivates the GameObject by removing excess components.
-
-        The GameObject stays in the ECS though.
-        """
-        for component in self.components:
-            component.on_archive()
+        return self._components.get(component_type)  # type: ignore
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        ret = {
             "id": self.id,
             "name": self.name,
             "components": [c.to_dict() for c in self._components.values()],
-            "archetype": self.archetype.name if self.archetype else "",
         }
+
+        return ret
+
+    def pprint(self) -> None:
+        print(f"== GameObject({self.id}) ==\n")
+        for c in self.components:
+            c.pprint()
 
     def __hash__(self) -> int:
         return self._id
 
-    @staticmethod
-    def generate_id() -> int:
-        """Create a new unique int ID"""
-        return int.from_bytes(hashlib.sha256(uuid1().bytes).digest()[:8], "little")
+    def __str__(self) -> str:
+        return f"GameObject(id={self.id})"
+
+    def __repr__(self) -> str:
+        return f"GameObject(id={self.id})"
 
 
 class Component(ABC):
@@ -174,17 +207,8 @@ class Component(ABC):
         """set the gameobject instance for this component"""
         self._gameobject = gameobject
 
-    def on_add(self) -> None:
-        """Run when the component is added to the GameObject"""
-        return
-
-    def on_remove(self) -> None:
-        """Run when the component is removed from the GameObject"""
-        return
-
-    def on_archive(self) -> None:
-        """Run when the GameObject this is connected to is archived"""
-        return
+    def pprint(self) -> None:
+        print(f"{self.__class__.__name__}:\n")
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Component:
@@ -194,6 +218,25 @@ class Component(ABC):
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the component to a dict"""
         return {"type": self.__class__.__name__}
+
+    def __repr__(self) -> str:
+        return "{}".format(self.__class__.__name__)
+
+
+def component_info(
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+) -> Callable[[Type[_CT]], Type[_CT]]:
+    """Decorator that registers a name for this component"""
+
+    def decorator(cls: Type[_CT]) -> Type[_CT]:
+        if name is not None:
+            _component_names[cls] = name
+        if description is not None:
+            _component_descriptions[cls] = description
+        return cls
+
+    return decorator
 
 
 class ISystem(ABC, esper.Processor):
@@ -231,17 +274,17 @@ class World:
         self._ecs: esper.World = esper.World()
         self._gameobjects: Dict[int, GameObject] = {}
         self._dead_gameobjects: List[int] = []
-        self._resources: Dict[str, Any] = {}
+        self._resources: Dict[Type[Any], Any] = {}
 
     @property
     def ecs(self) -> esper.World:
         return self._ecs
 
     def spawn_gameobject(
-        self, *components: Component, name: Optional[str] = None
+        self, components: Optional[List[Component]] = None, name: Optional[str] = None
     ) -> GameObject:
         """Create a new gameobject and attach any given component instances"""
-        entity_id = self._ecs.create_entity(*components)
+        entity_id = self._ecs.create_entity(*components if components else [])
         gameobject = GameObject(
             unique_id=entity_id,
             components=components,
@@ -251,29 +294,12 @@ class World:
         self._gameobjects[gameobject.id] = gameobject
         return gameobject
 
-    def spawn_archetype(self, archetype: EntityArchetype) -> GameObject:
-        component_instances: List[Component] = []
-        for component_type, options in archetype.components.items():
-            component_instances.append(component_type.create(self, **options))
-
-        entity_id = self._ecs.create_entity(*component_instances)
-        gameobject = GameObject(
-            unique_id=entity_id,
-            components=component_instances,
-            world=self,
-            name=f"{archetype.name}({entity_id})",
-            archetype=archetype,
-        )
-
-        archetype.increment_instances()
-
-        self._gameobjects[gameobject.id] = gameobject
-
-        return gameobject
-
     def get_gameobject(self, gid: int) -> GameObject:
         """Retrieve the GameObject with the given id"""
-        return self._gameobjects[gid]
+        try:
+            return self._gameobjects[gid]
+        except KeyError:
+            raise GameObjectNotFoundError(gid)
 
     def get_gameobjects(self) -> List[GameObject]:
         """Get all gameobjects"""
@@ -289,7 +315,6 @@ class World:
 
     def delete_gameobject(self, gid: int) -> None:
         """Remove gameobject from world"""
-        self._ecs.delete_entity(gid)
         self._dead_gameobjects.append(gid)
 
     def get_component(self, component_type: Type[_CT]) -> List[Tuple[int, _CT]]:
@@ -298,26 +323,20 @@ class World:
 
     def get_components(
         self, *component_types: Type[_CT]
-    ) -> List[Tuple[int, List[_CT, ...]]]:
+    ) -> List[Tuple[int, List[_CT]]]:
         """Get all game objects with the given components"""
         return self._ecs.get_components(*component_types)
-
-    def try_components(
-        self, entity: int, *component_types: Type[_CT]
-    ) -> Optional[List[List[_CT]]]:
-        """Try to get a multiple component types for a GameObject."""
-        return self._ecs.try_components(entity, *component_types)
 
     def _clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
             gameobject = self._gameobjects[gameobject_id]
-            for component in gameobject.components:
-                component.on_remove()
-            if gameobject.archetype:
-                gameobject.archetype.decrement_instances()
-            gameobject.set_world(None)
             del self._gameobjects[gameobject_id]
+
+            # You need to check if the gameobject has any components
+            # If it doesn't then esper will not have it stored
+            if gameobject.components:
+                self._ecs.delete_entity(gameobject_id, True)
 
         self._dead_gameobjects.clear()
 
@@ -326,10 +345,13 @@ class World:
         self._ecs.add_processor(system, priority=priority)
         system.world = self
 
+    def get_system(self, system_type: Type[_ST]) -> Optional[_ST]:
+        """Get a System of the given type"""
+        return self._ecs.get_processor(system_type)
+
     def remove_system(self, system: Type[ISystem]) -> None:
         """Remove a System from the World"""
         self._ecs.remove_processor(system)
-        system.world = None
 
     def step(self, **kwargs) -> None:
         """Call the process method on all systems"""
@@ -345,77 +367,32 @@ class World:
 
     def remove_resource(self, resource_type: Any) -> None:
         """remove a global resource to the world"""
-        del self._resources[resource_type]
+        try:
+            del self._resources[resource_type]
+        except KeyError:
+            raise ResourceNotFoundError(resource_type)
 
     def get_resource(self, resource_type: Type[_RT]) -> _RT:
         """Add a global resource to the world"""
-        return self._resources[resource_type]
+        try:
+            return self._resources[resource_type]
+        except KeyError:
+            raise ResourceNotFoundError(resource_type)
 
     def has_resource(self, resource_type: Any) -> bool:
         """Return true if the world has the given resource"""
         return resource_type in self._resources
 
+    def try_resource(self, resource_type: Type[_RT]) -> Optional[_RT]:
+        """Attempt to get resource with type. Return None if not found"""
+        return self._resources.get(resource_type)
+
+    def get_all_resources(self) -> List[Any]:
+        """Get all resources attached to this World instance"""
+        return list(self._resources.values())
+
     def __repr__(self) -> str:
         return "World(gameobjects={}, resources={})".format(
             len(self._gameobjects),
             list(self._resources.values()),
-        )
-
-
-class EntityArchetype:
-    """
-    Organizes information for constructing components that compose GameObjects.
-
-    Attributes
-    ----------
-    _name: str
-        (Read-only) The name of the entity archetype
-    _components: Dict[Type[Component], Dict[str, Any]]
-        Dict of components used to construct this archetype
-    """
-
-    __slots__ = "_name", "_components", "_instances"
-
-    def __init__(self, name: str) -> None:
-        self._name: str = name
-        self._components: Dict[Type[Component], Dict[str, Any]] = {}
-        self._instances: int = 0
-
-    @property
-    def name(self) -> str:
-        """Returns the name of this archetype"""
-        return self._name
-
-    @property
-    def components(self) -> Dict[Type[Component], Dict[str, Any]]:
-        """Returns a list of components in this archetype"""
-        return {**self._components}
-
-    @property
-    def instances(self) -> int:
-        return self._instances
-
-    def add(self, component_type: Type[Component], **kwargs: Any) -> EntityArchetype:
-        """
-        Add a component to this archetype
-
-        Parameters
-        ----------
-        component_type: subclass of neighborly.core.ecs.Component
-            The component type to add to the entity archetype
-        **kwargs: Dict[str, Any]
-            Attribute overrides to pass to the component
-        """
-        self._components[component_type] = {**kwargs}
-        return self
-
-    def increment_instances(self) -> None:
-        self._instances += 1
-
-    def decrement_instances(self) -> None:
-        self._instances -= 1
-
-    def __repr__(self) -> str:
-        return "{}(name={}, components={})".format(
-            self.__class__.__name__, self._name, self._components
         )

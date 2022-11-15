@@ -33,6 +33,9 @@ class WeatherManager:
         self.current_weather: Weather = default
         self.time_before_change: int = 0
 
+    def __repr__(self) -> str:
+        return f"Weather({str(self.current_weather.value)})"
+
 
 class WeatherSystem(ISystem):
     """Updates the current weather state

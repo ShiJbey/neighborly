@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Generator, TypeVar, List
+from typing import Dict, Tuple
 
 
 def merge(source: Dict, destination: Dict) -> Dict:
@@ -48,20 +48,3 @@ def parse_number_range(range_str: str) -> Tuple[int, int]:
         map(lambda s: int(s.strip()), range_str.strip().split("-"))
     )
     return range_min, range_max
-
-
-_T = TypeVar("_T")
-
-
-def chunk_list(lst: List[_T], n: int) -> Generator[List[_T], None, None]:
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i: i + n]
-
-
-_NT = TypeVar("_NT", int, float)
-
-
-def clamp(value: _NT, min_value: _NT, max_value: _NT) -> _NT:
-    """Clamp a numerical value between a min and max range"""
-    return min(max_value, max(min_value, value))

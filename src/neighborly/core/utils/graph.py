@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import TypeVar, NamedTuple, Generic, DefaultDict, Dict, Tuple, cast
+from typing import DefaultDict, Dict, Generic, NamedTuple, Tuple, TypeVar, cast
 
 from ordered_set import OrderedSet
 
@@ -38,6 +38,9 @@ class DirectedGraph(Generic[_T]):
 
     def remove_node(self, node: int) -> None:
         """Remove a node and delete incoming and outgoing connections"""
+        if node not in self._nodes:
+            raise KeyError
+
         node_to_remove = self._nodes[node]
 
         # Delete all the outgoing connections

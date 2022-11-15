@@ -15,9 +15,8 @@ from pydantic import BaseModel, Field
 
 import neighborly
 import neighborly.core.utils.utilities as utilities
-from neighborly.core.life_event import LifeEventLog
+from neighborly import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.server import NeighborlyServer
 from neighborly.simulation import Plugin, PluginSetupError, SimulationBuilder
 
 logger = logging.getLogger(__name__)
@@ -27,10 +26,10 @@ class PluginConfig(BaseModel):
     """
     Settings for loading and constructing a plugin
 
-    Attributes
+    Fields
     ----------
     name: str
-        Name of the plugin to load
+        Name of the plugin's python module
     path: Optional[str]
         The path where the plugin is located
     options: Dict[str, Any]
@@ -47,11 +46,22 @@ class NeighborlyConfig(BaseModel):
     """
     Static configuration setting for the Neighborly
 
-    Attributes
+    Fields
     ----------
-    simulation: SimulationConfig
-        Static configuration settings specifically for
-        the simulation instance
+    quiet: bool
+        Should the simulation not print to the console
+    seed: int
+        Seed used for random number generation
+    hours_per_timestep: str
+        How many hours elapse each simulation step
+    world_gen_start: str
+        Date when world generation starts (YYYY-MM-DD)
+    world_gen_end: str
+        Date when world generation ends (YYYY-MM-DD)
+    town_name: str
+        Name to give the generated town
+    town_size: Literal["small", "medium", "large"]
+        The size of th town to create
     plugins: List[Union[str, PluginConfig]]
         Names of plugins to load or names combined with
         instantiation parameters
@@ -60,10 +70,11 @@ class NeighborlyConfig(BaseModel):
     """
 
     quiet: bool = False
-    seed: int
+    seed: Union[int, str]
     hours_per_timestep: int
     world_gen_start: str
     world_gen_end: str
+    years_to_simulate: int
     town_name: str
     town_size: Literal["small", "medium", "large"]
     plugins: List[Union[str, PluginConfig]] = Field(default_factory=list)
@@ -98,7 +109,7 @@ def load_plugin(module_name: str, path: Optional[str] = None) -> Plugin:
 
     try:
         plugin_module = importlib.import_module(module_name)
-        plugin: Plugin = plugin_module.__dict__["get_plugin"]()
+        plugin: Plugin = getattr(plugin_module, "get_plugin")()
         return plugin
     except KeyError:
         raise PluginSetupError(
@@ -186,9 +197,6 @@ def get_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable all printing to stdout",
     )
-    parser.add_argument(
-        "--server", default=False, action="store_true", help="Run web server UI"
-    )
     return parser
 
 
@@ -207,11 +215,12 @@ def main():
     config: NeighborlyConfig = NeighborlyConfig(
         seed=random.randint(0, 999999),
         hours_per_timestep=6,
-        world_gen_start="1839-08-19T00:00.000z",
-        world_gen_end="1979-08-19T00:00.000z",
+        world_gen_start="1839-08-19",
+        world_gen_end="1979-08-19",
+        years_to_simulate=100,
         town_size="medium",
         town_name="#town_name#",
-        plugins=["neighborly.plugins.default_plugin", "neighborly.plugins.talktown"],
+        plugins=["neighborly.plugins.defaults", "neighborly.plugins.talktown"],
     )
 
     if args.config:
@@ -227,9 +236,9 @@ def main():
 
     sim_builder = SimulationBuilder(
         seed=config.seed,
-        world_gen_start=config.world_gen_start,
-        world_gen_end=config.world_gen_end,
+        starting_date=config.world_gen_start,
         time_increment_hours=config.hours_per_timestep,
+        print_events=not args.quiet,
     )
 
     for plugin_entry in config.plugins:
@@ -242,27 +251,19 @@ def main():
 
     sim = sim_builder.build()
 
-    config.quiet = args.quiet
-    if not config.quiet:
-        sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
+    sim.run_until(SimDateTime.from_str(config.world_gen_end))
 
-    if args.server:
-        server = NeighborlyServer(sim)
-        server.run()
-    else:
-        sim.establish_setting()
+    if not args.no_emit:
+        output_path = (
+            args.output
+            if args.output
+            else f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
+        )
 
-        if not args.no_emit:
-            output_path = (
-                args.output
-                if args.output
-                else f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
-            )
-
-            with open(output_path, "w") as f:
-                data = NeighborlyJsonExporter().export(sim)
-                f.write(data)
-                logger.debug(f"Simulation data written to: '{output_path}'")
+        with open(output_path, "w") as f:
+            data = NeighborlyJsonExporter().export(sim)
+            f.write(data)
+            logger.debug(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":

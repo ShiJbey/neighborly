@@ -1,3 +1,4 @@
 include LICENSE
+include CHANGELOG.md
 include CODE_OF_CONDUCT.md
-recursive-include src/neighborly/plugins/default_plugin/data *
+recursive-include src/neighborly/plugins/defaults/data *

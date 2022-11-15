@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import List
 
 HOURS_PER_DAY = 24
@@ -19,20 +20,43 @@ _TIME_OF_DAY: List[str] = [
     *(["night"] * 5),  # (19:00-23:59)
 ]
 
-_DAYS_OF_WEEK: List[str] = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-]
 
+class Weekday(IntEnum):
+    Sunday = 0
+    Monday = 1
+    Tuesday = 2
+    Wednesday = 3
+    Thursday = 4
+    Friday = 5
+    Saturday = 6
 
-def get_time_of_day(hour: int) -> str:
-    """Return a string corresponding to the time of day for the given hour"""
-    return _TIME_OF_DAY[hour]
+    def __str__(self) -> str:
+        return self.name
+
+    def abbr(self) -> str:
+        abbreviations = [
+            "M",
+            "T",
+            "W",
+            "R",
+            "F",
+            "S",
+            "U",
+        ]
+        return abbreviations[self.value()]
+
+    @classmethod
+    def from_abbr(cls, value: str) -> Weekday:
+        abbreviations = {
+            "M": Weekday.Monday,
+            "T": Weekday.Tuesday,
+            "W": Weekday.Wednesday,
+            "R": Weekday.Thursday,
+            "F": Weekday.Friday,
+            "S": Weekday.Saturday,
+            "U": Weekday.Sunday,
+        }
+        return abbreviations[value]
 
 
 @dataclass(frozen=True)
@@ -168,7 +192,7 @@ class SimDateTime:
 
     @property
     def weekday_str(self) -> str:
-        return _DAYS_OF_WEEK[self._weekday]
+        return str(Weekday(self._weekday))
 
     def copy(self) -> SimDateTime:
         return SimDateTime(
@@ -210,20 +234,36 @@ class SimDateTime:
         """Add a TimeDelta to this data"""
         if not isinstance(other, TimeDelta):
             raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        date_copy = self.copy()
+        date_copy.increment(
+            hours=other.hours, days=other.days, months=other.months, years=other.years
+        )
+        return date_copy
+
+    def __iadd__(self, other: TimeDelta) -> SimDateTime:
         self.increment(
             hours=other.hours, days=other.days, months=other.months, years=other.years
         )
         return self
 
     def __le__(self, other: SimDateTime) -> bool:
-        if not isinstance(other, SimDateTime):
-            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        return self.to_iso_str() <= other.to_iso_str()
+
+    def __lt__(self, other: SimDateTime) -> bool:
         return self.to_iso_str() < other.to_iso_str()
 
-    def __gt__(self, other) -> bool:
+    def __ge__(self, other: SimDateTime) -> bool:
+        if not isinstance(other, SimDateTime):
+            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+        return self.to_iso_str() >= other.to_iso_str()
+
+    def __gt__(self, other: SimDateTime) -> bool:
         if not isinstance(other, SimDateTime):
             raise TypeError(f"expected TimeDelta object but was {type(other)}")
         return self.to_iso_str() > other.to_iso_str()
+
+    def __eq__(self, other: SimDateTime) -> bool:
+        return self.to_hours() == other.to_hours()
 
     def to_date_str(self) -> str:
         return "{}, {:02d}/{:02d}/{:04d} @ {:02d}:00".format(
@@ -253,6 +293,10 @@ class SimDateTime:
             + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH)
         )
 
+    def get_time_of_day(self) -> str:
+        """Return a string corresponding to the time of day for the given hour"""
+        return _TIME_OF_DAY[self.hour]
+
     @classmethod
     def from_ordinal(cls, ordinal_date: int) -> SimDateTime:
         date = cls()
@@ -272,10 +316,25 @@ class SimDateTime:
     @classmethod
     def from_str(cls, time_str: str) -> SimDateTime:
         time = cls()
-        year, month, day, hour = tuple(time_str.split("-"))
-        time._year = int(year)
-        time._month = int(month)
-        time._weekday = int(day) % 7
-        time._day = int(day)
-        time._hour = int(hour)
-        return time
+        items = tuple(time_str.split("-"))
+
+        if len(items) == 4:
+            year, month, day, hour = items
+            time._year = int(year)
+            time._month = int(month)
+            time._weekday = int(day) % 7
+            time._day = int(day)
+            time._hour = int(hour)
+            return time
+
+        elif len(items) == 3:
+            year, month, day = items
+            time._year = int(year)
+            time._month = int(month)
+            time._weekday = int(day) % 7
+            time._day = int(day)
+            time._hour = 0
+            return time
+
+        else:
+            raise ValueError(f"Invalid date string: {time_str}")

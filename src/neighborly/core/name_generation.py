@@ -1,31 +1,15 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-import neighborly.core.utils.tracery as tracery
-import neighborly.core.utils.tracery.modifiers as tracery_modifiers
-
-_all_name_rules: Dict[str, Union[str, List[str]]] = {}
-_grammar: tracery.Grammar = tracery.Grammar(_all_name_rules)
+import tracery as tracery
+import tracery.modifiers as tracery_modifiers
 
 AnyPath = Union[str, Path]
 
 
-def register_rule(self, name: str, rule: Union[str, List[str]]) -> None:
-    """Add a rule to the name factory"""
-    global _all_name_rules, _grammar
-    _all_name_rules[name] = rule
-    _grammar = tracery.Grammar(self._all_name_rules)
-    _grammar.add_modifiers(tracery_modifiers.base_english)
-
-
-def get_name(self, seed_str: str) -> str:
-    """Return a name generated using the grammar rules"""
-    return self._grammar.flatten(seed_str)
-
-
 class TraceryNameFactory:
     """
-    Generates town names using Tracery
+    Generates names using Tracery
     """
 
     def __init__(self) -> None:

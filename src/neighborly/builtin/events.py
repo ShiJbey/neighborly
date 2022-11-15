@@ -1,465 +1,377 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple, cast
 
-from neighborly.builtin.helpers import move_residence
-from neighborly.builtin.role_filters import is_single
-from neighborly.builtin.statuses import (
+import neighborly.core.query as querylib
+from neighborly.builtin.components import (
+    Active,
     Adult,
-    Dating,
+    Age,
+    CanGetPregnant,
+    Deceased,
+    Departed,
     Elder,
-    Married,
+    Lifespan,
+    OpenToPublic,
     Pregnant,
     Retired,
+    Vacant,
+)
+from neighborly.builtin.helpers import move_residence, move_to_location
+from neighborly.builtin.role_filters import (
+    friendship_gt,
+    friendship_lt,
+    is_single,
+    relationship_has_tags,
+    romance_gt,
+    romance_lt,
+)
+from neighborly.core.business import (
+    Business,
+    ClosedForBusiness,
+    Occupation,
+    OpenForBusiness,
     Unemployed,
 )
-from neighborly.core.business import Occupation
-from neighborly.core.character import GameCharacter
+from neighborly.core.character import CharacterName, GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.event import Event
 from neighborly.core.life_event import (
-    EventResult,
-    EventRole,
-    EventRoleType,
+    ILifeEvent,
     LifeEvent,
-    LifeEventLog,
-    LifeEventType,
-    join_filters,
+    LifeEventRoleType,
+    PatternLifeEvent,
 )
-from neighborly.core.relationship import RelationshipGraph, RelationshipTag
+from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.time import SimDateTime
 
 
 def become_friends_event(
-    threshold: int = 25, probability: float = 1.0
-) -> LifeEventType:
+    threshold: float = 0.7, probability: float = 1.0
+) -> ILifeEvent:
     """Defines an event where two characters become friends"""
 
-    def bind_potential_friend(world: World, event: LifeEvent):
-        """
-        Return a Character that has a mutual friendship score
-        with PersonA that is above a given threshold
-        """
-        rel_graph = world.get_resource(RelationshipGraph)
-        engine = world.get_resource(NeighborlyEngine)
-        person_a_relationships = rel_graph.get_relationships(event["PersonA"])
-        eligible_characters: List[GameObject] = []
-        for rel in person_a_relationships:
-            if (
-                world.has_gameobject(rel.target)
-                and rel_graph.has_connection(rel.target, event["PersonA"])
-                and (
-                    rel_graph.get_connection(rel.target, event["PersonA"]).friendship
-                    >= threshold
-                )
-                and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tags(
-                    RelationshipTag.Friend
-                )
-                and not rel.has_tags(RelationshipTag.Friend)
-                and rel.friendship >= threshold
-            ):
-                eligible_characters.append(world.get_gameobject(rel.target))
+    def effect(world: World, event: Event):
+        world.get_gameobject(event["Initiator"]).get_component(Relationships).get(
+            event["Other"]
+        ).add_tags("Friend")
 
-        if eligible_characters:
-            return engine.rng.choice(eligible_characters)
-        return None
+        world.get_gameobject(event["Other"]).get_component(Relationships).get(
+            event["Initiator"]
+        ).add_tags("Friend")
 
-    def execute(world: World, event: LifeEvent) -> EventResult:
-        rel_graph = world.get_resource(RelationshipGraph)
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.Friend
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.Friend
-        )
-        return EventResult(generated_events=[event])
-
-    return LifeEventType(
+    return PatternLifeEvent(
         name="BecomeFriends",
-        roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter]),
-            EventRoleType(name="PersonB", binder_fn=bind_potential_friend),
-        ],
-        execute_fn=execute,
+        pattern=querylib.Query(
+            find=("Initiator", "Other"),
+            clauses=[
+                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
+                querylib.where(querylib.has_components(Active), "Initiator"),
+                querylib.where(querylib.has_components(GameCharacter), "Other"),
+                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.ne_(("Initiator", "Other")),
+                querylib.where(friendship_gt(threshold), "Initiator", "Other"),
+                querylib.where(friendship_gt(threshold), "Other", "Initiator"),
+                querylib.where_not(
+                    relationship_has_tags("Friend"), "Initiator", "Other"
+                ),
+            ],
+        ),
+        effect=effect,
         probability=probability,
     )
 
 
 def become_enemies_event(
-    threshold: int = -25, probability: float = 1.0
-) -> LifeEventType:
+    threshold: float = 0.3, probability: float = 1.0
+) -> ILifeEvent:
     """Defines an event where two characters become friends"""
 
-    def bind_potential_enemy(world: World, event: LifeEvent):
-        """
-        Return a Character that has a mutual friendship score
-        with PersonA that is above a given threshold
-        """
-        rel_graph = world.get_resource(RelationshipGraph)
-        engine = world.get_resource(NeighborlyEngine)
-        person_a_relationships = rel_graph.get_relationships(event["PersonA"])
-        eligible_characters: List[GameObject] = []
-        for rel in person_a_relationships:
-            if (
-                world.has_gameobject(rel.target)
-                and rel_graph.has_connection(rel.target, event["PersonA"])
-                and (
-                    rel_graph.get_connection(rel.target, event["PersonA"]).friendship
-                    <= threshold
-                )
-                and not rel_graph.get_connection(rel.target, event["PersonA"]).has_tags(
-                    RelationshipTag.Friend
-                )
-                and not rel.has_tags(RelationshipTag.Friend)
-                and rel.friendship <= threshold
-            ):
-                eligible_characters.append(world.get_gameobject(rel.target))
+    def effect(world: World, event: Event):
+        world.get_gameobject(event["Initiator"]).get_component(Relationships).get(
+            event["Other"]
+        ).add_tags("Enemy")
 
-        if eligible_characters:
-            return engine.rng.choice(eligible_characters)
-        return None
+        world.get_gameobject(event["Other"]).get_component(Relationships).get(
+            event["Initiator"]
+        ).add_tags("Enemy")
 
-    def execute(world: World, event: LifeEvent):
-        rel_graph = world.get_resource(RelationshipGraph)
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.Enemy
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.Enemy
-        )
-        return EventResult(generated_events=[event])
-
-    return LifeEventType(
+    return PatternLifeEvent(
         name="BecomeEnemies",
-        roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter]),
-            EventRoleType(
-                name="PersonB",
-                binder_fn=bind_potential_enemy,
-            ),
-        ],
-        execute_fn=execute,
+        pattern=querylib.Query(
+            find=("Initiator", "Other"),
+            clauses=[
+                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
+                querylib.where(querylib.has_components(Active), "Initiator"),
+                querylib.where(querylib.has_components(GameCharacter), "Other"),
+                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.ne_(("Initiator", "Other")),
+                querylib.where(friendship_lt(threshold), "Initiator", "Other"),
+                querylib.where(friendship_lt(threshold), "Other", "Initiator"),
+                querylib.where_not(
+                    relationship_has_tags("Enemy"), "Initiator", "Other"
+                ),
+            ],
+        ),
+        effect=effect,
         probability=probability,
     )
 
 
-def start_dating_event(threshold: int = 25, probability: float = 0.8) -> LifeEventType:
+def start_dating_event(threshold: float = 0.7, probability: float = 1.0) -> ILifeEvent:
     """Defines an event where two characters become friends"""
 
-    def potential_partner_filter(
-        world: World, gameobject: GameObject, **kwargs
-    ) -> bool:
-        event: LifeEvent = kwargs["event"]
-        rel_graph = world.get_resource(RelationshipGraph)
-        if rel_graph.has_connection(
-            event["PersonA"], gameobject.id
-        ) and rel_graph.has_connection(gameobject.id, event["PersonA"]):
-            return (
-                rel_graph.get_connection(event["PersonA"], gameobject.id).romance
-                >= threshold
-                and rel_graph.get_connection(gameobject.id, event["PersonA"]).romance
-                >= threshold
-            )
-        else:
-            return False
+    def effect(world: World, event: Event):
+        world.get_gameobject(event["Initiator"]).get_component(Relationships).get(
+            event["Other"]
+        ).add_tags("Dating", "Significant Other")
 
-    def execute(world: World, event: LifeEvent):
-        rel_graph = world.get_resource(RelationshipGraph)
+        world.get_gameobject(event["Other"]).get_component(Relationships).get(
+            event["Initiator"]
+        ).add_tags("Dating", "Significant Other")
 
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.SignificantOther
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.SignificantOther
-        )
-
-        person_a = world.get_gameobject(event["PersonA"])
-        person_b = world.get_gameobject(event["PersonB"])
-
-        person_a.add_component(
-            Dating(
-                partner_id=person_b.id,
-                partner_name=str(person_b.get_component(GameCharacter).name),
-            )
-        )
-        person_b.add_component(
-            Dating(
-                partner_id=person_a.id,
-                partner_name=str(person_a.get_component(GameCharacter).name),
-            )
-        )
-        return EventResult(generated_events=[event])
-
-    return LifeEventType(
+    return PatternLifeEvent(
         name="StartDating",
-        roles=[
-            EventRoleType(
-                name="PersonA", components=[GameCharacter], filter_fn=is_single
-            ),
-            EventRoleType(
-                name="PersonB",
-                components=[GameCharacter],
-                filter_fn=join_filters(potential_partner_filter, is_single),
-            ),
-        ],
-        execute_fn=execute,
+        pattern=querylib.Query(
+            find=("Initiator", "Other"),
+            clauses=[
+                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
+                querylib.where(querylib.has_components(Active), "Initiator"),
+                querylib.where(querylib.has_components(GameCharacter), "Other"),
+                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.ne_(("Initiator", "Other")),
+                querylib.where(romance_gt(threshold), "Initiator", "Other"),
+                querylib.where(romance_gt(threshold), "Other", "Initiator"),
+                querylib.where_not(
+                    relationship_has_tags("Significant Other"), "Other", "Other_Curr_SO"
+                ),
+                querylib.where_not(
+                    relationship_has_tags("Significant Other"),
+                    "Initiator",
+                    "Initiator_Curr_SO",
+                ),
+                querylib.where_not(
+                    relationship_has_tags("Significant Other"), "Other", "Initiator"
+                ),
+                querylib.where_not(
+                    relationship_has_tags("Family"), "Other", "Initiator"
+                ),
+                querylib.where(
+                    querylib.to_clause(is_single, GameCharacter), "Initiator"
+                ),
+                querylib.where(querylib.to_clause(is_single, GameCharacter), "Other"),
+            ],
+        ),
+        effect=effect,
         probability=probability,
     )
 
 
-def dating_break_up_event(
-    threshold: int = 5, probability: float = 0.8
-) -> LifeEventType:
-    """Defines an event where two characters stop dating"""
-
-    def bind_potential_ex(world: World, event: LifeEvent):
-        rel_graph = world.get_resource(RelationshipGraph)
-        dating = world.get_gameobject(event["PersonA"]).get_component(Dating)
-        partner = world.get_gameobject(dating.partner_id)
-
-        if (
-            rel_graph.get_connection(event["PersonA"], dating.partner_id).romance
-            < threshold
-        ):
-            return partner
-
-        if (
-            rel_graph.get_connection(dating.partner_id, event["PersonA"]).romance
-            < threshold
-        ):
-            return partner
-
-        # Just break up for no reason at all
-        if world.get_resource(NeighborlyEngine).rng.random() < 0.15:
-            return partner
-
-        return None
-
-    def execute(world: World, event: LifeEvent):
-        rel_graph = world.get_resource(RelationshipGraph)
-
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).remove_tags(
-            RelationshipTag.SignificantOther
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tags(
-            RelationshipTag.SignificantOther
-        )
-
-        world.get_gameobject(event["PersonA"]).remove_component(Dating)
-        world.get_gameobject(event["PersonB"]).remove_component(Dating)
-        return EventResult(generated_events=[event])
-
-    return LifeEventType(
-        name="DatingBreakUp",
-        roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter, Dating]),
-            EventRoleType(name="PersonB", binder_fn=bind_potential_ex),
-        ],
-        execute_fn=execute,
-        probability=probability,
-    )
-
-
-def divorce_event(threshold: int = -25, probability: float = 0.5) -> LifeEventType:
-    """Defines an event where two characters stop dating"""
-
-    def current_partner_filter(world: World, gameobject: GameObject, **kwargs) -> bool:
-        event: LifeEvent = kwargs["event"]
-        rel_graph = world.get_resource(RelationshipGraph)
-
-        if gameobject.has_component(Married):
-            if gameobject.get_component(Married).partner_id == event["PersonA"]:
-                return (
-                    rel_graph.get_connection(event["PersonA"], gameobject.id).romance
-                    < threshold
-                )
-
-        return False
-
-    def execute(world: World, event: LifeEvent):
-        rel_graph = world.get_resource(RelationshipGraph)
-
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).remove_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).remove_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
-        )
-
-        world.get_gameobject(event["PersonA"]).remove_component(Married)
-        world.get_gameobject(event["PersonB"]).remove_component(Married)
-        return EventResult(generated_events=[event])
-
-    return LifeEventType(
-        name="GotDivorced",
-        roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter]),
-            EventRoleType(
-                name="PersonB",
-                components=[GameCharacter],
-                filter_fn=current_partner_filter,
-            ),
-        ],
-        execute_fn=execute,
-        probability=probability,
-    )
-
-
-def marriage_event(threshold: int = 35, probability: float = 0.5) -> LifeEventType:
+def stop_dating_event(threshold: float = 0.4, probability: float = 1.0) -> ILifeEvent:
     """Defines an event where two characters become friends"""
 
-    def bind_potential_spouse(world: World, event: LifeEvent):
-        character = world.get_gameobject(event["PersonA"])
-        potential_spouse = world.get_gameobject(
-            character.get_component(Dating).partner_id
-        )
-        rel_graph = world.get_resource(RelationshipGraph)
+    def effect(world: World, event: Event):
+        world.get_gameobject(event["Initiator"]).get_component(Relationships).get(
+            event["Other"]
+        ).remove_tags("Dating", "Significant Other")
 
-        character_meets_thresh = (
-            rel_graph.get_connection(character.id, potential_spouse.id).romance
-            >= threshold
-        )
+        world.get_gameobject(event["Other"]).get_component(Relationships).get(
+            event["Initiator"]
+        ).remove_tags("Dating", "Significant Other")
 
-        potential_spouse_meets_thresh = (
-            rel_graph.get_connection(potential_spouse.id, character.id).romance
-            >= threshold
-        )
-
-        if character_meets_thresh and potential_spouse_meets_thresh:
-            return potential_spouse
-
-        return None
-
-    def execute(world: World, event: LifeEvent):
-        rel_graph = world.get_resource(RelationshipGraph)
-
-        rel_graph.get_connection(event["PersonA"], event["PersonB"]).add_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
-        )
-        rel_graph.get_connection(event["PersonB"], event["PersonA"]).add_tags(
-            RelationshipTag.SignificantOther | RelationshipTag.Spouse
-        )
-
-        person_a = world.get_gameobject(event["PersonA"])
-        person_b = world.get_gameobject(event["PersonB"])
-
-        person_a.remove_component(Dating)
-        person_b.remove_component(Dating)
-
-        person_a.add_component(
-            Married(
-                partner_id=person_b.id,
-                partner_name=str(person_b.get_component(GameCharacter).name),
-            )
-        )
-        person_b.add_component(
-            Married(
-                partner_id=person_a.id,
-                partner_name=str(person_a.get_component(GameCharacter).name),
-            )
-        )
-        return EventResult(generated_events=[event])
-
-    return LifeEventType(
-        name="GotMarried",
-        roles=[
-            EventRoleType(name="PersonA", components=[GameCharacter, Dating]),
-            EventRoleType(name="PersonB", binder_fn=bind_potential_spouse),
-        ],
-        execute_fn=execute,
+    return PatternLifeEvent(
+        name="DatingBreakUp",
+        pattern=querylib.Query(
+            find=("Initiator", "Other"),
+            clauses=[
+                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
+                querylib.where(querylib.has_components(Active), "Initiator"),
+                querylib.where(querylib.has_components(GameCharacter), "Other"),
+                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.ne_(("Initiator", "Other")),
+                querylib.where(romance_lt(threshold), "Initiator", "Other"),
+                querylib.where(romance_lt(threshold), "Other", "Initiator "),
+                querylib.where(relationship_has_tags("Dating"), "Initiator", "Other"),
+            ],
+        ),
+        effect=effect,
         probability=probability,
     )
 
 
-def depart_due_to_unemployment() -> LifeEventType:
-    def bind_unemployed_character(world: World, event: LifeEvent):
+def divorce_event(threshold: float = 0.4, probability: float = 1.0) -> ILifeEvent:
+    """Defines an event where two characters become friends"""
+
+    def effect(world: World, event: Event):
+        world.get_gameobject(event["Initiator"]).get_component(Relationships).get(
+            event["Other"]
+        ).remove_tags("Spouse", "Significant Other")
+
+        world.get_gameobject(event["Other"]).get_component(Relationships).get(
+            event["Initiator"]
+        ).remove_tags("Spouse", "Significant Other")
+
+    return PatternLifeEvent(
+        name="Divorce",
+        pattern=querylib.Query(
+            find=("Initiator", "Other"),
+            clauses=[
+                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
+                querylib.where(querylib.has_components(Active), "Initiator"),
+                querylib.where(querylib.has_components(GameCharacter), "Other"),
+                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.ne_(("Initiator", "Other")),
+                querylib.where(romance_lt(threshold), "Initiator", "Other"),
+                querylib.where(romance_lt(threshold), "Other", "Initiator "),
+                querylib.where(relationship_has_tags("Spouse"), "Initiator", "Other"),
+            ],
+        ),
+        effect=effect,
+        probability=probability,
+    )
+
+
+def marriage_event(threshold: float = 0.7, probability: float = 1.0) -> ILifeEvent:
+    """Defines an event where two characters become friends"""
+
+    def effect(world: World, event: Event):
+        world.get_gameobject(event["Initiator"]).get_component(Relationships).get(
+            event["Other"]
+        ).add_tags("Spouse", "Significant Other")
+
+        world.get_gameobject(event["Initiator"]).get_component(Relationships).get(
+            event["Other"]
+        ).remove_tags("Dating")
+
+        world.get_gameobject(event["Other"]).get_component(Relationships).get(
+            event["Initiator"]
+        ).add_tags("Spouse", "Significant Other")
+
+        world.get_gameobject(event["Other"]).get_component(Relationships).get(
+            event["Initiator"]
+        ).remove_tags("Dating")
+
+    return PatternLifeEvent(
+        name="GetMarried",
+        pattern=querylib.Query(
+            find=("Initiator", "Other"),
+            clauses=[
+                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
+                querylib.where(querylib.has_components(Active), "Initiator"),
+                querylib.where(querylib.has_components(GameCharacter), "Other"),
+                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.ne_(("Initiator", "Other")),
+                querylib.where(romance_gt(threshold), "Initiator", "Other"),
+                querylib.where(romance_gt(threshold), "Other", "Initiator "),
+                querylib.where(relationship_has_tags("Dating"), "Initiator", "Other"),
+            ],
+        ),
+        effect=effect,
+        probability=probability,
+    )
+
+
+def depart_due_to_unemployment() -> ILifeEvent:
+    def bind_unemployed_character(
+        world: World, event: Event, candidate: Optional[GameObject]
+    ):
         eligible_characters: List[GameObject] = []
-        for _, unemployed in world.get_component(Unemployed):
+        for _, (unemployed, _) in world.get_components(Unemployed, Active):
             if unemployed.duration_days > 30:
                 eligible_characters.append(unemployed.gameobject)
         if eligible_characters:
             return world.get_resource(NeighborlyEngine).rng.choice(eligible_characters)
         return None
 
-    def effect(world: World, event: LifeEvent):
-        world.get_gameobject(event["Person"]).archive()
-        return EventResult(generated_events=[event])
+    def effect(world: World, event: Event):
+        departed = world.get_gameobject(event["Person"])
+        departed.remove_component(Active)
+        departed.add_component(Departed())
+        move_to_location(world, departed, None)
 
-    return LifeEventType(
-        name="DepartTown",
-        roles=[EventRoleType(name="Person", binder_fn=bind_unemployed_character)],
-        execute_fn=effect,
+    return LifeEvent(
+        name="DepartDueToUnemployment",
+        roles=[LifeEventRoleType(name="Person", binder_fn=bind_unemployed_character)],
+        effect=effect,
+        probability=1,
     )
 
 
-def pregnancy_event(probability: float = 0.3) -> LifeEventType:
+def pregnancy_event() -> ILifeEvent:
     """Defines an event where two characters stop dating"""
 
-    def can_get_pregnant_filter(world: World, gameobject: GameObject, **kwargs) -> bool:
-        return gameobject.get_component(
-            GameCharacter
-        ).can_get_pregnant and not gameobject.has_component(Pregnant)
-
-    def bind_current_partner(world: World, event: LifeEvent) -> Optional[GameObject]:
-        person_a = world.get_gameobject(event["PersonA"])
-        if person_a.has_component(Married):
-            return world.get_gameobject(person_a.get_component(Married).partner_id)
-        return None
-
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         due_date = SimDateTime.from_iso_str(
             world.get_resource(SimDateTime).to_iso_str()
         )
         due_date.increment(months=9)
 
-        world.get_gameobject(event["PersonA"]).add_component(
+        world.get_gameobject(event["PregnantOne"]).add_component(
             Pregnant(
                 partner_name=str(
-                    world.get_gameobject(event["PersonB"])
-                    .get_component(GameCharacter)
-                    .name
+                    world.get_gameobject(event["Other"]).get_component(CharacterName)
                 ),
-                partner_id=event["PersonB"],
+                partner_id=event["Other"],
                 due_date=due_date,
             )
         )
-        return EventResult(generated_events=[event])
 
-    return LifeEventType(
+    def prob_fn(world: World, event: Event):
+        gameobject = world.get_gameobject(event["PregnantOne"])
+        children = gameobject.get_component(Relationships).get_all_with_tags("Child")
+        if len(children) >= 5:
+            return 0.0
+        else:
+            return 4.0 - len(children) / 8.0
+
+    return PatternLifeEvent(
         name="GotPregnant",
-        roles=[
-            EventRoleType(
-                name="PersonA",
-                components=[GameCharacter],
-                filter_fn=can_get_pregnant_filter,
-            ),
-            EventRoleType(name="PersonB", binder_fn=bind_current_partner),
-        ],
-        execute_fn=execute,
-        probability=probability,
+        pattern=querylib.Query(
+            find=("PregnantOne", "Other"),
+            clauses=[
+                querylib.where(querylib.has_components(GameCharacter), "PregnantOne"),
+                querylib.where(querylib.has_components(Active), "PregnantOne"),
+                querylib.where(querylib.has_components(CanGetPregnant), "PregnantOne"),
+                querylib.where_not(querylib.has_components(Pregnant), "PregnantOne"),
+                querylib.where(querylib.has_components(GameCharacter), "Other"),
+                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.ne_(("PregnantOne", "Other")),
+                querylib.where_any(
+                    querylib.where(
+                        relationship_has_tags("Dating"), "PregnantOne", "Other"
+                    ),
+                    querylib.where(
+                        relationship_has_tags("Married"), "PregnantOne", "Other"
+                    ),
+                ),
+            ],
+        ),
+        effect=execute,
+        probability=prob_fn,
     )
 
 
-def retire_event(probability: float = 0.4) -> LifeEventType:
+def retire_event(probability: float = 0.4) -> ILifeEvent:
     """
     Event for characters retiring from working after reaching elder status
 
     Parameters
     ----------
     probability: float
-        Probability that a character will retire from their job
+        Probability that an entity will retire from their job
         when they are an elder
 
     Returns
     -------
-    LifeEventType
+    LifeEvent
         LifeEventType instance with all configuration defined
     """
 
-    def bind_retiree(world: World, event: LifeEvent):
+    def bind_retiree(world: World, event: Event, candidate: Optional[GameObject]):
         eligible_characters: List[GameObject] = []
-        for gid, _ in world.get_components(Elder, Occupation):
+        for gid, _ in world.get_components(Elder, Occupation, Active):
             gameobject = world.get_gameobject(gid)
             if not gameobject.has_component(Retired):
                 eligible_characters.append(gameobject)
@@ -467,40 +379,46 @@ def retire_event(probability: float = 0.4) -> LifeEventType:
             return world.get_resource(NeighborlyEngine).rng.choice(eligible_characters)
         return None
 
-    def execute(world: World, event: LifeEvent):
-        retiree = world.get_gameobject(event["Retiree"])
-        retiree.remove_component(Occupation)
-        retiree.add_component(Retired())
-        return EventResult(generated_events=[event])
+    def bind_business(world: World, event: Event, candidate: Optional[GameObject]):
+        return world.get_gameobject(
+            world.get_gameobject(event["Retiree"]).get_component(Occupation).business
+        )
 
-    return LifeEventType(
+    def execute(world: World, event: Event):
+        retiree = world.get_gameobject(event["Retiree"])
+        retiree.add_component(Retired())
+
+    return LifeEvent(
         name="Retire",
-        roles=[EventRoleType(name="Retiree", binder_fn=bind_retiree)],
-        execute_fn=execute,
+        roles=[
+            LifeEventRoleType(name="Retiree", binder_fn=bind_retiree),
+            LifeEventRoleType(name="Business", binder_fn=bind_business),
+        ],
+        effect=execute,
         probability=probability,
     )
 
 
-def find_own_place_event(probability: float = 0.1) -> LifeEventType:
-    def bind_potential_mover(world: World, event: LifeEvent):
-        eligible: List[int] = []
-        for gid, (_, _, _, resident) in world.get_components(
-            GameCharacter, Occupation, Adult, Resident
+def find_own_place_event(probability: float = 0.1) -> ILifeEvent:
+    def bind_potential_mover(world: World) -> List[Tuple[Any, ...]]:
+        eligible: List[Tuple[Any, ...]] = []
+
+        for gid, (_, _, _, resident, _) in world.get_components(
+            GameCharacter, Occupation, Adult, Resident, Active
         ):
+            resident = cast(Resident, resident)
             residence = world.get_gameobject(resident.residence).get_component(
                 Residence
             )
             if gid not in residence.owners:
-                eligible.append(gid)
-        return None
+                eligible.append((gid,))
+
+        return eligible
 
     def find_vacant_residences(world: World) -> List[Residence]:
         """Try to find a vacant residence to move into"""
         return list(
-            filter(
-                lambda res: res.is_vacant(),
-                map(lambda pair: pair[1], world.get_component(Residence)),
-            )
+            map(lambda pair: pair[1][0], world.get_components(Residence, Vacant))
         )
 
     def choose_random_vacant_residence(world: World) -> Optional[Residence]:
@@ -510,29 +428,135 @@ def find_own_place_event(probability: float = 0.1) -> LifeEventType:
             return world.get_resource(NeighborlyEngine).rng.choice(vacancies)
         return None
 
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         # Try to find somewhere to live
         character = world.get_gameobject(event["Character"])
         vacant_residence = choose_random_vacant_residence(world)
         if vacant_residence:
             # Move into house with any dependent children
-            move_residence(character.get_component(GameCharacter), vacant_residence)
+            move_residence(character, vacant_residence.gameobject)
 
         # Depart if no housing could be found
         else:
-            world.get_gameobject(event["Person"]).archive()
-            world.get_resource(LifeEventLog).record_event(
-                LifeEvent(
-                    "DepartTown",
-                    timestamp=world.get_resource(SimDateTime).to_iso_str(),
-                    roles=[EventRole("Departee", event["Person"])],
-                )
-            )
-        return EventResult(generated_events=[event])
+            depart = depart_event()
 
-    return LifeEventType(
+            residence = world.get_gameobject(
+                character.get_component(Resident).residence
+            ).get_component(Residence)
+
+            depart.try_execute_event(world, Character=character)
+
+            # Have all spouses depart
+            # Allows for polygamy
+            for rel in character.get_component(Relationships).get_all_with_tags(
+                "Spouse"
+            ):
+                spouse = world.get_gameobject(rel.target)
+                depart.try_execute_event(world, Character=spouse)
+
+            # Have all children living in the same house depart
+            for rel in character.get_component(Relationships).get_all_with_tags(
+                "Child"
+            ):
+                child = world.get_gameobject(rel.target)
+                if child.id in residence.residents and child.id not in residence.owners:
+                    depart.try_execute_event(world, Character=child)
+
+    return PatternLifeEvent(
         name="FindOwnPlace",
         probability=probability,
-        roles=[EventRoleType("Character", binder_fn=bind_potential_mover)],
-        execute_fn=execute,
+        pattern=querylib.Query(
+            ("Character",), [querylib.where(bind_potential_mover, "Character")]
+        ),
+        effect=execute,
+    )
+
+
+def depart_event() -> ILifeEvent:
+    def execute(world: World, event: Event):
+        character = world.get_gameobject(event["Character"])
+        character.remove_component(Active)
+        character.add_component(Departed())
+        move_to_location(world, character, None)
+
+    return LifeEvent(
+        name="Depart",
+        roles=[LifeEventRoleType("Character")],
+        effect=execute,
+        probability=1,
+    )
+
+
+def die_of_old_age(probability: float = 0.8) -> ILifeEvent:
+    def execute(world: World, event: Event) -> None:
+        deceased = world.get_gameobject(event["Deceased"])
+        deceased.add_component(Deceased())
+        deceased.remove_component(Active)
+
+    return PatternLifeEvent(
+        name="DieOfOldAge",
+        probability=probability,
+        pattern=querylib.Query(
+            ("Deceased",),
+            [
+                querylib.where(
+                    querylib.has_components(GameCharacter, Active), "Deceased"
+                ),
+                querylib.where(
+                    querylib.component_attr(Age, "value"), "Deceased", "Age"
+                ),
+                querylib.where(
+                    querylib.component_attr(Lifespan, "value"), "Deceased", "Lifespan"
+                ),
+                querylib.ge_(("Age", "Lifespan")),
+            ],
+        ),
+        effect=execute,
+    )
+
+
+def death_event() -> ILifeEvent:
+    def execute(world: World, event: Event):
+        deceased = world.get_gameobject(event["Deceased"])
+        deceased.add_component(Deceased())
+        deceased.remove_component(Active)
+        move_to_location(world, deceased, None)
+
+    return LifeEvent(
+        name="Death",
+        roles=[LifeEventRoleType("Deceased")],
+        effect=execute,
+        probability=1.0,
+    )
+
+
+def go_out_of_business_event() -> ILifeEvent:
+    def effect(world: World, event: Event):
+        business = world.get_gameobject(event["Business"])
+        business.remove_component(OpenForBusiness)
+        business.add_component(ClosedForBusiness())
+        if business.has_component(OpenToPublic):
+            business.remove_component(OpenToPublic)
+
+    def probability_fn(world: World, event: Event) -> float:
+        business = world.get_gameobject(event["Business"])
+        lifespan = business.get_component(Lifespan).value
+        age = business.get_component(Age).value
+        if age < lifespan:
+            return age / lifespan
+        else:
+            return 0.8
+
+    return PatternLifeEvent(
+        name="GoOutOfBusiness",
+        pattern=querylib.Query(
+            find=("Business",),
+            clauses=[
+                querylib.where(querylib.has_components(Business), "Business"),
+                querylib.where(querylib.has_components(OpenForBusiness), "Business"),
+                querylib.where(querylib.has_components(Active), "Business"),
+            ],
+        ),
+        effect=effect,
+        probability=probability_fn,
     )

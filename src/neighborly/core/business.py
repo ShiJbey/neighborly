@@ -1,26 +1,41 @@
 from __future__ import annotations
 
-import functools
 import logging
 import math
+import re
+from abc import ABC
 from dataclasses import dataclass
-from enum import Enum, IntFlag
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Set, Tuple
 
+from neighborly.builtin.components import Active
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.ecs import Component, GameObject, World, component_info
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.residence import Resident
-from neighborly.core.routine import RoutineEntry, RoutinePriority
-from neighborly.core.time import SimDateTime
+from neighborly.core.event import Event
+from neighborly.core.routine import (
+    Routine,
+    RoutineEntry,
+    RoutinePriority,
+    time_str_to_int,
+)
+from neighborly.core.time import SimDateTime, Weekday
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class BusinessInfo:
+    min_population: int
+    max_instances: int
+    demise: int
+
+
+__business_info_registry: Dict[str, BusinessInfo] = {}
+
+
 class IOccupationPreconditionFn(Protocol):
     """
-    A function that must evaluate to True for a character to
+    A function that must evaluate to True for an entity to
     be eligible to hold the occupation.
 
     Notes
@@ -32,7 +47,7 @@ class IOccupationPreconditionFn(Protocol):
 
     def __call__(self, world: World, gameobject: GameObject, **kwargs: Any) -> bool:
         """
-        A function that must evaluate to True for a character to
+        A function that must evaluate to True for an entity to
         be eligible to hold the occupation.
 
         Arguments
@@ -44,7 +59,7 @@ class IOccupationPreconditionFn(Protocol):
 
         Returns
         -------
-        bool: True if the character is eligible for the occupation
+        bool: True if the entity is eligible for the occupation
             False otherwise
         """
         raise NotImplementedError()
@@ -93,11 +108,14 @@ class OccupationType:
 
     name: str
     level: int = 1
+    description: str = ""
     precondition: Optional[IOccupationPreconditionFn] = None
 
-    def fill_role(self, world: World, business: Business) -> Optional[Occupation]:
+    def fill_role(
+        self, world: World, business: Business
+    ) -> Optional[Tuple[GameObject, Occupation]]:
         """
-        Attempt to find a component character that meets the preconditions
+        Attempt to find a component entity that meets the preconditions
         for this occupation
         """
         candidate_list: List[GameObject] = list(
@@ -105,7 +123,7 @@ class OccupationType:
                 lambda g: self.precondition(world, g) if self.precondition else True,
                 map(
                     lambda res: world.get_gameobject(res[0]),
-                    world.get_components(GameCharacter, Resident),
+                    world.get_components(GameCharacter, Unemployed, Active),
                 ),
             )
         )
@@ -114,116 +132,146 @@ class OccupationType:
             chosen_candidate = world.get_resource(NeighborlyEngine).rng.choice(
                 candidate_list
             )
-            occupation = Occupation(self, business.id)
-            chosen_candidate.add_component(occupation)
-            return occupation
+            return chosen_candidate, Occupation(
+                occupation_type=self.name,
+                business=business.gameobject.id,
+                level=self.level,
+                start_date=world.get_resource(SimDateTime).copy(),
+            )
         return None
 
+    def fill_role_with(
+        self, world: World, business: Business, candidate: GameObject
+    ) -> Optional[Occupation]:
+        if self.precondition:
+            if self.precondition(world, candidate):
+                return Occupation(
+                    occupation_type=self.name,
+                    business=business.gameobject.id,
+                    level=self.level,
+                    start_date=world.get_resource(SimDateTime).copy(),
+                )
+            else:
+                return None
+        else:
+            return Occupation(
+                occupation_type=self.name,
+                business=business.gameobject.id,
+                level=self.level,
+                start_date=world.get_resource(SimDateTime).copy(),
+            )
 
-class OccupationTypeLibrary:
+    def __repr__(self) -> str:
+        return f"OccupationType(name={self.name}, level={self.level})"
+
+
+class OccupationTypes:
     """Stores OccupationType instances mapped to strings for lookup at runtime"""
 
-    _registry: ClassVar[Dict[str, OccupationType]] = {}
+    _registry: Dict[str, OccupationType] = {}
 
     @classmethod
     def add(
         cls,
         occupation_type: OccupationType,
-        name: str = None,
-        overwrite_ok: bool = False,
+        name: Optional[str] = None,
     ) -> None:
         entry_key = name if name else occupation_type.name
-        # if entry_key in cls._registry and not overwrite_ok:
-        #     logger.warning(f"Attempted to overwrite OcuppationType: ({entry_key})")
-        #     return
+        if entry_key in cls._registry:
+            logger.debug(f"Overwriting OccupationType: ({entry_key})")
         cls._registry[entry_key] = occupation_type
 
     @classmethod
     def get(cls, name: str) -> OccupationType:
+        """
+        Get an OccupationType by name
+
+        Parameters
+        ----------
+        name: str
+            The registered name of the OccupationType
+
+        Returns
+        -------
+        OccupationType
+
+        Raises
+        ------
+        KeyError
+            When there is not an OccupationType
+            registered to that name
+        """
         return cls._registry[name]
 
 
 class Occupation(Component):
     """
-    Employment Information about a character
+    Employment Information about an entity
     """
 
-    __slots__ = "_occupation_def", "_years_held", "_business"
-
-    _definition_registry: Dict[str, OccupationType] = {}
+    __slots__ = "_occupation_type", "_years_held", "_business", "_level", "_start_date"
 
     def __init__(
         self,
-        occupation_type: OccupationType,
+        occupation_type: str,
         business: int,
+        level: int,
+        start_date: SimDateTime,
     ) -> None:
         super().__init__()
-        self._occupation_def: OccupationType = occupation_type
+        self._occupation_type: str = occupation_type
         self._business: int = business
+        self._level: int = level
         self._years_held: float = 0.0
+        self._start_date: SimDateTime = start_date
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "occupation_def": self._occupation_def.name,
+            "occupation_type": self._occupation_type,
+            "level": self._level,
             "business": self._business,
-            "years_held": self.get_years_held(),
+            "years_held": self._years_held,
         }
 
-    def get_type(self) -> OccupationType:
-        return self._occupation_def
-
-    def get_business(self) -> int:
+    @property
+    def business(self) -> int:
         return self._business
 
-    def get_years_held(self) -> int:
+    @property
+    def years_held(self) -> int:
         return math.floor(self._years_held)
+
+    @property
+    def level(self) -> int:
+        return self._level
+
+    @property
+    def occupation_type(self) -> str:
+        return self._occupation_type
+
+    @property
+    def start_date(self) -> SimDateTime:
+        return self._start_date
 
     def increment_years_held(self, years: float) -> None:
         self._years_held += years
 
-    @classmethod
-    def create(cls, world, business: int = -1, **kwargs) -> Occupation:
-        type_name = kwargs["name"]
-        level = kwargs.get("level", 1)
-        preconditions = kwargs.get("preconditions", [])
-        return Occupation(
-            cls.get_occupation_definition(type_name, level, preconditions),
-            business=business,
+    def __repr__(self) -> str:
+        return "Occupation(occupation_type={}, business={}, level={}, years_held={})".format(
+            self.occupation_type, self.business, self.level, self.years_held
         )
-
-    @classmethod
-    def get_occupation_definition(
-        cls, name: str, level: int, precondition: IOccupationPreconditionFn
-    ) -> OccupationType:
-        if name not in cls._definition_registry:
-            cls._definition_registry[name] = OccupationType(
-                name=name, level=level, precondition=precondition
-            )
-        return cls._definition_registry[name]
-
-    def on_remove(self) -> None:
-        """Run when the component is removed from the GameObject"""
-        world = self.gameobject.world
-        workplace = world.get_gameobject(self._business).get_component(Business)
-        if workplace.owner != self.gameobject.id:
-            workplace.remove_employee(self.gameobject.id)
-        else:
-            workplace.owner = None
-
-    def on_archive(self) -> None:
-        self.gameobject.remove_component(type(self))
 
 
 @dataclass
 class WorkHistoryEntry:
-    """Record of a job held by a character"""
+    """Record of a job held by an entity"""
 
     occupation_type: str
     business: int
     start_date: SimDateTime
     end_date: SimDateTime
-    reason_for_leaving: Optional[LifeEvent] = None
+    reason_for_leaving: Optional[Event] = None
 
     @property
     def years_held(self) -> int:
@@ -246,10 +294,20 @@ class WorkHistoryEntry:
 
         return ret
 
+    def __repr__(self) -> str:
+        return (
+            "WorkHistoryEntry(type={}, business={}, start_date={}, end_date={})".format(
+                self.occupation_type,
+                self.business,
+                self.start_date.to_iso_str(),
+                self.end_date.to_iso_str() if self.end_date else "N/A",
+            )
+        )
+
 
 class WorkHistory(Component):
     """
-    Stores information about all the jobs that a character
+    Stores information about all the jobs that an entity
     has held
 
     Attributes
@@ -265,13 +323,17 @@ class WorkHistory(Component):
         self._chronological_history: List[WorkHistoryEntry] = []
         self._categorical_history: Dict[str, List[WorkHistoryEntry]] = {}
 
+    @property
+    def entries(self) -> List[WorkHistoryEntry]:
+        return self._chronological_history
+
     def add_entry(
         self,
         occupation_type: str,
         business: int,
         start_date: SimDateTime,
         end_date: SimDateTime,
-        reason_for_leaving: Optional[LifeEvent] = None,
+        reason_for_leaving: Optional[Event] = None,
     ) -> None:
         """Add an entry to the work history"""
         entry = WorkHistoryEntry(
@@ -289,17 +351,11 @@ class WorkHistory(Component):
 
         self._categorical_history[occupation_type].append(entry)
 
-    def has_experience_as_a(self, occupation_type: str) -> bool:
-        """Return True if the work history has an entry for a given occupation type"""
-        return occupation_type in self._categorical_history
-
-    def total_experience_as_a(self, occupation_type: str) -> int:
-        """Return the total years of experience someone has as a given occupation type"""
-        return functools.reduce(
-            lambda _sum, _entry: _sum + _entry.years_held,
-            self._categorical_history.get(occupation_type, []),
-            0,
-        )
+    def get_last_entry(self) -> Optional[WorkHistoryEntry]:
+        """Get the latest entry to WorkHistory"""
+        if self._chronological_history:
+            return self._chronological_history[-1]
+        return None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -310,93 +366,152 @@ class WorkHistory(Component):
     def __len__(self) -> int:
         return len(self._chronological_history)
 
-
-class BusinessService(IntFlag):
-    NONE = 0
-    DRINKING = 1 << 0
-    BANKING = 1 << 1
-    COLLEGE_EDUCATION = 1 << 2
-    CONSTRUCTION = 1 << 3
-    COSMETICS = 1 << 4
-    CLOTHING = 1 << 5
-    FIRE_EMERGENCY = 1 << 6
-    FOOD = 1 << 7
-    HARDWARE = 1 << 8
-    HOME_IMPROVEMENT = 1 << 9
-    HOUSING = 1 << 10
-    LEGAL = 1 << 11
-    MEDICAL_EMERGENCY = 1 << 12
-    MORTICIAN = 1 << 13
-    RECREATION = 1 << 14
-    PUBLIC_SERVICE = 1 << 15
-    PRIMARY_EDUCATION = 1 << 16
-    REALTY = 1 << 17
-    SECONDARY_EDUCATION = 1 << 18
-    SHOPPING = 1 << 19
-    SOCIALIZING = 1 << 20
-    ERRANDS = 1 << 21
+    def __repr__(self) -> str:
+        return "WorkHistory({})".format(
+            [e.__repr__() for e in self._chronological_history]
+        )
 
 
-class BusinessStatus(Enum):
-    PendingOpening = 0
-    OpenForBusiness = 1
-    ClosedForBusiness = 2
+class ServiceType:
+    """A service that can be offered by a business establishment"""
+
+    __slots__ = "_uid", "_name"
+
+    def __init__(self, uid: int, name: str) -> None:
+        self._uid = uid
+        self._name = name
+
+    @property
+    def uid(self) -> int:
+        return self._uid
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def __hash__(self) -> int:
+        return self._uid
+
+    def __eq__(self, other: ServiceType) -> bool:
+        return self.uid == other.uid
+
+
+class ServiceTypes:
+    """
+    Repository of various services offered
+    """
+
+    _next_id: int = 1
+    _name_to_service: Dict[str, ServiceType] = {}
+    _id_to_name: Dict[int, str] = {}
+
+    @classmethod
+    def __contains__(cls, service_name: str) -> bool:
+        """Return True if a service type exists with the given name"""
+        return service_name.lower() in cls._name_to_service
+
+    @classmethod
+    def get(cls, service_name: str) -> ServiceType:
+        lc_service_name = service_name.lower()
+
+        if lc_service_name in cls._name_to_service:
+            return cls._name_to_service[lc_service_name]
+
+        uid = cls._next_id
+        cls._next_id = cls._next_id + 1
+        service_type = ServiceType(uid, lc_service_name)
+        cls._name_to_service[lc_service_name] = service_type
+        cls._id_to_name[uid] = lc_service_name
+
+
+class Services(Component):
+
+    __slots__ = "_services"
+
+    def __init__(self, services: Set[ServiceType]) -> None:
+        super().__init__()
+        self._services: Set[ServiceType] = services
+
+    def __contains__(self, service_name: str) -> bool:
+        return ServiceTypes.get(service_name) in self._services
+
+    def has_service(self, service: ServiceType) -> bool:
+        return service in self._services
+
+
+@component_info(
+    "Closed For Business",
+    "This business is no longer open and nobody works here.",
+)
+class ClosedForBusiness(Component):
+    pass
+
+
+@component_info(
+    "Open For Business",
+    "This business open for business and people can travel here.",
+)
+class OpenForBusiness(Component):
+
+    __slots__ = "duration"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.duration: float = 0.0
+
+
+@component_info(
+    "Pending Opening",
+    "This business is built, but has no owner.",
+)
+class PendingOpening(Component):
+
+    __slots__ = "duration"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.duration: float = 0.0
+
+
+class IBusinessType(Component, ABC):
+    """Empty interface for creating types of businesses like Restaurants, ETC"""
+
+    pass
 
 
 class Business(Component):
     __slots__ = (
-        "business_type",
-        "name",
-        "_years_in_business",
         "operating_hours",
         "_employees",
         "_open_positions",
         "owner",
         "owner_type",
-        "status",
-        "services",
     )
 
     def __init__(
         self,
-        business_type: str,
-        name: str,
-        owner_type: str = None,
-        owner: int = None,
-        open_positions: Dict[str, int] = None,
-        operating_hours: Dict[str, List[RoutineEntry]] = None,
-        services: BusinessService = BusinessService.NONE,
+        owner_type: Optional[str] = None,
+        owner: Optional[int] = None,
+        open_positions: Optional[Dict[str, int]] = None,
+        operating_hours: Optional[Dict[Weekday, Tuple[int, int]]] = None,
     ) -> None:
         super().__init__()
-        self.business_type: str = business_type
         self.owner_type: Optional[str] = owner_type
-        self.name: str = name
-        # self._operating_hours: Dict[str, List[RoutineEntry]] = self._create_routines(
-        #     parse_schedule_str(business_def.hours)
-        # )
-        self.operating_hours: Dict[str, List[RoutineEntry]] = (
+        self.operating_hours: Dict[Weekday, Tuple[int, int]] = (
             operating_hours if operating_hours else {}
         )
         self._open_positions: Dict[str, int] = open_positions if open_positions else {}
         self._employees: Dict[int, str] = {}
         self.owner: Optional[int] = owner
-        self.status: BusinessStatus = BusinessStatus.PendingOpening
-        self._years_in_business: float = 0.0
-        self.services: BusinessService = services
-
-    @property
-    def years_in_business(self) -> int:
-        return math.floor(self._years_in_business)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "business_type": self.business_type,
-            "name": self.name,
             "operating_hours": self.operating_hours,
-            "open_positions": self.operating_hours,
+            "open_positions": self._open_positions,
             "employees": self.get_employees(),
             "owner": self.owner if self.owner is not None else -1,
+            "owner_type": self.owner_type if self.owner_type is not None else "",
         }
 
     def needs_owner(self) -> bool:
@@ -409,28 +524,24 @@ class Business(Component):
         """Return a list of IDs for current employees"""
         return list(self._employees.keys())
 
+    def set_owner(self, owner: Optional[int]) -> None:
+        """Set the ID for the owner of the business"""
+        self.owner = owner
+
     def add_employee(self, character: int, position: str) -> None:
-        """Add character to employees and remove a vacant position"""
+        """Add entity to employees and remove a vacant position"""
         self._employees[character] = position
         self._open_positions[position] -= 1
 
     def remove_employee(self, character: int) -> None:
-        """Remove a character as an employee and add a vacant position"""
+        """Remove an entity as an employee and add a vacant position"""
         position = self._employees[character]
         del self._employees[character]
         self._open_positions[position] += 1
 
-    def set_business_status(self, status: BusinessStatus) -> None:
-        self.status = status
-
-    def increment_years_in_business(self, years: float) -> None:
-        self._years_in_business += years
-
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "Business(type='{}', name='{}', owner={}, employees={}, openings={})".format(
-            self.business_type,
-            self.name,
+        return "Business(owner={}, employees={}, openings={})".format(
             self.owner,
             self._employees,
             self._open_positions,
@@ -438,97 +549,156 @@ class Business(Component):
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Business:
-        engine = world.get_resource(NeighborlyEngine)
 
-        business_type: str = kwargs["business_type"]
-        business_name: str = engine.name_generator.get_name(
-            kwargs.get("name_format", business_type)
-        )
         owner_type: Optional[str] = kwargs.get("owner_type")
         employee_types: Dict[str, int] = kwargs.get("employee_types", {})
-        services: BusinessService = kwargs.get("services", BusinessService.NONE)
-        operating_hours: Dict[str, List[RoutineEntry]] = to_operating_hours(
-            kwargs.get("hours", [])
+        operating_hours: Dict[Weekday, Tuple[int, int]] = parse_operating_hour_str(
+            kwargs.get("hours", "day")
         )
 
         return Business(
-            business_type=business_type,
-            name=business_name,
             open_positions=employee_types,
-            services=services,
             owner_type=owner_type,
             operating_hours=operating_hours,
         )
 
-    @staticmethod
-    def _create_routines(
-        times: Dict[str, Tuple[int, int]]
-    ) -> Dict[str, List[RoutineEntry]]:
+    def create_routines(self) -> Dict[Weekday, RoutineEntry]:
         """Create routine entries given tuples of time intervals mapped to days of the week"""
-        schedules: Dict[str, list[RoutineEntry]] = {}
+        routine_entries: Dict[Weekday, RoutineEntry] = {}
 
-        for day, (opens, closes) in times.items():
-            routine_entries: List[RoutineEntry] = []
+        for day, (opens, closes) in self.operating_hours.items():
+            routine_entries[day] = RoutineEntry(
+                start=opens,
+                end=closes,
+                location=self.gameobject.id,
+                priority=RoutinePriority.HIGH,
+                tags=["work"],
+            )
 
-            if opens > closes:
-                # Night shift business have their schedules
-                # split between two entries
-                routine_entries.append(
-                    RoutineEntry(
-                        start=opens,
-                        end=24,
-                        activity="working",
-                        location="work",
-                        priority=RoutinePriority.HIGH,
-                    )
-                )
-
-                routine_entries.append(
-                    RoutineEntry(
-                        start=0,
-                        end=closes,
-                        activity="working",
-                        location="work",
-                        priority=RoutinePriority.HIGH,
-                    )
-                )
-            elif opens < closes:
-                # Day shift business
-                routine_entries.append(
-                    RoutineEntry(
-                        start=opens,
-                        end=closes,
-                        activity="working",
-                        location="work",
-                        priority=RoutinePriority.HIGH,
-                    )
-                )
-            else:
-                raise ValueError("Opening and closing times must be different")
-
-            schedules[day] = routine_entries
-
-        return schedules
+        return routine_entries
 
 
-def to_operating_hours(str_hours: List[str]) -> Dict[str, List[RoutineEntry]]:
+@component_info(
+    "Unemployed",
+    "Character doesn't have a job",
+)
+class Unemployed(Component):
+    __slots__ = "duration_days"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.duration_days: float = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "duration_days": self.duration_days}
+
+
+@component_info(
+    "In the Workforce",
+    "This Character is eligible for employment opportunities.",
+)
+class InTheWorkforce(Component):
+    pass
+
+
+def start_job(
+    business: Business,
+    character: GameCharacter,
+    occupation: Occupation,
+    is_owner: bool = False,
+) -> None:
+    if is_owner:
+        business.owner = character.gameobject.id
+    else:
+        business.add_employee(character.gameobject.id, occupation.occupation_type)
+
+    character.gameobject.add_component(occupation)
+
+    if character.gameobject.has_component(Unemployed):
+        character.gameobject.remove_component(Unemployed)
+
+    character_routine = character.gameobject.get_component(Routine)
+    for day, interval in business.operating_hours.items():
+        character_routine.add_entries(
+            f"work_@_{business.gameobject.id}",
+            [day],
+            RoutineEntry(
+                start=interval[0],
+                end=interval[1],
+                location=business.gameobject.id,
+                priority=RoutinePriority.MED,
+            ),
+        )
+
+
+def end_job(business: Business, character: GameObject, occupation: Occupation) -> None:
+    world = character.world
+
+    if business.owner_type is not None and business.owner == character.id:
+        business.set_owner(None)
+    else:
+        business.remove_employee(character.id)
+
+    if not character.has_component(WorkHistory):
+        character.add_component(WorkHistory())
+
+    character.remove_component(Occupation)
+
+    character.get_component(WorkHistory).add_entry(
+        occupation_type=occupation.occupation_type,
+        business=business.gameobject.id,
+        start_date=occupation.start_date,
+        end_date=world.get_resource(SimDateTime).copy(),
+    )
+
+    # Remove routine entries
+    character_routine = character.get_component(Routine)
+    for day, _ in business.operating_hours.items():
+        character_routine.remove_entries(
+            [day],
+            f"work_@_{business.gameobject.id}",
+        )
+
+
+def parse_operating_hour_str(
+    operating_hours_str: str,
+) -> Dict[Weekday, Tuple[int, int]]:
     """
-    Convert a list of string with times of day and convert
-    them to a list of RoutineEntries for when employees
-    should report to work and when a business is open to the
-    public.
+    Convert a string representing the hours of operation
+    for a business to a dictionary representing the days
+    of the week mapped to tuple time intervals for when
+    the business is open.
 
     Parameters
     ----------
-    str_hours: List[str]
-        The times of day that this business is open
+    operating_hours_str: str
+        String indicating the operating hours
+
+    Notes
+    -----
+    The following a re valid formats for the operating hours string
+    (1a interval 24HR) ## - ##
+        Opening hour - closing hour
+        Assumes that the business is open all days of the week
+    (1b interval 12HR AM/PM) ## AM - ## PM
+        Twelve-hour time interval
+    (2 interval-alias) "morning", "day", "night", or ...
+        Single string that maps to a preset time interval
+        Assumes that the business is open all days of the week
+    (3 days + interval) MTWRFSU: ## - ##
+        Specify the time interval and the specific days of the
+        week that the business is open
+    (4 days + interval-alias) MTWRFSU: "morning", or ...
+        Specify the days of the week and a time interval for
+        when the business will be open
 
     Returns
     -------
-    List[RoutineEntry]
-        Routine entries for when this business is operational
+    Dict[str, Tuple[int, int]]
+        Days of the week mapped to lists of time intervals
     """
-    times_to_intervals = {
+
+    interval_aliases = {
         "morning": (5, 12),
         "late-morning": (11, 12),
         "early-morning": (5, 8),
@@ -538,26 +708,78 @@ def to_operating_hours(str_hours: List[str]) -> Dict[str, List[RoutineEntry]]:
         "night": (21, 23),
     }
 
-    operating_hours: Dict[str, List[RoutineEntry]] = {
-        "monday": [],
-        "tuesday": [],
-        "wednesday": [],
-        "thursday": [],
-        "friday": [],
-        "saturday": [],
-        "sunday": [],
-    }
+    # time_alias = {
+    #     "early-morning": "02:00",
+    #     "dawn": "06:00",
+    #     "morning": "08:00",
+    #     "late-morning": "10:00",
+    #     "noon": "12:00",
+    #     "afternoon": "14:00",
+    #     "evening": "17:00",
+    #     "night": "21:00",
+    #     "midnight": "23:00",
+    # }
 
-    routines: List[RoutineEntry] = []
+    operating_hours_str = operating_hours_str.strip()
 
-    for time_of_day in str_hours:
-        try:
-            start, end = times_to_intervals[time_of_day]
-            routines.append(RoutineEntry(start, end, location="work", activity="work"))
-        except KeyError:
-            raise ValueError(f"{time_of_day} is not a valid time of day.")
+    # Check for number interval
+    if match := re.fullmatch(
+        r"[0-2]?[0-9]\s*(PM|AM)?\s*-\s*[0-2]?[0-9]\s*(PM|AM)?", operating_hours_str
+    ):
+        interval_strs: List[str] = list(
+            map(lambda s: s.strip(), match.group(0).split("-"))
+        )
 
-    for key in operating_hours:
-        operating_hours[key].extend(routines)
+        interval: Tuple[int, int] = (
+            time_str_to_int(interval_strs[0]),
+            time_str_to_int(interval_strs[1]),
+        )
 
-    return operating_hours
+        if 23 < interval[0] < 0:
+            raise ValueError(f"Interval start not within bounds [0,23]: {interval}")
+        if 23 < interval[1] < 0:
+            raise ValueError(f"Interval end not within bounds [0,23]: {interval}")
+
+        return {d: interval for d in list(Weekday)}
+
+    # Check for interval alias
+    elif match := re.fullmatch(r"[a-zA-Z]+", operating_hours_str):
+        alias = match.group(0)
+        if alias in interval_aliases:
+            interval = interval_aliases[alias]
+            return {d: interval for d in list(Weekday)}
+        else:
+            raise ValueError(f"Invalid interval alias in: '{operating_hours_str}'")
+
+    # Check for days with number interval
+    elif match := re.fullmatch(
+        r"[MTWRFSU]+\s*:\s*[0-2]?[0-9]\s*-\s*[0-2]?[0-9]", operating_hours_str
+    ):
+        days_section, interval_section = tuple(match.group(0).split(":"))
+        days_section = days_section.strip()
+        interval_strs: List[str] = list(
+            map(lambda s: s.strip(), interval_section.strip().split("-"))
+        )
+        interval: Tuple[int, int] = (int(interval_strs[0]), int(interval_strs[1]))
+
+        if 23 < interval[0] < 0:
+            raise ValueError(f"Interval start not within bounds [0,23]: {interval}")
+        if 23 < interval[1] < 0:
+            raise ValueError(f"Interval end not within bounds [0,23]: {interval}")
+
+        return {Weekday.from_abbr(d): interval for d in days_section.strip()}
+
+    # Check for days with alias interval
+    elif match := re.fullmatch(r"[MTWRFSU]+\s*:\s*[a-zA-Z]+", operating_hours_str):
+        days_section, alias = tuple(match.group(0).split(":"))
+        days_section = days_section.strip()
+        alias = alias.strip()
+        if alias in interval_aliases:
+            interval = interval_aliases[alias]
+            return {Weekday.from_abbr(d): interval for d in days_section.strip()}
+        else:
+            raise ValueError(
+                f"Invalid interval alias ({alias}) in: '{operating_hours_str}'"
+            )
+
+    raise ValueError(f"Invalid operating hours string: '{operating_hours_str}'")

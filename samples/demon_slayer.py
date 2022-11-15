@@ -40,25 +40,40 @@ Key Features
 import math
 import time
 from enum import IntEnum
-from typing import Optional, Tuple, List, Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly.builtin.statuses import Deceased
+from neighborly import Plugin, Simulation, SimulationBuilder
+from neighborly.builtin.components import (
+    Active,
+    Age,
+    CanAge,
+    CanGetPregnant,
+    CurrentLocation,
+    Deceased,
+    LifeStages,
+)
+from neighborly.builtin.helpers import move_to_location
+from neighborly.core import query
 from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, World, GameObject
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEventType, EventRoleType, LifeEvent, LifeEventLibrary, EventResult, \
-    LifeEventLog
+from neighborly.core.event import Event
+from neighborly.core.life_event import (
+    ILifeEvent,
+    LifeEvent,
+    LifeEventRoleType,
+    LifeEvents,
+)
 from neighborly.core.location import Location
-from neighborly.plugins.default_plugin import DefaultPlugin
-from neighborly.plugins.talktown import TalkOfTheTownPlugin
-from neighborly.plugins.weather_plugin import WeatherPlugin
-from neighborly.simulation import Plugin, Simulation, SimulationBuilder
+from neighborly.exporter import NeighborlyJsonExporter
+from neighborly.plugins import defaults, talktown, weather
 
 
 class DemonSlayerRank(IntEnum):
     """Various ranks within the DemonSlayerCorp"""
+
     Mizunoto = 0
     Mizunoe = 1
     Kanoto = 2
@@ -74,6 +89,7 @@ class DemonSlayerRank(IntEnum):
 
 class BreathingStyle(IntEnum):
     """Various breathing styles for demon slayers"""
+
     Flower = 0
     Love = 1
     Flame = 2
@@ -104,7 +120,7 @@ class DemonSlayer(Component):
         This slayer's power level (used to calculate
         chance of winning a battle).
     breathing_style: BreathingStyle
-        What style of breathing does this character use
+        What style of breathing does this entity use
     """
 
     __slots__ = "rank", "kills", "power_level", "breathing_style"
@@ -127,14 +143,15 @@ class DemonSlayer(Component):
             **super().to_dict(),
             "rank": str(self.rank.name),
             "power_level": self.power_level,
-            "breathing_style": str(self.breathing_style)
+            "breathing_style": str(self.breathing_style),
         }
 
     def on_archive(self) -> None:
         if self.rank == DemonSlayerRank.Hashira:
             # Remove the hashira from the DemonSlayerCorp
             self.gameobject.world.get_resource(DemonSlayerCorps).retire_hashira(
-                self.gameobject.id)
+                self.gameobject.id
+            )
 
         self.gameobject.remove_component(type(self))
 
@@ -217,12 +234,13 @@ class DemonSlayerCorps:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "hashira": list(self.hashira),
-            "former_hashira": list(self.former_hashira)
+            "former_hashira": list(self.former_hashira),
         }
 
 
 class DemonRank(IntEnum):
     """The various ranks held by demons"""
+
     LowerDemon = 0
     Demon = 1
     BloodDemon = 2
@@ -267,8 +285,7 @@ class Demon(Component):
     @classmethod
     def create(cls, world: World, **kwargs) -> Component:
         return cls(
-            power_level=kwargs.get("power_level", 0),
-            turned_by=kwargs.get("turned_by")
+            power_level=kwargs.get("power_level", 0), turned_by=kwargs.get("turned_by")
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -277,7 +294,7 @@ class Demon(Component):
             "rank": str(self.rank.name),
             "power_level": self.power_level,
             "kills": self.kills,
-            "turned_by": self.turned_by if self.turned_by else -1
+            "turned_by": self.turned_by if self.turned_by else -1,
         }
 
     def on_archive(self) -> None:
@@ -316,7 +333,7 @@ class DemonKingdom:
         "_lower_moons",
         "_upper_moons",
         "_former_upper_moons",
-        "_former_lower_moons"
+        "_former_lower_moons",
     )
 
     def __init__(self) -> None:
@@ -374,7 +391,7 @@ class DemonKingdom:
             "lower_moons": list(self.lower_moons),
             "former_lower_moons": list(self.lower_moons),
             "upper_moons": list(self.upper_moons),
-            "former_upper_moons": list(self.former_upper_moons)
+            "former_upper_moons": list(self.former_upper_moons),
         }
 
 
@@ -416,6 +433,7 @@ UPPER_MOON_PL: int = 220
 # UTILITY FUNCTIONS
 ########################################
 
+
 def probability_of_winning(rating_a: int, rating_b: int) -> float:
     """
     Return the probability of a defeating b
@@ -423,9 +441,9 @@ def probability_of_winning(rating_a: int, rating_b: int) -> float:
     Parameters
     ----------
     rating_a: int
-        Rating of character A
+        Rating of entity A
     rating_b: int
-        Rating of character B
+        Rating of entity B
     """
     return 1.0 / (1 + math.pow(10, (rating_a - rating_b) / ELO_SCALE))
 
@@ -435,9 +453,10 @@ def update_power_level(
     loser_rating: int,
     winner_expectation: float,
     loser_expectation: float,
-    k: int = 16
+    k: int = 16,
 ) -> Tuple[int, int]:
     """
+    Perform ELO calculation for new ratings
 
     Parameters
     ----------
@@ -516,20 +535,13 @@ def power_level_to_demon_rank(power_level: int) -> DemonRank:
         return DemonRank.LowerDemon
 
 
-def at_same_location(a: GameObject, b: GameObject) -> bool:
-    """Return True if these characters are at the same location"""
-    return (
-        a.get_component(GameCharacter).location
-        == b.get_component(GameCharacter).location
-    )
-
-
 ########################################
 # CUSTOM LIFE EVENTS
 ########################################
 
-def become_demon_slayer(probability: float = 1) -> LifeEventType:
-    def bind_character(world: World, event: LifeEvent):
+
+def become_demon_slayer(probability: float = 1) -> ILifeEvent:
+    def bind_character(world: World, event: Event, candidate: Optional[GameObject]):
 
         candidates = []
 
@@ -538,68 +550,61 @@ def become_demon_slayer(probability: float = 1) -> LifeEventType:
                 continue
             if character.gameobject.has_component(Demon):
                 continue
-            if character.age >= character.character_def.life_stages["teen"]:
+            if (
+                character.gameobject.get_component(Age).value
+                >= character.gameobject.get_component(LifeStages).stages["teen"]
+            ):
                 candidates.append(character.gameobject)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         character = world.get_gameobject(event["Character"])
         character.add_component(DemonSlayer.create(world))
-        return EventResult(generated_events=[event])
 
-    return LifeEventType(
+    return LifeEvent(
         "BecameDemonSlayer",
         probability=probability,
-        roles=[EventRoleType("Character", binder_fn=bind_character)],
-        execute_fn=execute
+        roles=[LifeEventRoleType("Character", binder_fn=bind_character)],
+        effect=execute,
     )
 
 
-def demon_slayer_promotion(probability: float = 1.0) -> LifeEventType:
+def demon_slayer_promotion(probability: float = 1.0) -> ILifeEvent:
     """Demon slayer is promoted to the next rank"""
 
-    def bind_demon_slayer(world: World, event: LifeEvent):
+    def bind_demon_slayer(world: World, event: Event, candidate: Optional[GameObject]):
 
         candidates: List[GameObject] = []
         for _, demon_slayer in world.get_component(DemonSlayer):
-            power_level_rank = power_level_to_slayer_rank(
-                demon_slayer.power_level
-            )
+            power_level_rank = power_level_to_slayer_rank(demon_slayer.power_level)
 
             if power_level_rank < demon_slayer.rank:
                 candidates.append(demon_slayer.gameobject)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    def execute(world: World, event: LifeEvent):
-        slayer = world.get_gameobject(event["Slayer"]).get_component(
-            DemonSlayer
-        )
+    def execute(world: World, event: Event):
+        slayer = world.get_gameobject(event["Slayer"]).get_component(DemonSlayer)
         power_level_rank = power_level_to_slayer_rank(slayer.power_level)
         slayer.rank = power_level_rank
-        return EventResult(generated_events=[event])
 
-    return LifeEventType(
+    return LifeEvent(
         "DemonSlayerPromotion",
         probability=probability,
-        roles=[EventRoleType("Slayer", binder_fn=bind_demon_slayer)],
-        execute_fn=execute
+        roles=[LifeEventRoleType("Slayer", binder_fn=bind_demon_slayer)],
+        effect=execute,
     )
 
 
-def challenge_for_power(probability: float = 1.0) -> LifeEventType:
-    def bind_challenger(world: World, event: LifeEvent):
+def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
+    def bind_challenger(world: World, event: Event, candidate: Optional[GameObject]):
         """Get a challenger demon that has someone above them"""
         candidates: List[GameObject] = []
         for _, demon in world.get_component(Demon):
@@ -607,13 +612,11 @@ def challenge_for_power(probability: float = 1.0) -> LifeEventType:
                 candidates.append(demon.gameobject)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    def bind_opponent(world: World, event: LifeEvent):
+    def bind_opponent(world: World, event: Event, candidate: Optional[GameObject]):
         """Find an opponent for the challenger"""
         challenger = world.get_gameobject(event["Challenger"]).get_component(Demon)
         candidates: List[GameObject] = []
@@ -625,103 +628,111 @@ def challenge_for_power(probability: float = 1.0) -> LifeEventType:
                 candidates.append(demon.gameobject)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         """Execute the battle"""
         challenger = world.get_gameobject(event["Challenger"]).get_component(Demon)
         opponent = world.get_gameobject(event["Opponent"]).get_component(Demon)
         rng = world.get_resource(NeighborlyEngine).rng
-        death_event_type = LifeEventLibrary.get("Death")
-        generated_events = [event]
+        _death_event_type = LifeEvents.get("Death")
 
-        slayer_success_chance = probability_of_winning(
-            opponent.power_level, challenger.power_level
-        )
+        opponent_success_chance = probability_of_winning(opponent.power_level, challenger.power_level)
+        challenger_success_chance = probability_of_winning(challenger.power_level, opponent.power_level)
 
-        demon_success_chance = probability_of_winning(
-            challenger.power_level, opponent.power_level
-        )
-
-        if rng.random() < slayer_success_chance:
+        if rng.random() < opponent_success_chance:
             # Demon slayer wins
             new_slayer_pl, _ = update_power_level(
                 opponent.power_level,
                 challenger.power_level,
-                slayer_success_chance,
-                demon_success_chance
+                opponent_success_chance,
+                challenger_success_chance,
             )
 
             opponent.power_level = new_slayer_pl
 
-            death_event = death_event_type.instantiate(world, Deceased=challenger.gameobject)
+            death_event = _death_event_type.instantiate(
+                world, Deceased=challenger.gameobject
+            )
 
             if death_event:
-                death_event_type.execute(world, death_event)
-                generated_events.append(death_event)
-
+                _death_event_type.execute(world, death_event)
+            # Update Power Ranking
         else:
             # Demon wins
             _, new_demon_pl = update_power_level(
                 challenger.power_level,
                 opponent.power_level,
-                demon_success_chance,
-                slayer_success_chance,
+                challenger_success_chance,
+                opponent_success_chance,
             )
 
             challenger.power_level = new_demon_pl
 
-            death_event = death_event_type.instantiate(world, Deceased=opponent.gameobject)
+            death_event = _death_event_type.instantiate(
+                world, Deceased=opponent.gameobject
+            )
 
             if death_event:
-                death_event_type.execute(world, death_event)
-                generated_events.append(death_event)
+                _death_event_type.execute(world, death_event)
+            # Update Power Ranking
 
-        return EventResult(generated_events=generated_events)
-
-    return LifeEventType(
+    return LifeEvent(
         "ChallengeForPower",
         roles=[
-            EventRoleType("Challenger", binder_fn=bind_challenger),
-            EventRoleType("Opponent", binder_fn=bind_opponent)
+            LifeEventRoleType("Challenger", binder_fn=bind_challenger),
+            LifeEventRoleType("Opponent", binder_fn=bind_opponent),
         ],
         probability=probability,
-        execute_fn=execute
+        effect=execute,
     )
 
 
-def devour_human(probability: float = 1.0) -> LifeEventType:
-    def execute(world: World, event: LifeEvent):
+def devour_human(probability: float = 1.0) -> ILifeEvent:
+    def execute(world: World, event: Event):
         demon = world.get_gameobject(event["Demon"])
         victim = world.get_gameobject(event["Victim"])
         if victim.has_component(DemonSlayer):
-            battle_event_type = LifeEventLibrary.get("Battle")
-            battle_event = battle_event_type.instantiate(world, Demon=demon, Slayer=victim)
+            battle_event_type = LifeEvents.get("Battle")
+            battle_event = battle_event_type.instantiate(
+                world, Demon=demon, Slayer=victim
+            )
             if battle_event:
                 battle_event_type.execute(world, battle_event)
-                return EventResult(generated_events=[battle_event, event])
+
         else:
             demon.get_component(Demon).power_level += 1
             demon.get_component(Demon).rank = power_level_to_demon_rank(
                 demon.get_component(Demon).power_level
             )
-            death_event = LifeEventLibrary.get("Death").instantiate(world, Deceased=victim)
-            return EventResult(generated_events=[death_event, event])
+            _death_event_type = LifeEvents.get("Death")
+            _death_event_type.try_execute_event(world, Deceased=victim)
 
-    def bind_victim(world: World, event: LifeEvent):
+    def bind_demon(world: World, event: Event, candidate: Optional[GameObject] = None):
+        q = query.Query(("Demon",), [query.where(query.has_components(Demon))])
+        candidate_id = candidate.id if candidate else None
+        results = q.execute(world, Demon=candidate_id)
+        if results:
+            return world.get_gameobject(
+                world.get_resource(NeighborlyEngine).rng.choice(results)[0]
+            )
+
+    def bind_victim(world: World, event: Event, candidate: Optional[GameObject] = None):
         """Get all people at the same location who are not demons"""
         demon = world.get_gameobject(event["Demon"])
+
+        if not demon.has_component(CurrentLocation):
+            return None
+
         demon_location = world.get_gameobject(
-            demon.get_component(GameCharacter).location
+            demon.get_component(CurrentLocation).location
         ).get_component(Location)
 
         candidates: List[GameObject] = []
 
-        for character_id in demon_location.characters_present:
+        for character_id in demon_location.entities:
             character = world.get_gameobject(character_id)
             if character_id == demon.id:
                 continue
@@ -733,32 +744,30 @@ def devour_human(probability: float = 1.0) -> LifeEventType:
             candidates.append(character)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    return LifeEventType(
+    return LifeEvent(
         "DevourHuman",
         probability=probability,
         roles=[
-            EventRoleType("Demon", components=[Demon]),
-            EventRoleType("Victim", binder_fn=bind_victim)
+            LifeEventRoleType("Demon", binder_fn=bind_demon),
+            LifeEventRoleType("Victim", binder_fn=bind_victim),
         ],
-        execute_fn=execute
+        effect=execute,
     )
 
 
-def battle(probability: float = 1.0) -> LifeEventType:
+def battle(probability: float = 1.0) -> ILifeEvent:
     """Have a demon fight a demon slayer"""
 
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         """Choose a winner based on their expected success"""
         demon = world.get_gameobject(event["Demon"]).get_component(Demon)
         slayer = world.get_gameobject(event["Slayer"]).get_component(DemonSlayer)
         rng = world.get_resource(NeighborlyEngine).rng
-        death_event_type = LifeEventLibrary.get("Death")
+        _death_event_type = LifeEvents.get("Death")
 
         slayer_success_chance = probability_of_winning(
             slayer.power_level, demon.power_level
@@ -774,18 +783,18 @@ def battle(probability: float = 1.0) -> LifeEventType:
                 slayer.power_level,
                 demon.power_level,
                 slayer_success_chance,
-                demon_success_chance
+                demon_success_chance,
             )
 
             slayer.power_level = new_slayer_pl
             slayer.rank = power_level_to_slayer_rank(slayer.power_level)
 
-            death_event = death_event_type.instantiate(world, Deceased=demon.gameobject)
+            death_event = _death_event_type.instantiate(
+                world, Deceased=demon.gameobject
+            )
 
             if death_event:
-                death_event_type.execute(world, death_event)
-
-            return EventResult(generated_events=[death_event, event])
+                _death_event_type.execute(world, death_event)
 
         else:
             # Demon wins
@@ -799,26 +808,46 @@ def battle(probability: float = 1.0) -> LifeEventType:
             demon.power_level = new_demon_pl
             demon.rank = power_level_to_demon_rank(demon.power_level)
 
-            death_event = death_event_type.instantiate(world, Deceased=slayer.gameobject)
+            death_event = _death_event_type.instantiate(
+                world, Deceased=slayer.gameobject
+            )
 
             if death_event:
-                death_event_type.execute(world, death_event)
+                _death_event_type.execute(world, death_event)
 
-                return EventResult(generated_events=[death_event, event])
+    def bind_demon(world: World, event: Event, candidate: Optional[GameObject] = None):
+        q = query.Query(("Demon",), [query.where(query.has_components(Demon))])
+        candidate_id = candidate.id if candidate else None
+        results = q.execute(world, Demon=candidate_id)
+        if results:
+            return world.get_gameobject(
+                world.get_resource(NeighborlyEngine).rng.choice(results)[0]
+            )
 
-    return LifeEventType(
+    def bind_demon_slayer(
+        world: World, event: Event, candidate: Optional[GameObject] = None
+    ):
+        q = query.Query(("DemonSlayer",), [query.where(query.has_components(Demon))])
+        candidate_id = candidate.id if candidate else None
+        results = q.execute(world, DemonSlayer=candidate_id)
+        if results:
+            return world.get_gameobject(
+                world.get_resource(NeighborlyEngine).rng.choice(results)[0]
+            )
+
+    return LifeEvent(
         "Battle",
         probability=probability,
         roles=[
-            EventRoleType("Demon", components=[Demon]),
-            EventRoleType("Slayer", components=[DemonSlayer]),
+            LifeEventRoleType("Demon", bind_demon),
+            LifeEventRoleType("Slayer", bind_demon_slayer),
         ],
-        execute_fn=execute
+        effect=execute,
     )
 
 
-def turn_into_demon(probability: float = 1.0) -> LifeEventType:
-    def bind_new_demon(world: World, event: LifeEvent):
+def turn_into_demon(probability: float = 1.0) -> ILifeEvent:
+    def bind_new_demon(world: World, event: Event, candidate: Optional[GameObject]):
         candidates: List[GameObject] = []
         for _, character in world.get_component(GameCharacter):
             if character.gameobject.has_component(Demon):
@@ -826,46 +855,48 @@ def turn_into_demon(probability: float = 1.0) -> LifeEventType:
             if character.gameobject.has_component(DemonSlayer):
                 continue
 
-            if character.age >= character.character_def.life_stages["teen"]:
+            if (
+                character.gameobject.get_component(Age).value
+                >= character.gameobject.get_component(LifeStages).stages["teen"]
+            ):
                 candidates.append(character.gameobject)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    def execute(world: World, event: LifeEvent):
+    def execute(world: World, event: Event):
         character = world.get_gameobject(event["Character"])
         character.add_component(Demon.create(world))
-        return EventResult(generated_events=[event])
+        character.remove_component(CanAge)
+        character.remove_component(CanGetPregnant)
 
-    return LifeEventType(
+    return LifeEvent(
         "TurnIntoDemon",
         probability=probability,
-        roles=[EventRoleType("Character", binder_fn=bind_new_demon)],
-        execute_fn=execute
+        roles=[LifeEventRoleType("Character", binder_fn=bind_new_demon)],
+        effect=execute,
     )
 
 
-def death_event_type() -> LifeEventType:
-    def execute(world: World, event: LifeEvent):
+def death_event_type() -> ILifeEvent:
+    def execute(world: World, event: Event):
         deceased = world.get_gameobject(event["Deceased"])
         deceased.add_component(Deceased())
-        deceased.archive()
-        return EventResult(generated_events=[event])
+        deceased.remove_component(Active)
+        move_to_location(world, deceased, None)
 
-    return LifeEventType(
+    return LifeEvent(
         "Death",
-        roles=[EventRoleType("Deceased")],
-        execute_fn=execute,
-        probability=0.0
+        roles=[LifeEventRoleType("Deceased")],
+        effect=execute,
+        probability=0,
     )
 
 
-def promotion_to_lower_moon(probability: float = 1.0) -> LifeEventType:
-    def bind_demon(world: World, event: LifeEvent):
+def promotion_to_lower_moon(probability: float = 1.0) -> ILifeEvent:
+    def bind_demon(world: World, event: Event, candidate: Optional[GameObject]):
 
         demon_kingdom = world.get_resource(DemonKingdom)
 
@@ -878,29 +909,24 @@ def promotion_to_lower_moon(probability: float = 1.0) -> LifeEventType:
                 candidates.append(demon.gameobject)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    def execute(world: World, event: LifeEvent):
-        demon = world.get_gameobject(event["Demon"]).get_component(
-            Demon
-        )
+    def execute(world: World, event: Event):
+        demon = world.get_gameobject(event["Demon"]).get_component(Demon)
         demon.rank = DemonRank.LowerMoon
-        return EventResult(generated_events=[event])
 
-    return LifeEventType(
+    return LifeEvent(
         "PromotedToLowerMoon",
         probability=probability,
-        roles=[EventRoleType("Demon", binder_fn=bind_demon)],
-        execute_fn=execute
+        roles=[LifeEventRoleType("Demon", binder_fn=bind_demon)],
+        effect=execute,
     )
 
 
-def promotion_to_upper_moon(probability: float = 1.0) -> LifeEventType:
-    def bind_demon(world: World, event: LifeEvent):
+def promotion_to_upper_moon(probability: float = 1.0) -> ILifeEvent:
+    def bind_demon(world: World, event: Event, candidate: Optional[None]):
 
         demon_kingdom = world.get_resource(DemonKingdom)
 
@@ -913,24 +939,19 @@ def promotion_to_upper_moon(probability: float = 1.0) -> LifeEventType:
                 candidates.append(demon.gameobject)
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(
-                candidates
-            )
+            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
 
         return None
 
-    def execute(world: World, event: LifeEvent):
-        demon = world.get_gameobject(event["Demon"]).get_component(
-            Demon
-        )
+    def execute(world: World, event: Event):
+        demon = world.get_gameobject(event["Demon"]).get_component(Demon)
         demon.rank = DemonRank.UpperMoon
-        return EventResult(generated_events=[event])
 
-    return LifeEventType(
+    return LifeEvent(
         "PromotedToUpperMoon",
         probability=probability,
-        roles=[EventRoleType("Demon", binder_fn=bind_demon)],
-        execute_fn=execute
+        roles=[LifeEventRoleType("Demon", binder_fn=bind_demon)],
+        effect=execute,
     )
 
 
@@ -938,17 +959,18 @@ def promotion_to_upper_moon(probability: float = 1.0) -> LifeEventType:
 # Plugin
 ########################################
 
+
 class DemonSlayerPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        LifeEventLibrary.add(promotion_to_upper_moon())
-        LifeEventLibrary.add(promotion_to_lower_moon())
-        LifeEventLibrary.add(turn_into_demon(0.3))
-        LifeEventLibrary.add(battle(0.7))
-        LifeEventLibrary.add(devour_human(0.3))
-        LifeEventLibrary.add(challenge_for_power(0.4))
-        LifeEventLibrary.add(demon_slayer_promotion(0.7))
-        LifeEventLibrary.add(become_demon_slayer(0.3))
-        LifeEventLibrary.add(death_event_type())
+        LifeEvents.add(promotion_to_upper_moon())
+        LifeEvents.add(promotion_to_lower_moon())
+        LifeEvents.add(turn_into_demon(0.8))
+        LifeEvents.add(battle(0.7))
+        LifeEvents.add(devour_human(0.3))
+        LifeEvents.add(challenge_for_power(0.4))
+        LifeEvents.add(demon_slayer_promotion(0.7))
+        LifeEvents.add(become_demon_slayer(0.3))
+        LifeEvents.add(death_event_type())
         sim.world.add_resource(DemonSlayerCorps())
         sim.world.add_resource(DemonKingdom())
 
@@ -957,24 +979,33 @@ class DemonSlayerPlugin(Plugin):
 # MAIN FUNCTION
 ########################################
 
+EXPORT_WORLD = False
+
+
 def main():
     sim = (
         SimulationBuilder()
-        .add_plugin(DefaultPlugin())
-        .add_plugin(WeatherPlugin())
-        .add_plugin(TalkOfTheTownPlugin())
+        .add_plugin(defaults.get_plugin())
+        .add_plugin(weather.get_plugin())
+        .add_plugin(talktown.get_plugin())
         .add_plugin(DemonSlayerPlugin())
         .build()
     )
 
-    sim.world.get_resource(LifeEventLog).subscribe(lambda e: print(str(e)))
-
     st = time.time()
-    sim.establish_setting()
+    sim.run_for(50)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {sim.time.to_iso_str()}")
+    print(f"World Date: {sim.date.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")
+
+    if EXPORT_WORLD:
+        output_path = f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
+
+        with open(output_path, "w") as f:
+            data = NeighborlyJsonExporter().export(sim)
+            f.write(data)
+            print(f"Simulation data written to: '{output_path}'")
 
 
 if __name__ == "__main__":
