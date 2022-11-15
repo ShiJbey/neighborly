@@ -13,10 +13,12 @@ from neighborly.builtin.systems import (
     RemoveDepartedFromResidences,
     RemoveRetiredFromOccupation,
 )
-from neighborly.core.constants import TIME_UPDATE_PHASE
+from neighborly.core.ai import MovementAISystem, SocialAISystem
+from neighborly.core.constants import TIME_UPDATE_PHASE, TOWN_SYSTEMS_PHASE
 from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import EventLog
+from neighborly.core.life_event import LifeEventSystem
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import LandGrid, Town
 
@@ -147,6 +149,7 @@ class SimulationBuilder:
         "resources",
         "plugins",
         "print_events",
+        "life_event_interval_hours"
     )
 
     def __init__(
@@ -157,6 +160,7 @@ class SimulationBuilder:
         town_name: str = "#town_name#",
         town_size: TownSize = "medium",
         print_events: bool = True,
+        life_event_interval_hours: int = 336
     ) -> None:
         self.seed: int = hash(seed if seed is not None else random.randint(0, 99999999))
         self.time_increment_hours: int = time_increment_hours
@@ -173,6 +177,7 @@ class SimulationBuilder:
         self.resources: List[Any] = []
         self.plugins: List[Tuple[Plugin, Dict[str, Any]]] = []
         self.print_events: bool = print_events
+        self.life_event_interval_hours: int = life_event_interval_hours
 
     def add_plugin(self, plugin: Plugin, **kwargs) -> SimulationBuilder:
         """Add plugin to simulation"""
@@ -217,6 +222,12 @@ class SimulationBuilder:
             LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)),
             TIME_UPDATE_PHASE,
         )
+        sim.world.add_system(MovementAISystem())
+        sim.world.add_system(SocialAISystem())
+        sim.world.add_system(
+            LifeEventSystem(interval=TimeDelta(hours=self.life_event_interval_hours)), priority=TOWN_SYSTEMS_PHASE
+        )
+
         sim.world.add_system(RemoveDeceasedFromResidences())
         sim.world.add_system(RemoveDepartedFromResidences())
         sim.world.add_system(RemoveDepartedFromOccupation())

@@ -154,6 +154,7 @@ class EventLog:
         "_subscribers",
         "_per_gameobject",
         "_per_gameobject_subscribers",
+        "_listeners"
     )
 
     def __init__(self) -> None:
@@ -163,15 +164,20 @@ class EventLog:
         self._per_gameobject_subscribers: DefaultDict[
             int, List[Callable[[Event], None]]
         ] = defaultdict(list)
+        self._listeners: DefaultDict[
+            str, List[Callable[[World, Event], None]]
+        ] = defaultdict(list)
 
-    def record_event(self, event: Event) -> None:
+    def record_event(self, world: World, event: Event) -> None:
         """
         Adds a LifeEvent to the history and calls all registered callback functions
 
         Parameters
         ----------
+        world: World
+
         event: Event
-            Event that occurred
+            The event that occurred
         """
         self.event_history.append(event)
 
@@ -181,8 +187,14 @@ class EventLog:
                 for cb in self._per_gameobject_subscribers[role.gid]:
                     cb(event)
 
+        for listener in self._listeners[event.name]:
+            listener(world, event)
+
         for cb in self._subscribers:
             cb(event)
+
+    def add_event_listener(self, event_name: str, listener: Callable[[World, Event], None]) -> None:
+        self._listeners[event_name].append(listener)
 
     def subscribe(self, cb: Callable[[Event], None]) -> None:
         """

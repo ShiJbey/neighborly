@@ -144,7 +144,7 @@ class LifeEvent:
 
     def execute(self, world: World, event: Event) -> None:
         """Run the effects function using the given event"""
-        world.get_resource(EventLog).record_event(event)
+        world.get_resource(EventLog).record_event(world, event)
         self.effect(world, event)
 
     def try_execute_event(self, world: World, **bindings: GameObject) -> bool:
@@ -172,7 +172,6 @@ class LifeEvent:
 
 
 class PatternLifeEvent:
-
     __slots__ = "name", "probability", "pattern", "effect"
 
     def __init__(
@@ -222,7 +221,7 @@ class PatternLifeEvent:
 
     def execute(self, world: World, event: Event) -> None:
         """Run the effects function using the given event"""
-        world.get_resource(EventLog).record_event(event)
+        world.get_resource(EventLog).record_event(world, event)
         self.effect(world, event)
 
     def try_execute_event(self, world: World, **bindings: GameObject) -> bool:
@@ -291,5 +290,6 @@ class LifeEventSystem(System):
         rng = self.world.get_resource(NeighborlyEngine).rng
 
         # Perform number of events equal to 10% of the population
-        for life_event in rng.choices(LifeEvents.get_all(), k=(town.population // 10)):
+
+        for life_event in rng.choices(LifeEvents.get_all(), k=(int(town.population / 2))):
             life_event.try_execute_event(self.world)

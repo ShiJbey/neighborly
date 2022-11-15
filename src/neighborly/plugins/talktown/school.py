@@ -35,6 +35,7 @@ class SchoolSystem(ISystem):
                 school.remove_student(gid)
                 young_adult.gameobject.remove_component(Student)
                 event_logger.record_event(
+                    self.world,
                     Event(
                         "GraduatedSchool",
                         date.to_iso_str(),

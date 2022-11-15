@@ -256,6 +256,7 @@ class FindBusinessOwnerSystem(ISystem):
                 )
 
                 event_log.record_event(
+                    self.world,
                     Event(
                         name="BecameBusinessOwner",
                         timestamp=date.to_iso_str(),
@@ -362,6 +363,7 @@ class FindEmployeesSystem(ISystem):
                     )
 
                     event_log.record_event(
+                        self.world,
                         Event(
                             "HiredAtBusiness",
                             date.to_iso_str(),
@@ -489,10 +491,10 @@ class BuildBusinessSystem(System):
                 archetype.get_instances() < archetype.get_max_instances()
                 and town.population >= archetype.get_min_population()
                 and (
-                    archetype.get_year_available()
-                    <= date.year
-                    < archetype.get_year_obsolete()
-                )
+                archetype.get_year_available()
+                <= date.year
+                < archetype.get_year_obsolete()
+            )
             ):
                 archetype_choices.append(archetype)
                 archetype_weights.append(archetype.get_spawn_frequency())
@@ -698,6 +700,7 @@ class SpawnResidentSystem(System):
 
             # Record a life event
             event_logger.record_event(
+                self.world,
                 Event(
                     name="MoveIntoTown",
                     timestamp=date.to_iso_str(),
@@ -764,6 +767,7 @@ class CharacterAgingSystem(System):
                 character.gameobject.add_component(Teen())
                 character.gameobject.remove_component(Child)
                 event_log.record_event(
+                    self.world,
                     Event(
                         name="BecomeTeen",
                         timestamp=current_date.to_iso_str(),
@@ -786,6 +790,7 @@ class CharacterAgingSystem(System):
                     character.gameobject.add_component(Unemployed())
 
                 event_log.record_event(
+                    self.world,
                     Event(
                         name="BecomeYoungAdult",
                         timestamp=current_date.to_iso_str(),
@@ -801,6 +806,7 @@ class CharacterAgingSystem(System):
             ):
                 character.gameobject.remove_component(YoungAdult)
                 event_log.record_event(
+                    self.world,
                     Event(
                         name="BecomeAdult",
                         timestamp=current_date.to_iso_str(),
@@ -817,6 +823,7 @@ class CharacterAgingSystem(System):
             ):
                 character.gameobject.add_component(Elder())
                 event_log.record_event(
+                    self.world,
                     Event(
                         name="BecomeElder",
                         timestamp=current_date.to_iso_str(),
@@ -863,15 +870,14 @@ class PregnancySystem(ISystem):
             town.increment_population()
 
             baby.get_component(Age).value = (
-                current_date - pregnancy.due_date
-            ).hours / HOURS_PER_YEAR
+                                                current_date - pregnancy.due_date
+                                            ).hours / HOURS_PER_YEAR
 
             baby.get_component(CharacterName).surname = birthing_parent_name.surname
 
             move_to_location(self.world, birthing_parent, "home")
 
             if birthing_parent.has_component(CurrentLocation):
-
                 current_location = birthing_parent.get_component(CurrentLocation)
 
                 move_to_location(
@@ -943,6 +949,7 @@ class PregnancySystem(ISystem):
             # Pregnancy event dates are retconned to be the actual date that the
             # child was due.
             event_logger.record_event(
+                self.world,
                 Event(
                     name="ChildBirth",
                     timestamp=pregnancy.due_date.to_iso_str(),

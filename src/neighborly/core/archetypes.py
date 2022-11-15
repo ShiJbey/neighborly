@@ -5,7 +5,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Set, Type
 
+from neighborly.builtin.ai import DefaultMovementModule
 from neighborly.builtin.components import Active, Age, Lifespan, LifeStages, Name
+from neighborly.core.ai import MovementAI
 from neighborly.core.business import (
     Business,
     IBusinessType,
@@ -197,6 +199,7 @@ class BaseCharacterArchetype(ICharacterArchetype):
                 ),
                 PersonalValues.create(world),
                 Relationships(),
+                MovementAI(DefaultMovementModule())
             ]
         )
 
@@ -379,7 +382,6 @@ class BaseResidenceArchetype(IResidenceArchetype):
 
 
 class ArchetypeRef(Component):
-
     __slots__ = "name"
 
     def __init__(self, name: str) -> None:

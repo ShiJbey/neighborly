@@ -26,7 +26,6 @@ from neighborly.builtin.systems import (
     OpenForBusinessSystem,
     PendingOpeningSystem,
     PregnancySystem,
-    RoutineSystem,
     SpawnResidentSystem,
 )
 from neighborly.core.business import Occupation
@@ -37,7 +36,7 @@ from neighborly.core.constants import (
 )
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.life_event import LifeEvents, LifeEventSystem
+from neighborly.core.life_event import LifeEvents
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.time import TimeDelta
 from neighborly.simulation import Plugin, Simulation
@@ -163,7 +162,7 @@ class DefaultPlugin(Plugin):
         # SocializeSystem.add_compatibility_check(age_difference_debuff)
 
         sim.world.add_system(CharacterAgingSystem(), priority=CHARACTER_UPDATE_PHASE)
-        sim.world.add_system(RoutineSystem(), priority=CHARACTER_UPDATE_PHASE)
+        # sim.world.add_system(RoutineSystem(), priority=CHARACTER_UPDATE_PHASE)
         sim.world.add_system(BusinessUpdateSystem(), priority=BUSINESS_UPDATE_PHASE)
         sim.world.add_system(FindBusinessOwnerSystem(), priority=BUSINESS_UPDATE_PHASE)
         sim.world.add_system(FindEmployeesSystem(), priority=BUSINESS_UPDATE_PHASE)
@@ -178,9 +177,6 @@ class DefaultPlugin(Plugin):
         )
         sim.world.add_system(OpenForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
         sim.world.add_system(ClosedForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
-        sim.world.add_system(
-            LifeEventSystem(interval=TimeDelta(months=2)), priority=TOWN_SYSTEMS_PHASE
-        )
 
         sim.world.add_system(
             BuildHousingSystem(chance_of_build=1.0), priority=TOWN_SYSTEMS_PHASE

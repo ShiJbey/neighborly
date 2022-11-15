@@ -638,23 +638,17 @@ def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
         opponent = world.get_gameobject(event["Opponent"]).get_component(Demon)
         rng = world.get_resource(NeighborlyEngine).rng
         _death_event_type = LifeEvents.get("Death")
-        generated_events = [event]
 
-        slayer_success_chance = probability_of_winning(
-            opponent.power_level, challenger.power_level
-        )
+        opponent_success_chance = probability_of_winning(opponent.power_level, challenger.power_level)
+        challenger_success_chance = probability_of_winning(challenger.power_level, opponent.power_level)
 
-        demon_success_chance = probability_of_winning(
-            challenger.power_level, opponent.power_level
-        )
-
-        if rng.random() < slayer_success_chance:
+        if rng.random() < opponent_success_chance:
             # Demon slayer wins
             new_slayer_pl, _ = update_power_level(
                 opponent.power_level,
                 challenger.power_level,
-                slayer_success_chance,
-                demon_success_chance,
+                opponent_success_chance,
+                challenger_success_chance,
             )
 
             opponent.power_level = new_slayer_pl
@@ -665,15 +659,14 @@ def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
 
             if death_event:
                 _death_event_type.execute(world, death_event)
-                generated_events.append(death_event)
-
+            # Update Power Ranking
         else:
             # Demon wins
             _, new_demon_pl = update_power_level(
                 challenger.power_level,
                 opponent.power_level,
-                demon_success_chance,
-                slayer_success_chance,
+                challenger_success_chance,
+                opponent_success_chance,
             )
 
             challenger.power_level = new_demon_pl
@@ -684,7 +677,7 @@ def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
 
             if death_event:
                 _death_event_type.execute(world, death_event)
-                generated_events.append(death_event)
+            # Update Power Ranking
 
     return LifeEvent(
         "ChallengeForPower",

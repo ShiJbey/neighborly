@@ -263,7 +263,7 @@ def close_for_business(business: Business) -> None:
         ],
     )
 
-    world.get_resource(EventLog).record_event(close_for_business_event)
+    world.get_resource(EventLog).record_event(world, close_for_business_event)
 
     for employee in business.get_employees():
         layoff_employee(business, world.get_gameobject(employee))
@@ -288,7 +288,7 @@ def leave_job(world: World, employee: GameObject) -> None:
         ],
     )
 
-    world.get_resource(EventLog).record_event(fired_event)
+    world.get_resource(EventLog).record_event(world, fired_event)
 
     business.get_component(Business).remove_employee(employee.id)
 
@@ -323,7 +323,7 @@ def layoff_employee(business: Business, employee: GameObject) -> None:
         ],
     )
 
-    world.get_resource(EventLog).record_event(fired_event)
+    world.get_resource(EventLog).record_event(world, fired_event)
 
     if not employee.has_component(WorkHistory):
         employee.add_component(WorkHistory())
