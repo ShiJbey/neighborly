@@ -311,10 +311,3 @@ class RoleBinderFn(Protocol):
         self, world: World, cast_roles: Event, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
         raise NotImplementedError
-
-
-class RoleFilterFn(Protocol):
-    """Function that filters GameObjects for an EventRole"""
-
-    def __call__(self, world: World, gameobject: GameObject) -> bool:
-        raise NotImplementedError

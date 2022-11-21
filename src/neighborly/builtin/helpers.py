@@ -11,7 +11,7 @@ from neighborly.builtin.components import (
     OpenToPublic,
     Vacant,
 )
-from neighborly.builtin.events import BusinessClosedEvent, EndJobEvent
+from neighborly.builtin.events import BusinessClosedEvent, DepartEvent, EndJobEvent
 from neighborly.core.archetypes import ICharacterArchetype
 from neighborly.core.building import Building
 from neighborly.core.business import (
@@ -174,6 +174,46 @@ def set_residence(
 
     if new_residence.has_component(Vacant):
         new_residence.remove_component(Vacant)
+
+
+def depart_town(world: World, character: GameObject, reason: str = "") -> None:
+    """
+    Helper function that handles all the core logistics of moving someone
+    out of the town
+    """
+
+    residence = world.get_gameobject(
+        character.get_component(Resident).residence
+    ).get_component(Residence)
+
+    set_residence(world, character, None)
+    departing_characters: List[GameObject] = [character]
+
+    # Get people that this character lives with and have them depart with their
+    # spouse(s) and children. This function may need to be refactored in the future
+    # to perform BFS on the relationship tree when moving out extended families living
+    # within the same residence
+    for resident_id in residence.residents:
+        resident = world.get_gameobject(resident_id)
+
+        if resident == character:
+            continue
+
+        if character.get_component(Relationships).get(resident_id).has_tag("Spouse"):
+            set_residence(world, resident, None)
+            departing_characters.append(resident)
+
+        elif character.get_component(Relationships).get(resident_id).has_tag("Child"):
+            set_residence(world, resident, None)
+            departing_characters.append(resident)
+
+    world.get_resource(EventLog).record_event(
+        DepartEvent(
+            date=world.get_resource(SimDateTime),
+            characters=departing_characters,
+            reason=reason,
+        )
+    )
 
 
 def check_share_residence(gameobject: GameObject, other: GameObject) -> bool:

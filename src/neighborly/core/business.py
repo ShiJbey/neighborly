@@ -4,11 +4,12 @@ import logging
 import math
 import re
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from random import Random
-from typing import Any, Dict, List, Optional, Protocol, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from neighborly.builtin.components import Active
+from neighborly.core import query
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World, component_info
 from neighborly.core.event import Event
@@ -16,73 +17,6 @@ from neighborly.core.routine import RoutineEntry, RoutinePriority, time_str_to_i
 from neighborly.core.time import SimDateTime, Weekday
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BusinessInfo:
-    min_population: int
-    max_instances: int
-    demise: int
-
-
-__business_info_registry: Dict[str, BusinessInfo] = {}
-
-
-class IOccupationPreconditionFn(Protocol):
-    """
-    A function that must evaluate to True for an entity to
-    be eligible to hold the occupation.
-
-    Notes
-    -----
-    This was implemented using a Protocol because the
-    implementation of Callable from the typing module
-    does not have proper support for **kwargs
-    """
-
-    def __call__(self, world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        """
-        A function that must evaluate to True for an entity to
-        be eligible to hold the occupation.
-
-        Arguments
-        ---------
-        world: World
-            The simulation's world instance
-        gameobject: GameObject
-            The GameObject to evaluate for the position
-
-        Returns
-        -------
-        bool: True if the entity is eligible for the occupation
-            False otherwise
-        """
-        raise NotImplementedError()
-
-
-def join_preconditions(
-    *preconditions: IOccupationPreconditionFn,
-) -> IOccupationPreconditionFn:
-    """Join multiple occupation precondition functions into a single function"""
-
-    def wrapper(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        return all([p(world, gameobject, **kwargs) for p in preconditions])
-
-    return wrapper
-
-
-def or_preconditions(
-    *preconditions: IOccupationPreconditionFn,
-) -> IOccupationPreconditionFn:
-    """Only one of the given preconditions has to pass to return True"""
-
-    def wrapper(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
-        for p in preconditions:
-            if p(world, gameobject, **kwargs):
-                return True
-        return False
-
-    return wrapper
 
 
 @dataclass
@@ -104,58 +38,44 @@ class OccupationType:
     name: str
     level: int = 1
     description: str = ""
-    precondition: Optional[IOccupationPreconditionFn] = None
+    precondition: Optional[query.QueryFilterFn] = field(default=lambda w, *g: True)
 
     def fill_role(
         self,
         world: World,
         business: Business,
         rng: Random,
+        candidate: Optional[GameObject] = None,
     ) -> Optional[Tuple[GameObject, Occupation]]:
         """
         Attempt to find a component entity that meets the preconditions
         for this occupation
         """
-        candidate_list: List[GameObject] = list(
-            filter(
-                lambda g: self.precondition(world, g) if self.precondition else True,
-                map(
-                    lambda res: world.get_gameobject(res[0]),
-                    world.get_components(GameCharacter, Unemployed, Active),
+        q = query.Query(
+            find=("Candidate",),
+            clauses=[
+                query.where(
+                    query.has_components(GameCharacter, Unemployed, Active), ""
                 ),
-            )
+                query.filter_(self.precondition),
+            ],
         )
 
-        if any(candidate_list):
-            chosen_candidate = rng.choice(candidate_list)
+        if candidate:
+            candidate_list = q.execute(world, Candidate=candidate.id)
+        else:
+            candidate_list = q.execute(world)
+
+        if candidate_list:
+            chosen_candidate = world.get_gameobject(rng.choice(candidate_list)[0])
             return chosen_candidate, Occupation(
                 occupation_type=self.name,
                 business=business.gameobject.id,
                 level=self.level,
                 start_date=world.get_resource(SimDateTime).copy(),
             )
-        return None
 
-    def fill_role_with(
-        self, world: World, business: Business, candidate: GameObject
-    ) -> Optional[Occupation]:
-        if self.precondition:
-            if self.precondition(world, candidate):
-                return Occupation(
-                    occupation_type=self.name,
-                    business=business.gameobject.id,
-                    level=self.level,
-                    start_date=world.get_resource(SimDateTime).copy(),
-                )
-            else:
-                return None
-        else:
-            return Occupation(
-                occupation_type=self.name,
-                business=business.gameobject.id,
-                level=self.level,
-                start_date=world.get_resource(SimDateTime).copy(),
-            )
+        return None
 
     def __repr__(self) -> str:
         return f"OccupationType(name={self.name}, level={self.level})"

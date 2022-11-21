@@ -569,7 +569,9 @@ class SpawnResidentSystem(System):
                 town.increment_population()
 
                 # Configure relationship from character to spouse
-                character.get_component(Relationships).get(spouse.id).add_tags("Spouse")
+                character.get_component(Relationships).get(spouse.id).add_tags(
+                    "Spouse", "Significant Other"
+                )
                 character.get_component(Relationships).get(spouse.id).romance.increase(
                     45
                 )
@@ -578,7 +580,9 @@ class SpawnResidentSystem(System):
                 ).friendship.increase(30)
 
                 # Configure relationship from spouse to character
-                spouse.get_component(Relationships).get(character.id).add_tags("Spouse")
+                spouse.get_component(Relationships).get(character.id).add_tags(
+                    "Spouse", "Significant Other"
+                )
                 spouse.get_component(Relationships).get(character.id).romance.increase(
                     45
                 )

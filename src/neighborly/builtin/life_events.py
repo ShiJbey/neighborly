@@ -60,10 +60,10 @@ def become_friends_event(
         pattern=querylib.Query(
             find=("Initiator", "Other"),
             clauses=[
-                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
-                querylib.where(querylib.has_components(Active), "Initiator"),
-                querylib.where(querylib.has_components(GameCharacter), "Other"),
-                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.where(
+                    querylib.has_components(GameCharacter, Active), "Initiator"
+                ),
+                querylib.where(querylib.has_components(GameCharacter, Active), "Other"),
                 querylib.ne_(("Initiator", "Other")),
                 querylib.where(friendship_gt(threshold), "Initiator", "Other"),
                 querylib.where(friendship_gt(threshold), "Other", "Initiator"),
@@ -151,10 +151,8 @@ def start_dating_event(threshold: float = 0.7, probability: float = 1.0) -> ILif
                 querylib.where_not(
                     relationship_has_tags("Family"), "Other", "Initiator"
                 ),
-                querylib.where(
-                    querylib.to_clause(is_single, GameCharacter), "Initiator"
-                ),
-                querylib.where(querylib.to_clause(is_single, GameCharacter), "Other"),
+                querylib.filter_(is_single, "Initiator"),
+                querylib.filter_(is_single, "Other"),
             ],
         ),
         effect=effect,
@@ -372,20 +370,15 @@ def retire_event(probability: float = 0.4) -> ILifeEvent:
             return world.get_resource(NeighborlyEngine).rng.choice(eligible_characters)
         return None
 
-    def bind_business(world: World, event: Event, candidate: Optional[GameObject]):
-        return world.get_gameobject(
-            world.get_gameobject(event["Retiree"]).get_component(Occupation).business
-        )
-
     def execute(world: World, event: Event):
         retiree = world.get_gameobject(event["Retiree"])
         retiree.add_component(Retired())
+        helpers.end_job(world, retiree, event.name)
 
     return LifeEvent(
         name="Retire",
         roles=[
             LifeEventRoleType(name="Retiree", binder_fn=bind_retiree),
-            LifeEventRoleType(name="Business", binder_fn=bind_business),
         ],
         effect=execute,
         probability=probability,
@@ -427,33 +420,11 @@ def find_own_place_event(probability: float = 0.1) -> ILifeEvent:
         vacant_residence = choose_random_vacant_residence(world)
         if vacant_residence:
             # Move into house with any dependent children
-            helpers.set_residence(character, vacant_residence.gameobject)
+            helpers.set_residence(world, character, vacant_residence.gameobject)
 
         # Depart if no housing could be found
         else:
-            depart = depart_event()
-
-            residence = world.get_gameobject(
-                character.get_component(Resident).residence
-            ).get_component(Residence)
-
-            depart.try_execute_event(world, Character=character)
-
-            # Have all spouses depart
-            # Allows for polygamy
-            for rel in character.get_component(Relationships).get_all_with_tags(
-                "Spouse"
-            ):
-                spouse = world.get_gameobject(rel.target)
-                depart.try_execute_event(world, Character=spouse)
-
-            # Have all children living in the same house depart
-            for rel in character.get_component(Relationships).get_all_with_tags(
-                "Child"
-            ):
-                child = world.get_gameobject(rel.target)
-                if child.id in residence.residents and child.id not in residence.owners:
-                    depart.try_execute_event(world, Character=child)
+            helpers.depart_town(world, character, event.name)
 
     return PatternLifeEvent(
         name="FindOwnPlace",
@@ -500,11 +471,10 @@ class GoOutOfBusinessLifeEvent(PatternLifeEvent):
             pattern=querylib.Query(
                 find=("Business",),
                 clauses=[
-                    querylib.where(querylib.has_components(Business), "Business"),
                     querylib.where(
-                        querylib.has_components(OpenForBusiness), "Business"
+                        querylib.has_components(Business, OpenForBusiness, Active),
+                        "Business",
                     ),
-                    querylib.where(querylib.has_components(Active), "Business"),
                 ],
             ),
             effect=GoOutOfBusinessLifeEvent._effect,
@@ -546,9 +516,10 @@ def go_out_of_business_event() -> ILifeEvent:
         pattern=querylib.Query(
             find=("Business",),
             clauses=[
-                querylib.where(querylib.has_components(Business), "Business"),
-                querylib.where(querylib.has_components(OpenForBusiness), "Business"),
-                querylib.where(querylib.has_components(Active), "Business"),
+                querylib.where(
+                    querylib.has_components(Business, OpenForBusiness, Active),
+                    "Business",
+                )
             ],
         ),
         effect=effect,

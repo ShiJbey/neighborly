@@ -1,13 +1,14 @@
 import pandas as pd
 import pytest
 
-from neighborly.builtin.components import Name, NonBinary, Retired
+from neighborly.builtin.components import Age, Name, NonBinary, Retired
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, World
 from neighborly.core.query import (
     Query,
     Relation,
     eq_,
+    filter_,
     has_components,
     ne_,
     where,
@@ -119,7 +120,7 @@ class DemonKing(Component):
 def sample_world() -> World:
     world = World()
 
-    world.spawn_gameobject([Hero(), GameCharacter(), Name("Shi")])
+    world.spawn_gameobject([Hero(), GameCharacter(), Name("Shi"), Age(27)])
     world.spawn_gameobject([Hero(), GameCharacter(), Name("Astrid"), NonBinary()])
     world.spawn_gameobject([DemonKing(), GameCharacter(), Name("-Shi"), Retired()])
     world.spawn_gameobject(
@@ -313,4 +314,34 @@ def test_query_bindings(sample_world):
     )
     result = set(query.execute(sample_world, HERO=2))
     expected = {(2, 3)}
+    assert result == expected
+
+
+def test_filter(sample_world):
+    query = Query(
+        ("X",),
+        [
+            where(has_components(GameCharacter), "X"),
+            filter_(
+                lambda w, *g: g[0].has_component(Age)
+                and g[0].get_component(Age).value > 25,
+                "X",
+            ),
+        ],
+    )
+    result = set(query.execute(sample_world))
+    expected = {(1,)}
+    assert result == expected
+
+    query = Query(
+        ("X",),
+        [
+            where(has_components(GameCharacter), "X"),
+            filter_(
+                lambda w, *g: g[0].has_component(NonBinary),
+            ),
+        ],
+    )
+    result = set(query.execute(sample_world))
+    expected = {(2,), (4,)}
     assert result == expected

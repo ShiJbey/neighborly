@@ -98,17 +98,6 @@ class PregnantEvent(Event):
         )
 
 
-class RetireEvent(Event):
-    def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(
-            name="Retire",
-            timestamp=date.to_iso_str(),
-            roles=[
-                EventRole("Character", character.id),
-            ],
-        )
-
-
 class EndJobEvent(Event):
 
     __slots__ = "occupation", "reason"

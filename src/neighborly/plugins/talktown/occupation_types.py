@@ -12,14 +12,15 @@ from neighborly.builtin.role_filters import (
     is_college_graduate,
     is_gender,
 )
-from neighborly.core.business import OccupationType, join_preconditions
+from neighborly.core.business import OccupationType
+from neighborly.core.query import and_
 
 apprentice = OccupationType(name="Apprentice", level=1, precondition=is_gender("male"))
 
 architect = OccupationType(
     name="Architect",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    precondition=is_college_graduate,
 )
 
 bottler = OccupationType(
@@ -291,11 +292,7 @@ teacher = OccupationType(
 )
 
 principal = OccupationType(
-    name="Principal",
-    level=3,
-    precondition=join_preconditions(
-        has_experience_as_a("Teacher"),
-    ),
+    name="Principal", level=3, precondition=has_experience_as_a("Teacher")
 )
 
 tailor = OccupationType(
@@ -327,15 +324,15 @@ proprietor = OccupationType(
 dentist = OccupationType(
     name="Dentist",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    precondition=is_college_graduate,
 )
 
 doctor = OccupationType(
     name="Doctor",
     level=4,
-    precondition=join_preconditions(
-        has_any_work_experience(),
-        is_college_graduate(),
+    precondition=and_(
+        has_any_work_experience,
+        is_college_graduate,
     ),
 )
 
@@ -347,13 +344,13 @@ druggist = OccupationType(
 engineer = OccupationType(
     name="Engineer",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    precondition=is_college_graduate,
 )
 
 fire_chief = OccupationType(
     name="Fire Chief",
     level=3,
-    precondition=join_preconditions(has_experience_as_a("Fire Fighter")),
+    precondition=has_experience_as_a("Fire Fighter"),
 )
 
 insurance_agent = OccupationType(
@@ -370,9 +367,9 @@ jeweler = OccupationType(
 lawyer = OccupationType(
     name="Lawyer",
     level=4,
-    precondition=join_preconditions(
-        has_any_work_experience(),
-        is_college_graduate(),
+    precondition=and_(
+        has_any_work_experience,
+        is_college_graduate,
     ),
 )
 
@@ -399,41 +396,41 @@ owner = OccupationType(
 professor = OccupationType(
     name="Professor",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    precondition=is_college_graduate,
 )
 
 optometrist = OccupationType(
     name="Optometrist",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    precondition=is_college_graduate,
 )
 
 
 pharmacist = OccupationType(
     name="Pharmacist",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    precondition=is_college_graduate,
 )
 
 plastic_surgeon = OccupationType(
     name="Plastic Surgeon",
     level=4,
-    precondition=join_preconditions(
-        has_any_work_experience(),
-        is_college_graduate(),
+    precondition=and_(
+        has_any_work_experience,
+        is_college_graduate,
     ),
 )
 
 police_chief = OccupationType(
     name="Police Chief",
     level=3,
-    precondition=join_preconditions(has_experience_as_a("Police Chief")),
+    precondition=has_experience_as_a("Police Chief"),
 )
 
 police_officer = OccupationType(
     name="Police Officer",
     level=1,
-    precondition=join_preconditions(has_experience_as_a("Police Officer")),
+    precondition=has_experience_as_a("Police Officer"),
 )
 
 

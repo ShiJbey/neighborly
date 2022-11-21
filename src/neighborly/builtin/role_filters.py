@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Literal, Tuple
-
-import pandas as pd
+from typing import List, Literal, Tuple
 
 from neighborly.builtin.components import (
     Age,
@@ -14,8 +12,7 @@ from neighborly.builtin.components import (
 )
 from neighborly.core.business import Occupation, Unemployed, WorkHistory
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.life_event import RoleFilterFn
-from neighborly.core.query import EcsFindClause, QueryContext, Relation
+from neighborly.core.query import EcsFindClause, QueryFilterFn
 from neighborly.core.relationship import Relationships
 from neighborly.core.time import SimDateTime
 
@@ -89,128 +86,95 @@ def relationship_has_tags(*tags: str) -> EcsFindClause:
     return precondition
 
 
-def has_relationship_with_tags(*tags: str) -> EcsFindClause:
+def has_relationship_with_tags(*tags: str) -> QueryFilterFn:
     """Returns a list of all the GameObjects with the given component"""
 
-    def precondition(world: World):
-        results: List[Tuple[int, ...]] = []
-        for gid, relationships in world.get_component(Relationships):
+    def precondition(world: World, *gameobjects: GameObject) -> bool:
+        gameobject = gameobjects[0]
+        if relationships := gameobject.try_component(Relationships):
             if relationships.get_all_with_tags(*tags):
-                results.append((gid,))
-        return results
+                return True
+        return False
 
     return precondition
 
 
-def at_same_location(a: GameObject, b: GameObject) -> bool:
+def at_same_location(world: World, *gameobjects: GameObject) -> bool:
     """Return True if these characters are at the same location"""
-    a_location = a.get_component(CurrentLocation).location
-    b_location = b.get_component(CurrentLocation).location
+    a_location = gameobjects[0].get_component(CurrentLocation).location
+    b_location = gameobjects[1].get_component(CurrentLocation).location
     return (
         a_location is not None and b_location is not None and a_location == b_location
     )
 
 
-def at_same_location(symbols: Tuple[str, str]):
-    """Query function that removes all instances where two variables are not the same"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        if ctx.relation is None:
-            raise RuntimeError("equal clause is missing relation within context")
-        df = ctx.relation.get_data_frame()
-        matching_rows: List[int] = []
-        for i in range(df.shape[0]):
-            a_location = world.get_gameobject(df.iloc[i]).try_component(CurrentLocation)
-            b_location = world.get_gameobject(df.iloc[i]).try_component(CurrentLocation)
-            if (
-                a_location is not None
-                and b_location is not None
-                and a_location == b_location
-            ):
-                matching_rows.append(i)
-
-        new_data = df.loc[matching_rows]
-        return Relation(pd.DataFrame(new_data))
-
-    return run
-
-
-def over_age(age: int) -> RoleFilterFn:
-    def fn(world: World, gameobject: GameObject) -> bool:
-        age_component = gameobject.try_component(Age)
+def over_age(age: int) -> QueryFilterFn:
+    def fn(world: World, *gameobjects: GameObject) -> bool:
+        age_component = gameobjects[0].try_component(Age)
         if age_component is not None:
             return age_component.value > age
 
     return fn
 
 
-def is_man(world: World, gameobject: GameObject) -> bool:
-    """Return true if GameObject is a man"""
-    return gameobject.has_component(Male)
-
-
-def is_single(world: World, gameobject: GameObject) -> bool:
+def is_single(world: World, *gameobjects: GameObject) -> bool:
     """Return True if this entity has no relationships tagged as significant others"""
     return (
         len(
-            gameobject.get_component(Relationships).get_all_with_tags(
-                "Significant Other"
-            )
+            gameobjects[0]
+            .get_component(Relationships)
+            .get_all_with_tags("Significant Other")
         )
         == 0
     )
 
 
-def is_unemployed(world: World, gameobject: GameObject) -> bool:
+def is_unemployed(world: World, *gameobjects: GameObject) -> bool:
     """Returns True if this entity does not have a job"""
-    return gameobject.has_component(Unemployed)
+    return gameobjects[0].has_component(Unemployed)
 
 
-def is_employed(world: World, gameobject: GameObject) -> bool:
+def is_employed(world: World, *gameobjects: GameObject) -> bool:
     """Returns True if this entity has a job"""
-    return gameobject.has_component(Occupation)
+    return gameobjects[0].has_component(Occupation)
 
 
-def before_year(year: int) -> RoleFilterFn:
+def before_year(year: int) -> QueryFilterFn:
     """Return precondition function that checks if the date is before a given year"""
 
-    def fn(world: World, gameobject: GameObject) -> bool:
+    def fn(world: World, *gameobjects: GameObject) -> bool:
         return world.get_resource(SimDateTime).year < year
 
     return fn
 
 
-def after_year(year: int) -> RoleFilterFn:
+def after_year(year: int) -> QueryFilterFn:
     """Return precondition function that checks if the date is after a given year"""
 
-    def fn(world: World, gameobject: GameObject, **kwargs: Any) -> bool:
+    def fn(world: World, *gameobjects: GameObject) -> bool:
         return world.get_resource(SimDateTime).year > year
 
     return fn
 
 
-def is_gender(gender: Literal["male", "female", "non-binary"]) -> RoleFilterFn:
+def is_gender(gender: Literal["male", "female", "non-binary"]) -> QueryFilterFn:
     """Return precondition function that checks if an entity is a given gender"""
     gender_component_types = {"male": Male, "female": Female, "non-binary": NonBinary}
 
-    def fn(world: World, gameobject: GameObject) -> bool:
-        return gameobject.has_component(gender_component_types[gender])
+    def fn(world: World, *gameobjects: GameObject) -> bool:
+        return gameobjects[0].has_component(gender_component_types[gender])
 
     return fn
 
 
-def has_any_work_experience() -> RoleFilterFn:
+def has_any_work_experience(world: World, *gameobjects: GameObject) -> bool:
     """Return True if the entity has any work experience at all"""
-
-    def fn(world: World, gameobject: GameObject) -> bool:
-        return len(gameobject.get_component(WorkHistory)) > 0
-
-    return fn
+    return len(gameobjects[0].get_component(WorkHistory)) > 0
 
 
 def has_experience_as_a(
     occupation_type: str, years_experience: int = 0
-) -> RoleFilterFn:
+) -> QueryFilterFn:
     """
     Returns Precondition function that returns true if the entity
     has experience as a given occupation type.
@@ -224,12 +188,13 @@ def has_experience_as_a(
 
     Returns
     -------
-    RoleFilterFn
+    QueryFilterFn
         The precondition function used when filling the occupation
     """
 
-    def fn(world: World, gameobject: GameObject) -> bool:
+    def fn(world: World, *gameobjects: GameObject) -> bool:
         total_experience: int = 0
+        gameobject = gameobjects[0]
 
         work_history = gameobject.try_component(WorkHistory)
 
@@ -250,10 +215,6 @@ def has_experience_as_a(
     return fn
 
 
-def is_college_graduate() -> RoleFilterFn:
+def is_college_graduate(world: World, *gameobject: GameObject) -> bool:
     """Return True if the entity is a college graduate"""
-
-    def fn(world: World, gameobject: GameObject) -> bool:
-        return gameobject.has_component(CollegeGraduate)
-
-    return fn
+    return gameobject[0].has_component(CollegeGraduate)

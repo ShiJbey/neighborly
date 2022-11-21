@@ -1,12 +1,63 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Type
+from typing import Any, Dict, List, Optional, Protocol, Tuple, Type
 
 import pandas as pd
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, World
+
+
+class QueryFilterFn(Protocol):
+    """
+    Function that attempts to reduce the number of results within a query
+    by defining a precondition that must be true for a result to be valid
+    """
+
+    def __call__(self, world: World, *gameobjects: GameObject) -> bool:
+        """
+        Check the precondition for the given result
+
+        Parameters
+        ----------
+        world: World
+            The current world instance
+
+        *gameobjects: Tuple[GameObject, ...]
+            GameObject references from the current relation
+
+        Returns
+        -------
+        bool
+            True if the precondition passes, False otherwise
+        """
+        raise NotImplementedError
+
+
+def and_(
+    *preconditions: QueryFilterFn,
+) -> QueryFilterFn:
+    """Join multiple occupation precondition functions into a single function"""
+
+    def wrapper(world: World, *gameobjects: GameObject) -> bool:
+        return all([p(world, *gameobjects) for p in preconditions])
+
+    return wrapper
+
+
+def or_(
+    *preconditions: QueryFilterFn,
+) -> QueryFilterFn:
+    """Only one of the given preconditions has to pass to return True"""
+
+    def wrapper(world: World, *gameobjects: GameObject) -> bool:
+        for p in preconditions:
+            if p(world, *gameobjects):
+                return True
+        return False
+
+    return wrapper
 
 
 class EcsFindClause(Protocol):
@@ -32,23 +83,6 @@ def component_attr(component_type: Type[Component], attr: str) -> EcsFindClause:
         return list(
             map(
                 lambda result: (int(result[0]), getattr(result[1], attr)),
-                world.get_component(component_type),
-            )
-        )
-
-    return precondition
-
-
-def component_method(
-    component_type: Type[Component], method: str, *args, **kwargs
-) -> EcsFindClause:
-    def precondition(world: World):
-        return list(
-            map(
-                lambda result: (
-                    int(result[0]),
-                    getattr(result[1], method)(*args, **kwargs),
-                ),
                 world.get_component(component_type),
             )
         )
@@ -370,20 +404,39 @@ def where_any(*clauses: IQueryClause):
     return run
 
 
-def to_clause(
-    precondition: Callable[[World, GameObject], bool], *component_types: Type[Component]
-) -> EcsFindClause:
+def filter_(precondition: QueryFilterFn, *variables: str) -> IQueryClause:
     """Wraps a precondition function and returns an ECSFindClause"""
 
-    def fn(world: World):
-        results: List[Tuple[int, ...]] = []
-        for gid, _ in world.get_components(*component_types):
-            gameobject = world.get_gameobject(gid)
-            if precondition(world, gameobject) is True:
-                results.append((gid,))
-        return results
+    def run(ctx: QueryContext, world: World) -> Relation:
 
-    return fn
+        rows_to_drop: List[int] = []
+        relation_symbols = ctx.relation.get_symbols()
+        variables_to_check = variables
+
+        # Just assume we are filtering on the only symbol bound
+        # in the relation if no variable names were given
+        if len(relation_symbols) == 1 and len(variables_to_check) == 0:
+            variables_to_check = relation_symbols
+
+        for row in range(ctx.relation.get_data_frame().shape[0]):
+            # convert given variables to GameObject tuple
+            gameobjects: Tuple[GameObject, ...] = tuple(
+                map(
+                    lambda v: world.get_gameobject(
+                        ctx.relation.get_data_frame().iloc[row][v]
+                    ),
+                    variables_to_check,
+                )
+            )
+
+            if not precondition(world, *gameobjects):
+                rows_to_drop.append(row)
+
+        new_relation = Relation(ctx.relation.get_data_frame().drop(rows_to_drop))
+
+        return new_relation
+
+    return run
 
 
 class Query:
@@ -410,6 +463,33 @@ class Query:
     def get_symbols(self) -> Tuple[str, ...]:
         """Get the output symbols for this pattern"""
         return self._symbols
+
+    @staticmethod
+    def with_(
+        components: Tuple[Type[Component]], variable: Optional[str] = None
+    ) -> IQueryClause:
+        """Adds results to the current query for game objects with all the given components"""
+        ...
+
+    @staticmethod
+    def filter_(filter_fn: QueryFilterFn, *variables: str) -> IQueryClause:
+        """Adds results to the current query for game objects with all the given components"""
+        ...
+
+    @staticmethod
+    def not_(*clauses: IQueryClause) -> IQueryClause:
+        """Adds results to the current query for game objects without all the given components"""
+        ...
+
+    @staticmethod
+    def and_(*clauses: IQueryClause) -> IQueryClause:
+        """Adds results to the current query for game objects with all the given components"""
+        ...
+
+    @staticmethod
+    def or_(*clauses: IQueryClause) -> IQueryClause:
+        """Adds results to the current query for game objects with all the given components"""
+        ...
 
     def execute(self, world: World, **bindings: int) -> List[Tuple[int, ...]]:
         """
