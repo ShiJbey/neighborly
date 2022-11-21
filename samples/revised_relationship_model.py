@@ -10,10 +10,10 @@ from __future__ import annotations
 import random
 from typing import List, Optional, Set
 
-from neighborly.builtin.helpers import IInheritable, inheritable
-from neighborly.core.archetypes import BaseCharacterArchetype
+from neighborly.builtin.archetypes import BaseCharacterArchetype
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.inheritable import IInheritable, inheritable
 from neighborly.core.relationship import Relationships
 from neighborly.plugins.defaults import DefaultNameDataPlugin
 from neighborly.simulation import SimulationBuilder
@@ -27,9 +27,6 @@ class FurColor(Component, IInheritable):
     def __init__(self, colors: List[str]) -> None:
         super().__init__()
         self.values: Set[str] = set(colors)
-
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\tcolors: {self.values}")
 
     @classmethod
     def from_parents(cls, *components: FurColor) -> FurColor:

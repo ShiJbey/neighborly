@@ -1,103 +1,75 @@
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import List, Optional, Tuple, Union, cast
 
-from neighborly.builtin.components import CurrentLocation, LocationAliases, Vacant
-from neighborly.core.archetypes import (
-    BaseCharacterArchetype,
-    CharacterArchetypes,
-    ICharacterArchetype,
+from neighborly.builtin.archetypes import BaseCharacterArchetype
+from neighborly.builtin.components import (
+    Active,
+    CurrentLocation,
+    LocationAliases,
+    OpenToPublic,
+    Vacant,
 )
+from neighborly.builtin.events import BusinessClosedEvent, EndJobEvent
+from neighborly.core.archetypes import ICharacterArchetype
 from neighborly.core.building import Building
 from neighborly.core.business import (
     Business,
     ClosedForBusiness,
     Occupation,
+    OpenForBusiness,
+    PendingOpening,
+    Services,
+    ServiceTypes,
+    Unemployed,
     WorkHistory,
 )
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.character import GameCharacter
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import Event, EventLog, EventRole
+from neighborly.core.event import EventLog
+from neighborly.core.inheritable import (
+    IInheritable,
+    get_inheritable_traits_given_parents,
+)
 from neighborly.core.location import Location
 from neighborly.core.position import Position2D
 from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
+from neighborly.core.routine import Routine, RoutineEntry, RoutinePriority
 from neighborly.core.time import SimDateTime
 from neighborly.core.town import LandGrid
 
 logger = logging.getLogger(__name__)
 
 
-def at_same_location(a: GameObject, b: GameObject) -> bool:
-    """Return True if these characters are at the same location"""
-    a_location = a.get_component(CurrentLocation).location
-    b_location = b.get_component(CurrentLocation).location
-    return (
-        a_location is not None and b_location is not None and a_location == b_location
-    )
+def find_places_with_services(world: World, *services: str) -> List[int]:
+    """
+    Get all the active locations with the given services
+
+    Parameters
+    ----------
+    world: World
+        The world instance to search within
+
+    services: Tuple[str]
+        The services to search for
+
+    Returns
+    -------
+    The IDs of the matching entities
+    """
+    matches: List[int] = []
+    for gid, services_component in world.get_component(Services):
+        if all([services_component.has_service(ServiceTypes.get(s)) for s in services]):
+            matches.append(gid)
+    return matches
 
 
-# def get_top_activities(character_values: PersonalValues, n: int = 3) -> Tuple[str, ...]:
-#     """Return the top activities an entity would enjoy given their values"""
-#
-#     scores: List[Tuple[int, str]] = []
-#
-#     for activity in ActivityLibrary.get_all():
-#         score: int = int(np.dot(character_values.traits, activity.personal_values))
-#         scores.append((score, activity.name))
-#
-#     return tuple(
-#         [
-#             activity_score[1]
-#             for activity_score in sorted(scores, key=lambda s: s[0], reverse=True)
-#         ][:n]
-#     )
-#
-#
-# def find_places_with_activities(world: World, *activities: str) -> List[int]:
-#     """Return a list of entity ID for locations that have the given activities"""
-#     locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
-#         Location, Activities
-#     )
-#
-#     matches: List[int] = []
-#
-#     for location_id, (_, activities_comp) in locations:
-#         if all([activities_comp.has_activity(a) for a in activities]):
-#             matches.append(location_id)
-#
-#     return matches
-#
-#
-# def find_places_with_any_activities(world: World, *activities: str) -> List[int]:
-#     """Return a list of entity ID for locations that have any of the given activities
-#
-#     Results are sorted by how many activities they match
-#     """
-#
-#     def score_location(act_comp: Activities) -> int:
-#         return sum([act_comp.has_activity(a) for a in activities])
-#
-#     locations: List[Tuple[int, List[Location, Activities]]] = world.get_components(
-#         Location, Activities
-#     )
-#
-#     matches: List[Tuple[int, int]] = []
-#
-#     for location_id, (_, activities_comp) in locations:
-#         score = score_location(activities_comp)
-#         if score > 0:
-#             matches.append((score, location_id))
-#
-#     return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
-
-
-def add_coworkers(world: World, character: GameObject, business: Business) -> None:
+def add_coworkers(world: World, character: GameObject, business: GameObject) -> None:
     """Add coworker tags to current coworkers in relationship network"""
-    for employee_id in business.get_employees():
+    for employee_id in business.get_component(Business).get_employees():
         if employee_id == character.id:
             continue
 
@@ -108,9 +80,9 @@ def add_coworkers(world: World, character: GameObject, business: Business) -> No
         coworker.get_component(Relationships).get(character.id).add_tags("Coworker")
 
 
-def remove_coworkers(world: World, character: GameObject, business: Business) -> None:
+def remove_coworkers(world: World, character: GameObject, business: GameObject) -> None:
     """Remove coworker tags from current coworkers in relationship network"""
-    for employee_id in business.get_employees():
+    for employee_id in business.get_component(Business).get_employees():
         if employee_id == character.id:
             continue
 
@@ -121,7 +93,7 @@ def remove_coworkers(world: World, character: GameObject, business: Business) ->
         coworker.get_component(Relationships).get(character.id).remove_tags("Coworker")
 
 
-def move_to_location(
+def set_location(
     world: World, gameobject: GameObject, destination: Optional[Union[int, str]]
 ) -> None:
     if type(destination) == str:
@@ -141,10 +113,13 @@ def move_to_location(
 
     # Update old location if needed
     if current_location_comp := gameobject.try_component(CurrentLocation):
-        current_location = world.get_gameobject(
-            current_location_comp.location
-        ).get_component(Location)
-        current_location.remove_entity(gameobject.id)
+        # Have to check if the location still has a location component
+        # in-case te previous location is a closed business or demolished
+        # building
+        if current_location := world.try_gameobject(current_location_comp.location):
+            if current_location.has_component(Location):
+                current_location.get_component(Location).remove_entity(gameobject.id)
+
         gameobject.remove_component(CurrentLocation)
 
     # Move to new location if needed
@@ -154,79 +129,42 @@ def move_to_location(
         gameobject.add_component(CurrentLocation(destination_id))
 
 
-def remove_residence_owner(character: GameObject, residence: GameObject) -> None:
+def set_residence(
+    world: World,
+    character: GameObject,
+    new_residence: Optional[GameObject],
+    is_owner: bool = False,
+) -> None:
     """
-    Remove a character as the owner of a residence
-
-    Parameters
-    ----------
-    character: GameObject
-        Character to remove as owner
-    residence: GameObject
-        Residence to remove them from
+    Moves a character into a new permanent residence
     """
-    residence.get_component(Residence).remove_owner(character.id)
-
-
-def add_residence_owner(character: GameObject, residence: GameObject) -> None:
-    """
-    Add an entity as the new owner of a residence
-
-    Parameters
-    ----------
-    character: GameObject
-        entity that purchased the residence
-
-    residence: GameObject
-        residence that was purchased
-    """
-    residence.get_component(Residence).add_owner(character.id)
-
-
-def move_out_of_residence(character: GameObject, former_residence: GameObject) -> None:
-    """
-    Removes a character as a resident at a given residence
-
-    Parameters
-    ----------
-    character: GameObject
-        Character to remove
-    former_residence: GameObject
-        Residence to remove the character from
-    """
-    former_residence.get_component(Residence).remove_resident(character.id)
-    character.remove_component(Resident)
-
-    if len(former_residence.get_component(Residence).residents) <= 0:
-        former_residence.add_component(Vacant())
-
-    if location_aliases := character.try_component(LocationAliases):
-        del location_aliases["home"]
-
-
-def move_residence(character: GameObject, new_residence: GameObject) -> None:
-    """
-    Sets an entity's primary residence, possibly replacing the previous
-
-    Parameters
-    ----------
-    character
-    new_residence
-
-    Returns
-    -------
-
-    """
-
-    world = character.world
 
     if resident := character.try_component(Resident):
         # This character is currently a resident at another location
-        former_residence = world.get_gameobject(resident.residence)
-        move_out_of_residence(character, former_residence)
+        former_residence = world.get_gameobject(resident.residence).get_component(
+            Residence
+        )
+
+        if former_residence.is_owner(character.id):
+            former_residence.remove_owner(character.id)
+
+        former_residence.remove_resident(character.id)
+        character.remove_component(Resident)
+
+        if len(former_residence.residents) <= 0:
+            former_residence.gameobject.add_component(Vacant())
+
+        if location_aliases := character.try_component(LocationAliases):
+            del location_aliases["home"]
+
+    if new_residence is None:
+        return
 
     # Move into new residence
     new_residence.get_component(Residence).add_resident(character.id)
+
+    if is_owner:
+        new_residence.get_component(Residence).add_owner(character.id)
 
     if not character.has_component(LocationAliases):
         character.add_component(LocationAliases())
@@ -238,9 +176,19 @@ def move_residence(character: GameObject, new_residence: GameObject) -> None:
         new_residence.remove_component(Vacant)
 
 
-def demolish_building(gameobject: GameObject) -> None:
+def check_share_residence(gameobject: GameObject, other: GameObject) -> bool:
+    resident_comp = gameobject.try_component(Resident)
+    other_resident_comp = other.try_component(Resident)
+
+    return (
+        resident_comp is not None
+        and other_resident_comp is not None
+        and resident_comp.residence == other_resident_comp.residence
+    )
+
+
+def demolish_building(world: World, gameobject: GameObject) -> None:
     """Remove the building component and free the land grid space"""
-    world = gameobject.world
     gameobject.remove_component(Building)
     position = gameobject.get_component(Position2D)
     land_grid = world.get_resource(LandGrid)
@@ -248,95 +196,47 @@ def demolish_building(gameobject: GameObject) -> None:
     gameobject.remove_component(Position2D)
 
 
-def close_for_business(business: Business) -> None:
+def shutdown_business(world: World, business: GameObject) -> None:
     """Close a business and remove all employees and the owner"""
-    world = business.gameobject.world
     date = world.get_resource(SimDateTime)
 
-    business.gameobject.add_component(ClosedForBusiness())
+    event = BusinessClosedEvent(date, business)
 
-    close_for_business_event = Event(
-        name="ClosedForBusiness",
-        timestamp=date.to_date_str(),
-        roles=[
-            EventRole("Business", business.gameobject.id),
-        ],
-    )
+    business.remove_component(PendingOpening)
+    business.remove_component(OpenForBusiness)
+    business.add_component(ClosedForBusiness())
 
-    world.get_resource(EventLog).record_event(world, close_for_business_event)
+    world.get_resource(EventLog).record_event(event)
 
-    for employee in business.get_employees():
-        layoff_employee(business, world.get_gameobject(employee))
+    business_comp = business.get_component(Business)
+    location = business.get_component(Location)
 
-    if business.owner_type is not None:
-        layoff_employee(business, world.get_gameobject(business.owner))
-        business.owner = None
+    # Relocate all GameObjects from at the location
+    for entity_id in location.entities:
+        entity = world.get_gameobject(entity_id)
 
+        if entity.has_component(GameCharacter):
+            # Send all the characters that are present back to their homes
+            set_location(
+                world,
+                entity,
+                None,
+            )
+        else:
+            # Delete everything that is not a character
+            # assume that it will get lost in the demolition
+            world.delete_gameobject(entity_id)
 
-def leave_job(world: World, employee: GameObject) -> None:
-    """Character leaves the job of their own free will"""
-    occupation = employee.get_component(Occupation)
+    for employee in business_comp.get_employees():
+        end_job(world, world.get_gameobject(employee), reason=event.name)
 
-    business = world.get_gameobject(occupation.business)
+    if business_comp.owner_type is not None and business_comp.owner is not None:
+        end_job(world, world.get_gameobject(business_comp.owner), reason=event.name)
 
-    fired_event = Event(
-        name="LeaveJob",
-        timestamp=world.get_resource(SimDateTime).to_iso_str(),
-        roles=[
-            EventRole("Business", business.id),
-            EventRole("Character", employee.id),
-        ],
-    )
-
-    world.get_resource(EventLog).record_event(world, fired_event)
-
-    business.get_component(Business).remove_employee(employee.id)
-
-    if not employee.has_component(WorkHistory):
-        employee.add_component(WorkHistory())
-
-    employee.get_component(WorkHistory).add_entry(
-        occupation_type=occupation.occupation_type,
-        business=business.id,
-        start_date=occupation.start_date,
-        end_date=world.get_resource(SimDateTime).copy(),
-        reason_for_leaving=fired_event,
-    )
-
-    employee.remove_component(Occupation)
-
-
-def layoff_employee(business: Business, employee: GameObject) -> None:
-    """Remove an employee"""
-    world = business.gameobject.world
-    date = world.get_resource(SimDateTime)
-    business.remove_employee(employee.id)
-
-    occupation = employee.get_component(Occupation)
-
-    fired_event = Event(
-        name="LaidOffFromJob",
-        timestamp=date.to_iso_str(),
-        roles=[
-            EventRole("Business", business.gameobject.id),
-            EventRole("Character", employee.id),
-        ],
-    )
-
-    world.get_resource(EventLog).record_event(world, fired_event)
-
-    if not employee.has_component(WorkHistory):
-        employee.add_component(WorkHistory())
-
-    employee.get_component(WorkHistory).add_entry(
-        occupation_type=occupation.occupation_type,
-        business=business.gameobject.id,
-        start_date=occupation.start_date,
-        end_date=date.copy(),
-        reason_for_leaving=fired_event,
-    )
-
-    employee.remove_component(Occupation)
+    business.remove_component(Active)
+    business.remove_component(OpenToPublic)
+    business.remove_component(Location)
+    demolish_building(world, business)
 
 
 def choose_random_character_archetype(
@@ -346,7 +246,7 @@ def choose_random_character_archetype(
     archetype_choices: List[ICharacterArchetype] = []
     archetype_weights: List[int] = []
 
-    for archetype in CharacterArchetypes.get_all():
+    for archetype in engine.character_archetypes.get_all():
         archetype_choices.append(archetype)
         archetype_weights.append(archetype.get_spawn_frequency())
 
@@ -359,134 +259,6 @@ def choose_random_character_archetype(
         return archetype
     else:
         return None
-
-
-@dataclass()
-class InheritableComponentInfo:
-    """
-    Fields
-    ------
-    inheritance_chance: Tuple[float, float]
-        Probability that a character inherits a component when only on parent has
-        it and the probability if both characters have it
-    always_inherited: bool
-        Indicates that a component should be inherited regardless of
-    """
-
-    inheritance_chance: Tuple[float, float]
-    always_inherited: bool
-    requires_both_parents: bool
-
-
-_inheritable_components: Dict[Type[Component], InheritableComponentInfo] = {}
-
-
-class IInheritable(ABC):
-    @classmethod
-    @abstractmethod
-    def from_parents(
-        cls, parent_a: Optional[Component], parent_b: Optional[Component]
-    ) -> Component:
-        """Build a new instance of the component using instances from the parents"""
-        raise NotImplementedError
-
-
-_CT = TypeVar("_CT", bound="Component")
-
-
-def inheritable(
-    requires_both_parents: bool = False,
-    inheritance_chance: Union[int, Tuple[float, float]] = (0.5, 0.5),
-    always_inherited: bool = False,
-):
-    """Class decorator for components that can be inherited from characters' parents"""
-
-    def wrapped(cls: Type[_CT]) -> Type[_CT]:
-        if not callable(getattr(cls, "from_parents", None)):
-            raise RuntimeError("Component does not implement IInheritable interface.")
-
-        _inheritable_components[cls] = InheritableComponentInfo(
-            requires_both_parents=requires_both_parents,
-            inheritance_chance=(
-                inheritance_chance
-                if type(inheritance_chance) == tuple
-                else (inheritance_chance, inheritance_chance)
-            ),
-            always_inherited=always_inherited,
-        )
-        return cls
-
-    return wrapped
-
-
-def is_inheritable(component_type: Type[Component]) -> bool:
-    """Returns True if a component is inheritable from parent to child"""
-    return component_type in _inheritable_components
-
-
-def get_inheritable_components(gameobject: GameObject) -> List[Type[Component]]:
-    """Returns all the component type associated with the GameObject that are inheritable"""
-    inheritable_components = list()
-    # Get inheritable components from parent_a
-    for component_type in gameobject.get_component_types():
-        if is_inheritable(component_type):
-            inheritable_components.append(component_type)
-    return inheritable_components
-
-
-def get_inheritable_traits_given_parents(
-    parent_a: GameObject, parent_b: GameObject
-) -> Tuple[List[Type[Component]], List[Tuple[float, Type[Component]]]]:
-    """
-    Returns a
-    Parameters
-    ----------
-    parent_a
-    parent_b
-
-    Returns
-    -------
-    List[Type[Component]]
-        The component types that can be inherited from
-    """
-
-    parent_a_inheritables = set(get_inheritable_components(parent_a))
-
-    parent_b_inheritables = set(get_inheritable_components(parent_b))
-
-    shared_inheritables = parent_a_inheritables.intersection(parent_b_inheritables)
-
-    all_inheritables = parent_a_inheritables.union(parent_b_inheritables)
-
-    required_components = []
-    random_pool = []
-
-    for component_type in all_inheritables:
-        if _inheritable_components[component_type].always_inherited:
-            required_components.append(component_type)
-            continue
-
-        if _inheritable_components[component_type].requires_both_parents:
-            if component_type in shared_inheritables:
-                required_components.append(component_type)
-                continue
-
-        if component_type in shared_inheritables:
-            random_pool.append(
-                (
-                    _inheritable_components[component_type].inheritance_chance[1],
-                    component_type,
-                )
-            )
-        else:
-            random_pool.append(
-                (
-                    _inheritable_components[component_type].inheritance_chance[0],
-                    component_type,
-                )
-            )
-
-    return required_components, random_pool
 
 
 def generate_child(
@@ -525,3 +297,86 @@ def generate_child(
             break
 
     return child
+
+
+def start_job(
+    world: World,
+    business: Business,
+    character: GameObject,
+    occupation: Occupation,
+    is_owner: bool = False,
+) -> None:
+    if is_owner:
+        business.owner = character.id
+    else:
+        business.add_employee(character.id, occupation.occupation_type)
+
+    character.add_component(occupation)
+
+    add_coworkers(world, character, business.gameobject)
+
+    if character.has_component(Unemployed):
+        character.remove_component(Unemployed)
+
+    character_routine = character.get_component(Routine)
+    for day, interval in business.operating_hours.items():
+        character_routine.add_entries(
+            f"work_@_{business.gameobject.id}",
+            [day],
+            RoutineEntry(
+                start=interval[0],
+                end=interval[1],
+                location=business.gameobject.id,
+                priority=RoutinePriority.MED,
+            ),
+        )
+
+
+def end_job(
+    world: World,
+    character: GameObject,
+    reason: str,
+) -> None:
+    occupation = character.get_component(Occupation)
+    business = world.get_gameobject(occupation.business)
+    business_comp = business.get_component(Business)
+
+    if business_comp.owner_type is not None and business_comp.owner == character.id:
+        business_comp.set_owner(None)
+    else:
+        business_comp.remove_employee(character.id)
+
+    character.remove_component(Occupation)
+
+    # Update the former employee's work history
+    if not character.has_component(WorkHistory):
+        character.add_component(WorkHistory())
+
+    character.get_component(WorkHistory).add_entry(
+        occupation_type=occupation.occupation_type,
+        business=business.id,
+        start_date=occupation.start_date,
+        end_date=world.get_resource(SimDateTime).copy(),
+    )
+
+    # Update the former employees relationships
+    remove_coworkers(world, character, business)
+
+    # Remove routine entries
+    character_routine = character.get_component(Routine)
+    for day, _ in business_comp.operating_hours.items():
+        character_routine.remove_entries(
+            [day],
+            f"work_@_{business.id}",
+        )
+
+    # Emit the event
+    world.get_resource(EventLog).record_event(
+        EndJobEvent(
+            date=world.get_resource(SimDateTime),
+            character=character,
+            business=business,
+            occupation=occupation.occupation_type,
+            reason=reason,
+        )
+    )

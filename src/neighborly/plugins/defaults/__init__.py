@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple
 
+from neighborly.builtin import event_callbacks
 from neighborly.builtin.components import Age
-from neighborly.builtin.events import (
+from neighborly.builtin.life_events import (
     depart_due_to_unemployment,
     die_of_old_age,
     divorce_event,
@@ -20,7 +21,6 @@ from neighborly.builtin.systems import (
     BuildHousingSystem,
     BusinessUpdateSystem,
     CharacterAgingSystem,
-    ClosedForBusinessSystem,
     FindBusinessOwnerSystem,
     FindEmployeesSystem,
     OpenForBusinessSystem,
@@ -36,6 +36,7 @@ from neighborly.core.constants import (
 )
 from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
+from neighborly.core.event import EventLog
 from neighborly.core.life_event import LifeEvents
 from neighborly.core.personal_values import PersonalValues
 from neighborly.core.time import TimeDelta
@@ -176,7 +177,6 @@ class DefaultPlugin(Plugin):
             priority=BUSINESS_UPDATE_PHASE,
         )
         sim.world.add_system(OpenForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
-        sim.world.add_system(ClosedForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
 
         sim.world.add_system(
             BuildHousingSystem(chance_of_build=1.0), priority=TOWN_SYSTEMS_PHASE
@@ -187,6 +187,10 @@ class DefaultPlugin(Plugin):
         )
         sim.world.add_system(
             BuildBusinessSystem(interval=TimeDelta(days=5)), priority=TOWN_SYSTEMS_PHASE
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Depart", event_callbacks.on_depart_callback
         )
 
 

@@ -1,6 +1,5 @@
 from typing import Any, Dict
 
-from neighborly.core.character import LifeStageAges
 from neighborly.core.ecs import Component, component_info
 from neighborly.core.time import SimDateTime
 
@@ -33,9 +32,6 @@ class MaxCapacity(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "capacity": self.capacity}
 
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\tcapacity: {self.capacity}")
-
 
 class Name(Component):
     """
@@ -54,9 +50,6 @@ class Name(Component):
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
 
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\tvalue: {self.value}")
-
 
 class Age(Component):
     """
@@ -74,9 +67,6 @@ class Age(Component):
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
-
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\tvalue: {self.value}")
 
 
 class CanAge(Component):
@@ -119,9 +109,6 @@ class CurrentLocation(Component):
     def __repr__(self):
         return f"{self.__class__.__name__}({self.location})"
 
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\tlocation: {self.location}")
-
 
 class Lifespan(Component):
     """How long this entity usually lives"""
@@ -137,9 +124,6 @@ class Lifespan(Component):
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
-
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\tvalue: {self.value}")
 
 
 class LocationAliases(Component):
@@ -171,24 +155,46 @@ class LocationAliases(Component):
     def __repr__(self):
         return f"{self.__class__.__name__}({self.aliases})"
 
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\taliases: {self.aliases}")
-
 
 class LifeStages(Component):
     """Tracks what stage of life an entity is in"""
 
-    __slots__ = "stages"
+    __slots__ = "child", "teen", "young_adult", "adult", "elder"
 
-    def __init__(self, stages: LifeStageAges) -> None:
+    def __init__(
+        self,
+        child: int,
+        teen: int,
+        young_adult: int,
+        adult: int,
+        elder: int,
+    ) -> None:
         super().__init__()
-        self.stages: LifeStageAges = stages
+        self.child: int = child
+        self.teen: int = teen
+        self.young_adult: int = young_adult
+        self.adult: int = adult
+        self.elder: int = elder
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "stages": {**self.stages}}
+        return {
+            **super().to_dict(),
+            "child": self.child,
+            "teen": self.teen,
+            "young_adult": self.young_adult,
+            "adult": self.adult,
+            "elder": self.elder,
+        }
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.stages})"
+        return "{}(child={}, teen={}, young_adult={}, adult={}, elder={})".format(
+            self.__class__.__name__,
+            self.child,
+            self.teen,
+            self.young_adult,
+            self.adult,
+            self.elder,
+        )
 
 
 class CanGetPregnant(Component):
@@ -283,13 +289,6 @@ class Pregnant(Component):
             "partner_id": self.partner_id,
             "due_date": self.partner_id,
         }
-
-    def pprint(self) -> None:
-        print(
-            f"{self.__class__.__name__}:\n"
-            f"\tpartner: {self.partner_name}({self.partner_id})"
-            f"\tdue date: {self.due_date.to_date_str()}"
-        )
 
 
 @component_info("Male", "This entity is perceived as masculine.")

@@ -19,21 +19,13 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-from neighborly import (
-    Component,
-    GameObject,
-    Plugin,
-    SimDateTime,
-    Simulation,
-    SimulationBuilder,
-    World,
-)
+from neighborly.builtin.archetypes import BaseBusinessArchetype
 from neighborly.builtin.components import Active, Adult, Deceased
 from neighborly.builtin.role_filters import friendship_lt
 from neighborly.core import query
-from neighborly.core.archetypes import BaseBusinessArchetype, BusinessArchetypes
 from neighborly.core.business import IBusinessType
 from neighborly.core.character import GameCharacter
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import Event, EventRole
 from neighborly.core.life_event import (
@@ -43,8 +35,10 @@ from neighborly.core.life_event import (
     LifeEvents,
     PatternLifeEvent,
 )
+from neighborly.core.time import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins import defaults, talktown, weather
+from neighborly.simulation import Plugin, Simulation, SimulationBuilder
 
 
 @dataclass
@@ -145,7 +139,7 @@ class JohnWickPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
         LifeEvents.add(hire_assassin_event(-30))
         LifeEvents.add(become_an_assassin())
-        BusinessArchetypes.add("The Continental Hotel", continental_hotel())
+        sim.engine.business_archetypes.add("The Continental Hotel", continental_hotel())
 
 
 EXPORT_WORLD = False

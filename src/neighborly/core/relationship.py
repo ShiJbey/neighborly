@@ -162,7 +162,11 @@ class Relationship:
     def remove_tags(self, *tags: str) -> None:
         """Return True if a relationship has a tag"""
         for tag in tags:
-            self._tags.remove(tag)
+            try:
+                self._tags.remove(tag)
+            except ValueError:
+                # Ignore if the tag is not in the tag set
+                pass
 
     def to_dict(self) -> Dict[str, Any]:
         return {

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import List, Set, Union, Tuple, Callable
+from typing import Callable, List, Set, Tuple, Union
 
 from neighborly.core.ecs import Component, World
-from neighborly.core.event import EventProbabilityFn, Event
+from neighborly.core.event import Event
+from neighborly.core.life_event import EventProbabilityFn
 
 
 class AvailableActions(Component):
@@ -24,7 +25,6 @@ class AvailableActions(Component):
 
 
 class Action:
-
     def __init__(self, uid: int, rules: List[ActionRule], *roles: str) -> None:
         self.uid: int = uid
         self.rules: List[ActionRule] = rules
@@ -46,7 +46,11 @@ class ActionRule:
     to one or more action rules.
     """
 
-    def __init__(self, bind_fn: Callable[..., Event], probability: Union[EventProbabilityFn, float] = 1.0) -> None:
+    def __init__(
+        self,
+        bind_fn: Callable[..., Event],
+        probability: Union[EventProbabilityFn, float] = 1.0,
+    ) -> None:
         self.bind_fn: Callable[..., Event] = bind_fn
         self.probability_fn: EventProbabilityFn = (
             probability if callable(probability) else (lambda world, event: probability)

@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 import neighborly
 import neighborly.core.utils.utilities as utilities
-from neighborly import SimDateTime
+from neighborly.core.time import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.simulation import Plugin, PluginSetupError, SimulationBuilder
 

@@ -1,5 +1,5 @@
-from neighborly import GameObject, World
 from neighborly.core.character import GameCharacter
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.relationship import Relationships
 
 

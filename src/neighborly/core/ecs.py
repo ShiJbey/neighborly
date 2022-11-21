@@ -11,7 +11,7 @@ https://github.com/bevyengine/bevy
 from __future__ import annotations
 
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 
 import esper
@@ -139,6 +139,9 @@ class GameObject:
 
     def remove_component(self, component_type: Type[Component]) -> None:
         """Add a component to this GameObject"""
+        # self.world.command_queue.append(
+        #     RemoveComponentCommand(self, component_type)
+        # )
         if not self.has_component(component_type):
             return
         del self._components[component_type]
@@ -165,11 +168,6 @@ class GameObject:
 
         return ret
 
-    def pprint(self) -> None:
-        print(f"== GameObject({self.id}) ==\n")
-        for c in self.components:
-            c.pprint()
-
     def __hash__(self) -> int:
         return self._id
 
@@ -178,6 +176,42 @@ class GameObject:
 
     def __repr__(self) -> str:
         return f"GameObject(id={self.id})"
+
+
+class IEcsCommand:
+    """A change that needs to be made to the ECS state"""
+
+    @classmethod
+    @abstractmethod
+    def get_type(cls) -> str:
+        raise NotImplementedError
+
+    def run(self, world: World) -> None:
+        raise NotImplementedError
+
+
+class RemoveComponentCommand(IEcsCommand):
+
+    __slots__ = "gameobject", "component_type"
+
+    def __init__(self, gameobject: GameObject, component_type: Type[Component]) -> None:
+        super().__init__()
+        self.gameobject: GameObject = gameobject
+        self.component_type: Type[Component] = component_type
+
+    @classmethod
+    def get_type(cls) -> str:
+        return cls.__name__
+
+    def run(self, world: World) -> None:
+        if not self.gameobject.has_component(self.component_type):
+            return
+        del self._components[self.component_type]
+        world.ecs.remove_component(self.gameobject.id, self.component_type)
+
+
+class EcsCommandQueue:
+    pass
 
 
 class Component(ABC):
@@ -206,9 +240,6 @@ class Component(ABC):
     def set_gameobject(self, gameobject: Optional[GameObject]) -> None:
         """set the gameobject instance for this component"""
         self._gameobject = gameobject
-
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n")
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Component:
@@ -268,6 +299,7 @@ class World:
         "_gameobjects",
         "_dead_gameobjects",
         "_resources",
+        "_command_queue",
     )
 
     def __init__(self) -> None:
@@ -275,10 +307,15 @@ class World:
         self._gameobjects: Dict[int, GameObject] = {}
         self._dead_gameobjects: List[int] = []
         self._resources: Dict[Type[Any], Any] = {}
+        self._command_queue: List[IEcsCommand] = []
 
     @property
     def ecs(self) -> esper.World:
         return self._ecs
+
+    @property
+    def command_queue(self) -> List[IEcsCommand]:
+        return self._command_queue
 
     def spawn_gameobject(
         self, components: Optional[List[Component]] = None, name: Optional[str] = None
@@ -340,6 +377,11 @@ class World:
 
         self._dead_gameobjects.clear()
 
+    def clear_command_queue(self) -> None:
+        while self._command_queue:
+            command = self._command_queue.pop(0)
+            command.run(self)
+
     def add_system(self, system: ISystem, priority: int = 0) -> None:
         """Add a System instance to the World"""
         self._ecs.add_processor(system, priority=priority)
@@ -357,6 +399,7 @@ class World:
         """Call the process method on all systems"""
         self._clear_dead_gameobjects()
         self._ecs.process(**kwargs)
+        self.clear_command_queue()
 
     def add_resource(self, resource: Any) -> None:
         """Add a global resource to the world"""

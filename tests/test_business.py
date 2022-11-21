@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 import pytest
 
-from neighborly.core.archetypes import BaseBusinessArchetype
+from neighborly.builtin.archetypes import BaseBusinessArchetype
 from neighborly.core.business import (
     Business,
     OccupationType,

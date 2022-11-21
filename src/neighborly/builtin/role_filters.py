@@ -2,12 +2,21 @@ from __future__ import annotations
 
 from typing import Any, List, Literal, Tuple
 
-from neighborly.builtin.components import Age, CollegeGraduate, Female, Male, NonBinary
+import pandas as pd
+
+from neighborly.builtin.components import (
+    Age,
+    CollegeGraduate,
+    CurrentLocation,
+    Female,
+    Male,
+    NonBinary,
+)
 from neighborly.core.business import Occupation, Unemployed, WorkHistory
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.query import EcsFindClause
+from neighborly.core.life_event import RoleFilterFn
+from neighborly.core.query import EcsFindClause, QueryContext, Relation
 from neighborly.core.relationship import Relationships
-from neighborly.core.role import RoleFilterFn
 from neighborly.core.time import SimDateTime
 
 
@@ -91,6 +100,39 @@ def has_relationship_with_tags(*tags: str) -> EcsFindClause:
         return results
 
     return precondition
+
+
+def at_same_location(a: GameObject, b: GameObject) -> bool:
+    """Return True if these characters are at the same location"""
+    a_location = a.get_component(CurrentLocation).location
+    b_location = b.get_component(CurrentLocation).location
+    return (
+        a_location is not None and b_location is not None and a_location == b_location
+    )
+
+
+def at_same_location(symbols: Tuple[str, str]):
+    """Query function that removes all instances where two variables are not the same"""
+
+    def run(ctx: QueryContext, world: World) -> Relation:
+        if ctx.relation is None:
+            raise RuntimeError("equal clause is missing relation within context")
+        df = ctx.relation.get_data_frame()
+        matching_rows: List[int] = []
+        for i in range(df.shape[0]):
+            a_location = world.get_gameobject(df.iloc[i]).try_component(CurrentLocation)
+            b_location = world.get_gameobject(df.iloc[i]).try_component(CurrentLocation)
+            if (
+                a_location is not None
+                and b_location is not None
+                and a_location == b_location
+            ):
+                matching_rows.append(i)
+
+        new_data = df.loc[matching_rows]
+        return Relation(pd.DataFrame(new_data))
+
+    return run
 
 
 def over_age(age: int) -> RoleFilterFn:

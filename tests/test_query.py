@@ -1,9 +1,9 @@
 import pandas as pd
 import pytest
 
-from neighborly import Component, World
 from neighborly.builtin.components import Name, NonBinary, Retired
 from neighborly.core.character import GameCharacter
+from neighborly.core.ecs import Component, World
 from neighborly.core.query import (
     Query,
     Relation,

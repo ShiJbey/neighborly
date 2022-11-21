@@ -44,7 +44,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly import Plugin, Simulation, SimulationBuilder
 from neighborly.builtin.components import (
     Active,
     Age,
@@ -54,7 +53,7 @@ from neighborly.builtin.components import (
     Deceased,
     LifeStages,
 )
-from neighborly.builtin.helpers import move_to_location
+from neighborly.builtin.helpers import set_location
 from neighborly.core import query
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
@@ -69,6 +68,7 @@ from neighborly.core.life_event import (
 from neighborly.core.location import Location
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins import defaults, talktown, weather
+from neighborly.simulation import Plugin, Simulation, SimulationBuilder
 
 
 class DemonSlayerRank(IntEnum):
@@ -639,8 +639,12 @@ def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
         rng = world.get_resource(NeighborlyEngine).rng
         _death_event_type = LifeEvents.get("Death")
 
-        opponent_success_chance = probability_of_winning(opponent.power_level, challenger.power_level)
-        challenger_success_chance = probability_of_winning(challenger.power_level, opponent.power_level)
+        opponent_success_chance = probability_of_winning(
+            opponent.power_level, challenger.power_level
+        )
+        challenger_success_chance = probability_of_winning(
+            challenger.power_level, opponent.power_level
+        )
 
         if rng.random() < opponent_success_chance:
             # Demon slayer wins
@@ -885,7 +889,7 @@ def death_event_type() -> ILifeEvent:
         deceased = world.get_gameobject(event["Deceased"])
         deceased.add_component(Deceased())
         deceased.remove_component(Active)
-        move_to_location(world, deceased, None)
+        set_location(world, deceased, None)
 
     return LifeEvent(
         "Death",

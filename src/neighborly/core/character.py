@@ -2,19 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from typing_extensions import TypedDict
-
 from neighborly.core.ecs import Component, World
-
-
-class LifeStageAges(TypedDict):
-    """Ages when characters are in certain stages of their lives"""
-
-    child: int
-    teen: int
-    young_adult: int
-    adult: int
-    elder: int
 
 
 class CharacterName(Component):
@@ -37,9 +25,6 @@ class CharacterName(Component):
 
     def __str__(self) -> str:
         return f"{self.firstname} {self.surname}"
-
-    def pprint(self) -> None:
-        print(f"{self.__class__.__name__}:\n" f"\tname: {str(self)}")
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Component:

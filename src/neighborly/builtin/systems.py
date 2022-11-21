@@ -9,50 +9,35 @@ from neighborly.builtin.components import (
     Age,
     CanAge,
     Child,
-    CurrentLocation,
-    Deceased,
-    Departed,
     Elder,
     LifeStages,
     LocationAliases,
     Name,
     OpenToPublic,
     Pregnant,
-    Retired,
     Teen,
     Vacant,
     YoungAdult,
 )
-from neighborly.builtin.events import depart_event
+from neighborly.builtin.events import DepartEvent
 from neighborly.builtin.helpers import (
-    add_residence_owner,
+    check_share_residence,
     choose_random_character_archetype,
-    demolish_building,
     generate_child,
-    layoff_employee,
-    move_out_of_residence,
-    move_residence,
-    move_to_location,
-    remove_residence_owner,
+    set_location,
+    set_residence,
+    start_job,
 )
-from neighborly.core.archetypes import (
-    BusinessArchetypes,
-    IBusinessArchetype,
-    IResidenceArchetype,
-    ResidenceArchetypes,
-)
+from neighborly.core.archetypes import IBusinessArchetype
 from neighborly.core.building import Building
 from neighborly.core.business import (
     Business,
     ClosedForBusiness,
     InTheWorkforce,
     Occupation,
-    OccupationTypes,
     OpenForBusiness,
     PendingOpening,
     Unemployed,
-    end_job,
-    start_job,
 )
 from neighborly.core.character import CharacterName, GameCharacter
 from neighborly.core.ecs import GameObject, ISystem
@@ -102,16 +87,14 @@ class RoutineSystem(ISystem):
                 and isinstance(routine_entry.location, str)
                 and location_aliases
             ):
-                move_to_location(
+                set_location(
                     self.world,
                     character.gameobject,
                     location_aliases.aliases[routine_entry.location],
                 )
 
             elif routine_entry:
-                move_to_location(
-                    self.world, character.gameobject, routine_entry.location
-                )
+                set_location(self.world, character.gameobject, routine_entry.location)
 
             else:
                 potential_locations: List[int] = list(
@@ -123,7 +106,7 @@ class RoutineSystem(ISystem):
 
                 if potential_locations:
                     location = engine.rng.choice(potential_locations)
-                    move_to_location(self.world, character.gameobject, location)
+                    set_location(self.world, character.gameobject, location)
 
 
 class LinearTimeSystem(ISystem):
@@ -228,6 +211,7 @@ class FindBusinessOwnerSystem(ISystem):
     def process(self, *args, **kwargs) -> None:
         event_log = self.world.get_resource(EventLog)
         date = self.world.get_resource(SimDateTime)
+        engine = self.world.get_resource(NeighborlyEngine)
 
         for _, (business, _, _) in self.world.get_components(
             Business, PendingOpening, Building
@@ -241,22 +225,22 @@ class FindBusinessOwnerSystem(ISystem):
                 business.gameobject.remove_component(PendingOpening)
                 continue
 
-            result = OccupationTypes.get(business.owner_type).fill_role(
-                self.world, business
+            result = engine.occupation_types.get(business.owner_type).fill_role(
+                self.world, business, engine.rng
             )
 
             if result:
                 candidate, occupation = result
 
                 start_job(
+                    self.world,
                     business,
-                    candidate.get_component(GameCharacter),
+                    candidate,
                     occupation,
                     is_owner=True,
                 )
 
                 event_log.record_event(
-                    self.world,
                     Event(
                         name="BecameBusinessOwner",
                         timestamp=date.to_iso_str(),
@@ -265,7 +249,7 @@ class FindBusinessOwnerSystem(ISystem):
                             EventRole("Owner", candidate.id),
                         ],
                         position=business.owner_type,
-                    )
+                    ),
                 )
 
 
@@ -292,6 +276,8 @@ class UnemploymentSystem(ISystem):
 
     def process(self, *args, **kwargs):
         date = self.world.get_resource(SimDateTime)
+        event_log = self.world.get_resource(EventLog)
+
         for gid, (unemployed, _) in self.world.get_components(Unemployed, Active):
             # Convert delta time from hours to days
             unemployed.duration_days += date.delta_time / 24
@@ -313,21 +299,13 @@ class UnemploymentSystem(ISystem):
                     continue
 
                 else:
-                    depart = depart_event()
-
-                    residence = self.world.get_gameobject(
-                        unemployed.gameobject.get_component(Resident).residence
-                    ).get_component(Residence)
-
-                    depart.try_execute_event(
-                        self.world, Character=unemployed.gameobject
-                    )
+                    characters_to_depart: List[GameObject] = [unemployed.gameobject]
 
                     # Have all spouses depart
                     # Allows for polygamy
                     for rel in spouses:
                         spouse = self.world.get_gameobject(rel.target)
-                        depart.try_execute_event(self.world, Character=spouse)
+                        characters_to_depart.append(spouse)
 
                     # Have all children living in the same house depart
                     children = unemployed.gameobject.get_component(
@@ -335,17 +313,19 @@ class UnemploymentSystem(ISystem):
                     ).get_all_with_tags("Child")
                     for rel in children:
                         child = self.world.get_gameobject(rel.target)
-                        if (
-                            child.id in residence.residents
-                            and child.id not in residence.owners
-                        ):
-                            depart.try_execute_event(self.world, Character=child)
+                        if check_share_residence(unemployed.gameobject, child):
+                            characters_to_depart.append(child)
+
+                    event = DepartEvent(date, *characters_to_depart)
+
+                    event_log.record_event(event)
 
 
 class FindEmployeesSystem(ISystem):
     def process(self, *args, **kwargs) -> None:
         date = self.world.get_resource(SimDateTime)
         event_log = self.world.get_resource(EventLog)
+        engine = self.world.get_resource(NeighborlyEngine)
 
         for _, (business, _, _, _) in self.world.get_components(
             Business, OpenForBusiness, Building, Active
@@ -353,17 +333,16 @@ class FindEmployeesSystem(ISystem):
             open_positions = business.get_open_positions()
 
             for position in open_positions:
-                result = OccupationTypes.get(position).fill_role(self.world, business)
+                result = engine.occupation_types.get(position).fill_role(
+                    self.world, business, engine.rng
+                )
 
                 if result:
                     candidate, occupation = result
 
-                    start_job(
-                        business, candidate.get_component(GameCharacter), occupation
-                    )
+                    start_job(self.world, business, candidate, occupation)
 
                     event_log.record_event(
-                        self.world,
                         Event(
                             "HiredAtBusiness",
                             date.to_iso_str(),
@@ -372,7 +351,7 @@ class FindEmployeesSystem(ISystem):
                                 EventRole("Employee", candidate.id),
                             ],
                             position=position,
-                        )
+                        ),
                     )
 
 
@@ -394,25 +373,6 @@ class BuildHousingSystem(System):
     ) -> None:
         super().__init__(interval=interval)
         self.chance_of_build: float = chance_of_build
-
-    def choose_random_archetype(
-        self, engine: NeighborlyEngine
-    ) -> Optional[IResidenceArchetype]:
-        archetype_choices: List[IResidenceArchetype] = []
-        archetype_weights: List[int] = []
-        for archetype in ResidenceArchetypes.get_all():
-            archetype_choices.append(archetype)
-            archetype_weights.append(archetype.get_spawn_frequency())
-
-        if archetype_choices:
-            # Choose an archetype at random
-            archetype: IResidenceArchetype = engine.rng.choices(
-                population=archetype_choices, weights=archetype_weights, k=1
-            )[0]
-
-            return archetype
-
-        return None
 
     def run(self, *args, **kwargs) -> None:
         """Build a new residence when there is space"""
@@ -436,7 +396,7 @@ class BuildHousingSystem(System):
         # Pick a random lot from those available
         lot = engine.rng.choice(vacancies)
 
-        archetype = self.choose_random_archetype(engine)
+        archetype = engine.residence_archetypes.choose_random_archetype(engine.rng)
 
         if archetype is None:
             return None
@@ -486,15 +446,15 @@ class BuildBusinessSystem(System):
         archetype_choices: List[IBusinessArchetype] = []
         archetype_weights: List[int] = []
 
-        for archetype in BusinessArchetypes.get_all():
+        for archetype in engine.business_archetypes.get_all():
             if (
                 archetype.get_instances() < archetype.get_max_instances()
                 and town.population >= archetype.get_min_population()
                 and (
-                archetype.get_year_available()
-                <= date.year
-                < archetype.get_year_obsolete()
-            )
+                    archetype.get_year_available()
+                    <= date.year
+                    < archetype.get_year_obsolete()
+                )
             ):
                 archetype_choices.append(archetype)
                 archetype_weights.append(archetype.get_spawn_frequency())
@@ -588,9 +548,8 @@ class SpawnResidentSystem(System):
             # Create a new entity using the archetype
             character = archetype.create(self.world, life_stage="young_adult")
 
-            add_residence_owner(character, residence.gameobject)
-            move_residence(character, residence.gameobject)
-            move_to_location(self.world, character, residence.gameobject.id)
+            set_residence(self.world, character, residence.gameobject, True)
+            set_location(self.world, character, residence.gameobject.id)
             town.increment_population()
 
             spouse: Optional[GameObject] = None
@@ -605,9 +564,8 @@ class SpawnResidentSystem(System):
                 ).surname
 
                 # Move them into the home with the first character
-                add_residence_owner(spouse, residence.gameobject)
-                move_residence(spouse, residence.gameobject)
-                move_to_location(self.world, spouse, residence.gameobject.id)
+                set_residence(self.world, spouse, residence.gameobject, True)
+                set_location(self.world, spouse, residence.gameobject.id)
                 town.increment_population()
 
                 # Configure relationship from character to spouse
@@ -640,8 +598,8 @@ class SpawnResidentSystem(System):
                 ).surname
 
                 # Move them into the home with the first character
-                move_residence(child, residence.gameobject)
-                move_to_location(self.world, child, residence.gameobject.id)
+                set_residence(self.world, child, residence.gameobject)
+                set_location(self.world, child, residence.gameobject.id)
                 town.increment_population()
 
                 children.append(child)
@@ -700,7 +658,6 @@ class SpawnResidentSystem(System):
 
             # Record a life event
             event_logger.record_event(
-                self.world,
                 Event(
                     name="MoveIntoTown",
                     timestamp=date.to_iso_str(),
@@ -712,7 +669,7 @@ class SpawnResidentSystem(System):
                             if r is not None
                         ],
                     ],
-                )
+                ),
             )
 
 
@@ -758,28 +715,28 @@ class CharacterAgingSystem(System):
         for _, (character, age, life_stages, _, _) in self.world.get_components(
             GameCharacter, Age, LifeStages, CanAge, Active
         ):
+            life_stages = cast(LifeStages, life_stages)
             age.value += age_increment
 
             if (
                 character.gameobject.has_component(Child)
-                and age.value >= life_stages.stages["teen"]
+                and age.value >= life_stages.teen
             ):
                 character.gameobject.add_component(Teen())
                 character.gameobject.remove_component(Child)
                 event_log.record_event(
-                    self.world,
                     Event(
                         name="BecomeTeen",
                         timestamp=current_date.to_iso_str(),
                         roles=[
                             EventRole("Character", character.gameobject.id),
                         ],
-                    )
+                    ),
                 )
 
             elif (
                 character.gameobject.has_component(Teen)
-                and age.value >= life_stages.stages["young_adult"]
+                and age.value >= life_stages.young_adult
             ):
                 character.gameobject.remove_component(Teen)
                 character.gameobject.add_component(YoungAdult())
@@ -790,47 +747,44 @@ class CharacterAgingSystem(System):
                     character.gameobject.add_component(Unemployed())
 
                 event_log.record_event(
-                    self.world,
                     Event(
                         name="BecomeYoungAdult",
                         timestamp=current_date.to_iso_str(),
                         roles=[
                             EventRole("Character", character.gameobject.id),
                         ],
-                    )
+                    ),
                 )
 
             elif (
                 character.gameobject.has_component(YoungAdult)
-                and age.value >= life_stages.stages["adult"]
+                and age.value >= life_stages.adult
             ):
                 character.gameobject.remove_component(YoungAdult)
                 event_log.record_event(
-                    self.world,
                     Event(
                         name="BecomeAdult",
                         timestamp=current_date.to_iso_str(),
                         roles=[
                             EventRole("Character", character.gameobject.id),
                         ],
-                    )
+                    ),
                 )
 
             elif (
                 character.gameobject.has_component(Adult)
                 and not character.gameobject.has_component(Elder)
-                and age.value >= life_stages.stages["elder"]
+                and age.value >= life_stages.elder
             ):
                 character.gameobject.add_component(Elder())
                 event_log.record_event(
-                    self.world,
                     Event(
                         name="BecomeElder",
                         timestamp=current_date.to_iso_str(),
                         roles=[
                             EventRole("Character", character.gameobject.id),
                         ],
-                    )
+                    ),
                 )
 
 
@@ -870,30 +824,26 @@ class PregnancySystem(ISystem):
             town.increment_population()
 
             baby.get_component(Age).value = (
-                                                current_date - pregnancy.due_date
-                                            ).hours / HOURS_PER_YEAR
+                current_date - pregnancy.due_date
+            ).hours / HOURS_PER_YEAR
 
             baby.get_component(CharacterName).surname = birthing_parent_name.surname
 
-            move_to_location(self.world, birthing_parent, "home")
+            set_location(self.world, birthing_parent, "home")
 
-            if birthing_parent.has_component(CurrentLocation):
-                current_location = birthing_parent.get_component(CurrentLocation)
+            set_residence(
+                self.world,
+                baby,
+                self.world.get_gameobject(
+                    character.gameobject.get_component(Resident).residence
+                ),
+            )
 
-                move_to_location(
-                    self.world,
-                    baby,
-                    current_location.location,
-                )
-
-                baby.add_component(LocationAliases())
-
-                move_residence(
-                    baby,
-                    self.world.get_gameobject(
-                        character.gameobject.get_component(Resident).residence
-                    ),
-                )
+            set_location(
+                self.world,
+                baby,
+                "home",
+            )
 
             # Birthing parent to child
             character.gameobject.get_component(Relationships).get(baby.id).add_tags(
@@ -949,7 +899,6 @@ class PregnancySystem(ISystem):
             # Pregnancy event dates are retconned to be the actual date that the
             # child was due.
             event_logger.record_event(
-                self.world,
                 Event(
                     name="ChildBirth",
                     timestamp=pregnancy.due_date.to_iso_str(),
@@ -958,7 +907,7 @@ class PregnancySystem(ISystem):
                         EventRole("Parent", pregnancy.partner_id),
                         EventRole("Child", baby.id),
                     ],
-                )
+                ),
             )
 
             birthing_parent.remove_component(Pregnant)
@@ -1012,92 +961,3 @@ class OpenForBusinessSystem(System):
         ):
             # Increment the amount of time that the business has been open
             age.value += self.elapsed_time.total_hours / HOURS_PER_DAY
-
-
-class ClosedForBusinessSystem(ISystem):
-    """
-    This system is responsible for removing Businesses from play that are marked as
-    ClosedForBusiness. It removes the building from play, keeps the GameObject for
-    sifting purposes, and displaces the characters within the building.
-    """
-
-    def process(self, *args, **kwargs):
-        for gid, (out_of_business, location, business, _) in self.world.get_components(
-            ClosedForBusiness, Location, Business, Active
-        ):
-            # Send all the entities here somewhere else
-            for entity_id in location.entities:
-                entity = self.world.get_gameobject(entity_id)
-
-                if entity.has_component(GameCharacter):
-                    # Send all the characters that are present back to their homes
-                    move_to_location(
-                        self.world,
-                        entity,
-                        None,
-                    )
-                else:
-                    # Delete everything that is not a character
-                    # assume that it will get lost in the demolition
-                    self.world.delete_gameobject(entity_id)
-
-            # Fire all the employees and owner
-            for employee_id in business.get_employees():
-                layoff_employee(business, self.world.get_gameobject(employee_id))
-
-            # Free up the space on the board
-            demolish_building(out_of_business.gameobject)
-
-            business.gameobject.remove_component(Active)
-
-
-class RemoveDeceasedFromResidences(ISystem):
-    def process(self, *args, **kwargs):
-        for gid, (deceased, resident) in self.world.get_components(Deceased, Resident):
-            residence = self.world.get_gameobject(resident.residence)
-            move_out_of_residence(resident.gameobject, residence)
-            if residence.get_component(Residence).is_owner(gid):
-                remove_residence_owner(deceased.gameobject, residence)
-
-
-class RemoveDeceasedFromOccupation(ISystem):
-    def process(self, *args, **kwargs):
-        for gid, (deceased, occupation) in self.world.get_components(
-            Deceased, Occupation
-        ):
-            business = self.world.get_gameobject(occupation.business).get_component(
-                Business
-            )
-
-            end_job(business, deceased.gameobject, occupation)
-
-
-class RemoveDepartedFromResidences(ISystem):
-    def process(self, *args, **kwargs):
-        for gid, (departed, resident) in self.world.get_components(Departed, Resident):
-            residence = self.world.get_gameobject(resident.residence)
-            move_out_of_residence(resident.gameobject, residence)
-            if residence.get_component(Residence).is_owner(gid):
-                remove_residence_owner(departed.gameobject, residence)
-
-
-class RemoveDepartedFromOccupation(ISystem):
-    def process(self, *args, **kwargs):
-        for gid, (departed, occupation) in self.world.get_components(
-            Departed, Occupation
-        ):
-            business = self.world.get_gameobject(occupation.business).get_component(
-                Business
-            )
-            end_job(business, departed.gameobject, occupation)
-
-
-class RemoveRetiredFromOccupation(ISystem):
-    def process(self, *args, **kwargs):
-        for gid, (departed, occupation) in self.world.get_components(
-            Retired, Occupation
-        ):
-            business = self.world.get_gameobject(occupation.business).get_component(
-                Business
-            )
-            end_job(business, departed.gameobject, occupation)

@@ -5,19 +5,12 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from neighborly.builtin.systems import (
-    LinearTimeSystem,
-    RemoveDeceasedFromOccupation,
-    RemoveDeceasedFromResidences,
-    RemoveDepartedFromOccupation,
-    RemoveDepartedFromResidences,
-    RemoveRetiredFromOccupation,
-)
+from neighborly.builtin.systems import LinearTimeSystem
 from neighborly.core.ai import MovementAISystem, SocialAISystem
 from neighborly.core.constants import TIME_UPDATE_PHASE, TOWN_SYSTEMS_PHASE
 from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import EventLog
+from neighborly.core.event import EventLog, EventSystem
 from neighborly.core.life_event import LifeEventSystem
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import LandGrid, Town
@@ -149,7 +142,7 @@ class SimulationBuilder:
         "resources",
         "plugins",
         "print_events",
-        "life_event_interval_hours"
+        "life_event_interval_hours",
     )
 
     def __init__(
@@ -160,7 +153,7 @@ class SimulationBuilder:
         town_name: str = "#town_name#",
         town_size: TownSize = "medium",
         print_events: bool = True,
-        life_event_interval_hours: int = 336
+        life_event_interval_hours: int = 336,
     ) -> None:
         self.seed: int = hash(seed if seed is not None else random.randint(0, 99999999))
         self.time_increment_hours: int = time_increment_hours
@@ -225,14 +218,10 @@ class SimulationBuilder:
         sim.world.add_system(MovementAISystem())
         sim.world.add_system(SocialAISystem())
         sim.world.add_system(
-            LifeEventSystem(interval=TimeDelta(hours=self.life_event_interval_hours)), priority=TOWN_SYSTEMS_PHASE
+            LifeEventSystem(interval=TimeDelta(hours=self.life_event_interval_hours)),
+            priority=TOWN_SYSTEMS_PHASE,
         )
-
-        sim.world.add_system(RemoveDeceasedFromResidences())
-        sim.world.add_system(RemoveDepartedFromResidences())
-        sim.world.add_system(RemoveDepartedFromOccupation())
-        sim.world.add_system(RemoveDeceasedFromOccupation())
-        sim.world.add_system(RemoveRetiredFromOccupation())
+        sim.world.add_system(EventSystem(), priority=-1)
 
         for plugin, options in self.plugins:
             plugin.setup(sim, **options)

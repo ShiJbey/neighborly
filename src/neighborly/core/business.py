@@ -5,19 +5,14 @@ import math
 import re
 from abc import ABC
 from dataclasses import dataclass
+from random import Random
 from typing import Any, Dict, List, Optional, Protocol, Set, Tuple
 
 from neighborly.builtin.components import Active
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World, component_info
-from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import Event
-from neighborly.core.routine import (
-    Routine,
-    RoutineEntry,
-    RoutinePriority,
-    time_str_to_int,
-)
+from neighborly.core.routine import RoutineEntry, RoutinePriority, time_str_to_int
 from neighborly.core.time import SimDateTime, Weekday
 
 logger = logging.getLogger(__name__)
@@ -112,7 +107,10 @@ class OccupationType:
     precondition: Optional[IOccupationPreconditionFn] = None
 
     def fill_role(
-        self, world: World, business: Business
+        self,
+        world: World,
+        business: Business,
+        rng: Random,
     ) -> Optional[Tuple[GameObject, Occupation]]:
         """
         Attempt to find a component entity that meets the preconditions
@@ -129,9 +127,7 @@ class OccupationType:
         )
 
         if any(candidate_list):
-            chosen_candidate = world.get_resource(NeighborlyEngine).rng.choice(
-                candidate_list
-            )
+            chosen_candidate = rng.choice(candidate_list)
             return chosen_candidate, Occupation(
                 occupation_type=self.name,
                 business=business.gameobject.id,
@@ -166,23 +162,24 @@ class OccupationType:
 
 
 class OccupationTypes:
-    """Stores OccupationType instances mapped to strings for lookup at runtime"""
+    """Collection OccupationType information for lookup at runtime"""
 
-    _registry: Dict[str, OccupationType] = {}
+    __slots__ = "_registry"
 
-    @classmethod
+    def __init__(self) -> None:
+        self._registry: Dict[str, OccupationType] = {}
+
     def add(
-        cls,
+        self,
         occupation_type: OccupationType,
         name: Optional[str] = None,
     ) -> None:
         entry_key = name if name else occupation_type.name
-        if entry_key in cls._registry:
+        if entry_key in self._registry:
             logger.debug(f"Overwriting OccupationType: ({entry_key})")
-        cls._registry[entry_key] = occupation_type
+        self._registry[entry_key] = occupation_type
 
-    @classmethod
-    def get(cls, name: str) -> OccupationType:
+    def get(self, name: str) -> OccupationType:
         """
         Get an OccupationType by name
 
@@ -201,7 +198,7 @@ class OccupationTypes:
             When there is not an OccupationType
             registered to that name
         """
-        return cls._registry[name]
+        return self._registry[name]
 
 
 class Occupation(Component):
@@ -599,65 +596,6 @@ class Unemployed(Component):
 )
 class InTheWorkforce(Component):
     pass
-
-
-def start_job(
-    business: Business,
-    character: GameCharacter,
-    occupation: Occupation,
-    is_owner: bool = False,
-) -> None:
-    if is_owner:
-        business.owner = character.gameobject.id
-    else:
-        business.add_employee(character.gameobject.id, occupation.occupation_type)
-
-    character.gameobject.add_component(occupation)
-
-    if character.gameobject.has_component(Unemployed):
-        character.gameobject.remove_component(Unemployed)
-
-    character_routine = character.gameobject.get_component(Routine)
-    for day, interval in business.operating_hours.items():
-        character_routine.add_entries(
-            f"work_@_{business.gameobject.id}",
-            [day],
-            RoutineEntry(
-                start=interval[0],
-                end=interval[1],
-                location=business.gameobject.id,
-                priority=RoutinePriority.MED,
-            ),
-        )
-
-
-def end_job(business: Business, character: GameObject, occupation: Occupation) -> None:
-    world = character.world
-
-    if business.owner_type is not None and business.owner == character.id:
-        business.set_owner(None)
-    else:
-        business.remove_employee(character.id)
-
-    if not character.has_component(WorkHistory):
-        character.add_component(WorkHistory())
-
-    character.remove_component(Occupation)
-
-    character.get_component(WorkHistory).add_entry(
-        occupation_type=occupation.occupation_type,
-        business=business.gameobject.id,
-        start_date=occupation.start_date,
-        end_date=world.get_resource(SimDateTime).copy(),
-    )
-
-    # Remove routine entries
-    character_routine = character.get_component(Routine)
-    for day, _ in business.operating_hours.items():
-        character_routine.remove_entries(
-            [day],
-            f"work_@_{business.gameobject.id}",
-        )
 
 
 def parse_operating_hour_str(

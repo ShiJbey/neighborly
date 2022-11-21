@@ -2,10 +2,10 @@ from typing import List
 
 import pytest
 
-from neighborly import SimDateTime, Simulation, World
 from neighborly.builtin.systems import LinearTimeSystem
+from neighborly.core.ecs import World
 from neighborly.core.system import System
-from neighborly.core.time import TimeDelta
+from neighborly.core.time import SimDateTime, TimeDelta
 
 
 class TestSystem(System):

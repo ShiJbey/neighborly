@@ -6,15 +6,8 @@ from typing import Dict, List, Optional, Protocol, Tuple, Union
 
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import (
-    Event,
-    EventEffectFn,
-    EventLog,
-    EventProbabilityFn,
-    EventRole,
-)
+from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.query import Query
-from neighborly.core.role import IRoleType, RoleBinderFn
 from neighborly.core.system import System
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.town import Town
@@ -102,12 +95,12 @@ class LifeEvent:
     def __init__(
         self,
         name: str,
-        roles: List[IRoleType],
+        roles: List[LifeEventRoleType],
         probability: Union[EventProbabilityFn, float],
         effect: Optional[EventEffectFn] = None,
     ) -> None:
         self.name: str = name
-        self.roles: List[IRoleType] = roles
+        self.roles: List[LifeEventRoleType] = roles
         self.probability: EventProbabilityFn = (
             probability if callable(probability) else (lambda world, event: probability)
         )
@@ -144,7 +137,7 @@ class LifeEvent:
 
     def execute(self, world: World, event: Event) -> None:
         """Run the effects function using the given event"""
-        world.get_resource(EventLog).record_event(world, event)
+        world.get_resource(EventLog).record_event(event)
         self.effect(world, event)
 
     def try_execute_event(self, world: World, **bindings: GameObject) -> bool:
@@ -221,7 +214,7 @@ class PatternLifeEvent:
 
     def execute(self, world: World, event: Event) -> None:
         """Run the effects function using the given event"""
-        world.get_resource(EventLog).record_event(world, event)
+        world.get_resource(EventLog).record_event(event)
         self.effect(world, event)
 
     def try_execute_event(self, world: World, **bindings: GameObject) -> bool:
@@ -291,5 +284,37 @@ class LifeEventSystem(System):
 
         # Perform number of events equal to 10% of the population
 
-        for life_event in rng.choices(LifeEvents.get_all(), k=(int(town.population / 2))):
+        for life_event in rng.choices(
+            LifeEvents.get_all(), k=(int(town.population / 2))
+        ):
             life_event.try_execute_event(self.world)
+
+
+class EventEffectFn(Protocol):
+    """Callback function called when an event is executed"""
+
+    def __call__(self, world: World, event: Event) -> None:
+        raise NotImplementedError
+
+
+class EventProbabilityFn(Protocol):
+    """Function called to determine the probability of an event executing"""
+
+    def __call__(self, world: World, event: Event) -> float:
+        raise NotImplementedError
+
+
+class RoleBinderFn(Protocol):
+    """Callable that returns a GameObject that meets requirements for a given Role"""
+
+    def __call__(
+        self, world: World, cast_roles: Event, candidate: Optional[GameObject] = None
+    ) -> Optional[GameObject]:
+        raise NotImplementedError
+
+
+class RoleFilterFn(Protocol):
+    """Function that filters GameObjects for an EventRole"""
+
+    def __call__(self, world: World, gameobject: GameObject) -> bool:
+        raise NotImplementedError

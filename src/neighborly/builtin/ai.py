@@ -1,17 +1,18 @@
 """
 Default implementations of AI modules
 """
-from typing import Optional, List
+from typing import List, Optional
 
-from neighborly import World, GameObject, SimDateTime, NeighborlyEngine
-from neighborly.builtin.components import LocationAliases, OpenToPublic, CurrentLocation
+from neighborly.builtin.components import CurrentLocation, LocationAliases, OpenToPublic
 from neighborly.core.action import Action, AvailableActions
+from neighborly.core.ecs import GameObject, World
+from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
 from neighborly.core.routine import Routine
+from neighborly.core.time import SimDateTime
 
 
 class DefaultMovementModule:
-
     def get_next_location(self, world: World, gameobject: GameObject) -> Optional[int]:
         date = world.get_resource(SimDateTime)
         routine = gameobject.try_component(Routine)
@@ -44,7 +45,6 @@ class DefaultMovementModule:
 
 
 class DefaultSocialAIModule:
-
     def get_next_action(self, world: World, gameobject: GameObject) -> Optional[Action]:
         current_location_comp = gameobject.try_component(CurrentLocation)
 

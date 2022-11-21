@@ -8,10 +8,12 @@ from typing import Any, Dict, List, Optional, Protocol, Union
 
 import yaml
 
-from neighborly.core.archetypes import (
+from neighborly.builtin.archetypes import (
     BaseBusinessArchetype,
     BaseCharacterArchetype,
     BaseResidenceArchetype,
+)
+from neighborly.core.archetypes import (
     BusinessArchetypes,
     CharacterArchetypes,
     ICharacterArchetype,

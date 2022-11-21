@@ -10,7 +10,7 @@ from typing import Optional, Protocol
 from neighborly.builtin import helpers
 from neighborly.builtin.components import Active
 from neighborly.core.action import Action
-from neighborly.core.ecs import Component, World, GameObject
+from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.system import System
 
 
@@ -71,7 +71,7 @@ class MovementAISystem(System):
         for gid, (movement_ai, _) in self.world.get_components(MovementAI, Active):
             next_location = movement_ai.get_next_location(self.world)
             if next_location is not None:
-                helpers.move_to_location(
+                helpers.set_location(
                     self.world, self.world.get_gameobject(gid), next_location
                 )
 

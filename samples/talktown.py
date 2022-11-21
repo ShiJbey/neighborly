@@ -10,9 +10,10 @@ import logging
 import random
 import time
 
-from neighborly import SimDateTime, SimulationBuilder
+from neighborly.core.time import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins import defaults, talktown, weather
+from neighborly.simulation import SimulationBuilder
 
 EXPORT_WORLD = False
 DEBUG_LOGGING = False
