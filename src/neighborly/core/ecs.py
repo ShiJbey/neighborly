@@ -84,11 +84,14 @@ class GameObject:
         name of the GameObject
     _world: World
         the World instance this GameObject belongs to
-    _components: List[Components]
-        Components attached to this GameObject
+    children: List[GameObject]
+        Other GameObjects that are below this one in the hierarchy
+        and are removed when the parent is removed
+    parent: Optional[GameObject]
+        The GameObject that this GameObject is a child of
     """
 
-    __slots__ = "_id", "_name", "_components", "_world"
+    __slots__ = "_id", "_name", "_world", "children", "parent"
 
     def __init__(
         self,
@@ -100,7 +103,8 @@ class GameObject:
         self._name: str = name if name else f"GameObject ({unique_id})"
         self._id: int = unique_id
         self._world: World = world
-        self._components: Dict[Type[Component], Component] = {}
+        self.parent: Optional[GameObject] = None
+        self.children: List[GameObject] = []
 
         if components:
             for component in components:
@@ -122,51 +126,76 @@ class GameObject:
         return self._world
 
     @property
-    def components(self) -> List[Component]:
+    def components(self) -> Tuple[Component, ...]:
         """Returns the component instances associated with this GameObject"""
-        return list(self._components.values())
+        try:
+            return self.world.ecs.components_for_entity(self.id)
+        except KeyError:
+            # Ignore errors if gameobject is not found in esper ecs
+            return ()
 
-    def get_component_types(self) -> List[Type[Component]]:
+    def get_component_types(self) -> Tuple[Type[Component], ...]:
         """Returns the types of components attached to this character"""
-        return list(self._components.keys())
+        return tuple(map(lambda component: type(component), self.components))
 
     def add_component(self, component: Component) -> GameObject:
         """Add a component to this GameObject"""
         component.set_gameobject(self)
-        self._components[type(component)] = component
         self.world.ecs.add_component(self.id, component)
         return self
 
     def remove_component(self, component_type: Type[Component]) -> None:
         """Add a component to this GameObject"""
-        # self.world.command_queue.append(
-        #     RemoveComponentCommand(self, component_type)
-        # )
-        if not self.has_component(component_type):
-            return
-        del self._components[component_type]
-        self.world.ecs.remove_component(self.id, component_type)
+        try:
+            self.world.command_queue.append(
+                RemoveComponentCommand(self, component_type)
+            )
+        except KeyError:
+            pass
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
         try:
-            return self._components[component_type]  # type: ignore
+            return self.world.ecs.component_for_entity(self.id, component_type)  # type: ignore
         except KeyError:
             raise ComponentNotFoundError(component_type)
 
     def has_component(self, *component_type: Type[Component]) -> bool:
-        return all([ct in self._components for ct in component_type])
+        try:
+            return all(
+                [self.world.ecs.try_component(self.id, ct) for ct in component_type]
+            )
+        except KeyError:
+            return False
 
     def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
-        return self._components.get(component_type)  # type: ignore
+        try:
+            return self.world.ecs.try_component(self.id, component_type)  # type: ignore
+        except KeyError:
+            return None
+
+    def add_child(self, gameobject: GameObject) -> None:
+        """Add a GameObject as the child of this GameObject"""
+        if gameobject.parent is not None:
+            gameobject.parent.remove_child(gameobject)
+        gameobject.parent = self
+        self.children.append(gameobject)
+
+    def remove_child(self, gameobject: GameObject) -> None:
+        """Remove a GameObject as a child of this GameObject"""
+        self.children.remove(gameobject)
+        gameobject.parent = None
 
     def to_dict(self) -> Dict[str, Any]:
         ret = {
             "id": self.id,
             "name": self.name,
-            "components": [c.to_dict() for c in self._components.values()],
+            "components": [c.to_dict() for c in self.components],
         }
 
         return ret
+
+    def __eq__(self, other: GameObject) -> bool:
+        return self.id == other.id
 
     def __hash__(self) -> int:
         return self._id
@@ -206,12 +235,7 @@ class RemoveComponentCommand(IEcsCommand):
     def run(self, world: World) -> None:
         if not self.gameobject.has_component(self.component_type):
             return
-        del self._components[self.component_type]
         world.ecs.remove_component(self.gameobject.id, self.component_type)
-
-
-class EcsCommandQueue:
-    pass
 
 
 class Component(ABC):
@@ -354,6 +378,10 @@ class World:
         """Remove gameobject from world"""
         self._dead_gameobjects.append(gid)
 
+        # Recursively remove all children
+        for child in self._gameobjects[gid].children:
+            self.delete_gameobject(child.id)
+
     def get_component(self, component_type: Type[_CT]) -> List[Tuple[int, _CT]]:
         """Get all the gameobjects that have a given component type"""
         return self._ecs.get_component(component_type)
@@ -367,14 +395,15 @@ class World:
     def _clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world"""
         for gameobject_id in self._dead_gameobjects:
-            gameobject = self._gameobjects[gameobject_id]
-            del self._gameobjects[gameobject_id]
-
-            # You need to check if the gameobject has any components
-            # If it doesn't then esper will not have it stored
-            if gameobject.components:
+            if len(self._gameobjects[gameobject_id].components) > 0:
                 self._ecs.delete_entity(gameobject_id, True)
 
+            gameobject = self._gameobjects[gameobject_id]
+
+            if gameobject.parent is not None:
+                gameobject.parent.remove_child(gameobject)
+
+            del self._gameobjects[gameobject_id]
         self._dead_gameobjects.clear()
 
     def clear_command_queue(self) -> None:
@@ -391,9 +420,9 @@ class World:
         """Get a System of the given type"""
         return self._ecs.get_processor(system_type)
 
-    def remove_system(self, system: Type[ISystem]) -> None:
+    def remove_system(self, system_type: Type[ISystem]) -> None:
         """Remove a System from the World"""
-        self._ecs.remove_processor(system)
+        self._ecs.remove_processor(system_type)
 
     def step(self, **kwargs) -> None:
         """Call the process method on all systems"""

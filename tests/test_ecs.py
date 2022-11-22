@@ -169,8 +169,10 @@ def test_delete_gameobject():
     g3 = world.spawn_gameobject([A()])
     assert g3.has_component(A) is True
     g3.remove_component(A)
-    assert g3.has_component(A) is False
+    assert g3.has_component(A) is True
     assert world.has_gameobject(g3.id) is True
+    world.step()
+    assert g3.has_component(A) is False
     # When you remove the last component from an entity,
     # it technically does not exist within esper anymore
     assert world.ecs.entity_exists(g3.id) is False
@@ -365,6 +367,7 @@ def test_remove_component():
     g1 = world.spawn_gameobject([A(), B()])
     assert g1.has_component(A) is True
     g1.remove_component(A)
+    world.step()
     assert g1.has_component(A) is False
 
 
@@ -374,3 +377,74 @@ def test_try_component():
     assert g1.try_component(A) is None
     g1.add_component(A())
     assert g1.try_component(A) is not None
+
+
+def test_add_child():
+    world = World()
+    g1 = world.spawn_gameobject([A()])
+    g2 = world.spawn_gameobject([B()])
+    g1.add_child(g2)
+
+    assert (g2 in g1.children) is True
+    assert (g2.parent == g1) is True
+
+    g3 = world.spawn_gameobject([A()])
+
+    g3.add_child(g2)
+
+    assert (g2 not in g1.children) is True
+    assert (g2.parent != g1) is True
+    assert (g2.parent == g3) is True
+    assert (g2 in g3.children) is True
+
+
+def test_remove_child():
+    world = World()
+    g1 = world.spawn_gameobject([A()])
+    g2 = world.spawn_gameobject([B()])
+    g3 = world.spawn_gameobject([B()])
+
+    g1.add_child(g2)
+    g1.add_child(g3)
+
+    assert (g2 in g1.children) is True
+    assert (g3 in g1.children) is True
+    assert (g1 == g3.parent) is True
+
+    g1.remove_child(g3)
+
+    assert (g3 in g1.children) is False
+    assert g3.parent is None
+
+
+def test_remove_gameobject_with_children():
+    world = World()
+
+    g1 = world.spawn_gameobject([A()])
+    g2 = world.spawn_gameobject([B()])
+    g3 = world.spawn_gameobject([B()])
+    g4 = world.spawn_gameobject([B()])
+    g5 = world.spawn_gameobject([B()])
+
+    g1.add_child(g2)
+    g2.add_child(g3)
+    g3.add_child(g4)
+    g3.add_child(g5)
+
+    # Removing g3 should remove g4 and g5
+    assert world.has_gameobject(g3.id) is True
+    assert world.has_gameobject(g4.id) is True
+    assert world.has_gameobject(g5.id) is True
+
+    world.delete_gameobject(g3.id)
+    world.step()
+
+    # Removing g3 should remove g4 and g5
+    assert world.has_gameobject(g3.id) is False
+    assert world.has_gameobject(g4.id) is False
+    assert world.has_gameobject(g5.id) is False
+
+    world.delete_gameobject(g2.id)
+    world.step()
+
+    assert world.has_gameobject(g2.id) is False
