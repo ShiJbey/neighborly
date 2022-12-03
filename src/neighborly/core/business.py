@@ -55,7 +55,7 @@ class OccupationType:
             find=("Candidate",),
             clauses=[
                 query.where(
-                    query.has_components(GameCharacter, Unemployed, Active), ""
+                    query.has_components(GameCharacter, Unemployed, Active), "Candidate"
                 ),
                 query.filter_(self.precondition),
             ],
@@ -377,19 +377,6 @@ class OpenForBusiness(Component):
         self.duration: float = 0.0
 
 
-@component_info(
-    "Pending Opening",
-    "This business is built, but has no owner.",
-)
-class PendingOpening(Component):
-
-    __slots__ = "duration"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.duration: float = 0.0
-
-
 class IBusinessType(Component, ABC):
     """Empty interface for creating types of businesses like Restaurants, ETC"""
 
@@ -398,6 +385,7 @@ class IBusinessType(Component, ABC):
 
 class Business(Component):
     __slots__ = (
+        "name",
         "operating_hours",
         "_employees",
         "_open_positions",
@@ -407,23 +395,31 @@ class Business(Component):
 
     def __init__(
         self,
+        name: str,
         owner_type: Optional[str] = None,
         owner: Optional[int] = None,
         open_positions: Optional[Dict[str, int]] = None,
         operating_hours: Optional[Dict[Weekday, Tuple[int, int]]] = None,
     ) -> None:
         super().__init__()
+        self.name: str = name
         self.owner_type: Optional[str] = owner_type
         self.operating_hours: Dict[Weekday, Tuple[int, int]] = (
             operating_hours if operating_hours else {}
         )
         self._open_positions: Dict[str, int] = open_positions if open_positions else {}
+        if owner_type is not None:
+            if owner_type in self._open_positions:
+                self._open_positions[owner_type] += 1
+            else:
+                self._open_positions[owner_type] = 0
         self._employees: Dict[int, str] = {}
         self.owner: Optional[int] = owner
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
+            "name": self.name,
             "operating_hours": self.operating_hours,
             "open_positions": self._open_positions,
             "employees": self.get_employees(),
@@ -458,7 +454,8 @@ class Business(Component):
 
     def __repr__(self) -> str:
         """Return printable representation"""
-        return "Business(owner={}, employees={}, openings={})".format(
+        return "Business(name={}, owner={}, employees={}, openings={})".format(
+            self.name,
             self.owner,
             self._employees,
             self._open_positions,
@@ -466,7 +463,7 @@ class Business(Component):
 
     @classmethod
     def create(cls, world: World, **kwargs) -> Business:
-
+        name: str = kwargs["name"]
         owner_type: Optional[str] = kwargs.get("owner_type")
         employee_types: Dict[str, int] = kwargs.get("employee_types", {})
         operating_hours: Dict[Weekday, Tuple[int, int]] = parse_operating_hour_str(
@@ -474,6 +471,7 @@ class Business(Component):
         )
 
         return Business(
+            name=name,
             open_positions=employee_types,
             owner_type=owner_type,
             operating_hours=operating_hours,

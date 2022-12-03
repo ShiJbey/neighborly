@@ -1,7 +1,7 @@
 from neighborly.builtin import helpers
 from neighborly.builtin.components import Active, Departed
 from neighborly.builtin.helpers import set_location
-from neighborly.core.business import Occupation
+from neighborly.core.business import InTheWorkforce, Occupation, Unemployed
 from neighborly.core.ecs import World
 from neighborly.core.event import Event
 
@@ -41,3 +41,12 @@ def remove_departed_from_residence(world: World, event: Event) -> None:
     for gid in event.get_all("Character"):
         character = world.get_gameobject(gid)
         helpers.set_residence(world, character, None)
+
+
+def on_become_young_adult(world: World, event: Event) -> None:
+    """Enable employment for characters who are new young adults"""
+    character = world.get_gameobject(event["Character"])
+    character.add_component(InTheWorkforce())
+
+    if not character.has_component(Occupation):
+        character.add_component(Unemployed())

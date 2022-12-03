@@ -1,54 +1,34 @@
 from typing import Any, Dict
 
-from neighborly.core.ecs import Component, component_info
-from neighborly.core.time import SimDateTime
+from neighborly.core.ecs import Component
 
 
 class Departed(Component):
+    """Tags a character as departed from the simulation"""
 
     pass
 
 
 class Vacant(Component):
-    """A tag component for residences that do not currently have any one living there"""
-
-    pass
-
-
-class Human(Component):
-    """Marks an entity as a Human"""
+    """Tags a residence that does not currently have anyone living there"""
 
     pass
 
 
 class MaxCapacity(Component):
+    """
+    Limits the number of characters that may be present at
+    any one location
+    """
 
     __slots__ = "capacity"
 
     def __init__(self, capacity: int) -> None:
         super().__init__()
-        self.capacity = capacity
+        self.capacity: int = capacity
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "capacity": self.capacity}
-
-
-class Name(Component):
-    """
-    The string name of an entity
-    """
-
-    __slots__ = "value"
-
-    def __init__(self, name: str = "") -> None:
-        super().__init__()
-        self.value = name
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "value": self.value}
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.value})"
 
 
 class Age(Component):
@@ -71,31 +51,30 @@ class Age(Component):
 
 class CanAge(Component):
     """
-    This component flags an entity as being able to age when time passes.
+    Tags a GameObject as being able to change life stages as time passes
     """
 
     pass
 
 
-class Mortal(Component):
-    pass
+class CanDie(Component):
+    """
+    Tags a GameObject as being able to die from natural causes
+    """
 
-
-class Immortal(Component):
     pass
 
 
 class OpenToPublic(Component):
     """
-    This is an empty component that flags a location as one that characters
-    may travel to when they don't have somewhere to be in the Routine component
+    Tags a location as one that any character may travel to
     """
 
     pass
 
 
 class CurrentLocation(Component):
-    """Tracks the current location of this game object"""
+    """Tracks the current location of a GameObject"""
 
     __slots__ = "location"
 
@@ -104,14 +83,14 @@ class CurrentLocation(Component):
         self.location: int = location
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"location": self.location}
+        return {**super().to_dict(), "location": self.location}
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.location})"
 
 
 class Lifespan(Component):
-    """How long this entity usually lives"""
+    """Defines how long a character lives on average"""
 
     __slots__ = "value"
 
@@ -156,161 +135,31 @@ class LocationAliases(Component):
         return f"{self.__class__.__name__}({self.aliases})"
 
 
-class LifeStages(Component):
-    """Tracks what stage of life an entity is in"""
-
-    __slots__ = "child", "teen", "young_adult", "adult", "elder"
-
-    def __init__(
-        self,
-        child: int,
-        teen: int,
-        young_adult: int,
-        adult: int,
-        elder: int,
-    ) -> None:
-        super().__init__()
-        self.child: int = child
-        self.teen: int = teen
-        self.young_adult: int = young_adult
-        self.adult: int = adult
-        self.elder: int = elder
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "child": self.child,
-            "teen": self.teen,
-            "young_adult": self.young_adult,
-            "adult": self.adult,
-            "elder": self.elder,
-        }
-
-    def __repr__(self):
-        return "{}(child={}, teen={}, young_adult={}, adult={}, elder={})".format(
-            self.__class__.__name__,
-            self.child,
-            self.teen,
-            self.young_adult,
-            self.adult,
-            self.elder,
-        )
-
-
 class CanGetPregnant(Component):
-    """Indicates that an entity is capable of giving birth"""
+    """Tags a character as capable of giving birth"""
 
     pass
 
 
-@component_info("Child", "Character is seen as a child in the eyes of society")
-class Child(Component):
-    pass
-
-
-@component_info(
-    "Adolescent",
-    "Character is seen as an adolescent in the eyes of society",
-)
-class Teen(Component):
-    pass
-
-
-@component_info(
-    "Young Adult",
-    "Character is seen as a young adult in the eyes of society",
-)
-class YoungAdult(Component):
-    pass
-
-
-@component_info(
-    "Adult",
-    "Character is seen as an adult in the eyes of society",
-)
-class Adult(Component):
-    pass
-
-
-@component_info(
-    "Senior",
-    "Character is seen as a senior in the eyes of society",
-)
-class Elder(Component):
-    pass
-
-
-@component_info(
-    "Deceased",
-    "This entity is dead",
-)
 class Deceased(Component):
+    """Tags a character as deceased"""
+
     pass
 
 
-@component_info("Retired", "This entity retired from their last occupation")
 class Retired(Component):
+    """Tags a character as retired"""
+
     pass
 
 
-@component_info("Dependent", "This entity is dependent on their parents")
-class Dependent(Component):
-    pass
-
-
-class CanDate(Component):
-    pass
-
-
-class CanGetMarried(Component):
-    pass
-
-
-class IsSingle(Component):
-    pass
-
-
-class Pregnant(Component):
-
-    __slots__ = "partner_name", "partner_id", "due_date"
-
-    def __init__(
-        self, partner_name: str, partner_id: int, due_date: SimDateTime
-    ) -> None:
-        super().__init__()
-        self.partner_name: str = partner_name
-        self.partner_id: int = partner_id
-        self.due_date: SimDateTime = due_date
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "partner_name": self.partner_name,
-            "partner_id": self.partner_id,
-            "due_date": self.partner_id,
-        }
-
-
-@component_info("Male", "This entity is perceived as masculine.")
-class Male(Component):
-    pass
-
-
-@component_info("Female", "This entity is perceived as feminine.")
-class Female(Component):
-    pass
-
-
-@component_info("NonBinary", "This entity is perceived as non-binary.")
-class NonBinary(Component):
-    pass
-
-
-@component_info("College Graduate", "This entity graduated from college.")
 class CollegeGraduate(Component):
+    """Tags a character as having graduated from college"""
+
     pass
 
 
-@component_info("Active", "This entity is in the town and active in the simulation")
 class Active(Component):
+    """Tags a character as active within the simulation"""
+
     pass

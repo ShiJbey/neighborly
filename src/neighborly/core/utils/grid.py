@@ -76,14 +76,14 @@ class Grid(Generic[_GT]):
 
     def __setitem__(self, point: Tuple[int, int], value: _GT) -> None:
         if 0 <= point[0] <= self._width and 0 <= point[1] <= self._length:
-            index = (point[0] * self.shape[1]) + point[1]
+            index = (point[1] * self.shape[0]) + point[0]
             self._grid[index] = value
         else:
             raise IndexError(point)
 
     def __getitem__(self, point: Tuple[int, int]) -> _GT:
-        if 0 <= point[0] <= self._width and 0 <= point[1] <= self._length:
-            index = (point[0] * self.shape[1]) + point[1]
+        if self.in_bounds(point):
+            index = (point[1] * self.shape[0]) + point[0]
             return self._grid[index]
         else:
             raise IndexError(point)

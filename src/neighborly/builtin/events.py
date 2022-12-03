@@ -7,6 +7,25 @@ from neighborly.core.event import Event, EventRole
 from neighborly.core.time import SimDateTime
 
 
+class ChildBirthEvent(Event):
+    def __init__(
+        self,
+        date: SimDateTime,
+        birthing_parent: GameObject,
+        other_parent: GameObject,
+        child: GameObject,
+    ) -> None:
+        super().__init__(
+            name="ChildBirth",
+            timestamp=date.to_iso_str(),
+            roles=[
+                EventRole("BirthingParent", birthing_parent.id),
+                EventRole("OtherParent", other_parent.id),
+                EventRole("Child", child.id),
+            ],
+        )
+
+
 class DeathEvent(Event):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(
@@ -33,10 +52,24 @@ class DepartEvent(Event):
         return {**super().to_dict(), "reason": self.reason}
 
 
+class MoveIntoTownEvent(Event):
+    def __init__(
+        self, date: SimDateTime, residence: GameObject, *characters: GameObject
+    ) -> None:
+        super().__init__(
+            name="MoveIntoTown",
+            timestamp=date.to_iso_str(),
+            roles=[
+                EventRole("Residence", residence.id),
+                *[EventRole("Character", c.id) for c in characters],
+            ],
+        )
+
+
 class MoveResidenceEvent(Event):
     def __init__(self, date: SimDateTime, *characters: GameObject) -> None:
         super().__init__(
-            name="Depart",
+            name="MoveResidence",
             timestamp=date.to_iso_str(),
             roles=[EventRole("Character", c.id) for c in characters],
         )
@@ -98,6 +131,34 @@ class PregnantEvent(Event):
         )
 
 
+class StartJobEvent(Event):
+
+    __slots__ = "occupation"
+
+    def __init__(
+        self,
+        date: SimDateTime,
+        character: GameObject,
+        business: GameObject,
+        occupation: str,
+    ) -> None:
+        super().__init__(
+            name="StartJob",
+            timestamp=date.to_iso_str(),
+            roles=[
+                EventRole("Business", business.id),
+                EventRole("Character", character.id),
+            ],
+        )
+        self.occupation: str = occupation
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "occupation": self.occupation,
+        }
+
+
 class EndJobEvent(Event):
 
     __slots__ = "occupation", "reason"
@@ -122,7 +183,11 @@ class EndJobEvent(Event):
         self.reason: str = reason
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "reason": self.reason}
+        return {
+            **super().to_dict(),
+            "occupation": self.occupation,
+            "reason": self.reason,
+        }
 
 
 class MarriageEvent(Event):
@@ -149,3 +214,33 @@ class DivorceEvent(Event):
             timestamp=date.to_iso_str(),
             roles=[EventRole("Character", c.id) for c in characters],
         )
+
+
+class StartBusinessEvent(Event):
+    __slots__ = "occupation", "business_name"
+
+    def __init__(
+        self,
+        date: SimDateTime,
+        character: GameObject,
+        business: GameObject,
+        occupation: str,
+        business_name: str,
+    ) -> None:
+        super().__init__(
+            name="StartBusiness",
+            timestamp=date.to_iso_str(),
+            roles=[
+                EventRole("Business", business.id),
+                EventRole("Character", character.id),
+            ],
+        )
+        self.occupation: str = occupation
+        self.business_name: str = business_name
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "occupation": self.occupation,
+            "business_name": self.business_name,
+        }

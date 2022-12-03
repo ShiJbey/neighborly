@@ -150,9 +150,9 @@ def try_load_local_config() -> Optional[Dict[str, Any]]:
     directory.
     """
     config_load_precedence = [
-        os.path.join(os.getcwd(), "neighborlyconfig.yaml"),
-        os.path.join(os.getcwd(), "neighborlyconfig.yml"),
-        os.path.join(os.getcwd(), "neighborlyconfig.json"),
+        os.path.join(os.getcwd(), "neighborly.config.yaml"),
+        os.path.join(os.getcwd(), "neighborly.config.yml"),
+        os.path.join(os.getcwd(), "neighborly.config.json"),
     ]
 
     for path in config_load_precedence:
@@ -174,7 +174,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-c",
         "--config",
-        help="Path to the neighborlyconfig.yaml file to load for configuration",
+        help="Path to the neighborly.config.yaml file to load for configuration",
     )
     parser.add_argument("-o", "--output", help="path to write final simulation state")
     parser.add_argument(

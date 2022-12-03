@@ -19,7 +19,6 @@ from neighborly.core.business import (
     ClosedForBusiness,
     Occupation,
     OpenForBusiness,
-    PendingOpening,
     Services,
     ServiceTypes,
     Unemployed,
@@ -38,8 +37,8 @@ from neighborly.core.position import Position2D
 from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.routine import Routine, RoutineEntry, RoutinePriority
+from neighborly.core.settlement import Settlement
 from neighborly.core.time import SimDateTime
-from neighborly.core.town import LandGrid
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +68,10 @@ def find_places_with_services(world: World, *services: str) -> List[int]:
 
 def add_coworkers(world: World, character: GameObject, business: GameObject) -> None:
     """Add coworker tags to current coworkers in relationship network"""
+    owner = business.get_component(Business).owner
+    if owner is not None and owner != character.id:
+        character.get_component(Relationships).get(owner).add_tags("Coworker")
+
     for employee_id in business.get_component(Business).get_employees():
         if employee_id == character.id:
             continue
@@ -82,6 +85,11 @@ def add_coworkers(world: World, character: GameObject, business: GameObject) -> 
 
 def remove_coworkers(world: World, character: GameObject, business: GameObject) -> None:
     """Remove coworker tags from current coworkers in relationship network"""
+
+    owner = business.get_component(Business).owner
+    if owner is not None and owner != character.id:
+        character.get_component(Relationships).get(owner).remove_tags("Coworker")
+
     for employee_id in business.get_component(Business).get_employees():
         if employee_id == character.id:
             continue
@@ -229,10 +237,9 @@ def check_share_residence(gameobject: GameObject, other: GameObject) -> bool:
 
 def demolish_building(world: World, gameobject: GameObject) -> None:
     """Remove the building component and free the land grid space"""
+    settlement = world.get_resource(Settlement)
+    settlement.land_map.free_lot(gameobject.get_component(Building).lot)
     gameobject.remove_component(Building)
-    position = gameobject.get_component(Position2D)
-    land_grid = world.get_resource(LandGrid)
-    land_grid[int(position.x), int(position.y)] = None
     gameobject.remove_component(Position2D)
 
 
@@ -242,7 +249,6 @@ def shutdown_business(world: World, business: GameObject) -> None:
 
     event = BusinessClosedEvent(date, business)
 
-    business.remove_component(PendingOpening)
     business.remove_component(OpenForBusiness)
     business.add_component(ClosedForBusiness())
 
@@ -348,9 +354,8 @@ def start_job(
 ) -> None:
     if is_owner:
         business.owner = character.id
-    else:
-        business.add_employee(character.id, occupation.occupation_type)
 
+    business.add_employee(character.id, occupation.occupation_type)
     character.add_component(occupation)
 
     add_coworkers(world, character, business.gameobject)
@@ -381,12 +386,16 @@ def end_job(
     business = world.get_gameobject(occupation.business)
     business_comp = business.get_component(Business)
 
+    # Update the former employees relationships
+    remove_coworkers(world, character, business)
+
     if business_comp.owner_type is not None and business_comp.owner == character.id:
         business_comp.set_owner(None)
-    else:
-        business_comp.remove_employee(character.id)
+
+    business_comp.remove_employee(character.id)
 
     character.remove_component(Occupation)
+    character.add_component(Unemployed())
 
     # Update the former employee's work history
     if not character.has_component(WorkHistory):
@@ -398,9 +407,6 @@ def end_job(
         start_date=occupation.start_date,
         end_date=world.get_resource(SimDateTime).copy(),
     )
-
-    # Update the former employees relationships
-    remove_coworkers(world, character, business)
 
     # Remove routine entries
     character_routine = character.get_component(Routine)

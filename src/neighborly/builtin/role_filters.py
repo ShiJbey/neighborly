@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from typing import List, Literal, Tuple
+from typing import List, Tuple
 
-from neighborly.builtin.components import (
-    Age,
-    CollegeGraduate,
-    CurrentLocation,
-    Female,
-    Male,
-    NonBinary,
-)
+import pandas as pd
+
+from neighborly.builtin.components import Age, CollegeGraduate, CurrentLocation
 from neighborly.core.business import Occupation, Unemployed, WorkHistory
+from neighborly.core.character import Gender, GenderValue
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.query import EcsFindClause, QueryFilterFn
+from neighborly.core.query import (
+    EcsFindClause,
+    IQueryClause,
+    QueryContext,
+    QueryFilterFn,
+    Relation,
+)
 from neighborly.core.relationship import Relationships
 from neighborly.core.time import SimDateTime
 
@@ -31,6 +33,33 @@ def friendship_gt(threshold: float) -> EcsFindClause:
     return precondition
 
 
+def get_friendships_gt(threshold: float, variables: Tuple[str, str]) -> IQueryClause:
+    def clause(ctx: QueryContext, world: World) -> Relation:
+        subject, _ = variables
+
+        # loop through each row in the ctx at the given column
+        results = []
+        for _, row in ctx.relation.get_data_frame().iterrows():
+            gameobject = world.get_gameobject(row[subject])
+            for r in gameobject.get_component(Relationships).get_all():
+                if r.friendship > threshold:
+                    results.append((row[subject], r.target))
+
+        values_per_symbol = list(zip(*results))
+
+        if values_per_symbol:
+            data = {s: values_per_symbol[i] for i, s in enumerate(variables)}
+
+            if ctx.relation is None:
+                return Relation(pd.DataFrame(data))
+
+            return ctx.relation.unify(Relation(pd.DataFrame(data)))
+
+        return Relation.create_empty()
+
+    return clause
+
+
 def friendship_lt(threshold: float) -> EcsFindClause:
     """Returns a list of all the GameObjects with the given component"""
 
@@ -43,6 +72,33 @@ def friendship_lt(threshold: float) -> EcsFindClause:
         return results
 
     return precondition
+
+
+def get_romances_gt(threshold: float, variables: Tuple[str, str]) -> IQueryClause:
+    def clause(ctx: QueryContext, world: World) -> Relation:
+        subject, _ = variables
+
+        # loop through each row in the ctx at the given column
+        results = []
+        for _, row in ctx.relation.get_data_frame().iterrows():
+            gameobject = world.get_gameobject(row[subject])
+            for r in gameobject.get_component(Relationships).get_all():
+                if r.romance > threshold:
+                    results.append((row[subject], r.target))
+
+        values_per_symbol = list(zip(*results))
+
+        if values_per_symbol:
+            data = {s: values_per_symbol[i] for i, s in enumerate(variables)}
+
+            if ctx.relation is None:
+                return Relation(pd.DataFrame(data))
+
+            return ctx.relation.unify(Relation(pd.DataFrame(data)))
+
+        return Relation.create_empty()
+
+    return clause
 
 
 def romance_gt(threshold: float) -> EcsFindClause:
@@ -69,6 +125,21 @@ def romance_lt(threshold: float) -> EcsFindClause:
                 if r.romance < threshold:
                     results.append((gid, r.target))
         return results
+
+    return precondition
+
+
+def relationship_has_tags_filter(*tags: str) -> QueryFilterFn:
+    """Returns a list of all the GameObjects with the given component"""
+
+    def precondition(world: World, *gameobjects: GameObject) -> bool:
+
+        subject, target = gameobjects
+        relationships = subject.get_component(Relationships)
+        if target.id in relationships:
+            return all([relationships.get(target.id).has_tag(t) for t in tags])
+        else:
+            return False
 
     return precondition
 
@@ -157,12 +228,13 @@ def after_year(year: int) -> QueryFilterFn:
     return fn
 
 
-def is_gender(gender: Literal["male", "female", "non-binary"]) -> QueryFilterFn:
+def is_gender(gender: GenderValue) -> QueryFilterFn:
     """Return precondition function that checks if an entity is a given gender"""
-    gender_component_types = {"male": Male, "female": Female, "non-binary": NonBinary}
 
     def fn(world: World, *gameobjects: GameObject) -> bool:
-        return gameobjects[0].has_component(gender_component_types[gender])
+        if gender_component := gameobjects[0].try_component(Gender):
+            return gender_component.value == gender
+        return False
 
     return fn
 

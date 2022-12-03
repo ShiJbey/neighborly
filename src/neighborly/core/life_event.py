@@ -8,9 +8,9 @@ from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.query import Query
+from neighborly.core.settlement import Settlement
 from neighborly.core.system import System
 from neighborly.core.time import SimDateTime, TimeDelta
-from neighborly.core.town import Town
 
 logger = logging.getLogger(__name__)
 
@@ -279,15 +279,17 @@ class LifeEventSystem(System):
 
     def run(self, *args, **kwargs) -> None:
         """Simulate LifeEvents for characters"""
-        town = self.world.get_resource(Town)
+        settlement = self.world.get_resource(Settlement)
         rng = self.world.get_resource(NeighborlyEngine).rng
 
         # Perform number of events equal to 10% of the population
 
         for life_event in rng.choices(
-            LifeEvents.get_all(), k=(int(town.population / 2))
+            LifeEvents.get_all(), k=(int(settlement.population / 2))
         ):
-            life_event.try_execute_event(self.world)
+            success = life_event.try_execute_event(self.world)
+            if success:
+                self.world.clear_command_queue()
 
 
 class EventEffectFn(Protocol):

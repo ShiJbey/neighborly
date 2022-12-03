@@ -4,23 +4,7 @@ from random import Random
 from typing import Dict, List, Optional, Set, Type
 
 from neighborly.builtin.ai import DefaultMovementModule
-from neighborly.builtin.components import (
-    Active,
-    Adult,
-    Age,
-    CanAge,
-    CanGetPregnant,
-    Child,
-    Elder,
-    Female,
-    Lifespan,
-    LifeStages,
-    Male,
-    Name,
-    NonBinary,
-    Teen,
-    YoungAdult,
-)
+from neighborly.builtin.components import Active, Age, CanAge, CanGetPregnant, Lifespan
 from neighborly.core.ai import MovementAI
 from neighborly.core.archetypes import (
     IBusinessArchetype,
@@ -69,6 +53,9 @@ class BaseCharacterArchetype(ICharacterArchetype):
         self.max_children_at_spawn: int = max_children_at_spawn
         self.chance_spawn_with_spouse: float = chance_spawn_with_spouse
 
+    def get_name(self) -> str:
+        return self.__class__.__name__
+
     def get_spawn_frequency(self) -> int:
         return self.spawn_frequency
 
@@ -85,10 +72,9 @@ class BaseCharacterArchetype(ICharacterArchetype):
         return world.spawn_gameobject(
             [
                 Active(),
-                GameCharacter(),
+                GameCharacter("First", "Last"),
                 Routine(),
                 Age(),
-                CharacterName("First", "Last"),
                 WorkHistory(),
                 LifeStages(
                     child=0,
@@ -307,6 +293,9 @@ class BaseBusinessArchetype(IBusinessArchetype):
         self.instances: int = 0
         self.average_lifespan: int = average_lifespan
 
+    def get_name(self) -> str:
+        return self.__class__.__name__
+
     def get_spawn_frequency(self) -> int:
         """Return the relative frequency that this prefab appears"""
         return self.spawn_frequency
@@ -347,13 +336,13 @@ class BaseBusinessArchetype(IBusinessArchetype):
             [
                 self.business_type(),
                 Business(
+                    name=engine.name_generator.get_name(self.name_format),
                     operating_hours=parse_operating_hour_str(self.hours),
                     owner_type=self.owner_type,
                     open_positions=self.employee_types,
                 ),
                 Age(0),
                 Services(services),
-                Name(engine.name_generator.get_name(self.name_format)),
                 Position2D(),
                 Location(),
                 Lifespan(self.average_lifespan),
@@ -371,6 +360,9 @@ class BaseResidenceArchetype(IResidenceArchetype):
     ) -> None:
         self.spawn_frequency: int = spawn_frequency
         self.zoning: ResidentialZoning = zoning
+
+    def get_name(self) -> str:
+        return self.__class__.__name__
 
     def get_spawn_frequency(self) -> int:
         return self.spawn_frequency

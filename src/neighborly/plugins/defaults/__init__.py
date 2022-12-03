@@ -21,11 +21,7 @@ from neighborly.builtin.systems import (
     BuildHousingSystem,
     BusinessUpdateSystem,
     CharacterAgingSystem,
-    FindBusinessOwnerSystem,
     FindEmployeesSystem,
-    OpenForBusinessSystem,
-    PendingOpeningSystem,
-    PregnancySystem,
     SpawnResidentSystem,
 )
 from neighborly.core.business import Occupation
@@ -152,41 +148,37 @@ def age_difference_debuff(
 
 class DefaultPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs) -> None:
-        name_data_plugin = DefaultNameDataPlugin()
-        life_event_plugin = DefaultLifeEventPlugin()
 
-        name_data_plugin.setup(sim, **kwargs)
-        life_event_plugin.setup(sim, **kwargs)
+        resident_spawn_interval_days: int = kwargs.get(
+            "resident_spawn_interval_days", 7
+        )
+        business_spawn_interval_days: int = kwargs.get(
+            "business_spawn_interval_days", 5
+        )
+        activate_name_data_plugin: bool = kwargs.get("activate_name_data_plugin", True)
+        activate_life_event_plugin: bool = kwargs.get(
+            "activate_life_event_plugin", True
+        )
 
-        # SocializeSystem.add_compatibility_check(get_values_compatibility)
-        # SocializeSystem.add_compatibility_check(job_level_difference_debuff)
-        # SocializeSystem.add_compatibility_check(age_difference_debuff)
+        if activate_name_data_plugin:
+            name_data_plugin = DefaultNameDataPlugin()
+            name_data_plugin.setup(sim, **kwargs)
+
+        if activate_life_event_plugin:
+            life_event_plugin = DefaultLifeEventPlugin()
+            life_event_plugin.setup(sim, **kwargs)
 
         sim.world.add_system(CharacterAgingSystem(), priority=CHARACTER_UPDATE_PHASE)
-        # sim.world.add_system(RoutineSystem(), priority=CHARACTER_UPDATE_PHASE)
         sim.world.add_system(BusinessUpdateSystem(), priority=BUSINESS_UPDATE_PHASE)
-        sim.world.add_system(FindBusinessOwnerSystem(), priority=BUSINESS_UPDATE_PHASE)
         sim.world.add_system(FindEmployeesSystem(), priority=BUSINESS_UPDATE_PHASE)
-        # self.add_system(
-        #     UnemploymentSystem(days_to_departure=30), priority=CHARACTER_UPDATE_PHASE
-        # )
-        # self.add_system(SocializeSystem(), priority=CHARACTER_ACTION_PHASE)
-        sim.world.add_system(PregnancySystem(), priority=CHARACTER_UPDATE_PHASE)
+        sim.world.add_system(BuildHousingSystem(), priority=TOWN_SYSTEMS_PHASE)
         sim.world.add_system(
-            PendingOpeningSystem(days_before_demolishing=9999),
-            priority=BUSINESS_UPDATE_PHASE,
-        )
-        sim.world.add_system(OpenForBusinessSystem(), priority=BUSINESS_UPDATE_PHASE)
-
-        sim.world.add_system(
-            BuildHousingSystem(chance_of_build=1.0), priority=TOWN_SYSTEMS_PHASE
-        )
-        sim.world.add_system(
-            SpawnResidentSystem(interval=TimeDelta(days=7), chance_spawn=1.0),
+            SpawnResidentSystem(interval=TimeDelta(days=resident_spawn_interval_days)),
             priority=TOWN_SYSTEMS_PHASE,
         )
         sim.world.add_system(
-            BuildBusinessSystem(interval=TimeDelta(days=5)), priority=TOWN_SYSTEMS_PHASE
+            BuildBusinessSystem(interval=TimeDelta(days=business_spawn_interval_days)),
+            priority=TOWN_SYSTEMS_PHASE,
         )
 
         sim.world.get_resource(EventLog).on(

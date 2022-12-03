@@ -125,6 +125,11 @@ class ArchetypeNotFoundError(Exception):
 
 class IEntityArchetype(ABC):
     @abstractmethod
+    def get_name(self) -> str:
+        """Return the name of this archetype"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_spawn_frequency(self) -> int:
         """Return the relative frequency that this prefab appears"""
         raise NotImplementedError

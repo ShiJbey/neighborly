@@ -5,20 +5,19 @@ from typing import Any, List, Optional, Tuple, cast
 from neighborly.builtin import helpers
 from neighborly.builtin.components import (
     Active,
-    Adult,
     Age,
     CanGetPregnant,
     Deceased,
     Departed,
-    Elder,
     Lifespan,
-    Pregnant,
     Retired,
     Vacant,
 )
 from neighborly.builtin.role_filters import (
     friendship_gt,
     friendship_lt,
+    get_friendships_gt,
+    get_romances_gt,
     is_single,
     relationship_has_tags,
     romance_gt,
@@ -26,7 +25,7 @@ from neighborly.builtin.role_filters import (
 )
 from neighborly.core import query as querylib
 from neighborly.core.business import Business, Occupation, OpenForBusiness, Unemployed
-from neighborly.core.character import CharacterName, GameCharacter
+from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import Event
@@ -130,13 +129,10 @@ def start_dating_event(threshold: float = 0.7, probability: float = 1.0) -> ILif
         pattern=querylib.Query(
             find=("Initiator", "Other"),
             clauses=[
-                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
-                querylib.where(querylib.has_components(Active), "Initiator"),
-                querylib.where(querylib.has_components(GameCharacter), "Other"),
-                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.get_with_components((GameCharacter, Active), "Initiator"),
+                get_romances_gt(threshold, ("Initiator", "Other")),
+                get_romances_gt(threshold, ("Other", "Initiator")),
                 querylib.ne_(("Initiator", "Other")),
-                querylib.where(romance_gt(threshold), "Initiator", "Other"),
-                querylib.where(romance_gt(threshold), "Other", "Initiator"),
                 querylib.where_not(
                     relationship_has_tags("Significant Other"), "Other", "Other_Curr_SO"
                 ),
@@ -177,10 +173,10 @@ def stop_dating_event(threshold: float = 0.4, probability: float = 1.0) -> ILife
         pattern=querylib.Query(
             find=("Initiator", "Other"),
             clauses=[
-                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
-                querylib.where(querylib.has_components(Active), "Initiator"),
-                querylib.where(querylib.has_components(GameCharacter), "Other"),
-                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.where(
+                    querylib.has_components(GameCharacter, Active), "Initiator"
+                ),
+                querylib.where(querylib.has_components(GameCharacter, Active), "Other"),
                 querylib.ne_(("Initiator", "Other")),
                 querylib.where(romance_lt(threshold), "Initiator", "Other"),
                 querylib.where(romance_lt(threshold), "Other", "Initiator "),
@@ -209,10 +205,10 @@ def divorce_event(threshold: float = 0.4, probability: float = 1.0) -> ILifeEven
         pattern=querylib.Query(
             find=("Initiator", "Other"),
             clauses=[
-                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
-                querylib.where(querylib.has_components(Active), "Initiator"),
-                querylib.where(querylib.has_components(GameCharacter), "Other"),
-                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.where(
+                    querylib.has_components(GameCharacter, Active), "Initiator"
+                ),
+                querylib.where(querylib.has_components(GameCharacter, Active), "Other"),
                 querylib.ne_(("Initiator", "Other")),
                 querylib.where(romance_lt(threshold), "Initiator", "Other"),
                 querylib.where(romance_lt(threshold), "Other", "Initiator "),
@@ -249,10 +245,10 @@ def marriage_event(threshold: float = 0.7, probability: float = 1.0) -> ILifeEve
         pattern=querylib.Query(
             find=("Initiator", "Other"),
             clauses=[
-                querylib.where(querylib.has_components(GameCharacter), "Initiator"),
-                querylib.where(querylib.has_components(Active), "Initiator"),
-                querylib.where(querylib.has_components(GameCharacter), "Other"),
-                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.where(
+                    querylib.has_components(GameCharacter, Active), "Initiator"
+                ),
+                querylib.where(querylib.has_components(GameCharacter, Active), "Other"),
                 querylib.ne_(("Initiator", "Other")),
                 querylib.where(romance_gt(threshold), "Initiator", "Other"),
                 querylib.where(romance_gt(threshold), "Other", "Initiator "),
@@ -268,6 +264,14 @@ def depart_due_to_unemployment() -> ILifeEvent:
     def bind_unemployed_character(
         world: World, event: Event, candidate: Optional[GameObject]
     ):
+        if candidate:
+            if (
+                candidate.has_component(Unemployed)
+                and candidate.get_component(Unemployed).duration_days > 30
+            ):
+                return candidate
+            return None
+
         eligible_characters: List[GameObject] = []
         for _, (unemployed, _) in world.get_components(Unemployed, Active):
             if unemployed.duration_days > 30:
@@ -322,12 +326,12 @@ def pregnancy_event() -> ILifeEvent:
         pattern=querylib.Query(
             find=("PregnantOne", "Other"),
             clauses=[
-                querylib.where(querylib.has_components(GameCharacter), "PregnantOne"),
-                querylib.where(querylib.has_components(Active), "PregnantOne"),
-                querylib.where(querylib.has_components(CanGetPregnant), "PregnantOne"),
+                querylib.where(
+                    querylib.has_components(GameCharacter, Active, CanGetPregnant),
+                    "PregnantOne",
+                ),
                 querylib.where_not(querylib.has_components(Pregnant), "PregnantOne"),
-                querylib.where(querylib.has_components(GameCharacter), "Other"),
-                querylib.where(querylib.has_components(Active), "Other"),
+                querylib.where(querylib.has_components(GameCharacter, Active), "Other"),
                 querylib.ne_(("PregnantOne", "Other")),
                 querylib.where_any(
                     querylib.where(
@@ -361,6 +365,14 @@ def retire_event(probability: float = 0.4) -> ILifeEvent:
     """
 
     def bind_retiree(world: World, event: Event, candidate: Optional[GameObject]):
+
+        if candidate:
+            if not candidate.has_component(Retired) and candidate.has_component(
+                Elder, Occupation, Active
+            ):
+                return candidate
+            return None
+
         eligible_characters: List[GameObject] = []
         for gid, _ in world.get_components(Elder, Occupation, Active):
             gameobject = world.get_gameobject(gid)
@@ -449,15 +461,14 @@ def die_of_old_age(probability: float = 0.8) -> ILifeEvent:
             ("Deceased",),
             [
                 querylib.where(
-                    querylib.has_components(GameCharacter, Active), "Deceased"
+                    querylib.has_components(GameCharacter, Active, Age, Lifespan),
+                    "Deceased",
                 ),
-                querylib.where(
-                    querylib.component_attr(Age, "value"), "Deceased", "Age"
+                querylib.filter_(
+                    lambda w, *g: g[0].get_component(Age).value
+                    >= g[0].get_component(Lifespan).value,
+                    "Deceased",
                 ),
-                querylib.where(
-                    querylib.component_attr(Lifespan, "value"), "Deceased", "Lifespan"
-                ),
-                querylib.ge_(("Age", "Lifespan")),
             ],
         ),
         effect=execute,
@@ -506,7 +517,9 @@ def go_out_of_business_event() -> ILifeEvent:
         business = world.get_gameobject(event["Business"])
         lifespan = business.get_component(Lifespan).value
         age = business.get_component(Age).value
-        if age < lifespan:
+        if age < 5:
+            return 0
+        elif age < lifespan:
             return age / lifespan
         else:
             return 0.8

@@ -10,19 +10,18 @@ class Building(Component):
 
     Attributes
     ----------
-    _building_type: str
+    building_type: str
         What kind of building is this
+    lot: int
+        ID of the lot this building is on
     """
 
-    __slots__ = "_building_type"
+    __slots__ = "building_type", "lot"
 
-    def __init__(self, building_type: str) -> None:
+    def __init__(self, building_type: str, lot: int) -> None:
         super().__init__()
-        self._building_type: str = building_type
+        self.building_type: str = building_type
+        self.lot: int = lot
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "building_type": self.building_type}
-
-    @property
-    def building_type(self) -> str:
-        return self._building_type

@@ -5,15 +5,16 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from neighborly.builtin.systems import LinearTimeSystem
+from neighborly.builtin.systems import DynamicLoDTimeSystem, LinearTimeSystem
 from neighborly.core.ai import MovementAISystem, SocialAISystem
 from neighborly.core.constants import TIME_UPDATE_PHASE, TOWN_SYSTEMS_PHASE
 from neighborly.core.ecs import ISystem, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import EventLog, EventSystem
 from neighborly.core.life_event import LifeEventSystem
+from neighborly.core.settlement import Settlement, create_grid_settlement
+from neighborly.core.status import StatusSystem
 from neighborly.core.time import SimDateTime, TimeDelta
-from neighborly.core.town import LandGrid, Town
 
 logger = getLogger(__name__)
 
@@ -105,9 +106,9 @@ class Simulation:
         return self.world.get_resource(SimDateTime)
 
     @property
-    def town(self) -> Town:
+    def town(self) -> Settlement:
         """Get a reference to the Town instance"""
-        return self.world.get_resource(Town)
+        return self.world.get_resource(Settlement)
 
 
 class SimulationBuilder:
@@ -143,6 +144,8 @@ class SimulationBuilder:
         "plugins",
         "print_events",
         "life_event_interval_hours",
+        "enable_dynamic_lod",
+        "dyn_lod_days_per_year",
     )
 
     def __init__(
@@ -154,6 +157,8 @@ class SimulationBuilder:
         town_size: TownSize = "medium",
         print_events: bool = True,
         life_event_interval_hours: int = 336,
+        enable_dynamic_lod: bool = False,
+        dyn_lod_days_per_year: int = 20,
     ) -> None:
         self.seed: int = hash(seed if seed is not None else random.randint(0, 99999999))
         self.time_increment_hours: int = time_increment_hours
@@ -171,6 +176,8 @@ class SimulationBuilder:
         self.plugins: List[Tuple[Plugin, Dict[str, Any]]] = []
         self.print_events: bool = print_events
         self.life_event_interval_hours: int = life_event_interval_hours
+        self.enable_dynamic_lod: bool = enable_dynamic_lod
+        self.dyn_lod_days_per_year: int = dyn_lod_days_per_year
 
     def add_plugin(self, plugin: Plugin, **kwargs) -> SimulationBuilder:
         """Add plugin to simulation"""
@@ -181,17 +188,12 @@ class SimulationBuilder:
         self,
         sim: Simulation,
     ) -> SimulationBuilder:
-        """Create a new grid of land to build the town on"""
-        # create town
+        """Create a new Settlement to represent the Town"""
         generated_name = sim.world.get_resource(
             NeighborlyEngine
         ).name_generator.get_name(self.town_name)
-        sim.world.add_resource(Town(generated_name))
 
-        # Create the land
-        land_grid = LandGrid(self.town_size)
-
-        sim.world.add_resource(land_grid)
+        sim.world.add_resource(create_grid_settlement(generated_name, self.town_size))
 
         return self
 
@@ -211,10 +213,21 @@ class SimulationBuilder:
         sim.world.add_resource(EventLog())
 
         # The following systems are loaded by default
-        sim.world.add_system(
-            LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)),
-            TIME_UPDATE_PHASE,
-        )
+        if self.enable_dynamic_lod:
+            sim.world.add_system(
+                DynamicLoDTimeSystem(
+                    self.dyn_lod_days_per_year,
+                    low_lod_time_increment=TimeDelta(hours=self.time_increment_hours),
+                    high_lod_time_increment=TimeDelta(hours=24),
+                ),
+                TIME_UPDATE_PHASE,
+            )
+        else:
+            sim.world.add_system(
+                LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)),
+                TIME_UPDATE_PHASE,
+            )
+        sim.world.add_system(StatusSystem())
         sim.world.add_system(MovementAISystem())
         sim.world.add_system(SocialAISystem())
         sim.world.add_system(

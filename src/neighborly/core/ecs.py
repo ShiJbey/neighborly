@@ -11,6 +11,7 @@ https://github.com/bevyengine/bevy
 from __future__ import annotations
 
 import logging
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 
@@ -144,12 +145,17 @@ class GameObject:
         self.world.ecs.add_component(self.id, component)
         return self
 
-    def remove_component(self, component_type: Type[Component]) -> None:
+    def remove_component(
+        self, component_type: Type[Component], immediate: bool = True
+    ) -> None:
         """Add a component to this GameObject"""
         try:
-            self.world.command_queue.append(
-                RemoveComponentCommand(self, component_type)
-            )
+            command = RemoveComponentCommand(self, component_type)
+
+            if immediate:
+                command.run(self.world)
+            else:
+                self.world.command_queue.append(command)
         except KeyError:
             pass
 
