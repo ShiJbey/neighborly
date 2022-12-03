@@ -16,7 +16,6 @@ from neighborly.builtin.components import (
 from neighborly.builtin.role_filters import (
     friendship_gt,
     friendship_lt,
-    get_friendships_gt,
     get_romances_gt,
     is_single,
     relationship_has_tags,
@@ -25,13 +24,14 @@ from neighborly.builtin.role_filters import (
 )
 from neighborly.core import query as querylib
 from neighborly.core.business import Business, Occupation, OpenForBusiness, Unemployed
-from neighborly.core.character import GameCharacter
+from neighborly.core.character import GameCharacter, LifeStage, LifeStageValue
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import Event
+from neighborly.core.event import Event, RoleList
 from neighborly.core.life_event import (
     ILifeEvent,
     LifeEvent,
+    LifeEventInstance,
     LifeEventRoleType,
     PatternLifeEvent,
 )
@@ -262,7 +262,7 @@ def marriage_event(threshold: float = 0.7, probability: float = 1.0) -> ILifeEve
 
 def depart_due_to_unemployment() -> ILifeEvent:
     def bind_unemployed_character(
-        world: World, event: Event, candidate: Optional[GameObject]
+        world: World, roles: Event, candidate: Optional[GameObject]
     ):
         if candidate:
             if (
@@ -274,6 +274,7 @@ def depart_due_to_unemployment() -> ILifeEvent:
 
         eligible_characters: List[GameObject] = []
         for _, (unemployed, _) in world.get_components(Unemployed, Active):
+            unemployed = cast(Unemployed, unemployed)
             if unemployed.duration_days > 30:
                 eligible_characters.append(unemployed.gameobject)
         if eligible_characters:
@@ -305,9 +306,6 @@ def pregnancy_event() -> ILifeEvent:
 
         world.get_gameobject(event["PregnantOne"]).add_component(
             Pregnant(
-                partner_name=str(
-                    world.get_gameobject(event["Other"]).get_component(CharacterName)
-                ),
                 partner_id=event["Other"],
                 due_date=due_date,
             )
@@ -364,17 +362,27 @@ def retire_event(probability: float = 0.4) -> ILifeEvent:
         LifeEventType instance with all configuration defined
     """
 
-    def bind_retiree(world: World, event: Event, candidate: Optional[GameObject]):
+    def bind_retiree(
+        world: World, roles: RoleList, candidate: Optional[GameObject] = None
+    ):
 
         if candidate:
             if not candidate.has_component(Retired) and candidate.has_component(
-                Elder, Occupation, Active
+                LifeStage, Occupation, Active
             ):
-                return candidate
+                if candidate.get_component(LifeStage).stage >= LifeStageValue.Senior:
+                    return candidate
             return None
 
         eligible_characters: List[GameObject] = []
-        for gid, _ in world.get_components(Elder, Occupation, Active):
+        for gid, (life_stage, _, _) in world.get_components(
+            LifeStage, Occupation, Active
+        ):
+            life_stage = cast(LifeStage, life_stage)
+
+            if life_stage.stage < LifeStageValue.Senior:
+                continue
+
             gameobject = world.get_gameobject(gid)
             if not gameobject.has_component(Retired):
                 eligible_characters.append(gameobject)
@@ -401,10 +409,15 @@ def find_own_place_event(probability: float = 0.1) -> ILifeEvent:
     def bind_potential_mover(world: World) -> List[Tuple[Any, ...]]:
         eligible: List[Tuple[Any, ...]] = []
 
-        for gid, (_, _, _, resident, _) in world.get_components(
-            GameCharacter, Occupation, Adult, Resident, Active
+        for gid, (_, _, life_stage, resident, _) in world.get_components(
+            GameCharacter, Occupation, LifeStage, Resident, Active
         ):
             resident = cast(Resident, resident)
+            life_stage = cast(LifeStage, life_stage)
+
+            if life_stage.stage < LifeStageValue.YoungAdult:
+                continue
+
             residence = world.get_gameobject(resident.residence).get_component(
                 Residence
             )
@@ -416,7 +429,10 @@ def find_own_place_event(probability: float = 0.1) -> ILifeEvent:
     def find_vacant_residences(world: World) -> List[Residence]:
         """Try to find a vacant residence to move into"""
         return list(
-            map(lambda pair: pair[1][0], world.get_components(Residence, Vacant))
+            map(
+                lambda pair: cast(Residence, pair[1][0]),
+                world.get_components(Residence, Vacant),
+            )
         )
 
     def choose_random_vacant_residence(world: World) -> Optional[Residence]:
@@ -465,8 +481,8 @@ def die_of_old_age(probability: float = 0.8) -> ILifeEvent:
                     "Deceased",
                 ),
                 querylib.filter_(
-                    lambda w, *g: g[0].get_component(Age).value
-                    >= g[0].get_component(Lifespan).value,
+                    lambda world, *gameobjects: gameobjects[0].get_component(Age).value
+                    >= gameobjects[0].get_component(Lifespan).value,
                     "Deceased",
                 ),
             ],
@@ -475,46 +491,13 @@ def die_of_old_age(probability: float = 0.8) -> ILifeEvent:
     )
 
 
-class GoOutOfBusinessLifeEvent(PatternLifeEvent):
-    def __init__(self) -> None:
-        super().__init__(
-            name="GoOutOfBusiness",
-            pattern=querylib.Query(
-                find=("Business",),
-                clauses=[
-                    querylib.where(
-                        querylib.has_components(Business, OpenForBusiness, Active),
-                        "Business",
-                    ),
-                ],
-            ),
-            effect=GoOutOfBusinessLifeEvent._effect,
-            probability=GoOutOfBusinessLifeEvent._probability_fn,
-        )
-
-    @staticmethod
-    def _probability_fn(world: World, event: Event) -> float:
-        business = world.get_gameobject(event["Business"])
-        lifespan = business.get_component(Lifespan).value
-        age = business.get_component(Age).value
-        if age < lifespan:
-            return age / lifespan
-        else:
-            return 0.8
-
-    @staticmethod
-    def _effect(world: World, event: Event):
-        business = world.get_gameobject(event["Business"])
-        helpers.shutdown_business(world, business)
-
-
 def go_out_of_business_event() -> ILifeEvent:
     def effect(world: World, event: Event):
         business = world.get_gameobject(event["Business"])
         helpers.shutdown_business(world, business)
 
-    def probability_fn(world: World, event: Event) -> float:
-        business = world.get_gameobject(event["Business"])
+    def probability_fn(world: World, event: LifeEventInstance) -> float:
+        business = world.get_gameobject(event.roles["Business"])
         lifespan = business.get_component(Lifespan).value
         age = business.get_component(Age).value
         if age < 5:

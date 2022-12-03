@@ -77,11 +77,19 @@ class RelationshipStat:
     def __ge__(self, other: float) -> bool:
         return self._normalized_value <= other
 
-    def __eq__(self, other: float) -> bool:
-        return self._normalized_value == other
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, float):
+            return self._normalized_value == other
+        if isinstance(other, RelationshipStat):
+            return self._normalized_value == other._normalized_value
+        raise TypeError(f"Expected float or Relationship stat bt was {type(other)}")
 
-    def __ne__(self, other: float) -> bool:
-        return self._normalized_value != other
+    def __ne__(self, other: object) -> bool:
+        if isinstance(other, float):
+            return self._normalized_value != other
+        if isinstance(other, RelationshipStat):
+            return self._normalized_value != other._normalized_value
+        raise TypeError(f"Expected float or Relationship stat bt was {type(other)}")
 
     def __int__(self) -> int:
         return self._clamped_value
@@ -220,7 +228,7 @@ class Relationships(Component):
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v.to_dict() for k, v in self._relationships.items()}
+        return {str(k): v.to_dict() for k, v in self._relationships.items()}
 
     def __getitem__(self, item: int) -> Relationship:
         if item not in self._relationships:

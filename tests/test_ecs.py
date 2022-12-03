@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -58,7 +59,7 @@ class AnotherFakeResource:
 
 
 class FakeSystemBaseA(ISystem):
-    def process(self, *args, **kwargs):
+    def process(self, *args: Any, **kwargs: Any):
         for _, a in self.world.get_component(A):
             a.value += 1
 

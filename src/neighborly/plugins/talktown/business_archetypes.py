@@ -30,7 +30,7 @@ from neighborly.plugins.talktown.business_components import (
     Hotel,
     Inn,
     InsuranceCompany,
-    JeweleryShop,
+    JewelryShop,
     LawFirm,
     OptometryClinic,
     PaintingCompany,
@@ -324,7 +324,7 @@ insurance_company = BaseBusinessArchetype(
 )
 
 jewelry_shop = BaseBusinessArchetype(
-    business_type=JeweleryShop,
+    business_type=JewelryShop,
     name_format="Jewelry Shop",
     owner_type="Jeweler",
     employee_types={"Cashier": 1, "Apprentice": 1},

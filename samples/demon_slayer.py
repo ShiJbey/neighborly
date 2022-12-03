@@ -42,7 +42,7 @@ import time
 from enum import IntEnum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ordered_set import OrderedSet
+from ordered_set import OrderedSet  # type: ignore
 
 from neighborly.builtin.components import (
     Active,

@@ -184,6 +184,7 @@ def over_age(age: int) -> QueryFilterFn:
         age_component = gameobjects[0].try_component(Age)
         if age_component is not None:
             return age_component.value > age
+        return False
 
     return fn
 

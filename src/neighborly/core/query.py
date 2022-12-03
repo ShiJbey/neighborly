@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Protocol, Tuple, Type
 
 import pandas as pd
-from ordered_set import OrderedSet
+from ordered_set import OrderedSet  # type: ignore
 
 from neighborly.core.ecs import Component, GameObject, World
 
@@ -134,7 +134,7 @@ def get_without_components(
                     "where_not clause is missing relation within context"
                 )
 
-            new_data = ctx.relation.get_data_frame().merge(
+            new_data: pd.DataFrame = ctx.relation.get_data_frame().merge(  # type: ignore
                 data, how="outer", indicator=True
             )
             new_data = new_data.loc[new_data["_merge"] == "left_only"]
@@ -721,4 +721,7 @@ class Query:
                 return []
 
         # Return tuples for only the symbols specified in the constructor
-        return ctx.relation.get_tuples(*self._symbols)
+        if ctx.relation is not None:
+            return ctx.relation.get_tuples(*self._symbols)
+        
+        return []

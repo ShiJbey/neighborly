@@ -1,6 +1,7 @@
 import logging
 import os
 import pathlib
+from typing import Any
 
 import neighborly.plugins.talktown.business_archetypes as tot_businesses
 import neighborly.plugins.talktown.occupation_types as tot_occupations
@@ -14,7 +15,7 @@ _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent
 
 
 class TalkOfTheTownPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
+    def setup(self, sim: Simulation, **kwargs: Any) -> None:
         sim.world.add_system(SchoolSystem())
 
         # Talk of the town only has one residence archetype

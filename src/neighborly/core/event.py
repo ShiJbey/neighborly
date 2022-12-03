@@ -280,6 +280,6 @@ class EventLog:
 
 
 class EventSystem(ISystem):
-    def process(self, *args, **kwargs) -> None:
+    def process(self, *args: Any, **kwargs: Any) -> None:
         event_log = self.world.get_resource(EventLog)
         event_log.process_event_queue(self.world)

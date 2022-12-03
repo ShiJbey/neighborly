@@ -4,10 +4,10 @@ import logging
 from abc import ABC, abstractmethod
 from enum import Enum
 from random import Random
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from neighborly.core.business import IBusinessType
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.ecs import GameObject, World
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ class IEntityArchetype(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         """Create a new instance of this prefab"""
         raise NotImplementedError
 
@@ -204,14 +204,3 @@ class IResidenceArchetype(IEntityArchetype):
     @abstractmethod
     def get_zoning(self) -> ResidentialZoning:
         raise NotImplementedError
-
-
-class ArchetypeRef(Component):
-    __slots__ = "name"
-
-    def __init__(self, name: str) -> None:
-        super().__init__()
-        self.name: str = name
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.name})"

@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any
 
 from neighborly.builtin import event_callbacks
-from neighborly.builtin.components import Age
 from neighborly.builtin.life_events import (
     depart_due_to_unemployment,
     die_of_old_age,
@@ -24,17 +23,14 @@ from neighborly.builtin.systems import (
     FindEmployeesSystem,
     SpawnResidentSystem,
 )
-from neighborly.core.business import Occupation
 from neighborly.core.constants import (
     BUSINESS_UPDATE_PHASE,
     CHARACTER_UPDATE_PHASE,
     TOWN_SYSTEMS_PHASE,
 )
-from neighborly.core.ecs import World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import EventLog
 from neighborly.core.life_event import LifeEvents
-from neighborly.core.personal_values import PersonalValues
 from neighborly.core.time import TimeDelta
 from neighborly.simulation import Plugin, Simulation
 
@@ -42,7 +38,7 @@ _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
 
 class DefaultNameDataPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
+    def setup(self, sim: Simulation, **kwargs: Any) -> None:
         self.initialize_tracery_name_factory(sim.engine)
 
     def initialize_tracery_name_factory(self, engine: NeighborlyEngine) -> None:
@@ -80,7 +76,7 @@ class DefaultNameDataPlugin(Plugin):
 
 
 class DefaultLifeEventPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
+    def setup(self, sim: Simulation, **kwargs: Any) -> None:
         LifeEvents.add(marriage_event())
         # LifeEvents.add(become_friends_event())
         # LifeEvents.add(become_enemies_event())
@@ -95,59 +91,8 @@ class DefaultLifeEventPlugin(Plugin):
         LifeEvents.add(go_out_of_business_event())
 
 
-def get_values_compatibility(
-    world: World, subject_id: int, target_id: int
-) -> Optional[Tuple[int, int]]:
-    """Return value [-1.0, 1.0] representing the compatibility of two characters"""
-    subject_values = world.get_gameobject(subject_id).try_component(PersonalValues)
-    target_values = world.get_gameobject(target_id).try_component(PersonalValues)
-
-    if subject_values is not None and target_values is not None:
-        compatibility = PersonalValues.compatibility(subject_values, target_values) * 5
-        return int(compatibility), int(compatibility)
-
-
-def job_level_difference_debuff(
-    world: World, subject_id: int, target_id: int
-) -> Optional[Tuple[int, int]]:
-    """
-    This makes people with job-level differences less likely to develop romantic feelings
-    for one another (missing source)
-    """
-    subject_job = world.get_gameobject(subject_id).try_component(Occupation)
-    target_job = world.get_gameobject(target_id).try_component(Occupation)
-
-    if subject_job is not None and target_job is None:
-        return 0, -1
-
-    if subject_job is None and target_job is not None:
-        return 0, 1
-
-    if subject_job is not None and target_job is not None:
-        character_a_level = subject_job.level if subject_job else 0
-        character_b_level = target_job.level if target_job else 0
-        compatibility = int(5 - (abs(character_a_level - character_b_level)))
-        return compatibility, compatibility
-
-
-def age_difference_debuff(
-    world: World, subject_id: int, target_id: int
-) -> Optional[Tuple[int, int]]:
-    """How does age difference affect developing romantic feelings
-    People with larger age gaps are less likely to develop romantic feelings
-    (missing source)
-    """
-    character_a_age = world.get_gameobject(subject_id).get_component(Age).value
-    character_b_age = world.get_gameobject(target_id).get_component(Age).value
-
-    friendship_buff = int(12 / (character_b_age - character_a_age))
-    romance_buff = int(8 / (character_b_age - character_a_age))
-
-    return friendship_buff, romance_buff
-
-
 class DefaultPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
+    def setup(self, sim: Simulation, **kwargs: Any) -> None:
 
         resident_spawn_interval_days: int = kwargs.get(
             "resident_spawn_interval_days", 7

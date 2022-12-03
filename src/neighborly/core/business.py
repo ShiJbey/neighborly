@@ -236,7 +236,7 @@ class WorkHistory(Component):
     __slots__ = "_chronological_history", "_categorical_history"
 
     def __init__(self) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self._chronological_history: List[WorkHistoryEntry] = []
         self._categorical_history: Dict[str, List[WorkHistoryEntry]] = {}
 
@@ -309,8 +309,10 @@ class ServiceType:
     def __hash__(self) -> int:
         return self._uid
 
-    def __eq__(self, other: ServiceType) -> bool:
-        return self.uid == other.uid
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ServiceType):
+            return self.uid == other.uid
+        raise TypeError(f"Expected ServiceType but was {type(object)}")
 
 
 class ServiceTypes:
@@ -339,6 +341,7 @@ class ServiceTypes:
         service_type = ServiceType(uid, lc_service_name)
         cls._name_to_service[lc_service_name] = service_type
         cls._id_to_name[uid] = lc_service_name
+        return service_type
 
 
 class Services(Component):
@@ -462,7 +465,7 @@ class Business(Component):
         )
 
     @classmethod
-    def create(cls, world: World, **kwargs) -> Business:
+    def create(cls, world: World, **kwargs: Any) -> Business:
         name: str = kwargs["name"]
         owner_type: Optional[str] = kwargs.get("owner_type")
         employee_types: Dict[str, int] = kwargs.get("employee_types", {})

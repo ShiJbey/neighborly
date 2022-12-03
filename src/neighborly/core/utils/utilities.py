@@ -1,7 +1,7 @@
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple, cast
 
 
-def merge(source: Dict, destination: Dict) -> Dict:
+def merge(source: Dict[Any, Any], destination: Dict[Any, Any]) -> Dict[Any, Any]:
     """
     Deep merge two dictionaries
 
@@ -23,6 +23,7 @@ def merge(source: Dict, destination: Dict) -> Dict:
     for key, value in source.items():
         if isinstance(value, dict):
             # get node or create one
+            value = cast(Dict[Any, Any], value)
             node = new_dict.get(key, {})
             new_dict[key] = merge(value, node)
         else:

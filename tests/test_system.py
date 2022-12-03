@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 
 import pytest
 
@@ -19,7 +19,7 @@ class TestSystem(System):
         self.elapsed_times: List[int] = elapsed_times
         self.run_times: List[SimDateTime] = run_times
 
-    def run(self, *args, **kwargs) -> None:
+    def run(self, *args: Any, **kwargs: Any) -> None:
         self.elapsed_times.append(self.elapsed_time.total_hours)
         self.run_times.append(self.world.get_resource(SimDateTime).copy())
 
@@ -32,7 +32,7 @@ def test_world() -> World:
     return world
 
 
-def test_elapsed_time(test_world):
+def test_elapsed_time(test_world: World):
     elapsed_times = []
     test_world.add_system(TestSystem(TimeDelta(), elapsed_times, []))
     test_world.step()
@@ -41,7 +41,7 @@ def test_elapsed_time(test_world):
     assert elapsed_times == [0, 4, 4]
 
 
-def test_interval_run(test_world):
+def test_interval_run(test_world: World):
     run_times = []
     test_world.add_system(TestSystem(TimeDelta(hours=6), [], run_times))
     test_world.step()

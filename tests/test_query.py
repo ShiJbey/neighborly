@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
-from neighborly.builtin.components import Age, Name, NonBinary, Retired
-from neighborly.core.character import GameCharacter
+from neighborly.builtin.components import Age, Retired
+from neighborly.core.character import GameCharacter, Gender, GenderValue
 from neighborly.core.ecs import Component, World
 from neighborly.core.query import (
     Query,
@@ -121,14 +121,18 @@ def sample_world() -> World:
     world = World()
 
     world.spawn_gameobject([Hero(), GameCharacter("Shi", ""), Age(27)])
-    world.spawn_gameobject([Hero(), GameCharacter("Astrid", ""), NonBinary()])
+    world.spawn_gameobject(
+        [Hero(), GameCharacter("Astrid", ""), Gender(GenderValue.Female)]
+    )
     world.spawn_gameobject([DemonKing(), GameCharacter("-Shi", ""), Retired()])
-    world.spawn_gameobject([DemonKing(), GameCharacter("Palpatine", ""), NonBinary()])
+    world.spawn_gameobject(
+        [DemonKing(), GameCharacter("Palpatine", ""), Gender(GenderValue.NonBinary)]
+    )
 
     return world
 
 
-def test_where(sample_world):
+def test_where(sample_world: World):
     query = Query(("Hero",), [where(has_components(Hero), "Hero")])
     result = set(query.execute(sample_world))
     expected = {(1,), (2,)}
@@ -152,7 +156,7 @@ def test_where(sample_world):
     assert result == expected
 
 
-def test_where_not(sample_world):
+def test_where_not(sample_world: World):
     query = Query(
         ("Hero",),
         [
@@ -188,7 +192,7 @@ def test_where_not(sample_world):
     assert result == expected
 
 
-def test_where_either(sample_world):
+def test_where_either(sample_world: World):
     query = Query(
         ("X",),
         [
@@ -241,7 +245,7 @@ def test_where_either(sample_world):
     assert result == expected
 
 
-def test_equal(sample_world):
+def test_equal(sample_world: World):
     query = Query(
         ("X", "Y"),
         [
@@ -266,7 +270,7 @@ def test_equal(sample_world):
     assert result == expected
 
 
-def test_not_equal(sample_world):
+def test_not_equal(sample_world: World):
     query = Query(
         ("X", "Y"),
         [
@@ -291,7 +295,7 @@ def test_not_equal(sample_world):
     assert result == expected
 
 
-def test_query_bindings(sample_world):
+def test_query_bindings(sample_world: World):
     query = Query(("Hero",), [where(has_components(Hero), "Hero")])
     result = set(query.execute(sample_world, Hero=2))
     expected = {(2,)}
@@ -315,7 +319,7 @@ def test_query_bindings(sample_world):
     assert result == expected
 
 
-def test_filter(sample_world):
+def test_filter(sample_world: World):
     query = Query(
         ("X",),
         [

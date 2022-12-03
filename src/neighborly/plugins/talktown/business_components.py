@@ -1,4 +1,4 @@
-from ordered_set import OrderedSet
+from ordered_set import OrderedSet  # type: ignore
 
 from neighborly.core.business import IBusinessType
 
@@ -218,7 +218,7 @@ class InsuranceCompany(IBusinessType):
     pass
 
 
-class JeweleryShop(IBusinessType):
+class JewelryShop(IBusinessType):
     """A jewelry company."""
 
     pass

@@ -66,7 +66,7 @@ class PersonalValues(Component):
         self, overrides: Optional[Dict[str, int]] = None, default: int = 0
     ) -> None:
         super().__init__()
-        self._traits: npt.NDArray[np.int32] = np.array(
+        self._traits: npt.NDArray[np.int32] = np.array(  # type: ignore
             [default] * len(_VALUE_INDICES.keys()), dtype=np.int32
         )
 
@@ -85,17 +85,17 @@ class PersonalValues(Component):
         character_a: PersonalValues, character_b: PersonalValues
     ) -> float:
         # Cosine similarity is a value between -1 and 1
-        cos_sim: float = np.dot(character_a.traits, character_b.traits) / (
-            np.linalg.norm(character_a.traits) * np.linalg.norm(character_b.traits)
+        cos_sim: float = np.dot(character_a.traits, character_b.traits) / (  # type: ignore
+            np.linalg.norm(character_a.traits) * np.linalg.norm(character_b.traits)  # type: ignore
         )
 
         return cos_sim
 
-    def get_high_values(self, n=3) -> List[str]:
+    def get_high_values(self, n: int = 3) -> List[str]:
         """Return the value names associated with the n values"""
         # This code is adapted from https://stackoverflow.com/a/23734295
 
-        ind = np.argpartition(self.traits, -n)[-n:]
+        ind = np.argpartition(self.traits, -n)[-n:]  # type: ignore
 
         value_names = list(_VALUE_INDICES.keys())
 
@@ -116,14 +116,11 @@ class PersonalValues(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "traits": {
-                str(p_value.value): self._traits[_VALUE_INDICES[str(p_value.value)]]
-                for p_value in list(PersonalValues)
-            },
+            **{trait.name: self._traits[i] for i, trait in enumerate(list(ValueTrait))},
         }
 
     @classmethod
-    def create(cls, world: World, **kwargs) -> Component:
+    def create(cls, world: World, **kwargs: Any) -> Component:
         engine = world.get_resource(NeighborlyEngine)
         n_likes: int = kwargs.get("n_likes", 3)
         n_dislikes: int = kwargs.get("n_dislikes", 3)

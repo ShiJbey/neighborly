@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
 from typing import Any, Dict
 
 from neighborly.core.ecs import Component
@@ -76,7 +76,7 @@ class CharacterAgingConfig(Component):
         }
 
 
-class LifeStageValue(Enum):
+class LifeStageValue(IntEnum):
     Child = auto()
     Adolescent = auto()
     YoungAdult = auto()

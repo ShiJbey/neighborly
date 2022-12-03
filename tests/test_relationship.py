@@ -4,7 +4,7 @@ from neighborly.core.relationship import Relationships
 
 
 def create_character(world: World) -> GameObject:
-    return world.spawn_gameobject([GameCharacter(), Relationships()])
+    return world.spawn_gameobject([GameCharacter("Jane", "Doe"), Relationships()])
 
 
 def test_relationships():

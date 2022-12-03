@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 from neighborly.core.ecs import ISystem
 from neighborly.core.engine import NeighborlyEngine
@@ -51,7 +52,7 @@ class WeatherSystem(ISystem):
         super().__init__()
         self.avg_change_interval: int = avg_change_interval
 
-    def process(self, *args, **kwargs):
+    def process(self, *args: Any, **kwargs: Any):
         delta_time = self.world.get_resource(SimDateTime).delta_time
         weather_manager = self.world.get_resource(WeatherManager)
         engine = self.world.get_resource(NeighborlyEngine)
@@ -67,7 +68,7 @@ class WeatherSystem(ISystem):
 
 
 class WeatherPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
+    def setup(self, sim: Simulation, **kwargs: Any) -> None:
         sim.world.add_system(WeatherSystem(), 9)
         sim.world.add_resource(WeatherManager())
 

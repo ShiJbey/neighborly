@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import DefaultDict, Dict, Generic, NamedTuple, Tuple, TypeVar, cast
 
-from ordered_set import OrderedSet
+from ordered_set import OrderedSet  # type: ignore
 
 _T = TypeVar("_T")
 

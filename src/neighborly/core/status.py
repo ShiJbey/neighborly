@@ -5,7 +5,7 @@ hierarchy as children to their associated GameObject.
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional, Type, TypeVar
+from typing import Any, Callable, List, Optional, Type, TypeVar
 
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.system import System
@@ -67,7 +67,7 @@ class StatusManager(Component):
 
     def __init__(self) -> None:
         super().__init__()
-        self.statuses: Type[Type[StatusType]] = []
+        self.statuses: List[Type[StatusType]] = []
 
     def add(self, status_type: Type[StatusType]) -> None:
         self.statuses.append(status_type)
@@ -113,7 +113,7 @@ def has_status(gameobject: GameObject, status_type: Type[StatusType]) -> bool:
 
 
 class StatusSystem(System):
-    def run(self, *args, **kwargs) -> None:
+    def run(self, *args: Any, **kwargs: Any) -> None:
         for gid, status_component in self.world.get_component(Status):
             status = self.world.get_gameobject(gid)
 
@@ -121,8 +121,10 @@ class StatusSystem(System):
                 status_component.on_update(
                     self.world, status, self.elapsed_time.total_hours
                 )
+                
 
-            if status_component.on_expire(self.world, status) is True:
+            if status_component.is_expired(self.world, status) is True:
                 if status_component.on_expire:
                     status_component.on_expire(self.world, status)
-                remove_status(status.parent, status)
+                if status.parent:
+                    remove_status(status.parent, status)

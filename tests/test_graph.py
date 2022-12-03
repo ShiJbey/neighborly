@@ -8,7 +8,7 @@ from neighborly.core.utils.graph import DirectedGraph, UndirectedGraph
 
 
 @pytest.fixture()
-def sample_directed() -> DirectedGraph:
+def sample_directed() -> DirectedGraph[str]:
     graph = DirectedGraph[str]()
     graph.add_connection(1, 2, "friends")
     graph.add_connection(2, 1, "enemies")
@@ -19,7 +19,7 @@ def sample_directed() -> DirectedGraph:
 
 
 @pytest.fixture()
-def sample_undirected() -> UndirectedGraph:
+def sample_undirected() -> UndirectedGraph[str]:
     graph = UndirectedGraph[str]()
     graph.add_connection(1, 2, "friends")
     graph.add_connection(2, 3, "married")

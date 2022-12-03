@@ -11,11 +11,10 @@ https://github.com/bevyengine/bevy
 from __future__ import annotations
 
 import logging
-import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 
-import esper
+import esper  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ _ST = TypeVar("_ST", bound="ISystem")
 class ResourceNotFoundError(Exception):
     def __init__(self, resource_type: Type[Any]) -> None:
         super().__init__()
-        self.resource_type: Type = resource_type
+        self.resource_type: Type[Any] = resource_type
         self.message = f"Could not find resource with type: {resource_type.__name__}"
 
     def __str__(self) -> str:
@@ -200,8 +199,10 @@ class GameObject:
 
         return ret
 
-    def __eq__(self, other: GameObject) -> bool:
-        return self.id == other.id
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, GameObject):
+            return self.id == other.id
+        raise TypeError(f"Expected GameObject but was {type(object)}")
 
     def __hash__(self) -> int:
         return self._id
@@ -230,7 +231,7 @@ class RemoveComponentCommand(IEcsCommand):
     __slots__ = "gameobject", "component_type"
 
     def __init__(self, gameobject: GameObject, component_type: Type[Component]) -> None:
-        super().__init__()
+        super(IEcsCommand, self).__init__()
         self.gameobject: GameObject = gameobject
         self.component_type: Type[Component] = component_type
 
@@ -256,7 +257,7 @@ class Component(ABC):
 
     __slots__ = "_gameobject"
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__()
         self._gameobject: Optional[GameObject] = None
 
@@ -272,7 +273,7 @@ class Component(ABC):
         self._gameobject = gameobject
 
     @classmethod
-    def create(cls, world: World, **kwargs) -> Component:
+    def create(cls, world: World, **kwargs: Any) -> Component:
         """Create an instance of the component using a reference to the World object and additional parameters"""
         return cls(**kwargs)
 
@@ -304,7 +305,7 @@ class ISystem(ABC, esper.Processor):
     world: World
 
     def __init__(self):
-        super().__init__()
+        super(esper.Processor, self).__init__()
 
 
 class World:
@@ -390,13 +391,13 @@ class World:
 
     def get_component(self, component_type: Type[_CT]) -> List[Tuple[int, _CT]]:
         """Get all the gameobjects that have a given component type"""
-        return self._ecs.get_component(component_type)
+        return self._ecs.get_component(component_type)  # type: ignore
 
     def get_components(
         self, *component_types: Type[_CT]
     ) -> List[Tuple[int, List[_CT]]]:
         """Get all game objects with the given components"""
-        return self._ecs.get_components(*component_types)
+        return self._ecs.get_components(*component_types)  # type: ignore
 
     def _clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world"""
@@ -430,10 +431,10 @@ class World:
         """Remove a System from the World"""
         self._ecs.remove_processor(system_type)
 
-    def step(self, **kwargs) -> None:
+    def step(self, **kwargs: Any) -> None:
         """Call the process method on all systems"""
         self._clear_dead_gameobjects()
-        self._ecs.process(**kwargs)
+        self._ecs.process(**kwargs)  # type: ignore
         self.clear_command_queue()
 
     def add_resource(self, resource: Any) -> None:

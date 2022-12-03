@@ -39,7 +39,7 @@ class Plugin(ABC):
         return cls.__name__
 
     @abstractmethod
-    def setup(self, sim: Simulation, **kwargs) -> None:
+    def setup(self, sim: Simulation, **kwargs: Any) -> None:
         """Add the plugin data to the simulation"""
         raise NotImplementedError
 
@@ -179,7 +179,7 @@ class SimulationBuilder:
         self.enable_dynamic_lod: bool = enable_dynamic_lod
         self.dyn_lod_days_per_year: int = dyn_lod_days_per_year
 
-    def add_plugin(self, plugin: Plugin, **kwargs) -> SimulationBuilder:
+    def add_plugin(self, plugin: Plugin, **kwargs: Any) -> SimulationBuilder:
         """Add plugin to simulation"""
         self.plugins.append((plugin, {**kwargs}))
         return self

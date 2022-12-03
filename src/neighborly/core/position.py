@@ -16,5 +16,5 @@ class Position2D(Component):
         return {**super().to_dict(), "x": self.x, "y": self.y}
 
     @classmethod
-    def create(cls, world: World, **kwargs) -> Position2D:
+    def create(cls, world: World, **kwargs: Any) -> Position2D:
         return Position2D(x=kwargs.get("x", 0.0), y=kwargs.get("y", 0.0))

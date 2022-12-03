@@ -4,7 +4,7 @@ Default implementations of AI modules
 from typing import List, Optional
 
 from neighborly.builtin.components import CurrentLocation, LocationAliases, OpenToPublic
-from neighborly.core.action import Action, AvailableActions
+from neighborly.core.action import ActionInstance, AvailableActions
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
@@ -45,8 +45,10 @@ class DefaultMovementModule:
 
 
 class DefaultSocialAIModule:
-    def get_next_action(self, world: World, gameobject: GameObject) -> Optional[Action]:
-        current_location_comp = gameobject.try_component(CurrentLocation)
+    def get_next_action(
+        self, world: World, character: GameObject
+    ) -> Optional[ActionInstance]:
+        current_location_comp = character.try_component(CurrentLocation)
 
         if current_location_comp is None:
             return None
@@ -55,10 +57,17 @@ class DefaultSocialAIModule:
 
         available_actions = current_location.try_component(AvailableActions)
 
+        other_character = world.get_gameobject(
+            world.get_resource(NeighborlyEngine).rng.choice(
+                list(current_location.get_component(Location).entities)
+            )
+        )
+
         if available_actions is None:
             return None
 
         for action in available_actions.actions:
-            ...
+            if action_instance := action.instantiate(world, character, other_character):
+                return action_instance
 
         return None

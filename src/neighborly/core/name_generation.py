@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-import tracery as tracery
-import tracery.modifiers as tracery_modifiers
+import tracery as tracery  # type: ignore
+import tracery.modifiers as tracery_modifiers  # type: ignore
 
 AnyPath = Union[str, Path]
 
@@ -20,11 +20,11 @@ class TraceryNameFactory:
         """Add a rule to the name factory"""
         self._all_name_rules[name] = rule
         self._grammar = tracery.Grammar(self._all_name_rules)
-        self._grammar.add_modifiers(tracery_modifiers.base_english)
+        self._grammar.add_modifiers(tracery_modifiers.base_english)  # type: ignore
 
     def get_name(self, seed_str: str) -> str:
         """Return a name generated using the grammar rules"""
-        return self._grammar.flatten(seed_str)
+        return self._grammar.flatten(seed_str)  # type: ignore
 
     def load_names(
         self,

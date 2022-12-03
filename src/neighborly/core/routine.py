@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from neighborly.core.ecs import Component, World
 from neighborly.core.time import Weekday
@@ -218,7 +218,7 @@ class Routine(Component):
             self._daily_routines[day].remove(entry_id)
 
     @classmethod
-    def create(cls, world: World, **kwargs) -> Component:
+    def create(cls, world: World, **kwargs: Any) -> Component:
         routine = cls()
 
         presets = kwargs.get("presets")

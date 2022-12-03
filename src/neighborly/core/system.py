@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from neighborly.core.ecs import ISystem
 from neighborly.core.time import SimDateTime, TimeDelta
@@ -20,7 +20,7 @@ class System(ISystem):
         self,
         interval: Optional[TimeDelta] = None,
     ) -> None:
-        super().__init__()
+        super(ISystem, self).__init__()
         self._last_run: Optional[SimDateTime] = None
         self._interval: TimeDelta = interval if interval else TimeDelta()
         self._next_run: SimDateTime = SimDateTime() + self._interval
@@ -31,7 +31,7 @@ class System(ISystem):
         """Returns the amount of simulation time since the last update"""
         return self._elapsed_time
 
-    def process(self, *args, **kwargs) -> None:
+    def process(self, *args: Any, **kwargs: Any) -> None:
         """Handles internal bookkeeping before running the system"""
         date = self.world.get_resource(SimDateTime)
 
@@ -45,5 +45,5 @@ class System(ISystem):
             self.run(*args, **kwargs)
 
     @abstractmethod
-    def run(self, *args, **kwargs) -> None:
+    def run(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError

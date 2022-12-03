@@ -24,7 +24,7 @@ class MaxCapacity(Component):
     __slots__ = "capacity"
 
     def __init__(self, capacity: int) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.capacity: int = capacity
 
     def to_dict(self) -> Dict[str, Any]:
@@ -39,7 +39,7 @@ class Age(Component):
     __slots__ = "value"
 
     def __init__(self, age: float = 0.0) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.value: float = age
 
     def to_dict(self) -> Dict[str, Any]:
@@ -79,7 +79,7 @@ class CurrentLocation(Component):
     __slots__ = "location"
 
     def __init__(self, location: int) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.location: int = location
 
     def to_dict(self) -> Dict[str, Any]:
@@ -95,7 +95,7 @@ class Lifespan(Component):
     __slots__ = "value"
 
     def __init__(self, lifespan: float) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.value: float = lifespan
 
     def to_dict(self) -> Dict[str, Any]:
@@ -113,7 +113,7 @@ class LocationAliases(Component):
     __slots__ = "aliases"
 
     def __init__(self) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.aliases: Dict[str, int] = {}
 
     def to_dict(self) -> Dict[str, Any]:
@@ -128,7 +128,7 @@ class LocationAliases(Component):
     def __setitem__(self, key: str, value: int) -> None:
         self.aliases[key] = value
 
-    def __delitem__(self, key) -> None:
+    def __delitem__(self, key: str) -> None:
         del self.aliases[key]
 
     def __repr__(self):

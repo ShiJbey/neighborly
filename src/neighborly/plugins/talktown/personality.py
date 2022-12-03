@@ -51,7 +51,7 @@ class BigFivePersonality(Component):
         }
 
     @classmethod
-    def create(cls, world: World, **kwargs) -> BigFivePersonality:
+    def create(cls, world: World, **kwargs: Any) -> BigFivePersonality:
         """Create new instance given component spec"""
         engine: NeighborlyEngine = kwargs["engine"]
 

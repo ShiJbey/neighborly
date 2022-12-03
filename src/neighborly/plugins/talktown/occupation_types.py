@@ -10,12 +10,11 @@ from neighborly.builtin.role_filters import (
     has_any_work_experience,
     has_experience_as_a,
     is_college_graduate,
-    is_gender,
 )
 from neighborly.core.business import OccupationType
 from neighborly.core.query import and_
 
-apprentice = OccupationType(name="Apprentice", level=1, precondition=is_gender("male"))
+apprentice = OccupationType(name="Apprentice", level=1)
 
 architect = OccupationType(
     name="Architect",

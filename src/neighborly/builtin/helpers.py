@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple, Union, cast
+from typing import List, Optional, Union, cast
 
 from neighborly.builtin.archetypes import BaseCharacterArchetype
 from neighborly.builtin.components import (
@@ -104,7 +104,7 @@ def remove_coworkers(world: World, character: GameObject, business: GameObject) 
 def set_location(
     world: World, gameobject: GameObject, destination: Optional[Union[int, str]]
 ) -> None:
-    if type(destination) == str:
+    if isinstance(destination, str):
         # Check for a location aliases component
         if location_aliases := gameobject.try_component(LocationAliases):
             destination_id = location_aliases[destination]
@@ -132,8 +132,8 @@ def set_location(
 
     # Move to new location if needed
     if destination_id is not None:
-        destination = world.get_gameobject(destination_id).get_component(Location)
-        destination.add_entity(gameobject.id)
+        location = world.get_gameobject(destination_id).get_component(Location)
+        location.add_entity(gameobject.id)
         gameobject.add_component(CurrentLocation(destination_id))
 
 
@@ -332,7 +332,7 @@ def generate_child(
     for probability, component_type in random_pool:
         if rng.random() < probability:
             child.add_component(
-                component_type.from_parents(
+                cast(IInheritable, component_type).from_parents(
                     parent_a.try_component(component_type),
                     parent_b.try_component(component_type),
                 )

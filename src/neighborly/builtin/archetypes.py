@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from random import Random
-from typing import Dict, List, Optional, Set, Type
+from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 from neighborly.builtin.ai import DefaultMovementModule
 from neighborly.builtin.components import Active, Age, CanAge, CanGetPregnant, Lifespan
@@ -23,8 +23,15 @@ from neighborly.core.business import (
     WorkHistory,
     parse_operating_hour_str,
 )
-from neighborly.core.character import CharacterName, GameCharacter
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.character import (
+    CharacterAgingConfig,
+    GameCharacter,
+    Gender,
+    GenderValue,
+    LifeStage,
+    LifeStageValue,
+)
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.location import Location
 from neighborly.core.personal_values import PersonalValues
@@ -67,7 +74,7 @@ class BaseCharacterArchetype(ICharacterArchetype):
         """Return the chance that a character from this prefab spawns with a spouse"""
         return self.chance_spawn_with_spouse
 
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         # Perform calculations first and return the base character GameObject
         return world.spawn_gameobject(
             [
@@ -76,12 +83,13 @@ class BaseCharacterArchetype(ICharacterArchetype):
                 Routine(),
                 Age(),
                 WorkHistory(),
-                LifeStages(
-                    child=0,
-                    teen=13,
-                    young_adult=18,
-                    adult=30,
-                    elder=65,
+                CharacterAgingConfig(
+                    lifespan=83,
+                    child_age=0,
+                    adolescent_age=13,
+                    young_adult_age=18,
+                    adult_age=30,
+                    senior_age=65,
                 ),
                 PersonalValues.create(world),
                 Relationships(),
@@ -103,7 +111,7 @@ class HumanArchetype(BaseCharacterArchetype):
             max_children_at_spawn=max_children_at_spawn,
         )
 
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         # Perform calculations first and return the base character GameObject
         gameobject = super().create(world, **kwargs)
 
@@ -112,15 +120,15 @@ class HumanArchetype(BaseCharacterArchetype):
         life_stage: str = kwargs.get("life_stage", "young_adult")
         age: Optional[int] = kwargs.get("age")
 
-        gameobject.add_component(Lifespan(75))
         gameobject.add_component(CanAge())
         gameobject.add_component(
-            LifeStages(
-                child=0,
-                teen=13,
-                young_adult=18,
-                adult=30,
-                elder=65,
+            CharacterAgingConfig(
+                lifespan=83,
+                child_age=0,
+                adolescent_age=13,
+                young_adult_age=18,
+                adult_age=30,
+                senior_age=65,
             )
         )
 
@@ -128,26 +136,27 @@ class HumanArchetype(BaseCharacterArchetype):
             # Age takes priority over life stage if both are given
             gameobject.add_component(Age(age))
             gameobject.add_component(
-                self._life_stage_from_age(gameobject.get_component(LifeStages), age)
+                LifeStage(
+                    self._life_stage_from_age(
+                        gameobject.get_component(CharacterAgingConfig), age
+                    )
+                )
             )
         else:
-            gameobject.add_component(self._life_stage_from_str(life_stage))
+            gameobject.add_component(LifeStage(self._life_stage_from_str(life_stage)))
             gameobject.add_component(
                 Age(
                     self._generate_age_from_life_stage(
                         engine.rng,
-                        gameobject.get_component(LifeStages),
+                        gameobject.get_component(CharacterAgingConfig),
                         life_stage,
                     )
                 )
             )
 
-        if life_stage == "young_adult":
-            gameobject.add_component(YoungAdult())
-
         # gender
-        gender: Component = engine.rng.choice([Male, Female, NonBinary])()
-        gameobject.add_component(gender)
+        gender: GenderValue = engine.rng.choice(list(GenderValue))
+        gameobject.add_component(Gender(gender))
 
         # Initialize employment status
         if life_stage == "young_adult" or life_stage == "adult":
@@ -158,89 +167,92 @@ class HumanArchetype(BaseCharacterArchetype):
             gameobject.add_component(CanGetPregnant())
 
         # name
-        gameobject.add_component(self._generate_name_from_gender(world, gender))
+        first_name, last_name = self._generate_name_from_gender(world, gender)
+        character_component = gameobject.get_component(GameCharacter)
+        character_component.first_name = first_name
+        character_component.last_name = last_name
 
         return gameobject
 
-    def _life_stage_from_age(self, life_stages_comp: LifeStages, age: int) -> Component:
+    def _life_stage_from_age(
+        self, aging_config: CharacterAgingConfig, age: int
+    ) -> LifeStageValue:
         """Determine the life stage of a character given an age"""
-        if 0 <= age < life_stages_comp.teen:
-            return Child()
-        elif life_stages_comp.teen <= age < life_stages_comp.young_adult:
-            return Teen()
-        elif life_stages_comp.young_adult <= age < life_stages_comp.adult:
-            return Adult()
-        elif life_stages_comp.adult <= age < life_stages_comp.elder:
-            return Adult()
+        if 0 <= age < aging_config.adolescent_age:
+            return LifeStageValue.Child
+        elif aging_config.adolescent_age <= age < aging_config.young_adult_age:
+            return LifeStageValue.Adolescent
+        elif aging_config.young_adult_age <= age < aging_config.adult_age:
+            return LifeStageValue.YoungAdult
+        elif aging_config.adult_age <= age < aging_config.senior_age:
+            return LifeStageValue.Adult
         else:
-            return Elder()
+            return LifeStageValue.Senior
 
     def _generate_age_from_life_stage(
-        self, rng: Random, life_stages_comp: LifeStages, life_stage: str
+        self, rng: Random, aging_config: CharacterAgingConfig, life_stage: str
     ) -> int:
         """Generates a random age given a life stage"""
 
         if life_stage == "child":
-            return rng.randint(0, life_stages_comp.teen - 1)
+            return rng.randint(0, aging_config.adolescent_age - 1)
         elif life_stage == "teen":
             return rng.randint(
-                life_stages_comp.teen,
-                life_stages_comp.young_adult - 1,
+                aging_config.adolescent_age,
+                aging_config.young_adult_age - 1,
             )
         elif life_stage == "young_adult":
             return rng.randint(
-                life_stages_comp.young_adult,
-                life_stages_comp.adult - 1,
+                aging_config.young_adult_age,
+                aging_config.adult_age - 1,
             )
         elif life_stage == "adult":
             return rng.randint(
-                life_stages_comp.adult,
-                life_stages_comp.elder - 1,
+                aging_config.adult_age,
+                aging_config.senior_age - 1,
             )
         else:
-            return life_stages_comp.elder + int(10 * rng.random())
+            return aging_config.senior_age + int(10 * rng.random())
 
-    def _life_stage_from_str(self, life_stage: str) -> Component:
+    def _life_stage_from_str(self, life_stage: str) -> LifeStageValue:
         """Return the proper component given the life stage"""
-        if life_stage == "child":
-            return Child()
-        elif life_stage == "teen":
-            return Teen()
-        elif life_stage == "young_adult":
-            return Adult()
-        elif life_stage == "adult":
-            return Adult()
-        else:
-            return Elder()
+        stages = {
+            "child": LifeStageValue.Child,
+            "adolescent": LifeStageValue.Adolescent,
+            "young_adult": LifeStageValue.YoungAdult,
+            "adult": LifeStageValue.Adult,
+            "senior": LifeStageValue.Senior,
+        }
+        return stages[life_stage]
 
-    def _fertility_from_gender(self, world: World, gender: Component) -> bool:
+    def _fertility_from_gender(self, world: World, gender: GenderValue) -> bool:
         """Return true if this character can get pregnant given their gender"""
         engine = world.get_resource(NeighborlyEngine)
 
-        if type(gender) == Female:
+        if gender == GenderValue.Female:
             return engine.rng.random() < 0.8
-        elif type(gender) == Male:
+        elif gender == GenderValue.Male:
             return False
         else:
             return engine.rng.random() < 0.5
 
     def _generate_name_from_gender(
-        self, world: World, gender: Component
-    ) -> CharacterName:
+        self, world: World, gender: GenderValue
+    ) -> Tuple[str, str]:
         """Generate a name for the character given their gender"""
         engine = world.get_resource(NeighborlyEngine)
 
-        if type(gender) == Male:
+        if gender == GenderValue.Male:
             first_name_category = "#masculine_first_name#"
-        elif type(gender) == Female:
+        elif gender == GenderValue.Female:
             first_name_category = "#feminine_first_name#"
         else:
             first_name_category = "#first_name#"
 
-        return CharacterName(
-            engine.name_generator.get_name(first_name_category),
-            engine.name_generator.get_name("#family_name#"),
-        )
+        first_name = engine.name_generator.get_name(first_name_category)
+        last_name = engine.name_generator.get_name("#family_name#")
+
+        return first_name, last_name
 
 
 class BaseBusinessArchetype(IBusinessArchetype):
@@ -324,7 +336,7 @@ class BaseBusinessArchetype(IBusinessArchetype):
     def get_max_instances(self) -> int:
         return self.max_instances
 
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         engine = world.get_resource(NeighborlyEngine)
 
         services: Set[ServiceType] = set()
@@ -370,5 +382,5 @@ class BaseResidenceArchetype(IResidenceArchetype):
     def get_zoning(self) -> ResidentialZoning:
         return self.zoning
 
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         return world.spawn_gameobject([Residence(), Location(), Position2D()])

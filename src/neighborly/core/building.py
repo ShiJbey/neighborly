@@ -19,7 +19,7 @@ class Building(Component):
     __slots__ = "building_type", "lot"
 
     def __init__(self, building_type: str, lot: int) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.building_type: str = building_type
         self.lot: int = lot
 

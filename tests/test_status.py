@@ -25,5 +25,8 @@ class OwesDebt(StatusType, IOnUpdate, IOnExpire):
     def on_expire(world: World, status: GameObject) -> None:
         owes_debt = status.get_component(OwesDebt)
         if owes_debt.amount > 0:
-            character = status.parent.get_component(GameCharacter)
-            print(f"{character.name} is gonna get their legs broken")
+            character = status.parent
+            assert character
+            print(
+                f"{character.get_component(GameCharacter).name} is gonna get their legs broken"
+            )

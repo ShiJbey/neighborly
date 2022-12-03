@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pprint
-from typing import List, Optional, Set, Tuple, Type
+from typing import Any, List, Optional, Set, Tuple, Type
 
 from neighborly.builtin.archetypes import BaseCharacterArchetype
 from neighborly.core.character import GameCharacter
@@ -81,7 +81,7 @@ class FurColor(Component, IInheritable):
 
     @classmethod
     def from_parents(cls, *components: FurColor) -> FurColor:
-        all_colors = set()
+        all_colors: Set[str] = set()
         for parent in components:
             for color in parent.values:
                 all_colors.add(color)
@@ -90,7 +90,7 @@ class FurColor(Component, IInheritable):
 
 
 class FuzzCharacterArchetype(BaseCharacterArchetype):
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         gameobject = super().create(world, **kwargs)
 
         fur_color = world.get_resource(NeighborlyEngine).rng.choice(
@@ -115,7 +115,7 @@ class HasHorns(Component, IInheritable):
         return HasHorns()
 
 
-def bind_roles(world, query: Query) -> Optional[Tuple[GameObject, ...]]:
+def bind_roles(world: World, query: Query) -> Optional[Tuple[GameObject, ...]]:
     """Searches the ECS for a game object that meets the given conditions"""
 
     result_set = query.execute(world)

@@ -8,7 +8,7 @@ components being present at spawn-time.
 from __future__ import annotations
 
 import random
-from typing import List, Optional, Set
+from typing import Any, List, Optional, Set
 
 from neighborly.builtin.archetypes import BaseCharacterArchetype
 from neighborly.core.ecs import Component, GameObject, World
@@ -30,7 +30,7 @@ class FurColor(Component, IInheritable):
 
     @classmethod
     def from_parents(cls, *components: FurColor) -> FurColor:
-        all_colors = set()
+        all_colors: Set[str] = set()
         for parent in components:
             for color in parent.values:
                 all_colors.add(color)
@@ -39,7 +39,7 @@ class FurColor(Component, IInheritable):
 
 
 class FuzzCharacterArchetype(BaseCharacterArchetype):
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         gameobject = super().create(world, **kwargs)
 
         fur_color = random.choice(

@@ -1,18 +1,19 @@
 """
 Tests for the Neighborly's Business and Occupation logic
 """
-from typing import Any, Dict
+from typing import Dict
 
 import pytest
 
 from neighborly.builtin.archetypes import BaseBusinessArchetype
+from neighborly.builtin.role_filters import is_college_graduate
 from neighborly.core.business import (
     Business,
     OccupationType,
     OccupationTypes,
     parse_operating_hour_str,
 )
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.ecs import Component
 from neighborly.core.time import Weekday
 from neighborly.plugins.talktown.business_components import Restaurant
 from neighborly.simulation import SimulationBuilder
@@ -24,12 +25,7 @@ class CollegeGraduate(Component):
 
 @pytest.fixture
 def sample_occupation_types():
-    def is_college_graduate(
-        world: World, gameobject: GameObject, **kwargs: Any
-    ) -> bool:
-        return gameobject.has_component(CollegeGraduate)
-
-    ceo_occupation_type = OccupationType("CEO", 5)
+    ceo_occupation_type = OccupationType("CEO", 5, precondition=is_college_graduate)
 
     return {"ceo": ceo_occupation_type}
 
@@ -40,9 +36,11 @@ def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationT
     assert ceo_occupation_type.name == "CEO"
     assert ceo_occupation_type.level == 5
 
-    OccupationTypes.add(ceo_occupation_type)
+    occupation_types = OccupationTypes()
 
-    assert ceo_occupation_type == OccupationTypes.get("CEO")
+    occupation_types.add(ceo_occupation_type)
+
+    assert ceo_occupation_type == occupation_types.get("CEO")
 
 
 # def test_occupation(sample_occupation_types: Dict[str, OccupationType]):

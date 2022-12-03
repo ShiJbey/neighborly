@@ -43,7 +43,7 @@ class Weekday(IntEnum):
             "S",
             "U",
         ]
-        return abbreviations[self.value()]
+        return abbreviations[self.value]
 
     @classmethod
     def from_abbr(cls, value: str) -> Weekday:
@@ -232,8 +232,6 @@ class SimDateTime:
 
     def __add__(self, other: TimeDelta) -> SimDateTime:
         """Add a TimeDelta to this data"""
-        if not isinstance(other, TimeDelta):
-            raise TypeError(f"expected TimeDelta object but was {type(other)}")
         date_copy = self.copy()
         date_copy.increment(
             hours=other.hours, days=other.days, months=other.months, years=other.years
@@ -253,16 +251,15 @@ class SimDateTime:
         return self.to_iso_str() < other.to_iso_str()
 
     def __ge__(self, other: SimDateTime) -> bool:
-        if not isinstance(other, SimDateTime):
-            raise TypeError(f"expected TimeDelta object but was {type(other)}")
         return self.to_iso_str() >= other.to_iso_str()
 
     def __gt__(self, other: SimDateTime) -> bool:
-        if not isinstance(other, SimDateTime):
-            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+
         return self.to_iso_str() > other.to_iso_str()
 
-    def __eq__(self, other: SimDateTime) -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SimDateTime):
+            raise TypeError(f"expected TimeDelta object but was {type(other)}")
         return self.to_hours() == other.to_hours()
 
     def to_date_str(self) -> str:

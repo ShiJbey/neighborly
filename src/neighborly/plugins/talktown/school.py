@@ -1,4 +1,5 @@
-from neighborly.builtin.components import Child, Teen, YoungAdult
+from typing import Any
+
 from neighborly.core.ecs import Component, GameObject, ISystem, component_info
 from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.time import SimDateTime
@@ -22,7 +23,7 @@ class GraduatedFromSchoolEvent(Event):
 class SchoolSystem(ISystem):
     """Enrolls new students and graduates old students"""
 
-    def process(self, *args, **kwargs) -> None:
+    def process(self, *args: Any, **kwargs: Any) -> None:
         event_logger = self.world.get_resource(EventLog)
         date = self.world.get_resource(SimDateTime)
 

@@ -16,6 +16,7 @@ from neighborly.core.ecs import GameObject, World
 from neighborly.core.event import EventLog
 from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Resident
+from neighborly.core.settlement import Settlement
 from neighborly.core.status import IOnExpire, IOnUpdate, StatusType
 from neighborly.core.time import HOURS_PER_DAY, HOURS_PER_YEAR, SimDateTime
 
@@ -40,9 +41,11 @@ class Pregnant(StatusType, IOnExpire):
     @staticmethod
     def on_expire(world: World, status: GameObject) -> None:
         character = status.parent
+        assert character is not None
         pregnancy = status.get_component(Pregnant)
         other_parent = world.get_gameobject(pregnancy.partner_id)
         current_date = world.get_resource(SimDateTime)
+        settlement = world.get_resource(Settlement)
 
         baby = generate_child(
             world,
@@ -50,7 +53,7 @@ class Pregnant(StatusType, IOnExpire):
             other_parent,
         )
 
-        town.increment_population()
+        settlement.increment_population()
 
         baby.get_component(Age).value = (
             current_date - pregnancy.due_date
@@ -149,7 +152,7 @@ class Unemployed(StatusType, IOnExpire, IOnUpdate):
     @staticmethod
     def on_expire(world: World, status: GameObject) -> None:
         character = status.parent
-
+        assert character
         spouses = character.get_component(Relationships).get_all_with_tags("Spouse")
 
         # Do not depart if one or more of the entity's spouses has a job
@@ -177,6 +180,8 @@ class Unemployed(StatusType, IOnExpire, IOnUpdate):
                 if check_share_residence(character, child):
                     characters_to_depart.append(child)
 
-            event = DepartEvent(world.get_resource(SimDateTime), *characters_to_depart)
+            event = DepartEvent(
+                world.get_resource(SimDateTime), characters_to_depart, "unemployment"
+            )
 
             world.get_resource(EventLog).record_event(event)

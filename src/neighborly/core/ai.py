@@ -5,11 +5,11 @@ should use these classes to override character decision-making
 processes
 """
 from abc import abstractmethod
-from typing import Optional, Protocol
+from typing import Any, Optional, Protocol, cast
 
 from neighborly.builtin import helpers
 from neighborly.builtin.components import Active
-from neighborly.core.action import Action
+from neighborly.core.action import ActionInstance
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.system import System
 
@@ -54,7 +54,7 @@ class MovementAI(Component):
     __slots__ = "module"
 
     def __init__(self, module: IMovementAIModule) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.module: IMovementAIModule = module
 
     def get_next_location(self, world: World) -> Optional[int]:
@@ -67,8 +67,9 @@ class MovementAI(Component):
 class MovementAISystem(System):
     """Updates the MovementAI components attached to characters"""
 
-    def run(self, *args, **kwargs) -> None:
+    def run(self, *args: Any, **kwargs: Any) -> None:
         for gid, (movement_ai, _) in self.world.get_components(MovementAI, Active):
+            movement_ai = cast(MovementAI, movement_ai)
             next_location = movement_ai.get_next_location(self.world)
             if next_location is not None:
                 helpers.set_location(
@@ -82,7 +83,9 @@ class ISocialAIModule(Protocol):
     regarding social actions that they take between each other
     """
 
-    def get_next_action(self, world: World, gameobject: GameObject) -> Optional[Action]:
+    def get_next_action(
+        self, world: World, character: GameObject
+    ) -> Optional[ActionInstance]:
         """
         Get the next action for this character
 
@@ -95,6 +98,7 @@ class ISocialAIModule(Protocol):
 
         Returns
         -------
+        ActionInstance
             An instance of an action to take
         """
         raise NotImplementedError
@@ -119,10 +123,10 @@ class SocialAI(Component):
     __slots__ = "module"
 
     def __init__(self, module: ISocialAIModule) -> None:
-        super().__init__()
+        super(Component, self).__init__()
         self.module: ISocialAIModule = module
 
-    def get_next_action(self, world: World) -> Optional[Action]:
+    def get_next_action(self, world: World) -> Optional[ActionInstance]:
         """
         Calls the internal module to determine what action the character should take
         """
@@ -132,9 +136,9 @@ class SocialAI(Component):
 class SocialAISystem(System):
     """Characters performs social actions"""
 
-    def run(self, *args, **kwargs) -> None:
-        for gid, (social_ai, _) in self.world.get_components(SocialAI, Active):
-            next_action = social_ai.get_next_action(self.world)
-            if next_action is not None:
-                # TODO: Implement Action API
-                pass
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for _, (social_ai, _) in self.world.get_components(SocialAI, Active):
+            social_ai = cast(SocialAI, social_ai)
+            action_instance = social_ai.get_next_action(self.world)
+            if action_instance is not None:
+                action_instance.execute(self.world)
