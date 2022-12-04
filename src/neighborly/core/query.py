@@ -71,13 +71,15 @@ def not_(
     return wrapper
 
 
-class EcsFromClause(Protocol):
+class QueryFromFn(Protocol):
     def __call__(self, world: World) -> List[Tuple[int, ...]]:
         raise NotImplementedError
 
 
-class GetClause(Protocol):
-    def __call__(self, ctx: QueryContext, world: World) -> List[Tuple[int, ...]]:
+class QueryGetFn(Protocol):
+    def __call__(
+        self, ctx: QueryContext, world: World, *variables: str
+    ) -> List[Tuple[int, ...]]:
         raise NotImplementedError
 
 
@@ -322,7 +324,7 @@ class QueryBuilder:
 
         return self
 
-    def from_(self, fn: EcsFromClause, *symbols: str) -> QueryBuilder:
+    def from_(self, fn: QueryFromFn, *symbols: str) -> QueryBuilder:
         def clause(ctx: QueryContext, world: World) -> Relation:
             results = fn(world)
             values_per_symbol = list(zip(*results))
@@ -379,13 +381,13 @@ class QueryBuilder:
         self._clauses.append(clause)
         return self
 
-    def get_(self, fn: GetClause, *symbols: str) -> QueryBuilder:
+    def get_(self, fn: QueryGetFn, *variables: str) -> QueryBuilder:
         def clause(ctx: QueryContext, world: World) -> Relation:
-            results = fn(ctx, world)
+            results = fn(ctx, world, *variables)
             values_per_symbol = list(zip(*results))
 
             if values_per_symbol:
-                data = {s: values_per_symbol[i] for i, s in enumerate(symbols)}
+                data = {s: values_per_symbol[i] for i, s in enumerate(variables)}
 
                 if ctx.relation is None:
                     return Relation(pd.DataFrame(data))

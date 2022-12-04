@@ -1,41 +1,94 @@
 from __future__ import annotations
 
-from telnetlib import EC
-from typing import List, Tuple
-
-import pandas as pd
+from typing import List, Tuple, Type
 
 from neighborly.builtin.components import Age, CollegeGraduate, CurrentLocation
 from neighborly.core.business import Occupation, Unemployed, WorkHistory
 from neighborly.core.character import Gender, GenderValue, LifeStage, LifeStageValue
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.query import (
-    EcsFromClause,
-    IQueryClause,
-    QueryContext,
-    QueryFilterFn,
-    Relation,
-)
+from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.query import QueryContext, QueryFilterFn, QueryGetFn
 from neighborly.core.relationship import Relationships
 from neighborly.core.time import SimDateTime
 
 
-def friendship_gt(threshold: float) -> EcsFromClause:
-    """Returns a list of all the GameObjects with the given component"""
+def friendship_gte(threshold: float) -> QueryFilterFn:
+    """
+    Filter function for an ECS query that returns True if the friendship
+    value from one character to another is greater than or equal to a given threshold
+    """
 
-    def precondition(world: World):
-        results: List[Tuple[int, ...]] = []
-        for gid, relationships in world.get_component(Relationships):
-            for r in relationships.get_all():
-                if r.friendship > threshold:
-                    results.append((gid, r.target))
-        return results
+    def precondition(world: World, *gameobjects: GameObject) -> bool:
+        if relationships := gameobjects[0].try_component(Relationships):
+            return (
+                gameobjects[1].id in relationships
+                and relationships.get(gameobjects[1].id).friendship.value >= threshold
+            )
+        return False
 
     return precondition
 
 
-def get_friendships_ge(threshold: float, variables: Tuple[str, str]):
-    def clause(ctx: QueryContext, world: World) -> List[Tuple[int, ...]]:
+def friendship_lte(threshold: float) -> QueryFilterFn:
+    """
+    Filter function for an ECS query that returns True if the friendship
+    value from one character to another is less than or equal to a given threshold
+    """
+
+    def precondition(world: World, *gameobjects: GameObject) -> bool:
+        if relationships := gameobjects[0].try_component(Relationships):
+            return (
+                gameobjects[1].id in relationships
+                and relationships.get(gameobjects[1].id).friendship.value <= threshold
+            )
+        return False
+
+    return precondition
+
+
+def romance_gte(threshold: float) -> QueryFilterFn:
+    """
+    Filter function for an ECS query that returns True if the romance
+    value from one character to another is greater than or equal to a given threshold
+    """
+
+    def precondition(world: World, *gameobjects: GameObject) -> bool:
+        if relationships := gameobjects[0].try_component(Relationships):
+            return (
+                gameobjects[1].id in relationships
+                and relationships.get(gameobjects[1].id).romance.value >= threshold
+            )
+        return False
+
+    return precondition
+
+
+def romance_lte(threshold: float) -> QueryFilterFn:
+    """
+    Filter function for an ECS query that returns True if the romance
+    value from one character to another is less than or equal to a given threshold
+    """
+
+    def precondition(world: World, *gameobjects: GameObject) -> bool:
+        if relationships := gameobjects[0].try_component(Relationships):
+            return (
+                gameobjects[1].id in relationships
+                and relationships.get(gameobjects[1].id).romance.value <= threshold
+            )
+        return False
+
+    return precondition
+
+
+def get_friendships_gte(threshold: float) -> QueryGetFn:
+    """
+    Returns QueryGetFn that finds all the relationships of the first variable that have
+    friendship scores greater than or equal to the threshold and binds them to the
+    second variable
+    """
+
+    def clause(
+        ctx: QueryContext, world: World, *variables: str
+    ) -> List[Tuple[int, ...]]:
         subject, _ = variables
 
         # loop through each row in the ctx at the given column
@@ -51,22 +104,16 @@ def get_friendships_ge(threshold: float, variables: Tuple[str, str]):
     return clause
 
 
-def friendship_lt(threshold: float) -> EcsFromClause:
-    """Returns a list of all the GameObjects with the given component"""
+def get_friendships_lte(threshold: float) -> QueryGetFn:
+    """
+    Returns QueryGetFn that finds all the relationships of the first variable that have
+    friendship scores less than or equal to the threshold and binds them to the
+    second variable
+    """
 
-    def precondition(world: World):
-        results: List[Tuple[int, ...]] = []
-        for gid, relationships in world.get_component(Relationships):
-            for r in relationships.get_all():
-                if r.friendship < threshold:
-                    results.append((gid, r.target))
-        return results
-
-    return precondition
-
-
-def get_romances_gt(threshold: float, variables: Tuple[str, str]) -> IQueryClause:
-    def clause(ctx: QueryContext, world: World) -> Relation:
+    def clause(
+        ctx: QueryContext, world: World, *variables: str
+    ) -> List[Tuple[int, ...]]:
         subject, _ = variables
 
         # loop through each row in the ctx at the given column
@@ -74,54 +121,70 @@ def get_romances_gt(threshold: float, variables: Tuple[str, str]) -> IQueryClaus
         for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
             gameobject = world.get_gameobject(row[subject])  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
-                if r.romance > threshold:
+                if r.friendship <= threshold:
                     results.append((row[subject], r.target))  # type: ignore
 
-        values_per_symbol = list(zip(*results))
-
-        if values_per_symbol:
-            data = {s: values_per_symbol[i] for i, s in enumerate(variables)}
-
-            if ctx.relation is None:
-                return Relation(pd.DataFrame(data))
-
-            return ctx.relation.unify(Relation(pd.DataFrame(data)))
-
-        return Relation.create_empty()
+        return results
 
     return clause
 
 
-def romance_gt(threshold: float) -> EcsFromClause:
-    """Returns a list of all the GameObjects with the given component"""
+def get_romances_gte(threshold: float) -> QueryGetFn:
+    """
+    Returns QueryGetFn that finds all the relationships of the first variable that have
+    romance scores greater than or equal to the threshold and binds them to the
+    second variable
+    """
 
-    def precondition(world: World):
+    def clause(
+        ctx: QueryContext, world: World, *variables: str
+    ) -> List[Tuple[int, ...]]:
+        subject, _ = variables
+
+        # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for gid, relationships in world.get_component(Relationships):
-            for r in relationships.get_all():
-                if r.romance > threshold:
-                    results.append((gid, r.target))
+        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
+            gameobject = world.get_gameobject(row[subject])  # type: ignore
+            for r in gameobject.get_component(Relationships).get_all():
+                if r.romance >= threshold:
+                    results.append((row[subject], r.target))  # type: ignore
+
         return results
 
-    return precondition
+    return clause
 
 
-def romance_lt(threshold: float) -> EcsFromClause:
-    """Returns a list of all the GameObjects with the given component"""
+def get_romances_lte(threshold: float) -> QueryGetFn:
+    """
+    Returns QueryGetFn that finds all the relationships of the first variable that have
+    romance scores less than or equal to the threshold and binds them to the
+    second variable
+    """
 
-    def precondition(world: World):
+    def clause(
+        ctx: QueryContext, world: World, *variables: str
+    ) -> List[Tuple[int, ...]]:
+        subject, _ = variables
+
+        # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for gid, relationships in world.get_component(Relationships):
-            for r in relationships.get_all():
-                if r.romance < threshold:
-                    results.append((gid, r.target))
+        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
+            gameobject = world.get_gameobject(row[subject])  # type: ignore
+            for r in gameobject.get_component(Relationships).get_all():
+                if r.romance <= threshold:
+                    results.append((row[subject], r.target))  # type: ignore
+
         return results
 
-    return precondition
+    return clause
 
 
-def relationship_has_tags_filter(*tags: str) -> QueryFilterFn:
-    """Returns a list of all the GameObjects with the given component"""
+def relationship_has_tags(*tags: str) -> QueryFilterFn:
+    """
+    Query filter function that returns true if the first of the given game
+    objects has a relationship toward the second game object with the given
+    tags
+    """
 
     def precondition(world: World, *gameobjects: GameObject) -> bool:
 
@@ -135,38 +198,35 @@ def relationship_has_tags_filter(*tags: str) -> QueryFilterFn:
     return precondition
 
 
-def relationship_has_tags(*tags: str) -> EcsFromClause:
-    """Returns a list of all the GameObjects with the given component"""
+def get_relationships_with_tags(*tags: str) -> QueryGetFn:
+    """
+    Returns a list of all the GameObjects with the given component
+    """
 
-    def precondition(world: World):
+    def fn(ctx: QueryContext, world: World, *variables: str) -> List[Tuple[int, ...]]:
+        subject, _ = variables
+
+        # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for gid, relationships in world.get_component(Relationships):
-            for r in relationships.get_all_with_tags(*tags):
-                results.append((gid, r.target))
+        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
+            gameobject = world.get_gameobject(row[subject])  # type: ignore
+            for r in gameobject.get_component(Relationships).get_all():
+                if all([r.has_tag(t) for t in tags]):
+                    results.append((row[subject], r.target))  # type: ignore
+
         return results
 
-    return precondition
-
-
-def has_relationship_with_tags(*tags: str) -> QueryFilterFn:
-    """Returns a list of all the GameObjects with the given component"""
-
-    def precondition(world: World, *gameobjects: GameObject) -> bool:
-        gameobject = gameobjects[0]
-        if relationships := gameobject.try_component(Relationships):
-            if relationships.get_all_with_tags(*tags):
-                return True
-        return False
-
-    return precondition
+    return fn
 
 
 def at_same_location(world: World, *gameobjects: GameObject) -> bool:
     """Return True if these characters are at the same location"""
-    a_location = gameobjects[0].get_component(CurrentLocation).location
-    b_location = gameobjects[1].get_component(CurrentLocation).location
+    a_location = gameobjects[0].try_component(CurrentLocation)
+    b_location = gameobjects[1].try_component(CurrentLocation)
     return (
-        a_location is not None and b_location is not None and a_location == b_location
+        a_location is not None
+        and b_location is not None
+        and a_location.location == b_location.location
     )
 
 
@@ -312,3 +372,12 @@ def has_experience_as_a(
 def is_college_graduate(world: World, *gameobject: GameObject) -> bool:
     """Return True if the entity is a college graduate"""
     return gameobject[0].has_component(CollegeGraduate)
+
+
+def has_component(component_type: Type[Component]) -> QueryFilterFn:
+    """Return True if the entity has a given component type"""
+
+    def precondition(world: World, *gameobject: GameObject) -> bool:
+        return gameobject[0].has_component(CollegeGraduate)
+
+    return precondition

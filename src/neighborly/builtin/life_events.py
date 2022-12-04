@@ -14,14 +14,15 @@ from neighborly.builtin.components import (
     Vacant,
 )
 from neighborly.builtin.role_filters import (
-    friendship_gt,
-    friendship_lt,
-    get_friendships_ge,
-    get_romances_gt,
+    friendship_gte,
+    friendship_lte,
+    get_friendships_gte,
+    get_romances_gte,
+    has_component,
     is_single,
     relationship_has_tags,
-    romance_gt,
-    romance_lt,
+    romance_gte,
+    romance_lte,
 )
 from neighborly.core.business import Business, Occupation, OpenForBusiness, Unemployed
 from neighborly.core.character import GameCharacter, LifeStage, LifeStageValue
@@ -35,7 +36,7 @@ from neighborly.core.life_event import (
     LifeEventRoleType,
     PatternLifeEvent,
 )
-from neighborly.core.query import QueryBuilder
+from neighborly.core.query import QueryBuilder, not_
 from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.time import SimDateTime
@@ -60,12 +61,10 @@ def become_friends_event(
         pattern=(
             QueryBuilder("Initiator", "Other")
             .with_((GameCharacter, Active), "Initiator")
-            .get_(get_friendships_ge(threshold), "Initiator", "Other")
-            # .filter_(has_component(Active), "Other")
-            # .filter_(friendship_gt(threshold), "Other", "Initiator")
-            # .filter_(
-            #     not_(relationship_has_tags("Friend")) "Initiator", "Other"
-            # )
+            .get_(get_friendships_gte(threshold), "Initiator", "Other")
+            .filter_(has_component(Active), "Other")
+            .filter_(friendship_gte(threshold), "Other", "Initiator")
+            .filter_(not_(relationship_has_tags("Friend")), "Initiator", "Other")
             .build()
         ),
         effect=effect,
