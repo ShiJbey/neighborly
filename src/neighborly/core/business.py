@@ -4,17 +4,21 @@ import logging
 import math
 import re
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from random import Random
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from neighborly.builtin.components import Active
+from neighborly.builtin.events import DepartEvent
+from neighborly.builtin.helpers import check_share_residence
 from neighborly.core import query
 from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World, component_info
-from neighborly.core.event import Event
+from neighborly.core.event import Event, EventLog
+from neighborly.core.relationship import Relationships
 from neighborly.core.routine import RoutineEntry, RoutinePriority, time_str_to_int
-from neighborly.core.time import SimDateTime, Weekday
+from neighborly.core.status import IOnExpire, IOnUpdate, StatusType, has_status
+from neighborly.core.time import HOURS_PER_DAY, SimDateTime, Weekday
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +42,7 @@ class OccupationType:
     name: str
     level: int = 1
     description: str = ""
-    precondition: Optional[query.QueryFilterFn] = field(default=lambda w, *g: True)
+    precondition: Optional[query.QueryFilterFn] = None
 
     def fill_role(
         self,
@@ -51,15 +55,16 @@ class OccupationType:
         Attempt to find a component entity that meets the preconditions
         for this occupation
         """
-        q = query.Query(
-            find=("Candidate",),
-            clauses=[
-                query.where(
-                    query.has_components(GameCharacter, Unemployed, Active), "Candidate"
-                ),
-                query.filter_(self.precondition),
-            ],
+        query_builder = (
+            query.QueryBuilder()
+            .with_((GameCharacter, InTheWorkforce, Active))
+            .filter_(lambda world, *gameobjects: has_status(gameobjects[0], Unemployed))
         )
+
+        if self.precondition:
+            query_builder.filter_(self.precondition)
+
+        q = query_builder.build()
 
         if candidate:
             candidate_list = q.execute(world, Candidate=candidate.id)
@@ -496,26 +501,9 @@ class Business(Component):
         return routine_entries
 
 
-@component_info(
-    "Unemployed",
-    "Character doesn't have a job",
-)
-class Unemployed(Component):
-    __slots__ = "duration_days"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.duration_days: float = 0
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "duration_days": self.duration_days}
-
-
-@component_info(
-    "In the Workforce",
-    "This Character is eligible for employment opportunities.",
-)
 class InTheWorkforce(Component):
+    """Tags a character as being eligible to work"""
+
     pass
 
 
@@ -642,3 +630,63 @@ def parse_operating_hour_str(
             )
 
     raise ValueError(f"Invalid operating hours string: '{operating_hours_str}'")
+
+
+class Unemployed(StatusType, IOnExpire, IOnUpdate):
+    __slots__ = "days_to_find_a_job", "grace_period"
+
+    def __init__(self, days_to_find_a_job: int) -> None:
+        super(StatusType, self).__init__()
+        self.days_to_find_a_job: float = float(days_to_find_a_job)
+        self.grace_period: float = float(days_to_find_a_job)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "days_to_find_a_job": self.days_to_find_a_job}
+
+    @staticmethod
+    def is_expired(world: World, status: GameObject) -> bool:
+        unemployed = status.get_component(Unemployed)
+        return unemployed.days_to_find_a_job > 0
+
+    @staticmethod
+    def on_update(world: World, status: GameObject, elapsed_hours: int) -> None:
+        status.get_component(Unemployed).days_to_find_a_job -= (
+            elapsed_hours / HOURS_PER_DAY
+        )
+
+    @staticmethod
+    def on_expire(world: World, status: GameObject) -> None:
+        character = status.parent
+        assert character
+        spouses = character.get_component(Relationships).get_all_with_tags("Spouse")
+
+        # Do not depart if one or more of the entity's spouses has a job
+        if any(
+            [
+                world.get_gameobject(rel.target).has_component(Occupation)
+                for rel in spouses
+            ]
+        ):
+            return
+
+        else:
+            characters_to_depart: List[GameObject] = [character]
+
+            # Have all spouses depart
+            # Allows for polygamy
+            for rel in spouses:
+                spouse = world.get_gameobject(rel.target)
+                characters_to_depart.append(spouse)
+
+            # Have all children living in the same house depart
+            children = character.get_component(Relationships).get_all_with_tags("Child")
+            for rel in children:
+                child = world.get_gameobject(rel.target)
+                if check_share_residence(character, child):
+                    characters_to_depart.append(child)
+
+            event = DepartEvent(
+                world.get_resource(SimDateTime), characters_to_depart, "unemployment"
+            )
+
+            world.get_resource(EventLog).record_event(event)

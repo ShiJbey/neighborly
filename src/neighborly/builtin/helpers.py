@@ -38,6 +38,7 @@ from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.routine import Routine, RoutineEntry, RoutinePriority
 from neighborly.core.settlement import Settlement
+from neighborly.core.status import add_status
 from neighborly.core.time import SimDateTime
 
 logger = logging.getLogger(__name__)
@@ -395,7 +396,7 @@ def end_job(
     business_comp.remove_employee(character.id)
 
     character.remove_component(Occupation)
-    character.add_component(Unemployed())
+    add_status(world, character, Unemployed(30))
 
     # Update the former employee's work history
     if not character.has_component(WorkHistory):

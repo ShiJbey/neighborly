@@ -2,19 +2,10 @@ import pandas as pd
 import pytest
 
 from neighborly.builtin.components import Age, Retired
+from neighborly.builtin.role_filters import is_gender
 from neighborly.core.character import GameCharacter, Gender, GenderValue
 from neighborly.core.ecs import Component, World
-from neighborly.core.query import (
-    Query,
-    Relation,
-    eq_,
-    filter_,
-    has_components,
-    ne_,
-    where,
-    where_any,
-    where_not,
-)
+from neighborly.core.query import QueryBuilder, Relation, eq_
 
 
 def test_relation_create_empty():
@@ -122,7 +113,7 @@ def sample_world() -> World:
 
     world.spawn_gameobject([Hero(), GameCharacter("Shi", ""), Age(27)])
     world.spawn_gameobject(
-        [Hero(), GameCharacter("Astrid", ""), Gender(GenderValue.Female)]
+        [Hero(), GameCharacter("Astrid", ""), Gender(GenderValue.Female), Retired()]
     )
     world.spawn_gameobject([DemonKing(), GameCharacter("-Shi", ""), Retired()])
     world.spawn_gameobject(
@@ -132,187 +123,99 @@ def sample_world() -> World:
     return world
 
 
-def test_where(sample_world: World):
-    query = Query(("Hero",), [where(has_components(Hero), "Hero")])
+def test_with(sample_world: World):
+    query = QueryBuilder().with_((Hero,)).build()
     result = set(query.execute(sample_world))
     expected = {(1,), (2,)}
     assert result == expected
 
-    query = Query(("NB",), [where(has_components(GameCharacter, NonBinary), "NB")])
+    query = QueryBuilder().with_((Hero, Retired)).build()
     result = set(query.execute(sample_world))
-    expected = {(2,), (4,)}
+    expected = {(2,)}
     assert result == expected
 
-    query = Query(
-        ("HERO", "VILLAIN"),
-        [
-            where(has_components(GameCharacter, Hero), "HERO"),
-            where(has_components(DemonKing), "VILLAIN"),
-            where(has_components(Retired), "VILLAIN"),
-        ],
+    query = (
+        QueryBuilder("HERO", "VILLAIN")
+        .with_((GameCharacter, Hero), "HERO")
+        .with_((DemonKing, Retired), "VILLAIN")
+        .build()
     )
     result = set(query.execute(sample_world))
     expected = {(1, 3), (2, 3)}
     assert result == expected
 
 
-def test_where_not(sample_world: World):
-    query = Query(
-        ("Hero",),
-        [
-            where(has_components(Hero), "Hero"),
-            where_not(has_components(NonBinary), "Hero"),
-        ],
-    )
+def test_without(sample_world: World):
+    query = QueryBuilder().with_((Hero,)).without_((Retired,)).build()
     result = set(query.execute(sample_world))
     expected = {(1,)}
     assert result == expected
 
-    query = Query(
-        ("C",),
-        [
-            where(has_components(GameCharacter, NonBinary), "C"),
-            where_not(has_components(Hero), "C"),
-        ],
-    )
+    query = QueryBuilder().with_((GameCharacter, Gender)).without_((Hero,)).build()
     result = set(query.execute(sample_world))
     expected = {(4,)}
     assert result == expected
 
-    query = Query(
-        ("HERO", "VILLAIN"),
-        [
-            where(has_components(GameCharacter, Hero), "HERO"),
-            where(has_components(DemonKing), "VILLAIN"),
-            where_not(has_components(Retired), "VILLAIN"),
-        ],
+    query = (
+        QueryBuilder("Hero", "Villain")
+        .with_((GameCharacter, Hero), "Hero")
+        .with_((DemonKing,), "Villain")
+        .without_((Retired,), "Villain")
+        .build()
     )
     result = set(query.execute(sample_world))
     expected = {(1, 4), (2, 4)}
     assert result == expected
 
-
-def test_where_either(sample_world: World):
-    query = Query(
-        ("X",),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where_any(where(has_components(NonBinary), "X")),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(2,)}
-    assert result == expected
-
-    query = Query(
-        ("X",),
-        [
-            where(has_components(GameCharacter), "X"),
-            where_any(
-                where(has_components(NonBinary), "X"),
-                where(has_components(Retired), "X"),
-            ),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(2,), (3,), (4,)}
-    assert result == expected
-
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter), "X"),
-            where(has_components(GameCharacter), "Y"),
-            where_any(
-                where(has_components(NonBinary), "X"),
-                where(has_components(Retired), "Y"),
-            ),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {
-        (1, 3),
-        (2, 1),
-        (2, 2),
-        (2, 3),
-        (2, 4),
-        (3, 3),
-        (4, 1),
-        (4, 2),
-        (4, 3),
-        (4, 4),
-    }
-    assert result == expected
+    with pytest.raises(RuntimeError):
+        (QueryBuilder().without_((Retired,)).build().execute(sample_world))
 
 
 def test_equal(sample_world: World):
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-        ],
+    query = (
+        QueryBuilder("X", "Y")
+        .with_((GameCharacter, Hero), "X")
+        .with_((GameCharacter, Hero), "Y")
+        .build()
     )
     result = set(query.execute(sample_world))
     expected = {(1, 1), (1, 2), (2, 1), (2, 2)}
     assert result == expected
 
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-            eq_(("X", "Y")),
-        ],
+    query = (
+        QueryBuilder("X", "Y")
+        .with_((GameCharacter, Hero), "X")
+        .with_((GameCharacter, Hero), "Y")
+        .filter_(eq_, "X", "Y")
+        .build()
     )
     result = set(query.execute(sample_world))
     expected = {(1, 1), (2, 2)}
     assert result == expected
 
 
-def test_not_equal(sample_world: World):
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1, 1), (1, 2), (2, 1), (2, 2)}
-    assert result == expected
-
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-            ne_(("X", "Y")),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1, 2), (2, 1)}
-    assert result == expected
-
-
 def test_query_bindings(sample_world: World):
-    query = Query(("Hero",), [where(has_components(Hero), "Hero")])
-    result = set(query.execute(sample_world, Hero=2))
+
+    query = QueryBuilder().with_((Hero,)).build()
+    result = set(query.execute(sample_world, 2))
     expected = {(2,)}
     assert result == expected
 
-    query = Query(("NB",), [where(has_components(GameCharacter, NonBinary), "NB")])
-    result = set(query.execute(sample_world, NB=4))
+    query = (
+        QueryBuilder()
+        .with_((GameCharacter, Gender))
+        .filter_(is_gender(GenderValue.NonBinary))
+        .build()
+    )
+    result = set(query.execute(sample_world, 4))
     expected = {(4,)}
     assert result == expected
 
-    query = Query(
-        ("HERO", "VILLAIN"),
-        [
-            where(has_components(GameCharacter, Hero), "HERO"),
-            where(has_components(DemonKing), "VILLAIN"),
-            where(has_components(Retired), "VILLAIN"),
-        ],
+    query = (
+        QueryBuilder("HERO", "VILLAIN")
+        .with_((GameCharacter, Hero), "HERO")
+        .with_((DemonKing, Retired), "VILLAIN")
+        .build()
     )
     result = set(query.execute(sample_world, HERO=2))
     expected = {(2, 3)}
@@ -320,30 +223,28 @@ def test_query_bindings(sample_world: World):
 
 
 def test_filter(sample_world: World):
-    query = Query(
-        ("X",),
-        [
-            where(has_components(GameCharacter), "X"),
-            filter_(
-                lambda w, *g: g[0].has_component(Age)
-                and g[0].get_component(Age).value > 25,
-                "X",
-            ),
-        ],
+    query = (
+        QueryBuilder()
+        .with_((GameCharacter,))
+        .filter_(
+            lambda world, *gameobjects: gameobjects[0].has_component(Age)
+            and gameobjects[0].get_component(Age).value > 25
+        )
+        .build()
     )
     result = set(query.execute(sample_world))
     expected = {(1,)}
     assert result == expected
 
-    query = Query(
-        ("X",),
-        [
-            where(has_components(GameCharacter), "X"),
-            filter_(
-                lambda w, *g: g[0].has_component(NonBinary),
-            ),
-        ],
+    query = (
+        QueryBuilder()
+        .with_((GameCharacter,))
+        .filter_(is_gender(GenderValue.NonBinary))
+        .build()
     )
     result = set(query.execute(sample_world))
-    expected = {(2,), (4,)}
+    expected = {(4,)}
     assert result == expected
+
+    with pytest.raises(RuntimeError):
+        QueryBuilder("X", "Y").filter_(eq_, "X", "Y").build().execute(sample_world)

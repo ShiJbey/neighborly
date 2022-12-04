@@ -4,6 +4,7 @@ from neighborly.builtin.helpers import set_location
 from neighborly.core.business import InTheWorkforce, Occupation, Unemployed
 from neighborly.core.ecs import World
 from neighborly.core.event import Event
+from neighborly.core.status import add_status
 
 
 def on_depart_callback(world: World, event: Event) -> None:
@@ -49,4 +50,4 @@ def on_become_young_adult(world: World, event: Event) -> None:
     character.add_component(InTheWorkforce())
 
     if not character.has_component(Occupation):
-        character.add_component(Unemployed())
+        add_status(world, character, Unemployed(30))

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+from telnetlib import EC
 from typing import List, Tuple
 
 import pandas as pd
 
 from neighborly.builtin.components import Age, CollegeGraduate, CurrentLocation
 from neighborly.core.business import Occupation, Unemployed, WorkHistory
-from neighborly.core.character import Gender, GenderValue
+from neighborly.core.character import Gender, GenderValue, LifeStage, LifeStageValue
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.query import (
-    EcsFindClause,
+    EcsFromClause,
     IQueryClause,
     QueryContext,
     QueryFilterFn,
@@ -19,7 +20,7 @@ from neighborly.core.relationship import Relationships
 from neighborly.core.time import SimDateTime
 
 
-def friendship_gt(threshold: float) -> EcsFindClause:
+def friendship_gt(threshold: float) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -33,34 +34,24 @@ def friendship_gt(threshold: float) -> EcsFindClause:
     return precondition
 
 
-def get_friendships_gt(threshold: float, variables: Tuple[str, str]) -> IQueryClause:
-    def clause(ctx: QueryContext, world: World) -> Relation:
+def get_friendships_ge(threshold: float, variables: Tuple[str, str]):
+    def clause(ctx: QueryContext, world: World) -> List[Tuple[int, ...]]:
         subject, _ = variables
 
         # loop through each row in the ctx at the given column
-        results = []
-        for _, row in ctx.relation.get_data_frame().iterrows():
-            gameobject = world.get_gameobject(row[subject])
+        results: List[Tuple[int, ...]] = []
+        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
+            gameobject = world.get_gameobject(row[subject])  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
-                if r.friendship > threshold:
-                    results.append((row[subject], r.target))
+                if r.friendship >= threshold:
+                    results.append((row[subject], r.target))  # type: ignore
 
-        values_per_symbol = list(zip(*results))
-
-        if values_per_symbol:
-            data = {s: values_per_symbol[i] for i, s in enumerate(variables)}
-
-            if ctx.relation is None:
-                return Relation(pd.DataFrame(data))
-
-            return ctx.relation.unify(Relation(pd.DataFrame(data)))
-
-        return Relation.create_empty()
+        return results
 
     return clause
 
 
-def friendship_lt(threshold: float) -> EcsFindClause:
+def friendship_lt(threshold: float) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -79,12 +70,12 @@ def get_romances_gt(threshold: float, variables: Tuple[str, str]) -> IQueryClaus
         subject, _ = variables
 
         # loop through each row in the ctx at the given column
-        results = []
-        for _, row in ctx.relation.get_data_frame().iterrows():
-            gameobject = world.get_gameobject(row[subject])
+        results: List[Tuple[int, ...]] = []
+        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
+            gameobject = world.get_gameobject(row[subject])  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
                 if r.romance > threshold:
-                    results.append((row[subject], r.target))
+                    results.append((row[subject], r.target))  # type: ignore
 
         values_per_symbol = list(zip(*results))
 
@@ -101,7 +92,7 @@ def get_romances_gt(threshold: float, variables: Tuple[str, str]) -> IQueryClaus
     return clause
 
 
-def romance_gt(threshold: float) -> EcsFindClause:
+def romance_gt(threshold: float) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -115,7 +106,7 @@ def romance_gt(threshold: float) -> EcsFindClause:
     return precondition
 
 
-def romance_lt(threshold: float) -> EcsFindClause:
+def romance_lt(threshold: float) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -144,7 +135,7 @@ def relationship_has_tags_filter(*tags: str) -> QueryFilterFn:
     return precondition
 
 
-def relationship_has_tags(*tags: str) -> EcsFindClause:
+def relationship_has_tags(*tags: str) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -177,6 +168,36 @@ def at_same_location(world: World, *gameobjects: GameObject) -> bool:
     return (
         a_location is not None and b_location is not None and a_location == b_location
     )
+
+
+def life_stage_eq(stage: LifeStageValue) -> QueryFilterFn:
+    def fn(world: World, *gameobjects: GameObject) -> bool:
+        life_stage = gameobjects[0].try_component(LifeStage)
+        if life_stage is not None:
+            return life_stage.stage == stage
+        return False
+
+    return fn
+
+
+def life_stage_ge(stage: LifeStageValue) -> QueryFilterFn:
+    def fn(world: World, *gameobjects: GameObject) -> bool:
+        life_stage = gameobjects[0].try_component(LifeStage)
+        if life_stage is not None:
+            return life_stage.stage >= stage
+        return False
+
+    return fn
+
+
+def life_stage_le(stage: LifeStageValue) -> QueryFilterFn:
+    def fn(world: World, *gameobjects: GameObject) -> bool:
+        life_stage = gameobjects[0].try_component(LifeStage)
+        if life_stage is not None:
+            return life_stage.stage <= stage
+        return False
+
+    return fn
 
 
 def over_age(age: int) -> QueryFilterFn:

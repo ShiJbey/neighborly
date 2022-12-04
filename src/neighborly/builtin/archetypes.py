@@ -39,6 +39,7 @@ from neighborly.core.position import Position2D
 from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence
 from neighborly.core.routine import Routine
+from neighborly.core.status import add_status
 
 
 class BaseCharacterArchetype(ICharacterArchetype):
@@ -161,7 +162,7 @@ class HumanArchetype(BaseCharacterArchetype):
         # Initialize employment status
         if life_stage == "young_adult" or life_stage == "adult":
             gameobject.add_component(InTheWorkforce())
-            gameobject.add_component(Unemployed())
+            add_status(world, gameobject, Unemployed(30))
 
         if self._fertility_from_gender(world, gender):
             gameobject.add_component(CanGetPregnant())

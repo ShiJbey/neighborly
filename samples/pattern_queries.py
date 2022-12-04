@@ -8,13 +8,13 @@ from neighborly.core.character import GameCharacter
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.inheritable import IInheritable, inheritable
-from neighborly.core.query import EcsFindClause, Query, ne_, where, where_not
+from neighborly.core.query import EcsFromClause, Query, ne_, where, where_not
 from neighborly.core.relationship import Relationships
 from neighborly.plugins.defaults import DefaultNameDataPlugin
 from neighborly.simulation import SimulationBuilder
 
 
-def friendship_gt(threshold: float) -> EcsFindClause:
+def friendship_gt(threshold: float) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -28,7 +28,7 @@ def friendship_gt(threshold: float) -> EcsFindClause:
     return precondition
 
 
-def friendship_lt(threshold: float) -> EcsFindClause:
+def friendship_lt(threshold: float) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -42,7 +42,7 @@ def friendship_lt(threshold: float) -> EcsFindClause:
     return precondition
 
 
-def has_component(component_type: Type[Component]) -> EcsFindClause:
+def has_component(component_type: Type[Component]) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given component"""
 
     def precondition(world: World):
@@ -53,7 +53,7 @@ def has_component(component_type: Type[Component]) -> EcsFindClause:
     return precondition
 
 
-def has_fur_color(fur_color: str) -> EcsFindClause:
+def has_fur_color(fur_color: str) -> EcsFromClause:
     """Returns a list of all the GameObjects with the given fur color"""
 
     def precondition(world: World):

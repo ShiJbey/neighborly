@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Type
+from typing import List, Optional, Protocol, Tuple, Type
 
 import pandas as pd
 from ordered_set import OrderedSet  # type: ignore
@@ -71,83 +71,14 @@ def not_(
     return wrapper
 
 
-class EcsFindClause(Protocol):
-    def __call__(self, world: World) -> List[Tuple[Any, ...]]:
+class EcsFromClause(Protocol):
+    def __call__(self, world: World) -> List[Tuple[int, ...]]:
         raise NotImplementedError
 
 
-def has_components(*component_type: Type[Component]) -> EcsFindClause:
-    """Returns a list of all the GameObjects with the given component"""
-
-    def precondition(world: World):
-        return list(
-            map(lambda result: (result[0],), world.get_components(*component_type))
-        )
-
-    return precondition
-
-
-def get_with_components(
-    component_types: Tuple[Type[Component], ...], variable: Optional[str] = None
-) -> IQueryClause:
-    def clause(ctx: QueryContext, world: World) -> Relation:
-        results = list(
-            map(lambda result: (result[0],), world.get_components(*component_types))
-        )
-
-        values_per_symbol = list(zip(*results))
-
-        chosen_variable = variable if variable is not None else ctx.output_symbols[0]
-
-        if values_per_symbol:
-            data = {s: values_per_symbol[i] for i, s in enumerate([chosen_variable])}
-
-            if ctx.relation is None:
-                return Relation(pd.DataFrame(data))
-
-            return ctx.relation.unify(Relation(pd.DataFrame(data)))
-
-        return Relation.create_empty()
-
-    return clause
-
-
-def get_without_components(
-    component_types: Tuple[Type[Component], ...], variable: Optional[str] = None
-) -> IQueryClause:
-    def clause(ctx: QueryContext, world: World) -> Relation:
-        results = list(
-            map(lambda result: (result[0],), world.get_components(*component_types))
-        )
-
-        values_per_symbol = list(zip(*results))
-
-        chosen_variable = variable if variable is not None else ctx.output_symbols[0]
-
-        if values_per_symbol:
-            data = pd.DataFrame(
-                {s: values_per_symbol[i] for i, s in enumerate([chosen_variable])}
-            )
-
-            if ctx.relation is None:
-                raise RuntimeError(
-                    "where_not clause is missing relation within context"
-                )
-
-            new_data: pd.DataFrame = ctx.relation.get_data_frame().merge(  # type: ignore
-                data, how="outer", indicator=True
-            )
-            new_data = new_data.loc[new_data["_merge"] == "left_only"]
-            new_data = new_data.drop(columns=["_merge"])
-            new_relation = Relation(new_data)
-            return new_relation
-        else:
-            if ctx.relation is None:
-                return Relation.create_empty()
-
-            return ctx.relation.copy()
-
-    return clause
+class GetClause(Protocol):
+    def __call__(self, ctx: QueryContext, world: World) -> List[Tuple[int, ...]]:
+        raise NotImplementedError
 
 
 class Relation:
@@ -199,7 +130,7 @@ class Relation:
 
     def get_symbols(self) -> Tuple[str]:
         """Get the symbols contained in this relation"""
-        return tuple(self._data_frame.columns.tolist())
+        return tuple(self._data_frame.columns.tolist())  # type: ignore
 
     @property
     def empty(self) -> bool:
@@ -218,13 +149,13 @@ class Relation:
         if symbols:
             try:
                 return list(
-                    self._data_frame[list(symbols)].itertuples(index=False, name=None)
+                    self._data_frame[list(symbols)].itertuples(index=False, name=None)  # type: ignore
                 )
             except KeyError:
                 # If any symbols are missing, return an empty list
                 return []
         else:
-            return list(self._data_frame.itertuples(index=False, name=None))
+            return list(self._data_frame.itertuples(index=False, name=None))  # type: ignore
 
     def get_data_frame(self) -> pd.DataFrame:
         """Returns a Pandas DataFrame object representing the relation"""
@@ -251,14 +182,14 @@ class Relation:
         shared_symbols = set(self.get_symbols()).intersection(set(other.get_symbols()))
 
         if shared_symbols:
-            new_data = self._data_frame.merge(
+            new_data = self._data_frame.merge(  # type: ignore
                 other._data_frame, on=list(shared_symbols)
             )
             # new_data.drop_duplicates()
             return Relation(new_data)
 
         else:
-            new_data = self._data_frame.merge(other._data_frame, how="cross")
+            new_data = self._data_frame.merge(other._data_frame, how="cross")  # type: ignore
             # new_data.drop_duplicates()
             return Relation(new_data)
 
@@ -289,224 +220,34 @@ class QueryContext:
     output_symbols: Tuple[str, ...] = ()
 
 
-def le_(symbols: Tuple[str, str]):
-    """Query function that removes all instances where two variables are the same"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        if ctx.relation is None:
-            raise RuntimeError("not_equal clause is missing relation within context")
-
-        if ctx.relation.empty:
-            return ctx.relation.copy()
-
-        df = ctx.relation.get_data_frame()
-        new_data = df[df[symbols[0]] <= df[symbols[1]]]
-        return Relation(pd.DataFrame(new_data))
-
-    return run
-
-
-def lt_(symbols: Tuple[str, str]):
-    """Query function that removes all instances where two variables are the same"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        if ctx.relation is None:
-            raise RuntimeError("not_equal clause is missing relation within context")
-
-        if ctx.relation.empty:
-            return ctx.relation.copy()
-
-        df = ctx.relation.get_data_frame()
-        new_data = df[df[symbols[0]] < df[symbols[1]]]
-        return Relation(pd.DataFrame(new_data))
-
-    return run
-
-
-def ge_(symbols: Tuple[str, str]):
-    """Query function that removes all instances where two variables are the same"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        if ctx.relation is None:
-            raise RuntimeError("not_equal clause is missing relation within context")
-
-        if ctx.relation.empty:
-            return ctx.relation.copy()
-
-        df = ctx.relation.get_data_frame()
-        new_data = df[df[symbols[0]] >= df[symbols[1]]]
-        return Relation(pd.DataFrame(new_data))
-
-    return run
-
-
-def gt_(symbols: Tuple[str, str]):
-    """Query function that removes all instances where two variables are the same"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        if ctx.relation is None:
-            raise RuntimeError("not_equal clause is missing relation within context")
-
-        if ctx.relation.empty:
-            return ctx.relation.copy()
-
-        df = ctx.relation.get_data_frame()
-        new_data = df[df[symbols[0]] > df[symbols[1]]]
-        return Relation(pd.DataFrame(new_data))
-
-    return run
-
-
-def ne_(symbols: Tuple[str, str]):
-    """Query function that removes all instances where two variables are the same"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        if ctx.relation is None:
-            raise RuntimeError("not_equal clause is missing relation within context")
-
-        if ctx.relation.empty:
-            return ctx.relation.copy()
-
-        df = ctx.relation.get_data_frame()
-        new_data = df[df[symbols[0]] != df[symbols[1]]]
-        return Relation(pd.DataFrame(new_data))
-
-    return run
-
-
-def eq_(symbols: Tuple[str, str]):
+def eq_(world: World, *gameobjects: GameObject) -> bool:
     """Query function that removes all instances where two variables are not the same"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        if ctx.relation is None:
-            raise RuntimeError("equal clause is missing relation within context")
-        df = ctx.relation.get_data_frame()
-        new_data = df[df[symbols[0]] == df[symbols[1]]]
-        return Relation(pd.DataFrame(new_data))
-
-    return run
-
-
-def where(fn: EcsFindClause, *symbols: str):
-    """Finds entities that match its given clause"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        results = fn(world)
-        values_per_symbol = list(zip(*results))
-
-        if values_per_symbol:
-            data = {s: values_per_symbol[i] for i, s in enumerate(symbols)}
-
-            if ctx.relation is None:
-                return Relation(pd.DataFrame(data))
-
-            return ctx.relation.unify(Relation(pd.DataFrame(data)))
-
-        return Relation.create_empty()
-
-    return run
-
-
-def where_not(fn: EcsFindClause, *symbols: str):
-    """Performs a NOT operation removing entities that match its clause"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        results = fn(world)
-        values_per_symbol = list(zip(*results))
-        if values_per_symbol:
-            data = pd.DataFrame(
-                {s: values_per_symbol[i] for i, s in enumerate(symbols)}
-            )
-
-            if ctx.relation is None:
-                raise RuntimeError(
-                    "where_not clause is missing relation within context"
-                )
-
-            new_data = ctx.relation.get_data_frame().merge(
-                data, how="outer", indicator=True
-            )
-            new_data = new_data.loc[new_data["_merge"] == "left_only"]
-            new_data = new_data.drop(columns=["_merge"])
-            new_relation = Relation(new_data)
-            return new_relation
-        else:
-            if ctx.relation is None:
-                return Relation.create_empty()
-
-            return ctx.relation.copy()
-
-    return run
-
-
-def where_any(*clauses: IQueryClause):
-    """Performs an OR operation matching variables to any of the given clauses"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-        relations: List[Relation] = []
-
-        # Run evaluate each clause, union the result
-        for clause in clauses:
-            relation = clause(ctx, world)
-            relations.append(relation)
-
-        new_relation = Relation(
-            pd.concat(
-                [*[r.get_data_frame() for r in relations]],
-                ignore_index=True,
-            )
-            # ).drop_duplicates()
-        )
-
-        if ctx.relation is None:
-            return new_relation
-        else:
-            return ctx.relation.unify(new_relation)
-
-    return run
-
-
-def filter_(precondition: QueryFilterFn, *variables: str) -> IQueryClause:
-    """Wraps a precondition function and returns an ECSFindClause"""
-
-    def run(ctx: QueryContext, world: World) -> Relation:
-
-        rows_to_drop: List[int] = []
-        relation_symbols = ctx.relation.get_symbols()
-        variables_to_check = variables
-
-        # Just assume we are filtering on the only symbol bound
-        # in the relation if no variable names were given
-        if len(relation_symbols) == 1 and len(variables_to_check) == 0:
-            variables_to_check = relation_symbols
-
-        for row in range(ctx.relation.get_data_frame().shape[0]):
-            # convert given variables to GameObject tuple
-            gameobjects: Tuple[GameObject, ...] = tuple(
-                map(
-                    lambda v: world.get_gameobject(
-                        ctx.relation.get_data_frame().iloc[row][v]
-                    ),
-                    variables_to_check,
-                )
-            )
-
-            if not precondition(world, *gameobjects):
-                rows_to_drop.append(row)
-
-        new_relation = Relation(ctx.relation.get_data_frame().drop(rows_to_drop))
-
-        return new_relation
-
-    return run
+    return gameobjects[0] == gameobjects[1]
 
 
 class QueryBuilder:
-    @staticmethod
+    """
+    Helper class that allows users to create ECS queries one operation at a time
+    """
+
+    __slots__ = "_output_vars", "_clauses"
+
+    def __init__(self, *output_vars: str) -> None:
+        self._output_vars: Tuple[str, ...] = output_vars
+        self._clauses: List[IQueryClause] = []
+
+        if len(self._output_vars) == 0:
+            # Create a default symbol
+            self._output_vars = ("_",)
+
+    def build(self) -> Query:
+        return Query(find=self._output_vars, clauses=self._clauses)
+
     def with_(
+        self,
+        component_types: Tuple[Type[Component], ...],
         variable: Optional[str] = None,
-        *component_types: Type[Component],
-    ) -> IQueryClause:
+    ) -> QueryBuilder:
         """Adds results to the current query for game objects with all the given components"""
 
         def clause(ctx: QueryContext, world: World) -> Relation:
@@ -532,16 +273,18 @@ class QueryBuilder:
 
             return Relation.create_empty()
 
-        return clause
+        self._clauses.append(clause)
 
-    @staticmethod
+        return self
+
     def without_(
+        self,
+        component_types: Tuple[Type[Component], ...],
         variable: Optional[str] = None,
-        *component_types: Type[Component],
-    ) -> IQueryClause:
+    ) -> QueryBuilder:
         """Adds results to the current query for game objects without the given components"""
 
-        def run(ctx: QueryContext, world: World) -> Relation:
+        def clause(ctx: QueryContext, world: World) -> Relation:
             results = list(
                 map(lambda result: (result[0],), world.get_components(*component_types))
             )
@@ -562,7 +305,7 @@ class QueryBuilder:
                         "where_not clause is missing relation within context"
                     )
 
-                new_data = ctx.relation.get_data_frame().merge(
+                new_data = ctx.relation.get_data_frame().merge(  # type: ignore
                     data, how="outer", indicator=True
                 )
                 new_data = new_data.loc[new_data["_merge"] == "left_only"]
@@ -575,27 +318,85 @@ class QueryBuilder:
 
                 return ctx.relation.copy()
 
-        return run
+        self._clauses.append(clause)
 
-    @staticmethod
-    def filter_(filter_fn: QueryFilterFn, *variables: str) -> IQueryClause:
+        return self
+
+    def from_(self, fn: EcsFromClause, *symbols: str) -> QueryBuilder:
+        def clause(ctx: QueryContext, world: World) -> Relation:
+            results = fn(world)
+            values_per_symbol = list(zip(*results))
+
+            if values_per_symbol:
+                data = {s: values_per_symbol[i] for i, s in enumerate(symbols)}
+
+                if ctx.relation is None:
+                    return Relation(pd.DataFrame(data))
+
+                return ctx.relation.unify(Relation(pd.DataFrame(data)))
+
+            return Relation.create_empty()
+
+        self._clauses.append(clause)
+
+        return self
+
+    def filter_(self, filter_fn: QueryFilterFn, *variables: str) -> QueryBuilder:
         """Adds results to the current query for game objects with all the given components"""
-        ...
 
-    @staticmethod
-    def not_(*clauses: IQueryClause) -> IQueryClause:
-        """Adds results to the current query for game objects without all the given components"""
-        ...
+        def clause(ctx: QueryContext, world: World) -> Relation:
 
-    @staticmethod
-    def and_(*clauses: IQueryClause) -> IQueryClause:
-        """Adds results to the current query for game objects with all the given components"""
-        ...
+            if ctx.relation is None:
+                raise RuntimeError("Cannot filter a query with no prior clauses")
 
-    @staticmethod
-    def or_(*clauses: IQueryClause) -> IQueryClause:
-        """Adds results to the current query for game objects with all the given components"""
-        ...
+            rows_to_drop: List[int] = []
+            relation_symbols = ctx.relation.get_symbols()
+            variables_to_check = variables
+
+            # Just assume we are filtering on the only symbol bound
+            # in the relation if no variable names were given
+            if len(relation_symbols) == 1 and len(variables_to_check) == 0:
+                variables_to_check = relation_symbols
+
+            for row in range(ctx.relation.get_data_frame().shape[0]):  # type: ignore
+                # convert given variables to GameObject tuple
+                gameobjects: Tuple[GameObject, ...] = tuple(
+                    map(
+                        lambda v: world.get_gameobject(
+                            ctx.relation.get_data_frame().iloc[row][v]  # type: ignore
+                        ),
+                        variables_to_check,
+                    )
+                )
+
+                if not filter_fn(world, *gameobjects):
+                    rows_to_drop.append(row)
+
+            new_relation = Relation(ctx.relation.get_data_frame().drop(rows_to_drop))  # type: ignore
+
+            return new_relation
+
+        self._clauses.append(clause)
+        return self
+
+    def get_(self, fn: GetClause, *symbols: str) -> QueryBuilder:
+        def clause(ctx: QueryContext, world: World) -> Relation:
+            results = fn(ctx, world)
+            values_per_symbol = list(zip(*results))
+
+            if values_per_symbol:
+                data = {s: values_per_symbol[i] for i, s in enumerate(symbols)}
+
+                if ctx.relation is None:
+                    return Relation(pd.DataFrame(data))
+
+                return ctx.relation.unify(Relation(pd.DataFrame(data)))
+
+            return Relation.create_empty()
+
+        self._clauses.append(clause)
+
+        return self
 
 
 class Query:
@@ -619,76 +420,11 @@ class Query:
         self._clauses: List[IQueryClause] = clauses
         self._symbols: Tuple[str, ...] = find
 
-    def get(self, fn: EcsFindClause, *variables: str) -> Query:
-        """Finds entities that match its given clause"""
-
-        def clause(ctx: QueryContext, world: World) -> Relation:
-            results = fn(world)
-            values_per_symbol = list(zip(*results))
-
-            relation_symbols = ctx.relation.get_symbols()
-            variables_to_check = variables
-
-            # Just assume we are filtering on the only symbol bound
-            # in the relation if no variable names were given
-            if len(relation_symbols) == 1 and len(variables_to_check) == 0:
-                variables_to_check = relation_symbols
-
-            if values_per_symbol:
-                data = {
-                    s: values_per_symbol[i] for i, s in enumerate(variables_to_check)
-                }
-
-                if ctx.relation is None:
-                    return Relation(pd.DataFrame(data))
-
-                return ctx.relation.unify(Relation(pd.DataFrame(data)))
-
-            return Relation.create_empty()
-
-        self._clauses.append(clause)
-        return self
-
-    def filter(self, precondition: QueryFilterFn, *variables: str) -> Query:
-        """Wraps a precondition function and returns an ECSFindClause"""
-
-        def clause(ctx: QueryContext, world: World) -> Relation:
-
-            rows_to_drop: List[int] = []
-            relation_symbols = ctx.relation.get_symbols()
-            variables_to_check = variables
-
-            # Just assume we are filtering on the only symbol bound
-            # in the relation if no variable names were given
-            if len(relation_symbols) == 1 and len(variables_to_check) == 0:
-                variables_to_check = relation_symbols
-
-            for row in range(ctx.relation.get_data_frame().shape[0]):
-                # convert given variables to GameObject tuple
-                gameobjects: Tuple[GameObject, ...] = tuple(
-                    map(
-                        lambda v: world.get_gameobject(
-                            ctx.relation.get_data_frame().iloc[row][v]
-                        ),
-                        variables_to_check,
-                    )
-                )
-
-                if not precondition(world, *gameobjects):
-                    rows_to_drop.append(row)
-
-            new_relation = Relation(ctx.relation.get_data_frame().drop(rows_to_drop))
-
-            return new_relation
-
-        self._clauses.append(clause)
-        return self
-
     def get_symbols(self) -> Tuple[str, ...]:
         """Get the output symbols for this pattern"""
         return self._symbols
 
-    def execute(self, world: World, **bindings: int) -> List[Tuple[int, ...]]:
+    def execute(self, world: World, *args: int, **kwargs: int) -> List[Tuple[int, ...]]:
         """
         Perform a query on the world instance
 
@@ -706,10 +442,20 @@ class Query:
             Tuples of GameObjectIDs that match the requirements of the query
         """
         # Construct a starting relation with the variables mapped to values
-        ctx = QueryContext()
+        ctx = QueryContext(output_symbols=self._symbols)
 
-        if len(bindings):
-            ctx.relation = Relation.from_bindings(**bindings)
+        if len(args) and len(kwargs):
+            raise RuntimeError(
+                "Cannot use positional and keyword binding at the same time"
+            )
+
+        if len(args):
+            ctx.relation = Relation.from_bindings(
+                **{str(s): x for s, x in list(zip(self.get_symbols(), args))}
+            )
+
+        if len(kwargs):
+            ctx.relation = Relation.from_bindings(**kwargs)
 
         for clause in self._clauses:
             current_relation = clause(ctx, world)
@@ -723,5 +469,5 @@ class Query:
         # Return tuples for only the symbols specified in the constructor
         if ctx.relation is not None:
             return ctx.relation.get_tuples(*self._symbols)
-        
+
         return []

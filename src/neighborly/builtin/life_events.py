@@ -16,13 +16,13 @@ from neighborly.builtin.components import (
 from neighborly.builtin.role_filters import (
     friendship_gt,
     friendship_lt,
+    get_friendships_ge,
     get_romances_gt,
     is_single,
     relationship_has_tags,
     romance_gt,
     romance_lt,
 )
-from neighborly.core import query as querylib
 from neighborly.core.business import Business, Occupation, OpenForBusiness, Unemployed
 from neighborly.core.character import GameCharacter, LifeStage, LifeStageValue
 from neighborly.core.ecs import GameObject, World
@@ -35,6 +35,7 @@ from neighborly.core.life_event import (
     LifeEventRoleType,
     PatternLifeEvent,
 )
+from neighborly.core.query import QueryBuilder
 from neighborly.core.relationship import Relationships
 from neighborly.core.residence import Residence, Resident
 from neighborly.core.time import SimDateTime
@@ -56,20 +57,16 @@ def become_friends_event(
 
     return PatternLifeEvent(
         name="BecomeFriends",
-        pattern=querylib.Query(
-            find=("Initiator", "Other"),
-            clauses=[
-                querylib.where(
-                    querylib.has_components(GameCharacter, Active), "Initiator"
-                ),
-                querylib.where(querylib.has_components(GameCharacter, Active), "Other"),
-                querylib.ne_(("Initiator", "Other")),
-                querylib.where(friendship_gt(threshold), "Initiator", "Other"),
-                querylib.where(friendship_gt(threshold), "Other", "Initiator"),
-                querylib.where_not(
-                    relationship_has_tags("Friend"), "Initiator", "Other"
-                ),
-            ],
+        pattern=(
+            QueryBuilder("Initiator", "Other")
+            .with_((GameCharacter, Active), "Initiator")
+            .get_(get_friendships_ge(threshold), "Initiator", "Other")
+            # .filter_(has_component(Active), "Other")
+            # .filter_(friendship_gt(threshold), "Other", "Initiator")
+            # .filter_(
+            #     not_(relationship_has_tags("Friend")) "Initiator", "Other"
+            # )
+            .build()
         ),
         effect=effect,
         probability=probability,
