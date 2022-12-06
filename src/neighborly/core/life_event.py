@@ -15,6 +15,15 @@ from neighborly.core.time import SimDateTime, TimeDelta
 logger = logging.getLogger(__name__)
 
 
+class RoleBinder(Protocol):
+    """Function used to fill a RoleList"""
+
+    def __call__(
+        self, world: World, *args: GameObject, **kwargs: GameObject
+    ) -> Optional[RoleList]:
+        raise NotImplementedError
+
+
 class ILifeEvent(Protocol):
     """Interface for classes that create life events"""
 
@@ -49,10 +58,10 @@ class LifeEventRoleType:
     def __init__(
         self,
         name: str,
-        binder_fn: Optional[RoleBinderFn] = None,
+        binder_fn: Optional[RoleTypeBindFn] = None,
     ) -> None:
         self.name: str = name
-        self.binder_fn: Optional[RoleBinderFn] = binder_fn
+        self.binder_fn: Optional[RoleTypeBindFn] = binder_fn
 
     def fill_role(
         self, world: World, roles: RoleList, candidate: Optional[GameObject] = None
@@ -121,25 +130,25 @@ class LifeEvent:
     ----------
     name: str
         Name of the LifeEventType and the LifeEvent it instantiates
-    roles: List[neighborly.core.life_event.LifeEventRoleType]
-        The roles that need to be cast for this event to be executed
+    bind_fn: RoleBinder
+        Function that attempt to bind roles for the LifeEvent
     probability: EventProbabilityFn
         The relative frequency of this event compared to other events
     effect: EventEffectFn
         Function that executes changes to the world state base don the event
     """
 
-    __slots__ = "name", "probability", "roles", "effect"
+    __slots__ = "name", "probability", "bind_fn", "effect"
 
     def __init__(
         self,
         name: str,
-        roles: List[LifeEventRoleType],
+        bind_fn: RoleBinder,
         probability: Union[EventProbabilityFn, float],
         effect: Optional[EventEffectFn] = None,
     ) -> None:
         self.name: str = name
-        self.roles: List[LifeEventRoleType] = roles
+        self.bind_fn: RoleBinder = bind_fn
         self.probability: EventProbabilityFn = (
             probability if callable(probability) else (lambda world, event: probability)
         )
@@ -149,7 +158,7 @@ class LifeEvent:
         return self.name
 
     def instantiate(
-        self, world: World, **bindings: GameObject
+        self, world: World, *args: GameObject, **kwargs: GameObject
     ) -> Optional[LifeEventInstance]:
         """
         Attempts to create a new LifeEvent instance
@@ -161,109 +170,13 @@ class LifeEvent:
         **bindings: Dict[str, GameObject]
             Attempted bindings of GameObjects to RoleTypes
         """
-        roles = RoleList()
-
-        for role_type in self.roles:
-            filled_role = role_type.fill_role(
-                world, roles, candidate=bindings.get(role_type.name)
-            )
-            if filled_role is not None:
-                role_list.add_role(filled_role)  # type: ignore
-            else:
-                # Return None if there are no available entities to fill
-                # the current role
-                return None
-
-        return LifeEventInstance(self.name, roles, self.effect)
+        if roles := self.bind_fn(world, *args, **kwargs):
+            return LifeEventInstance(self.name, roles, self.effect)
+        return None
 
     def try_execute_event(
         self, world: World, *args: GameObject, **bindings: GameObject
     ) -> bool:
-        """
-        Attempt to instantiate and execute this LifeEventType
-
-        Parameters
-        ----------
-        world: World
-            Neighborly world instance
-        **bindings: Dict[str, GameObject]
-            Attempted bindings of GameObjects to RoleTypes
-
-        Returns
-        -------
-        bool
-            Returns True if the event is instantiated successfully and executed
-        """
-        event = self.instantiate(world, **bindings)
-        rng = world.get_resource(NeighborlyEngine).rng
-        if event is not None and rng.random() < self.probability(world, event):
-            event.execute(world)
-            return True
-        return False
-
-
-class PatternLifeEvent:
-    __slots__ = "name", "probability", "pattern", "effect"
-
-    def __init__(
-        self,
-        name: str,
-        pattern: Query,
-        probability: Union[EventProbabilityFn, float] = 1.0,
-        effect: Optional[EventEffectFn] = None,
-    ) -> None:
-        self.name: str = name
-        self.pattern: Query = pattern
-        self.probability: EventProbabilityFn = (
-            probability if callable(probability) else (lambda world, event: probability)
-        )
-        self.effect: Optional[EventEffectFn] = effect
-
-    def get_name(self) -> str:
-        return self.name
-
-    def _bind_roles(
-        self, world: World, *args: GameObject, **kwargs: GameObject
-    ) -> Optional[RoleList]:
-        """Searches the ECS for a game object that meets the given conditions"""
-
-        result_set = self.pattern.execute(
-            world,
-            **{role_name: gameobject.id for role_name, gameobject in kwargs.items()},
-        )
-
-        if len(result_set):
-            chosen_result: Tuple[int, ...] = world.get_resource(
-                NeighborlyEngine
-            ).rng.choice(result_set)
-
-            return RoleList(
-                [
-                    EventRole(role, gid)
-                    for role, gid in dict(
-                        zip(self.pattern.get_symbols(), chosen_result)
-                    ).items()
-                ]
-            )
-
-        return None
-
-    def instantiate(
-        self, world: World, *args: GameObject, **kwargs: GameObject
-    ) -> Optional[LifeEventInstance]:
-        """Create an event instance using the pattern"""
-        if roles := self._bind_roles(world, *args, **kwargs):
-            return LifeEventInstance(name=self.name, roles=roles, effect=self.effect)
-
-        return None
-
-    def execute(self, world: World, event: Event) -> None:
-        """Run the effects function using the given event"""
-        world.get_resource(EventLog).record_event(event)
-        if self.effect is not None:
-            self.effect(world, event)
-
-    def try_execute_event(self, world: World, **bindings: GameObject) -> bool:
         """
         Attempt to instantiate and execute this LifeEventType
 
@@ -352,10 +265,64 @@ class EventProbabilityFn(Protocol):
         raise NotImplementedError
 
 
-class RoleBinderFn(Protocol):
+class RoleTypeBindFn(Protocol):
     """Callable that returns a GameObject that meets requirements for a given Role"""
 
     def __call__(
         self, world: World, roles: RoleList, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
         raise NotImplementedError
+
+
+def from_roles(*role_types: LifeEventRoleType) -> RoleBinder:
+    """Binds roles using a list of LifeEventRoleTypes"""
+
+    def binder_fn(
+        world: World, *args: GameObject, **kwargs: GameObject
+    ) -> Optional[RoleList]:
+        roles = RoleList()
+
+        for role_type in role_types:
+            filled_role = role_type.fill_role(
+                world, roles, candidate=kwargs.get(role_type.name)
+            )
+            if filled_role is not None:
+                role_list.add_role(filled_role)  # type: ignore
+            else:
+                # Return None if there are no available entities to fill
+                # the current role
+                return None
+
+        return roles
+
+    return binder_fn
+
+
+def from_pattern(query: Query) -> RoleBinder:
+    """Binds roles using a query pattern"""
+
+    def binder_fn(
+        world: World, *args: GameObject, **kwargs: GameObject
+    ) -> Optional[RoleList]:
+        result_set = query.execute(
+            world,
+            **{role_name: gameobject.id for role_name, gameobject in kwargs.items()},
+        )
+
+        if len(result_set):
+            chosen_result: Tuple[int, ...] = world.get_resource(
+                NeighborlyEngine
+            ).rng.choice(result_set)
+
+            return RoleList(
+                [
+                    EventRole(role, gid)
+                    for role, gid in dict(
+                        zip(query.get_symbols(), chosen_result)
+                    ).items()
+                ]
+            )
+
+        return None
+
+    return binder_fn

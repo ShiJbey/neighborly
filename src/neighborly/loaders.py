@@ -4,7 +4,7 @@ Utility functions to help users load configuration data from files
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Union
+from typing import Any, ClassVar, Dict, List, Optional, Protocol, Union
 
 import yaml
 
@@ -14,12 +14,10 @@ from neighborly.builtin.archetypes import (
     BaseResidenceArchetype,
 )
 from neighborly.core.archetypes import (
-    BusinessArchetypes,
-    CharacterArchetypes,
     ICharacterArchetype,
-    ResidenceArchetypes,
 )
 from neighborly.core.ecs import GameObject, World
+from neighborly.simulation import Simulation
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +25,19 @@ logger = logging.getLogger(__name__)
 class ISectionLoader(Protocol):
     """Interface for a function that loads a specific subsection of the YAML data file"""
 
-    def __call__(self, data: Any) -> None:
+    def __call__(self, sim: Simulation, data: Any) -> None:
         raise NotImplementedError()
 
 
 class YamlDataLoader:
     """Load Neighborly Component and Archetype definitions from an YAML"""
 
-    _section_loaders: Dict[str, ISectionLoader] = {}
+    __slots__ = "sim"
+
+    _section_loaders: ClassVar[Dict[str, ISectionLoader]] = {}
+
+    def __init__(self, sim: Simulation) -> None:
+        self.sim: Simulation = sim
 
     def load(
         self,
@@ -61,7 +64,7 @@ class YamlDataLoader:
 
         for section, data in raw_data.items():
             if section in self._section_loaders:
-                self._section_loaders[section](data)
+                self._section_loaders[section](self.sim, data)
             else:
                 logger.warning(f"skipping unsupported YAML section '{section}'.")
 
@@ -84,28 +87,28 @@ class YamlDataLoader:
 
 
 @YamlDataLoader.section_loader("Characters")
-def _load_character_archetypes(data: List[Dict[str, Any]]) -> None:
+def load_character_archetypes(sim: Simulation, data: List[Dict[str, Any]]) -> None:
     """Process data defining entity archetypes"""
     for archetype_data in data:
-        CharacterArchetypes.add(
+        sim.engine.character_archetypes.add(
             archetype_data["name"], BaseCharacterArchetype(**archetype_data)
         )
 
 
 @YamlDataLoader.section_loader("Businesses")
-def _load_business_archetypes(data: List[Dict[str, Any]]) -> None:
+def load_business_archetypes(sim: Simulation, data: List[Dict[str, Any]]) -> None:
     """Process data defining business archetypes"""
     for archetype_data in data:
-        BusinessArchetypes.add(
+        sim.engine.business_archetypes.add(
             archetype_data["name"], BaseBusinessArchetype(**archetype_data)
         )
 
 
 @YamlDataLoader.section_loader("Residences")
-def _load_residence_data(data: List[Dict[str, Any]]) -> None:
+def load_residence_data(sim: Simulation, data: List[Dict[str, Any]]) -> None:
     """Process data defining residence archetypes"""
     for archetype_data in data:
-        ResidenceArchetypes.add(
+        sim.engine.residence_archetypes.add(
             archetype_data["name"], BaseResidenceArchetype(**archetype_data)
         )
 
@@ -144,5 +147,5 @@ class YamlDefinedCharacterArchetype(ICharacterArchetype):
     def get_spawn_frequency(self) -> int:
         return self._base.get_spawn_frequency()
 
-    def create(self, world: World, **kwargs) -> GameObject:
+    def create(self, world: World, **kwargs: Any) -> GameObject:
         return self._base.create(world, **{**self._options, **kwargs})

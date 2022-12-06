@@ -4,7 +4,6 @@ from typing import Any
 
 from neighborly.builtin import event_callbacks
 from neighborly.builtin.life_events import (
-    depart_due_to_unemployment,
     die_of_old_age,
     divorce_event,
     find_own_place_event,
@@ -80,7 +79,6 @@ class DefaultLifeEventPlugin(Plugin):
         LifeEvents.add(marriage_event())
         # LifeEvents.add(become_friends_event())
         # LifeEvents.add(become_enemies_event())
-        LifeEvents.add(depart_due_to_unemployment())
         LifeEvents.add(start_dating_event())
         LifeEvents.add(stop_dating_event())
         LifeEvents.add(divorce_event())
