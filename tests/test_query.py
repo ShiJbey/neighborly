@@ -1,11 +1,11 @@
 import pandas as pd
 import pytest
 
-from neighborly.builtin.components import Age, Retired
-from neighborly.builtin.role_filters import is_gender
-from neighborly.core.character import GameCharacter, Gender, GenderValue
+from neighborly.components.character import GameCharacter, Gender, GenderValue, Retired
+from neighborly.components.shared import Age
 from neighborly.core.ecs import Component, World
 from neighborly.core.query import QueryBuilder, Relation, eq_
+from neighborly.utils.role_filters import is_gender
 
 
 def test_relation_create_empty():

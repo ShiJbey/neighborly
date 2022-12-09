@@ -1,6 +1,6 @@
-from neighborly.core.character import GameCharacter
+from neighborly.components.character import GameCharacter
+from neighborly.components.relationship import Relationships
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.relationship import Relationships
 
 
 def create_character(world: World) -> GameObject:

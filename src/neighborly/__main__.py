@@ -14,10 +14,9 @@ import yaml
 from pydantic import BaseModel, Field
 
 import neighborly
-import neighborly.core.utils.utilities as utilities
 from neighborly.core.time import SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.simulation import Plugin, PluginSetupError, SimulationBuilder
+from neighborly.simulation import Neighborly, Plugin, PluginSetupError
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +84,7 @@ class NeighborlyConfig(BaseModel):
         cls, data: Dict[str, Any], defaults: NeighborlyConfig
     ) -> NeighborlyConfig:
         """Construct new config from a default config and a partial set of parameters"""
-        return cls(**utilities.merge(data, defaults.dict()))
+        return cls(**{**defaults.dict(), **data})
 
 
 def load_plugin(module_name: str, path: Optional[str] = None) -> Plugin:
@@ -234,7 +233,7 @@ def main():
             logger.debug("Successfully loaded config from cwd.")
             config = NeighborlyConfig.from_partial(loaded_settings, config)
 
-    sim_builder = SimulationBuilder(
+    sim_builder = Neighborly(
         seed=config.seed,
         starting_date=config.world_gen_start,
         time_increment_hours=config.hours_per_timestep,

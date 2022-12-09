@@ -2,13 +2,20 @@ from __future__ import annotations
 
 from typing import List, Tuple, Type
 
-from neighborly.builtin.components import Age, CollegeGraduate, CurrentLocation
-from neighborly.core.business import Occupation, Unemployed, WorkHistory
-from neighborly.core.character import Gender, GenderValue, LifeStage, LifeStageValue
+from neighborly.components.business import Occupation, WorkHistory
+from neighborly.components.character import (
+    CollegeGraduate,
+    Gender,
+    GenderValue,
+    LifeStage,
+    LifeStageValue,
+)
+from neighborly.components.relationship import Relationships
+from neighborly.components.shared import Age, CurrentLocation
 from neighborly.core.ecs import Component, GameObject, World
 from neighborly.core.query import QueryContext, QueryFilterFn, QueryGetFn
-from neighborly.core.relationship import Relationships
 from neighborly.core.time import SimDateTime
+from neighborly.statuses.character import Unemployed
 
 
 def friendship_gte(threshold: float) -> QueryFilterFn:
@@ -378,6 +385,6 @@ def has_component(component_type: Type[Component]) -> QueryFilterFn:
     """Return True if the entity has a given component type"""
 
     def precondition(world: World, *gameobject: GameObject) -> bool:
-        return gameobject[0].has_component(CollegeGraduate)
+        return gameobject[0].has_component(component_type)
 
     return precondition

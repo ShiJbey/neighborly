@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+"""
+time.py
+
+Neighborly uses a custom date/time implementation that represents years as 12 months
+with 4, 7-day weeks per month. The smallest unit of time is one hour. This module
+contains the implementation of simulation datetime along with associated constants,
+enums, and helper classes.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,15 +45,15 @@ class Weekday(IntEnum):
 
     def abbr(self) -> str:
         abbreviations = [
+            "U",
             "M",
             "T",
             "W",
             "R",
             "F",
             "S",
-            "U",
         ]
-        return abbreviations[self.value]
+        return abbreviations[int(self)]
 
     @classmethod
     def from_abbr(cls, value: str) -> Weekday:

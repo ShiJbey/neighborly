@@ -11,14 +11,16 @@ logger = getLogger(__name__)
 
 
 class RoleBinder(Protocol):
-    """Callback function called when an action is executed"""
+    """A function that finds GameObjects and binds them to EventRoles for an Action"""
 
-    def __call__(self, world: World) -> Optional[RoleList]:
+    def __call__(
+        self, world: World, *args: GameObject, **kwargs: GameObject
+    ) -> Optional[RoleList]:
         raise NotImplementedError
 
 
 class ActionEffect(Protocol):
-    """Callback function called when an action is executed"""
+    """A callback function executed when an action is executed"""
 
     def __call__(self, world: World, event: Event) -> None:
         raise NotImplementedError
@@ -109,11 +111,6 @@ class Action:
             Positional role bindings
         **args: GameObject
             Keyword role bindings
-
-        Returns
-        -------
-        Optional[ActionInstance]
-            An instance of this ac
         """
         if roles := self.role_bind_fn(world, *args, **kwargs):
             return ActionInstance(name=self.name, roles=roles, effect=self.effect_fn)
@@ -138,7 +135,7 @@ class Action:
         Returns
         -------
         bool
-            Returns True if the event is instantiated successfully and executed
+            Returns True if the action is successfully instantiated and executed
         """
         action_instance = self.instantiate(world, *args, **kwargs)
         if action_instance is not None:

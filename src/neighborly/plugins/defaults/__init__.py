@@ -2,8 +2,16 @@ import os
 from pathlib import Path
 from typing import Any
 
-from neighborly.builtin import event_callbacks
-from neighborly.builtin.life_events import (
+from neighborly.constants import (
+    BUSINESS_UPDATE_PHASE,
+    CHARACTER_UPDATE_PHASE,
+    TOWN_SYSTEMS_PHASE,
+)
+from neighborly.core.event import EventLog
+from neighborly.core.time import TimeDelta
+from neighborly.engine import LifeEvents, NeighborlyEngine
+from neighborly.plugins.defaults import event_callbacks
+from neighborly.plugins.defaults.life_events import (
     die_of_old_age,
     divorce_event,
     find_own_place_event,
@@ -14,7 +22,8 @@ from neighborly.builtin.life_events import (
     start_dating_event,
     stop_dating_event,
 )
-from neighborly.builtin.systems import (
+from neighborly.simulation import Plugin, Simulation
+from neighborly.systems import (
     BuildBusinessSystem,
     BuildHousingSystem,
     BusinessUpdateSystem,
@@ -22,16 +31,6 @@ from neighborly.builtin.systems import (
     FindEmployeesSystem,
     SpawnResidentSystem,
 )
-from neighborly.core.constants import (
-    BUSINESS_UPDATE_PHASE,
-    CHARACTER_UPDATE_PHASE,
-    TOWN_SYSTEMS_PHASE,
-)
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import EventLog
-from neighborly.core.life_event import LifeEvents
-from neighborly.core.time import TimeDelta
-from neighborly.simulation import Plugin, Simulation
 
 _RESOURCES_DIR = Path(os.path.abspath(__file__)).parent / "data"
 
@@ -40,7 +39,8 @@ class DefaultNameDataPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs: Any) -> None:
         self.initialize_tracery_name_factory(sim.engine)
 
-    def initialize_tracery_name_factory(self, engine: NeighborlyEngine) -> None:
+    @staticmethod
+    def initialize_tracery_name_factory(engine: NeighborlyEngine) -> None:
         # Load entity name data
         engine.name_generator.load_names(
             rule_name="family_name", filepath=_RESOURCES_DIR / "names" / "surnames.txt"
@@ -126,6 +126,30 @@ class DefaultPlugin(Plugin):
 
         sim.world.get_resource(EventLog).on(
             "Depart", event_callbacks.on_depart_callback
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Retire", event_callbacks.remove_retired_from_occupation
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Retire", event_callbacks.remove_retired_from_occupation
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Death", event_callbacks.remove_deceased_from_occupation
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Death", event_callbacks.remove_deceased_from_residence
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Depart", event_callbacks.remove_departed_from_residence
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Depart", event_callbacks.remove_departed_from_occupation
         )
 
 

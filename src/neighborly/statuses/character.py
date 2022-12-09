@@ -1,16 +1,24 @@
 from __future__ import annotations
 
-from neighborly.builtin.components import Age
-from neighborly.builtin.events import ChildBirthEvent
-from neighborly.builtin.helpers import generate_child, set_location, set_residence
-from neighborly.core.character import GameCharacter
+from typing import Any, Dict, List
+
+from neighborly.components.business import Occupation
+from neighborly.components.character import GameCharacter
+from neighborly.components.relationship import Relationships
+from neighborly.components.residence import Resident
+from neighborly.components.shared import Age
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.event import EventLog
-from neighborly.core.relationship import Relationships
-from neighborly.core.residence import Resident
 from neighborly.core.settlement import Settlement
-from neighborly.core.status import IOnExpire, StatusType
-from neighborly.core.time import HOURS_PER_YEAR, SimDateTime
+from neighborly.core.status import IOnExpire, IOnUpdate, StatusType
+from neighborly.core.time import HOURS_PER_DAY, HOURS_PER_YEAR, SimDateTime
+from neighborly.events import ChildBirthEvent, DepartEvent
+from neighborly.utils.common import (
+    check_share_residence,
+    generate_child,
+    set_location,
+    set_residence,
+)
 
 
 class Pregnant(StatusType, IOnExpire):
@@ -117,3 +125,63 @@ class Pregnant(StatusType, IOnExpire):
         world.get_resource(EventLog).record_event(
             ChildBirthEvent(current_date, character, other_parent, baby)
         )
+
+
+class Unemployed(StatusType, IOnExpire, IOnUpdate):
+    __slots__ = "days_to_find_a_job", "grace_period"
+
+    def __init__(self, days_to_find_a_job: int) -> None:
+        super(StatusType, self).__init__()
+        self.days_to_find_a_job: float = float(days_to_find_a_job)
+        self.grace_period: float = float(days_to_find_a_job)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "days_to_find_a_job": self.days_to_find_a_job}
+
+    @staticmethod
+    def is_expired(world: World, status: GameObject) -> bool:
+        unemployed = status.get_component(Unemployed)
+        return unemployed.days_to_find_a_job <= 0
+
+    @staticmethod
+    def on_update(world: World, status: GameObject, elapsed_hours: int) -> None:
+        status.get_component(Unemployed).days_to_find_a_job -= (
+            elapsed_hours / HOURS_PER_DAY
+        )
+
+    @staticmethod
+    def on_expire(world: World, status: GameObject) -> None:
+        character = status.parent
+        assert character
+        spouses = character.get_component(Relationships).get_all_with_tags("Spouse")
+
+        # Do not depart if one or more of the entity's spouses has a job
+        if any(
+            [
+                world.get_gameobject(rel.target).has_component(Occupation)
+                for rel in spouses
+            ]
+        ):
+            return
+
+        else:
+            characters_to_depart: List[GameObject] = [character]
+
+            # Have all spouses depart
+            # Allows for polygamy
+            for rel in spouses:
+                spouse = world.get_gameobject(rel.target)
+                characters_to_depart.append(spouse)
+
+            # Have all children living in the same house depart
+            children = character.get_component(Relationships).get_all_with_tags("Child")
+            for rel in children:
+                child = world.get_gameobject(rel.target)
+                if check_share_residence(character, child):
+                    characters_to_depart.append(child)
+
+            event = DepartEvent(
+                world.get_resource(SimDateTime), characters_to_depart, "unemployment"
+            )
+
+            world.get_resource(EventLog).record_event(event)

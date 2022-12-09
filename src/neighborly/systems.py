@@ -1,37 +1,32 @@
 from __future__ import annotations
 
 import logging
+import random
+from abc import abstractmethod
 from typing import Any, List, Optional, Set, Tuple, cast
 
-from neighborly.builtin.components import Active, Age, CanAge, OpenToPublic, Vacant
-from neighborly.builtin.events import (
-    MoveIntoTownEvent,
-    StartBusinessEvent,
-    StartJobEvent,
+from neighborly.components.business import (
+    Business,
+    InTheWorkforce,
+    Occupation,
+    OpenForBusiness,
 )
-from neighborly.builtin.helpers import (
-    choose_random_character_archetype,
-    set_location,
-    set_residence,
-    start_job,
-)
-from neighborly.core.archetypes import IBusinessArchetype
-from neighborly.core.building import Building
-from neighborly.core.business import Business, Occupation, OpenForBusiness
-from neighborly.core.character import (
+from neighborly.components.character import (
+    CanAge,
     CharacterAgingConfig,
     GameCharacter,
     LifeStage,
     LifeStageValue,
 )
+from neighborly.components.relationship import Relationships
+from neighborly.components.residence import Residence, Vacant
+from neighborly.components.shared import Active, Age, Building, OpenToPublic, Position2D
+from neighborly.core.ai import MovementAI, SocialAI
 from neighborly.core.ecs import GameObject, ISystem
-from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.event import Event, EventLog, EventRole
-from neighborly.core.position import Position2D
-from neighborly.core.relationship import Relationships
-from neighborly.core.residence import Residence
+from neighborly.core.query import QueryBuilder
 from neighborly.core.settlement import Settlement
-from neighborly.core.system import System
+from neighborly.core.status import Status, has_status, remove_status
 from neighborly.core.time import (
     DAYS_PER_YEAR,
     HOURS_PER_YEAR,
@@ -39,8 +34,130 @@ from neighborly.core.time import (
     TimeDelta,
     Weekday,
 )
+from neighborly.engine import (
+    IBusinessArchetype,
+    LifeEvents,
+    NeighborlyEngine,
+    choose_random_character_archetype,
+)
+from neighborly.events import MoveIntoTownEvent, StartBusinessEvent, StartJobEvent
+from neighborly.statuses.character import Unemployed
+from neighborly.utils.business import fill_open_position, start_job
+from neighborly.utils.common import set_location, set_residence
 
 logger = logging.getLogger(__name__)
+
+
+class System(ISystem):
+    """
+    System is a more fully-featured System abstraction that
+    handles common calculations like calculating the elapsed
+    time between calls.
+    """
+
+    __slots__ = "_interval", "_last_run", "_elapsed_time", "_next_run"
+
+    def __init__(
+        self,
+        interval: Optional[TimeDelta] = None,
+    ) -> None:
+        super(ISystem, self).__init__()
+        self._last_run: Optional[SimDateTime] = None
+        self._interval: TimeDelta = interval if interval else TimeDelta()
+        self._next_run: SimDateTime = SimDateTime() + self._interval
+        self._elapsed_time: TimeDelta = TimeDelta()
+
+    @property
+    def elapsed_time(self) -> TimeDelta:
+        """Returns the amount of simulation time since the last update"""
+        return self._elapsed_time
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        """Handles internal bookkeeping before running the system"""
+        date = self.world.get_resource(SimDateTime)
+
+        if date >= self._next_run:
+            if self._last_run is None:
+                self._elapsed_time = TimeDelta()
+            else:
+                self._elapsed_time = date - self._last_run
+            self._last_run = date.copy()
+            self._next_run = date + self._interval
+            self.run(*args, **kwargs)
+
+    @abstractmethod
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        raise NotImplementedError
+
+
+class LifeEventSystem(System):
+    """
+    LifeEventSimulator handles firing LifeEvents for characters
+    and performing entity behaviors
+    """
+
+    def __init__(self, interval: Optional[TimeDelta] = None) -> None:
+        super().__init__(interval=interval)
+
+    def run(self, *args: Any, **kwarg: Any) -> None:
+        """Simulate LifeEvents for characters"""
+        settlement = self.world.get_resource(Settlement)
+        rng = self.world.get_resource(NeighborlyEngine).rng
+
+        # Perform number of events equal to 10% of the population
+
+        for life_event in rng.choices(
+            LifeEvents.get_all(), k=(int(settlement.population / 2))
+        ):
+            success = life_event.try_execute_event(self.world)
+            if success:
+                self.world.clear_command_queue()
+
+
+class MovementAISystem(System):
+    """Updates the MovementAI components attached to characters"""
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for gid, (movement_ai, _) in self.world.get_components(MovementAI, Active):
+            movement_ai = cast(MovementAI, movement_ai)
+            next_location = movement_ai.get_next_location(self.world)
+            if next_location is not None:
+                set_location(self.world, self.world.get_gameobject(gid), next_location)
+
+
+class SocialAISystem(System):
+    """Characters performs social actions"""
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for _, (social_ai, _) in self.world.get_components(SocialAI, Active):
+            social_ai = cast(SocialAI, social_ai)
+            action_instance = social_ai.get_next_action(self.world)
+            if action_instance is not None:
+                action_instance.execute(self.world)
+
+
+class EventSystem(ISystem):
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        event_log = self.world.get_resource(EventLog)
+        event_log.process_event_queue(self.world)
+
+
+class StatusSystem(System):
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for gid, status_component in self.world.get_component(Status):
+            status = self.world.get_gameobject(gid)
+
+            if status_component.on_update:
+                status_component.on_update(
+                    self.world, status, self.elapsed_time.total_hours
+                )
+
+            if status_component.is_expired(self.world, status) is True:
+                if status_component.on_expire:
+                    status_component.on_expire(self.world, status)
+                if status.parent:
+                    remove_status(status.parent, status)
+                    self.world.delete_gameobject(status.id)
 
 
 class LinearTimeSystem(ISystem):
@@ -146,6 +263,7 @@ class FindEmployeesSystem(ISystem):
         date = self.world.get_resource(SimDateTime)
         event_log = self.world.get_resource(EventLog)
         engine = self.world.get_resource(NeighborlyEngine)
+        rng = self.world.get_resource(random.Random)
 
         for _, (business, _, _, _) in self.world.get_components(
             Business, OpenForBusiness, Building, Active
@@ -153,24 +271,46 @@ class FindEmployeesSystem(ISystem):
             business = cast(Business, business)
             open_positions = business.get_open_positions()
 
-            for position in open_positions:
-                result = engine.occupation_types.get(position).fill_role(
-                    self.world, business, engine.rng
-                )
+            for occupation_name in open_positions:
+                occupation_type = engine.occupation_types.get(occupation_name)
 
-                if result:
-                    candidate, occupation = result
-
-                    start_job(self.world, business, candidate, occupation)
-
-                    event_log.record_event(
-                        StartJobEvent(
-                            date,
-                            business=business.gameobject,
-                            character=candidate,
-                            occupation=position,
+                candidate_query = (
+                    QueryBuilder(occupation_name)
+                    .with_((InTheWorkforce, Active))
+                    .filter_(
+                        lambda world, *gameobjects: has_status(
+                            gameobjects[0], Unemployed
                         )
                     )
+                )
+
+                if occupation_type.precondition:
+                    candidate_query.filter_(occupation_type.precondition)
+
+                candidate_list = candidate_query.build().execute(self.world)
+
+                if not candidate_list:
+                    continue
+
+                candidate = self.world.get_gameobject(rng.choice(candidate_list)[0])
+
+                occupation = Occupation(
+                    occupation_type=occupation_name,
+                    business=business.gameobject.id,
+                    level=occupation_type.level,
+                    start_date=self.world.get_resource(SimDateTime).copy(),
+                )
+
+                start_job(self.world, business, candidate, occupation)
+
+                event_log.record_event(
+                    StartJobEvent(
+                        date,
+                        business=business.gameobject,
+                        character=candidate,
+                        occupation=occupation_name,
+                    )
+                )
 
 
 class BuildHousingSystem(System):
@@ -292,13 +432,14 @@ class BuildBusinessSystem(System):
     def find_business_owner(self, business: Business):
         """Find someone to run the new business"""
         engine = self.world.get_resource(NeighborlyEngine)
+        rng = self.world.get_resource(random.Random)
 
         if business.owner_type is None:
             return None
 
-        result = engine.occupation_types.get(business.owner_type).fill_role(
-            self.world, business, engine.rng
-        )
+        occupation_type = engine.occupation_types.get(business.owner_type)
+
+        result = fill_open_position(self.world, occupation_type, business, rng)
 
         if result:
             candidate, occupation = result

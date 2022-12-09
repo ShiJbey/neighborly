@@ -1,4 +1,4 @@
-from neighborly.core.character import GameCharacter
+from neighborly.components.character import GameCharacter
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.status import IOnExpire, IOnUpdate, StatusType
 from neighborly.core.time import HOURS_PER_DAY

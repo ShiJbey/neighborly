@@ -5,7 +5,7 @@ from typing import Any
 
 import neighborly.plugins.talktown.business_archetypes as tot_businesses
 import neighborly.plugins.talktown.occupation_types as tot_occupations
-from neighborly.builtin.archetypes import BaseResidenceArchetype, HumanArchetype
+from neighborly.archetypes import BaseResidenceArchetype, HumanArchetype
 from neighborly.plugins.talktown.school import SchoolSystem
 from neighborly.simulation import Plugin, Simulation
 

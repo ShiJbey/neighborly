@@ -2,8 +2,8 @@ from enum import Enum
 from typing import Any
 
 from neighborly.core.ecs import ISystem
-from neighborly.core.engine import NeighborlyEngine
 from neighborly.core.time import SimDateTime
+from neighborly.engine import NeighborlyEngine
 from neighborly.simulation import Plugin, Simulation
 
 

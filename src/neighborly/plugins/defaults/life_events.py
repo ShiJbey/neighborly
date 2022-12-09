@@ -1,54 +1,44 @@
 from __future__ import annotations
 
+import random
 from typing import Any, List, Optional, Tuple, cast
 
-from neighborly.builtin import helpers
-from neighborly.builtin.components import (
-    Active,
-    Age,
+from neighborly.components.business import Business, Occupation, OpenForBusiness
+from neighborly.components.character import (
     CanGetPregnant,
+    CharacterAgingConfig,
     Deceased,
-    Lifespan,
+    GameCharacter,
+    LifeStage,
+    LifeStageValue,
     Retired,
-    Vacant,
 )
-from neighborly.builtin.role_filters import (
+from neighborly.components.relationship import Relationships
+from neighborly.components.residence import Residence, Resident, Vacant
+from neighborly.components.shared import Active, Age, Lifespan
+from neighborly.core.ecs import GameObject, World
+from neighborly.core.event import Event, EventLog, EventRoleType, RoleList
+from neighborly.core.life_event import ILifeEvent, LifeEvent, LifeEventInstance
+from neighborly.core.query import QueryBuilder, not_, or_
+from neighborly.core.status import add_status, has_status
+from neighborly.core.time import SimDateTime
+from neighborly.events import DeathEvent
+from neighborly.statuses.character import Pregnant
+from neighborly.utils.business import end_job, shutdown_business
+from neighborly.utils.common import depart_town, from_pattern, from_roles, set_residence
+from neighborly.utils.role_filters import (
     friendship_gte,
     friendship_lte,
     get_friendships_gte,
     get_friendships_lte,
+    get_relationships_with_tags,
     get_romances_gte,
     has_component,
     is_single,
     relationship_has_tags,
-    get_relationships_with_tags,
     romance_gte,
     romance_lte,
 )
-from neighborly.core.business import Business, Occupation, OpenForBusiness
-from neighborly.core.character import (
-    CharacterAgingConfig,
-    GameCharacter,
-    LifeStage,
-    LifeStageValue,
-)
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import Event, RoleList
-from neighborly.core.life_event import (
-    ILifeEvent,
-    LifeEventInstance,
-    LifeEventRoleType,
-    LifeEvent,
-    from_pattern,
-    from_roles,
-)
-from neighborly.core.query import QueryBuilder, not_, or_
-from neighborly.core.relationship import Relationships
-from neighborly.core.residence import Residence, Resident
-from neighborly.core.time import SimDateTime
-from neighborly.core.status import add_status, has_status
-from neighborly.builtin.statuses import Pregnant
 
 
 def become_friends_event(
@@ -272,6 +262,7 @@ def pregnancy_event() -> ILifeEvent:
                 not_(lambda world, *gameobjects: has_status(gameobjects[0], Pregnant)),
                 "PregnantOne",
             )
+            .get_(get_relationships_with_tags("Spouse"), "PregnantOne", "Other")
             .filter_(has_component(Active), "Other")
             .filter_(
                 or_(relationship_has_tags("Dating"), relationship_has_tags("Married")),
@@ -326,17 +317,17 @@ def retire_event(probability: float = 0.4) -> ILifeEvent:
             if not gameobject.has_component(Retired):
                 eligible_characters.append(gameobject)
         if eligible_characters:
-            return world.get_resource(NeighborlyEngine).rng.choice(eligible_characters)
+            return world.get_resource(random.Random).choice(eligible_characters)
         return None
 
     def execute(world: World, event: Event):
         retiree = world.get_gameobject(event["Retiree"])
         retiree.add_component(Retired())
-        helpers.end_job(world, retiree, event.name)
+        end_job(world, retiree, event.name)
 
     return LifeEvent(
         name="Retire",
-        bind_fn=from_roles(LifeEventRoleType(name="Retiree", binder_fn=bind_retiree)),
+        bind_fn=from_roles(EventRoleType(name="Retiree", binder_fn=bind_retiree)),
         effect=execute,
         probability=probability,
     )
@@ -376,7 +367,7 @@ def find_own_place_event(probability: float = 0.1) -> ILifeEvent:
         """Randomly chooses a vacant residence to move into"""
         vacancies = find_vacant_residences(world)
         if vacancies:
-            return world.get_resource(NeighborlyEngine).rng.choice(vacancies)
+            return world.get_resource(random.Random).choice(vacancies)
         return None
 
     def execute(world: World, event: Event):
@@ -385,11 +376,11 @@ def find_own_place_event(probability: float = 0.1) -> ILifeEvent:
         vacant_residence = choose_random_vacant_residence(world)
         if vacant_residence:
             # Move into house with any dependent children
-            helpers.set_residence(world, character, vacant_residence.gameobject)
+            set_residence(world, character, vacant_residence.gameobject)
 
         # Depart if no housing could be found
         else:
-            helpers.depart_town(world, character, event.name)
+            depart_town(world, character, event.name)
 
     return LifeEvent(
         name="FindOwnPlace",
@@ -406,6 +397,9 @@ def die_of_old_age(probability: float = 0.8) -> ILifeEvent:
         deceased = world.get_gameobject(event["Deceased"])
         deceased.add_component(Deceased())
         deceased.remove_component(Active)
+        world.get_resource(EventLog).record_event(
+            DeathEvent(world.get_resource(SimDateTime), deceased)
+        )
 
     return LifeEvent(
         name="DieOfOldAge",
@@ -426,7 +420,7 @@ def die_of_old_age(probability: float = 0.8) -> ILifeEvent:
 def go_out_of_business_event() -> ILifeEvent:
     def effect(world: World, event: Event):
         business = world.get_gameobject(event["Business"])
-        helpers.shutdown_business(world, business)
+        shutdown_business(world, business)
 
     def probability_fn(world: World, event: LifeEventInstance) -> float:
         business = world.get_gameobject(event.roles["Business"])

@@ -1,6 +1,6 @@
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.core.business import IBusinessType
+from neighborly.components.business import IBusinessType
 
 
 class ApartmentComplex(IBusinessType):

@@ -5,10 +5,9 @@ hierarchy as children to their associated GameObject.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, List, Optional, Type, TypeVar
+from typing import Callable, Dict, Optional, Type, TypeVar
 
 from neighborly.core.ecs import Component, GameObject, World
-from neighborly.core.system import System
 
 
 class Status(Component):
@@ -59,24 +58,36 @@ class StatusManager(Component):
 
     Attributes
     ----------
-    statuses: List[StatusType]
+    status_types: Dict[int, Type[StatusType]]
         List of the StatusTypes attached to the GameObject
     """
 
-    __slots__ = "statuses"
+    __slots__ = "status_types"
 
     def __init__(self) -> None:
         super().__init__()
-        self.statuses: List[Type[StatusType]] = []
+        self.status_types: Dict[int, Type[StatusType]] = {}
 
-    def add(self, status_type: Type[StatusType]) -> None:
-        self.statuses.append(status_type)
+    def add(self, status_id: int, status_type: Type[StatusType]) -> None:
+        self.status_types[status_id] = status_type
 
-    def remove(self, status_type: Type[StatusType]) -> None:
-        self.statuses.remove(status_type)
+    def remove(self, status_id: int) -> None:
+        """Removes record of status with the given ID"""
+        del self.status_types[status_id]
+
+    def remove_type(self, status_type: Type[StatusType]) -> None:
+        status_to_remove: Optional[int] = None
+
+        for s_id, s_type in self.status_types.items():
+            if s_type == status_type:
+                status_to_remove = s_id
+                break
+
+        if status_to_remove is not None:
+            self.remove(status_to_remove)
 
     def __contains__(self, item: Type[StatusType]) -> bool:
-        return item in self.statuses
+        return item in self.status_types.values()
 
 
 def add_status(world: World, gameobject: GameObject, status_type: StatusType) -> None:
@@ -96,12 +107,19 @@ def add_status(world: World, gameobject: GameObject, status_type: StatusType) ->
     if not gameobject.has_component(StatusManager):
         gameobject.add_component(StatusManager())
 
-    gameobject.get_component(StatusManager).add(type(status_type))
+    gameobject.get_component(StatusManager).add(status.id, type(status_type))
+
+
+def get_status(gameobject: GameObject, status_type_type: Type[_ST]) -> _ST:
+    return gameobject.get_component_in_child(status_type_type)[1]
 
 
 def remove_status(gameobject: GameObject, status: GameObject) -> None:
     """Removes a status from the given GameObject"""
     gameobject.remove_child(status)
+    if status_manager := gameobject.try_component(StatusManager):
+        status_manager.remove(status.id)
+    status.destroy()
 
 
 def has_status(gameobject: GameObject, status_type: Type[StatusType]) -> bool:
@@ -110,21 +128,3 @@ def has_status(gameobject: GameObject, status_type: Type[StatusType]) -> bool:
         return status_type in status_manager
     else:
         return any(c.has_component(status_type) for c in gameobject.children)
-
-
-class StatusSystem(System):
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for gid, status_component in self.world.get_component(Status):
-            status = self.world.get_gameobject(gid)
-
-            if status_component.on_update:
-                status_component.on_update(
-                    self.world, status, self.elapsed_time.total_hours
-                )
-                
-
-            if status_component.is_expired(self.world, status) is True:
-                if status_component.on_expire:
-                    status_component.on_expire(self.world, status)
-                if status.parent:
-                    remove_status(status.parent, status)

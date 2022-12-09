@@ -1,14 +1,18 @@
 """
 Default implementations of AI modules
 """
+import random
 from typing import List, Optional
 
-from neighborly.builtin.components import CurrentLocation, LocationAliases, OpenToPublic
+from neighborly.components.routine import Routine
+from neighborly.components.shared import (
+    CurrentLocation,
+    Location,
+    LocationAliases,
+    OpenToPublic,
+)
 from neighborly.core.action import ActionInstance, AvailableActions
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.location import Location
-from neighborly.core.routine import Routine
 from neighborly.core.time import SimDateTime
 
 
@@ -39,7 +43,7 @@ class DefaultMovementModule:
         )
 
         if potential_locations:
-            return world.get_resource(NeighborlyEngine).rng.choice(potential_locations)
+            return world.get_resource(random.Random).choice(potential_locations)
 
         return None
 
@@ -58,7 +62,7 @@ class DefaultSocialAIModule:
         available_actions = current_location.try_component(AvailableActions)
 
         other_character = world.get_gameobject(
-            world.get_resource(NeighborlyEngine).rng.choice(
+            world.get_resource(random.Random).choice(
                 list(current_location.get_component(Location).entities)
             )
         )

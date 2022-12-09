@@ -1,16 +1,15 @@
 from typing import Any, ClassVar
 
-from neighborly.builtin.components import Active
-from neighborly.builtin.role_filters import life_stage_ge, life_stage_le
-from neighborly.core.character import GameCharacter, LifeStage, LifeStageValue
-from neighborly.core.ecs import Component, GameObject, ISystem, component_info
+from neighborly.components.character import GameCharacter, LifeStage, LifeStageValue
+from neighborly.components.shared import Active
+from neighborly.core.ecs import Component, GameObject, ISystem
 from neighborly.core.event import Event, EventLog, EventRole
 from neighborly.core.query import Query, QueryBuilder, and_
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.talktown.business_components import School
+from neighborly.utils.role_filters import life_stage_ge, life_stage_le
 
 
-@component_info("Student", "This entity is a student at the local school")
 class Student(Component):
     pass
 

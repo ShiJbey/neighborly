@@ -351,7 +351,7 @@ class QueryBuilder:
             if ctx.relation is None:
                 raise RuntimeError("Cannot filter a query with no prior clauses")
 
-            rows_to_drop: List[int] = []
+            rows_to_include: List[int] = []
             relation_symbols = ctx.relation.get_symbols()
             variables_to_check = variables
 
@@ -371,10 +371,10 @@ class QueryBuilder:
                     )
                 )
 
-                if not filter_fn(world, *gameobjects):
-                    rows_to_drop.append(row)
+                if filter_fn(world, *gameobjects):
+                    rows_to_include.append(row)
 
-            new_relation = Relation(ctx.relation.get_data_frame().drop(rows_to_drop))  # type: ignore
+            new_relation = Relation(ctx.relation.get_data_frame().iloc[rows_to_include])  # type: ignore
 
             return new_relation
 
@@ -434,9 +434,10 @@ class Query:
         ----------
         world: World
             The world instance to run the query on
-
-        bindings: Dict[str, int]
-            Symbol strings mapped to GameObjectID to match to
+        *args: GameObject
+            Positional GameObject bindings to variables
+        **kwargs: GameObject
+            Keyword bindings of GameObjects to variables
 
         Returns
         -------

@@ -1,6 +1,6 @@
 import pytest
 
-from neighborly.core.personal_values import PersonalValues
+from neighborly.components.character import PersonalValues
 
 
 def test_constructor():

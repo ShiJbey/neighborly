@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import IntEnum
 from typing import Any, Dict
 
 from ordered_set import OrderedSet  # type: ignore
@@ -65,3 +66,14 @@ class Resident(Component):
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "residence": self.residence}
+
+
+class ResidentialZoning(IntEnum):
+    SingleFamily = 0
+    MultiFamily = 1
+
+
+class Vacant(Component):
+    """Tags a residence that does not currently have anyone living there"""
+
+    pass

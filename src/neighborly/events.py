@@ -51,6 +51,9 @@ class DepartEvent(Event):
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "reason": self.reason}
 
+    def __str__(self) -> str:
+        return f"{super().__str__()}, reason={self.reason}"
+
 
 class MoveIntoTownEvent(Event):
     def __init__(
@@ -132,7 +135,6 @@ class PregnantEvent(Event):
 
 
 class StartJobEvent(Event):
-
     __slots__ = "occupation"
 
     def __init__(
@@ -158,9 +160,11 @@ class StartJobEvent(Event):
             "occupation": self.occupation,
         }
 
+    def __str__(self) -> str:
+        return f"{super().__str__()}, occupation={self.occupation}"
+
 
 class EndJobEvent(Event):
-
     __slots__ = "occupation", "reason"
 
     def __init__(
@@ -188,6 +192,11 @@ class EndJobEvent(Event):
             "occupation": self.occupation,
             "reason": self.reason,
         }
+
+    def __str__(self) -> str:
+        return (
+            f"{super().__str__()}, occupation={self.occupation}, reason={self.reason}"
+        )
 
 
 class MarriageEvent(Event):
@@ -244,3 +253,6 @@ class StartBusinessEvent(Event):
             "occupation": self.occupation,
             "business_name": self.business_name,
         }
+
+    def __str__(self) -> str:
+        return f"{super().__str__()}, business_name={self.business_name}, occupation={self.occupation}"

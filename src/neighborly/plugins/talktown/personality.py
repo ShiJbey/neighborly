@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from neighborly.core.ecs import Component, World
-from neighborly.core.engine import NeighborlyEngine
+from neighborly.engine import NeighborlyEngine
 
 BIG_FIVE_FLOOR = -1.0
 BIG_FIVE_CAP = 1.0

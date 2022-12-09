@@ -11,7 +11,6 @@ def clamp(value: int, minimum: int, maximum: int) -> int:
 
 
 class RelationshipStat:
-
     STAT_MAX: int = 50
     STAT_MIN: int = -50
 

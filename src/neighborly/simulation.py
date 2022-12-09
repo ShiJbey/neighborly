@@ -5,16 +5,22 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from neighborly.builtin.systems import DynamicLoDTimeSystem, LinearTimeSystem
-from neighborly.core.ai import MovementAISystem, SocialAISystem
-from neighborly.core.constants import TIME_UPDATE_PHASE, TOWN_SYSTEMS_PHASE
+from neighborly.constants import TIME_UPDATE_PHASE, TOWN_SYSTEMS_PHASE
 from neighborly.core.ecs import ISystem, World
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import EventLog, EventSystem
-from neighborly.core.life_event import LifeEventSystem
+from neighborly.core.event import EventLog
+from neighborly.core.name_generation import TraceryNameFactory
 from neighborly.core.settlement import Settlement, create_grid_settlement
-from neighborly.core.status import StatusSystem
 from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.engine import NeighborlyEngine
+from neighborly.systems import (
+    DynamicLoDTimeSystem,
+    EventSystem,
+    LifeEventSystem,
+    LinearTimeSystem,
+    MovementAISystem,
+    SocialAISystem,
+    StatusSystem,
+)
 
 logger = getLogger(__name__)
 
@@ -111,7 +117,7 @@ class Simulation:
         return self.world.get_resource(Settlement)
 
 
-class SimulationBuilder:
+class Neighborly:
     """
     Builder class for Neighborly Simulation instances
 
@@ -168,9 +174,7 @@ class SimulationBuilder:
             else SimDateTime.from_iso_str(starting_date)
         )
         self.town_name: str = town_name
-        self.town_size: Tuple[int, int] = SimulationBuilder._convert_town_size(
-            town_size
-        )
+        self.town_size: Tuple[int, int] = Neighborly._convert_town_size(town_size)
         self.systems: List[Tuple[ISystem, int]] = []
         self.resources: List[Any] = []
         self.plugins: List[Tuple[Plugin, Dict[str, Any]]] = []
@@ -179,7 +183,7 @@ class SimulationBuilder:
         self.enable_dynamic_lod: bool = enable_dynamic_lod
         self.dyn_lod_days_per_year: int = dyn_lod_days_per_year
 
-    def add_plugin(self, plugin: Plugin, **kwargs: Any) -> SimulationBuilder:
+    def add_plugin(self, plugin: Plugin, **kwargs: Any) -> Neighborly:
         """Add plugin to simulation"""
         self.plugins.append((plugin, {**kwargs}))
         return self
@@ -187,7 +191,7 @@ class SimulationBuilder:
     def _create_town(
         self,
         sim: Simulation,
-    ) -> SimulationBuilder:
+    ) -> Neighborly:
         """Create a new Settlement to represent the Town"""
         generated_name = sim.world.get_resource(
             NeighborlyEngine
@@ -209,6 +213,8 @@ class SimulationBuilder:
         )
 
         # These resources are required by all games
+        sim.world.add_resource(random.Random(self.seed))
+        sim.world.add_resource(TraceryNameFactory())
         sim.world.add_resource(self.starting_date.copy())
         sim.world.add_resource(EventLog())
 

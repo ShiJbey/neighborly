@@ -6,13 +6,13 @@ https://github.com/ShiJbey/talktown/blob/python3/talktown/occupation.py
 https://github.com/ShiJbey/talktown/blob/python3/talktown/config/businesses_config.py
 """
 
-from neighborly.builtin.role_filters import (
+from neighborly.components.business import OccupationType
+from neighborly.core.query import and_
+from neighborly.utils.role_filters import (
     has_any_work_experience,
     has_experience_as_a,
     is_college_graduate,
 )
-from neighborly.core.business import OccupationType
-from neighborly.core.query import and_
 
 apprentice = OccupationType(name="Apprentice", level=1)
 

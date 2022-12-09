@@ -10,10 +10,10 @@ import logging
 import random
 import time
 
-from neighborly.core.time import SimDateTime
+from neighborly.core.time import HOURS_PER_YEAR, SimDateTime
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins import defaults, talktown, weather
-from neighborly.simulation import SimulationBuilder
+from neighborly.simulation import Neighborly
 
 EXPORT_WORLD = False
 DEBUG_LOGGING = False
@@ -24,10 +24,11 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
 
     sim = (
-        SimulationBuilder(
+        Neighborly(
             seed=random.randint(0, 999999),
             starting_date=SimDateTime(year=1839, month=8, day=19),
             print_events=True,
+            life_event_interval_hours=HOURS_PER_YEAR,
         )
         .add_plugin(defaults.get_plugin())
         .add_plugin(weather.get_plugin())

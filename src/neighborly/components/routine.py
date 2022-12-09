@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
-from neighborly.core.ecs import Component, World
+from neighborly.core.ecs import Component
 from neighborly.core.time import Weekday
 
 
@@ -216,20 +216,6 @@ class Routine(Component):
         """Remove one or more entries from the daily routines on the given days"""
         for day in days:
             self._daily_routines[day].remove(entry_id)
-
-    @classmethod
-    def create(cls, world: World, **kwargs: Any) -> Component:
-        routine = cls()
-
-        presets = kwargs.get("presets")
-
-        if presets == "default":
-            at_home = RoutineEntry(20, 8, "home")
-            routine.add_entries(
-                "at_home_default", [d.value for d in list(Weekday)], at_home
-            )
-
-        return routine
 
     def __repr__(self) -> str:
         return f"Routine({self._daily_routines})"

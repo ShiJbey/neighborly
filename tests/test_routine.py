@@ -1,7 +1,6 @@
 import pytest
 
-from neighborly.core.ecs import World
-from neighborly.core.routine import (
+from neighborly.components.routine import (
     DailyRoutine,
     Routine,
     RoutineEntry,
@@ -9,6 +8,7 @@ from neighborly.core.routine import (
     parse_schedule_str,
     time_str_to_int,
 )
+from neighborly.core.ecs import World
 from neighborly.core.time import Weekday
 
 
@@ -71,10 +71,10 @@ def test_daily_routine():
 def test_create_routine():
     world = World()
     gameobject = world.spawn_gameobject()
-    gameobject.add_component(Routine.create(world, presets="default"))
-    routine = gameobject.get_component(Routine)
+    gameobject.add_component(Routine())
+    routine = gameobject.try_component(Routine)
 
-    assert routine.get_entries(Weekday.Monday, 0)[0].location == "home"
+    assert routine is not None
 
 
 def test_routine():

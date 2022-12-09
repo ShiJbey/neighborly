@@ -8,15 +8,13 @@ from typing import Any, ClassVar, Dict, List, Optional, Protocol, Union
 
 import yaml
 
-from neighborly.builtin.archetypes import (
+from neighborly.archetypes import (
     BaseBusinessArchetype,
     BaseCharacterArchetype,
     BaseResidenceArchetype,
 )
-from neighborly.core.archetypes import (
-    ICharacterArchetype,
-)
 from neighborly.core.ecs import GameObject, World
+from neighborly.engine import ICharacterArchetype
 from neighborly.simulation import Simulation
 
 logger = logging.getLogger(__name__)
@@ -116,6 +114,7 @@ def load_residence_data(sim: Simulation, data: List[Dict[str, Any]]) -> None:
 class YamlDefinedCharacterArchetype(ICharacterArchetype):
     def __init__(
         self,
+        name: str,
         base: ICharacterArchetype,
         options: Dict[str, Any],
         max_children_at_spawn: Optional[int] = None,
@@ -137,6 +136,10 @@ class YamlDefinedCharacterArchetype(ICharacterArchetype):
             spawn_frequency if spawn_frequency else base.get_spawn_frequency()
         )
         self._options = options
+        self.name = name
+
+    def get_name(self) -> str:
+        return self.name
 
     def get_max_children_at_spawn(self) -> int:
         return self._base.get_max_children_at_spawn()

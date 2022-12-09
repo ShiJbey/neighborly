@@ -5,18 +5,15 @@ from typing import Dict
 
 import pytest
 
-from neighborly.builtin.archetypes import BaseBusinessArchetype
-from neighborly.builtin.role_filters import is_college_graduate
-from neighborly.core.business import (
-    Business,
-    OccupationType,
-    OccupationTypes,
-    parse_operating_hour_str,
-)
+from neighborly.archetypes import BaseBusinessArchetype
+from neighborly.components.business import Business, OccupationType
 from neighborly.core.ecs import Component
 from neighborly.core.time import Weekday
+from neighborly.engine import OccupationTypes
 from neighborly.plugins.talktown.business_components import Restaurant
-from neighborly.simulation import SimulationBuilder
+from neighborly.simulation import Neighborly
+from neighborly.utils.role_filters import is_college_graduate
+from neighborly.components.factory import parse_operating_hour_str
 
 
 class CollegeGraduate(Component):
@@ -76,7 +73,7 @@ def test_construct_business():
         },
     )
 
-    sim = SimulationBuilder().build()
+    sim = Neighborly().build()
 
     restaurant = restaurant_archetype.create(world=sim.world)
     restaurant_business = restaurant.get_component(Business)

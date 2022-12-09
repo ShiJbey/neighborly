@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Callable, DefaultDict, Dict, List, Optional
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Protocol
 
-from neighborly.core.ecs import ISystem, World
+from neighborly.core.ecs import GameObject, World
 
 
 class RoleList:
@@ -279,7 +279,52 @@ class EventLog:
         return self._per_gameobject[gid]
 
 
-class EventSystem(ISystem):
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        event_log = self.world.get_resource(EventLog)
-        event_log.process_event_queue(self.world)
+class RoleBinder(Protocol):
+    """Function used to fill a RoleList"""
+
+    def __call__(
+        self, world: World, *args: GameObject, **kwargs: GameObject
+    ) -> Optional[RoleList]:
+        raise NotImplementedError
+
+
+class EventRoleType:
+    """
+    Information about a role within a LifeEvent, and logic
+    for how to filter which gameobjects can be bound to the
+    role.
+    """
+
+    __slots__ = "binder_fn", "name"
+
+    def __init__(
+        self,
+        name: str,
+        binder_fn: Optional[RoleTypeBindFn] = None,
+    ) -> None:
+        self.name: str = name
+        self.binder_fn: Optional[RoleTypeBindFn] = binder_fn
+
+    def fill_role(
+        self, world: World, roles: RoleList, candidate: Optional[GameObject] = None
+    ) -> Optional[EventRole]:
+
+        if self.binder_fn is None:
+            if candidate is None:
+                return None
+            else:
+                return EventRole(self.name, candidate.id)
+
+        if gameobject := self.binder_fn(world, roles, candidate):
+            return EventRole(self.name, gameobject.id)
+
+        return None
+
+
+class RoleTypeBindFn(Protocol):
+    """Callable that returns a GameObject that meets requirements for a given Role"""
+
+    def __call__(
+        self, world: World, roles: RoleList, candidate: Optional[GameObject] = None
+    ) -> Optional[GameObject]:
+        raise NotImplementedError

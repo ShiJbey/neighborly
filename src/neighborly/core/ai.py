@@ -5,13 +5,10 @@ should use these classes to override character decision-making
 processes
 """
 from abc import abstractmethod
-from typing import Any, Optional, Protocol, cast
+from typing import Optional, Protocol
 
-from neighborly.builtin import helpers
-from neighborly.builtin.components import Active
 from neighborly.core.action import ActionInstance
 from neighborly.core.ecs import Component, GameObject, World
-from neighborly.core.system import System
 
 
 class IMovementAIModule(Protocol):
@@ -45,6 +42,10 @@ class MovementAI(Component):
     uses an IMovementAIModule instance to determine where the character
     should go.
 
+    This is a wrapper class that tricks the ECS into thinking that all
+    AI modules are the same, if you subclass this class, it will not be
+    updated by default in the ECS, and will require its own system definition
+
     Attributes
     ----------
     module: IMovementAIModule
@@ -64,19 +65,6 @@ class MovementAI(Component):
         return self.module.get_next_location(world, self.gameobject)
 
 
-class MovementAISystem(System):
-    """Updates the MovementAI components attached to characters"""
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for gid, (movement_ai, _) in self.world.get_components(MovementAI, Active):
-            movement_ai = cast(MovementAI, movement_ai)
-            next_location = movement_ai.get_next_location(self.world)
-            if next_location is not None:
-                helpers.set_location(
-                    self.world, self.world.get_gameobject(gid), next_location
-                )
-
-
 class ISocialAIModule(Protocol):
     """
     Interface that defines how characters make decisions
@@ -84,7 +72,7 @@ class ISocialAIModule(Protocol):
     """
 
     def get_next_action(
-        self, world: World, character: GameObject
+        self, world: World, gameobject: GameObject
     ) -> Optional[ActionInstance]:
         """
         Get the next action for this character
@@ -131,14 +119,3 @@ class SocialAI(Component):
         Calls the internal module to determine what action the character should take
         """
         return self.module.get_next_action(world, self.gameobject)
-
-
-class SocialAISystem(System):
-    """Characters performs social actions"""
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, (social_ai, _) in self.world.get_components(SocialAI, Active):
-            social_ai = cast(SocialAI, social_ai)
-            action_instance = social_ai.get_next_action(self.world)
-            if action_instance is not None:
-                action_instance.execute(self.world)

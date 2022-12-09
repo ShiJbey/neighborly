@@ -3,27 +3,18 @@ from __future__ import annotations
 from random import Random
 from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
-from neighborly.builtin.ai import DefaultMovementModule
-from neighborly.builtin.components import Active, Age, CanAge, CanGetPregnant, Lifespan
-from neighborly.core.ai import MovementAI
-from neighborly.core.archetypes import (
-    IBusinessArchetype,
-    ICharacterArchetype,
-    IResidenceArchetype,
-    ResidentialZoning,
-)
-from neighborly.core.business import (
+from neighborly.components.business import (
     Business,
     IBusinessType,
     InTheWorkforce,
     Services,
     ServiceType,
     ServiceTypes,
-    Unemployed,
     WorkHistory,
-    parse_operating_hour_str,
 )
-from neighborly.core.character import (
+from neighborly.components.character import (
+    CanAge,
+    CanGetPregnant,
     CharacterAgingConfig,
     GameCharacter,
     Gender,
@@ -31,15 +22,22 @@ from neighborly.core.character import (
     LifeStage,
     LifeStageValue,
 )
+from neighborly.components.factory import parse_operating_hour_str
+from neighborly.components.relationship import Relationships
+from neighborly.components.residence import Residence, ResidentialZoning
+from neighborly.components.routine import Routine
+from neighborly.components.shared import Active, Age, Lifespan, Location, Position2D
+from neighborly.core.ai import MovementAI
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.location import Location
-from neighborly.core.personal_values import PersonalValues
-from neighborly.core.position import Position2D
-from neighborly.core.relationship import Relationships
-from neighborly.core.residence import Residence
-from neighborly.core.routine import Routine
 from neighborly.core.status import add_status
+from neighborly.engine import (
+    IBusinessArchetype,
+    ICharacterArchetype,
+    IResidenceArchetype,
+    NeighborlyEngine,
+)
+from neighborly.plugins.defaults.ai import DefaultMovementModule
+from neighborly.statuses.character import Unemployed
 
 
 class BaseCharacterArchetype(ICharacterArchetype):
@@ -92,7 +90,6 @@ class BaseCharacterArchetype(ICharacterArchetype):
                     adult_age=30,
                     senior_age=65,
                 ),
-                PersonalValues.create(world),
                 Relationships(),
                 MovementAI(DefaultMovementModule()),
             ]
@@ -175,8 +172,9 @@ class HumanArchetype(BaseCharacterArchetype):
 
         return gameobject
 
+    @staticmethod
     def _life_stage_from_age(
-        self, aging_config: CharacterAgingConfig, age: int
+        aging_config: CharacterAgingConfig, age: int
     ) -> LifeStageValue:
         """Determine the life stage of a character given an age"""
         if 0 <= age < aging_config.adolescent_age:
@@ -190,8 +188,9 @@ class HumanArchetype(BaseCharacterArchetype):
         else:
             return LifeStageValue.Senior
 
+    @staticmethod
     def _generate_age_from_life_stage(
-        self, rng: Random, aging_config: CharacterAgingConfig, life_stage: str
+        rng: Random, aging_config: CharacterAgingConfig, life_stage: str
     ) -> int:
         """Generates a random age given a life stage"""
 
@@ -215,7 +214,8 @@ class HumanArchetype(BaseCharacterArchetype):
         else:
             return aging_config.senior_age + int(10 * rng.random())
 
-    def _life_stage_from_str(self, life_stage: str) -> LifeStageValue:
+    @staticmethod
+    def _life_stage_from_str(life_stage: str) -> LifeStageValue:
         """Return the proper component given the life stage"""
         stages = {
             "child": LifeStageValue.Child,
@@ -226,7 +226,8 @@ class HumanArchetype(BaseCharacterArchetype):
         }
         return stages[life_stage]
 
-    def _fertility_from_gender(self, world: World, gender: GenderValue) -> bool:
+    @staticmethod
+    def _fertility_from_gender(world: World, gender: GenderValue) -> bool:
         """Return true if this character can get pregnant given their gender"""
         engine = world.get_resource(NeighborlyEngine)
 
@@ -237,8 +238,9 @@ class HumanArchetype(BaseCharacterArchetype):
         else:
             return engine.rng.random() < 0.5
 
+    @staticmethod
     def _generate_name_from_gender(
-        self, world: World, gender: GenderValue
+        world: World, gender: GenderValue
     ) -> Tuple[str, str]:
         """Generate a name for the character given their gender"""
         engine = world.get_resource(NeighborlyEngine)
@@ -307,7 +309,7 @@ class BaseBusinessArchetype(IBusinessArchetype):
         self.average_lifespan: int = average_lifespan
 
     def get_name(self) -> str:
-        return self.__class__.__name__
+        return self.business_type.__name__
 
     def get_spawn_frequency(self) -> int:
         """Return the relative frequency that this prefab appears"""
@@ -324,9 +326,6 @@ class BaseBusinessArchetype(IBusinessArchetype):
     def get_year_obsolete(self) -> int:
         """Return the year that this business is no longer available to construct"""
         return self.year_obsolete
-
-    def get_business_type(self) -> Type[IBusinessType]:
-        return self.business_type
 
     def get_instances(self) -> int:
         return self.instances

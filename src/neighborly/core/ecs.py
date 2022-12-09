@@ -12,19 +12,22 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+)
 
 import esper  # type: ignore
+from ordered_set import OrderedSet
 
 logger = logging.getLogger(__name__)
-
-
-# Store string names of components for lookup later
-_component_names: Dict[Type[Component], str] = {}
-
-
-# Text descriptions of components (mostly used by GUI applications)
-_component_descriptions: Dict[Type[Component], str] = {}
 
 
 _CT = TypeVar("_CT", bound="Component")
@@ -78,7 +81,7 @@ class GameObject:
 
     Attributes
     ----------
-    id: int
+    _id: int
       unique identifier
     _name: str
         name of the GameObject
@@ -190,6 +193,26 @@ class GameObject:
         self.children.remove(gameobject)
         gameobject.parent = None
 
+    def get_component_in_child(self, component_type: Type[_CT]) -> Tuple[int, _CT]:
+        """Get a single instance of a component type attached to a child"""
+        for child in self.children:
+            if component := child.try_component(component_type):
+                return child.id, component
+        raise ComponentNotFoundError(component_type)
+
+    def get_component_in_children(
+        self, component_type: Type[_CT]
+    ) -> List[Tuple[int, _CT]]:
+        """Get all the instances of a component type attached to the immediate children of this GameObject"""
+        results: List[Tuple[int, _CT]] = []
+        for child in self.children:
+            if component := child.try_component(component_type):
+                results.append((child.id, component))
+        return results
+
+    def destroy(self) -> None:
+        self.world.delete_gameobject(self.id)
+
     def to_dict(self) -> Dict[str, Any]:
         ret = {
             "id": self.id,
@@ -227,7 +250,6 @@ class IEcsCommand:
 
 
 class RemoveComponentCommand(IEcsCommand):
-
     __slots__ = "gameobject", "component_type"
 
     def __init__(self, gameobject: GameObject, component_type: Type[Component]) -> None:
@@ -272,33 +294,12 @@ class Component(ABC):
         """set the gameobject instance for this component"""
         self._gameobject = gameobject
 
-    @classmethod
-    def create(cls, world: World, **kwargs: Any) -> Component:
-        """Create an instance of the component using a reference to the World object and additional parameters"""
-        return cls(**kwargs)
-
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the component to a dict"""
         return {"type": self.__class__.__name__}
 
     def __repr__(self) -> str:
         return "{}".format(self.__class__.__name__)
-
-
-def component_info(
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-) -> Callable[[Type[_CT]], Type[_CT]]:
-    """Decorator that registers a name for this component"""
-
-    def decorator(cls: Type[_CT]) -> Type[_CT]:
-        if name is not None:
-            _component_names[cls] = name
-        if description is not None:
-            _component_descriptions[cls] = description
-        return cls
-
-    return decorator
 
 
 class ISystem(ABC, esper.Processor):
@@ -336,7 +337,7 @@ class World:
     def __init__(self) -> None:
         self._ecs: esper.World = esper.World()
         self._gameobjects: Dict[int, GameObject] = {}
-        self._dead_gameobjects: List[int] = []
+        self._dead_gameobjects: OrderedSet[int] = OrderedSet()
         self._resources: Dict[Type[Any], Any] = {}
         self._command_queue: List[IEcsCommand] = []
 
@@ -475,3 +476,26 @@ class World:
             len(self._gameobjects),
             list(self._resources.values()),
         )
+
+
+class IComponentFactory(ABC, Generic[_CT]):
+    """Abstract base class for creating Component instances"""
+
+    @abstractmethod
+    def create(self, world: World, **kwargs: Any) -> _CT:
+        """
+        Create an instance of a component
+
+        Parameters
+        ----------
+        world: World
+            Reference to the World object
+        **kwargs: Dict[str, Any]
+            Additional keyword parameters
+
+        Returns
+        -------
+        _CT
+            Component instance
+        """
+        raise NotImplementedError
