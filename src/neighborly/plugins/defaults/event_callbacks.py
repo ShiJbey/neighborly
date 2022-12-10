@@ -17,7 +17,7 @@ def on_depart_callback(world: World, event: Event) -> None:
 
 
 def remove_retired_from_occupation(world: World, event: Event) -> None:
-    character = world.get_gameobject(event["Character"])
+    character = world.get_gameobject(event["Retiree"])
     if character.has_component(Occupation):
         end_job(world, character, reason=event.name)
 

@@ -35,13 +35,6 @@ def is_unemployed(world: World, *gameobjects: GameObject) -> bool:
 
 def add_coworkers(world: World, character: GameObject, business: GameObject) -> None:
     """Add coworker tags to current coworkers in relationship network"""
-    owner = business.get_component(Business).owner
-    if owner is not None and owner != character.id:
-        character.get_component(Relationships).get(owner).add_tags("Coworker")
-        world.get_gameobject(owner).get_component(Relationships).get(
-            character.id
-        ).add_tags("Coworker")
-
     for employee_id in business.get_component(Business).get_employees():
         if employee_id == character.id:
             continue
@@ -55,14 +48,6 @@ def add_coworkers(world: World, character: GameObject, business: GameObject) -> 
 
 def remove_coworkers(world: World, character: GameObject, business: GameObject) -> None:
     """Remove coworker tags from current coworkers in relationship network"""
-
-    owner = business.get_component(Business).owner
-    if owner is not None and owner != character.id:
-        character.get_component(Relationships).get(owner).remove_tags("Coworker")
-        world.get_gameobject(owner).get_component(Relationships).get(
-            character.id
-        ).remove_tags("Coworker")
-
     for employee_id in business.get_component(Business).get_employees():
         if employee_id == character.id:
             continue

@@ -29,6 +29,7 @@ if __name__ == "__main__":
             starting_date=SimDateTime(year=1839, month=8, day=19),
             print_events=True,
             life_event_interval_hours=HOURS_PER_YEAR,
+            enable_dynamic_lod=True,
         )
         .add_plugin(defaults.get_plugin())
         .add_plugin(weather.get_plugin())
