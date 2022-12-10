@@ -12,20 +12,10 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-)
+from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, Type, TypeVar
 
 import esper  # type: ignore
-from ordered_set import OrderedSet
+from ordered_set import OrderedSet  # type: ignore
 
 logger = logging.getLogger(__name__)
 

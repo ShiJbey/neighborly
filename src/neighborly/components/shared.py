@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from ordered_set import OrderedSet
+from ordered_set import OrderedSet  # type: ignore
 
 from neighborly.core.ecs import Component
 
