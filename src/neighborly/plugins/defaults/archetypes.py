@@ -168,7 +168,7 @@ class BaseCharacterArchetype(CharacterArchetypeConfig):
         # Initialize employment status
         if life_stage == "young_adult" or life_stage == "adult":
             gameobject.add_component(InTheWorkforce())
-            add_status(world, gameobject, Unemployed(30))
+            add_status(world, gameobject, Unemployed(336))
 
         if BaseCharacterArchetype._fertility_from_gender(rng, gender):
             gameobject.add_component(CanGetPregnant())
@@ -282,7 +282,7 @@ class BaseBusinessArchetype(BusinessArchetypeConfig):
 
     def __init__(
         self,
-        name: str = "BaseBusiness",
+        name: Optional[str] = None,
         business_type: Optional[Type[IBusinessType]] = None,
         name_format: str = "Business",
         hours: str = "day",
@@ -297,7 +297,13 @@ class BaseBusinessArchetype(BusinessArchetypeConfig):
         average_lifespan: int = 20,
     ) -> None:
         super().__init__(
-            name=name,
+            name=(
+                name
+                if name
+                else business_type.__name__
+                if business_type
+                else "BaseBusiness"
+            ),
             factory=BaseBusinessArchetype.create,
             spawn_config=BusinessSpawnConfig(
                 spawn_frequency=spawn_frequency,

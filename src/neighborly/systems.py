@@ -97,12 +97,10 @@ class LifeEventSystem(System):
     def run(self, *args: Any, **kwarg: Any) -> None:
         """Simulate LifeEvents for characters"""
         settlement = self.world.get_resource(Settlement)
-        rng = self.world.get_resource(NeighborlyEngine).rng
-
-        # Perform number of events equal to 10% of the population
+        rng = self.world.get_resource(random.Random)
 
         for life_event in rng.choices(
-            LifeEvents.get_all(), k=(int(settlement.population / 2))
+            LifeEvents.get_all(), k=(max(1, int(settlement.population / 2)))
         ):
             success = life_event.try_execute_event(self.world)
             if success:
@@ -455,7 +453,7 @@ class BuildBusinessSystem(System):
                     owner,
                     business,
                     owner.get_component(Occupation).occupation_type,
-                    business.name,
+                    business.get_component(Business).name,
                 )
             )
 

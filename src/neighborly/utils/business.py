@@ -152,7 +152,7 @@ def end_job(
     business_comp.remove_employee(character.id)
 
     character.remove_component(Occupation)
-    add_status(world, character, Unemployed(30))
+    add_status(world, character, Unemployed(336))
 
     # Update the former employee's work history
     if not character.has_component(WorkHistory):

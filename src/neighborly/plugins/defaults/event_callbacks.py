@@ -1,9 +1,11 @@
+from typing import List
+
 from neighborly.components.business import InTheWorkforce, Occupation
 from neighborly.components.character import Departed
 from neighborly.components.shared import Active
-from neighborly.core.ecs import World
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.event import Event
-from neighborly.core.status import add_status
+from neighborly.core.status import Status, add_status, remove_status
 from neighborly.statuses.character import Unemployed
 from neighborly.utils.business import end_job
 from neighborly.utils.common import set_location, set_residence
@@ -52,4 +54,32 @@ def on_become_young_adult(world: World, event: Event) -> None:
     character.add_component(InTheWorkforce())
 
     if not character.has_component(Occupation):
-        add_status(world, character, Unemployed(30))
+        add_status(world, character, Unemployed(336))
+
+
+def remove_statuses_from_deceased(world: World, event: Event) -> None:
+    """Remove all active statuses when characters die"""
+    for c in event.get_all("Character"):
+        character = world.get_gameobject(c)
+
+        active_statuses: List[GameObject] = []
+        for child_gameobject in character.children:
+            if child_gameobject.has_component(Status):
+                active_statuses.append(child_gameobject)
+
+        for status in active_statuses:
+            remove_status(character, status)
+
+
+def remove_statuses_from_departed(world: World, event: Event) -> None:
+    """Remove all active statuses when characters depart"""
+    for c in event.get_all("Character"):
+        character = world.get_gameobject(c)
+
+        active_statuses: List[GameObject] = []
+        for child_gameobject in character.children:
+            if child_gameobject.has_component(Status):
+                active_statuses.append(child_gameobject)
+
+        for status in active_statuses:
+            remove_status(character, status)

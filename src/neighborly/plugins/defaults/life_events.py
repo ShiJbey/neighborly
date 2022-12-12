@@ -488,6 +488,14 @@ class DefaultLifeEventPlugin(Plugin):
             "Depart", event_callbacks.remove_departed_from_occupation
         )
 
+        sim.world.get_resource(EventLog).on(
+            "Death", event_callbacks.remove_statuses_from_deceased
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Depart", event_callbacks.remove_statuses_from_departed
+        )
+
 
 def get_plugin() -> Plugin:
     return DefaultLifeEventPlugin()
