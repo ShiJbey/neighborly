@@ -34,12 +34,7 @@ from neighborly.core.time import (
     TimeDelta,
     Weekday,
 )
-from neighborly.engine import (
-    IBusinessArchetype,
-    LifeEvents,
-    NeighborlyEngine,
-    choose_random_character_archetype,
-)
+from neighborly.engine import LifeEvents, NeighborlyEngine
 from neighborly.events import MoveIntoTownEvent, StartBusinessEvent, StartJobEvent
 from neighborly.statuses.character import Unemployed
 from neighborly.utils.business import fill_open_position, start_job
@@ -354,13 +349,13 @@ class BuildHousingSystem(System):
         # Pick a random lot from those available
         lot = engine.rng.choice(vacancies)
 
-        archetype = engine.residence_archetypes.choose_random_archetype(engine.rng)
+        archetype = engine.residence_archetypes.choose_random(engine.rng)
 
         if archetype is None:
             return None
 
         # Construct a random residence archetype
-        residence = archetype.create(self.world)
+        residence = archetype.spawn(self.world)
 
         # Reserve the space
         settlement.land_map.reserve_lot(lot, residence.id)
@@ -391,43 +386,6 @@ class BuildBusinessSystem(System):
     ) -> None:
         super().__init__(interval)
         self.chance_of_build: float = chance_of_build
-
-    def choose_random_eligible_business(
-        self, engine: NeighborlyEngine
-    ) -> Optional[IBusinessArchetype]:
-        """
-        Return all business archetypes that may be built
-        given the state of the simulation
-        """
-        settlement = self.world.get_resource(Settlement)
-        date = self.world.get_resource(SimDateTime)
-
-        archetype_choices: List[IBusinessArchetype] = []
-        archetype_weights: List[int] = []
-
-        for archetype in engine.business_archetypes.get_all():
-            if (
-                settlement.business_counts[archetype.get_name()]
-                < archetype.get_max_instances()
-                and settlement.population >= archetype.get_min_population()
-                and (
-                    archetype.get_year_available()
-                    <= date.year
-                    < archetype.get_year_obsolete()
-                )
-            ):
-                archetype_choices.append(archetype)
-                archetype_weights.append(archetype.get_spawn_frequency())
-
-        if archetype_choices:
-            # Choose an archetype at random
-            archetype: IBusinessArchetype = engine.rng.choices(
-                population=archetype_choices, weights=archetype_weights, k=1
-            )[0]
-
-            return archetype
-
-        return None
 
     def find_business_owner(self, business: Business):
         """Find someone to run the new business"""
@@ -476,13 +434,13 @@ class BuildBusinessSystem(System):
         lot = engine.rng.choice(vacancies)
 
         # Pick random eligible business archetype
-        archetype = self.choose_random_eligible_business(engine)
+        archetype = engine.business_archetypes.choose_random(self.world)
 
         if archetype is None:
             return
 
         # Build a random business archetype
-        business = archetype.create(self.world)
+        business = archetype.spawn(self.world)
 
         # Attempt to find an owner
         if business.get_component(Business).needs_owner():
@@ -529,7 +487,7 @@ class SpawnResidentSystem(System):
         self.chance_spawn: float = chance_spawn
 
     def run(self, *args: Any, **kwargs: Any) -> None:
-
+        rng = self.world.get_resource(random.Random)
         date = self.world.get_resource(SimDateTime)
         settlement = self.world.get_resource(Settlement)
         engine = self.world.get_resource(NeighborlyEngine)
@@ -539,10 +497,10 @@ class SpawnResidentSystem(System):
             Residence, Building, Active, Vacant
         ):
             # Return early if the random-roll is not sufficient
-            if engine.rng.random() > self.chance_spawn:
+            if rng.random() > self.chance_spawn:
                 return
 
-            archetype = choose_random_character_archetype(engine)
+            archetype = engine.character_archetypes.choose_random(rng)
 
             # There are no archetypes available to spawn
             if archetype is None:
@@ -552,7 +510,7 @@ class SpawnResidentSystem(System):
             generated_characters: List[GameObject] = []
 
             # Create a new entity using the archetype
-            character = archetype.create(self.world, life_stage="young_adult")
+            character = archetype.spawn(self.world, life_stage="young_adult")
             generated_characters.append(character)
 
             set_residence(self.world, character, residence.gameobject, True)
@@ -561,9 +519,9 @@ class SpawnResidentSystem(System):
 
             spouse: Optional[GameObject] = None
             # Potentially generate a spouse for this entity
-            if engine.rng.random() < archetype.get_chance_spawn_with_spouse():
+            if engine.rng.random() < archetype.spawn_config.chance_spawn_with_spouse:
                 # Create another character
-                spouse = archetype.create(self.world, life_stage="young_adult")
+                spouse = archetype.spawn(self.world, life_stage="young_adult")
                 generated_characters.append(spouse)
 
                 # Match the last names since they are supposed to be married
@@ -599,10 +557,12 @@ class SpawnResidentSystem(System):
                 ).friendship.increase(30)
 
             # Note: Characters can spawn as single parents with kids
-            num_kids = engine.rng.randint(0, archetype.get_max_children_at_spawn())
+            num_kids = engine.rng.randint(
+                0, archetype.spawn_config.max_children_at_spawn
+            )
             children: List[GameObject] = []
             for _ in range(num_kids):
-                child = archetype.create(self.world, life_stage="child")
+                child = archetype.spawn(self.world, life_stage="child")
                 generated_characters.append(child)
 
                 # Match the last names since they are supposed to be married

@@ -22,7 +22,10 @@ from neighborly.core.life_event import ILifeEvent, LifeEvent, LifeEventInstance
 from neighborly.core.query import QueryBuilder, not_, or_
 from neighborly.core.status import add_status, has_status
 from neighborly.core.time import SimDateTime
+from neighborly.engine import LifeEvents
 from neighborly.events import DeathEvent
+from neighborly.plugins.defaults import event_callbacks
+from neighborly.simulation import Plugin, Simulation
 from neighborly.statuses.character import Pregnant
 from neighborly.utils.business import end_job, shutdown_business
 from neighborly.utils.common import depart_town, from_pattern, from_roles, set_residence
@@ -441,3 +444,50 @@ def go_out_of_business_event() -> ILifeEvent:
         effect=effect,
         probability=probability_fn,
     )
+
+
+class DefaultLifeEventPlugin(Plugin):
+    def setup(self, sim: Simulation, **kwargs: Any) -> None:
+        LifeEvents.add(marriage_event())
+        # LifeEvents.add(become_friends_event())
+        # LifeEvents.add(become_enemies_event())
+        LifeEvents.add(start_dating_event())
+        LifeEvents.add(stop_dating_event())
+        LifeEvents.add(divorce_event())
+        LifeEvents.add(pregnancy_event())
+        LifeEvents.add(retire_event())
+        LifeEvents.add(find_own_place_event())
+        LifeEvents.add(die_of_old_age())
+        LifeEvents.add(go_out_of_business_event())
+
+        sim.world.get_resource(EventLog).on(
+            "Depart", event_callbacks.on_depart_callback
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Retire", event_callbacks.remove_retired_from_occupation
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Retire", event_callbacks.remove_retired_from_occupation
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Death", event_callbacks.remove_deceased_from_occupation
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Death", event_callbacks.remove_deceased_from_residence
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Depart", event_callbacks.remove_departed_from_residence
+        )
+
+        sim.world.get_resource(EventLog).on(
+            "Depart", event_callbacks.remove_departed_from_occupation
+        )
+
+
+def get_plugin() -> Plugin:
+    return DefaultLifeEventPlugin()

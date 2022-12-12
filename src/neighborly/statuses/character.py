@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from neighborly.components.business import Occupation
-from neighborly.components.character import GameCharacter
+from neighborly.components.character import Departed, GameCharacter
 from neighborly.components.relationship import Relationships
 from neighborly.components.residence import Resident
-from neighborly.components.shared import Age
+from neighborly.components.shared import Active, Age
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.event import EventLog
 from neighborly.core.settlement import Settlement
@@ -171,14 +171,21 @@ class Unemployed(StatusType, IOnExpire, IOnUpdate):
             # Allows for polygamy
             for rel in spouses:
                 spouse = world.get_gameobject(rel.target)
-                characters_to_depart.append(spouse)
+                if spouse.has_component(Active):
+                    characters_to_depart.append(spouse)
 
             # Have all children living in the same house depart
             children = character.get_component(Relationships).get_all_with_tags("Child")
             for rel in children:
                 child = world.get_gameobject(rel.target)
-                if check_share_residence(character, child):
+                if child.has_component(Active) and check_share_residence(
+                    character, child
+                ):
                     characters_to_depart.append(child)
+
+            for c in characters_to_depart:
+                c.add_component(Departed())
+                c.remove_component(Active, immediate=True)
 
             event = DepartEvent(
                 world.get_resource(SimDateTime), characters_to_depart, "unemployment"

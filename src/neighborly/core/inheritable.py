@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Type, TypeVar
 
-from neighborly.core.ecs import Component, GameObject
+from neighborly.core.ecs import Component, GameObject, World
 
 
 @dataclass()
@@ -30,7 +30,7 @@ class IInheritable(ABC):
     @classmethod
     @abstractmethod
     def from_parents(
-        cls, parent_a: Optional[Component], parent_b: Optional[Component]
+        cls, world: World, parent_a: Optional[Component], parent_b: Optional[Component]
     ) -> Component:
         """Build a new instance of the component using instances from the parents"""
         raise NotImplementedError

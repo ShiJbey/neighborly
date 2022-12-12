@@ -5,15 +5,15 @@ from typing import Dict
 
 import pytest
 
-from neighborly.archetypes import BaseBusinessArchetype
 from neighborly.components.business import Business, OccupationType
+from neighborly.components.factory import parse_operating_hour_str
 from neighborly.core.ecs import Component
 from neighborly.core.time import Weekday
 from neighborly.engine import OccupationTypes
+from neighborly.plugins.defaults.archetypes import BaseBusinessArchetype
 from neighborly.plugins.talktown.business_components import Restaurant
 from neighborly.simulation import Neighborly
 from neighborly.utils.role_filters import is_college_graduate
-from neighborly.components.factory import parse_operating_hour_str
 
 
 class CollegeGraduate(Component):

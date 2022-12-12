@@ -1,34 +1,85 @@
 import logging
-import os
-import pathlib
 from typing import Any
 
 import neighborly.plugins.talktown.business_archetypes as tot_businesses
 import neighborly.plugins.talktown.occupation_types as tot_occupations
-from neighborly.archetypes import BaseResidenceArchetype, HumanArchetype
-from neighborly.plugins.talktown.school import SchoolSystem
+from neighborly.plugins.talktown import business_components
+from neighborly.plugins.talktown.personality import (
+    BigFivePersonality,
+    BigFivePersonalityFactory,
+)
+from neighborly.plugins.talktown.school import SchoolSystem, Student
 from neighborly.simulation import Plugin, Simulation
 
 logger = logging.getLogger(__name__)
-
-_RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent
 
 
 class TalkOfTheTownPlugin(Plugin):
     def setup(self, sim: Simulation, **kwargs: Any) -> None:
         sim.world.add_system(SchoolSystem())
 
-        # Talk of the town only has one residence archetype
-        sim.engine.residence_archetypes.add("House", BaseResidenceArchetype())
+        # Register student component for school system
+        sim.engine.register_component(Student)
 
-        # Talk of the town only has one entity archetype
-        sim.engine.character_archetypes.add(
-            "Person",
-            HumanArchetype(
-                chance_spawn_with_spouse=1.0,
-                max_children_at_spawn=3,
-            ),
+        # Register Personality component
+        sim.engine.register_component(
+            BigFivePersonality, factory=BigFivePersonalityFactory()
         )
+
+        # Register Business components
+        sim.engine.register_component(business_components.ApartmentComplex)
+        sim.engine.register_component(business_components.Bakery)
+        sim.engine.register_component(business_components.Bank)
+        sim.engine.register_component(business_components.Bar)
+        sim.engine.register_component(business_components.Barbershop)
+        sim.engine.register_component(business_components.BlacksmithShop)
+        sim.engine.register_component(business_components.Brewery)
+        sim.engine.register_component(business_components.BusDepot)
+        sim.engine.register_component(business_components.ButcherShop)
+        sim.engine.register_component(business_components.CandyStore)
+        sim.engine.register_component(business_components.CarpentryCompany)
+        sim.engine.register_component(business_components.Cemetery)
+        sim.engine.register_component(business_components.CityHall)
+        sim.engine.register_component(business_components.ClothingStore)
+        sim.engine.register_component(business_components.CoalMine)
+        sim.engine.register_component(business_components.ConstructionFirm)
+        sim.engine.register_component(business_components.Dairy)
+        sim.engine.register_component(business_components.DaycareCenter)
+        sim.engine.register_component(business_components.Deli)
+        sim.engine.register_component(business_components.DentistOffice)
+        sim.engine.register_component(business_components.DepartmentStore)
+        sim.engine.register_component(business_components.Diner)
+        sim.engine.register_component(business_components.Distillery)
+        sim.engine.register_component(business_components.DrugStore)
+        sim.engine.register_component(business_components.FireStation)
+        sim.engine.register_component(business_components.Foundry)
+        sim.engine.register_component(business_components.FurnitureStore)
+        sim.engine.register_component(business_components.GeneralStore)
+        sim.engine.register_component(business_components.GroceryStore)
+        sim.engine.register_component(business_components.Hospital)
+        sim.engine.register_component(business_components.Hotel)
+        sim.engine.register_component(business_components.Inn)
+        sim.engine.register_component(business_components.InsuranceCompany)
+        sim.engine.register_component(business_components.JewelryShop)
+        sim.engine.register_component(business_components.LawFirm)
+        sim.engine.register_component(business_components.OptometryClinic)
+        sim.engine.register_component(business_components.PaintingCompany)
+        sim.engine.register_component(business_components.Park)
+        sim.engine.register_component(business_components.Pharmacy)
+        sim.engine.register_component(business_components.PlasticSurgeryClinic)
+        sim.engine.register_component(business_components.PlumbingCompany)
+        sim.engine.register_component(business_components.PoliceStation)
+        sim.engine.register_component(business_components.Quarry)
+        sim.engine.register_component(business_components.RealtyFirm)
+        sim.engine.register_component(business_components.Restaurant)
+        sim.engine.register_component(business_components.School)
+        sim.engine.register_component(business_components.ShoemakerShop)
+        sim.engine.register_component(business_components.Supermarket)
+        sim.engine.register_component(business_components.TailorShop)
+        sim.engine.register_component(business_components.TattooParlor)
+        sim.engine.register_component(business_components.Tavern)
+        sim.engine.register_component(business_components.TaxiDepot)
+        sim.engine.register_component(business_components.University)
 
         # Register OccupationTypes
         sim.engine.occupation_types.add(tot_occupations.apprentice)
@@ -113,83 +164,55 @@ class TalkOfTheTownPlugin(Plugin):
         sim.engine.occupation_types.add(tot_occupations.woodworker)
 
         # Register Business Archetypes
-        sim.engine.business_archetypes.add("Bakery", tot_businesses.bakery)
-        sim.engine.business_archetypes.add("Bank", tot_businesses.bank)
-        sim.engine.business_archetypes.add("Bar", tot_businesses.bar)
-        sim.engine.business_archetypes.add("BarberShop", tot_businesses.barbershop)
-        sim.engine.business_archetypes.add("BusDepot", tot_businesses.bus_depot)
-        sim.engine.business_archetypes.add(
-            "CarpentryCompany", tot_businesses.carpentry_company
-        )
-        sim.engine.business_archetypes.add("Cemetery", tot_businesses.cemetery)
-        sim.engine.business_archetypes.add("CityHall", tot_businesses.city_hall)
-        sim.engine.business_archetypes.add(
-            "ClothingStore", tot_businesses.clothing_store
-        )
-        sim.engine.business_archetypes.add("CoalMine", tot_businesses.coal_mine)
-        sim.engine.business_archetypes.add(
-            "ConstructionFirm", tot_businesses.construction_firm
-        )
-        sim.engine.business_archetypes.add("Dairy", tot_businesses.dairy)
-        sim.engine.business_archetypes.add("DayCare", tot_businesses.day_care)
-        sim.engine.business_archetypes.add("Deli", tot_businesses.deli)
-        sim.engine.business_archetypes.add(
-            "DentistOffice", tot_businesses.dentist_office
-        )
-        sim.engine.business_archetypes.add(
-            "DepartmentStore", tot_businesses.department_store
-        )
-        sim.engine.business_archetypes.add("Dinner", tot_businesses.diner)
-        sim.engine.business_archetypes.add("Distillery", tot_businesses.distillery)
-        sim.engine.business_archetypes.add("DrugStore", tot_businesses.drug_store)
-        sim.engine.business_archetypes.add("Farm", tot_businesses.farm)
-        sim.engine.business_archetypes.add("FireStation", tot_businesses.fire_station)
-        sim.engine.business_archetypes.add("Foundry", tot_businesses.foundry)
-        sim.engine.business_archetypes.add(
-            "FurnitureStore", tot_businesses.furniture_store
-        )
-        sim.engine.business_archetypes.add("GeneralStore", tot_businesses.general_store)
-        sim.engine.business_archetypes.add("GroceryStore", tot_businesses.grocery_store)
-        sim.engine.business_archetypes.add(
-            "HardwareStore", tot_businesses.hardware_store
-        )
-        sim.engine.business_archetypes.add("Hospital", tot_businesses.hospital)
-        sim.engine.business_archetypes.add("Hotel", tot_businesses.hotel)
-        sim.engine.business_archetypes.add("Inn", tot_businesses.inn)
-        sim.engine.business_archetypes.add(
-            "InsuranceCompany", tot_businesses.insurance_company
-        )
-        sim.engine.business_archetypes.add("JewelryShop", tot_businesses.jewelry_shop)
-        sim.engine.business_archetypes.add("LawFirm", tot_businesses.law_firm)
-        sim.engine.business_archetypes.add(
-            "OptometryClinic", tot_businesses.optometry_clinic
-        )
-        sim.engine.business_archetypes.add(
-            "PaintingCompany", tot_businesses.painting_company
-        )
-        sim.engine.business_archetypes.add("Park", tot_businesses.park)
-        sim.engine.business_archetypes.add("Pharmacy", tot_businesses.pharmacy)
-        sim.engine.business_archetypes.add(
-            "PlasticSurgeryClinic", tot_businesses.plastic_surgery_clinic
-        )
-        sim.engine.business_archetypes.add(
-            "PlumbingCompany", tot_businesses.plumbing_company
-        )
-        sim.engine.business_archetypes.add(
-            "PoliceStation", tot_businesses.police_station
-        )
-        sim.engine.business_archetypes.add("Quarry", tot_businesses.quarry)
-        sim.engine.business_archetypes.add("RealtyFirm", tot_businesses.realty_firm)
-        sim.engine.business_archetypes.add("Restaurant", tot_businesses.restaurant)
-        sim.engine.business_archetypes.add("School", tot_businesses.school)
-        sim.engine.business_archetypes.add(
-            "ShoemakerShop", tot_businesses.shoemaker_shop
-        )
-        sim.engine.business_archetypes.add("SuperMarket", tot_businesses.supermarket)
-        sim.engine.business_archetypes.add("TailorShop", tot_businesses.tailor_shop)
-        sim.engine.business_archetypes.add("TattooParlor", tot_businesses.tattoo_parlor)
-        sim.engine.business_archetypes.add("Tavern", tot_businesses.tavern)
-        sim.engine.business_archetypes.add("TaxiDepot", tot_businesses.taxi_depot)
+        sim.engine.business_archetypes.add(tot_businesses.bakery)
+        sim.engine.business_archetypes.add(tot_businesses.bank)
+        sim.engine.business_archetypes.add(tot_businesses.bar)
+        sim.engine.business_archetypes.add(tot_businesses.barbershop)
+        sim.engine.business_archetypes.add(tot_businesses.bus_depot)
+        sim.engine.business_archetypes.add(tot_businesses.carpentry_company)
+        sim.engine.business_archetypes.add(tot_businesses.cemetery)
+        sim.engine.business_archetypes.add(tot_businesses.city_hall)
+        sim.engine.business_archetypes.add(tot_businesses.clothing_store)
+        sim.engine.business_archetypes.add(tot_businesses.coal_mine)
+        sim.engine.business_archetypes.add(tot_businesses.construction_firm)
+        sim.engine.business_archetypes.add(tot_businesses.dairy)
+        sim.engine.business_archetypes.add(tot_businesses.day_care)
+        sim.engine.business_archetypes.add(tot_businesses.deli)
+        sim.engine.business_archetypes.add(tot_businesses.dentist_office)
+        sim.engine.business_archetypes.add(tot_businesses.department_store)
+        sim.engine.business_archetypes.add(tot_businesses.diner)
+        sim.engine.business_archetypes.add(tot_businesses.distillery)
+        sim.engine.business_archetypes.add(tot_businesses.drug_store)
+        sim.engine.business_archetypes.add(tot_businesses.farm)
+        sim.engine.business_archetypes.add(tot_businesses.fire_station)
+        sim.engine.business_archetypes.add(tot_businesses.foundry)
+        sim.engine.business_archetypes.add(tot_businesses.furniture_store)
+        sim.engine.business_archetypes.add(tot_businesses.general_store)
+        sim.engine.business_archetypes.add(tot_businesses.grocery_store)
+        sim.engine.business_archetypes.add(tot_businesses.hardware_store)
+        sim.engine.business_archetypes.add(tot_businesses.hospital)
+        sim.engine.business_archetypes.add(tot_businesses.hotel)
+        sim.engine.business_archetypes.add(tot_businesses.inn)
+        sim.engine.business_archetypes.add(tot_businesses.insurance_company)
+        sim.engine.business_archetypes.add(tot_businesses.jewelry_shop)
+        sim.engine.business_archetypes.add(tot_businesses.law_firm)
+        sim.engine.business_archetypes.add(tot_businesses.optometry_clinic)
+        sim.engine.business_archetypes.add(tot_businesses.painting_company)
+        sim.engine.business_archetypes.add(tot_businesses.park)
+        sim.engine.business_archetypes.add(tot_businesses.pharmacy)
+        sim.engine.business_archetypes.add(tot_businesses.plastic_surgery_clinic)
+        sim.engine.business_archetypes.add(tot_businesses.plumbing_company)
+        sim.engine.business_archetypes.add(tot_businesses.police_station)
+        sim.engine.business_archetypes.add(tot_businesses.quarry)
+        sim.engine.business_archetypes.add(tot_businesses.realty_firm)
+        sim.engine.business_archetypes.add(tot_businesses.restaurant)
+        sim.engine.business_archetypes.add(tot_businesses.school)
+        sim.engine.business_archetypes.add(tot_businesses.shoemaker_shop)
+        sim.engine.business_archetypes.add(tot_businesses.supermarket)
+        sim.engine.business_archetypes.add(tot_businesses.tailor_shop)
+        sim.engine.business_archetypes.add(tot_businesses.tattoo_parlor)
+        sim.engine.business_archetypes.add(tot_businesses.tavern)
+        sim.engine.business_archetypes.add(tot_businesses.taxi_depot)
 
 
 def get_plugin() -> Plugin:

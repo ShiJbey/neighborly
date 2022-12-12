@@ -8,18 +8,21 @@ interface
 """
 from __future__ import annotations
 
+import dataclasses
 import logging
 import random
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from random import Random
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Protocol, Type
+
+import pydantic
 
 from neighborly.components.business import OccupationType
 from neighborly.components.residence import ResidentialZoning
 from neighborly.core.ecs import Component, GameObject, IComponentFactory, World
 from neighborly.core.life_event import ILifeEvent
 from neighborly.core.name_generation import TraceryNameFactory
+from neighborly.core.settlement import Settlement
+from neighborly.core.time import SimDateTime
 
 logger = logging.getLogger(__name__)
 
@@ -41,87 +44,57 @@ class ArchetypeNotFoundError(Exception):
         return self.message
 
 
-class IEntityArchetype(ABC):
-    @abstractmethod
-    def get_name(self) -> str:
-        """Return the name of this archetype"""
-        raise NotImplementedError
+class IArchetypeFactory(Protocol):
+    """Interface for factories that construct GameObjects from a collection of components"""
 
-    @abstractmethod
-    def create(self, world: World, **kwargs: Any) -> GameObject:
+    def __call__(self, world: World, **kwargs: Any) -> GameObject:
         """Create a new instance of this prefab"""
         raise NotImplementedError
 
 
-class ICharacterArchetype(IEntityArchetype):
-    """Interface for archetypes that construct characters"""
+class CharacterSpawnConfig(pydantic.BaseModel):
+    """
+    Configuration data regarding how this archetype should be spawned
 
-    @abstractmethod
-    def get_max_children_at_spawn(self) -> int:
-        """Return the maximum amount of children this prefab can have when spawning"""
-        raise NotImplementedError
+    Attributes
+    ----------
+    spawn_frequency: int
+        The relative frequency that this archetype should be
+        chosen to spawn into the simulation
+    spouse_archetypes: List[str]
+        A list of regular expression strings used to match what
+        other character archetypes can spawn as this a spouse
+        to this character archetype
+    chance_spawn_with_spouse: float
+        The probability that a character will spawn with a spouse
+    max_children_at_spawn: int
+        The maximum number of children that a character can spawn
+        with regardless of the presence of a spouse
+    child_archetypes: List[str]
+        A list of regular expression strings used to match what
+        other character archetypes can spawn as a child to
+        this character archetype
+    """
 
-    @abstractmethod
-    def get_spawn_frequency(self) -> int:
-        """Return the relative frequency that this prefab appears"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_chance_spawn_with_spouse(self) -> float:
-        """Return the chance that a character from this prefab spawns with a spouse"""
-        raise NotImplementedError
-
-
-class IBusinessArchetype(IEntityArchetype):
-    """Interface for archetypes that construct businesses"""
-
-    @abstractmethod
-    def get_min_population(self) -> int:
-        """Return the minimum population needed for this business to be constructed"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_spawn_frequency(self) -> int:
-        """Return the relative frequency that this prefab appears"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_year_available(self) -> int:
-        """Return the year that this business is available to construct"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_year_obsolete(self) -> int:
-        """Return the year that this business is no longer available to construct"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_instances(self) -> int:
-        """Get the number of active instances of this archetype"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def set_instances(self, value: int) -> None:
-        """Set the number of active instances of this archetype"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_max_instances(self) -> int:
-        """Return the maximum instances of this prefab that may exist"""
-        raise NotImplementedError
+    spawn_frequency: int = 1
+    spouse_archetypes: List[str] = pydantic.Field(default_factory=list)
+    chance_spawn_with_spouse: float = 0.5
+    max_children_at_spawn: int = 3
+    child_archetypes: List[str] = pydantic.Field(default_factory=list)
 
 
-class IResidenceArchetype(IEntityArchetype):
-    """Interface for archetypes that construct residences"""
+@dataclasses.dataclass
+class CharacterArchetypeConfig:
+    name: str
+    factory: IArchetypeFactory
+    spawn_config: CharacterSpawnConfig = dataclasses.field(
+        default_factory=CharacterSpawnConfig
+    )
+    options: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
-    @abstractmethod
-    def get_spawn_frequency(self) -> int:
-        """Return the relative frequency that this prefab appears"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_zoning(self) -> ResidentialZoning:
-        raise NotImplementedError
+    def spawn(self, world: World, **kwargs: Any) -> GameObject:
+        """Create an instance of this archetype"""
+        return self.factory(world, **{**self.options, **kwargs})
 
 
 class CharacterArchetypes:
@@ -130,24 +103,90 @@ class CharacterArchetypes:
     __slots__ = "_registry"
 
     def __init__(self) -> None:
-        self._registry: Dict[str, ICharacterArchetype] = {}
+        self._registry: Dict[str, CharacterArchetypeConfig] = {}
 
-    def add(self, name: str, archetype: ICharacterArchetype) -> None:
+    def add(self, config: CharacterArchetypeConfig) -> None:
         """Register a new archetype by name"""
-        if name in self._registry:
-            logger.debug(f"Overwrote ICharacterPrefab: ({name})")
-        self._registry[name] = archetype
+        if config.name in self._registry:
+            logger.debug(f"Overwrote Character Archetype mapped to '{config.name}'")
+        self._registry[config.name] = config
 
-    def get_all(self) -> List[ICharacterArchetype]:
+    def get_all(self) -> List[CharacterArchetypeConfig]:
         """Get all stored archetypes"""
         return list(self._registry.values())
 
-    def get(self, name: str) -> ICharacterArchetype:
+    def get(self, name: str) -> CharacterArchetypeConfig:
         """Get an archetype by name"""
         try:
             return self._registry[name]
         except KeyError:
             raise ArchetypeNotFoundError(name)
+
+    def choose_random(
+        self,
+        rng: random.Random,
+    ) -> Optional[CharacterArchetypeConfig]:
+        """Performs a weighted random selection across all character archetypes"""
+        archetype_choices: List[CharacterArchetypeConfig] = []
+        archetype_weights: List[int] = []
+
+        for archetype in self.get_all():
+            archetype_choices.append(archetype)
+            archetype_weights.append(archetype.spawn_config.spawn_frequency)
+
+        if archetype_choices:
+            # Choose an archetype at random
+            archetype = rng.choices(
+                population=archetype_choices, weights=archetype_weights, k=1
+            )[0]
+
+            return archetype
+        else:
+            return None
+
+
+class BusinessSpawnConfig(pydantic.BaseModel):
+    """
+    Configuration data regarding how this archetype should be spawned
+
+    Attributes
+    ----------
+    spawn_frequency: int
+        The relative frequency that this archetype should be
+        chosen to spawn into the simulation
+    max_instances: int
+        The maximum number of instances of this archetype that may
+        exist in the Settlement at any given time
+    min_population: int
+        The minimum number of characters that need to live in the
+        settlement for this business to be available to spawn
+    year_available: int
+        The simulated year that this business archetype will be
+        available to spawn
+    year_obsolete: int
+        The simulated year that this business archetype will no longer
+        be available to spawn
+    """
+
+    spawn_frequency: int = 1
+    max_instances: int = 9999
+    min_population: int = 0
+    year_available: int = 0
+    year_obsolete: int = 9999
+
+
+@dataclasses.dataclass
+class BusinessArchetypeConfig:
+    name: str
+    factory: IArchetypeFactory
+    spawn_config: BusinessSpawnConfig = dataclasses.field(
+        default_factory=BusinessSpawnConfig
+    )
+    options: Dict[str, Any] = dataclasses.field(default_factory=dict)
+
+    def spawn(self, world: World, **kwargs: Any) -> GameObject:
+        """Create an instance of this archetype"""
+        return self.factory(world, **{**self.options, **kwargs})
 
 
 class BusinessArchetypes:
@@ -156,24 +195,107 @@ class BusinessArchetypes:
     __slots__ = "_registry"
 
     def __init__(self) -> None:
-        self._registry: Dict[str, IBusinessArchetype] = {}
+        self._registry: Dict[str, BusinessArchetypeConfig] = {}
 
-    def add(self, name: str, archetype: IBusinessArchetype) -> None:
+    def add(self, archetype: BusinessArchetypeConfig) -> None:
         """Register a new archetype by name"""
-        if name in self._registry:
-            logger.debug(f"Overwrote Business Archetype: ({name})")
-        self._registry[name] = archetype
+        if archetype.name in self._registry:
+            logger.debug(f"Overwrote Business Archetype: ({archetype.name})")
+        self._registry[archetype.name] = archetype
 
-    def get_all(self) -> List[IBusinessArchetype]:
+    def get_all(self) -> List[BusinessArchetypeConfig]:
         """Get all stored archetypes"""
         return list(self._registry.values())
 
-    def get(self, name: str) -> IBusinessArchetype:
+    def get(self, name: str) -> BusinessArchetypeConfig:
         """Get an archetype by name"""
         try:
             return self._registry[name]
         except KeyError:
             raise ArchetypeNotFoundError(name)
+
+    def choose_random(self, world: World) -> Optional[BusinessArchetypeConfig]:
+        """
+        Return all business archetypes that may be built
+        given the state of the simulation
+        """
+        settlement = world.get_resource(Settlement)
+        date = world.get_resource(SimDateTime)
+        rng = world.get_resource(random.Random)
+
+        archetype_choices: List[BusinessArchetypeConfig] = []
+        archetype_weights: List[int] = []
+
+        for archetype in self.get_all():
+            if (
+                settlement.business_counts[archetype.name]
+                < archetype.spawn_config.max_instances
+                and settlement.population >= archetype.spawn_config.min_population
+                and (
+                    archetype.spawn_config.year_available
+                    <= date.year
+                    < archetype.spawn_config.year_obsolete
+                )
+            ):
+                archetype_choices.append(archetype)
+                archetype_weights.append(archetype.spawn_config.spawn_frequency)
+
+        if archetype_choices:
+            # Choose an archetype at random
+            archetype = rng.choices(
+                population=archetype_choices, weights=archetype_weights, k=1
+            )[0]
+
+            return archetype
+
+        return None
+
+
+class ResidenceSpawnConfig(pydantic.BaseModel):
+    """
+    Configuration data regarding how this archetype should be spawned
+
+    Attributes
+    ----------
+    spawn_frequency: int
+        The relative frequency that this archetype should be
+        chosen to spawn into the simulation
+    max_instances: int
+        The maximum number of instances of this archetype that may
+        exist in the Settlement at any given time
+    min_population: int
+        The minimum number of characters that need to live in the
+        settlement for this business to be available to spawn
+    year_available: int
+        The simulated year that this business archetype will be
+        available to spawn
+    year_obsolete: int
+        The simulated year that this business archetype will no longer
+        be available to spawn
+    residential_zoning: ResidentialZoning
+        Marks this residence type as single or multi-family housing
+    """
+
+    spawn_frequency: int = 1
+    max_instances: int = 9999
+    min_population: int = 0
+    year_available: int = 0
+    year_obsolete: int = 9999
+    residential_zoning: ResidentialZoning = ResidentialZoning.SingleFamily
+
+
+@dataclasses.dataclass
+class ResidenceArchetypeConfig:
+    name: str
+    factory: IArchetypeFactory
+    spawn_config: ResidenceSpawnConfig = dataclasses.field(
+        default_factory=ResidenceSpawnConfig
+    )
+    options: Dict[str, Any] = dataclasses.field(default_factory=dict)
+
+    def spawn(self, world: World, **kwargs: Any) -> GameObject:
+        """Create an instance of this archetype"""
+        return self.factory(world, **{**self.options, **kwargs})
 
 
 class ResidenceArchetypes:
@@ -182,39 +304,38 @@ class ResidenceArchetypes:
     __slots__ = "_registry"
 
     def __init__(self) -> None:
-        self._registry: Dict[str, IResidenceArchetype] = {}
+        self._registry: Dict[str, ResidenceArchetypeConfig] = {}
 
     def add(
         self,
-        name: str,
-        archetype: IResidenceArchetype,
+        archetype: ResidenceArchetypeConfig,
     ) -> None:
         """Register a new archetype by name"""
-        if name in self._registry:
-            logger.debug(f"Overwrote Residence Archetype: ({name})")
-        self._registry[name] = archetype
+        if archetype.name in self._registry:
+            logger.debug(f"Overwrote Residence Archetype: ({archetype.name})")
+        self._registry[archetype.name] = archetype
 
-    def get_all(self) -> List[IResidenceArchetype]:
+    def get_all(self) -> List[ResidenceArchetypeConfig]:
         """Get all stored archetypes"""
         return list(self._registry.values())
 
-    def get(self, name: str) -> IResidenceArchetype:
+    def get(self, name: str) -> ResidenceArchetypeConfig:
         """Get an archetype by name"""
         try:
             return self._registry[name]
         except KeyError:
             raise ArchetypeNotFoundError(name)
 
-    def choose_random_archetype(self, rng: Random) -> Optional[IResidenceArchetype]:
-        archetype_choices: List[IResidenceArchetype] = []
+    def choose_random(self, rng: Random) -> Optional[ResidenceArchetypeConfig]:
+        archetype_choices: List[ResidenceArchetypeConfig] = []
         archetype_weights: List[int] = []
         for archetype in self.get_all():
             archetype_choices.append(archetype)
-            archetype_weights.append(archetype.get_spawn_frequency())
+            archetype_weights.append(archetype.spawn_config.spawn_frequency)
 
         if archetype_choices:
             # Choose an archetype at random
-            archetype: IResidenceArchetype = rng.choices(
+            archetype = rng.choices(
                 population=archetype_choices, weights=archetype_weights, k=1
             )[0]
 
@@ -228,7 +349,7 @@ class ResidenceArchetypes:
 #########################################
 
 
-class DefaultComponentFactory(IComponentFactory[Component]):
+class DefaultComponentFactory(IComponentFactory):
     """Constructs instances of a component only using keyword parameters"""
 
     __slots__ = "component_type"
@@ -246,11 +367,11 @@ class DefaultComponentFactory(IComponentFactory[Component]):
 #########################################
 
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True)
 class ComponentInfo:
     name: str
     component_type: Type[Component]
-    factory: IComponentFactory[Component]
+    factory: IComponentFactory
 
 
 class NeighborlyEngine:
@@ -316,7 +437,7 @@ class NeighborlyEngine:
         self,
         component_type: Type[Component],
         name: Optional[str] = None,
-        factory: Optional[IComponentFactory[Component]] = None,
+        factory: Optional[IComponentFactory] = None,
     ) -> None:
         """
         Register component with the engine
@@ -331,28 +452,6 @@ class NeighborlyEngine:
                 else DefaultComponentFactory(component_type)
             ),
         )
-
-
-def choose_random_character_archetype(
-    engine: NeighborlyEngine,
-) -> Optional[ICharacterArchetype]:
-    """Performs a weighted random selection across all character archetypes"""
-    archetype_choices: List[ICharacterArchetype] = []
-    archetype_weights: List[int] = []
-
-    for archetype in engine.character_archetypes.get_all():
-        archetype_choices.append(archetype)
-        archetype_weights.append(archetype.get_spawn_frequency())
-
-    if archetype_choices:
-        # Choose an archetype at random
-        archetype: ICharacterArchetype = engine.rng.choices(
-            population=archetype_choices, weights=archetype_weights, k=1
-        )[0]
-
-        return archetype
-    else:
-        return None
 
 
 class LifeEvents:

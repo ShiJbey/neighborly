@@ -9,15 +9,21 @@ import re
 from typing import Any, Dict, List, Tuple
 
 from neighborly.components.business import Business, Services, ServiceTypes
-from neighborly.components.character import GameCharacter, PersonalValue, PersonalValues
+from neighborly.components.character import (
+    GameCharacter,
+    Gender,
+    GenderValue,
+    PersonalValue,
+    PersonalValues,
+)
 from neighborly.components.routine import Routine, RoutineEntry, time_str_to_int
-from neighborly.core.ecs import IComponentFactory, World
+from neighborly.core.ecs import Component, IComponentFactory, World
 from neighborly.core.name_generation import TraceryNameFactory
 from neighborly.core.time import Weekday
 
 
-class GameCharacterFactory(IComponentFactory[GameCharacter]):
-    def create(self, world: World, **kwargs: Any) -> GameCharacter:
+class GameCharacterFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
         name_generator = world.get_resource(TraceryNameFactory)
         first_name_pattern = kwargs["first_name"]
         last_name_pattern = kwargs["last_name"]
@@ -29,8 +35,23 @@ class GameCharacterFactory(IComponentFactory[GameCharacter]):
         )
 
 
-class PersonalValuesFactory(IComponentFactory[PersonalValues]):
-    def create(self, world: World, **kwargs: Any) -> PersonalValues:
+class GenderFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
+        gender_str = kwargs.get("value", "non-binary").lower()
+
+        gender_options = {
+            "man": GenderValue.Male,
+            "male": GenderValue.Male,
+            "female": GenderValue.Female,
+            "woman": GenderValue.Female,
+            "non-binary": GenderValue.NonBinary,
+        }
+
+        return Gender(gender_options[gender_str])
+
+
+class PersonalValuesFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
         rng = world.get_resource(random.Random)
         n_likes: int = kwargs.get("n_likes", 3)
         n_dislikes: int = kwargs.get("n_dislikes", 3)
@@ -57,8 +78,8 @@ class PersonalValuesFactory(IComponentFactory[PersonalValues]):
         return PersonalValues(values_overrides)
 
 
-class ServicesFactory(IComponentFactory[Services]):
-    def create(self, world: World, **kwargs: Any) -> Services:
+class ServicesFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
         service_list: List[str] = kwargs["services"]
         return Services(set([ServiceTypes.get(s) for s in service_list]))
 
@@ -188,8 +209,8 @@ def parse_operating_hour_str(
     raise ValueError(f"Invalid operating hours string: '{operating_hours_str}'")
 
 
-class BusinessFactory(IComponentFactory[Business]):
-    def create(self, world: World, **kwargs: Any) -> Business:
+class BusinessFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
         name_pattern: str = kwargs["name"]
         hours: str = kwargs["hours"]
         owner_type: str = kwargs["owner_type"]
@@ -205,8 +226,8 @@ class BusinessFactory(IComponentFactory[Business]):
         )
 
 
-class RoutineFactory(IComponentFactory[Routine]):
-    def create(self, world: World, **kwargs: Any) -> Routine:
+class RoutineFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
         routine = Routine()
 
         presets = kwargs.get("presets")

@@ -1,4 +1,4 @@
-from neighborly.archetypes import BaseBusinessArchetype
+from neighborly.plugins.defaults.archetypes import BaseBusinessArchetype
 from neighborly.plugins.talktown.business_components import (
     Bakery,
     Bank,

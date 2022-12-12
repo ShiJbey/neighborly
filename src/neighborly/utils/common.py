@@ -263,6 +263,7 @@ def generate_child(
 
     for component_type in required_components:
         component = cast(IInheritable, component_type).from_parents(
+            world,
             parent_a.try_component(component_type),
             parent_b.try_component(component_type),
         )
@@ -278,6 +279,7 @@ def generate_child(
         if rng.random() < probability:
             child.add_component(
                 cast(IInheritable, component_type).from_parents(
+                    world,
                     parent_a.try_component(component_type),
                     parent_b.try_component(component_type),
                 )

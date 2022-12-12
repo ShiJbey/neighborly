@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 
 import esper  # type: ignore
 from ordered_set import OrderedSet  # type: ignore
@@ -468,11 +468,11 @@ class World:
         )
 
 
-class IComponentFactory(ABC, Generic[_CT]):
+class IComponentFactory(ABC):
     """Abstract base class for creating Component instances"""
 
     @abstractmethod
-    def create(self, world: World, **kwargs: Any) -> _CT:
+    def create(self, world: World, **kwargs: Any) -> Component:
         """
         Create an instance of a component
 
