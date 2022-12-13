@@ -170,7 +170,7 @@ def test_delete_gameobject():
     g3 = world.spawn_gameobject([A()])
     assert g3.has_component(A) is True
     g3.remove_component(A)
-    assert g3.has_component(A) is True
+    assert g3.has_component(A) is False  # This removes the component immediately
     assert world.has_gameobject(g3.id) is True
     world.step()
     assert g3.has_component(A) is False

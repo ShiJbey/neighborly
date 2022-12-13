@@ -1,4 +1,4 @@
-CharacterArchetypes:
+Characters:
   - name: "Human:male"
     spawn_config:
       spouse_archetypes:
@@ -8,12 +8,12 @@ CharacterArchetypes:
       child_archetypes:
         - "Human:*"
       spawn_frequency: 0.8
-    base: empty-yaml
+    base: BaseCharacter
     options:
       components:
-        # - name: Wealth
-        #   options:
-        #     money: 5000
+        - name: Wealth
+          options:
+            money: 5000
         - name: Gender
           options:
             value: Male

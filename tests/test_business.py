@@ -75,7 +75,7 @@ def test_construct_business():
 
     sim = Neighborly().build()
 
-    restaurant = restaurant_archetype.create(world=sim.world)
+    restaurant = restaurant_archetype.spawn(sim.world)
     restaurant_business = restaurant.get_component(Business)
 
     assert restaurant_business.owner_type == "Proprietor"
