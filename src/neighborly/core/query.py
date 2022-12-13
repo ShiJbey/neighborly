@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import itertools
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Optional, Protocol, Tuple, Type
-
-import pandas as pd
-from ordered_set import OrderedSet  # type: ignore
+from typing import (
+    DefaultDict,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    Union,
+    overload,
+)
 
 from neighborly.core.ecs import Component, GameObject, World
 
@@ -83,130 +92,176 @@ class QueryGetFn(Protocol):
         raise NotImplementedError
 
 
+class SymbolsNotInRelation(Exception):
+    """Exception raised when attempting to retrieve values for symbols not in a relation"""
+
+    def __init__(self, *args: str) -> None:
+        super(Exception, self).__init__(*args)
+        self.symbols: Tuple[str] = args
+
+    def __str__(self) -> str:
+        return f"SymbolsNotInRelation: {self.symbols}"
+
+
 class Relation:
     """
     Relation is a collection of values associated with variables
     from a query.
     """
 
-    __slots__ = "_data_frame"
+    def __init__(
+        self, symbols: Tuple[str, ...], bindings: List[Tuple[int, ...]]
+    ) -> None:
+        self._symbols: Tuple[str, ...] = symbols
+        self._symbol_map: Dict[str, int] = {s: i for i, s in enumerate(symbols)}
+        self._bindings: List[Tuple[int, ...]] = bindings
 
-    def __init__(self, data: pd.DataFrame) -> None:
-        self._data_frame: pd.DataFrame = data
+    def get_symbols(self) -> Tuple[str]:
+        return self._symbols
+
+    def get_bindings(self) -> List[Tuple[int, ...]]:
+        return self._bindings
+
+    @overload
+    def get_as_dict(self, idx: int, *symbols: str) -> Dict[str, int]:
+        ...
+
+    @overload
+    def get_as_dict(self, idx: slice, *symbols: str) -> List[Dict[str, int]]:
+        ...
+
+    def get_as_dict(
+        self, idx: Union[int, slice], *symbols: str
+    ) -> Union[Dict[str, int], List[Dict[str, int]]]:
+        return_symbols = symbols if symbols else self._symbols
+
+        if isinstance(idx, int):
+            binding = dict(zip(self._symbols, self._bindings[idx]))
+
+            return {k: binding[k] for k in return_symbols}
+
+        results: List[Dict[str, int]] = []
+        for entry in self._bindings[idx]:
+            binding = dict(zip(self._symbols, entry))
+            results.append({k: binding[k] for k in return_symbols})
+        return results
+
+    @overload
+    def get_as_tuple(self, idx: int, *symbols: str) -> Tuple[int, ...]:
+        ...
+
+    @overload
+    def get_as_tuple(self, idx: slice, *symbols: str) -> List[Tuple[int, ...]]:
+        ...
+
+    def get_as_tuple(
+        self, idx: Union[int, slice], *symbols: str
+    ) -> Union[Tuple[int, ...], List[Tuple[int, ...]]]:
+        return_symbols = symbols if symbols else self._symbols
+
+        symbols_not_in_relation = [s for s in return_symbols if s not in self._symbols]
+        if symbols_not_in_relation:
+            raise SymbolsNotInRelation(*symbols_not_in_relation)
+
+        if isinstance(idx, int):
+            binding = dict(zip(self._symbols, self._bindings[idx]))
+
+            return tuple([binding[k] for k in return_symbols])
+
+        results: List[Tuple[int, ...]] = []
+        for entry in self._bindings[idx]:
+            binding = dict(zip(self._symbols, entry))
+            results.append(tuple([binding[k] for k in return_symbols]))
+        return results
+
+    def get_tuples(self, *symbols: str) -> List[Tuple[int, ...]]:
+        """Return tuples containing the values from this relation"""
+        if symbols:
+            results_per_symbol: List[List[int]] = []
+            for s in symbols:
+                binding_index = self._symbol_map[s]
+
+                results: List[int] = []
+                for entry in self._bindings:
+                    results.append(entry[binding_index])
+
+                results_per_symbol.append(results)
+
+            return list(zip(*results_per_symbol))
+
+        return self._bindings
+
+    def is_empty(self) -> bool:
+        """Return True if the relation has no bindings"""
+        return len(self._bindings) == 0
 
     @classmethod
     def create_empty(cls, *symbols: str) -> Relation:
-        """
-        Create an empty Relation
-
-        Parameters
-        ----------
-        symbols: Tuple[str]
-            Starting symbols for the Relation
-
-        Returns
-        -------
-        Relation
-        """
-        df = pd.DataFrame({s: [] for s in OrderedSet(symbols)})
-        return Relation(df)
+        """Create an empty relation with no symbols or bindings"""
+        return cls(symbols, [])
 
     @classmethod
     def from_bindings(cls, **bindings: int) -> Relation:
-        """
-        Creates a new Relation with symbols bound to starting values
+        return Relation(tuple(bindings.keys()), [tuple(bindings.values())])
 
-        Parameters
-        ----------
-        **bindings: Dict[str, Optional[int]]
-            Query variables mapped to GameObject IDs
+    def hash_join(self, other: Relation, *symbols: str) -> Relation:
+        """Perform a join between the relations using the given symbols for equivalency"""
+        h: DefaultDict[Tuple[int, ...], List[int]] = defaultdict(list)
 
-        Returns
-        -------
-        Relation
-        """
-        df = pd.DataFrame(
-            {k: [v] if v is not None else [] for k, v in bindings.items()}
+        for i, s in enumerate(other.get_tuples(*symbols)):
+            h[s].append(i)
+
+        results: List[Tuple[int, ...]] = []
+
+        symbols_to_concat = tuple(
+            set(other.get_symbols()).difference(set(self.get_symbols()))
         )
-        return Relation(df)
 
-    def get_symbols(self) -> Tuple[str]:
-        """Get the symbols contained in this relation"""
-        return tuple(self._data_frame.columns.tolist())  # type: ignore
+        for i, s in enumerate(self.get_tuples(*symbols)):
+            binding = self.get_bindings()[i]
+            matches = h.get(s)
+            if matches is not None:  # join
+                for match in matches:
+                    if symbols_to_concat:
+                        results.append(
+                            binding + other.get_as_tuple(match, *symbols_to_concat)
+                        )
+                    else:
+                        results.append(binding)
 
-    @property
-    def empty(self) -> bool:
-        """Returns True is the Relation has no data"""
-        return self._data_frame.empty
+        new_symbols = self.get_symbols() + symbols_to_concat
 
-    def get_tuples(self, *symbols: str) -> List[Tuple[int, ...]]:
-        """
-        Get tuples of results mapped to the given symbols
+        return Relation(new_symbols, results)
 
-        Returns
-        -------
-        List[Tuple[int, ...]]
-            Results contained in this relation of values mapped to the given symbols
-        """
-        if symbols:
-            try:
-                return list(
-                    self._data_frame[list(symbols)].itertuples(index=False, name=None)  # type: ignore
-                )
-            except KeyError:
-                # If any symbols are missing, return an empty list
-                return []
-        else:
-            return list(self._data_frame.itertuples(index=False, name=None))  # type: ignore
-
-    def get_data_frame(self) -> pd.DataFrame:
-        """Returns a Pandas DataFrame object representing the relation"""
-        return self._data_frame
+    def cross_merge(self, other: Relation) -> Relation:
+        """Perform a cross merge between the relations using the given symbols for equivalency"""
+        all_symbols = self._symbols + other._symbols
+        new_bindings = [
+            x + y for x, y in itertools.product(self._bindings, other._bindings)
+        ]
+        return Relation(all_symbols, new_bindings)
 
     def unify(self, other: Relation) -> Relation:
-        """
-        Joins two relations
-
-        Parameters
-        ----------
-        other: Relation
-            The relation to unify with
-
-        Returns
-        -------
-        Relation
-            A new Relation instance
-        """
-
-        if self.empty or other.empty:
+        """Unify variables between this Relation and another"""
+        if self.is_empty() or other.is_empty():
             return Relation.create_empty()
 
         shared_symbols = set(self.get_symbols()).intersection(set(other.get_symbols()))
 
         if shared_symbols:
-            new_data = self._data_frame.merge(  # type: ignore
-                other._data_frame, on=list(shared_symbols)
-            )
-            # new_data.drop_duplicates()
-            return Relation(new_data)
-
+            # Merge on shared symbols
+            return self.hash_join(other, *shared_symbols)
         else:
-            new_data = self._data_frame.merge(other._data_frame, how="cross")  # type: ignore
-            # new_data.drop_duplicates()
-            return Relation(new_data)
+            # Perform a cross product
+            return self.cross_merge(other)
 
     def copy(self) -> Relation:
-        """Create a deep copy of the relation"""
-        return Relation(self._data_frame.copy())
-
-    def __bool__(self) -> bool:
-        return self.empty
-
-    def __str__(self) -> str:
-        return str(self._data_frame)
+        return Relation(tuple(self._symbols), [*self._bindings])
 
     def __repr__(self) -> str:
-        return self._data_frame.__repr__()
+        return "{}(symbols={}, bindings={})".format(
+            self.__class__.__name__, self._symbols, self._bindings
+        )
 
 
 class IQueryClause(Protocol):
@@ -257,21 +312,15 @@ class QueryBuilder:
                 map(lambda result: (result[0],), world.get_components(*component_types))
             )
 
-            values_per_symbol = list(zip(*results))
-
             chosen_variable = (
                 variable if variable is not None else ctx.output_symbols[0]
             )
 
-            if values_per_symbol:
-                data = {
-                    s: values_per_symbol[i] for i, s in enumerate([chosen_variable])
-                }
-
+            if results:
                 if ctx.relation is None:
-                    return Relation(pd.DataFrame(data))
+                    return Relation((chosen_variable,), results)
 
-                return ctx.relation.unify(Relation(pd.DataFrame(data)))
+                return ctx.relation.unify(Relation((chosen_variable,), results))
 
             return Relation.create_empty()
 
@@ -279,63 +328,57 @@ class QueryBuilder:
 
         return self
 
-    def without_(
-        self,
-        component_types: Tuple[Type[Component], ...],
-        variable: Optional[str] = None,
-    ) -> QueryBuilder:
-        """Adds results to the current query for game objects without the given components"""
+    # def without_(
+    #     self,
+    #     component_types: Tuple[Type[Component], ...],
+    #     variable: Optional[str] = None,
+    # ) -> QueryBuilder:
+    #     """Adds results to the current query for game objects without the given components"""
 
-        def clause(ctx: QueryContext, world: World) -> Relation:
-            results = list(
-                map(lambda result: (result[0],), world.get_components(*component_types))
-            )
+    #     def clause(ctx: QueryContext, world: World) -> Relation:
+    #         results = list(
+    #             map(lambda result: (result[0],), world.get_components(*component_types))
+    #         )
 
-            values_per_symbol = list(zip(*results))
+    #         chosen_variable = (
+    #             variable if variable is not None else ctx.output_symbols[0]
+    #         )
 
-            chosen_variable = (
-                variable if variable is not None else ctx.output_symbols[0]
-            )
+    #         if results:
+    #             if ctx.relation is None:
+    #                 raise RuntimeError(
+    #                     "where_not clause is missing relation within context"
+    #                 )
 
-            if values_per_symbol:
-                data = pd.DataFrame(
-                    {s: values_per_symbol[i] for i, s in enumerate([chosen_variable])}
-                )
+    #             new_data = ctx.relation.get_data_frame().merge(  # type: ignore
+    #                 data, how="outer", indicator=True
+    #             )
 
-                if ctx.relation is None:
-                    raise RuntimeError(
-                        "where_not clause is missing relation within context"
-                    )
+    #             new_data = new_data.loc[new_data["_merge"] == "left_only"]
 
-                new_data = ctx.relation.get_data_frame().merge(  # type: ignore
-                    data, how="outer", indicator=True
-                )
-                new_data = new_data.loc[new_data["_merge"] == "left_only"]
-                new_data = new_data.drop(columns=["_merge"])
-                new_relation = Relation(new_data)
-                return new_relation
-            else:
-                if ctx.relation is None:
-                    return Relation.create_empty()
+    #             new_relation = Relation(new_data)
 
-                return ctx.relation.copy()
+    #             return new_relation
+    #         else:
+    #             if ctx.relation is None:
+    #                 return Relation.create_empty()
 
-        self._clauses.append(clause)
+    #             return ctx.relation.copy()
 
-        return self
+    #     self._clauses.append(clause)
+
+    #     return self
 
     def from_(self, fn: QueryFromFn, *symbols: str) -> QueryBuilder:
         def clause(ctx: QueryContext, world: World) -> Relation:
             results = fn(world)
-            values_per_symbol = list(zip(*results))
 
-            if values_per_symbol:
-                data = {s: values_per_symbol[i] for i, s in enumerate(symbols)}
+            if results:
 
                 if ctx.relation is None:
-                    return Relation(pd.DataFrame(data))
+                    return Relation(symbols, results)
 
-                return ctx.relation.unify(Relation(pd.DataFrame(data)))
+                return ctx.relation.unify(Relation(symbols, results))
 
             return Relation.create_empty()
 
@@ -351,7 +394,6 @@ class QueryBuilder:
             if ctx.relation is None:
                 raise RuntimeError("Cannot filter a query with no prior clauses")
 
-            rows_to_include: List[int] = []
             relation_symbols = ctx.relation.get_symbols()
             variables_to_check = variables
 
@@ -360,23 +402,20 @@ class QueryBuilder:
             if len(relation_symbols) == 1 and len(variables_to_check) == 0:
                 variables_to_check = relation_symbols
 
-            for row in range(ctx.relation.get_data_frame().shape[0]):  # type: ignore
-                # convert given variables to GameObject tuple
-                gameobjects: Tuple[GameObject, ...] = tuple(
-                    map(
-                        lambda v: world.get_gameobject(
-                            ctx.relation.get_data_frame().iloc[row][v]  # type: ignore
-                        ),
-                        variables_to_check,
-                    )
+            # Only keep rows that pass the filter
+            valid_bindings = [
+                row
+                for i, row in enumerate(ctx.relation.get_bindings())
+                if filter_fn(
+                    world,
+                    *[
+                        world.get_gameobject(gid)
+                        for gid in ctx.relation.get_as_tuple(i, *variables_to_check)
+                    ],
                 )
+            ]
 
-                if filter_fn(world, *gameobjects):
-                    rows_to_include.append(row)
-
-            new_relation = Relation(ctx.relation.get_data_frame().iloc[rows_to_include])  # type: ignore
-
-            return new_relation
+            return Relation(relation_symbols, valid_bindings)
 
         self._clauses.append(clause)
         return self
@@ -384,15 +423,13 @@ class QueryBuilder:
     def get_(self, fn: QueryGetFn, *variables: str) -> QueryBuilder:
         def clause(ctx: QueryContext, world: World) -> Relation:
             results = fn(ctx, world, *variables)
-            values_per_symbol = list(zip(*results))
 
-            if values_per_symbol:
-                data = {s: values_per_symbol[i] for i, s in enumerate(variables)}
+            if results:
 
                 if ctx.relation is None:
-                    return Relation(pd.DataFrame(data))
+                    return Relation(variables, results)
 
-                return ctx.relation.unify(Relation(pd.DataFrame(data)))
+                return ctx.relation.unify(Relation(variables, results))
 
             return Relation.create_empty()
 
@@ -464,7 +501,7 @@ class Query:
             current_relation = clause(ctx, world)
             ctx.relation = current_relation
 
-            if ctx.relation.empty:
+            if ctx.relation.is_empty():
                 # Return an empty list because the last clause failed to
                 # find proper results
                 return []

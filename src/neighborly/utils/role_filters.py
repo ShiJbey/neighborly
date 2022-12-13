@@ -96,15 +96,13 @@ def get_friendships_gte(threshold: float) -> QueryGetFn:
     def clause(
         ctx: QueryContext, world: World, *variables: str
     ) -> List[Tuple[int, ...]]:
-        subject, _ = variables
-
         # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
-            gameobject = world.get_gameobject(row[subject])  # type: ignore
+        for (subject,) in ctx.relation.get_as_tuple(slice(0, -1), variables[0]):  # type: ignore
+            gameobject = world.get_gameobject(subject)  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
                 if r.friendship >= threshold:
-                    results.append((row[subject], r.target))  # type: ignore
+                    results.append((subject, r.target))  # type: ignore
 
         return results
 
@@ -121,15 +119,12 @@ def get_friendships_lte(threshold: float) -> QueryGetFn:
     def clause(
         ctx: QueryContext, world: World, *variables: str
     ) -> List[Tuple[int, ...]]:
-        subject, _ = variables
-
-        # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
-            gameobject = world.get_gameobject(row[subject])  # type: ignore
+        for (subject,) in ctx.relation.get_as_tuple(slice(0, -1), variables[0]):  # type: ignore
+            gameobject = world.get_gameobject(subject)  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
                 if r.friendship <= threshold:
-                    results.append((row[subject], r.target))  # type: ignore
+                    results.append((subject, r.target))  # type: ignore
 
         return results
 
@@ -146,15 +141,12 @@ def get_romances_gte(threshold: float) -> QueryGetFn:
     def clause(
         ctx: QueryContext, world: World, *variables: str
     ) -> List[Tuple[int, ...]]:
-        subject, _ = variables
-
-        # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
-            gameobject = world.get_gameobject(row[subject])  # type: ignore
+        for (subject,) in ctx.relation.get_as_tuple(slice(0, -1), variables[0]):  # type: ignore
+            gameobject = world.get_gameobject(subject)  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
                 if r.romance >= threshold:
-                    results.append((row[subject], r.target))  # type: ignore
+                    results.append((subject, r.target))  # type: ignore
 
         return results
 
@@ -171,15 +163,12 @@ def get_romances_lte(threshold: float) -> QueryGetFn:
     def clause(
         ctx: QueryContext, world: World, *variables: str
     ) -> List[Tuple[int, ...]]:
-        subject, _ = variables
-
-        # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
-            gameobject = world.get_gameobject(row[subject])  # type: ignore
+        for (subject,) in ctx.relation.get_as_tuple(slice(0, -1), variables[0]):  # type: ignore
+            gameobject = world.get_gameobject(subject)  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
                 if r.romance <= threshold:
-                    results.append((row[subject], r.target))  # type: ignore
+                    results.append((subject, r.target))  # type: ignore
 
         return results
 
@@ -211,15 +200,12 @@ def get_relationships_with_tags(*tags: str) -> QueryGetFn:
     """
 
     def fn(ctx: QueryContext, world: World, *variables: str) -> List[Tuple[int, ...]]:
-        subject, _ = variables
-
-        # loop through each row in the ctx at the given column
         results: List[Tuple[int, ...]] = []
-        for _, row in ctx.relation.get_data_frame().iterrows():  # type: ignore
-            gameobject = world.get_gameobject(row[subject])  # type: ignore
+        for (subject,) in ctx.relation.get_as_tuple(slice(0, -1), variables[0]):  # type: ignore
+            gameobject = world.get_gameobject(subject)  # type: ignore
             for r in gameobject.get_component(Relationships).get_all():
                 if all([r.has_tag(t) for t in tags]):
-                    results.append((row[subject], r.target))  # type: ignore
+                    results.append((subject, r.target))  # type: ignore
 
         return results
 

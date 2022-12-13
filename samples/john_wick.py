@@ -25,7 +25,7 @@ from neighborly.components.shared import Active
 from neighborly.core.ecs import Component, World
 from neighborly.core.event import Event, EventRole
 from neighborly.core.life_event import ILifeEvent, LifeEvent
-from neighborly.core.query import QueryBuilder
+from neighborly.core.query import QueryBuilder, not_
 from neighborly.core.time import SimDateTime
 from neighborly.engine import LifeEvents
 from neighborly.exporter import NeighborlyJsonExporter
@@ -86,7 +86,7 @@ def become_an_assassin(probability: float = 0.3) -> ILifeEvent:
         bind_fn=from_pattern(
             QueryBuilder("Character")
             .with_((GameCharacter, Active))
-            .without_((Assassin,))
+            .filter_(not_(has_component(Assassin)))
             .filter_(life_stage_ge(LifeStageValue.YoungAdult))
             .build()
         ),
