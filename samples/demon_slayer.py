@@ -38,19 +38,20 @@ Key Features
 - The DemonKingdom tracks the top-12 ranked demons
 """
 import math
-import time
 import random
+import time
 from enum import IntEnum
 from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.components.character import LifeStage, LifeStageValue
 from neighborly.components.character import (
     CanAge,
     CanGetPregnant,
     Deceased,
     GameCharacter,
+    LifeStage,
+    LifeStageValue,
 )
 from neighborly.components.shared import Active, CurrentLocation, Location
 from neighborly.core.ecs import Component, GameObject, World
@@ -60,7 +61,7 @@ from neighborly.engine import LifeEvents, NeighborlyEngine
 from neighborly.exporter import NeighborlyJsonExporter
 from neighborly.plugins import defaults, talktown, weather
 from neighborly.simulation import Neighborly, Plugin, Simulation
-from neighborly.utils.common import set_location, from_roles
+from neighborly.utils.common import from_roles, set_location
 
 
 class DemonSlayerRank(IntEnum):
@@ -658,7 +659,7 @@ def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
             opponent.power_level = new_slayer_pl
 
             death_event = _death_event_type.instantiate(
-                world, Deceased=challenger.gameobject
+                world, Character=challenger.gameobject
             )
 
             if death_event:
@@ -676,7 +677,7 @@ def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
             challenger.power_level = new_demon_pl
 
             death_event = _death_event_type.instantiate(
-                world, Deceased=opponent.gameobject
+                world, Character=opponent.gameobject
             )
 
             if death_event:
@@ -712,7 +713,7 @@ def devour_human(probability: float = 1.0) -> ILifeEvent:
                 demon.get_component(Demon).power_level
             )
             _death_event_type = LifeEvents.get("Death")
-            _death_event_type.try_execute_event(world, Deceased=victim)
+            _death_event_type.try_execute_event(world, Character=victim)
 
     def bind_demon(
         world: World, roles: RoleList, candidate: Optional[GameObject] = None
@@ -735,13 +736,16 @@ def devour_human(probability: float = 1.0) -> ILifeEvent:
         if not demon.has_component(CurrentLocation):
             return None
 
-        demon_location = world.get_gameobject(
-            demon.get_component(CurrentLocation).location
-        ).get_component(Location)
+        location = world.get_gameobject(demon.get_component(CurrentLocation).location)
+
+        current_location = location.try_component(Location)
+
+        if current_location is None:
+            return
 
         candidates: List[GameObject] = []
 
-        for character_id in demon_location.entities:
+        for character_id in current_location.entities:
             character = world.get_gameobject(character_id)
             if character_id == demon.id:
                 continue
@@ -799,7 +803,7 @@ def battle(probability: float = 1.0) -> ILifeEvent:
             slayer.rank = power_level_to_slayer_rank(slayer.power_level)
 
             death_event = _death_event_type.instantiate(
-                world, Deceased=demon.gameobject
+                world, Character=demon.gameobject
             )
 
             if death_event:
@@ -818,7 +822,7 @@ def battle(probability: float = 1.0) -> ILifeEvent:
             demon.rank = power_level_to_demon_rank(demon.power_level)
 
             death_event = _death_event_type.instantiate(
-                world, Deceased=slayer.gameobject
+                world, Character=slayer.gameobject
             )
 
             if death_event:
@@ -894,14 +898,14 @@ def turn_into_demon(probability: float = 1.0) -> ILifeEvent:
 
 def death_event_type() -> ILifeEvent:
     def execute(world: World, event: Event):
-        deceased = world.get_gameobject(event["Deceased"])
+        deceased = world.get_gameobject(event["Character"])
         deceased.add_component(Deceased())
         deceased.remove_component(Active)
         set_location(world, deceased, None)
 
     return LifeEvent(
         "Death",
-        bind_fn=from_roles(EventRoleType("Deceased")),
+        bind_fn=from_roles(EventRoleType("Character")),
         effect=execute,
         probability=0,
     )
