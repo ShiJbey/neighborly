@@ -5,7 +5,7 @@
     src="https://user-images.githubusercontent.com/11076525/165836171-9ffdea6e-1633-440c-be06-b46e1e3e4e04.png"
   >
   <br>
-  Neighborly
+  Neighborly (v0.10.0)
 </h1>
 
 <p align="center">
@@ -36,11 +36,11 @@ for extension and content authoring.
 
 ## Core Features
 
-* Create custom character, buildings, life events, and social actions
-* Commandline interface (CLI) tool
-* Configure the CLI using YAML text files
-* Plugin architecture allows users to modularize and share their custom content
-* Export simulation state to JSON for further data processing
+- Create custom character, buildings, life events, and social actions
+- Commandline interface (CLI) tool
+- Configure the CLI using YAML text files
+- Plugin architecture allows users to modularize and share their custom content
+- Export simulation state to JSON for further data processing
 
 # How to use
 
@@ -132,7 +132,7 @@ python -m pip install -e "."
 The tests are currently out-of-date and may refer to systems
 and logic that no longer exists in Neighborly. The codebase
 changes so frequently that it hasn't been worth the time.
-As modules  become more established, I will add proper tests for them.
+As modules become more established, I will add proper tests for them.
 Feel free to contribute tests by forking the repo, adding your test(s), and
 submitting a pull request with a description of your test cases. Your commits
 should only contain changes to files within the `tests` directory. If you
@@ -161,8 +161,8 @@ docstrings in code and full documentation can be found in the
 When adding docstrings for existing or new bits of code please use the following
 references for how to format your contributions:
 
-* [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
-* [Example Numpy Style Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html#example-numpy)
+- [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
+- [Example Numpy Style Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html#example-numpy)
 
 # Contributing
 
@@ -203,9 +203,9 @@ deterministic behavior when using the same starting seed. I try to remove all fo
 non-determinism, but some slip through. The known areas are listed below. If you find
 any, please make a new issue with details of the behavior.
 
-* Neighborly uses [Tracery](https://github.com/aparrish/pytracery) to generate names for
-characters and locations, and these names may not be consistent despite using the same
-rng seed value.
+- Neighborly uses [Tracery](https://github.com/aparrish/pytracery) to generate names for
+  characters and locations, and these names may not be consistent despite using the same
+  rng seed value.
 
 ## DMCA Statement
 
