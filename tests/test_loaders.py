@@ -11,7 +11,6 @@ import pytest
 
 from neighborly.components.character import GameCharacter, Gender, GenderValue
 from neighborly.core.ecs import Component
-from neighborly.engine import NeighborlyEngine
 from neighborly.loaders import NeighborlyYamlImporter, load_character_archetypes
 from neighborly.plugins.defaults import names
 from neighborly.plugins.defaults.archetypes import (
