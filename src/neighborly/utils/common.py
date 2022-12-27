@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from typing import List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union, cast
 
 from neighborly.components.relationship import Relationships
 from neighborly.components.residence import Residence, Resident, Vacant
@@ -290,3 +290,44 @@ def generate_child(
             break
 
     return child
+
+
+_KT = TypeVar("_KT")
+
+
+def deep_merge(source: Dict[_KT, Any], other: Dict[_KT, Any]) -> Dict[_KT, Any]:
+    """
+    Merges two dictionaries (including any nested dictionaries) by overwriting
+    fields in the source with the fields present in the other
+
+    Parameters
+    ----------
+    source: Dict[_KT, Any]
+        Dictionary with initial field values
+
+    other: Dict[_KT, Any]
+        Dictionary with fields to override in the source dict
+
+    Returns
+    -------
+    Dict[_KT, Any]
+        New dictionary with fields in source overwritten
+        with values from the other
+    """
+    merged_dict = {**source}
+
+    for key, value in other.items():
+        # Add new key-value pair if key is not in the merged dict
+        if key not in merged_dict:
+            merged_dict[key] = value
+
+        else:
+            if isinstance(value, dict) and isinstance(merged_dict[key], dict):
+                merged_dict[key] = deep_merge(merged_dict[key], value)  # type: ignore
+            # Throw error if one value is a dict and not the other
+            else:
+                raise ValueError(
+                    f"Cannot merge nested key {key} when only one value is a dict"
+                )
+
+    return merged_dict

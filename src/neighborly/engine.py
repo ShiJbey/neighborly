@@ -389,6 +389,7 @@ class NeighborlyEngine:
         "_rng",
         "_name_generator",
         "_component_types",
+        "_component_factories",
         "_character_archetypes",
         "_residence_archetypes",
         "_business_archetypes",
@@ -401,6 +402,7 @@ class NeighborlyEngine:
         self._rng: random.Random = random.Random(seed)
         self._name_generator: TraceryNameFactory = TraceryNameFactory()
         self._component_types: Dict[str, ComponentInfo] = {}
+        self._component_factories: Dict[Type[Component], IComponentFactory] = {}
         self._character_archetypes: CharacterArchetypes = CharacterArchetypes()
         self._residence_archetypes: ResidenceArchetypes = ResidenceArchetypes()
         self._business_archetypes: BusinessArchetypes = BusinessArchetypes()
@@ -430,6 +432,10 @@ class NeighborlyEngine:
     def occupation_types(self) -> OccupationTypes:
         return self._occupation_types
 
+    def get_factory(self, component_type: Type[Component]) -> IComponentFactory:
+        """Return the factory associate with a component type"""
+        return self._component_factories[component_type]
+
     def get_component_info(self, component_name: str) -> ComponentInfo:
         return self._component_types[component_name]
 
@@ -443,6 +449,7 @@ class NeighborlyEngine:
         Register component with the engine
         """
         component_name = name if name is not None else component_type.__name__
+
         self._component_types[component_name] = ComponentInfo(
             name=component_name,
             component_type=component_type,
@@ -451,6 +458,10 @@ class NeighborlyEngine:
                 if factory is not None
                 else DefaultComponentFactory(component_type)
             ),
+        )
+
+        self._component_factories[component_type] = (
+            factory if factory is not None else DefaultComponentFactory(component_type)
         )
 
 

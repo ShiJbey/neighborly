@@ -8,6 +8,25 @@ from ordered_set import OrderedSet  # type: ignore
 from neighborly.core.ecs import Component
 
 
+class Name(Component):
+    """The name of the GameObject"""
+
+    __slots__ = "name"
+
+    def __init__(self, name: str) -> None:
+        super(Component, self).__init__()
+        self.name: str = name
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "name": self.name}
+
+    def __str__(self) -> str:
+        return self.name
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.name})"
+
+
 class Age(Component):
     """
     Tracks the number of years old that an entity is

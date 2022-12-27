@@ -49,6 +49,7 @@ from neighborly.components.shared import (
     Location,
     LocationAliases,
     MaxCapacity,
+    Name,
     OpenToPublic,
     Position2D,
 )
@@ -326,6 +327,7 @@ class Neighborly:
         sim.engine.register_component(Active)
         sim.engine.register_component(MovementAI)
         sim.engine.register_component(SocialAI)
+        sim.engine.register_component(Name)
 
         for plugin, options in self.plugins:
             plugin.setup(sim, **options)

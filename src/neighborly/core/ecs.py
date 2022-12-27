@@ -207,7 +207,7 @@ class GameObject:
         ret = {
             "id": self.id,
             "name": self.name,
-            "components": [c.to_dict() for c in self.components],
+            "components": {c.__class__.__name__: c.to_dict() for c in self.components},
         }
 
         return ret
@@ -286,10 +286,7 @@ class Component(ABC):
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the component to a dict"""
-        return {"type": self.__class__.__name__}
-
-    def __repr__(self) -> str:
-        return "{}".format(self.__class__.__name__)
+        return {}
 
 
 class ISystem(ABC, esper.Processor):
