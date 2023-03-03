@@ -1,11 +1,10 @@
-from typing import List
+from typing import Any, List
 
 import pytest
 
-from neighborly import SimDateTime, Simulation, World
-from neighborly.builtin.systems import LinearTimeSystem
-from neighborly.core.system import System
-from neighborly.core.time import TimeDelta
+from neighborly.core.ecs import World
+from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.systems import System, TimeSystem
 
 
 class TestSystem(System):
@@ -19,7 +18,7 @@ class TestSystem(System):
         self.elapsed_times: List[int] = elapsed_times
         self.run_times: List[SimDateTime] = run_times
 
-    def run(self, *args, **kwargs) -> None:
+    def run(self, *args: Any, **kwargs: Any) -> None:
         self.elapsed_times.append(self.elapsed_time.total_hours)
         self.run_times.append(self.world.get_resource(SimDateTime).copy())
 
@@ -28,11 +27,11 @@ class TestSystem(System):
 def test_world() -> World:
     world = World()
     world.add_resource(SimDateTime())
-    world.add_system(LinearTimeSystem(increment=TimeDelta(hours=4)))
+    world.add_system(TimeSystem())
     return world
 
 
-def test_elapsed_time(test_world):
+def test_elapsed_time(test_world: World):
     elapsed_times = []
     test_world.add_system(TestSystem(TimeDelta(), elapsed_times, []))
     test_world.step()
@@ -41,7 +40,7 @@ def test_elapsed_time(test_world):
     assert elapsed_times == [0, 4, 4]
 
 
-def test_interval_run(test_world):
+def test_interval_run(test_world: World):
     run_times = []
     test_world.add_system(TestSystem(TimeDelta(hours=6), [], run_times))
     test_world.step()

@@ -1,23 +1,20 @@
 import json
+from typing import Optional
 
 from neighborly.core.serializable import ISerializable
-from neighborly.core.time import SimDateTime
-from neighborly.simulation import Simulation
+from neighborly.simulation import Neighborly
 
 
-class NeighborlyJsonExporter:
-    """Serializes the simulation to a JSON string"""
-
-    def export(self, sim: Simulation) -> str:
-        return json.dumps(
-            {
-                "seed": sim.seed,
-                "date": sim.world.get_resource(SimDateTime).to_iso_str(),
-                "gameobjects": {g.id: g.to_dict() for g in sim.world.get_gameobjects()},
-                "resources": {
-                    r.__class__.__name__: r.to_dict()
-                    for r in sim.world.get_all_resources()
-                    if isinstance(r, ISerializable)
-                },
-            }
-        )
+def export_to_json(sim: Neighborly, indent: Optional[int] = None) -> str:
+    return json.dumps(
+        {
+            "seed": sim.config.seed,
+            "gameobjects": {g.uid: g.to_dict() for g in sim.world.get_gameobjects()},
+            "resources": {
+                r.__class__.__name__: r.to_dict()
+                for r in sim.world.get_all_resources()
+                if isinstance(r, ISerializable)
+            },
+        },
+        indent=indent,
+    )

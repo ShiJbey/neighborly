@@ -1,0 +1,13 @@
+name: business::default::cafe
+extends: business::default
+components:
+  Name:
+    value: Cafe
+  Business:
+    owner_type: Owner
+    employee_types:
+      Barista: 2
+  Activities:
+    activities:
+      - reading
+      - socializing

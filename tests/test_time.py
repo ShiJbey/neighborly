@@ -1,5 +1,3 @@
-import pytest
-
 from neighborly.core.time import SimDateTime, TimeDelta
 
 

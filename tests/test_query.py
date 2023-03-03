@@ -1,38 +1,37 @@
-import pandas as pd
+from typing import Any, Dict
+
 import pytest
 
-from neighborly import Component, World
-from neighborly.builtin.components import Name, NonBinary, Retired
-from neighborly.core.character import GameCharacter
-from neighborly.core.query import (
-    Query,
-    Relation,
-    eq_,
-    has_components,
-    ne_,
-    where,
-    where_any,
-    where_not,
-)
+from neighborly.components.character import Female, GameCharacter, NonBinary, Retired
+from neighborly.components.shared import Age
+from neighborly.core.ecs import Component, World
+from neighborly.core.ecs.query import QB, Relation
 
 
 def test_relation_create_empty():
     r0 = Relation.create_empty()
-    assert r0.empty is True
+    assert r0.is_empty() is True
     assert r0.get_symbols() == ()
+    assert r0.is_uninitialized() is False
 
     r1 = Relation.create_empty("Apprentice", "Boss")
-    assert r1.empty is True
+    assert r1.is_empty() is True
     assert r1.get_symbols() == ("Apprentice", "Boss")
+    assert r1.is_uninitialized() is False
+
+    r2 = Relation((), [], False)
+    assert r2.is_empty() is True
+    assert r2.get_symbols() == ()
+    assert r2.is_uninitialized() is True
 
 
 def test_relation_from_bindings():
-    r0 = Relation.from_bindings(Initiator=0, LoveInterest=1)
-    assert r0.empty is False
+    r0 = Relation.from_bindings({"Initiator": 0, "LoveInterest": 1})
+    assert r0.is_empty() is False
     assert r0.get_symbols() == ("Initiator", "LoveInterest")
 
-    r0 = Relation.from_bindings(Rival=0, LoveInterest=1, Protagonist=4)
-    assert r0.empty is False
+    r0 = Relation.from_bindings({"Rival": 0, "LoveInterest": 1, "Protagonist": 4})
+    assert r0.is_empty() is False
     assert r0.get_symbols() == ("Rival", "LoveInterest", "Protagonist")
 
 
@@ -46,48 +45,39 @@ def test_relation_get_symbols():
 
 def test_relation_is_empty():
     r0 = Relation.create_empty()
-    assert r0.empty is True
+    assert r0.is_empty() is True
 
     r1 = Relation.create_empty("Hero", "DemonKing")
-    assert r1.empty is True
-
-    r2 = Relation(pd.DataFrame())
-    assert r2.empty is True
+    assert r1.is_empty() is True
 
 
 def test_relation_get_tuples():
-    r0 = Relation(pd.DataFrame({"Hero": [1, 1, 1], "DemonKing": [3, 4, 5]}))
+    r0 = Relation(("Hero", "DemonKing"), [(1, 3), (1, 4), (1, 5)])
     assert r0.get_tuples() == [(1, 3), (1, 4), (1, 5)]
 
-    r1 = Relation.from_bindings(Hero=1, DemonKing=4)
+    r1 = Relation.from_bindings({"Hero": 1, "DemonKing": 4})
     assert r1.get_tuples() == [(1, 4)]
-
-
-def test_relation_get_data_frame():
-    df = pd.DataFrame()
-    r0 = Relation(df)
-    assert id(r0.get_data_frame()) == id(df)
 
 
 def test_relation_unify():
 
     r0 = Relation.create_empty()
-    r1 = Relation(pd.DataFrame({"Hero": [1, 1, 1], "DemonKing": [3, 4, 5]}))
-    r2 = Relation(pd.DataFrame({"Hero": [1, 2], "LoveInterest": [4, 6]}))
-    r3 = Relation(pd.DataFrame({"Rival": [5, 3]}))
+    r1 = Relation(("Hero", "DemonKing"), [(1, 3), (1, 4), (1, 5)])
+    r2 = Relation(("Hero", "LoveInterest"), [(1, 4), (2, 6)])
+    r3 = Relation(("Rival",), [(5,), (3,)])
 
     # Test an empty Relation attempting to unify with a non-empty Relation
-    assert r0.unify(r1).empty is True
+    assert r0.unify(r1).is_empty() is True
     assert r0.unify(r1).get_symbols() == ()
-    assert r0.unify(r1).get_tuples() == []
+    assert r0.unify(r1).get_bindings() == []
 
     # Test a non-empty Relation attempting to unify with an empty Relation
-    assert r1.unify(r0).empty is True
+    assert r1.unify(r0).is_empty() is True
     assert r1.unify(r0).get_symbols() == ()
-    assert r1.unify(r0).get_tuples() == []
+    assert r1.unify(r0).get_bindings() == []
 
     # Test unify relations with shared symbols (DataFrame columns)
-    assert r1.unify(r2).empty is False
+    assert r1.unify(r2).is_empty() is False
     assert r1.unify(r2).get_symbols() == ("Hero", "DemonKing", "LoveInterest")
     assert r1.unify(r2).get_tuples() == [
         (1, 3, 4),
@@ -96,7 +86,7 @@ def test_relation_unify():
     ]
 
     # Test unify relations without shared symbols
-    assert r2.unify(r3).empty is False
+    assert r2.unify(r3).is_empty() is False
     assert r2.unify(r3).get_symbols() == ("Hero", "LoveInterest", "Rival")
     assert r2.unify(r3).get_tuples() == [(1, 4, 5), (1, 4, 3), (2, 6, 5), (2, 6, 3)]
 
@@ -108,209 +98,125 @@ def test_relation_copy():
 
 
 class Hero(Component):
-    pass
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 class DemonKing(Component):
-    pass
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 @pytest.fixture()
 def sample_world() -> World:
     world = World()
 
-    world.spawn_gameobject([Hero(), GameCharacter(), Name("Shi")])
-    world.spawn_gameobject([Hero(), GameCharacter(), Name("Astrid"), NonBinary()])
-    world.spawn_gameobject([DemonKing(), GameCharacter(), Name("-Shi"), Retired()])
+    world.spawn_gameobject([Hero(), GameCharacter("Shi", "")])
     world.spawn_gameobject(
-        [DemonKing(), GameCharacter(), Name("Palpatine"), NonBinary()]
+        [
+            Hero(),
+            GameCharacter("Astrid", ""),
+            Female(),
+            Retired(),
+        ]
+    )
+    world.spawn_gameobject([DemonKing(), GameCharacter("-Shi", ""), Retired(), Age(27)])
+    world.spawn_gameobject(
+        [
+            DemonKing(),
+            GameCharacter("Palpatine", ""),
+            NonBinary(),
+        ]
     )
 
     return world
 
 
-def test_where(sample_world):
-    query = Query(("Hero",), [where(has_components(Hero), "Hero")])
+def test_with(sample_world: World):
+    query = QB.query("_", QB.with_(Hero, "_"))
     result = set(query.execute(sample_world))
     expected = {(1,), (2,)}
     assert result == expected
 
-    query = Query(("NB",), [where(has_components(GameCharacter, NonBinary), "NB")])
+    query = QB.query(("_",), QB.with_((Hero, Retired), "_"))
     result = set(query.execute(sample_world))
-    expected = {(2,), (4,)}
+    expected = {(2,)}
     assert result == expected
 
-    query = Query(
+    query = QB.query(
         ("HERO", "VILLAIN"),
-        [
-            where(has_components(GameCharacter, Hero), "HERO"),
-            where(has_components(DemonKing), "VILLAIN"),
-            where(has_components(Retired), "VILLAIN"),
-        ],
+        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.with_((DemonKing, Retired), "VILLAIN"),
     )
     result = set(query.execute(sample_world))
     expected = {(1, 3), (2, 3)}
     assert result == expected
 
 
-def test_where_not(sample_world):
-    query = Query(
-        ("Hero",),
-        [
-            where(has_components(Hero), "Hero"),
-            where_not(has_components(NonBinary), "Hero"),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1,)}
-    assert result == expected
-
-    query = Query(
-        ("C",),
-        [
-            where(has_components(GameCharacter, NonBinary), "C"),
-            where_not(has_components(Hero), "C"),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(4,)}
-    assert result == expected
-
-    query = Query(
+def test_query_not(sample_world: World):
+    query = QB.query(
         ("HERO", "VILLAIN"),
-        [
-            where(has_components(GameCharacter, Hero), "HERO"),
-            where(has_components(DemonKing), "VILLAIN"),
-            where_not(has_components(Retired), "VILLAIN"),
-        ],
+        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.not_(QB.with_((Retired,), "HERO")),
+        QB.with_((DemonKing, Retired), "VILLAIN"),
     )
     result = set(query.execute(sample_world))
-    expected = {(1, 4), (2, 4)}
+    expected = {(1, 3)}
     assert result == expected
 
 
-def test_where_either(sample_world):
-    query = Query(
-        ("X",),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where_any(where(has_components(NonBinary), "X")),
-        ],
-    )
-    result = set(query.execute(sample_world))
+def test_query_bindings(sample_world: World):
+
+    query = QB.query("_", QB.with_(Hero, "_"))
+    result = set(query.execute(sample_world, {"_": 2}))
     expected = {(2,)}
     assert result == expected
 
-    query = Query(
-        ("X",),
-        [
-            where(has_components(GameCharacter), "X"),
-            where_any(
-                where(has_components(NonBinary), "X"),
-                where(has_components(Retired), "X"),
-            ),
-        ],
+    query = QB.query(
+        ("_",),
+        QB.with_((GameCharacter, NonBinary), "_"),
     )
-    result = set(query.execute(sample_world))
-    expected = {(2,), (3,), (4,)}
-    assert result == expected
-
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter), "X"),
-            where(has_components(GameCharacter), "Y"),
-            where_any(
-                where(has_components(NonBinary), "X"),
-                where(has_components(Retired), "Y"),
-            ),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {
-        (1, 3),
-        (2, 1),
-        (2, 2),
-        (2, 3),
-        (2, 4),
-        (3, 3),
-        (4, 1),
-        (4, 2),
-        (4, 3),
-        (4, 4),
-    }
-    assert result == expected
-
-
-def test_equal(sample_world):
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1, 1), (1, 2), (2, 1), (2, 2)}
-    assert result == expected
-
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-            eq_(("X", "Y")),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1, 1), (2, 2)}
-    assert result == expected
-
-
-def test_not_equal(sample_world):
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1, 1), (1, 2), (2, 1), (2, 2)}
-    assert result == expected
-
-    query = Query(
-        ("X", "Y"),
-        [
-            where(has_components(GameCharacter, Hero), "X"),
-            where(has_components(GameCharacter, Hero), "Y"),
-            ne_(("X", "Y")),
-        ],
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1, 2), (2, 1)}
-    assert result == expected
-
-
-def test_query_bindings(sample_world):
-    query = Query(("Hero",), [where(has_components(Hero), "Hero")])
-    result = set(query.execute(sample_world, Hero=2))
-    expected = {(2,)}
-    assert result == expected
-
-    query = Query(("NB",), [where(has_components(GameCharacter, NonBinary), "NB")])
-    result = set(query.execute(sample_world, NB=4))
+    result = set(query.execute(sample_world, {"_": 4}))
     expected = {(4,)}
     assert result == expected
 
-    query = Query(
+    query = QB.query(
         ("HERO", "VILLAIN"),
-        [
-            where(has_components(GameCharacter, Hero), "HERO"),
-            where(has_components(DemonKing), "VILLAIN"),
-            where(has_components(Retired), "VILLAIN"),
-        ],
+        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.with_((DemonKing, Retired), "VILLAIN"),
     )
-    result = set(query.execute(sample_world, HERO=2))
+    result = set(query.execute(sample_world, {"HERO": 2}))
     expected = {(2, 3)}
     assert result == expected
+
+    query = QB.query("_", QB.with_((GameCharacter, NonBinary), "_"))
+    result = set(query.execute(sample_world, {"_": 4}))
+    expected = {(4,)}
+    assert result == expected
+
+
+def test_filter(sample_world: World):
+    query = QB.query(
+        "_",
+        QB.with_(GameCharacter, "_"),
+        QB.filter_(
+            lambda gameobject: gameobject.get_component(Age).value > 25,
+            "_",
+        ),
+    )
+    result = set(query.execute(sample_world))
+    expected = {(1,), (4,)}
+    assert result == expected
+
+    query = QB.query(
+        "_",
+        QB.with_((GameCharacter, NonBinary), "_"),
+    )
+    result = set(query.execute(sample_world))
+    expected = {(4,)}
+    assert result == expected
+
+    with pytest.raises(RuntimeError):
+        QB.query(("X", "Y"), QB.filter_(lambda x, y: x == y, ("X", "Y"))).execute(
+            sample_world
+        )

@@ -1,0 +1,23 @@
+Characters:
+  - name: "Human:male"
+    spawn_config:
+      spouse_archetypes:
+        - "Human:*"
+      chance_spawn_with_spouse: 0.7
+      max_children_at_spawn: 3
+      child_archetypes:
+        - "Human:*"
+      spawn_frequency: 0.8
+    base: BaseCharacter
+    options:
+      components:
+        - name: Wealth
+          options:
+            money: 5000
+        - name: Gender
+          options:
+            value: Male
+        - name: GameCharacter
+          options:
+            first_name: "#masculine_first_name#"
+            last_name: "#family_name#"

@@ -1,6 +1,6 @@
-from ordered_set import OrderedSet
+from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.core.business import IBusinessType
+from neighborly.components.business import IBusinessType
 
 
 class ApartmentComplex(IBusinessType):
@@ -32,7 +32,7 @@ class Bar(IBusinessType):
     pass
 
 
-class Barbershop(IBusinessType):
+class BarberShop(IBusinessType):
     """A barbershop."""
 
     pass
@@ -218,7 +218,7 @@ class InsuranceCompany(IBusinessType):
     pass
 
 
-class JeweleryShop(IBusinessType):
+class JewelryShop(IBusinessType):
     """A jewelry company."""
 
     pass

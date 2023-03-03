@@ -1,0 +1,15 @@
+name: business::default
+is_template: true
+components:
+  Name:
+    value: "Business"
+  Business: { }
+  StatusManager: { }
+  Location: { }
+  Activities: { }
+  FrequentedBy: { }
+  EventHistory: { }
+  Building:
+    building_type: commercial
+  Lifespan:
+    value: 10

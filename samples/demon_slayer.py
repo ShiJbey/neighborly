@@ -38,37 +38,84 @@ Key Features
 - The DemonKingdom tracks the top-12 ranked demons
 """
 import math
+import random
 import time
 from enum import IntEnum
 from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly import Plugin, Simulation, SimulationBuilder
-from neighborly.builtin.components import (
+from neighborly import (
+    Component,
+    GameObject,
+    IComponentFactory,
+    ISystem,
+    Neighborly,
+    NeighborlyConfig,
+    SimDateTime,
+    World,
+)
+from neighborly.components import (
     Active,
-    Age,
     CanAge,
     CanGetPregnant,
-    CurrentLocation,
-    Deceased,
-    LifeStages,
+    FrequentedLocations,
+    GameCharacter,
 )
-from neighborly.builtin.helpers import move_to_location
-from neighborly.core import query
-from neighborly.core.character import GameCharacter
-from neighborly.core.ecs import Component, GameObject, World
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import Event
-from neighborly.core.life_event import (
-    ILifeEvent,
-    LifeEvent,
-    LifeEventRoleType,
-    LifeEvents,
+from neighborly.components.character import Child
+from neighborly.core.event import EventBuffer
+from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
+from neighborly.core.roles import Role, RoleList
+from neighborly.core.settlement import Settlement
+from neighborly.decorators import (
+    component,
+    component_factory,
+    life_event,
+    resource,
+    system,
 )
-from neighborly.core.location import Location
-from neighborly.exporter import NeighborlyJsonExporter
-from neighborly.plugins import defaults, talktown, weather
+from neighborly.exporter import export_to_json
+from neighborly.plugins.defaults.life_events import Die
+from neighborly.utils.common import (
+    add_character_to_settlement,
+    get_life_stage,
+    spawn_character,
+    spawn_settlement,
+)
+
+sim = Neighborly(
+    NeighborlyConfig.parse_obj(
+        {
+            "seed": 3,
+            "relationship_schema": {
+                "components": {
+                    "Friendship": {
+                        "min_value": -100,
+                        "max_value": 100,
+                    },
+                    "Romance": {
+                        "min_value": -100,
+                        "max_value": 100,
+                    },
+                    "InteractionScore": {
+                        "min_value": -5,
+                        "max_value": 5,
+                    },
+                }
+            },
+            "plugins": [
+                "neighborly.plugins.defaults.names",
+                "neighborly.plugins.defaults.characters",
+                "neighborly.plugins.defaults.businesses",
+                "neighborly.plugins.defaults.residences",
+                "neighborly.plugins.defaults.life_events",
+                "neighborly.plugins.defaults.ai",
+                "neighborly.plugins.defaults.social_rules",
+                "neighborly.plugins.defaults.location_bias_rules",
+            ],
+        }
+    )
+)
 
 
 class DemonSlayerRank(IntEnum):
@@ -106,56 +153,63 @@ class BreathingStyle(IntEnum):
     Beast = 13
 
 
+@component(sim)
+class PowerLevel(Component):
+
+    __slots__ = "level"
+
+    def __init__(self, level: int = 0) -> None:
+        super().__init__()
+        self.level: int = level
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"level": self.level}
+
+
+@component(sim)
+class ConfirmedKills(Component):
+    __slots__ = "count"
+
+    def __init__(self, count: int = 0) -> None:
+        super().__init__()
+        self.count: int = count
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"count": self.count}
+
+
+@component(sim)
 class DemonSlayer(Component):
-    """
-    A DemonSlayer is a person who fights demons and grows in rank.
+    """A DemonSlayer is a person who fights demons and grows in rank.
 
     Attributes
     ----------
     rank: DemonSlayerRank
         The slayers current rank
-    kills: int
-        The number of demons this slayer has killed
-    power_level: int
-        This slayer's power level (used to calculate
-        chance of winning a battle).
     breathing_style: BreathingStyle
         What style of breathing does this entity use
     """
 
-    __slots__ = "rank", "kills", "power_level", "breathing_style"
+    __slots__ = "rank", "breathing_style"
 
     def __init__(self, breathing_style: BreathingStyle) -> None:
         super().__init__()
         self.rank: DemonSlayerRank = DemonSlayerRank.Mizunoto
-        self.kills: int = 0
-        self.power_level: int = 0
         self.breathing_style: BreathingStyle = breathing_style
 
-    @classmethod
-    def create(cls, world: World, **kwargs) -> Component:
-        rng = world.get_resource(NeighborlyEngine).rng
-        breathing_style = rng.choice(list(BreathingStyle))
-        return cls(breathing_style=breathing_style)
-
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "rank": str(self.rank.name),
-            "power_level": self.power_level,
-            "breathing_style": str(self.breathing_style),
-        }
-
-    def on_archive(self) -> None:
-        if self.rank == DemonSlayerRank.Hashira:
-            # Remove the hashira from the DemonSlayerCorp
-            self.gameobject.world.get_resource(DemonSlayerCorps).retire_hashira(
-                self.gameobject.id
-            )
-
-        self.gameobject.remove_component(type(self))
+        return {"rank": self.rank.name, "breathing-style": self.breathing_style.name}
 
 
+@component_factory(sim, DemonSlayer)
+class DemonSlayerFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> DemonSlayer:
+        rng = world.get_resource(random.Random)
+        breathing_style = rng.choice(list(BreathingStyle))
+        return DemonSlayer(breathing_style=breathing_style)
+
+
+@resource(sim)
 class DemonSlayerCorps:
     """
     Shared resource that tracks information about
@@ -176,10 +230,10 @@ class DemonSlayerCorps:
     __slots__ = "_hashira", "_former_hashira", "_hashira_styles", "_hashira_to_style"
 
     def __init__(self) -> None:
-        self._hashira: OrderedSet[int] = OrderedSet()
-        self._hashira_styles: OrderedSet[int] = OrderedSet()
+        self._hashira: OrderedSet[int] = OrderedSet([])
+        self._hashira_styles: OrderedSet[int] = OrderedSet([])
         self._hashira_to_style: Dict[int, BreathingStyle] = {}
-        self._former_hashira: OrderedSet[int] = OrderedSet()
+        self._former_hashira: OrderedSet[int] = OrderedSet([])
 
     @property
     def hashira(self) -> OrderedSet[int]:
@@ -250,6 +304,7 @@ class DemonRank(IntEnum):
     UpperMoon = 6
 
 
+@component(sim)
 class Demon(Component):
     """
     Demons eat people and battle each other and demon slayers
@@ -258,58 +313,30 @@ class Demon(Component):
     ----------
     rank: DemonRank
         This demon's rank among other demons
-    kills: int
-        The number of humans this demon has devoured
-    power_level: int
-        The demon's power level (used to calculate
-        chance of winning a battle).
     turned_by: Optional[int]
         GameObject ID of the demon that gave this demon
         their power
     """
 
-    __slots__ = "rank", "kills", "power_level", "turned_by"
+    __slots__ = "rank", "turned_by"
 
     def __init__(
         self,
         rank: DemonRank = DemonRank.LowerDemon,
-        power_level: int = 0,
         turned_by: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.rank: DemonRank = rank
-        self.kills: int = 0
-        self.power_level: int = power_level
         self.turned_by: Optional[int] = turned_by
-
-    @classmethod
-    def create(cls, world: World, **kwargs) -> Component:
-        return cls(
-            power_level=kwargs.get("power_level", 0), turned_by=kwargs.get("turned_by")
-        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            **super().to_dict(),
             "rank": str(self.rank.name),
-            "power_level": self.power_level,
-            "kills": self.kills,
             "turned_by": self.turned_by if self.turned_by else -1,
         }
 
-    def on_archive(self) -> None:
-        if self.rank == DemonRank.LowerMoon:
-            self.gameobject.world.get_resource(DemonKingdom).retire_lower_moon(
-                self.gameobject.id
-            )
-        elif self.rank == DemonRank.UpperMoon:
-            self.gameobject.world.get_resource(DemonKingdom).retire_upper_moon(
-                self.gameobject.id
-            )
 
-        self.gameobject.remove_component(type(self))
-
-
+@resource(sim)
 class DemonKingdom:
     """
     Manages information about the upper-ranked demons
@@ -337,10 +364,10 @@ class DemonKingdom:
     )
 
     def __init__(self) -> None:
-        self._lower_moons: OrderedSet[int] = OrderedSet()
-        self._upper_moons: OrderedSet[int] = OrderedSet()
-        self._former_lower_moons: OrderedSet[int] = OrderedSet()
-        self._former_upper_moons: OrderedSet[int] = OrderedSet()
+        self._lower_moons: OrderedSet[int] = OrderedSet([])
+        self._upper_moons: OrderedSet[int] = OrderedSet([])
+        self._former_lower_moons: OrderedSet[int] = OrderedSet([])
+        self._former_upper_moons: OrderedSet[int] = OrderedSet([])
 
     @property
     def upper_moons(self) -> OrderedSet[int]:
@@ -540,470 +567,748 @@ def power_level_to_demon_rank(power_level: int) -> DemonRank:
 ########################################
 
 
-def become_demon_slayer(probability: float = 1) -> ILifeEvent:
-    def bind_character(world: World, event: Event, candidate: Optional[GameObject]):
+@life_event(sim)
+class BecomeDemonSlayer(ActionableLifeEvent):
+    def __init__(self, date: SimDateTime, character: GameObject) -> None:
+        super().__init__(date, [Role("Character", character)])
 
-        candidates = []
+    def execute(self) -> None:
+        character = self["Character"]
+        world = character.world
+        character.add_component(
+            world.get_component_info(DemonSlayer.__name__).factory.create(world)
+        )
+        character.add_component(
+            PowerLevel(world.get_resource(random.Random).randint(0, HINOTO_PL))
+        )
+        character.add_component(ConfirmedKills())
 
-        for _, character in world.get_component(GameCharacter):
-            if character.gameobject.has_component(DemonSlayer):
-                continue
-            if character.gameobject.has_component(Demon):
-                continue
-            if (
-                character.gameobject.get_component(Age).value
-                >= character.gameobject.get_component(LifeStages).stages["teen"]
-            ):
-                candidates.append(character.gameobject)
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
 
-        if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
-
-        return None
-
-    def execute(world: World, event: Event):
-        character = world.get_gameobject(event["Character"])
-        character.add_component(DemonSlayer.create(world))
-
-    return LifeEvent(
-        "BecameDemonSlayer",
-        probability=probability,
-        roles=[LifeEventRoleType("Character", binder_fn=bind_character)],
-        effect=execute,
-    )
-
-
-def demon_slayer_promotion(probability: float = 1.0) -> ILifeEvent:
-    """Demon slayer is promoted to the next rank"""
-
-    def bind_demon_slayer(world: World, event: Event, candidate: Optional[GameObject]):
-
-        candidates: List[GameObject] = []
-        for _, demon_slayer in world.get_component(DemonSlayer):
-            power_level_rank = power_level_to_slayer_rank(demon_slayer.power_level)
-
-            if power_level_rank < demon_slayer.rank:
-                candidates.append(demon_slayer.gameobject)
-
-        if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
-
-        return None
-
-    def execute(world: World, event: Event):
-        slayer = world.get_gameobject(event["Slayer"]).get_component(DemonSlayer)
-        power_level_rank = power_level_to_slayer_rank(slayer.power_level)
-        slayer.rank = power_level_rank
-
-    return LifeEvent(
-        "DemonSlayerPromotion",
-        probability=probability,
-        roles=[LifeEventRoleType("Slayer", binder_fn=bind_demon_slayer)],
-        effect=execute,
-    )
-
-
-def challenge_for_power(probability: float = 1.0) -> ILifeEvent:
-    def bind_challenger(world: World, event: Event, candidate: Optional[GameObject]):
-        """Get a challenger demon that has someone above them"""
-        candidates: List[GameObject] = []
-        for _, demon in world.get_component(Demon):
-            if demon.rank < DemonRank.UpperMoon:
-                candidates.append(demon.gameobject)
-
-        if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
-
-        return None
-
-    def bind_opponent(world: World, event: Event, candidate: Optional[GameObject]):
-        """Find an opponent for the challenger"""
-        challenger = world.get_gameobject(event["Challenger"]).get_component(Demon)
-        candidates: List[GameObject] = []
-        for gid, demon in world.get_component(Demon):
-            if gid == challenger.gameobject.id:
-                continue
-
-            if demon.rank > challenger.rank:
-                candidates.append(demon.gameobject)
-
-        if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
-
-        return None
-
-    def execute(world: World, event: Event):
-        """Execute the battle"""
-        challenger = world.get_gameobject(event["Challenger"]).get_component(Demon)
-        opponent = world.get_gameobject(event["Opponent"]).get_component(Demon)
-        rng = world.get_resource(NeighborlyEngine).rng
-        _death_event_type = LifeEvents.get("Death")
-
-        opponent_success_chance = probability_of_winning(opponent.power_level, challenger.power_level)
-        challenger_success_chance = probability_of_winning(challenger.power_level, opponent.power_level)
-
-        if rng.random() < opponent_success_chance:
-            # Demon slayer wins
-            new_slayer_pl, _ = update_power_level(
-                opponent.power_level,
-                challenger.power_level,
-                opponent_success_chance,
-                challenger_success_chance,
-            )
-
-            opponent.power_level = new_slayer_pl
-
-            death_event = _death_event_type.instantiate(
-                world, Deceased=challenger.gameobject
-            )
-
-            if death_event:
-                _death_event_type.execute(world, death_event)
-            # Update Power Ranking
-        else:
-            # Demon wins
-            _, new_demon_pl = update_power_level(
-                challenger.power_level,
-                opponent.power_level,
-                challenger_success_chance,
-                opponent_success_chance,
-            )
-
-            challenger.power_level = new_demon_pl
-
-            death_event = _death_event_type.instantiate(
-                world, Deceased=opponent.gameobject
-            )
-
-            if death_event:
-                _death_event_type.execute(world, death_event)
-            # Update Power Ranking
-
-    return LifeEvent(
-        "ChallengeForPower",
-        roles=[
-            LifeEventRoleType("Challenger", binder_fn=bind_challenger),
-            LifeEventRoleType("Opponent", binder_fn=bind_opponent),
-        ],
-        probability=probability,
-        effect=execute,
-    )
-
-
-def devour_human(probability: float = 1.0) -> ILifeEvent:
-    def execute(world: World, event: Event):
-        demon = world.get_gameobject(event["Demon"])
-        victim = world.get_gameobject(event["Victim"])
-        if victim.has_component(DemonSlayer):
-            battle_event_type = LifeEvents.get("Battle")
-            battle_event = battle_event_type.instantiate(
-                world, Demon=demon, Slayer=victim
-            )
-            if battle_event:
-                battle_event_type.execute(world, battle_event)
-
-        else:
-            demon.get_component(Demon).power_level += 1
-            demon.get_component(Demon).rank = power_level_to_demon_rank(
-                demon.get_component(Demon).power_level
-            )
-            _death_event_type = LifeEvents.get("Death")
-            _death_event_type.try_execute_event(world, Deceased=victim)
-
-    def bind_demon(world: World, event: Event, candidate: Optional[GameObject] = None):
-        q = query.Query(("Demon",), [query.where(query.has_components(Demon))])
-        candidate_id = candidate.id if candidate else None
-        results = q.execute(world, Demon=candidate_id)
-        if results:
-            return world.get_gameobject(
-                world.get_resource(NeighborlyEngine).rng.choice(results)[0]
-            )
-
-    def bind_victim(world: World, event: Event, candidate: Optional[GameObject] = None):
-        """Get all people at the same location who are not demons"""
-        demon = world.get_gameobject(event["Demon"])
-
-        if not demon.has_component(CurrentLocation):
+        # Only create demon slayers if demons are an actual problem
+        demons_exist = len(world.get_component(Demon)) > 5
+        if demons_exist is False:
             return None
 
-        demon_location = world.get_gameobject(
-            demon.get_component(CurrentLocation).location
-        ).get_component(Location)
+        character = cls._bind_character(world, bindings.get("Character"))
 
-        candidates: List[GameObject] = []
+        if character:
+            return cls(world.get_resource(SimDateTime), character)
 
-        for character_id in demon_location.entities:
-            character = world.get_gameobject(character_id)
-            if character_id == demon.id:
+        return None
+
+    @staticmethod
+    def _bind_character(world: World, candidate: Optional[GameObject] = None):
+
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((GameCharacter, Active))
+            ]
+
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            if character.has_component(DemonSlayer):
+                continue
+            if character.has_component(Demon):
+                continue
+            if get_life_stage(character) >= Child:
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
+
+        return None
+
+
+@life_event(sim)
+class DemonSlayerPromotion(ActionableLifeEvent):
+    def __init__(self, date: SimDateTime, character: GameObject) -> None:
+        super().__init__(date, [Role("Character", character)])
+
+    def execute(self) -> None:
+        character = self["Character"]
+        slayer = character.get_component(DemonSlayer)
+        power_level_rank = power_level_to_slayer_rank(
+            character.get_component(PowerLevel).level
+        )
+        slayer.rank = power_level_rank
+
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
+
+        character = cls._bind_demon_slayer(world, bindings.get("Character"))
+
+        if character is None:
+            return None
+
+        cls(world.get_resource(SimDateTime), character)
+
+    @staticmethod
+    def _bind_demon_slayer(world: World, candidate: Optional[GameObject] = None):
+
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((DemonSlayer, Active))
+            ]
+
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            demon_slayer = character.get_component(DemonSlayer)
+            power_level = character.get_component(PowerLevel)
+            power_level_rank = power_level_to_slayer_rank(power_level.level)
+
+            if power_level_rank < demon_slayer.rank:
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
+
+        return None
+
+
+@life_event(sim)
+class DemonChallengeForPower(ActionableLifeEvent):
+    def __init__(
+        self, date: SimDateTime, challenger: GameObject, opponent: GameObject
+    ) -> None:
+        super().__init__(
+            date, [Role("Challenger", challenger), Role("Opponent", opponent)]
+        )
+
+    def execute(self) -> None:
+        """Execute the battle"""
+        challenger = self["Challenger"]
+        opponent = self["Opponent"]
+        world = challenger.world
+
+        battle_event = Battle(world.get_resource(SimDateTime), challenger, opponent)
+
+        world.get_resource(LifeEventBuffer).append(battle_event)
+
+        battle_event.execute()
+
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
+
+        challenger = cls._bind_challenger(world, bindings.get("Challenger"))
+
+        if challenger is None:
+            return None
+
+        opponent = cls._bind_opponent(world, challenger, bindings.get("Opponent"))
+
+        if opponent is None:
+            return None
+
+        return cls(world.get_resource(SimDateTime), challenger, opponent)
+
+    @staticmethod
+    def _bind_challenger(world: World, candidate: Optional[GameObject] = None):
+        """Get a challenger demon that has someone above them"""
+
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((Demon, Active))
+            ]
+
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            demon = character.get_component(Demon)
+            if demon.rank < DemonRank.UpperMoon:
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
+
+        return None
+
+    @staticmethod
+    def _bind_opponent(
+        world: World, challenger: GameObject, candidate: Optional[GameObject]
+    ):
+        """Find an opponent for the challenger"""
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((Demon, Active))
+            ]
+
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            if character == challenger:
+                continue
+
+            if (
+                character.get_component(Demon).rank
+                > challenger.get_component(Demon).rank
+            ):
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
+
+        return None
+
+
+@life_event(sim)
+class DevourHuman(ActionableLifeEvent):
+    def __init__(
+        self, date: SimDateTime, demon: GameObject, victim: GameObject
+    ) -> None:
+        super().__init__(date, [Role("Demon", demon), Role("Victim", victim)])
+
+    def execute(self):
+        demon = self["Demon"]
+        victim = self["Victim"]
+        world = demon.world
+        date = world.get_resource(SimDateTime)
+        life_event_buffer = world.get_resource(LifeEventBuffer)
+
+        if victim.has_component(DemonSlayer):
+            battle_event = Battle(date, demon, victim)
+            life_event_buffer.append(battle_event)
+            battle_event.execute()
+
+        else:
+            demon.get_component(PowerLevel).level += 1
+            demon.get_component(Demon).rank = power_level_to_demon_rank(
+                demon.get_component(PowerLevel).level
+            )
+            death_event = Die(date, victim)
+            life_event_buffer.append(death_event)
+            death_event.execute()
+
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
+
+        demon = cls._bind_demon(world, bindings.get("Demon"))
+
+        if demon is None:
+            return None
+
+        victim = cls._bind_victim(world, demon, bindings.get("Victim"))
+
+        if victim is None:
+            return None
+
+        return cls(world.get_resource(SimDateTime), demon, victim)
+
+    @staticmethod
+    def _bind_demon(world: World, candidate: Optional[GameObject] = None):
+
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((Demon, Active))
+            ]
+
+        if candidates:
+            return world.get_resource(random.Random).choice(candidates)
+
+        return None
+
+    @staticmethod
+    def _bind_victim(
+        world: World, demon: GameObject, candidate: Optional[GameObject] = None
+    ):
+        """Get all people at the same location who are not demons"""
+        demon_frequented_locations = demon.get_component(FrequentedLocations).locations
+
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((GameCharacter, Active))
+            ]
+
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            if character == demon:
                 continue
 
             if character.has_component(Demon):
                 # skip
                 continue
 
-            candidates.append(character)
+            character_frequented = character.get_component(
+                FrequentedLocations
+            ).locations
 
-        if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
+            shared_locations = demon_frequented_locations.intersection(
+                character_frequented
+            )
+
+            if len(shared_locations) > 0:
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
 
         return None
 
-    return LifeEvent(
-        "DevourHuman",
-        probability=probability,
-        roles=[
-            LifeEventRoleType("Demon", binder_fn=bind_demon),
-            LifeEventRoleType("Victim", binder_fn=bind_victim),
-        ],
-        effect=execute,
-    )
 
-
-def battle(probability: float = 1.0) -> ILifeEvent:
+@life_event(sim)
+class Battle(ActionableLifeEvent):
     """Have a demon fight a demon slayer"""
 
-    def execute(world: World, event: Event):
+    def __init__(
+        self, date: SimDateTime, challenger: GameObject, opponent: GameObject
+    ) -> None:
+        super().__init__(
+            date, [Role("Challenger", challenger), Role("Opponent", opponent)]
+        )
+
+    def execute(self) -> None:
         """Choose a winner based on their expected success"""
-        demon = world.get_gameobject(event["Demon"]).get_component(Demon)
-        slayer = world.get_gameobject(event["Slayer"]).get_component(DemonSlayer)
-        rng = world.get_resource(NeighborlyEngine).rng
-        _death_event_type = LifeEvents.get("Death")
+        challenger = self["Challenger"]
+        opponent = self["Opponent"]
+        world = challenger.world
+        rng = world.get_resource(random.Random)
+        challenger_pl = challenger.get_component(PowerLevel)
+        opponent_pl = opponent.get_component(PowerLevel)
+        date = world.get_resource(SimDateTime)
+        life_event_buffer = world.get_resource(LifeEventBuffer)
 
-        slayer_success_chance = probability_of_winning(
-            slayer.power_level, demon.power_level
+        challenger_success_chance = probability_of_winning(
+            challenger_pl.level, opponent_pl.level
         )
 
-        demon_success_chance = probability_of_winning(
-            demon.power_level, slayer.power_level
+        opponent_success_chance = probability_of_winning(
+            opponent_pl.level, challenger_pl.level
         )
 
-        if rng.random() < slayer_success_chance:
-            # Demon slayer wins
-            new_slayer_pl, _ = update_power_level(
-                slayer.power_level,
-                demon.power_level,
-                slayer_success_chance,
-                demon_success_chance,
+        if rng.random() < challenger_success_chance:
+            # Challenger wins
+            new_challenger_pl, _ = update_power_level(
+                challenger_pl.level,
+                opponent_pl.level,
+                challenger_success_chance,
+                opponent_success_chance,
             )
 
-            slayer.power_level = new_slayer_pl
-            slayer.rank = power_level_to_slayer_rank(slayer.power_level)
+            challenger_pl.level = new_challenger_pl
 
-            death_event = _death_event_type.instantiate(
-                world, Deceased=demon.gameobject
-            )
+            death_event = Die(date, opponent)
 
-            if death_event:
-                _death_event_type.execute(world, death_event)
+            life_event_buffer.append(death_event)
 
+            death_event.execute()
+
+            challenger.get_component(ConfirmedKills).count += 1
         else:
-            # Demon wins
-            _, new_demon_pl = update_power_level(
-                demon.power_level,
-                slayer.power_level,
-                demon_success_chance,
-                slayer_success_chance,
+            # Opponent wins
+            _, new_opponent_pl = update_power_level(
+                opponent_pl.level,
+                challenger_pl.level,
+                opponent_success_chance,
+                challenger_success_chance,
             )
 
-            demon.power_level = new_demon_pl
-            demon.rank = power_level_to_demon_rank(demon.power_level)
+            opponent_pl.level = new_opponent_pl
 
-            death_event = _death_event_type.instantiate(
-                world, Deceased=slayer.gameobject
-            )
+            death_event = Die(date, challenger)
 
-            if death_event:
-                _death_event_type.execute(world, death_event)
+            life_event_buffer.append(death_event)
 
-    def bind_demon(world: World, event: Event, candidate: Optional[GameObject] = None):
-        q = query.Query(("Demon",), [query.where(query.has_components(Demon))])
-        candidate_id = candidate.id if candidate else None
-        results = q.execute(world, Demon=candidate_id)
-        if results:
-            return world.get_gameobject(
-                world.get_resource(NeighborlyEngine).rng.choice(results)[0]
-            )
+            death_event.execute()
 
-    def bind_demon_slayer(
-        world: World, event: Event, candidate: Optional[GameObject] = None
-    ):
-        q = query.Query(("DemonSlayer",), [query.where(query.has_components(Demon))])
-        candidate_id = candidate.id if candidate else None
-        results = q.execute(world, DemonSlayer=candidate_id)
-        if results:
-            return world.get_gameobject(
-                world.get_resource(NeighborlyEngine).rng.choice(results)[0]
-            )
+            opponent.get_component(ConfirmedKills).count += 1
 
-    return LifeEvent(
-        "Battle",
-        probability=probability,
-        roles=[
-            LifeEventRoleType("Demon", bind_demon),
-            LifeEventRoleType("Slayer", bind_demon_slayer),
-        ],
-        effect=execute,
-    )
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
 
+        challenger = cls._bind_challenger(world, bindings.get("Challenger"))
+        opponent = cls._bind_opponent(world, bindings.get("Opponent"))
 
-def turn_into_demon(probability: float = 1.0) -> ILifeEvent:
-    def bind_new_demon(world: World, event: Event, candidate: Optional[GameObject]):
-        candidates: List[GameObject] = []
-        for _, character in world.get_component(GameCharacter):
-            if character.gameobject.has_component(Demon):
-                continue
-            if character.gameobject.has_component(DemonSlayer):
-                continue
+        if challenger is None:
+            return None
 
-            if (
-                character.gameobject.get_component(Age).value
-                >= character.gameobject.get_component(LifeStages).stages["teen"]
-            ):
-                candidates.append(character.gameobject)
+        if opponent is None:
+            return None
+
+        return cls(world.get_resource(SimDateTime), challenger, opponent)
+
+    @staticmethod
+    def _bind_challenger(world: World, candidate: Optional[GameObject] = None):
+
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((Demon, Active))
+            ]
 
         if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
+            return world.get_resource(random.Random).choice(candidates)
 
         return None
 
-    def execute(world: World, event: Event):
-        character = world.get_gameobject(event["Character"])
-        character.add_component(Demon.create(world))
-        character.remove_component(CanAge)
-        character.remove_component(CanGetPregnant)
+    @staticmethod
+    def _bind_opponent(world: World, candidate: Optional[GameObject] = None):
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((DemonSlayer, Active))
+            ]
 
-    return LifeEvent(
-        "TurnIntoDemon",
-        probability=probability,
-        roles=[LifeEventRoleType("Character", binder_fn=bind_new_demon)],
-        effect=execute,
-    )
+        if candidates:
+            return world.get_resource(random.Random).choice(candidates)
 
-
-def death_event_type() -> ILifeEvent:
-    def execute(world: World, event: Event):
-        deceased = world.get_gameobject(event["Deceased"])
-        deceased.add_component(Deceased())
-        deceased.remove_component(Active)
-        move_to_location(world, deceased, None)
-
-    return LifeEvent(
-        "Death",
-        roles=[LifeEventRoleType("Deceased")],
-        effect=execute,
-        probability=0,
-    )
+        return None
 
 
-def promotion_to_lower_moon(probability: float = 1.0) -> ILifeEvent:
-    def bind_demon(world: World, event: Event, candidate: Optional[GameObject]):
+@life_event(sim)
+class TurnSomeoneIntoDemon(ActionableLifeEvent):
+    def __init__(
+        self, date: SimDateTime, demon: GameObject, new_demon: GameObject
+    ) -> None:
+        super().__init__(date, [Role("Demon", demon), Role("NewDemon", new_demon)])
+
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
+
+        demon = cls._bind_demon(world, candidate=bindings.get("Demon"))
+
+        if demon is None:
+            return None
+
+        new_demon = cls._bind_new_demon(
+            world, demon, candidate=bindings.get("NewDemon")
+        )
+
+        if new_demon is None:
+            return None
+
+        return cls(world.get_resource(SimDateTime), demon, new_demon)
+
+    @staticmethod
+    def _bind_demon(
+        world: World, candidate: Optional[GameObject]
+    ) -> Optional[GameObject]:
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((Demon, Active))
+            ]
+
+        if candidates:
+            return world.get_resource(random.Random).choice(candidates)
+
+        return None
+
+    @staticmethod
+    def _bind_new_demon(
+        world: World, demon: GameObject, candidate: Optional[GameObject]
+    ) -> Optional[GameObject]:
+        demon_frequented_locations = demon.get_component(FrequentedLocations).locations
+
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((GameCharacter, Active))
+            ]
+
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            if character == demon:
+                continue
+
+            if character.has_component(Demon):
+                # skip
+                continue
+
+            character_frequented = character.get_component(
+                FrequentedLocations
+            ).locations
+
+            shared_locations = demon_frequented_locations.intersection(
+                character_frequented
+            )
+
+            if len(shared_locations) > 0:
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
+
+        return None
+
+    def execute(self) -> None:
+        demon = self["Demon"]
+        new_demon = self["NewDemon"]
+
+        new_demon.add_component(Demon(turned_by=demon.uid))
+        new_demon.remove_component(CanAge)
+        if new_demon.has_component(CanGetPregnant):
+            new_demon.remove_component(CanGetPregnant)
+        new_demon.add_component(PowerLevel(demon.get_component(PowerLevel).level // 2))
+        new_demon.add_component(ConfirmedKills())
+
+
+@life_event(sim)
+class PromotionToLowerMoon(ActionableLifeEvent):
+    def __init__(self, date: SimDateTime, character: GameObject) -> None:
+        super().__init__(date, [Role("Character", character)])
+
+    def execute(self) -> None:
+        character = self["Character"]
+        demon = character.get_component(Demon)
+        demon.rank = DemonRank.LowerMoon
+
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
+
+        demon = cls._bind_demon(world, bindings.get("Character"))
+        if demon:
+            return cls(world.get_resource(SimDateTime), demon)
+        return None
+
+    @staticmethod
+    def _bind_demon(world: World, candidate: Optional[GameObject] = None):
 
         demon_kingdom = world.get_resource(DemonKingdom)
 
         if not demon_kingdom.has_lower_moon_vacancy():
             return None
 
-        candidates: List[GameObject] = []
-        for _, demon in world.get_component(Demon):
-            if demon.rank < DemonRank.LowerMoon and demon.power_level >= LOWER_MOON_PL:
-                candidates.append(demon.gameobject)
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((Demon, Active))
+            ]
 
-        if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            demon = character.get_component(Demon)
+            power_level = character.get_component(PowerLevel)
+            if demon.rank < DemonRank.LowerMoon and power_level.level >= LOWER_MOON_PL:
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
 
         return None
 
-    def execute(world: World, event: Event):
-        demon = world.get_gameobject(event["Demon"]).get_component(Demon)
-        demon.rank = DemonRank.LowerMoon
 
-    return LifeEvent(
-        "PromotedToLowerMoon",
-        probability=probability,
-        roles=[LifeEventRoleType("Demon", binder_fn=bind_demon)],
-        effect=execute,
-    )
+@life_event(sim)
+class PromotionToUpperMoon(ActionableLifeEvent):
+    def __init__(self, date: SimDateTime, character: GameObject) -> None:
+        super().__init__(date, [Role("Character", character)])
 
+    def execute(self) -> None:
+        character = self["Character"]
+        demon = character.get_component(Demon)
+        demon.rank = DemonRank.UpperMoon
 
-def promotion_to_upper_moon(probability: float = 1.0) -> ILifeEvent:
-    def bind_demon(world: World, event: Event, candidate: Optional[None]):
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: RoleList,
+    ) -> Optional[ActionableLifeEvent]:
+        if bindings:
+            demon = cls._bind_demon(world, bindings.get("Character"))
+        else:
+            demon = cls._bind_demon(world)
+
+        if demon:
+            return cls(world.get_resource(SimDateTime), demon)
+        return None
+
+    @staticmethod
+    def _bind_demon(world: World, candidate: Optional[GameObject] = None):
 
         demon_kingdom = world.get_resource(DemonKingdom)
 
         if not demon_kingdom.has_upper_moon_vacancy():
             return None
 
-        candidates: List[GameObject] = []
-        for _, demon in world.get_component(Demon):
-            if demon.rank < DemonRank.UpperMoon and demon.power_level >= UPPER_MOON_PL:
-                candidates.append(demon.gameobject)
+        candidates: List[GameObject]
+        if candidate:
+            candidates = [candidate]
+        else:
+            candidates = [
+                world.get_gameobject(g)
+                for g, _ in world.get_components((Demon, Active))
+            ]
 
-        if candidates:
-            return world.get_resource(NeighborlyEngine).rng.choice(candidates)
+        matches: List[GameObject] = []
+
+        for character in candidates:
+            demon = character.get_component(Demon)
+            power_level = character.get_component(PowerLevel)
+            if demon.rank < DemonRank.UpperMoon and power_level.level >= UPPER_MOON_PL:
+                matches.append(character)
+
+        if matches:
+            return world.get_resource(random.Random).choice(matches)
 
         return None
 
-    def execute(world: World, event: Event):
-        demon = world.get_gameobject(event["Demon"]).get_component(Demon)
-        demon.rank = DemonRank.UpperMoon
 
-    return LifeEvent(
-        "PromotedToUpperMoon",
-        probability=probability,
-        roles=[LifeEventRoleType("Demon", binder_fn=bind_demon)],
-        effect=execute,
-    )
+@system(sim)
+class RetireDeceasedHashira(ISystem):
+    sys_group = "event-listeners"
 
-
-########################################
-# Plugin
-########################################
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(Die):
+            if demon_slayer := event["Character"].try_component(DemonSlayer):
+                if demon_slayer.rank == DemonSlayerRank.Hashira:
+                    self.world.get_resource(DemonSlayerCorps).retire_hashira(
+                        event["Character"].uid
+                    )
 
 
-class DemonSlayerPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs) -> None:
-        LifeEvents.add(promotion_to_upper_moon())
-        LifeEvents.add(promotion_to_lower_moon())
-        LifeEvents.add(turn_into_demon(0.8))
-        LifeEvents.add(battle(0.7))
-        LifeEvents.add(devour_human(0.3))
-        LifeEvents.add(challenge_for_power(0.4))
-        LifeEvents.add(demon_slayer_promotion(0.7))
-        LifeEvents.add(become_demon_slayer(0.3))
-        LifeEvents.add(death_event_type())
-        sim.world.add_resource(DemonSlayerCorps())
-        sim.world.add_resource(DemonKingdom())
+@system(sim)
+class RemoveDeceasedDemons(ISystem):
+    sys_group = "event-listeners"
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(Die):
+            if demon := event["Character"].try_component(Demon):
+                if demon.rank == DemonRank.LowerMoon:
+                    self.world.get_resource(DemonKingdom).retire_lower_moon(
+                        event["Character"].uid
+                    )
+                elif demon.rank == DemonRank.UpperMoon:
+                    self.world.get_resource(DemonKingdom).retire_upper_moon(
+                        event["Character"].uid
+                    )
+
+
+@system(sim)
+class SpawnFirstDemon(ISystem):
+    sys_group = "early-character-update"
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        date = self.world.get_resource(SimDateTime)
+
+        if date.year < 10:
+            return
+
+        for guid, _ in self.world.get_component(Settlement):
+
+            settlement = self.world.get_gameobject(guid)
+
+            new_demon = spawn_character(
+                sim.world,
+                "character::default::female",
+            )
+
+            new_demon.add_component(Demon())
+            new_demon.remove_component(CanAge)
+            new_demon.add_component(ConfirmedKills())
+            new_demon.add_component(
+                PowerLevel(
+                    self.world.get_resource(random.Random).randint(0, HIGHER_DEMON_PL)
+                )
+            )
+            if new_demon.has_component(CanGetPregnant):
+                new_demon.remove_component(CanGetPregnant)
+
+            add_character_to_settlement(new_demon, settlement)
+
+        self.world.remove_system(type(self))
+
+
+@system(sim)
+class CreateTown(ISystem):
+    sys_group = "initialization"
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        spawn_settlement(self.world)
 
 
 ########################################
 # MAIN FUNCTION
 ########################################
 
+
 EXPORT_WORLD = False
 
 
 def main():
-    sim = (
-        SimulationBuilder()
-        .add_plugin(defaults.get_plugin())
-        .add_plugin(weather.get_plugin())
-        .add_plugin(talktown.get_plugin())
-        .add_plugin(DemonSlayerPlugin())
-        .build()
-    )
-
     st = time.time()
     sim.run_for(50)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {sim.date.to_iso_str()}")
+    print(f"World Date: {sim.world.get_resource(SimDateTime)}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_WORLD:
-        output_path = f"{sim.seed}_{sim.town.name.replace(' ', '_')}.json"
+        output_path = f"world_{sim.config.seed}.json"
 
         with open(output_path, "w") as f:
-            data = NeighborlyJsonExporter().export(sim)
+            data = export_to_json(sim)
             f.write(data)
             print(f"Simulation data written to: '{output_path}'")
 

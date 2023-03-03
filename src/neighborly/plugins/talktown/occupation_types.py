@@ -6,20 +6,16 @@ https://github.com/ShiJbey/talktown/blob/python3/talktown/occupation.py
 https://github.com/ShiJbey/talktown/blob/python3/talktown/config/businesses_config.py
 """
 
-from neighborly.builtin.role_filters import (
-    has_any_work_experience,
-    has_experience_as_a,
-    is_college_graduate,
-    is_gender,
-)
-from neighborly.core.business import OccupationType, join_preconditions
+from neighborly.components.business import OccupationType
+from neighborly.plugins.talktown.school import CollegeGraduate
+from neighborly.utils.query import has_any_work_experience, has_work_experience_as
 
-apprentice = OccupationType(name="Apprentice", level=1, precondition=is_gender("male"))
+apprentice = OccupationType(name="Apprentice", level=1)
 
 architect = OccupationType(
     name="Architect",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    rules=lambda gameobject: gameobject.has_component(CollegeGraduate),
 )
 
 bottler = OccupationType(
@@ -57,7 +53,6 @@ groundskeeper = OccupationType(
     level=1,
 )
 
-
 hotel_maid = OccupationType(
     name="Hotel Maid",
     level=1,
@@ -83,12 +78,10 @@ waiter = OccupationType(
     level=1,
 )
 
-
 whitewasher = OccupationType(
     name="Whitewasher",
     level=1,
 )
-
 
 busboy = OccupationType(
     name="Busboy",
@@ -291,11 +284,7 @@ teacher = OccupationType(
 )
 
 principal = OccupationType(
-    name="Principal",
-    level=3,
-    precondition=join_preconditions(
-        has_experience_as_a("Teacher"),
-    ),
+    name="Principal", level=3, rules=has_work_experience_as("Teacher")
 )
 
 tailor = OccupationType(
@@ -323,19 +312,18 @@ proprietor = OccupationType(
     level=2,
 )
 
-
 dentist = OccupationType(
     name="Dentist",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    rules=lambda gameobject: gameobject.has_component(CollegeGraduate),
 )
 
 doctor = OccupationType(
     name="Doctor",
     level=4,
-    precondition=join_preconditions(
+    rules=(
         has_any_work_experience(),
-        is_college_graduate(),
+        lambda gameobject: gameobject.has_component(CollegeGraduate),
     ),
 )
 
@@ -347,13 +335,13 @@ druggist = OccupationType(
 engineer = OccupationType(
     name="Engineer",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    rules=lambda gameobject: gameobject.has_component(CollegeGraduate),
 )
 
 fire_chief = OccupationType(
     name="Fire Chief",
     level=3,
-    precondition=join_preconditions(has_experience_as_a("Fire Fighter")),
+    rules=has_work_experience_as("Fire Fighter"),
 )
 
 insurance_agent = OccupationType(
@@ -366,13 +354,12 @@ jeweler = OccupationType(
     level=3,
 )
 
-
 lawyer = OccupationType(
     name="Lawyer",
     level=4,
-    precondition=join_preconditions(
+    rules=(
         has_any_work_experience(),
-        is_college_graduate(),
+        lambda gameobject: gameobject.has_component(CollegeGraduate),
     ),
 )
 
@@ -399,43 +386,41 @@ owner = OccupationType(
 professor = OccupationType(
     name="Professor",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    rules=lambda gameobject: gameobject.has_component(CollegeGraduate),
 )
 
 optometrist = OccupationType(
     name="Optometrist",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    rules=lambda gameobject: gameobject.has_component(CollegeGraduate),
 )
-
 
 pharmacist = OccupationType(
     name="Pharmacist",
     level=4,
-    precondition=join_preconditions(is_college_graduate()),
+    rules=lambda gameobject: gameobject.has_component(CollegeGraduate),
 )
 
 plastic_surgeon = OccupationType(
     name="Plastic Surgeon",
     level=4,
-    precondition=join_preconditions(
+    rules=(
         has_any_work_experience(),
-        is_college_graduate(),
+        lambda gameobject: gameobject.has_component(CollegeGraduate),
     ),
 )
 
 police_chief = OccupationType(
     name="Police Chief",
     level=3,
-    precondition=join_preconditions(has_experience_as_a("Police Chief")),
+    rules=has_work_experience_as("Police Chief"),
 )
 
 police_officer = OccupationType(
     name="Police Officer",
     level=1,
-    precondition=join_preconditions(has_experience_as_a("Police Officer")),
+    rules=has_work_experience_as("Police Officer"),
 )
-
 
 realtor = OccupationType(
     name="Realtor",

@@ -1,28 +1,30 @@
 from __future__ import annotations
 
+import importlib
+import os
 import random
-from abc import ABC, abstractmethod
-from logging import getLogger
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+import sys
+from types import ModuleType
+from typing import Any, Callable, Dict, List, Optional, Type, TypedDict, Union
 
-from neighborly.builtin.systems import (
-    LinearTimeSystem,
-    RemoveDeceasedFromOccupation,
-    RemoveDeceasedFromResidences,
-    RemoveDepartedFromOccupation,
-    RemoveDepartedFromResidences,
-    RemoveRetiredFromOccupation,
-)
-from neighborly.core.ai import MovementAISystem, SocialAISystem
-from neighborly.core.constants import TIME_UPDATE_PHASE, TOWN_SYSTEMS_PHASE
-from neighborly.core.ecs import ISystem, World
-from neighborly.core.engine import NeighborlyEngine
-from neighborly.core.event import EventLog
-from neighborly.core.life_event import LifeEventSystem
+import neighborly.components as components
+import neighborly.content_management as libraries
+import neighborly.core.relationship as relationship
+import neighborly.factories as factories
+import neighborly.systems as systems
+from neighborly.config import NeighborlyConfig
+from neighborly.core.ai.brain import AIComponent
+from neighborly.core.ecs import Component, IComponentFactory, ISystem, World
+from neighborly.core.event import AllEvents, EventBuffer, EventHistory
+from neighborly.core.life_event import LifeEventBuffer
+from neighborly.core.location_bias import ILocationBiasRule
+from neighborly.core.settlement import Settlement
+from neighborly.core.social_rule import ISocialRule
+from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
-from neighborly.core.town import LandGrid, Town
-
-logger = getLogger(__name__)
+from neighborly.core.tracery import Tracery
+from neighborly.core.traits import TraitManager
+from neighborly.data_collection import DataCollector
 
 
 class PluginSetupError(Exception):
@@ -32,72 +34,253 @@ class PluginSetupError(Exception):
         super().__init__(*args)
 
 
-class Plugin(ABC):
+class PluginInfo(TypedDict):
+    name: str
+    plugin_id: str
+    version: str
+
+
+class Neighborly:
     """
-    Plugins are loaded before the simulation runs and can modify
-    a Simulation's World instance to add new components, systems,
-    resources, and entity archetypes.
-    """
-
-    @classmethod
-    def get_name(cls) -> str:
-        """Return the name of this plugin"""
-        return cls.__name__
-
-    @abstractmethod
-    def setup(self, sim: Simulation, **kwargs) -> None:
-        """Add the plugin data to the simulation"""
-        raise NotImplementedError
-
-
-TownSize = Union[Literal["small", "medium", "large"], Tuple[int, int]]
-
-
-class Simulation:
-    """
-    A Neighborly simulation instance
+    Main entry class for running Neighborly simulations.
 
     Attributes
     ----------
     world: World
         Entity-component system (ECS) that manages entities and procedures in the virtual world
-    engine: NeighborlyEngine
-        Engine instance used for PRNG and name generation
-    seed: int
-        The seed passed to the random number generator
-    starting_date: SimDateTime
-        The starting date for the simulation
+    config: neighborly.NeighborlyConfig
+        Configuration settings for the simulation
+    plugins: List[Tuple[Plugin, Dict[str, Any]]]
+        List of loaded plugins and their configuration data
     """
 
-    __slots__ = (
-        "world",
-        "engine",
-        "seed",
-        "starting_date",
-    )
+    __slots__ = ("world", "config", "plugins")
 
-    def __init__(
-        self,
-        seed: int,
-        world: World,
-        engine: NeighborlyEngine,
-        starting_date: SimDateTime,
-    ) -> None:
-        self.seed: int = seed
-        self.world: World = world
-        self.engine: NeighborlyEngine = engine
-        self.world.add_resource(engine)
-        self.starting_date: SimDateTime = starting_date
+    def __init__(self, config: Optional[NeighborlyConfig] = None) -> None:
+        """
+        Parameters
+        ----------
+        config: Optional[NeighborlyConfig], optional
+            Configuration settings for the simulation, defaults to None
+        """
+        self.world: World = World()
+        self.config: NeighborlyConfig = config if config else NeighborlyConfig()
+        self.plugins: Dict[str, ModuleType] = {}
 
-    def run_for(self, years: int) -> None:
-        """Run the simulation for a given number of years"""
-        stop_date = self.date.copy() + TimeDelta(years=years)
+        # Seed RNG for libraries we don't control, like Tracery
+        random.seed(self.config.seed)
+
+        # Add default resources
+        self.world.add_resource(self.config)
+        self.world.add_resource(random.Random(self.config.seed))
+        self.world.add_resource(Tracery())
+        self.world.add_resource(libraries.SocialRuleLibrary())
+        self.world.add_resource(libraries.CharacterLibrary())
+        self.world.add_resource(libraries.BusinessLibrary())
+        self.world.add_resource(libraries.ResidenceLibrary())
+        self.world.add_resource(libraries.ActivityLibrary())
+        self.world.add_resource(self.config.start_date.copy())
+        self.world.add_resource(EventBuffer())
+        self.world.add_resource(LifeEventBuffer())
+        self.world.add_resource(AllEvents())
+        self.world.add_resource(libraries.OccupationTypeLibrary())
+        self.world.add_resource(libraries.LifeEventLibrary())
+        self.world.add_resource(libraries.ServiceLibrary())
+        self.world.add_resource(DataCollector())
+        self.world.add_resource(libraries.LocationBiasRuleLibrary())
+        self.world.add_resource(libraries.AIBrainLibrary())
+
+        # Add default system groups
+        self.world.add_system(systems.InitializationSystemGroup())
+        self.world.add_system(systems.EarlyUpdateSystemGroup())
+        self.world.add_system(systems.StatusUpdateSystemGroup())
+        self.world.add_system(systems.BusinessUpdateSystemGroup())
+        self.world.add_system(systems.CharacterUpdateSystemGroup())
+        self.world.add_system(systems.EarlyCharacterUpdateSystemGroup())
+        self.world.add_system(systems.LateCharacterUpdateSystemGroup())
+        self.world.add_system(systems.RelationshipUpdateSystemGroup())
+        self.world.add_system(systems.CoreSystemsSystemGroup())
+        self.world.add_system(systems.EventListenersSystemGroup())
+        self.world.add_system(systems.DataCollectionSystemGroup())
+        self.world.add_system(systems.CleanUpSystemGroup())
+
+        # Add default systems
+        self.world.add_system(systems.EvaluateSocialRulesSystem())
+        self.world.add_system(systems.RelationshipUpdateSystem())
+        self.world.add_system(systems.FriendshipStatSystem())
+        self.world.add_system(systems.RomanceStatSystem())
+        self.world.add_system(systems.MeetNewPeopleSystem())
+        self.world.add_system(systems.LifeEventSystem())
+        self.world.add_system(systems.LifeEventBufferSystem())
+        self.world.add_system(systems.EventSystem())
+        self.world.add_system(systems.TimeSystem())
+        self.world.add_system(systems.CharacterAgingSystem())
+        self.world.add_system(systems.DatingStatusSystem())
+        self.world.add_system(systems.MarriedStatusSystem())
+        self.world.add_system(systems.PregnantStatusSystem())
+        self.world.add_system(systems.UnemployedStatusSystem())
+        self.world.add_system(systems.OccupationUpdateSystem())
+        self.world.add_system(systems.FindEmployeesSystem())
+        self.world.add_system(systems.SpawnFamilySystem())
+        self.world.add_system(systems.StartBusinessSystem())
+        self.world.add_system(systems.UpdateFrequentedLocationSystem())
+        self.world.add_system(systems.AIActionSystem())
+        self.world.add_system(systems.OnJoinSettlementSystem())
+        self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
+
+        # Register components
+        self.world.register_component(components.Active)
+        self.world.register_component(
+            AIComponent, factory=factories.AIComponentFactory()
+        )
+        self.world.register_component(
+            components.GameCharacter, factory=factories.GameCharacterFactory()
+        )
+        self.world.register_component(relationship.RelationshipManager)
+        self.world.register_component(relationship.Relationship)
+        self.world.register_component(relationship.Friendship)
+        self.world.register_component(relationship.Romance)
+        self.world.register_component(relationship.InteractionScore)
+        self.world.register_component(TraitManager)
+        self.world.register_component(
+            components.Location, factory=factories.LocationFactory()
+        )
+        self.world.register_component(components.FrequentedBy)
+        self.world.register_component(components.CurrentSettlement)
+        self.world.register_component(
+            components.Virtues, factory=factories.VirtuesFactory()
+        )
+        self.world.register_component(
+            components.Activities, factory=factories.ActivitiesFactory()
+        )
+        self.world.register_component(components.Occupation)
+        self.world.register_component(components.WorkHistory)
+        self.world.register_component(
+            components.Services, factory=factories.ServicesFactory()
+        )
+        self.world.register_component(components.ClosedForBusiness)
+        self.world.register_component(components.OpenForBusiness)
+        self.world.register_component(
+            components.Business, factory=factories.BusinessFactory()
+        )
+        self.world.register_component(components.InTheWorkforce)
+        self.world.register_component(components.Departed)
+        self.world.register_component(components.CanAge)
+        self.world.register_component(components.Mortal)
+        self.world.register_component(components.CanGetPregnant)
+        self.world.register_component(components.Deceased)
+        self.world.register_component(components.Retired)
+        self.world.register_component(components.Residence)
+        self.world.register_component(components.Resident)
+        self.world.register_component(components.Vacant)
+        self.world.register_component(components.Building)
+        self.world.register_component(components.Position2D)
+        self.world.register_component(StatusManager)
+        self.world.register_component(
+            components.FrequentedLocations,
+            factory=factories.FrequentedLocationsFactory(),
+        )
+        self.world.register_component(Settlement)
+        self.world.register_component(EventHistory)
+        self.world.register_component(components.MarriageConfig)
+        self.world.register_component(components.AgingConfig)
+        self.world.register_component(components.ReproductionConfig)
+        self.world.register_component(components.Name)
+        self.world.register_component(components.OperatingHours)
+        self.world.register_component(components.Lifespan)
+        self.world.register_component(components.Age)
+
+        # Configure printing every event to the console
+        if self.config.verbose:
+            self.world.add_system(systems.PrintEventBufferSystem())
+
+        # Load plugins from the config
+        for plugin_entry in self.config.plugins:
+            if isinstance(plugin_entry, str):
+                self.load_plugin(plugin_entry)
+            else:
+                self.load_plugin(plugin_entry.name, plugin_entry.path)
+
+    @property
+    def date(self) -> SimDateTime:
+        """Get the simulated DateTime instance used by the simulation"""
+        return self.world.get_resource(SimDateTime)
+
+    def load_plugin(self, module_name: str, path: Optional[str] = None) -> None:
+        """Load a plugin
+
+        Parameters
+        ----------
+        module_name: str
+            Name of module to load
+        path: Optional[str]
+            Path where the Python module lives
+        """
+
+        if path is not None:
+            plugin_abs_path = os.path.abspath(path)
+            sys.path.insert(0, plugin_abs_path)
+
+        plugin_module = importlib.import_module(module_name)
+        plugin_info: Optional[PluginInfo] = getattr(plugin_module, "plugin_info", None)
+        plugin_setup_fn: Optional[Callable[[Neighborly], None]] = getattr(
+            plugin_module, "setup", None
+        )
+
+        if plugin_info is None:
+            raise PluginSetupError(
+                f"Cannot find 'plugin_info' dict in plugin: {module_name}."
+            )
+
+        if plugin_setup_fn is None:
+            raise PluginSetupError(
+                f"'setup' function not found for plugin: {module_name}"
+            )
+
+        if not callable(plugin_setup_fn):
+            raise PluginSetupError(
+                f"'setup' function is not callable in plugin: {module_name}"
+            )
+
+        plugin_setup_fn(self)
+
+        self.plugins[plugin_info["plugin_id"]] = plugin_module
+
+        # Remove the given plugin path from the front
+        # of the system path to prevent module resolution bugs
+        if path is not None:
+            sys.path.pop(0)
+
+    def run_for(self, time_delta: Union[int, TimeDelta]) -> None:
+        """
+        Run the simulation for a given number of simulated years
+
+        Parameters
+        ----------
+        time_delta: Union[int, TimeDelta]
+            Simulated years to run the simulation for
+        """
+        if isinstance(time_delta, int):
+            stop_date = self.world.get_resource(SimDateTime).copy() + TimeDelta(
+                years=time_delta
+            )
+        else:
+            stop_date = self.world.get_resource(SimDateTime).copy() + time_delta
+
         self.run_until(stop_date)
 
     def run_until(self, stop_date: SimDateTime) -> None:
-        """Run the simulation until a specific date is reached"""
+        """
+        Run the simulation until a specific date is reached
+
+        Parameters
+        ----------
+        stop_date: SimDateTime
+            The date to stop stepping the simulation
+        """
         try:
-            while stop_date >= self.date:
+            current_date = self.world.get_resource(SimDateTime)
+            while stop_date >= current_date:
                 self.step()
         except KeyboardInterrupt:
             print("\nStopping Simulation")
@@ -106,156 +289,57 @@ class Simulation:
         """Advance the simulation a single timestep"""
         self.world.step()
 
-    @property
-    def date(self) -> SimDateTime:
-        """Get the simulated DateTime instance used by the simulation"""
-        return self.world.get_resource(SimDateTime)
-
-    @property
-    def town(self) -> Town:
-        """Get a reference to the Town instance"""
-        return self.world.get_resource(Town)
-
-
-class SimulationBuilder:
-    """
-    Builder class for Neighborly Simulation instances
-
-    Attributes
-    ----------
-    time_increment_hours: int
-        How many hours should time advance each tick of the simulation
-    starting_date: SimDateTime
-        What date should the simulation start from
-    town_size: Tuple[int, int]
-        Tuple containing the width and length of the grid of land the town is built on
-    seed: int
-        The value used to seed the random number generator
-    systems: List[Tuple[ISystem, int]]
-        The systems to add to the simulation instance and their associated priorities
-    resources: List[Any]
-        Resource instances to add to the simulation instance
-    plugins: List[Tuple[Plugin, Dict[str, Any]]]
-        Plugins to add to the simulation
-    """
-
-    __slots__ = (
-        "time_increment_hours",
-        "starting_date",
-        "town_name",
-        "town_size",
-        "seed",
-        "systems",
-        "resources",
-        "plugins",
-        "print_events",
-        "life_event_interval_hours"
-    )
-
-    def __init__(
+    def register_component(
         self,
-        seed: Optional[Union[int, str]] = None,
-        starting_date: Union[str, SimDateTime] = "0000-00-00",
-        time_increment_hours: int = 12,
-        town_name: str = "#town_name#",
-        town_size: TownSize = "medium",
-        print_events: bool = True,
-        life_event_interval_hours: int = 336
+        component_type: Type[Component],
+        name: Optional[str] = None,
+        factory: Optional[IComponentFactory] = None,
     ) -> None:
-        self.seed: int = hash(seed if seed is not None else random.randint(0, 99999999))
-        self.time_increment_hours: int = time_increment_hours
-        self.starting_date: SimDateTime = (
-            starting_date
-            if isinstance(starting_date, SimDateTime)
-            else SimDateTime.from_iso_str(starting_date)
-        )
-        self.town_name: str = town_name
-        self.town_size: Tuple[int, int] = SimulationBuilder._convert_town_size(
-            town_size
-        )
-        self.systems: List[Tuple[ISystem, int]] = []
-        self.resources: List[Any] = []
-        self.plugins: List[Tuple[Plugin, Dict[str, Any]]] = []
-        self.print_events: bool = print_events
-        self.life_event_interval_hours: int = life_event_interval_hours
+        """Register a component type with the  simulation
 
-    def add_plugin(self, plugin: Plugin, **kwargs) -> SimulationBuilder:
-        """Add plugin to simulation"""
-        self.plugins.append((plugin, {**kwargs}))
-        return self
+        Registers a component class type with the simulation's World instance.
+        This allows content authors to use the Component in YAML files and
+        EntityPrefabs.
 
-    def _create_town(
-        self,
-        sim: Simulation,
-    ) -> SimulationBuilder:
-        """Create a new grid of land to build the town on"""
-        # create town
-        generated_name = sim.world.get_resource(
-            NeighborlyEngine
-        ).name_generator.get_name(self.town_name)
-        sim.world.add_resource(Town(generated_name))
+        Parameters
+        ----------
+        component_type: Type[Component]
+            The type of component to add
+        name: str, optional
+            A name to register the component type under (defaults to name of class)
+        factory: IComponentFactory, optional
+            A factory instance used to construct this component type
+            (defaults to DefaultComponentFactory())
+        """
 
-        # Create the land
-        land_grid = LandGrid(self.town_size)
+        self.world.register_component(component_type, name, factory)
 
-        sim.world.add_resource(land_grid)
+    def add_resource(self, resource: Any) -> None:
+        """Add a shared resource
 
-        return self
+        Parameters
+        ----------
+        resource: Any
+            An instance of the resource to add to the class
+        """
 
-    def build(
-        self,
-    ) -> Simulation:
-        """Constructs the simulation and returns it"""
-        sim = Simulation(
-            seed=self.seed,
-            world=World(),
-            engine=NeighborlyEngine(),
-            starting_date=self.starting_date,
+        self.world.add_resource(resource)
+
+    def add_system(self, system: ISystem) -> None:
+        """Add a simulation system
+
+        Parameters
+        ----------
+        system: ISystem
+            The system to add
+        """
+
+        self.world.add_system(system)
+
+    def add_location_bias_rule(self, rule: ILocationBiasRule, description: str = ""):
+        self.world.get_resource(libraries.LocationBiasRuleLibrary).add(
+            rule, description
         )
 
-        # These resources are required by all games
-        sim.world.add_resource(self.starting_date.copy())
-        sim.world.add_resource(EventLog())
-
-        # The following systems are loaded by default
-        sim.world.add_system(
-            LinearTimeSystem(TimeDelta(hours=self.time_increment_hours)),
-            TIME_UPDATE_PHASE,
-        )
-        sim.world.add_system(MovementAISystem())
-        sim.world.add_system(SocialAISystem())
-        sim.world.add_system(
-            LifeEventSystem(interval=TimeDelta(hours=self.life_event_interval_hours)), priority=TOWN_SYSTEMS_PHASE
-        )
-
-        sim.world.add_system(RemoveDeceasedFromResidences())
-        sim.world.add_system(RemoveDepartedFromResidences())
-        sim.world.add_system(RemoveDepartedFromOccupation())
-        sim.world.add_system(RemoveDeceasedFromOccupation())
-        sim.world.add_system(RemoveRetiredFromOccupation())
-
-        for plugin, options in self.plugins:
-            plugin.setup(sim, **options)
-            logger.debug(f"Successfully loaded plugin: {plugin.get_name()}")
-
-        if self.print_events:
-            sim.world.get_resource(EventLog).subscribe(lambda e: print(str(e)))
-
-        self._create_town(sim)
-
-        return sim
-
-    @staticmethod
-    def _convert_town_size(town_size: TownSize) -> Tuple[int, int]:
-        """Convert a TownSize to a tuple of ints"""
-        if isinstance(town_size, tuple):
-            land_size = town_size
-        else:
-            if town_size == "small":
-                land_size = (3, 3)
-            elif town_size == "medium":
-                land_size = (5, 5)
-            else:
-                land_size = (7, 7)
-
-        return land_size
+    def add_social_rule(self, rule: ISocialRule, description: str = ""):
+        self.world.get_resource(libraries.SocialRuleLibrary).add(rule, description)

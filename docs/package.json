@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "start": "http-server ./build/html -p 8080",
+    "deploy": "gh-pages -t -d ./build/html",
+    "build": "make html",
+    "clean": "make clean"
+  },
+  "devDependencies": {
+    "gh-pages": "^4.0.0",
+    "http-server": "^14.1.1"
+  }
+}

@@ -1,227 +1,302 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set
+import math
+from abc import ABC
+from dataclasses import dataclass
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, GameObject
+from neighborly.core.status import StatusComponent
 
 
-def clamp(value: int, minimum: int, maximum: int) -> int:
-    """Clamp a floating point value within a min,max range"""
-    return min(maximum, max(minimum, value))
+def lerp(a: float, b: float, f: float) -> float:
+    return (a * (1.0 - f)) + (b * f)
 
 
-class RelationshipStat:
+class RelationshipNotFound(Exception):
+    """Exception raised when trying to access a relationship that does not exist"""
 
-    STAT_MAX: int = 50
-    STAT_MIN: int = -50
+    __slots__ = "subject", "target", "message"
+
+    def __init__(self, subject: str, target: str) -> None:
+        super(Exception, self).__init__(target)
+        self.subject: str = subject
+        self.target: str = target
+        self.message: str = (
+            f"Could not find relationship between ({self.subject}) and ({self.target})"
+        )
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __repr__(self) -> str:
+        return "{}(subject={}, target={})".format(
+            self.__class__.__name__, self.subject, self.target
+        )
+
+
+class IncrementCounter:
+    def __init__(self, value: Tuple[int, int] = (0, 0)) -> None:
+        self._value: Tuple[int, int] = value
+
+        if self._value[0] < 0 or self._value[1] < 0:
+            raise ValueError("Values of an IncrementTuple may not be less than zero.")
+
+    @property
+    def increments(self) -> int:
+        """Return the number of increments"""
+        return self._value[0]
+
+    @property
+    def decrements(self) -> int:
+        """Return the number of decrements"""
+        return self._value[1]
+
+    def __iadd__(self, value: int) -> IncrementCounter:
+        """Overrides += operator for relationship stats"""
+        if value > 0:
+            self._value = (self._value[0] + value, self._value[1])
+        if value < 0:
+            self._value = (self._value[0], self._value[1] + abs(value))
+        return self
+
+    def __add__(self, other: IncrementCounter) -> IncrementCounter:
+        return IncrementCounter(
+            (self.increments + other.increments, self.decrements + other.decrements)
+        )
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return "({}, {})".format(self.increments, self.decrements * -1)
+
+
+class RelationshipFacet(Component, ABC):
+    """
+    A scalar value quantifying a relationship facet from one entity to another
+    """
 
     __slots__ = (
+        "_min_value",
+        "_max_value",
         "_raw_value",
         "_clamped_value",
         "_normalized_value",
-        "_total_changes",
-        "_positive_changes",
-        "_negative_changes",
+        "_base",
+        "_from_modifiers",
+        "_is_dirty",
     )
 
-    def __init__(self) -> None:
+    def __init__(self, min_value: int = -100, max_value: int = 100) -> None:
+        super().__init__()
+        self._min_value: int = min_value
+        self._max_value: int = max_value
         self._raw_value: int = 0
         self._clamped_value: int = 0
         self._normalized_value: float = 0.5
-        self._total_changes: int = 0
-        self._positive_changes: int = 0
-        self._negative_changes: int = 0
+        self._base: IncrementCounter = IncrementCounter()
+        self._from_modifiers: IncrementCounter = IncrementCounter()
+        self._is_dirty: bool = False
 
-    @property
-    def raw(self) -> int:
+    def get_base(self) -> IncrementCounter:
+        """Return the base value for increments on this relationship stat"""
+        return self._base
+
+    def set_base(self, value: Tuple[int, int]) -> None:
+        """Set the base value for decrements on this relationship stat"""
+        self._base = IncrementCounter(value)
+
+    def set_modifier(self, modifier: Optional[IncrementCounter]) -> None:
+        if modifier is None:
+            self._from_modifiers = IncrementCounter()
+        else:
+            self._from_modifiers = modifier
+        self._is_dirty = True
+
+    def get_raw_value(self) -> int:
+        """Return the raw value of this relationship stat"""
+        if self._is_dirty:
+            self._recalculate_values()
         return self._raw_value
 
-    @property
-    def clamped(self) -> int:
+    def get_value(self) -> int:
+        """Return the scaled value of this relationship stat between the max and min values"""
+        if self._is_dirty:
+            self._recalculate_values()
         return self._clamped_value
 
-    @property
-    def value(self) -> float:
+    def get_normalized_value(self) -> float:
+        """Return the normalized value of this relationship stat on the interval [0.0, 1.0]"""
+        if self._is_dirty:
+            self._recalculate_values()
         return self._normalized_value
 
-    def increase(self, change: int) -> None:
-        """Increase the stat by n-times the increment value"""
-        self._total_changes += change
-        self._positive_changes += change
-        self._normalized_value = self._positive_changes / self._total_changes
-        self._raw_value += change
-        self._clamped_value = clamp(self._raw_value, self.STAT_MIN, self.STAT_MAX)
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "raw": self.get_raw_value(),
+            "scaled": self.get_value(),
+            "normalized": self.get_normalized_value(),
+        }
 
-    def decrease(self, change: int) -> None:
-        """Increase the stat by n-times the increment value"""
-        self._total_changes += change
-        self._negative_changes += change
-        self._normalized_value = self._positive_changes / self._total_changes
-        self._raw_value -= change
-        self._clamped_value = clamp(self._raw_value, self.STAT_MIN, self.STAT_MAX)
+    def _recalculate_values(self) -> None:
+        """Recalculate the various values since the last change"""
+        combined_increments = self._base + self._from_modifiers
 
-    def __repr__(self) -> str:
-        return "{}(value={}, clamped={}, raw={})".format(
-            self.__class__.__name__, self.value, self.clamped, self.raw
+        self._raw_value = (
+            combined_increments.increments - combined_increments.decrements
         )
 
-    def __lt__(self, other: float) -> bool:
-        return self._normalized_value < other
+        total_changes = combined_increments.increments + combined_increments.decrements
 
-    def __gt__(self, other: float) -> bool:
-        return self._normalized_value > other
+        if total_changes == 0:
+            self._normalized_value = 0.5
+        else:
+            self._normalized_value = (
+                float(combined_increments.increments) / total_changes
+            )
 
-    def __le__(self, other: float) -> bool:
-        return self._normalized_value <= other
+        self._clamped_value = math.ceil(
+            max(self._min_value, min(self._max_value, self._raw_value))
+        )
 
-    def __ge__(self, other: float) -> bool:
-        return self._normalized_value <= other
+        self._is_dirty = False
 
-    def __eq__(self, other: float) -> bool:
-        return self._normalized_value == other
+    def increment(self, value: int) -> None:
+        self._base += value
+        self._is_dirty = True
 
-    def __ne__(self, other: float) -> bool:
-        return self._normalized_value != other
+    def __str__(self) -> str:
+        return self.__repr__()
 
-    def __int__(self) -> int:
-        return self._clamped_value
+    def __repr__(self) -> str:
+        return "{}(value={}, norm={}, raw={},  max={}, min={})".format(
+            self.__class__.__name__,
+            self.get_value(),
+            self.get_normalized_value(),
+            self.get_raw_value(),
+            self._max_value,
+            self._min_value,
+        )
 
-    def __float__(self) -> float:
-        return self._normalized_value
+
+class Friendship(RelationshipFacet):
+    pass
 
 
-class Relationship:
-    """
-    Relationships are one of the core factors of a
-    social simulation next to the characters. They
-    track how one entity feels about another. And
-    they evolve as a function of how many times two
-    characters interact.
+class Romance(RelationshipFacet):
+    pass
 
-    Class Attributes
-    ----------------
-    _registered_tags: Dict[str, RelationshipTag]
-        All the tags that may be used during the simulation
 
-    Attributes
-    ----------
-    _owner: int
-        Character who owns the relationship
-    _target: int
-        The entity who this relationship is directed toward
-    _friendship: RelationshipStat
-        Friendship score on the scale [FRIENDSHIP_MIN, FRIENDSHIP_MAX]
-        where a max means best friends and min means worst-enemies
-    _romance: RelationshipStat
-        Romance score on the scale [ROMANCE_MIN, ROMANCE_MAX]
-        where a max is complete infatuation and the min is repulsion
-    _tags: RelationshipTag
-        All the tags that are attached to this
-    """
+class InteractionScore(RelationshipFacet):
+    pass
 
+
+class RelationshipStatus(StatusComponent, ABC):
+    pass
+
+
+@dataclass
+class RelationshipModifier:
+    description: str
+    values: Dict[Type[RelationshipFacet], int]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "description": self.description,
+            "values": {rs_type.__name__: val for rs_type, val in self.values.items()},
+        }
+
+
+class Relationship(Component):
     __slots__ = (
-        "_owner",
+        "_modifiers",
+        "_is_dirty",
         "_target",
-        "_friendship",
-        "_romance",
-        "_tags",
+        "_owner",
     )
 
     def __init__(self, owner: int, target: int) -> None:
+        super().__init__()
         self._owner: int = owner
         self._target: int = target
-        self._friendship: RelationshipStat = RelationshipStat()
-        self._romance: RelationshipStat = RelationshipStat()
-        self._tags: Set[str] = set()
-
-    @property
-    def target(self) -> int:
-        return self._target
+        self._modifiers: List[RelationshipModifier] = []
+        self._is_dirty = False
 
     @property
     def owner(self) -> int:
         return self._owner
 
     @property
-    def friendship(self) -> RelationshipStat:
-        return self._friendship
+    def target(self) -> int:
+        return self._target
 
-    @property
-    def romance(self) -> RelationshipStat:
-        return self._romance
+    def add_modifier(self, modifier: RelationshipModifier) -> None:
+        self._modifiers.append(modifier)
 
-    def add_tags(self, *tags: str) -> None:
-        """Return add a tag to this Relationship"""
-        for tag in tags:
-            self._tags.add(tag)
+    def iter_modifiers(self) -> Iterator[RelationshipModifier]:
+        return self._modifiers.__iter__()
 
-    def has_tag(self, tag: str) -> bool:
-        """Return True if a relationship has a tag"""
-        return tag in self._tags
-
-    def remove_tags(self, *tags: str) -> None:
-        """Return True if a relationship has a tag"""
-        for tag in tags:
-            self._tags.remove(tag)
+    def clear_modifiers(self) -> None:
+        self._modifiers.clear()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "owner": self.owner,
             "target": self.target,
-            "friendship": float(self.friendship),
-            "friendship_clamped": self.friendship.clamped,
-            "romance": float(self.romance),
-            "romance_clamped": self.romance.clamped,
-            "tags": list(self._tags),
+            "modifiers": [m.to_dict() for m in self._modifiers],
         }
 
+    def __str__(self) -> str:
+        return self.__repr__()
+
     def __repr__(self) -> str:
-        return "{}(owner={}, target={}, romance={}, friendship={}, tags={})".format(
+        return "{}(owner={}, target={}, modifiers={})".format(
             self.__class__.__name__,
             self.owner,
             self.target,
-            self.romance,
-            self.friendship,
-            self._tags,
+            self._modifiers,
         )
 
 
-class Relationships(Component):
-    """Manages relationship instances between this GameObject and others"""
+class RelationshipManager(Component):
+    """Tracks all relationships associated with a GameObject
 
-    __slots__ = "_relationships"
+    Attributes
+    ----------
+    relationships: Dict[int, int]
+        GameObject ID of relationship targets mapped to the ID of the
+        GameObjects with the relationship data
+    """
+
+    __slots__ = "relationships"
 
     def __init__(self) -> None:
         super().__init__()
-        self._relationships: Dict[int, Relationship] = {}
-
-    def get(self, target: int) -> Relationship:
-        """Get an existing or new relationship to the target GameObject"""
-        if target not in self._relationships:
-            self._relationships[target] = Relationship(self.gameobject.id, target)
-        return self._relationships[target]
-
-    def get_all(self) -> List[Relationship]:
-        return list(self._relationships.values())
-
-    def get_all_with_tags(self, *tags: str) -> List[Relationship]:
-        """
-        Get all the relationships between a character and others with specific tags
-        """
-        return list(
-            filter(
-                lambda rel: all([rel.has_tag(t) for t in tags]),
-                self._relationships.values(),
-            )
-        )
+        self.relationships: Dict[int, int] = {}
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v.to_dict() for k, v in self._relationships.items()}
+        return {str(k): v for k, v in self.relationships.items()}
 
-    def __getitem__(self, item: int) -> Relationship:
-        if item not in self._relationships:
-            self._relationships[item] = Relationship(self.gameobject.id, item)
-        return self._relationships[item]
+    def targets(self) -> Iterator[int]:
+        return self.relationships.__iter__()
 
-    def __contains__(self, item: int) -> bool:
-        return item in self._relationships
+    def __setitem__(
+        self, key: Union[int, GameObject], value: Union[int, GameObject]
+    ) -> None:
+        self.relationships[int(key)] = int(value)
+
+    def __getitem__(self, key: Union[int, GameObject]) -> int:
+        return self.relationships[int(key)]
+
+    def __contains__(self, item: Union[int, GameObject]):
+        return int(item) in self.relationships
+
+    def __iter__(self) -> Iterator[int]:
+        return self.relationships.values().__iter__()
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return "{}({})".format(self.__class__.__name__, self.relationships)

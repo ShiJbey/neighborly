@@ -13,3 +13,7 @@ profile = "black"
 default_section = "THIRDPARTY"
 known_first_party = "neighborly"
 src_paths = ["src/neighborly", "test", "samples"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]

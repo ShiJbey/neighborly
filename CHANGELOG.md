@@ -7,6 +7,31 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
+## [0.9.5]
+
+- The entire package has been restructures as some modules have moved
+  out of the core module and into other packages
+- Added `components` package to manage all the various built-in
+  components
+- Compresses the LifeEvent API to use a single class
+  and moved support for queries or role lists to utility functions
+- Removed `pandas` as a dependency for queries because it was too
+  slow
+- Separated out the default plugins into separate modules
+- Revised the YAML loading API
+- Revised the archetype authoring pipeline, introducing new config
+  objects that hold metadata. This replaces the archetype functions
+  that would have normally supplied this data.
+- System priority constants are now defined using negative numbers
+  this allows us to have a wider range of values for priorities below
+  the built-in systems
+- The `engine.py` module now handles more of the authored content
+  such as archetypes
+- Status system creates child gameobjects that may have time-released
+  effects on the simulation state
+- Consolidated redundant components such as `Gender` into a single
+  component with an enum value
+
 ## [0.9.4]
 
 **0.9.4 is not compatible with 0.9.3**
@@ -36,7 +61,7 @@ incrementing to a completely new version number.
 - samples category from dependencies within `setup.cfg`
 - `events`, `town`, `land grid`, and `relationships` fields from `NeighborlyJsonExporter`.
   These are duplicated when serializing the resources.
-- `SimulationBuilder.add_system()` and  `SimulationBuilder.add_resource()`. To add
+- `SimulationBuilder.add_system()` and `SimulationBuilder.add_resource()`. To add
   these, users need to encapsulate their content within a plugin
 - Flake8 configuration from `setup.cfg`
 

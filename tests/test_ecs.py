@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any, Dict
 
 import pytest
 
@@ -12,39 +13,55 @@ from neighborly.core.ecs import (
 )
 
 
-class SimpleGameCharacter(Component):
-    def __init__(self, name: str) -> None:
-        super().__init__()
-        self.name = name
+@dataclass
+class Actor(Component):
+    name: str
 
-    def __repr__(self) -> str:
-        return f"GameCharacter(name={self.name})"
-
-
-class SimpleLocation(Component):
-    __slots__ = "capacity"
-
-    def __init__(self, capacity: int = 999) -> None:
-        super().__init__()
-        self.capacity: int = capacity
-
-    def __repr__(self) -> str:
-        return f"Location(capacity={self.capacity})"
+    def to_dict(self) -> Dict[str, Any]:
+        return {"name": str}
 
 
 @dataclass
-class SimpleRoutine(Component):
-    free: bool
+class CurrentLocation(Component):
+    location: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"location": self.location}
 
 
 @dataclass
-class A(Component):
-    value: int = 0
+class Money(Component):
+    amount: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"money": self.amount}
 
 
 @dataclass
-class B(Component):
-    value: int = 0
+class Job(Component):
+    title: str
+    salary: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"title": self.title, "salary": self.salary}
+
+
+@dataclass
+class Location(Component):
+    name: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"name": self.name}
+
+
+class ComponentA(Component):
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
+
+
+class ComponentB(Component):
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 @dataclass
@@ -57,10 +74,10 @@ class AnotherFakeResource:
     config_value: int = 43
 
 
-class FakeSystemBaseA(ISystem):
-    def process(self, *args, **kwargs):
-        for _, a in self.world.get_component(A):
-            a.value += 1
+class SalarySystem(ISystem):
+    def process(self, *args: Any, **kwargs: Any):
+        for _, (job, money) in self.world.get_components((Job, Money)):
+            money.amount += job.salary
 
 
 #########################################
@@ -69,43 +86,26 @@ class FakeSystemBaseA(ISystem):
 
 
 def test_spawn_gameobject():
+    """Test that gameobjects are spawned properly"""
     world = World()
 
-    adrian = world.spawn_gameobject(
-        [SimpleRoutine(False), SimpleGameCharacter("Adrian")]
-    )
+    adrian = world.spawn_gameobject([Actor("Adrian")])
 
-    assert world.ecs.entity_exists(adrian.id)
+    assert adrian.exists is True
+    assert world.has_gameobject(adrian.uid)
+    assert adrian.get_component(Actor).name == "Adrian"
 
-    jamie = world.spawn_gameobject([SimpleRoutine(False), SimpleGameCharacter("Jamie")])
+    jamie = world.spawn_gameobject(name="Jamie")
 
-    assert world.ecs.entity_exists(jamie.id)
-
-    park = world.spawn_gameobject([SimpleLocation()], name="Park")
-
-    assert world.ecs.entity_exists(park.id)
-
-    office_building = world.spawn_gameobject(
-        [SimpleLocation(18)], name="Office Building"
-    )
-
-    assert world.ecs.entity_exists(office_building.id)
-
-    assert jamie.get_component(SimpleGameCharacter).name == "Jamie"
-
-    assert len(world.get_component(SimpleGameCharacter)) == 2
-    assert len(world.get_component(SimpleLocation)) == 2
-
-    assert park.get_component(SimpleLocation).capacity == 999
-    assert office_building.get_component(SimpleLocation).capacity == 18
-
-    assert len(world.get_components(SimpleGameCharacter, SimpleRoutine)) == 2
+    assert jamie.exists is True
+    assert jamie.name == "Jamie"
+    assert world.has_gameobject(jamie.uid)
 
 
 def test_get_gameobject():
     world = World()
     gameobject = world.spawn_gameobject()
-    assert world.get_gameobject(gameobject.id) == gameobject
+    assert world.get_gameobject(gameobject.uid) == gameobject
 
 
 def test_get_gameobject_raises_exception():
@@ -118,7 +118,7 @@ def test_has_gameobject():
     world = World()
     assert world.has_gameobject(1) is False
     gameobject = world.spawn_gameobject()
-    assert world.has_gameobject(gameobject.id) is True
+    assert world.has_gameobject(gameobject.uid) is True
 
 
 def test_get_gameobjects():
@@ -129,54 +129,80 @@ def test_get_gameobjects():
     assert world.get_gameobjects() == [g1, g2, g3]
 
 
-def test_try_gameobject():
-    world = World()
-    assert world.try_gameobject(1) is None
-    world.spawn_gameobject()
-    assert world.try_gameobject(1) is not None
-
-
 def test_delete_gameobject():
 
     world = World()
 
-    g1 = world.spawn_gameobject([A()])
+    g1 = world.spawn_gameobject([ComponentA()])
 
     # Make sure that the game objects exists
-    assert world.has_gameobject(g1.id) is True
+    assert world.has_gameobject(g1.uid) is True
 
-    world.delete_gameobject(g1.id)
+    world.delete_gameobject(g1.uid)
 
     # the GameObject should still exist and be removed
     # at the start of the next step
-    assert world.has_gameobject(g1.id) is True
+    assert world.has_gameobject(g1.uid) is True
 
     world.step()
 
     # Now the gameobject should be deleted
-    assert world.has_gameobject(g1.id) is False
+    assert world.has_gameobject(g1.uid) is False
 
     # Ensure that GameObjects that were always empty
     # are properly removed
     g2 = world.spawn_gameobject()
-    assert world.has_gameobject(g2.id) is True
-    world.delete_gameobject(g2.id)
+    assert world.has_gameobject(g2.uid) is True
+    world.delete_gameobject(g2.uid)
     world.step()
-    assert world.has_gameobject(g2.id) is False
+    assert world.has_gameobject(g2.uid) is False
 
     # Ensure that GameObjects that are empty, but
     # once held components are properly removed
-    g3 = world.spawn_gameobject([A()])
-    assert g3.has_component(A) is True
-    g3.remove_component(A)
-    assert g3.has_component(A) is False
-    assert world.has_gameobject(g3.id) is True
+    g3 = world.spawn_gameobject([ComponentA()])
+    assert g3.has_component(ComponentA) is True
+    g3.remove_component(ComponentA)
+    assert (
+        g3.has_component(ComponentA) is False
+    )  # This removes the component immediately
+    assert world.has_gameobject(g3.uid) is True
+    world.step()
+    assert g3.has_component(ComponentA) is False
     # When you remove the last component from an entity,
     # it technically does not exist within esper anymore
-    assert world.ecs.entity_exists(g3.id) is False
-    world.delete_gameobject(g3.id)
+    assert world._ecs.entity_exists(g3.uid) is False  # type: ignore
+    world.delete_gameobject(g3.uid)
     world.step()
-    assert world.has_gameobject(g3.id) is False
+    assert world.has_gameobject(g3.uid) is False
+
+
+def test_get_added_component():
+    world = World()
+
+    g1 = world.spawn_gameobject()
+
+    g1.add_component(ComponentA())
+
+    # Test that component type is in added components list
+    assert g1.uid in world.iter_added_component(ComponentA)
+    world.step()
+    assert g1.uid not in world.iter_added_component(ComponentA)
+
+
+def test_get_removed_component():
+    world = World()
+
+    g1 = world.spawn_gameobject([ComponentA()])
+
+    g1.remove_component(ComponentA)
+
+    # Test that component type is in added components list
+    for pair in world.iter_removed_component(ComponentA):
+        assert pair.guid == g1.uid
+
+    world.step()
+
+    assert len(list(world.iter_removed_component(ComponentA))) == 0
 
 
 #########################################
@@ -186,30 +212,30 @@ def test_delete_gameobject():
 
 def test_world_get_component():
     world = World()
-    world.spawn_gameobject([A()])
-    world.spawn_gameobject([B()])
-    world.spawn_gameobject([A(), B()])
+    world.spawn_gameobject([ComponentA()])
+    world.spawn_gameobject([ComponentB()])
+    world.spawn_gameobject([ComponentA(), ComponentB()])
 
-    with_a = world.get_component(A)
+    with_a = world.get_component(ComponentA)
 
     assert list(zip(*with_a))[0] == (1, 3)
 
-    with_b = world.get_component(B)
+    with_b = world.get_component(ComponentB)
 
     assert list(zip(*with_b))[0] == (2, 3)
 
 
 def test_world_get_components():
     world = World()
-    world.spawn_gameobject([A()])
-    world.spawn_gameobject([B()])
-    world.spawn_gameobject([A(), B()])
+    world.spawn_gameobject([ComponentA()])
+    world.spawn_gameobject([ComponentB()])
+    world.spawn_gameobject([ComponentA(), ComponentB()])
 
-    with_a = world.get_components(A)
+    with_a = world.get_components((ComponentA,))
 
     assert list(zip(*with_a))[0] == (1, 3)
 
-    with_b = world.get_components(B)
+    with_b = world.get_components((ComponentB,))
 
     assert list(zip(*with_b))[0] == (2, 3)
 
@@ -222,34 +248,36 @@ def test_world_get_components():
 def test_world_add_get_system():
     world = World()
 
-    assert world.get_system(FakeSystemBaseA) is None
-    world.add_system(FakeSystemBaseA())
-    assert world.get_system(FakeSystemBaseA) is not None
+    assert world.get_system(SalarySystem) is None
+    world.add_system(SalarySystem())
+    assert world.get_system(SalarySystem) is not None
 
 
 def test_world_remove_system():
     world = World()
 
-    assert world.get_system(FakeSystemBaseA) is None
-    world.add_system(FakeSystemBaseA())
-    assert world.get_system(FakeSystemBaseA) is not None
-    world.remove_system(FakeSystemBaseA)
-    assert world.get_system(FakeSystemBaseA) is None
+    assert world.get_system(SalarySystem) is None
+    world.add_system(SalarySystem())
+    assert world.get_system(SalarySystem) is not None
+    world.remove_system(SalarySystem)
+    assert world.get_system(SalarySystem) is None
 
 
 def test_world_step():
     world = World()
-    world.add_system(FakeSystemBaseA())
+    world.add_system(SalarySystem())
 
-    g1 = world.spawn_gameobject([A(1)])
-    g2 = world.spawn_gameobject([A(2)])
-    g3 = world.spawn_gameobject([A(3), B()])
+    adrian = world.spawn_gameobject([Actor("Adrian"), Money(0), Job("Teacher", 24_000)])
+
+    assert adrian.get_component(Money).amount == 0
 
     world.step()
 
-    assert g1.get_component(A).value == 2
-    assert g2.get_component(A).value == 3
-    assert g3.get_component(A).value == 4
+    assert adrian.get_component(Money).amount == 24_000
+
+    world.step()
+
+    assert adrian.get_component(Money).amount == 48_000
 
 
 #########################################
@@ -337,40 +365,148 @@ def test_add_resource():
 #########################################
 
 
-def test_add_component():
+def test_gameobject_set_active():
+    world = World()
+
+    adrian = world.spawn_gameobject([Actor("Adrian")])
+
+    assert adrian.is_active is True
+
+    adrian.set_active(False)
+
+    assert adrian.is_active is False
+
+
+def test_gameobject_get_components():
+    world = World()
+
+    actor_component = Actor("Adrian")
+    money_component = Money(100)
+
+    adrian = world.spawn_gameobject([actor_component, money_component])
+
+    components = adrian.get_components()
+
+    assert actor_component in components
+    assert money_component in components
+
+
+def test_gameobject_get_component_types():
+    world = World()
+
+    adrian = world.spawn_gameobject([Actor("Adrian"), Money(100)])
+
+    component_types = set(adrian.get_component_types())
+
+    assert component_types == {Actor, Money}
+
+
+def test_gameobject_add_component():
     world = World()
     g1 = world.spawn_gameobject()
-    assert g1.has_component(A) is False
-    g1.add_component(A())
-    assert g1.has_component(A) is True
+    assert g1.has_component(ComponentA) is False
+    g1.add_component(ComponentA())
+    assert g1.has_component(ComponentA) is True
 
 
-def test_get_component():
+def test_gameobject_get_component():
     world = World()
-    a_component = A()
+    a_component = ComponentA()
     g1 = world.spawn_gameobject([a_component])
-    assert g1.get_component(A) == a_component
+    assert g1.get_component(ComponentA) == a_component
 
 
-def test_get_component_raises_exception():
+def test_gameobject_get_component_raises_exception():
     with pytest.raises(ComponentNotFoundError):
         world = World()
         g1 = world.spawn_gameobject()
-        g1.get_component(A)
-        g1.get_component(B)
+        g1.get_component(ComponentA)
+        g1.get_component(ComponentB)
 
 
-def test_remove_component():
+def test_gameobject_remove_component():
     world = World()
-    g1 = world.spawn_gameobject([A(), B()])
-    assert g1.has_component(A) is True
-    g1.remove_component(A)
-    assert g1.has_component(A) is False
+    g1 = world.spawn_gameobject([ComponentA(), ComponentB()])
+    assert g1.has_component(ComponentA) is True
+    g1.remove_component(ComponentA)
+    world.step()
+    assert g1.has_component(ComponentA) is False
 
 
-def test_try_component():
+def test_gameobject_try_component():
     world = World()
     g1 = world.spawn_gameobject()
-    assert g1.try_component(A) is None
-    g1.add_component(A())
-    assert g1.try_component(A) is not None
+    assert g1.try_component(ComponentA) is None
+    g1.add_component(ComponentA())
+    assert g1.try_component(ComponentA) is not None
+
+
+def test_gameobject_add_child():
+    world = World()
+    g1 = world.spawn_gameobject([ComponentA()])
+    g2 = world.spawn_gameobject([ComponentB()])
+    g1.add_child(g2)
+
+    assert (g2 in g1.children) is True
+    assert (g2.parent == g1) is True
+
+    g3 = world.spawn_gameobject([ComponentA()])
+
+    g3.add_child(g2)
+
+    assert (g2 not in g1.children) is True
+    assert (g2.parent != g1) is True
+    assert (g2.parent == g3) is True
+    assert (g2 in g3.children) is True
+
+
+def test_gameobject_remove_child():
+    world = World()
+    g1 = world.spawn_gameobject([ComponentA()])
+    g2 = world.spawn_gameobject([ComponentB()])
+    g3 = world.spawn_gameobject([ComponentB()])
+
+    g1.add_child(g2)
+    g1.add_child(g3)
+
+    assert (g2 in g1.children) is True
+    assert (g3 in g1.children) is True
+    assert (g1 == g3.parent) is True
+
+    g1.remove_child(g3)
+
+    assert (g3 in g1.children) is False
+    assert g3.parent is None
+
+
+def test_gameobject_remove_gameobject_with_children():
+    world = World()
+
+    g1 = world.spawn_gameobject([ComponentA()])
+    g2 = world.spawn_gameobject([ComponentB()])
+    g3 = world.spawn_gameobject([ComponentB()])
+    g4 = world.spawn_gameobject([ComponentB()])
+    g5 = world.spawn_gameobject([ComponentB()])
+
+    g1.add_child(g2)
+    g2.add_child(g3)
+    g3.add_child(g4)
+    g3.add_child(g5)
+
+    # Removing g3 should remove g4 and g5
+    assert world.has_gameobject(g3.uid) is True
+    assert world.has_gameobject(g4.uid) is True
+    assert world.has_gameobject(g5.uid) is True
+
+    world.delete_gameobject(g3.uid)
+    world.step()
+
+    # Removing g3 should remove g4 and g5
+    assert world.has_gameobject(g3.uid) is False
+    assert world.has_gameobject(g4.uid) is False
+    assert world.has_gameobject(g5.uid) is False
+
+    world.delete_gameobject(g2.uid)
+    world.step()
+
+    assert world.has_gameobject(g2.uid) is False

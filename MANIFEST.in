@@ -1,4 +1,10 @@
 include LICENSE
 include CHANGELOG.md
 include CODE_OF_CONDUCT.md
-recursive-include src/neighborly/plugins/defaults/data *
+include README.md
+include MANIFEST.in
+graft src/neighborly/plugins/default/data/
+global-exclude *.py[co]
+global-exclude __pycache__
+global-exclude *~
+global-exclude *.ipynb_checkpoints/*
