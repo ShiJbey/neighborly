@@ -1,10 +1,10 @@
+import random
 from enum import Enum
 from typing import Any
 
 from neighborly.core.ecs import ISystem
 from neighborly.core.time import SimDateTime
-from neighborly.engine import NeighborlyEngine
-from neighborly.simulation import Plugin, Simulation
+from neighborly.simulation import Neighborly, PluginInfo
 
 
 class Weather(Enum):
@@ -48,6 +48,8 @@ class WeatherSystem(ISystem):
         state will last before being changed
     """
 
+    sys_group = "early-update"
+
     def __init__(self, avg_change_interval: int = 24) -> None:
         super().__init__()
         self.avg_change_interval: int = avg_change_interval
@@ -55,23 +57,25 @@ class WeatherSystem(ISystem):
     def process(self, *args: Any, **kwargs: Any):
         delta_time = self.world.get_resource(SimDateTime).delta_time
         weather_manager = self.world.get_resource(WeatherManager)
-        engine = self.world.get_resource(NeighborlyEngine)
+        rng = self.world.get_resource(random.Random)
 
         if weather_manager.time_before_change <= 0:
             # Select the next weather pattern
-            weather_manager.current_weather = engine.rng.choice(list(Weather))
+            weather_manager.current_weather = rng.choice(list(Weather))
             weather_manager.time_before_change = round(
-                engine.rng.normalvariate(mu=self.avg_change_interval, sigma=1)
+                rng.normalvariate(mu=self.avg_change_interval, sigma=1)
             )
 
         weather_manager.time_before_change -= delta_time
 
 
-class WeatherPlugin(Plugin):
-    def setup(self, sim: Simulation, **kwargs: Any) -> None:
-        sim.world.add_system(WeatherSystem(), 9)
-        sim.world.add_resource(WeatherManager())
+plugin_info: PluginInfo = {
+    "name": "default residences plugin",
+    "plugin_id": "default.residences",
+    "version": "0.1.0",
+}
 
 
-def get_plugin() -> Plugin:
-    return WeatherPlugin()
+def setup(sim: Neighborly) -> None:
+    sim.world.add_system(WeatherSystem())
+    sim.world.add_resource(WeatherManager())

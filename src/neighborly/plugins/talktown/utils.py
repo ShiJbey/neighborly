@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from heapq import heappush
-from typing import Generic, TypeVar, Union, List, Tuple
+from typing import Generic, List, Tuple, TypeVar, Union
 
 _T = TypeVar("_T")
 
@@ -80,8 +80,8 @@ def roman_to_int(roman: str) -> int:
     i = 0
     num = 0
     while i < len(roman):
-        if i + 1 < len(roman) and roman[i: i + 2] in roman_lookup:
-            num += roman_lookup[roman[i: i + 2]]
+        if i + 1 < len(roman) and roman[i : i + 2] in roman_lookup:
+            num += roman_lookup[roman[i : i + 2]]
             i += 2
         else:
             # print(i)

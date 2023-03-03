@@ -5,11 +5,10 @@
     src="https://user-images.githubusercontent.com/11076525/165836171-9ffdea6e-1633-440c-be06-b46e1e3e4e04.png"
   >
   <br>
-  Neighborly (v0.10.0)
+  Neighborly
 </h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-unstable-critical?style=flat">
   <img src="https://img.shields.io/pypi/v/neighborly">
   <img src="https://img.shields.io/pypi/pyversions/neighborly">
   <img src="https://img.shields.io/pypi/l/neighborly">
@@ -20,21 +19,27 @@
 
 # Overview
 
-Neighborly is a Python framework for generating and forward simulating towns of
-characters over large periods of time (decades to centuries). It uses a character-driven
-social simulation that forward-simulates the lives of each character, their jobs,
-routines, relationships, and life events. Users can specify custom characters,
-residential/commercial buildings, occupations, life events, social actions, and more.
+Neighborly is an extensible, data-driven, agent-based modeling framework
+designed to simulate towns of characters for games. It is intended to be a
+tool for exploring simulationist approaches to character-driven emergent
+narratives. Neighborly's simulation architecture is inspired by Roguelikes
+like *Caves of Qud*.
 
-Currently, _Neighborly_ works best as narrative data generator. When the simulation
-ends, users can save the history of events, characters, relationships, and other stuff.
+Currently, Neighborly works best as a narrative data generator. It models
+characters’ lives, jobs, routines, relationships, and life
+events. All of these parts are harnessed to produce
+emergent character backstories as they interact with each other, grow, and
+change. You can even specify custom characters, businesses, residences,
+occupations, life events, social rules, and more. Neighborly is meant to
+be customized to the narrative setting of your vision. Check out the
+samples directory to see how we modeled the popular anime, *Demon Slayer*.
 
 Neighborly was inspired by lessons learned from working with
-[_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
-and aims to give people better documentation, simpler interfaces, and more opportunities
-for extension and content authoring.
+[*Talk of the Town*](https://github.com/james-owen-ryan/talktown)
+and aims to give people better documentation, simpler interfaces, and more
+opportunities for extension and content authoring.
 
-## Core Features
+# Core Features
 
 - Create custom character, buildings, life events, and social actions
 - Commandline interface (CLI) tool
@@ -42,15 +47,7 @@ for extension and content authoring.
 - Plugin architecture allows users to modularize and share their custom content
 - Export simulation state to JSON for further data processing
 
-# How to use
-
-Below are instructions for installing Neighborly and the options one has for using it
-in their projects. If you want examples of how to use Neighborly and how to extend it
-with custom content, please refer to
-[Neighborly's wiki](https://github.com/ShiJbey/neighborly/wiki) and the sample scripts
-in the [_samples_ directory](https://github.com/ShiJbey/neighborly/tree/main/samples).
-
-## Installation
+# Installation
 
 Neighborly is available to install from PyPI.
 
@@ -65,8 +62,40 @@ git clone https://github.com/ShiJbey/neighborly.git
 
 cd neighborly
 
-python -m pip install .
+python -m pip install "."
 ```
+
+## Installing for local development
+
+If you wish to download a Neighborly for local development, you need to clone/fork this
+repository and install using the *editable* flag (-e). Please see the instructions
+below.
+
+```bash
+# Step One: Clone Repository
+git clone https://github.com/ShiJbey/neighborly.git
+
+# Step Two (Optional): Create and activate python virtual environment
+cd neighborly
+
+# For Linux and MacOS
+python3 -m venv venv
+source ./venv/bin/activate
+
+# For Windows
+python -m venv venv
+./venv/Scripts/Activate
+
+# Step Three: Install local build and dependencies
+python -m pip install -e "."
+```
+
+# Usage
+
+If you want examples of how to use Neighborly and how to extend it
+with custom content, please refer to
+[Neighborly's wiki](https://github.com/ShiJbey/neighborly/wiki) and the sample scripts
+in the [`samples` directory](https://github.com/ShiJbey/neighborly/tree/main/samples).
 
 ## Using as a library
 
@@ -102,37 +131,12 @@ it to create new story world themes.
 python ./samples/<sample_name>.py
 ```
 
-## Installing for local development
-
-If you wish to download a Neighborly for local development, you need to clone/fork this
-repository and install using the _editable_ flag (-e). Please see the instructions
-below.
-
-```bash
-# Step One: Clone Repository
-git clone https://github.com/ShiJbey/neighborly.git
-
-# Step Two (Optional): Create and activate python virtual environment
-cd neighborly
-
-# For Linux and MacOS
-python3 -m venv venv
-source ./venv/bin/activate
-
-# For Windows
-python -m venv venv
-./venv/Scripts/Activate
-
-# Step Three: Install local build and dependencies
-python -m pip install -e "."
-```
-
 ## Running the Tests
 
-The tests are currently out-of-date and may refer to systems
-and logic that no longer exists in Neighborly. The codebase
-changes so frequently that it hasn't been worth the time.
-As modules become more established, I will add proper tests for them.
+Testing is very important. It is how we are able to ensure that new changes don't
+break anything. I do my best to keep tests updated, but some tests may be out of
+date and refer to systems and logic that no longer exist in Neighborly.
+
 Feel free to contribute tests by forking the repo, adding your test(s), and
 submitting a pull request with a description of your test cases. Your commits
 should only contain changes to files within the `tests` directory. If you
@@ -164,6 +168,22 @@ references for how to format your contributions:
 - [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
 - [Example Numpy Style Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html#example-numpy)
 
+## Building the documentation
+
+Neighborly's docs are built using Sphinx. Below are instructions for building the docs
+
+```bash
+
+# Install the documentation dependencies
+python -m pip install -e ".[docs]"
+
+# Build docs as HTML
+sphinx-build -b html docs/source/ docs/build/html
+```
+
+If you happen to have *npm* installed, you can use the `package.json` configuration file to
+run build, clean build output, and run a test HTTP server.
+
 # Contributing
 
 Here are some ways that people can contribute to Neighborly:
@@ -171,15 +191,14 @@ Here are some ways that people can contribute to Neighborly:
 1. Proposing/Implementing new features
 2. Fixing bugs
 3. Providing optimizations
-4. Fixing typos
-5. Filing issues
-6. Contributing tutorials/how-tos to the wiki
-7. Fixing grammar and spelling in the wiki
-8. Creating new samples/plugins
+4. Filing issues
+5. Contributing tutorials and how-to guides
+6. Fixing grammar and spelling
+7. Creating new samples and plugins
 
 If you are interested in contributing to Neighborly, there are multiple ways to get
 involved, and not all of them require you to be proficient with GitHub. Interested
-parties can contribute to the core code base of Neighborly and/or create nre content
+parties can contribute to the core code base of Neighborly and create new content
 in the way of plugins. I love feedback, and if you have any questions, create a new
 issue, and I will do my best to answer. If you want to contribute to the core code,
 free to fork this repository, make your changes, and submit a pull-request with a
@@ -187,33 +206,18 @@ description of your contribution. Please keep in mind that this project is a
 tool for creativity and learning. I have a [code of conduct](./CODE_OF_CONDUCT.md) to
 encourage healthy collaboration, and will enforce it if I need to.
 
-## Code Style
+# Code Style
 
-Neighborly uses [_Black_](https://black.readthedocs.io/en/stable/) to handle code style
-and sorts imports using [_isort_](https://pycqa.github.io/isort/). You can follow
-[these instructions](https://black.readthedocs.io/en/stable/integrations/editors.html)
-for setting up both black and isort.
+Neighborly uses [*Black*](https://black.readthedocs.io/en/stable/) to handle code style
+and sorts imports using [*isort*](https://pycqa.github.io/isort/).
 
-# Notes
-
-## Non-Deterministic Behavior
-
-The goal of having a seeded pseudo random simulation is so that users experience
-deterministic behavior when using the same starting seed. I try to remove all forms of
-non-determinism, but some slip through. The known areas are listed below. If you find
-any, please make a new issue with details of the behavior.
-
-- Neighborly uses [Tracery](https://github.com/aparrish/pytracery) to generate names for
-  characters and locations, and these names may not be consistent despite using the same
-  rng seed value.
-
-## DMCA Statement
+# DMCA Statement
 
 Upon receipt of a notice alleging copyright infringement, I will take whatever action it
 deems appropriate within its sole discretion, including removal of the allegedly
 infringing materials.
 
-The repo image is something fun that I made. I love _The Simpsons_, and I couldn't think
-of anyone more neighborly than Ned Flanders. If the copyright owner for _The Simpsons_
+The repo image is something fun that I made. I love *The Simpsons*, and I couldn't think
+of anyone more neighborly than Ned Flanders. If the copyright owner for *The Simpsons*
 would like me to take it down, please contact me. The same takedown policy applies to
 any code samples inspired by TV shows, movies, and games.

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from neighborly.core.ecs import Component
 from neighborly.core.time import Weekday
@@ -70,6 +70,15 @@ class RoutineEntry:
             self.priority,
             self.tags,
         )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "start": self.start,
+            "end": self.end,
+            "location": self.location,
+            "priority": self.priority,
+            "tags": list(self.tags),
+        }
 
 
 class DailyRoutine:
@@ -166,6 +175,9 @@ class DailyRoutine:
             self._entries,
         )
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"entries": {k: v.to_dict() for k, v in self._entries.items()}}
+
 
 class Routine(Component):
     """
@@ -219,6 +231,9 @@ class Routine(Component):
 
     def __repr__(self) -> str:
         return f"Routine({self._daily_routines})"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"days": [dr.to_dict() for dr in self._daily_routines]}
 
 
 def time_str_to_int(s: str) -> int:

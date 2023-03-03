@@ -1,28 +1,36 @@
+from typing import Any, Dict
+
 import pytest
 
-from neighborly.components.character import GameCharacter, Gender, GenderValue, Retired
+from neighborly.components.character import Female, GameCharacter, NonBinary, Retired
 from neighborly.components.shared import Age
 from neighborly.core.ecs import Component, World
-from neighborly.core.query import QueryBuilder, Relation, eq_
-from neighborly.utils.role_filters import is_gender
+from neighborly.core.ecs.query import QB, Relation
 
 
 def test_relation_create_empty():
     r0 = Relation.create_empty()
     assert r0.is_empty() is True
     assert r0.get_symbols() == ()
+    assert r0.is_uninitialized() is False
 
     r1 = Relation.create_empty("Apprentice", "Boss")
     assert r1.is_empty() is True
     assert r1.get_symbols() == ("Apprentice", "Boss")
+    assert r1.is_uninitialized() is False
+
+    r2 = Relation((), [], False)
+    assert r2.is_empty() is True
+    assert r2.get_symbols() == ()
+    assert r2.is_uninitialized() is True
 
 
 def test_relation_from_bindings():
-    r0 = Relation.from_bindings(Initiator=0, LoveInterest=1)
+    r0 = Relation.from_bindings({"Initiator": 0, "LoveInterest": 1})
     assert r0.is_empty() is False
     assert r0.get_symbols() == ("Initiator", "LoveInterest")
 
-    r0 = Relation.from_bindings(Rival=0, LoveInterest=1, Protagonist=4)
+    r0 = Relation.from_bindings({"Rival": 0, "LoveInterest": 1, "Protagonist": 4})
     assert r0.is_empty() is False
     assert r0.get_symbols() == ("Rival", "LoveInterest", "Protagonist")
 
@@ -47,7 +55,7 @@ def test_relation_get_tuples():
     r0 = Relation(("Hero", "DemonKing"), [(1, 3), (1, 4), (1, 5)])
     assert r0.get_tuples() == [(1, 3), (1, 4), (1, 5)]
 
-    r1 = Relation.from_bindings(Hero=1, DemonKing=4)
+    r1 = Relation.from_bindings({"Hero": 1, "DemonKing": 4})
     assert r1.get_tuples() == [(1, 4)]
 
 
@@ -90,151 +98,125 @@ def test_relation_copy():
 
 
 class Hero(Component):
-    pass
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 class DemonKing(Component):
-    pass
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 @pytest.fixture()
 def sample_world() -> World:
     world = World()
 
-    world.spawn_gameobject([Hero(), GameCharacter("Shi", ""), Age(27)])
+    world.spawn_gameobject([Hero(), GameCharacter("Shi", "")])
     world.spawn_gameobject(
-        [Hero(), GameCharacter("Astrid", ""), Gender(GenderValue.Female), Retired()]
+        [
+            Hero(),
+            GameCharacter("Astrid", ""),
+            Female(),
+            Retired(),
+        ]
     )
-    world.spawn_gameobject([DemonKing(), GameCharacter("-Shi", ""), Retired()])
+    world.spawn_gameobject([DemonKing(), GameCharacter("-Shi", ""), Retired(), Age(27)])
     world.spawn_gameobject(
-        [DemonKing(), GameCharacter("Palpatine", ""), Gender(GenderValue.NonBinary)]
+        [
+            DemonKing(),
+            GameCharacter("Palpatine", ""),
+            NonBinary(),
+        ]
     )
 
     return world
 
 
 def test_with(sample_world: World):
-    query = QueryBuilder().with_((Hero,)).build()
+    query = QB.query("_", QB.with_(Hero, "_"))
     result = set(query.execute(sample_world))
     expected = {(1,), (2,)}
     assert result == expected
 
-    query = QueryBuilder().with_((Hero, Retired)).build()
+    query = QB.query(("_",), QB.with_((Hero, Retired), "_"))
     result = set(query.execute(sample_world))
     expected = {(2,)}
     assert result == expected
 
-    query = (
-        QueryBuilder("HERO", "VILLAIN")
-        .with_((GameCharacter, Hero), "HERO")
-        .with_((DemonKing, Retired), "VILLAIN")
-        .build()
+    query = QB.query(
+        ("HERO", "VILLAIN"),
+        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.with_((DemonKing, Retired), "VILLAIN"),
     )
     result = set(query.execute(sample_world))
     expected = {(1, 3), (2, 3)}
     assert result == expected
 
 
-# def test_without(sample_world: World):
-#     query = QueryBuilder().with_((Hero,)).without_((Retired,)).build()
-#     result = set(query.execute(sample_world))
-#     expected = {(1,)}
-#     assert result == expected
-
-#     query = QueryBuilder().with_((GameCharacter, Gender)).without_((Hero,)).build()
-#     result = set(query.execute(sample_world))
-#     expected = {(4,)}
-#     assert result == expected
-
-#     query = (
-#         QueryBuilder("Hero", "Villain")
-#         .with_((GameCharacter, Hero), "Hero")
-#         .with_((DemonKing,), "Villain")
-#         .without_((Retired,), "Villain")
-#         .build()
-#     )
-#     result = set(query.execute(sample_world))
-#     expected = {(1, 4), (2, 4)}
-#     assert result == expected
-
-#     with pytest.raises(RuntimeError):
-#         (QueryBuilder().without_((Retired,)).build().execute(sample_world))
-
-
-def test_equal(sample_world: World):
-    query = (
-        QueryBuilder("X", "Y")
-        .with_((GameCharacter, Hero), "X")
-        .with_((GameCharacter, Hero), "Y")
-        .build()
+def test_query_not(sample_world: World):
+    query = QB.query(
+        ("HERO", "VILLAIN"),
+        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.not_(QB.with_((Retired,), "HERO")),
+        QB.with_((DemonKing, Retired), "VILLAIN"),
     )
     result = set(query.execute(sample_world))
-    expected = {(1, 1), (1, 2), (2, 1), (2, 2)}
-    assert result == expected
-
-    query = (
-        QueryBuilder("X", "Y")
-        .with_((GameCharacter, Hero), "X")
-        .with_((GameCharacter, Hero), "Y")
-        .filter_(eq_, "X", "Y")
-        .build()
-    )
-    result = set(query.execute(sample_world))
-    expected = {(1, 1), (2, 2)}
+    expected = {(1, 3)}
     assert result == expected
 
 
 def test_query_bindings(sample_world: World):
 
-    query = QueryBuilder().with_((Hero,)).build()
-    result = set(query.execute(sample_world, 2))
+    query = QB.query("_", QB.with_(Hero, "_"))
+    result = set(query.execute(sample_world, {"_": 2}))
     expected = {(2,)}
     assert result == expected
 
-    query = (
-        QueryBuilder()
-        .with_((GameCharacter, Gender))
-        .filter_(is_gender(GenderValue.NonBinary))
-        .build()
+    query = QB.query(
+        ("_",),
+        QB.with_((GameCharacter, NonBinary), "_"),
     )
-    result = set(query.execute(sample_world, 4))
+    result = set(query.execute(sample_world, {"_": 4}))
     expected = {(4,)}
     assert result == expected
 
-    query = (
-        QueryBuilder("HERO", "VILLAIN")
-        .with_((GameCharacter, Hero), "HERO")
-        .with_((DemonKing, Retired), "VILLAIN")
-        .build()
+    query = QB.query(
+        ("HERO", "VILLAIN"),
+        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.with_((DemonKing, Retired), "VILLAIN"),
     )
-    result = set(query.execute(sample_world, HERO=2))
+    result = set(query.execute(sample_world, {"HERO": 2}))
     expected = {(2, 3)}
+    assert result == expected
+
+    query = QB.query("_", QB.with_((GameCharacter, NonBinary), "_"))
+    result = set(query.execute(sample_world, {"_": 4}))
+    expected = {(4,)}
     assert result == expected
 
 
 def test_filter(sample_world: World):
-    query = (
-        QueryBuilder()
-        .with_((GameCharacter,))
-        .filter_(
-            lambda world, *gameobjects: gameobjects[0].has_component(Age)
-            and gameobjects[0].get_component(Age).value > 25
-        )
-        .build()
+    query = QB.query(
+        "_",
+        QB.with_(GameCharacter, "_"),
+        QB.filter_(
+            lambda gameobject: gameobject.get_component(Age).value > 25,
+            "_",
+        ),
     )
     result = set(query.execute(sample_world))
-    expected = {(1,)}
+    expected = {(1,), (4,)}
     assert result == expected
 
-    query = (
-        QueryBuilder()
-        .with_((GameCharacter,))
-        .filter_(is_gender(GenderValue.NonBinary))
-        .build()
+    query = QB.query(
+        "_",
+        QB.with_((GameCharacter, NonBinary), "_"),
     )
     result = set(query.execute(sample_world))
     expected = {(4,)}
     assert result == expected
 
     with pytest.raises(RuntimeError):
-        QueryBuilder("X", "Y").filter_(eq_, "X", "Y").build().execute(sample_world)
+        QB.query(("X", "Y"), QB.filter_(lambda x, y: x == y, ("X", "Y"))).execute(
+            sample_world
+        )

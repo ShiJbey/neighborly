@@ -3,9 +3,8 @@ from typing import Any, List
 import pytest
 
 from neighborly.core.ecs import World
-from neighborly.systems import System
 from neighborly.core.time import SimDateTime, TimeDelta
-from neighborly.systems import LinearTimeSystem
+from neighborly.systems import System, TimeSystem
 
 
 class TestSystem(System):
@@ -28,7 +27,7 @@ class TestSystem(System):
 def test_world() -> World:
     world = World()
     world.add_resource(SimDateTime())
-    world.add_system(LinearTimeSystem(increment=TimeDelta(hours=4)))
+    world.add_system(TimeSystem())
     return world
 
 
