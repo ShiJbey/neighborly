@@ -1,0 +1,6 @@
+name: "character::default::non-binary"
+extends: "character::default"
+components:
+  GameCharacter:
+    first_name: "#character::default::first_name::gender-neutral#"
+    last_name: "#character::default::last_name#"

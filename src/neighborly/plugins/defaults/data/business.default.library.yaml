@@ -1,0 +1,12 @@
+name: Library
+extends: business::default
+components:
+  Name:
+    value: Library
+  Business:
+    owner_type: Librarian
+    employee_types:
+      Librarian: 2
+  Activities:
+    activities:
+      - reading
