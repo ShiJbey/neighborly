@@ -281,3 +281,12 @@ cython_debug/
 
 **/.DS_Store
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,visualstudiocode,pycharm
+
+# Simulation output
+samples/*.json
+samples/*.csv
+*.csv
+
+# Docs NodeJS stuff
+node_modules/
+/docs/node_modules/

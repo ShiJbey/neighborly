@@ -1,32 +1,39 @@
 from __future__ import annotations
 
-from enum import IntEnum
 from typing import Any, Dict
 
-from ordered_set import OrderedSet  # type: ignore
+from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component
+from neighborly.core.status import StatusComponent
 
 
 class Residence(Component):
-    """Residence is a place where characters live"""
+    """
+    Residence is a place where characters live
 
-    __slots__ = "owners", "former_owners", "residents", "former_residents", "_vacant"
+    Attributes
+    ----------
+    owners: OrderedSet[int]
+        Characters that currently own the residence
+    residents: OrderedSet[int]
+        All the characters who live at the residence (including non-owners)
+    """
+
+    __slots__ = (
+        "owners",
+        "residents",
+    )
 
     def __init__(self) -> None:
-        super(Component, self).__init__()
+        super().__init__()
         self.owners: OrderedSet[int] = OrderedSet([])
-        self.former_owners: OrderedSet[int] = OrderedSet([])
         self.residents: OrderedSet[int] = OrderedSet([])
-        self.former_residents: OrderedSet[int] = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            **super().to_dict(),
             "owners": list(self.owners),
-            "former_owners": list(self.former_owners),
             "residents": list(self.residents),
-            "former_residents": list(self.former_residents),
         }
 
     def add_owner(self, owner: int) -> None:
@@ -48,15 +55,21 @@ class Residence(Component):
     def remove_resident(self, resident: int) -> None:
         """Remove a tenant rom this residence"""
         self.residents.remove(resident)
-        self.former_residents.add(resident)
 
     def is_resident(self, character: int) -> bool:
         """Return True if the given entity is a resident"""
         return character in self.residents
 
 
-class Resident(Component):
-    """Component attached to characters indicating that they live in the town"""
+class Resident(StatusComponent):
+    """
+    Component attached to characters indicating that they live in the town
+
+    Attributes
+    ----------
+    residence: int
+        Unique ID of the Residence GameObject that the resident belongs to
+    """
 
     __slots__ = "residence"
 
@@ -65,15 +78,10 @@ class Resident(Component):
         self.residence: int = residence
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "residence": self.residence}
+        return {"residence": self.residence}
 
 
-class ResidentialZoning(IntEnum):
-    SingleFamily = 0
-    MultiFamily = 1
-
-
-class Vacant(Component):
+class Vacant(StatusComponent):
     """Tags a residence that does not currently have anyone living there"""
 
     pass

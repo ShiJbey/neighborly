@@ -7,7 +7,7 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
-## [0.10.0]
+## [0.9.5]
 
 - The entire package has been restructures as some modules have moved
   out of the core module and into other packages

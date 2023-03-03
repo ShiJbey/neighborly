@@ -1,214 +1,214 @@
 """
-Utility functions to help users load configuration data from files
+neighborly/loaders.py
+
+Utility class and functions for importing simulation configuration data
 """
 from __future__ import annotations
 
-import logging
-from pathlib import Path
-from typing import Any, Dict, List, Protocol, Sequence, Union
+import pathlib
+from typing import Any, Dict, List, Union
 
-import pydantic
 import yaml
 
-from neighborly.engine import (
-    BusinessArchetypeConfig,
-    BusinessSpawnConfig,
-    CharacterArchetypeConfig,
-    CharacterSpawnConfig,
-    ResidenceArchetypeConfig,
-    ResidenceSpawnConfig,
+from neighborly.components.business import OccupationType
+from neighborly.content_management import (
+    BusinessLibrary,
+    CharacterLibrary,
+    OccupationTypeLibrary,
+    ResidenceLibrary,
 )
-from neighborly.simulation import Simulation
-
-logger = logging.getLogger(__name__)
-
-
-class IDataLoader(Protocol):
-    """Interface for a function that loads a specific subsection of the YAML data file"""
-
-    def __call__(self, sim: Simulation, data: Dict[str, Any]) -> None:
-        raise NotImplementedError()
+from neighborly.core.ecs import World
+from neighborly.core.tracery import Tracery
+from neighborly.prefabs import BusinessPrefab, CharacterPrefab, ResidencePrefab
+from neighborly.simulation import Neighborly
+from neighborly.utils.common import deep_merge
 
 
-class NeighborlyYamlImporter:
-    """Load Neighborly Component and Archetype definitions from an YAML"""
+def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> None:
+    """Load virtue mappings for activities"""
 
-    __slots__ = "data"
+    path_obj = pathlib.Path(file_path)
 
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data
-
-    @classmethod
-    def from_path(cls, filepath: Union[str, Path]) -> NeighborlyYamlImporter:
-        """Create a new importer instance using a file path"""
-        with open(filepath, "r") as f:
-            data: Dict[str, Any] = yaml.safe_load(f)
-        return cls(data)
-
-    @classmethod
-    def from_str(cls, yaml_str: str) -> NeighborlyYamlImporter:
-        """Create a new importer instance using a yaml string"""
-        data: Dict[str, Any] = yaml.safe_load(yaml_str)
-        return cls(data)
-
-    def load(self, sim: Simulation, loaders: Sequence[IDataLoader]) -> None:
-        """
-        Load each section of that YAML datafile
-
-        Parameters
-        ----------
-        sim: Simulation
-            The simulation instance to load data into
-        loaders: Sequence[IDataLoader]
-            A function that loads information from the
-            yaml data
-        """
-        for loader in loaders:
-            loader(sim, self.data)
-
-
-class YamlCharacterArchetypeConfig(pydantic.BaseModel):
-    """
-    Configuration information for character archetypes
-
-    Attributes
-    ------
-    name: str
-        The name of this particular configuration
-    spawn_config: CharacterSpawnConfig
-        Configuration data regarding how this archetype should be spawned
-    base: str
-        The name of the archetype to base this character
-        archetype configuration on
-    options: Dict[str, Any]
-        Parameters to pass to the archetype's create function
-        when spawning an instance of this archetype
-    """
-
-    name: str
-    base: str
-    spawn_config: CharacterSpawnConfig = pydantic.Field(
-        default_factory=CharacterSpawnConfig
-    )
-    options: Dict[str, Any] = pydantic.Field(default_factory=dict)
-
-
-class YamlBusinessArchetypeConfig(pydantic.BaseModel):
-    """
-    Configuration information for business archetypes
-
-    Attributes
-    ------
-    name: str
-        The name of this particular configuration
-    spawn_config: BusinessSpawnConfig
-        Configuration data regarding how this archetype should be spawned
-    base: str
-        The name of the archetype to base this business
-        archetype configuration on
-    options: Dict[str, Any]
-        Parameters to pass to the archetype's create function
-        when spawning an instance of this archetype
-    """
-
-    name: str
-    base: str
-    spawn_config: BusinessSpawnConfig = pydantic.Field(
-        default_factory=BusinessSpawnConfig
-    )
-    options: Dict[str, Any] = pydantic.Field(default_factory=dict)
-
-
-class YamlResidenceArchetypeConfig(pydantic.BaseModel):
-    """
-    Configuration information for business archetypes
-
-    Attributes
-    ------
-    name: str
-        The name of this particular configuration
-    spawn_config: BusinessSpawnConfig
-        Configuration data regarding how this archetype should be spawned
-    base: str
-        The name of the archetype to base this business
-        archetype configuration on
-    options: Dict[str, Any]
-        Parameters to pass to the archetype's create function
-        when spawning an instance of this archetype
-    """
-
-    name: str
-    base: str
-    spawn_config: BusinessSpawnConfig = pydantic.Field(
-        default_factory=BusinessSpawnConfig
-    )
-    options: Dict[str, Any] = pydantic.Field(default_factory=dict)
-
-
-def load_character_archetypes(sim: Simulation, data: Dict[str, Any]) -> None:
-    """Process data defining character archetypes"""
-    character_data: List[Dict[str, Any]] = data["Characters"]
-    for archetype_data in character_data:
-        yaml_archetype_config = YamlCharacterArchetypeConfig.parse_obj(archetype_data)
-
-        base = sim.engine.character_archetypes.get(yaml_archetype_config.base)
-
-        new_archetype = CharacterArchetypeConfig(
-            name=yaml_archetype_config.name,
-            factory=base.factory,
-            spawn_config=CharacterSpawnConfig(
-                **{
-                    **base.spawn_config.dict(),
-                    **yaml_archetype_config.spawn_config.dict(),
-                }
-            ),
-            options={**base.options, **yaml_archetype_config.options},
+    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
+        raise Exception(
+            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
         )
 
-        sim.engine.character_archetypes.add(new_archetype)
+    with open(file_path, "r") as f:
+        data: List[Dict[str, Any]] = yaml.safe_load(f)
 
+    library = world.get_resource(OccupationTypeLibrary)
 
-def load_business_archetypes(sim: Simulation, data: Dict[str, Any]) -> None:
-    """Process data defining business archetypes"""
-    business_data: List[Dict[str, Any]] = data["Businesses"]
-    for archetype_data in business_data:
-        yaml_archetype_config = YamlBusinessArchetypeConfig.parse_obj(archetype_data)
-
-        base = sim.engine.business_archetypes.get(yaml_archetype_config.base)
-
-        new_archetype = BusinessArchetypeConfig(
-            name=yaml_archetype_config.name,
-            factory=base.factory,
-            spawn_config=BusinessSpawnConfig(
-                **{
-                    **base.spawn_config.dict(),
-                    **yaml_archetype_config.spawn_config.dict(),
-                }
-            ),
-            options={**base.options, **yaml_archetype_config.options},
+    for entry in data:
+        library.add(
+            OccupationType(
+                name=entry["name"],
+                level=entry.get("level", 1),
+            )
         )
 
-        sim.engine.business_archetypes.add(new_archetype)
 
+def load_character_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
+    """loads a CharacterEntityPrefab from a yaml file"""
 
-def load_residence_data(sim: Simulation, data: Dict[str, Any]) -> None:
-    """Process data defining residence archetypes"""
-    residence_data: List[Dict[str, Any]] = data["Residences"]
-    for archetype_data in residence_data:
-        yaml_archetype_config = YamlResidenceArchetypeConfig.parse_obj(archetype_data)
+    path_obj = pathlib.Path(file_path)
 
-        base = sim.engine.residence_archetypes.get(yaml_archetype_config.base)
-
-        new_archetype = ResidenceArchetypeConfig(
-            name=yaml_archetype_config.name,
-            factory=base.factory,
-            spawn_config=ResidenceSpawnConfig(
-                **{
-                    **base.spawn_config.dict(),
-                    **yaml_archetype_config.spawn_config.dict(),
-                }
-            ),
-            options={**base.options, **yaml_archetype_config.options},
+    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
+        raise Exception(
+            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
         )
 
-        sim.engine.residence_archetypes.add(new_archetype)
+    library = world.get_resource(CharacterLibrary)
+
+    with open(file_path, "r") as f:
+        data: Dict[str, Any] = yaml.safe_load(f)
+
+    base_data: Dict[str, Any] = dict()
+
+    data["is_template"] = data.get("is_template", False)
+
+    if base_prefab_name := data.get("extends", ""):
+        base_data = library.get(base_prefab_name).dict()
+
+    full_prefab_data = deep_merge(base_data, data)
+
+    new_prefab = CharacterPrefab.parse_obj(full_prefab_data)
+
+    library.add(new_prefab)
+
+
+def load_business_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
+    """loads a CharacterEntityPrefab from a yaml file"""
+
+    path_obj = pathlib.Path(file_path)
+
+    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
+        raise Exception(
+            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
+        )
+
+    library = world.get_resource(BusinessLibrary)
+
+    with open(file_path, "r") as f:
+        data: Dict[str, Any] = yaml.safe_load(f)
+
+    base_data: Dict[str, Any] = dict()
+
+    data["is_template"] = data.get("is_template", False)
+
+    if base_prefab_name := data.get("extends", ""):
+        base_data = library.get(base_prefab_name).dict()
+
+    full_prefab_data = deep_merge(base_data, data)
+
+    new_prefab = BusinessPrefab.parse_obj(full_prefab_data)
+
+    library.add(new_prefab)
+
+
+def load_residence_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
+    """loads a CharacterEntityPrefab from a yaml file"""
+
+    path_obj = pathlib.Path(file_path)
+
+    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
+        raise Exception(
+            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
+        )
+
+    library = world.get_resource(ResidenceLibrary)
+
+    with open(file_path, "r") as f:
+        data: Dict[str, Any] = yaml.safe_load(f)
+
+    base_data: Dict[str, Any] = dict()
+
+    data["is_template"] = data.get("is_template", False)
+
+    if base_prefab_name := data.get("extends", ""):
+        base_data = library.get(base_prefab_name).dict()
+
+    full_prefab_data = deep_merge(base_data, data)
+
+    new_prefab = ResidencePrefab.parse_obj(full_prefab_data)
+
+    library.add(new_prefab)
+
+
+def load_names(
+    world: World, rule_name: str, filepath: Union[str, pathlib.Path]
+) -> None:
+    """Load names a list of names from a text file or given list"""
+    tracery_instance = world.get_resource(Tracery)
+
+    with open(filepath, "r") as f:
+        tracery_instance.add({rule_name: f.read().splitlines()})
+
+
+def load_data_file(sim: Neighborly, file_path: Union[str, pathlib.Path]) -> None:
+    """Load all the fields from the datafile into their respective libraries"""
+
+    with open(file_path, "r") as f:
+        data: Dict[str, Any] = yaml.safe_load(f)
+
+    character_library = sim.world.get_resource(CharacterLibrary)
+    character_defs: List[Dict[str, Any]] = data.get("Characters", [])
+    for entry in character_defs:
+        base_data: Dict[str, Any] = dict()
+
+        entry["is_template"] = entry.get("is_template", False)
+
+        if base_prefab_name := entry.get("extends", ""):
+            base_data = character_library.get(base_prefab_name).dict()
+
+        full_prefab_data = deep_merge(base_data, entry)
+
+        new_prefab = CharacterPrefab.parse_obj(full_prefab_data)
+
+        character_library.add(new_prefab)
+
+    business_library = sim.world.get_resource(BusinessLibrary)
+    business_defs: List[Dict[str, Any]] = data.get("Businesses", [])
+    for entry in business_defs:
+        base_data: Dict[str, Any] = dict()
+
+        entry["is_template"] = entry.get("is_template", False)
+
+        if base_prefab_name := entry.get("extends", ""):
+            base_data = business_library.get(base_prefab_name).dict()
+
+        full_prefab_data = deep_merge(base_data, entry)
+
+        new_prefab = BusinessPrefab.parse_obj(full_prefab_data)
+
+        business_library.add(new_prefab)
+
+    residence_library = sim.world.get_resource(ResidenceLibrary)
+    residence_defs: List[Dict[str, Any]] = data.get("Residences", [])
+    for entry in residence_defs:
+        base_data: Dict[str, Any] = dict()
+
+        entry["is_template"] = entry.get("is_template", False)
+
+        if base_prefab_name := entry.get("extends", ""):
+            base_data = residence_library.get(base_prefab_name).dict()
+
+        full_prefab_data = deep_merge(base_data, entry)
+
+        new_prefab = ResidencePrefab.parse_obj(full_prefab_data)
+
+        residence_library.add(new_prefab)
+
+    occupation_library = sim.world.get_resource(OccupationTypeLibrary)
+    occupation_defs: List[Dict[str, Any]] = data.get("Occupations", [])
+    for entry in occupation_defs:
+        occupation_library.add(
+            OccupationType(
+                name=entry["name"],
+                level=entry.get("level", 1),
+            )
+        )
+
+    name_data: List[Dict[str, Any]] = data.get("Names", [])
+    for entry in name_data:
+        load_names(sim.world, entry["rule"], entry["path"])

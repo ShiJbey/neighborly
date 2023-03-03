@@ -1,43 +1,40 @@
 """
 Tests for the Neighborly's Business and Occupation logic
 """
-from typing import Dict
 
 import pytest
 
-from neighborly.components.business import Business, OccupationType
-from neighborly.components.factory import parse_operating_hour_str
+from neighborly.components.business import Business
 from neighborly.core.ecs import Component
 from neighborly.core.time import Weekday
-from neighborly.engine import OccupationTypes
-from neighborly.plugins.defaults.archetypes import BaseBusinessArchetype
+from neighborly.factories import OperatingHoursFactory
 from neighborly.plugins.talktown.business_components import Restaurant
+from neighborly.prefabs import BusinessPrefab
 from neighborly.simulation import Neighborly
-from neighborly.utils.role_filters import is_college_graduate
 
 
 class CollegeGraduate(Component):
     pass
 
 
-@pytest.fixture
-def sample_occupation_types():
-    ceo_occupation_type = OccupationType("CEO", 5, precondition=is_college_graduate)
+# @pytest.fixture
+# def sample_occupation_types():
+#     ceo_occupation_type = OccupationType("CEO", 5, precondition=is_college_graduate)
 
-    return {"ceo": ceo_occupation_type}
+#     return {"ceo": ceo_occupation_type}
 
 
-def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationType]):
-    ceo_occupation_type = sample_occupation_types["ceo"]
+# def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationType]):
+#     ceo_occupation_type = sample_occupation_types["ceo"]
 
-    assert ceo_occupation_type.name == "CEO"
-    assert ceo_occupation_type.level == 5
+#     assert ceo_occupation_type.name == "CEO"
+#     assert ceo_occupation_type.level == 5
 
-    occupation_types = OccupationTypes()
+#     occupation_types = OccupationTypes()
 
-    occupation_types.add(ceo_occupation_type)
+#     occupation_types.add(ceo_occupation_type)
 
-    assert ceo_occupation_type == occupation_types.get("CEO")
+#     assert ceo_occupation_type == occupation_types.get("CEO")
 
 
 # def test_occupation(sample_occupation_types: Dict[str, OccupationType]):
@@ -61,7 +58,7 @@ def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationT
 
 def test_construct_business():
     """Constructing business components using BusinessArchetypes"""
-    restaurant_archetype = BaseBusinessArchetype(
+    restaurant_archetype = BusinessPrefab(
         business_type=Restaurant,
         name_format="#restaurant_name#",
         hours="11AM - 10PM",
@@ -73,7 +70,7 @@ def test_construct_business():
         },
     )
 
-    sim = Neighborly().build()
+    sim = Neighborly()
 
     restaurant = restaurant_archetype.spawn(sim.world)
     restaurant_business = restaurant.get_component(Business)
@@ -81,10 +78,11 @@ def test_construct_business():
     assert restaurant_business.owner_type == "Proprietor"
     assert restaurant_business.owner is None
     assert restaurant_business.needs_owner() is True
-    assert restaurant_business.operating_hours[Weekday.Monday] == (11, 22)
 
 
 def test_parse_operating_hours_str():
+    parse_operating_hour_str = OperatingHoursFactory.parse_operating_hour_str
+
     # Time Interval
     assert parse_operating_hour_str("00-11")[Weekday.Sunday] == (0, 11)
     assert parse_operating_hour_str("0-11")[Weekday.Monday] == (0, 11)

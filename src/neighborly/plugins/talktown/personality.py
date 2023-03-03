@@ -9,15 +9,12 @@ import random
 from typing import Any, Dict, Optional, cast
 
 from neighborly.core.ecs import Component, IComponentFactory, World
-from neighborly.core.inheritable import IInheritable, inheritable
 
 BIG_FIVE_FLOOR = -1.0
 BIG_FIVE_CAP = 1.0
 
 
-@inheritable(inheritance_chance=(0.0, 1.0), always_inherited=True)
-class BigFivePersonality(Component, IInheritable):
-    """Relationship model"""
+class BigFivePersonality(Component):
 
     __slots__ = (
         "openness",
@@ -107,7 +104,6 @@ class BigFivePersonality(Component, IInheritable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            **super().to_dict(),
             "openness": self.openness,
             "conscientiousness": self.conscientiousness,
             "extroversion": self.extroversion,

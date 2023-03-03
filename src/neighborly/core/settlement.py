@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import (
     Any,
@@ -9,61 +10,153 @@ from typing import (
     Generic,
     List,
     Optional,
-    Protocol,
     Set,
     Tuple,
     TypeVar,
 )
 
-from neighborly.core.serializable import ISerializable
+from neighborly.core.ecs import Component
 
 
-class ISettlementMap(Protocol):
+class ISettlementMap(ABC):
+    """Interface implemented by classes that operate as world maps
+
+    SettlementMaps are responsible for managing land usage in settlements
+    they provide a model of space to the simulation where buildings are placed
+    on individual lots.
+    """
+
+    @abstractmethod
     def get_size(self) -> Tuple[int, int]:
         """Get the Width and Length of the map"""
         raise NotImplementedError
 
+    @abstractmethod
     def get_total_lots(self) -> int:
+        """Get the total number of lots on the map"""
         raise NotImplementedError
 
+    @abstractmethod
     def get_vacant_lots(self) -> List[int]:
-        """Get the Width and Length of the map"""
+        """Get the IDs of lots that are currently not occupied"""
         raise NotImplementedError
 
+    @abstractmethod
     def get_lot_position(self, lot_id: int) -> Tuple[float, float]:
-        """Get the Width and Length of the map"""
+        """Get the position of a lot on the map
+
+        Parameters
+        ----------
+        lot_id: int
+            The ID of the lot to get the position of
+
+        Returns
+        -------
+        Tuple[float, float]
+            The 2D position of the lot on the map
+        """
         raise NotImplementedError
 
+    @abstractmethod
     def get_neighboring_lots(self, lot_id: int) -> List[int]:
-        """Get the Width and Length of the map"""
+        """Get the lots that neighbor the given lot
+
+        Parameters
+        ----------
+        lot_id: int
+            The ID of the lot to get the neighbors of
+
+        Returns
+        -------
+        List[int]
+            The IDs of the neighboring lots
+        """
         raise NotImplementedError
 
+    @abstractmethod
     def reserve_lot(self, lot_id: int, building_id: int) -> None:
+        """Set a lot as being taken by a building
+
+        Parameters
+        ----------
+        lot_id: int
+            The lot to set as taken
+        building_id: int
+            The GameObject ID of the building that owns the spot
+        """
         raise NotImplementedError
 
+    @abstractmethod
     def free_lot(self, lot_id: int) -> None:
+        """Sets a lot as not being owned by a building"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_dict(self) -> Dict[str, Any]:
+        """Serializes the map to a dictionary"""
         raise NotImplementedError
 
 
-class Settlement(ISerializable):
-    """Manages all the information about the town/city/village"""
+class Settlement(Component):
+    """A place where characters live, go to work, and interact
 
-    __slots__ = "name", "land_map", "population", "business_counts"
+    Settlements can represent towns, cities, villages, etc. They are responsible for
+    tracking the population and other information about locations within the
+    settlement.
+
+    Attributes
+    ----------
+    name: str
+        The name of the settlement
+    land_map: ISettlementMap
+        The map of the town used to manage land usage
+    population: int
+        The number of characters who are residents of the settlement
+    business_counts: DefaultDict[str, int]
+        A count of the number of types of businesses that exist in the town.
+        The dict key is the name of the BusinessPrefab used to construct
+        the business GameObject
+    locations: Set[int]
+        The GameObject IDs of all the GameObjects with Location components that belong
+        to this settlement
+    businesses: Set[int]
+        The GameObject IDs of all the GameObjects with Business components that belong
+        to this settlement
+    """
+
+    __slots__ = (
+        "name",
+        "land_map",
+        "population",
+        "business_counts",
+        "locations",
+        "businesses",
+    )
 
     def __init__(self, name: str, land_map: ISettlementMap) -> None:
+        """
+        Parameters
+        ----------
+        name: str
+            The name of the settlement
+        land_map: ISettlementMap
+            The map of the town used to manage land usage
+        """
+        super().__init__()
         self.name: str = name
         self.land_map: ISettlementMap = land_map
         self.population: int = 0
         self.business_counts: DefaultDict[str, int] = defaultdict(lambda: 0)
-
-    def increment_population(self) -> None:
-        self.population += 1
-
-    def decrement_population(self) -> None:
-        self.population -= 1
+        self.locations: Set[int] = set()
+        self.businesses: Set[int] = set()
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"type": "Settlement", "name": self.name, "population": self.population}
+        """Serialize the Settlement to a dictionary"""
+        return {
+            "name": self.name,
+            "population": self.population,
+            "land_map": self.land_map.to_dict(),
+        }
 
     def __str__(self) -> str:
         return f"{self.name} (Pop. {self.population})"
@@ -72,13 +165,13 @@ class Settlement(ISerializable):
         return f"Town(name={self.name}, population={self.population})"
 
 
-class GridSettlementMap:
+class GridSettlementMap(ISettlementMap):
     """
     Uses a traditional cartesian grid to represent the settlement's
     map. Each cell in the grid is one lot in the town
     """
 
-    __slots__ = ("_unoccupied", "_occupied", "_grid")
+    __slots__ = "_unoccupied", "_occupied", "_grid"
 
     def __init__(self, size: Tuple[int, int]) -> None:
         super().__init__()
@@ -89,25 +182,21 @@ class GridSettlementMap:
         self._occupied: Set[int] = set()
 
     def get_size(self) -> Tuple[int, int]:
-        """Get the Width and Length of the map"""
         return self._grid.shape
 
     def get_total_lots(self) -> int:
         return self._grid.shape[0] * self._grid.shape[1]
 
     def get_vacant_lots(self) -> List[int]:
-        """Get the Width and Length of the map"""
         # Make a copy of the array
         return [*self._unoccupied]
 
     def get_lot_position(self, lot_id: int) -> Tuple[float, float]:
-        """Get the Width and Length of the map"""
         x = lot_id % self._grid.shape[0]
         y = lot_id // self._grid.shape[0]
         return x, y
 
     def get_neighboring_lots(self, lot_id: int) -> List[int]:
-        """Get the Width and Length of the map"""
         position = self.get_lot_position(lot_id)
         rounded_position = (int(position[0]), int(position[1]))
         neighbor_positions = self._grid.get_neighbors(rounded_position, True)
@@ -130,13 +219,27 @@ class GridSettlementMap:
         self._occupied.remove(lot_id)
 
     def _position_to_id(self, position: Tuple[int, int]) -> int:
-        """Convert lot position to lot ID"""
+        """Convert lot position to lot ID
+
+        Parameters
+        ----------
+        position: Tuple[int, int]
+            The X,Y position of the lot
+
+        Returns
+        -------
+        int
+            The ID of the lot at that position
+        """
         return (position[1] * self._grid.shape[0]) + position[0]
 
-
-def create_grid_settlement(name: str, size: Tuple[int, int]) -> Settlement:
-    """Creates Settlement instance that defaults to using a grid-based map"""
-    return Settlement(name, GridSettlementMap(size))
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": self.__class__.__name__,
+            "width": self.get_size()[0],
+            "height": self.get_size()[1],
+            "cells": [cell if cell else -1 for cell in self._grid.get_cells()],
+        }
 
 
 _GT = TypeVar("_GT")
@@ -154,6 +257,14 @@ class Grid(Generic[_GT]):
     def __init__(
         self, size: Tuple[int, int], default_factory: Callable[[], _GT]
     ) -> None:
+        """
+        Parameters
+        ----------
+        size: Tuple[int, int]
+            The X, Y size of the grid
+        default_factory: Callable[[], _GT]
+            A factory method used to initialize all the grid cells
+        """
         self._width: int = size[0]
         self._length: int = size[1]
         self._grid: List[_GT] = [
@@ -171,6 +282,21 @@ class Grid(Generic[_GT]):
     def get_neighbors(
         self, point: Tuple[int, int], include_diagonals: bool = False
     ) -> List[Tuple[int, int]]:
+        """Get all the grid cells neighboring the given position
+
+        Parameters
+        ----------
+        point: Tuple[int, int]
+            The X, Y position of a grid cell
+        include_diagonals: bool, optional
+            Flag if to include diagonal neighbors (defaults to False). By default,
+            this method only looks at neighbors in the cardinal directions
+
+        Returns
+        -------
+        List[Tuple[int, int]]
+            The X, Y positions of grid cells
+        """
         neighbors: List[Tuple[int, int]] = []
 
         # North-West (Diagonal)

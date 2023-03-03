@@ -32,7 +32,7 @@ class Bar(IBusinessType):
     pass
 
 
-class Barbershop(IBusinessType):
+class BarberShop(IBusinessType):
     """A barbershop."""
 
     pass
