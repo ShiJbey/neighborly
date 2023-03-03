@@ -23,19 +23,3 @@ have had, how long, and why they left that job. Think of it like their resume. I
 is mainly used in precondition calculations for various occupations. Without this
 component, we would have to calculate characters' work histories from the events
 in their ``EventHistory`` components
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Contents:
-
-    installation.rst
-    working_with_ecs.rst
-    relationships.rst
-    event_driven_architecture.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

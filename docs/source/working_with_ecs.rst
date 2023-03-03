@@ -29,7 +29,7 @@ If you want a more in-depth discussion, please refer to this `FAQ article from
 the Flecs ECS library <https://github.com/SanderMertens/ecs-faq#what-is-ecs>`_.
 
 Overview of Neighborly's ECS
-------------------------
+----------------------------
 
 Neighborly uses a custom entity-component system built on top of
 `Esper <https://github.com/benmoran56/esper>`_ that integrates features from
