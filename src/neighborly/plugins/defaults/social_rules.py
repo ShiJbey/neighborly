@@ -1,15 +1,15 @@
-from typing import Dict, Type
+from typing import Any, Dict, Type
 
 from neighborly.components import Virtues
 from neighborly.core.ecs import GameObject
 from neighborly.core.relationship import Friendship, RelationshipFacet, Romance
 from neighborly.simulation import Neighborly, PluginInfo
 
-plugin_info: PluginInfo = {
-    "name": "default location bias rules plugin",
-    "plugin_id": "default.location_bias_rules",
-    "version": "0.1.0",
-}
+plugin_info = PluginInfo(
+    name="default location bias rules plugin",
+    plugin_id="default.location_bias_rules",
+    version="0.1.0",
+)
 
 
 def virtue_compatibility_rule(
@@ -36,5 +36,5 @@ def virtue_compatibility_rule(
         return {Friendship: 2, Romance: 3}
 
 
-def setup(sim: Neighborly):
+def setup(sim: Neighborly, **kwargs: Any):
     sim.add_social_rule(virtue_compatibility_rule, "virtue compatibility")

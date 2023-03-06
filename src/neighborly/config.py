@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import re
 import os
 import random
+import re
 from typing import Any, Dict, List, Union
 
 import pydantic
@@ -28,6 +28,7 @@ class PluginConfig(pydantic.BaseModel):
 
     name: str
     path: str = pydantic.Field(default_factory=lambda: os.getcwd())
+    options: Dict[str, Any] = pydantic.Field(default_factory=dict)
 
 
 class NeighborlyConfig(pydantic.BaseModel):
@@ -37,7 +38,7 @@ class NeighborlyConfig(pydantic.BaseModel):
     relationship_schema: EntityPrefab = pydantic.Field(
         default_factory=lambda: EntityPrefab()
     )
-    plugins: List[Union[str, PluginConfig]] = pydantic.Field(default_factory=list)
+    plugins: List[PluginConfig] = pydantic.Field(default_factory=list)
     # Months to increment time by each simulation step
     time_increment: TimeDelta = TimeDelta(hours=4)
     years_to_simulate: int = 50
@@ -46,6 +47,20 @@ class NeighborlyConfig(pydantic.BaseModel):
     )
     verbose: bool = True
     settings: Dict[str, Any] = pydantic.Field(default_factory=dict)
+
+    @pydantic.validator("plugins", pre=True, each_item=True)  # type: ignore
+    def validate_plugins(cls, value: Any) -> PluginConfig:
+        if isinstance(value, PluginConfig):
+            return value
+        elif isinstance(value, str):
+            return PluginConfig(name=value)
+        elif isinstance(value, dict):
+            return PluginConfig(
+                name=value["name"],
+                path=value.get("path", "."),  # type: ignore
+                options=value.get("options", {}),  # type: ignore
+            )
+        raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
 
     @pydantic.validator("start_date", pre=True)  # type: ignore
     def validate_date(cls, value: Any) -> SimDateTime:

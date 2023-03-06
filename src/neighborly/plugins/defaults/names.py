@@ -1,5 +1,6 @@
 import os
 import pathlib
+from typing import Any
 
 from neighborly.loaders import load_names
 from neighborly.simulation import Neighborly, PluginInfo
@@ -7,14 +8,14 @@ from neighborly.simulation import Neighborly, PluginInfo
 _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
 
 
-plugin_info: PluginInfo = {
-    "name": "default names plugin",
-    "plugin_id": "default.names",
-    "version": "0.1.0",
-}
+plugin_info = PluginInfo(
+    name="default names plugin",
+    plugin_id="default.names",
+    version="0.1.0",
+)
 
 
-def setup(sim: Neighborly):
+def setup(sim: Neighborly, **kwargs: Any):
     load_names(
         sim.world,
         rule_name="character::default::last_name",

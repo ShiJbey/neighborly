@@ -5,7 +5,6 @@ from collections import defaultdict
 from typing import Any, DefaultDict, List, Optional, Type
 
 import neighborly.events
-from neighborly.config import NeighborlyConfig
 from neighborly.actions import StartBusinessAction
 from neighborly.components.business import (
     Business,
@@ -40,6 +39,7 @@ from neighborly.components.shared import (
     FrequentedBy,
     FrequentedLocations,
 )
+from neighborly.config import NeighborlyConfig
 from neighborly.content_management import (
     CharacterLibrary,
     LifeEventLibrary,
@@ -222,10 +222,10 @@ class TimeSystem(ISystem):
         increment = self.world.get_resource(NeighborlyConfig).time_increment
         current_date = self.world.get_resource(SimDateTime)
         current_date.increment(
-            years=increment.years, 
-            months=increment.months, 
-            days=increment.days, 
-            hours=increment.hours
+            years=increment.years,
+            months=increment.months,
+            days=increment.days,
+            hours=increment.hours,
         )
 
 
@@ -243,7 +243,7 @@ class LifeEventSystem(System):
 
     sys_group = "character-update"
 
-    def run(self, *args: Any, **kwarg: Any) -> None:
+    def run(self, *args: Any, **kwargs: Any) -> None:
         """Simulate LifeEvents for characters"""
         life_event_lib = self.world.get_resource(LifeEventLibrary)
         life_event_buffer = self.world.get_resource(LifeEventBuffer)

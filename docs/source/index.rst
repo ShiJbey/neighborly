@@ -18,27 +18,28 @@ settlement. This process can be daunting, so we try to make your life easier
 by offering built-in content plugins to help you get started. We can't wait
 to see what you make with Neighborly!
 
-Installation
----------------
-
-First thing you need to do is install neighborly from PyPI.
+Neighborly is available to install from PyPI. This will install the latest official
+release.
 
 .. code-block:: console
 
-   # (Optional) Create a new python virtual environment
-   $ python -m venv venv
+    pip install neighborly
 
-   # (Optional) Activate virtual environment (on MacOS/Linux)
-   $ ./venv/bin/activate
 
-   # (Optional) Activate virtual environment (on Windows)
-   $ ./venv/Scripts/activate
+If you want to install the most recent changes that have not been uploaded to
+PyPI, you can install it by cloning the main branch of this repo and installing that.
 
-   # Install using pip!
-   $ pip install neighborly
+.. code-block:: console
+
+    pip install git+https://github.com/ShiJbey/neighborly.git
+
 
 Running the sample simulation
 -----------------------------
+
+.. code-block:: console
+
+    neighborly
 
 Neighborly comes preconfigured with a simulation of a small town. Characters
 move in and out of the town, start businesses, work jobs, start families,
@@ -49,21 +50,27 @@ file.
 
 We are working on a visualization interface for neighborly.
 
+Contents
+========
+
 .. toctree::
     :maxdepth: 2
-    :caption: Contents:
 
     installation.rst
+    commandline_tool.rst
     working_with_ecs.rst
+    plugins.rst
+    content_management.rst
     characters.rst
-    relationships.rst
     businesses.rst
     residences.rst
+    relationships.rst
     social_rules.rst
     location_biases.rst
     statuses.rst
-    event_driven_architecture.rst
+    events_and_actions.rst
     tracking_backstories.rst
+    data_collection.rst
     design_justifications.rst
 
 Indices and tables

@@ -177,11 +177,10 @@ pytest --cov=neighborly tests/
 
 # Documentation
 
-Neighborly uses [Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html)
-docstrings in code and full documentation can be found in the
-[Wiki](https://github.com/ShiJbey/neighborly/wiki).
+The most up-to-date documentation can be found [here](https://shijbey.github.io/neighborly/)
 
-When adding docstrings for existing or new bits of code please use the following
+Neighborly uses [Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html)
+docstrings in code. When adding docstrings for existing or new bits of code please use the following
 references for how to format your contributions:
 
 - [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)

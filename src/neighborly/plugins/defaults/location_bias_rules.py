@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from neighborly.components import Virtues
 from neighborly.components.character import Virtue
@@ -6,11 +6,11 @@ from neighborly.core.ecs import GameObject
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.common import location_has_activities
 
-plugin_info: PluginInfo = {
-    "name": "default location bias rules plugin",
-    "plugin_id": "default.location_bias_rules",
-    "version": "0.1.0",
-}
+plugin_info = PluginInfo(
+    name="default location bias rules plugin",
+    plugin_id="default.location_bias_rules",
+    version="0.1.0",
+)
 
 
 def virtue_to_activity_bias(virtue: Virtue, activity: str, modifier: int):
@@ -24,7 +24,7 @@ def virtue_to_activity_bias(virtue: Virtue, activity: str, modifier: int):
     return rule
 
 
-def setup(sim: Neighborly):
+def setup(sim: Neighborly, **kwargs: Any):
 
     # For sake of time, use helper the method
     sim.add_location_bias_rule(virtue_to_activity_bias(Virtue.LEISURE_TIME, "Rest", 1))

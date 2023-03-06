@@ -40,7 +40,7 @@ resource object in
 GameObjects
 ^^^^^^^^^^^
 
-In Orrey, we call entities, GameObjects. Each GameObject has a unique integer
+In Neighborly, we call entities, GameObjects. Each GameObject has a unique integer
 identifier, a name, and a collection of components.
 
 Components
@@ -51,6 +51,12 @@ is intended to be used as a component. It gives subclasses a reference to
 the gameobject reference and provides utility methods for tasks like
 serializing to a dictionary object.
 
+Component Factories
+^^^^^^^^^^^^^^^^^^^
+
+Sometimes you need to do something special when constructing a component.
+Factories give you access to simulation resources when constructing component instances.
+
 Systems
 ^^^^^^^
 
@@ -60,13 +66,19 @@ the simulation or on a specified interval. Systems can access GameObjects and
 their components by querying the world instance for GameObjects containing
 particular components.
 
+Systems can only belong to one system group and each system has a priority value, specifying when
+they should run within their group. The higher the priority the sooner the system runs. Groups and
+priorities are specified by overwriting the `sys-group` and `priority` class variables on ISystem
+subclasses.
+
 System Groups
 ^^^^^^^^^^^^^
 
 System groups are a subtype of system that group together Systems and other
 SystemGroups. This library's ECS implementation has one root system group that
 all systems are assigned to be default. Users are free to create new groups and
-assign systems as they see fit.
+assign systems as they see fit. System groups are defined the same as systems.
+
 
 Resources
 ^^^^^^^^^
@@ -81,6 +93,14 @@ World
 The World manages all the active GameObjects, Systems, and Resources. Users
 can use the world state to retrieve gameobjects or search for ones that have
 certain components.
+
+Prefabs
+^^^^^^^
+
+Prefabs, much like in Unity, are blueprints of how to construct a specific type of GameObject. They
+allow you to specify what components a GameObject should have, as well as any child prefabs. See the
+various pages for modeling characters, businesses, residences, and relationships for more
+information about constructing and adding specific types of prefabs.
 
 Getting started
 ---------------

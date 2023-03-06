@@ -3,16 +3,19 @@ from __future__ import annotations
 import importlib
 import os
 import random
+import re
 import sys
+from dataclasses import dataclass
 from types import ModuleType
-from typing import Any, Callable, Dict, Optional, Type, TypedDict, Union
+from typing import Any, Callable, Dict, Optional, Type, Union
 
 import neighborly.components as components
 import neighborly.content_management as libraries
 import neighborly.core.relationship as relationship
 import neighborly.factories as factories
 import neighborly.systems as systems
-from neighborly.config import NeighborlyConfig
+from neighborly.__version__ import VERSION
+from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIComponent
 from neighborly.core.ecs import Component, IComponentFactory, ISystem, World
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
@@ -34,10 +37,12 @@ class PluginSetupError(Exception):
         super().__init__(*args)
 
 
-class PluginInfo(TypedDict):
+@dataclass
+class PluginInfo:
     name: str
     plugin_id: str
     version: str
+    required_version: Optional[str] = None
 
 
 class Neighborly:
@@ -50,7 +55,7 @@ class Neighborly:
         Entity-component system (ECS) that manages entities and procedures in the virtual world
     config: neighborly.NeighborlyConfig
         Configuration settings for the simulation
-    plugins: List[Tuple[Plugin, Dict[str, Any]]]
+    plugins: Dict[str, ModuleType]
         List of loaded plugins and their configuration data
     """
 
@@ -195,33 +200,27 @@ class Neighborly:
             self.world.add_system(systems.PrintEventBufferSystem())
 
         # Load plugins from the config
-        for plugin_entry in self.config.plugins:
-            if isinstance(plugin_entry, str):
-                self.load_plugin(plugin_entry)
-            else:
-                self.load_plugin(plugin_entry.name, plugin_entry.path)
+        for entry in self.config.plugins:
+            self.load_plugin(entry)
 
     @property
     def date(self) -> SimDateTime:
         """Get the simulated DateTime instance used by the simulation"""
         return self.world.get_resource(SimDateTime)
 
-    def load_plugin(self, module_name: str, path: Optional[str] = None) -> None:
+    def load_plugin(self, plugin: PluginConfig) -> None:
         """Load a plugin
 
         Parameters
         ----------
-        module_name: str
-            Name of module to load
-        path: Optional[str]
-            Path where the Python module lives
+        plugin: PluginConfig
+            Configuration data for a plugin to load
         """
 
-        if path is not None:
-            plugin_abs_path = os.path.abspath(path)
-            sys.path.insert(0, plugin_abs_path)
+        plugin_abs_path = os.path.abspath(plugin.path)
+        sys.path.insert(0, plugin_abs_path)
 
-        plugin_module = importlib.import_module(module_name)
+        plugin_module = importlib.import_module(plugin.name)
         plugin_info: Optional[PluginInfo] = getattr(plugin_module, "plugin_info", None)
         plugin_setup_fn: Optional[Callable[[Neighborly], None]] = getattr(
             plugin_module, "setup", None
@@ -229,18 +228,50 @@ class Neighborly:
 
         if plugin_info is None:
             raise PluginSetupError(
-                f"Cannot find 'plugin_info' dict in plugin: {module_name}."
+                f"Cannot find 'plugin_info' dict in plugin: {plugin.name}."
             )
 
         if plugin_setup_fn is None:
             raise PluginSetupError(
-                f"'setup' function not found for plugin: {module_name}"
+                f"'setup' function not found for plugin: {plugin.name}"
             )
 
         if not callable(plugin_setup_fn):
             raise PluginSetupError(
-                f"'setup' function is not callable in plugin: {module_name}"
+                f"'setup' function is not callable in plugin: {plugin.name}"
             )
+
+        if plugin_info.required_version is not None:
+
+            if re.fullmatch(r"^<=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
+                if VERSION > plugin_info.required_version:
+                    raise PluginSetupError(
+                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                    )
+            elif re.fullmatch(
+                r"^>=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version
+            ):
+                if VERSION < plugin_info.required_version:
+                    raise PluginSetupError(
+                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                    )
+            elif re.fullmatch(r"^>[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
+                if VERSION <= plugin_info.required_version:
+                    raise PluginSetupError(
+                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                    )
+            elif re.fullmatch(r"^<[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
+                if VERSION > plugin_info.required_version:
+                    raise PluginSetupError(
+                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                    )
+            elif re.fullmatch(
+                r"^==[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version
+            ):
+                if VERSION != plugin_info.required_version:
+                    raise PluginSetupError(
+                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                    )
 
         plugin_setup_fn(self)
 
@@ -248,8 +279,7 @@ class Neighborly:
 
         # Remove the given plugin path from the front
         # of the system path to prevent module resolution bugs
-        if path is not None:
-            sys.path.pop(0)
+        sys.path.pop(0)
 
     def run_for(self, time_delta: Union[int, TimeDelta]) -> None:
         """

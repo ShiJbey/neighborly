@@ -9,7 +9,8 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from neighborly import NeighborlyConfig, __version__
+from neighborly import NeighborlyConfig
+from neighborly.__version__ import VERSION
 from neighborly.exporter import export_to_json
 from neighborly.simulation import Neighborly
 
@@ -95,7 +96,7 @@ def run():
     args = get_args()
 
     if args.version:
-        print(__version__)
+        print(VERSION)
         sys.exit(0)
 
     config = NeighborlyConfig.parse_obj(
