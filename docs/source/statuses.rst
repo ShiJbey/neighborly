@@ -1,5 +1,5 @@
-Using Statuses
-==============
+Statuses
+========
 
 Statuses represent temporary states associated with a GameObject. We apply statuses to
 everything ranging from characters to businesses to relationships. Statuses are applied

@@ -1,7 +1,7 @@
-Working with the Entity-Component System
-========================================
+Entity-Component System
+=======================
 
-Orrey uses a custom entity-component system (ECS) to drive things. It is what
+Neighborly uses a custom entity-component system (ECS) to drive things. It is what
 allows neighborly to be flexible to new content without users needing to extend
 the core library code.
 

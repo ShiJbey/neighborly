@@ -92,7 +92,7 @@ class StartBusinessAction(Action):
         weights: List[int] = []
 
         for prefab in business_library.get_eligible(settlement):
-            if prefab.get_owner_type() is not None:
+            if prefab.get_owner_type():
                 owner_occupation_type = occupation_types.get(prefab.get_owner_type())
 
                 if owner_occupation_type.passes_preconditions(character):

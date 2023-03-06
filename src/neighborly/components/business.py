@@ -429,12 +429,12 @@ class OccupationType:
             else:
                 self.rules.append((rules,))
 
-    def add_precondition(self, rule: Union[List[Precondition], Precondition]) -> None:
+    def add_precondition(self, rule: Union[Tuple[Precondition], Precondition]) -> None:
         """Add a new precondition rule to the occupation"""
-        if isinstance(rule, list):
+        if isinstance(rule, tuple):
             self.rules.append(rule)
         else:
-            self.rules.append([rule])
+            self.rules.append((rule,))
 
     def passes_preconditions(self, gameobject: GameObject) -> bool:
         """Check if a GameObject passes any of the preconditions"""

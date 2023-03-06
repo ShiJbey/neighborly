@@ -1,5 +1,5 @@
-Modeling Relationships
-======================
+Relationships
+=============
 
 Relationships are at the core of agent-based social simulation. In Neighborly,
 relationships track how characters feel about other characters on different

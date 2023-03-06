@@ -3,7 +3,8 @@ include CHANGELOG.md
 include CODE_OF_CONDUCT.md
 include README.md
 include MANIFEST.in
-graft src/neighborly/plugins/default/data/
+graft src/neighborly/plugins/defaults/data/
+graft src/neighborly/plugins/talktown
 global-exclude *.py[co]
 global-exclude __pycache__
 global-exclude *~

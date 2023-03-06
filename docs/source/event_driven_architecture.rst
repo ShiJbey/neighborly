@@ -1,5 +1,5 @@
-Neighborly's Event Architecture
-===============================
+Events
+======
 
 Background
 ----------

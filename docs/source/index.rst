@@ -55,11 +55,14 @@ We are working on a visualization interface for neighborly.
 
     installation.rst
     working_with_ecs.rst
+    characters.rst
     relationships.rst
-    event_driven_architecture.rst
-    activities.rst
     businesses.rst
+    residences.rst
+    social_rules.rst
+    location_biases.rst
     statuses.rst
+    event_driven_architecture.rst
     tracking_backstories.rst
     design_justifications.rst
 

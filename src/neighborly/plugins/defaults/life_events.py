@@ -913,7 +913,7 @@ class StartBusiness(ActionableLifeEvent):
             c
             for c in candidates
             if occupation_types.get(
-                c.components["Business"].options["owner_type"]
+                c.get_owner_type()
             ).passes_preconditions(roles["BusinessOwner"])
         ]
 
