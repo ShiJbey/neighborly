@@ -1,5 +1,5 @@
-Activities and Location Biases
-==============================
+Location Biases
+===============
 
 Activities add an additional layer of nuance to how characters choose where they want to
 go. In a lower-fidelity simulation like Neighborly, we use activities to calculate scores
@@ -91,19 +91,3 @@ The rule is added to the simulation using the following method call/decorator:
     @sim.location_bias_rule()
     def hates_alcohol_bias_rule(character, location):
         ...
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Contents:
-
-    installation.rst
-    working_with_ecs.rst
-    relationships.rst
-    event_driven_architecture.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

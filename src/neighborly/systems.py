@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import Any, DefaultDict, List, Optional, Type
 
 import neighborly.events
-from neighborly import NeighborlyConfig
+from neighborly.config import NeighborlyConfig
 from neighborly.actions import StartBusinessAction
 from neighborly.components.business import (
     Business,

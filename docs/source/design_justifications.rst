@@ -36,23 +36,3 @@ characters that interact with each other and the environment. Standard object-or
 class inheritance would not have properly handled the level of customization that I
 wanted users to have. Moreover, the ECS architecture makes it easier to search for
 particular entities in the world.
-
-
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Contents:
-
-    index.rst
-    installation.rst
-    working_with_ecs.rst
-    relationships.rst
-    event_driven_architecture.rst
-    design_justifications.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

@@ -1,5 +1,5 @@
 Welcome to Neighborly's documentation!
-==================================
+======================================
 
 **Neighborly** is a Python framework for developing agent-based social simulations.
 It helps users simulate something akin to the simulations seen in games like
@@ -55,8 +55,16 @@ We are working on a visualization interface for neighborly.
 
     installation.rst
     working_with_ecs.rst
+    characters.rst
     relationships.rst
+    businesses.rst
+    residences.rst
+    social_rules.rst
+    location_biases.rst
+    statuses.rst
     event_driven_architecture.rst
+    tracking_backstories.rst
+    design_justifications.rst
 
 Indices and tables
 ==================

@@ -5,7 +5,7 @@ import os
 import random
 import sys
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Optional, Type, TypedDict, Union
+from typing import Any, Callable, Dict, Optional, Type, TypedDict, Union
 
 import neighborly.components as components
 import neighborly.content_management as libraries

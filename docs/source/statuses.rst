@@ -1,5 +1,5 @@
-Using Statuses
-==============
+Statuses
+========
 
 Statuses represent temporary states associated with a GameObject. We apply statuses to
 everything ranging from characters to businesses to relationships. Statuses are applied
@@ -41,19 +41,3 @@ Examples of statuses
 
 - ``OpenForBusiness``
 - ``ClosedForBusiness``
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Contents:
-
-    installation.rst
-    working_with_ecs.rst
-    relationships.rst
-    event_driven_architecture.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
