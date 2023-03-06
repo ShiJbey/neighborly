@@ -5,68 +5,27 @@ Tests for the Neighborly's Business and Occupation logic
 import pytest
 
 from neighborly.components.business import Business
-from neighborly.core.ecs import Component
 from neighborly.core.time import Weekday
 from neighborly.factories import OperatingHoursFactory
-from neighborly.plugins.talktown.business_components import Restaurant
 from neighborly.prefabs import BusinessPrefab
 from neighborly.simulation import Neighborly
-
-
-class CollegeGraduate(Component):
-    pass
-
-
-# @pytest.fixture
-# def sample_occupation_types():
-#     ceo_occupation_type = OccupationType("CEO", 5, precondition=is_college_graduate)
-
-#     return {"ceo": ceo_occupation_type}
-
-
-# def test_register_occupation_type(sample_occupation_types: Dict[str, OccupationType]):
-#     ceo_occupation_type = sample_occupation_types["ceo"]
-
-#     assert ceo_occupation_type.name == "CEO"
-#     assert ceo_occupation_type.level == 5
-
-#     occupation_types = OccupationTypes()
-
-#     occupation_types.add(ceo_occupation_type)
-
-#     assert ceo_occupation_type == occupation_types.get("CEO")
-
-
-# def test_occupation(sample_occupation_types: Dict[str, OccupationType]):
-#     OccupationTypeLibrary.add(sample_occupation_types["ceo"])
-#
-#     ceo = Occupation(OccupationTypeLibrary.get("CEO"), 1)
-#
-#     assert ceo.get_type().name == "CEO"
-#     assert ceo.get_business() == 1
-#     assert ceo.get_years_held() == 0
-#
-#     ceo.increment_years_held(0.5)
-#
-#     assert ceo.get_years_held() == 0
-#
-#     ceo.increment_years_held(0.5)
-#
-#     assert ceo.get_years_held() == 1
-#
 
 
 def test_construct_business():
     """Constructing business components using BusinessArchetypes"""
     restaurant_archetype = BusinessPrefab(
-        business_type=Restaurant,
-        name_format="#restaurant_name#",
-        hours="11AM - 10PM",
-        owner_type="Proprietor",
-        employee_types={
-            "Cook": 1,
-            "Server": 2,
-            "Host": 1,
+        name="Restaurant",
+        components={
+            "Name": {"value": "Restaurant"},
+            "Business": {
+                "owner_type": "Proprietor",
+                "employee_types": {
+                    "Cook": 1,
+                    "Server": 2,
+                    "Host": 1,
+                },
+            },
+            "OperatingHours": {"hours": "11AM - 10PM"},
         },
     )
 

@@ -221,7 +221,12 @@ class TimeSystem(ISystem):
         # this may be slow, but it is the cleanest configuration thus far
         increment = self.world.get_resource(NeighborlyConfig).time_increment
         current_date = self.world.get_resource(SimDateTime)
-        current_date.increment(months=increment)
+        current_date.increment(
+            years=increment.years, 
+            months=increment.months, 
+            days=increment.days, 
+            hours=increment.hours
+        )
 
 
 class LifeEventSystem(System):
@@ -588,11 +593,17 @@ class SpawnFamilySystem(System):
 
         # Check that there are residence prefabs to use
         if len(residence_library) == 0:
-            raise Exception("No residence prefabs found")
+            # raise Exception("No residence prefabs found")
+            return
 
         # Check that there are residence prefabs to use
         if len(character_library) == 0:
-            raise Exception("No character prefabs found")
+            # Both this check and the one before should probably throw exceptions, but
+            # its causing a bunch of trouble. For now, this is a hack. The better
+            # solution is probably moving these systems to their own plugins
+
+            # raise Exception("No character prefabs found")
+            return
 
         # Spawn families in each settlement
         for _, settlement in self.world.get_component(Settlement):

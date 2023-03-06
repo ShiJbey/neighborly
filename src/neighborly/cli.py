@@ -98,9 +98,38 @@ def run():
         print(__version__)
         sys.exit(0)
 
-    config = NeighborlyConfig(
-        years_to_simulate=10,
-        verbose=not not args.quiet,
+    config = NeighborlyConfig.parse_obj(
+        {
+            "relationship_schema": {
+                "components": {
+                    "Friendship": {
+                        "min_value": -100,
+                        "max_value": 100,
+                    },
+                    "Romance": {
+                        "min_value": -100,
+                        "max_value": 100,
+                    },
+                    "InteractionScore": {
+                        "min_value": -5,
+                        "max_value": 5,
+                    },
+                }
+            },
+            "time_increment": "1mo",
+            "plugins": [
+                "neighborly.plugins.defaults.names",
+                "neighborly.plugins.defaults.characters",
+                "neighborly.plugins.defaults.businesses",
+                "neighborly.plugins.defaults.residences",
+                "neighborly.plugins.defaults.life_events",
+                "neighborly.plugins.defaults.ai",
+                "neighborly.plugins.defaults.social_rules",
+                "neighborly.plugins.defaults.location_bias_rules",
+                "neighborly.plugins.defaults.create_town",
+                "neighborly.plugins.talktown",
+            ],
+        }
     )
 
     if args.config:

@@ -223,7 +223,7 @@ class SimDateTime:
         )
 
     def __str__(self) -> str:
-        return "{}-{}-{}-{}".format(self.year, self.month, self.day, self.hour)
+        return self.to_iso_str()
 
     def __sub__(self, other: SimDateTime) -> TimeDelta:
         """Subtract a SimDateTime from another and return the difference"""
@@ -279,7 +279,7 @@ class SimDateTime:
 
     def to_iso_str(self) -> str:
         """Return ISO string format"""
-        return "{:04d}-{:02d}-{:02d}T{:02d}:00.000z".format(
+        return "{:04d}-{:02d}-{:02d}T{:02d}:00:00".format(
             self.year, self.month, self.day, self.hour
         )
 

@@ -5,7 +5,7 @@
     src="https://user-images.githubusercontent.com/11076525/165836171-9ffdea6e-1633-440c-be06-b46e1e3e4e04.png"
   >
   <br>
-  Neighborly
+  Neighborly (v0.10.0)
 </h1>
 
 <p align="center">
@@ -23,7 +23,7 @@ Neighborly is an extensible, data-driven, agent-based modeling framework
 designed to simulate towns of characters for games. It is intended to be a
 tool for exploring simulationist approaches to character-driven emergent
 narratives. Neighborly's simulation architecture is inspired by Roguelikes
-like *Caves of Qud*.
+such as *Caves of Qud* and *Dwarf Fortress*.
 
 Currently, Neighborly works best as a narrative data generator. It models
 characters’ lives, jobs, routines, relationships, and life
@@ -41,60 +41,68 @@ opportunities for extension and content authoring.
 
 # Core Features
 
-- Create custom character, buildings, life events, and social actions
+- Data-driven
+- Add custom character prefabs
+- Add custom business prefabs
+- Define life events and actions to drive narrative generation
+- Define social rules for how characters should feel about each other
+- Define rules for where characters what locations characters should frequent
+- 7-day week daily routines for characters
+- Can model various relationship facets like romance, frienship, trust, and respect
+- Collect and export data about agents using Pandas DataFrames
 - Commandline interface (CLI) tool
-- Configure the CLI using YAML text files
-- Plugin architecture allows users to modularize and share their custom content
-- Export simulation state to JSON for further data processing
+- Create plugins to modularize and share custom content
+- Export simulation state to JSON
+- Could be integrated with roguelike development tools like [tcod](https://github.com/libtcod/python-tcod)
 
 # Installation
 
-Neighborly is available to install from PyPI.
+Neighborly is available to install from PyPI. This will install the latest official
+release.
 
 ```bash
 pip install neighborly
 ```
 
-Or you can install it by cloning the main branch of this repo and installing that.
+If you want to install the most recent changes that have not been uploaded to
+PyPI, you can install it by cloning the main branch of this repo and installing that.
 
 ```bash
-git clone https://github.com/ShiJbey/neighborly.git
-
-cd neighborly
-
-python -m pip install "."
+pip install git+https://github.com/ShiJbey/neighborly.git
 ```
 
 ## Installing for local development
 
-If you wish to download a Neighborly for local development, you need to clone/fork this
-repository and install using the *editable* flag (-e). Please see the instructions
-below.
+If you wish to download a Neighborly for local development or want to play around with
+any of the samples, you need to clone or download this repository and install
+using the *editable* flag (-e). Please see the instructions below. This will install
+a Neighborly into the virtual environment along with all its dependencies and a few
+addition development dependencies such as *black* and *isort* for code formatting.
 
 ```bash
-# Step One: Clone Repository
+# Step 1: Clone Repository
 git clone https://github.com/ShiJbey/neighborly.git
 
-# Step Two (Optional): Create and activate python virtual environment
+# Step 2a: Create and activate python virtual environment
 cd neighborly
 
-# For Linux and MacOS
+# Step 2b: For Linux and MacOS
 python3 -m venv venv
 source ./venv/bin/activate
 
-# For Windows
+# Step 2b: For Windows
 python -m venv venv
 ./venv/Scripts/Activate
 
-# Step Three: Install local build and dependencies
-python -m pip install -e "."
+# Step 3: Install local build and dependencies
+python -m pip install -e ".[development]"
 ```
 
 # Usage
 
 If you want examples of how to use Neighborly and how to extend it
 with custom content, please refer to
-[Neighborly's wiki](https://github.com/ShiJbey/neighborly/wiki) and the sample scripts
+[Neighborly's docs](https://shijbey.github.io/neighborly/) and the sample scripts
 in the [`samples` directory](https://github.com/ShiJbey/neighborly/tree/main/samples).
 
 ## Using as a library
@@ -107,17 +115,14 @@ way. Please refer to them when creating new Plugins and other content.
 
 Neighborly can be run as a module `$ python -m neighborly` or commandline `$ neighborly`
 script. If you require additional help while running, please use
-`python -m neighborly --help` or `neighborly --help`.
+`$ python -m neighborly --help` or `$ neighborly --help`.
 
 By default, Neighborly runs a builtin version of **Talk of the Town**. However, you can
 configure the simulation settings by creating a `neighborlyconfig.yaml` file in
-the same directory where you're running the CLI. Please refer to the
-[wiki](https://github.com/ShiJbey/neighborly/wiki/Neighborly-CLI) for a list of
-valid configuration settings.
+the same directory where you're running the CLI.
 
 When world generation concludes, Neighborly can write the final simulation data
-to a JSON file with the name of the town and the seed used for random number
-generation.
+to a JSON file with the seed used for world generation.
 
 ## Running the Samples
 
@@ -129,6 +134,20 @@ it to create new story world themes.
 # Replace <sample_name>.py with the name of the
 # sample you want to run
 python ./samples/<sample_name>.py
+```
+
+The samples in the `notebooks` directory require Jupyter to be installed. So you will
+need to run the following command to install all the needed dependencies.
+
+```bash
+python -m pip install -e ".[samples]"
+```
+
+Then start Jupyter and pass the relative path to the notebooks directory. The following
+assumes that the command is being run from the root of the project.
+
+```bash
+notebook ./samples/notebooks
 ```
 
 ## Running the Tests

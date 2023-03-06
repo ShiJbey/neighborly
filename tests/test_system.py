@@ -2,9 +2,9 @@ from typing import Any, List
 
 import pytest
 
-from neighborly.core.ecs import World
+from neighborly import Neighborly
 from neighborly.core.time import SimDateTime, TimeDelta
-from neighborly.systems import System, TimeSystem
+from neighborly.systems import System
 
 
 class TestSystem(System):
@@ -24,33 +24,31 @@ class TestSystem(System):
 
 
 @pytest.fixture()
-def test_world() -> World:
-    world = World()
-    world.add_resource(SimDateTime())
-    world.add_system(TimeSystem())
-    return world
+def test_sim() -> Neighborly:
+    sim = Neighborly()
+    return sim
 
 
-def test_elapsed_time(test_world: World):
+def test_elapsed_time(test_sim: Neighborly):
     elapsed_times = []
-    test_world.add_system(TestSystem(TimeDelta(), elapsed_times, []))
-    test_world.step()
-    test_world.step()
-    test_world.step()
+    test_sim.add_system(TestSystem(TimeDelta(), elapsed_times, []))
+    test_sim.step()
+    test_sim.step()
+    test_sim.step()
     assert elapsed_times == [0, 4, 4]
 
 
-def test_interval_run(test_world: World):
+def test_interval_run(test_sim: Neighborly):
     run_times = []
-    test_world.add_system(TestSystem(TimeDelta(hours=6), [], run_times))
-    test_world.step()
-    test_world.step()
-    test_world.step()
-    test_world.step()
-    test_world.step()
-    test_world.step()
+    test_sim.add_system(TestSystem(TimeDelta(hours=6), [], run_times))
+    test_sim.step()
+    test_sim.step()
+    test_sim.step()
+    test_sim.step()
+    test_sim.step()
+    test_sim.step()
     assert run_times == [
-        SimDateTime(hour=8),
-        SimDateTime(hour=16),
-        SimDateTime(day=1, hour=0),
+        SimDateTime(1, 1, 1, 0),
+        SimDateTime(1, 1, 1, 8),
+        SimDateTime(1, 1, 1, 16),
     ]
