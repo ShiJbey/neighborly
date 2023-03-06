@@ -109,16 +109,16 @@ class DefaultBrain(IAIBrain):
         return None
 
 
-plugin_info: PluginInfo = {
-    "name": "default ai plugin",
-    "plugin_id": "default.ai",
-    "version": "0.1.0",
-}
+plugin_info = PluginInfo(
+    name="default ai plugin",
+    plugin_id="default.ai",
+    version="0.1.0",
+)
 
 
 def default_brain_factory(**kwargs: Any) -> IAIBrain:
     return DefaultBrain()
 
 
-def setup(sim: Neighborly):
+def setup(sim: Neighborly, **kwargs: Any):
     sim.world.get_resource(AIBrainLibrary).add("default", default_brain_factory)

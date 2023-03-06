@@ -113,22 +113,13 @@ def sample_world() -> World:
 
     world.spawn_gameobject([Hero(), GameCharacter("Shi", ""), Age(28)])
     world.spawn_gameobject(
-        [
-            Hero(),
-            GameCharacter("Astrid", ""),
-            Female(),
-            Retired(),
-            Age(24)
-        ]
+        [Hero(), GameCharacter("Astrid", ""), Female(), Retired(), Age(24)]
     )
-    world.spawn_gameobject([DemonKing(), GameCharacter("Calvin", ""), Retired(), Age(22)])
     world.spawn_gameobject(
-        [
-            DemonKing(),
-            GameCharacter("Palpatine", ""),
-            NonBinary(),
-            Age(128)
-        ]
+        [DemonKing(), GameCharacter("Calvin", ""), Retired(), Age(22)]
+    )
+    world.spawn_gameobject(
+        [DemonKing(), GameCharacter("Palpatine", ""), NonBinary(), Age(128)]
     )
 
     return world

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Type, TypeVar
 
+from neighborly.config import NeighborlyConfig
 from neighborly.content_management import SocialRuleLibrary
 from neighborly.core.ecs import GameObject
 from neighborly.core.relationship import (
@@ -9,7 +10,6 @@ from neighborly.core.relationship import (
     RelationshipManager,
     RelationshipModifier,
 )
-from neighborly.config import NeighborlyConfig
 from neighborly.core.status import StatusComponent, StatusManager
 from neighborly.core.time import SimDateTime
 from neighborly.utils.statuses import add_status, has_status, remove_status

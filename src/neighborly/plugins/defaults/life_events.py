@@ -912,23 +912,23 @@ class StartBusiness(ActionableLifeEvent):
         candidates = [
             c
             for c in candidates
-            if occupation_types.get(
-                c.get_owner_type()
-            ).passes_preconditions(roles["BusinessOwner"])
+            if occupation_types.get(c.get_owner_type()).passes_preconditions(
+                roles["BusinessOwner"]
+            )
         ]
 
         for c in candidates:
             yield c
 
 
-plugin_info: PluginInfo = {
-    "name": "default life events plugin",
-    "plugin_id": "default.life-events",
-    "version": "0.1.0",
-}
+plugin_info = PluginInfo(
+    name="default life events plugin",
+    plugin_id="default.life-events",
+    version="0.1.0",
+)
 
 
-def setup(sim: Neighborly):
+def setup(sim: Neighborly, **kwargs: Any):
     life_event_library = sim.world.get_resource(LifeEventLibrary)
 
     life_event_library.add(MarriageLifeEvent)

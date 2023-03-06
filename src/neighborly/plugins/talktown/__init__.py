@@ -1,4 +1,5 @@
 import pathlib
+from typing import Any
 
 import neighborly.plugins.talktown.occupation_types as tot_occupations
 from neighborly.content_management import OccupationTypeLibrary
@@ -11,14 +12,14 @@ from neighborly.plugins.talktown.personality import (
 from neighborly.plugins.talktown.school import SchoolSystem, Student
 from neighborly.simulation import Neighborly, PluginInfo
 
-plugin_info: PluginInfo = {
-    "name": "Talk of the Town",
-    "plugin_id": "default.talktown",
-    "version": "0.1.0",
-}
+plugin_info = PluginInfo(
+    name="Talk of the Town",
+    plugin_id="default.talktown",
+    version="0.1.0",
+)
 
 
-def setup(sim: Neighborly) -> None:
+def setup(sim: Neighborly, **kwargs: Any) -> None:
     sim.world.add_system(SchoolSystem())
 
     # Register student component for school system

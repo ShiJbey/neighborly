@@ -69,13 +69,13 @@ class WeatherSystem(ISystem):
         weather_manager.time_before_change -= delta_time
 
 
-plugin_info: PluginInfo = {
-    "name": "default residences plugin",
-    "plugin_id": "default.residences",
-    "version": "0.1.0",
-}
+plugin_info = PluginInfo(
+    name="default residences plugin",
+    plugin_id="default.residences",
+    version="0.1.0",
+)
 
 
-def setup(sim: Neighborly) -> None:
+def setup(sim: Neighborly, **kwargs: Any) -> None:
     sim.world.add_system(WeatherSystem())
     sim.world.add_resource(WeatherManager())

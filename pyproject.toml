@@ -77,7 +77,7 @@ docs = [
 neighborly = "neighborly.__main__:main"
 
 [tool.setuptools.dynamic]
-version = { attr = "neighborly.__version__" }
+version = { attr = "neighborly.__version__.VERSION" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
