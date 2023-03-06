@@ -7,13 +7,10 @@ and simulated 140 years of town history.
 """
 
 import time
-from typing import Any
 
-from neighborly import ISystem, NeighborlyConfig
-from neighborly.decorators import system
+from neighborly import NeighborlyConfig
 from neighborly.exporter import export_to_json
 from neighborly.simulation import Neighborly
-from neighborly.utils.common import spawn_settlement
 
 EXPORT_WORLD = False
 DEBUG_LOGGING = False
@@ -22,6 +19,7 @@ sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
             "seed": 3,
+            "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
                     "Friendship": {
@@ -47,6 +45,7 @@ sim = Neighborly(
                 "neighborly.plugins.defaults.ai",
                 "neighborly.plugins.defaults.social_rules",
                 "neighborly.plugins.defaults.location_bias_rules",
+                "neighborly.plugins.defaults.create_town",
                 "neighborly.plugins.talktown",
             ],
         }
@@ -54,16 +53,7 @@ sim = Neighborly(
 )
 
 
-@system(sim)
-class CreateTown(ISystem):
-    sys_group = "initialization"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        spawn_settlement(self.world)
-
-
 if __name__ == "__main__":
-
     st = time.time()
     sim.run_for(140)
     elapsed_time = time.time() - st

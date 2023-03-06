@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import os
 import random
 from typing import Any, Dict, List, Union
@@ -7,7 +8,7 @@ from typing import Any, Dict, List, Union
 import pydantic
 
 from neighborly.core.ecs import EntityPrefab
-from neighborly.core.time import SimDateTime
+from neighborly.core.time import SimDateTime, TimeDelta
 
 
 class PluginConfig(pydantic.BaseModel):
@@ -38,7 +39,7 @@ class NeighborlyConfig(pydantic.BaseModel):
     )
     plugins: List[Union[str, PluginConfig]] = pydantic.Field(default_factory=list)
     # Months to increment time by each simulation step
-    time_increment: int = 1
+    time_increment: TimeDelta = TimeDelta(hours=4)
     years_to_simulate: int = 50
     start_date: SimDateTime = pydantic.Field(
         default_factory=lambda: SimDateTime(1, 1, 1)
@@ -53,6 +54,23 @@ class NeighborlyConfig(pydantic.BaseModel):
         elif isinstance(value, str):
             return SimDateTime.from_str(value)
         raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
+
+    @pydantic.validator("time_increment", pre=True)  # type: ignore
+    def validate_time_increment(cls, value: Any) -> TimeDelta:
+        if isinstance(value, TimeDelta):
+            return value
+        elif isinstance(value, str):
+            if match := re.fullmatch(r"^[0-9]+mo$", value):
+                return TimeDelta(months=int(match.group(0)[:-2]))
+            elif match := re.fullmatch(r"^[0-9]+hr$", value):
+                return TimeDelta(hours=int(match.group(0)[:-2]))
+            elif match := re.fullmatch(r"^[0-9]+yr$", value):
+                return TimeDelta(years=int(match.group(0)[:-2]))
+            elif match := re.fullmatch(r"^[0-9]+dy$", value):
+                return TimeDelta(days=int(match.group(0)[:-2]))
+        elif isinstance(value, int):
+            return TimeDelta(hours=value)
+        raise TypeError(f"Expected str or DeltaTime, but was {type(value)}")
 
     @classmethod
     def from_partial(

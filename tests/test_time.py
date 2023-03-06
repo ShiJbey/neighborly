@@ -87,10 +87,10 @@ def test_to_date_str():
 
 def test_to_iso_str():
     date = SimDateTime(2022, 6, 27)
-    assert date.to_iso_str() == "2022-06-27T00:00.000z"
+    assert date.to_iso_str() == "2022-06-27T00:00:00"
 
     date = SimDateTime(2022, 9, 3)
-    assert date.to_iso_str() == "2022-09-03T00:00.000z"
+    assert date.to_iso_str() == "2022-09-03T00:00:00"
 
 
 def test_to_hours():
