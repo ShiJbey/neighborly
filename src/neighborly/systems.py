@@ -608,7 +608,6 @@ class SpawnFamilySystem(System):
         # Spawn families in each settlement
         for _, settlement in self.world.get_component(Settlement):
             for _ in range(families_to_spawn):
-
                 # Try to find a vacant residence
                 vacant_residences = self._get_vacant_residences()
                 if vacant_residences:
@@ -748,7 +747,9 @@ class UnemployedStatusSystem(System):
                 # Do not depart if one or more of the entity's spouses has a job
                 if any(
                     [
-                        self.world.get_gameobject(rel.target).has_component(Occupation)
+                        self.world.get_gameobject(
+                            rel.get_component(Relationship).target
+                        ).has_component(Occupation)
                         for rel in spouses
                     ]
                 ):
@@ -759,14 +760,16 @@ class UnemployedStatusSystem(System):
 
                     # Have all spouses depart
                     # Allows for polygamy
-                    for rel in spouses:
+                    for relationship in spouses:
+                        rel = relationship.get_component(Relationship)
                         spouse = self.world.get_gameobject(rel.target)
                         if spouse.has_component(Active):
                             characters_to_depart.append(spouse)
 
                     # Have all children living in the same house depart
                     children = get_relationships_with_statuses(character, ParentOf)
-                    for rel in children:
+                    for relationship in children:
+                        rel = relationship.get_component(Relationship)
                         child = self.world.get_gameobject(rel.target)
                         if child.has_component(Active) and check_share_residence(
                             character, child
@@ -839,7 +842,9 @@ class PregnantStatusSystem(System):
             add_relationship_status(baby, other_parent, ChildOf())
 
             # Create relationships with children of birthing parent
-            for rel in get_relationships_with_statuses(character, ParentOf):
+            for relationship in get_relationships_with_statuses(character, ParentOf):
+                rel = relationship.get_component(Relationship)
+
                 if rel.target == baby.uid:
                     continue
 
@@ -854,7 +859,8 @@ class PregnantStatusSystem(System):
                 add_relationship_status(sibling, baby, SiblingOf())
 
             # Create relationships with children of other parent
-            for rel in get_relationships_with_statuses(other_parent, ParentOf):
+            for relationship in get_relationships_with_statuses(other_parent, ParentOf):
+                rel = relationship.get_component(Relationship)
                 if rel.target == baby.uid:
                     continue
 
@@ -958,7 +964,6 @@ class OnJoinSettlementSystem(ISystem):
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-
         for event in self.world.get_resource(EventBuffer).iter_events_of_type(
             neighborly.events.JoinSettlementEvent
         ):
@@ -978,7 +983,6 @@ class AddYoungAdultToWorkforceSystem(ISystem):
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-
         for event in self.world.get_resource(EventBuffer).iter_events_of_type(
             neighborly.events.BecomeYoungAdultEvent
         ):

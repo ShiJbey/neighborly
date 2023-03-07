@@ -297,7 +297,7 @@ class School(IBusinessType):
 
     def __init__(self) -> None:
         super().__init__()
-        self.students: OrderedSet[int] = OrderedSet()
+        self.students: OrderedSet[int] = OrderedSet([])
 
     def add_student(self, student: int) -> None:
         """Add student to the school"""

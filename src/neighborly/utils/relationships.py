@@ -9,12 +9,13 @@ from neighborly.core.relationship import (
     Relationship,
     RelationshipManager,
     RelationshipModifier,
+    RelationshipStatus,
 )
-from neighborly.core.status import StatusComponent, StatusManager
+from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime
 from neighborly.utils.statuses import add_status, has_status, remove_status
 
-_RST = TypeVar("_RST", bound=StatusComponent)
+_RST = TypeVar("_RST", bound=RelationshipStatus)
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
@@ -30,7 +31,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
 
     Returns
     -------
-    Relationship
+    GameObject
         The new relationship instance
     """
     relationship_manager = owner.get_component(RelationshipManager)
@@ -73,13 +74,8 @@ def get_relationship(
 
     Returns
     -------
-    Relationship
+    GameObject
         The relationship instance toward the other entity
-
-    Throws
-    ------
-    KeyError
-        If no relationship is found for the given target and create_new is False
     """
     if target not in subject.get_component(RelationshipManager):
         return add_relationship(subject, target)
@@ -90,7 +86,8 @@ def get_relationship(
 
 
 def has_relationship(subject: GameObject, target: GameObject) -> bool:
-    """Check if there is an existing relationship from the subject to the target
+    """
+    Check if there is an existing relationship from the subject to the target
 
     Parameters
     ----------
@@ -109,7 +106,7 @@ def has_relationship(subject: GameObject, target: GameObject) -> bool:
 
 
 def add_relationship_status(
-    subject: GameObject, target: GameObject, status: StatusComponent
+    subject: GameObject, target: GameObject, status: RelationshipStatus
 ) -> None:
     """
     Add a relationship status to the given character
@@ -120,7 +117,7 @@ def add_relationship_status(
         The character to add the relationship status to
     target: GameObject
         The character the relationship status is directed toward
-    status: Status
+    status: RelationshipStatus
         The core component of the status
     """
     relationship = get_relationship(subject, target)
@@ -154,7 +151,7 @@ def get_relationship_status(
 def remove_relationship_status(
     subject: GameObject,
     target: GameObject,
-    status_type: Type[StatusComponent],
+    status_type: Type[RelationshipStatus],
 ) -> None:
     """
     Remove a relationship status to the given character
@@ -176,7 +173,7 @@ def remove_relationship_status(
 def has_relationship_status(
     subject: GameObject,
     target: GameObject,
-    *status_type: Type[StatusComponent],
+    *status_type: Type[RelationshipStatus],
 ) -> bool:
     """
     Check if a relationship between characters has a certain status type
@@ -187,11 +184,12 @@ def has_relationship_status(
         The character to add the relationship status to
     target: GameObject
         The character that is the target of the status
-    status_type: Type[RelationshipStatus]
+    *status_type: Type[RelationshipStatus]
         The type of the relationship status to remove
 
     Returns
     -------
+    bool
         Returns True if relationship has a given status
     """
 
@@ -200,8 +198,8 @@ def has_relationship_status(
 
 
 def get_relationships_with_statuses(
-    subject: GameObject, *status_types: Type[StatusComponent]
-) -> List[Relationship]:
+    subject: GameObject, *status_types: Type[RelationshipStatus]
+) -> List[GameObject]:
     """Get all the relationships with the given status types
 
     Parameters
@@ -213,29 +211,41 @@ def get_relationships_with_statuses(
 
     Returns
     -------
-    List[Relationship]
+    List[GameObject]
         Relationships with the given status types
     """
     world = subject.world
     relationship_manager = subject.get_component(RelationshipManager)
-    matches: List[Relationship] = []
+    matches: List[GameObject] = []
     for target_id, rel_id in relationship_manager.relationships.items():
         relationship = world.get_gameobject(rel_id)
         target = world.get_gameobject(target_id)
         if has_relationship_status(subject, target, *status_types):
-            matches.append(relationship.get_component(Relationship))
+            matches.append(relationship)
     return matches
 
 
 def evaluate_social_rules(
-    relationship: GameObject, subject: GameObject, target: GameObject
+    relationship: GameObject, owner: GameObject, target: GameObject
 ) -> None:
-    social_rules = subject.world.get_resource(SocialRuleLibrary)
+    """
+    Modify the relationship to reflect active social rules
+
+    Parameters
+    ----------
+    relationship: GameObject
+        The relationship to modify
+    owner: GameObject
+        The owner of the relationship
+    target: GameObject
+        The target of the relationship
+    """
+    social_rules = owner.world.get_resource(SocialRuleLibrary)
 
     relationship.get_component(Relationship).clear_modifiers()
 
     for rule_info in social_rules:
-        modifier = rule_info.rule(subject, target)
+        modifier = rule_info.rule(owner, target)
         if modifier:
             relationship.get_component(Relationship).add_modifier(
                 RelationshipModifier(description=rule_info.description, values=modifier)

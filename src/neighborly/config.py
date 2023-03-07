@@ -56,7 +56,7 @@ class NeighborlyConfig(pydantic.BaseModel):
             return PluginConfig(name=value)
         elif isinstance(value, dict):
             return PluginConfig(
-                name=value["name"],
+                name=value["name"],  # type: ignore
                 path=value.get("path", "."),  # type: ignore
                 options=value.get("options", {}),  # type: ignore
             )

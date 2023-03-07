@@ -34,7 +34,7 @@ from neighborly.content_management import (
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.ecs.query import QB
 from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
-from neighborly.core.relationship import RelationshipManager, Romance
+from neighborly.core.relationship import Relationship, RelationshipManager, Romance
 from neighborly.core.roles import Role, RoleList
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 from neighborly.prefabs import BusinessPrefab
@@ -61,7 +61,6 @@ from neighborly.utils.statuses import add_status, clear_statuses, has_status
 
 
 class StartDatingLifeEvent(ActionableLifeEvent):
-
     optional = True
     initiator = "Initiator"
 
@@ -105,7 +104,6 @@ class StartDatingLifeEvent(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
             "dating_romance_threshold", 25
         )
@@ -166,7 +164,6 @@ class StartDatingLifeEvent(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         initiator = cls._bind_initiator(world, bindings.get("Initiator"))
 
         if initiator is None:
@@ -181,7 +178,6 @@ class StartDatingLifeEvent(ActionableLifeEvent):
 
 
 class DatingBreakUp(ActionableLifeEvent):
-
     initiator = "Initiator"
 
     def __init__(
@@ -224,7 +220,6 @@ class DatingBreakUp(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
             "breakup_romance_thresh", -10
         )
@@ -268,7 +263,6 @@ class DatingBreakUp(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         initiator = cls._bind_initiator(world, bindings.get("Initiator"))
 
         if initiator is None:
@@ -359,7 +353,6 @@ class MarriageLifeEvent(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
             "marriage_romance_threshold", 60
         )
@@ -466,7 +459,8 @@ class MarriageLifeEvent(ActionableLifeEvent):
         set_character_name(other, last_name=new_last_name)
 
         for relationship in get_relationships_with_statuses(other, ParentOf):
-            target = world.get_gameobject(relationship.target)
+            rel = relationship.get_component(Relationship)
+            target = world.get_gameobject(rel.target)
 
             if target.uid not in movers:
                 continue
@@ -515,7 +509,6 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         if candidate:
             if has_relationship(initiator, candidate) and has_relationship(
                 candidate, initiator
@@ -761,7 +754,6 @@ class DieOfOldAge(ActionableLifeEvent):
 
 
 class Die(ActionableLifeEvent):
-
     initiator = "Character"
 
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
@@ -793,7 +785,6 @@ class Die(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         character = bindings.get("Character")
 
         if character is None:
@@ -806,7 +797,6 @@ class Die(ActionableLifeEvent):
 
 
 class GoOutOfBusiness(ActionableLifeEvent):
-
     initiator = "Business"
     optional = False
 

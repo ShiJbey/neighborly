@@ -3,24 +3,4 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "python.formatting.provider": "black",
-  "autoDocstring.docstringFormat": "numpy",
-  "autoDocstring.startOnNewLine": true,
-  "cSpell.words": [
-    "Hinoe",
-    "HINOE",
-    "Hinoto",
-    "HINOTO",
-    "Kanoe",
-    "KANOE",
-    "Kanoto",
-    "KANOTO",
-    "Kinoe",
-    "KINOE",
-    "randed",
-    "Tsuchinoe",
-    "TSUCHINOE",
-    "Tsuchinoto",
-    "TSUCHINOTO"
-  ],
-  "esbonio.sphinx.confDir": ""
 }
