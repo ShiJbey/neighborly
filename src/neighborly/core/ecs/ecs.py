@@ -10,11 +10,17 @@ solve multithreading problems in Unity's Entities package. However, they are use
 more for adding reactivity.
 
 Sources:
+
 https://docs.unity3d.com/ScriptReference/GameObject.html
+
 https://github.com/benmoran56/esper
+
 https://github.com/bevyengine/bevy
+
 https://bevy-cheatbook.github.io/programming/change-detection.html
+
 https://bevy-cheatbook.github.io/programming/removal-detection.html
+
 https://docs.unity3d.com/Packages/com.unity.entities@0.1/manual/index.html
 """
 from __future__ import annotations

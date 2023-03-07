@@ -196,6 +196,7 @@ Neighborly's docs are built using Sphinx. Below are instructions for building th
 python -m pip install -e ".[docs]"
 
 # Build docs as HTML
+sphinx-apidoc -o docs/source/module_docs/ src/neighborly
 sphinx-build -b html docs/source/ docs/build/html
 ```
 

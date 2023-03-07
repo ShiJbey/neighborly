@@ -3,7 +3,7 @@ Welcome to Neighborly's documentation!
 
 **Neighborly** is a Python framework for developing agent-based social simulations.
 It helps users simulate something akin to the simulations seen in games like
-*Dwarf Fortress*, *Rim World*, or *Crusader Kings*. Each character is
+*Dwarf Fortress*, *Rim World*, or *Caves of Qud*. Each character is
 represented as an individual autonomous agent that can make actions, respond
 to event in their their social networks, and experience various life events.
 
@@ -62,6 +62,7 @@ Contents
     plugins.rst
     content_management.rst
     characters.rst
+    locations.rst
     businesses.rst
     residences.rst
     relationships.rst
@@ -72,6 +73,7 @@ Contents
     tracking_backstories.rst
     data_collection.rst
     design_justifications.rst
+    module_docs/modules.rst
 
 Indices and tables
 ==================

@@ -1,15 +1,21 @@
 Entity-Component System
 =======================
 
-Neighborly uses a custom entity-component system (ECS) to drive things. It is what
-allows neighborly to be flexible to new content without users needing to extend
-the core library code.
+Neighborly uses a custom entity-component system (ECS) architecture to model the game
+world. It allows neighborly to handle the combinatorial complexity of arbitrary 
+character and relationship data. An ECS represents entities as a collection of
+independent components instead of trying to define a complex inheritance 
+hierarchy. ECS architectures have recently gained traction with large game engines as
+Unity and Unreal have boasted new data-driven architectures that allow developers to 
+scale up to previously unfathomably-large simulations while still maintaining
+performance. While we do not get the performance gains, we do enjoy the benefit of
+data-driven content authoring and building complexity through systems.
 
-ECS seems to be all the rage lately, with Unity introducing entities in its
-Data-Oriented Technology Stack and their popularity among roguelike designers.
-
-If you are unfamiliar with ECSs then we will do a brief primer before
-explaining how to navigate Neighborly's.
+Most of the Neighborly's development time was spent developing necessary
+ECS features and determining the best way to model social relationships. Neighborly's
+ECS is a combination of features from `Esper <https://github.com/benmoran56/esper>`_, 
+`Unity <https://unity.com/>`_, and 
+`Bevy <https://bevyengine.org/learn/book/getting-started/ecs/>`_.
 
 General ECS overview
 ---------------------
@@ -22,8 +28,10 @@ together in memory to improve runtime performance by reducing cache misses.
 Within an ECS, the world is represented as a collection of entities. Each
 entity has a set of components associated with it. Components are collections of
 related data that model a particular aspect of the simulation. For example, a
-*Position2D* component might contain two numerical values, *x* and *y*. Systems
+*Position* component might contain two numerical values, *x* and *y*. Systems
 are functions that manipulate the data within components to update the simulation.
+A common example is *PhysicsSystem* that updates an entities *Position* component
+based on the presence of a *Velocity* component.
 
 If you want a more in-depth discussion, please refer to this `FAQ article from
 the Flecs ECS library <https://github.com/SanderMertens/ecs-faq#what-is-ecs>`_.
@@ -33,83 +41,137 @@ Overview of Neighborly's ECS
 
 Neighborly uses a custom entity-component system built on top of
 `Esper <https://github.com/benmoran56/esper>`_ that integrates features from
-other ECS and component-based architectures, like Unity's *GameObjects* or global
-resource object in
-`Bevy's ECS <https://bevyengine.org/learn/book/getting-started/ecs/>`_.
+other ECS and component-based architectures, like 
+`Unity's GameObjects <https://docs.unity3d.com/ScriptReference/GameObject.html>`_ or 
+global resource objects in
+`Bevy's ECS <https://bevyengine.org/learn/book/getting-started/ecs/>`_. Here we explain
+each of the core abstractions used in Neighborly's ECS. Hopefully, this should help you
+better understand how to define your own components, systems, and resources.
 
-GameObjects
-^^^^^^^^^^^
+The World
+^^^^^^^^^
 
-In Neighborly, we call entities, GameObjects. Each GameObject has a unique integer
-identifier, a name, and a collection of components.
+Every ``Neighborly`` instance has one ``World`` instance that manages all the
+GameObjects (entities), Systems, and Resources. The world instance spawns new
+GameObjects and keeps track of when components are added and removed from GameObjects.
+When defining systems, you will often use the ``get_component(...)`` or 
+``get_components()`` functions to query for all GameObjects that have a specified
+set of components. The world instance is also reponsible for managing information about
+component types such as their associated name and factory instance.
+
+GameObjects (entities)
+^^^^^^^^^^^^^^^^^^^^^^
+
+In Neighborly, entities are refered to as "GameObjects" (taken from Unity). GameObjects
+are spawned by a ``World`` instance and given a unique identifier. No two GameObjects
+should be assigned the same identifier during a single simulaion run. This identifier
+is used internally to associate a GameObject with a specific collection of component
+instances. 
+
+GameObjects can be organized into parent-child hierarchies. Adding a GameObject as the
+child of another GameObject ensures that the child is removed from the simulation when
+the parent is removed. We make use of the hierarchy feature by representing relationship
+GameObjects as the children of the Character that owns them.
 
 Components
 ^^^^^^^^^^
 
-The Component class is an abstract base class inherited by any object that
-is intended to be used as a component. It gives subclasses a reference to
-the gameobject reference and provides utility methods for tasks like
-serializing to a dictionary object.
+Components contain data. They are used to represent various concepts such as names,
+ages, position, services, traits, statuses, relationship statuses, and more. Some
+components are mainly used to assist in filtering for specific GameObjects when using
+``world.get_components()`` function. Sometimes the large number of components can feel
+overwhelming, but breaking up state into smaller focused components helps with re-use
+and filtering. Components need to be registered with the world instance using either
+the ``world.register_component()`` function or the ``@component(sim)`` decorator.
 
 Component Factories
 ^^^^^^^^^^^^^^^^^^^
 
-Sometimes you need to do something special when constructing a component.
-Factories give you access to simulation resources when constructing component instances.
+Component factories allow us to construct components using data files. When a component
+is registered with the ECS, by default is is associated with a factory instance that
+passes keyword arguments directly to the component's constructor. Users can override
+this if they need to do something special when constructing a component. Factories give 
+you access to simulation resources when constructing component instances. For example,
+the ``Name`` component uses `Tracery <https://tracery.io/>`_ to generate a name string
+based on special syntax. Another example, if you have various stat components like 
+Strength, Defense, and Speed, you could define a factory for each that accesses the
+``random.Random`` resource to randomize starting stats.
 
 Systems
 ^^^^^^^
 
 Systems are objects that inherit from ``ISystem`` or ``System``. They
-override a ``process``/``run`` method that gets called every timestep of
+override a ``process`` or ``run`` method that gets called every timestep of
 the simulation or on a specified interval. Systems can access GameObjects and
 their components by querying the world instance for GameObjects containing
 particular components.
 
-Systems can only belong to one system group and each system has a priority value, specifying when
-they should run within their group. The higher the priority the sooner the system runs. Groups and
-priorities are specified by overwriting the `sys-group` and `priority` class variables on ISystem
-subclasses.
+Systems can only belong to one system group and each system has a priority value, 
+specifying when they should run within their group. The higher the priority the sooner 
+the system runs. Groups and priorities are specified by overwriting the ``sys-group`` 
+and ``priority`` class variables on ISystem subclasses.
 
 System Groups
 ^^^^^^^^^^^^^
 
-System groups are a subtype of system that group together Systems and other
-SystemGroups. This library's ECS implementation has one root system group that
-all systems are assigned to be default. Users are free to create new groups and
-assign systems as they see fit. System groups are defined the same as systems.
+One of the main challenges of workin with an ECS is orchestrating when certain systems
+should run. Eventhough systems are generally decoupled, some systems depend on changes 
+that are triggered by other systems. For example, the each character chooses an action
+from a pool of actions suggested by various systems each timestep. If the AI runs before
+the other systems, then characters will never have actions to take. Or if event-firing
+systems run after the event handling systems, then none of the events will be detected.
 
+One solution to this problem is assigning priorities to systems and running them in
+priority-order. However, this requires tracking the priorities of all other systems
+to ensure that things run without conflict. This was the solution we used in an earlier
+version of Neighborly.
+
+System groups are a subtype of system that group together Systems and other
+SystemGroups. All systems within a group run before proceeding to the next system in
+the ECS. The hierarchical structure and intentional group naming make it much easier
+to determine when a system should run. This library's ECS implementation has one 
+``root`` system group that all systems are assigned to be default. Users are free to 
+create new groups and assign systems as they see fit. System groups are defined 
+the same as systems.
 
 Resources
 ^^^^^^^^^
 
 Resources are shared object instances that are accessible from the world.
 Neighborly uses resource classes to manage configuration data, authored content,
-simulation time, random number generation, and more.
-
-World
-^^^^^
-
-The World manages all the active GameObjects, Systems, and Resources. Users
-can use the world state to retrieve gameobjects or search for ones that have
-certain components.
+simulation time, random number generation, and more. Many places within the codebase
+we use ``world.get_resource(random.Random)`` to access the random number generator 
+instance. Resources do not need to inherit from any class. All users need to do is
+add an instance to the simulation using ``sim.add_resource(...)`` or 
+``world.add_resource(...)``.
 
 Prefabs
 ^^^^^^^
 
-Prefabs, much like in Unity, are blueprints of how to construct a specific type of GameObject. They
-allow you to specify what components a GameObject should have, as well as any child prefabs. See the
-various pages for modeling characters, businesses, residences, and relationships for more
-information about constructing and adding specific types of prefabs.
+Prefabs, much like in Unity, are blueprints of how to construct a specific type of 
+GameObject. They allow you to specify what components a GameObject should have, what
+parameters to pass to the component's factory, prefab metadata, and any child prefabs. 
+Prefabs are used to define characters, businesses, residences, and relationships.
+They also allow for a type of inheritance, where one prefab can "extend" another, 
+adopting it's parents configuration as base, and overwritting and adding data where
+necessary.
 
 Getting started
 ---------------
+
+The easiest way to get started is looking though the sample code and the code for the
+included Neighborly plugins. The sample code below is shows how to make a bare-bones
+job salary simulation using the ECS. Usually, we let the ``Neighborly`` constructor
+create the ``World`` instance instead of doing it directly. However the full Neighborly
+instance adds lots of additional content for the simulation and we wanted this example
+to be simple.
 
 .. code-block:: python
 
     import random
 
-    from neighborly.core.ecs import World
+    from neighborly.core.ecs import World, Component
+    from neighborly.systems import System
 
     # Creates a new world instance
     world = World()

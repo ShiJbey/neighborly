@@ -3,12 +3,12 @@ Commandline Tool
 
 Neighborly includes a commandline tool for generating simulation data. The commandline tool accepts
 a configuration file, runs a simulation according to that configuration, and outputs the final
-simulation state to a JSON file. Users can start the CLI by running `neighborly` or
-`python -m neighborly` in their command line. The CLI runs a *Talk of the Town* clone by default.
+simulation state to a JSON file. Users can start the CLI by running ``neighborly`` or
+``python -m neighborly`` in their command line. The CLI runs a *Talk of the Town* clone by default.
 
 Users can customize the CLI's behavior by specifying command-line arguments or
 using a configuration file. To view the complete list of command-line arguments,
-please use `neighborly --help` or `python -m neighborly --help`.
+please use ``neighborly --help`` or ``python -m neighborly --help``.
 
 Configuration files
 -------------------
@@ -23,7 +23,7 @@ These are listed in order of precedence:
 - neighborly.config.json
 
 If you have do not name your configuration file as one of the names listed above, then you can tell
-Neighborly to use a different configuration file by using the `-c` or `--config` flag followed by
+Neighborly to use a different configuration file by using the ``-c`` or ``--config`` flag followed by
 the path to the configuration file.
 
 The fields defined within the configuration files are the same fields defined in the
