@@ -86,7 +86,7 @@ from neighborly.utils.common import (
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "seed": 3,
+            "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
                     "Friendship": {
