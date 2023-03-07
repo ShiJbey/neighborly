@@ -275,7 +275,7 @@ class Neighborly:
 
         plugin_setup_fn(self)
 
-        self.plugins[plugin_info["plugin_id"]] = plugin_module
+        self.plugins[plugin_info.plugin_id] = plugin_module
 
         # Remove the given plugin path from the front
         # of the system path to prevent module resolution bugs
