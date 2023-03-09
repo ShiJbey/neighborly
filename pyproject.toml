@@ -34,6 +34,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Life",
     "Topic :: Sociology",
     "Topic :: Software Development :: Libraries",
+    "Typing :: Typed"
 ]
 dependencies = [
     "esper",
