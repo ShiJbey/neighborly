@@ -11,6 +11,7 @@ https://www.youtube.com/watch?v=4uxN5GqXcaA&t=339s&ab_channel=InternationalRogue
 """
 from __future__ import annotations
 
+import random
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -32,6 +33,48 @@ class Action(ABC):
         """
         raise NotImplementedError()
 
+
+class WeightedActionList:
+    """Manages a list of actions mapped to weights to facilitate random selection"""
+
+    __slots__ = "_actions", "_weights", "_size", "_rng"
+
+    def __init__(self, rng: random.Random) -> None:
+        self._actions: List[Action] = []
+        self._weights: List[int] = []
+        self._size: int = 0
+        self._rng: random.Random = rng
+
+    def append(self, weight: int, action: Action) -> None:
+        """
+        Add an action to the list
+
+        Parameters
+        ----------
+        weight: int
+            The weight associated with the action to add
+        action: Action
+            The action
+        """
+        self._weights.append(weight)
+        self._actions.append(action)
+        self._size += 1
+
+    def pick_one(self) -> Action:
+        """Perform weighted random selectio on the entries
+
+        Returns
+        -------
+        Action
+            An action from the list
+        """
+        return self._rng.choices(self._actions, self._weights, k=1)[0]
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __bool__(self) -> bool:
+        return bool(self._size)
 
 class Goal(ABC):
     """Goals drive what it is that a character wants to do"""
