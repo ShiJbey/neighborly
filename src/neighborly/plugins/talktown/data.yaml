@@ -68,7 +68,7 @@ Businesses:
           - drinking
           - socializing
 
-  - name: BarberSop
+  - name: BarberShop
     extends: TotT::business
     components:
       BarberShop: {}

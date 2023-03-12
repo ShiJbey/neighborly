@@ -43,7 +43,9 @@ dependencies = [
     "pyYAML",
     "pydantic",
     "tracery",
-    "pandas"
+    "pandas",
+    "flask",
+    "flask_restful"
 ]
 
 [project.optional-dependencies]

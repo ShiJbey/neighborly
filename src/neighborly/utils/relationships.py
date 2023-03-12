@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import List, Type, TypeVar
 
-from neighborly.config import NeighborlyConfig
 from neighborly.content_management import SocialRuleLibrary
-from neighborly.core.ecs import GameObject
+from neighborly.core.ecs import GameObject, GameObjectFactory
 from neighborly.core.relationship import (
     Relationship,
     RelationshipManager,
@@ -40,11 +39,10 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     if target.uid in relationship_manager.relationships:
         return world.get_gameobject(relationship_manager.relationships[target.uid])
 
-    schema = world.get_resource(NeighborlyConfig).relationship_schema
-
-    relationship = schema.spawn(world)
+    relationship = GameObjectFactory.instantiate(world, "relationship")
     relationship.add_component(Relationship(owner.uid, target.uid))
     relationship.add_component(StatusManager())
+
     relationship.name = f"Rel({owner} -> {target})"
 
     owner.get_component(RelationshipManager).relationships[

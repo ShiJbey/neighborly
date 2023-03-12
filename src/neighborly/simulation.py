@@ -17,7 +17,14 @@ import neighborly.systems as systems
 from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIComponent
-from neighborly.core.ecs import Component, IComponentFactory, ISystem, World
+from neighborly.core.ecs import (
+    Component,
+    EntityPrefab,
+    GameObjectFactory,
+    IComponentFactory,
+    ISystem,
+    World,
+)
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
 from neighborly.core.life_event import LifeEventBuffer
 from neighborly.core.location_bias import ILocationBiasRule
@@ -75,14 +82,19 @@ class Neighborly:
         # Seed RNG for libraries we don't control, like Tracery
         random.seed(self.config.seed)
 
+        # Set the relationship schema
+        GameObjectFactory.add(
+            EntityPrefab(
+                name="relationship",
+                components={**self.config.relationship_schema.components},
+            )
+        )
+
         # Add default resources
         self.world.add_resource(self.config)
         self.world.add_resource(random.Random(self.config.seed))
         self.world.add_resource(Tracery())
         self.world.add_resource(libraries.SocialRuleLibrary())
-        self.world.add_resource(libraries.CharacterLibrary())
-        self.world.add_resource(libraries.BusinessLibrary())
-        self.world.add_resource(libraries.ResidenceLibrary())
         self.world.add_resource(libraries.ActivityLibrary())
         self.world.add_resource(self.config.start_date.copy())
         self.world.add_resource(EventBuffer())

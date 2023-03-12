@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from neighborly import NeighborlyConfig
 from neighborly.components.business import (
     Business,
     BusinessOwner,
-    InTheWorkforce,
     Occupation,
     OpenForBusiness,
 )
@@ -26,18 +25,13 @@ from neighborly.components.character import (
 )
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.shared import Active, Age, Lifespan
-from neighborly.content_management import (
-    BusinessLibrary,
-    LifeEventLibrary,
-    OccupationTypeLibrary,
-)
+from neighborly.content_management import LifeEventLibrary
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.ecs.query import QB
 from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
 from neighborly.core.relationship import Relationship, RelationshipManager, Romance
 from neighborly.core.roles import Role, RoleList
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
-from neighborly.prefabs import BusinessPrefab
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.common import (
     clear_frequented_locations,
@@ -848,69 +842,6 @@ class GoOutOfBusiness(ActionableLifeEvent):
             )
 
 
-class StartBusiness(ActionableLifeEvent):
-    """Character is given the option to start a new business"""
-
-    def execute(self) -> None:
-        pass
-
-    @classmethod
-    def instantiate(
-        cls,
-        world: World,
-        bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
-        pass
-
-    # The tuple of the characters that need to approve the life event before
-    # it can take place
-    needs_approval = ("BusinessOwner",)
-
-    def is_optional(self, role_name: str) -> bool:
-        """Returns True if object with the given role needs to approve the event"""
-        return role_name in self.needs_approval
-
-    def check_event_preconditions(self, world: World) -> bool:
-        """Return True if the preconditions for this event pass"""
-        ...
-
-    @staticmethod
-    def _cast_business_owner(world: World) -> Generator[GameObject, None, None]:
-        candidates = [
-            world.get_gameobject(g)
-            for g, _ in world.get_components((GameCharacter, InTheWorkforce))
-        ]
-
-        candidates = filter(
-            lambda g: get_life_stage(g) >= YoungAdult,
-            candidates,
-        )
-
-        for c in candidates:
-            yield c
-
-    @staticmethod
-    def _cast_business_type(
-        world: World, roles: Dict[str, GameObject]
-    ) -> Generator[BusinessPrefab, None, None]:
-        candidates = world.get_resource(BusinessLibrary).get_all()
-        occupation_types = world.get_resource(OccupationTypeLibrary)
-
-        # Filter for business prefabs that specify owners
-        # Filter for all the business types that the potential owner is eligible
-        # to own
-        candidates = [
-            c
-            for c in candidates
-            if occupation_types.get(c.get_owner_type()).passes_preconditions(
-                roles["BusinessOwner"]
-            )
-        ]
-
-        for c in candidates:
-            yield c
-
-
 plugin_info = PluginInfo(
     name="default life events plugin",
     plugin_id="default.life-events",
@@ -930,4 +861,3 @@ def setup(sim: Neighborly, **kwargs: Any):
     life_event_library.add(FindOwnPlaceLifeEvent)
     life_event_library.add(DieOfOldAge)
     life_event_library.add(GoOutOfBusiness)
-    life_event_library.add(StartBusiness)

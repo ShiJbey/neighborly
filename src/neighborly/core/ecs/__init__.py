@@ -8,7 +8,9 @@ for entities, systems, the world, queries, and entity prefabs.
 from .ecs import (
     Component,
     ComponentNotFoundError,
+    EntityPrefab,
     GameObject,
+    GameObjectFactory,
     GameObjectNotFoundError,
     IComponentFactory,
     ISystem,
@@ -16,7 +18,6 @@ from .ecs import (
     SystemGroup,
     World,
 )
-from .prefab import EntityPrefab
 from .query import QB, Query, QueryFromFn, QueryGetFn
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "QB",
     "QueryFromFn",
     "QueryGetFn",
+    "GameObjectFactory",
 ]

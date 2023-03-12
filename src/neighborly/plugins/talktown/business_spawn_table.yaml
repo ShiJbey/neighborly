@@ -1,0 +1,162 @@
+- name: Bakery
+
+- name: Bank
+
+- name: Bar
+
+- name: BarberShop
+
+- name: BusDepot
+  max_instances: 1
+
+- name: CarpentryCompany
+  max_instances: 1
+  min_population: 70
+
+- name: Cemetery
+  max_instance: 1
+
+- name: CityHall
+  max_instances: 1
+  min_population: 100
+
+- name: ClothingStore
+  max_instances: 2
+
+- name: CoalMine
+  max_instances: 1
+
+- name: ConstructionFirm
+  max_instances: 2
+  min_population: 80
+
+- name: Dairy
+  max_instances: 3
+  min_population: 30
+
+- name: DayCareCenter
+  max_instances: 3
+  min_population: 200
+
+- name: Deli
+  max_instances: 4
+  min_population: 100
+
+- name: DentistOffice
+  min_population: 75
+
+- name: DepartmentStore
+  min_population: 200
+
+- name: Diner
+  max_instances: 3
+  min_population: 30
+
+- name: Distillery
+  max_instances: 1
+
+- name: DrugStore
+  max_instances: 3
+  min_population: 30
+
+- name: Farm
+  max_instances: 99
+
+- name: FireStation
+  max_instances: 1
+  min_population: 100
+
+- name: Foundry
+  min_population: 20
+  max_instances: 1
+
+- name: FurnitureStore
+  min_population: 20
+  max_instances: 2
+
+- name: GeneralStore
+  min_population: 20
+  max_instances: 2
+
+- name: GroceryStore
+  min_population: 20
+  max_instances: 2
+
+- name: HardwareStore
+  min_population: 20
+  max_instances: 2
+
+- name: hospital
+  min_population: 100
+
+- name: Hotel
+
+- name: Inn
+
+- name: InsuranceCompany
+  max_instances: 2
+
+- name: JewelryShop
+  min_population: 100
+  max_instances: 3
+
+- name: LawFirm
+  max_instances: 2
+  min_population: 150
+
+- name: OptometryClinic
+
+- name: PaintingCompany
+
+- name: Park
+  max_instances: 2
+  min_population: 100
+
+- name: Pharmacy
+
+- name: PlasticSurgeryClinic
+  year_available: 1970
+  max_instances: 1
+  min_population: 200
+
+- name: PlumbingCompany
+  max_instances: 2
+  min_population: 100
+
+- name: PoliceStation
+  max_instances: 1
+  min_population: 100
+
+- name: Quarry
+  max_instances: 1
+
+- name: RealtyFirm
+  min_population: 80
+  max_instances: 2
+
+- name: Restaurant
+  min_population: 40
+
+- name: School
+  max_instances: 1
+
+- name: ShoemakerShop
+
+- name: Supermarket
+  min_population: 200
+  max_instances: 1
+
+- name: TailorShop
+  min_population: 40
+  max_instances: 1
+
+- name: TattooParlor
+  year_available: 1970
+  min_population: 300
+  max_instances: 1
+
+- name: Tavern
+  min_population: 20
+
+- name: TaxiDepot
+  max_instances: 1

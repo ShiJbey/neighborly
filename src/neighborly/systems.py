@@ -39,13 +39,9 @@ from neighborly.components.shared import (
     FrequentedBy,
     FrequentedLocations,
 )
+from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
-from neighborly.content_management import (
-    CharacterLibrary,
-    LifeEventLibrary,
-    OccupationTypeLibrary,
-    ResidenceLibrary,
-)
+from neighborly.content_management import LifeEventLibrary, OccupationTypeLibrary
 from neighborly.core.ai.brain import AIComponent
 from neighborly.core.ai.movement import MovementAI
 from neighborly.core.ai.socializing import SocialAI
@@ -65,7 +61,6 @@ from neighborly.core.relationship import (
 from neighborly.core.roles import RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
-from neighborly.prefabs import CharacterPrefab
 from neighborly.utils.common import (
     add_character_to_settlement,
     add_residence_to_settlement,
@@ -390,32 +385,30 @@ class SpawnFamilySystem(System):
             )
         ]
 
-    def _try_build_residence(self, settlement: Settlement) -> Optional[GameObject]:
-        vacancies = settlement.land_map.get_vacant_lots()
+    def _try_build_residence(self, settlement: GameObject) -> Optional[GameObject]:
+        land_map = settlement.get_component(Settlement).land_map
+        vacancies = land_map.get_vacant_lots()
+        spawn_table = settlement.get_component(ResidenceSpawnTable)
         rng = self.world.get_resource(random.Random)
-        residence_library = self.world.get_resource(ResidenceLibrary)
 
         # Return early if there is nowhere to build
         if len(vacancies) == 0:
             return None
 
         # Don't build more housing if 60% of the land is used for residential buildings
-        if len(vacancies) / float(settlement.land_map.get_total_lots()) < 0.4:
+        if len(vacancies) / float(land_map.get_total_lots()) < 0.4:
             return None
 
         # Pick a random lot from those available
         lot = rng.choice(vacancies)
 
-        prefab = residence_library.choose_random(rng)
-
-        if prefab is None:
-            return None
+        prefab = spawn_table.choose_random(rng)
 
         residence = spawn_residence(self.world, prefab)
 
         add_residence_to_settlement(
             residence,
-            settlement=self.world.get_gameobject(settlement.gameobject.uid),
+            settlement=self.world.get_gameobject(settlement.uid),
             lot_id=lot,
         )
 
@@ -425,11 +418,11 @@ class SpawnFamilySystem(System):
     def _try_get_spouse_prefab(
         rng: random.Random,
         marriage_config: MarriageConfig,
-        character_library: CharacterLibrary,
-    ) -> Optional[CharacterPrefab]:
+        spawn_table: CharacterSpawnTable,
+    ) -> Optional[str]:
         if rng.random() < marriage_config.chance_spawn_with_spouse:
             # Create another character to be their spouse
-            potential_spouse_prefabs = character_library.get_matching_prefabs(
+            potential_spouse_prefabs = spawn_table.get_matching_prefabs(
                 *marriage_config.spouse_prefabs
             )
 
@@ -438,28 +431,24 @@ class SpawnFamilySystem(System):
 
         return None
 
-    def _spawn_family(self) -> GeneratedFamily:
+    def _spawn_family(self, spawn_table: CharacterSpawnTable) -> GeneratedFamily:
         rng = self.world.get_resource(random.Random)
-        character_library = self.world.get_resource(CharacterLibrary)
-        prefab = character_library.choose_random(rng)
+        prefab = spawn_table.choose_random(rng)
 
         # Track all the characters generated
         generated_characters = GeneratedFamily()
-
-        if prefab is None:
-            raise RuntimeError("Missing character prefabs to generate")
 
         # Create a new entity using the archetype
         character = spawn_character(self.world, prefab, life_stage=YoungAdult)
 
         generated_characters.adults.append(character)
 
-        spouse_prefab: Optional[CharacterPrefab] = None
+        spouse_prefab: Optional[str] = None
         spouse: Optional[GameObject] = None
 
         if marriage_config := character.try_component(MarriageConfig):
             spouse_prefab = self._try_get_spouse_prefab(
-                rng, marriage_config, character_library
+                rng, marriage_config, spawn_table
             )
 
         if spouse_prefab:
@@ -493,12 +482,12 @@ class SpawnFamilySystem(System):
 
         num_kids: int = 0
         children: List[GameObject] = []
-        potential_child_prefabs: List[CharacterPrefab] = []
+        potential_child_prefabs: List[str] = []
 
         if reproduction_config := character.get_component(ReproductionConfig):
             num_kids = rng.randint(0, reproduction_config.max_children_at_spawn)
 
-            potential_child_prefabs = character_library.get_matching_prefabs(
+            potential_child_prefabs = spawn_table.get_matching_prefabs(
                 *reproduction_config.child_prefabs
             )
 
@@ -586,27 +575,15 @@ class SpawnFamilySystem(System):
         families_to_spawn = families_per_year // 2
 
         rng = self.world.get_resource(random.Random)
-        residence_library = self.world.get_resource(ResidenceLibrary)
-        character_library = self.world.get_resource(CharacterLibrary)
         event_buffer = self.world.get_resource(LifeEventBuffer)
         date = self.world.get_resource(SimDateTime)
 
-        # Check that there are residence prefabs to use
-        if len(residence_library) == 0:
-            # raise Exception("No residence prefabs found")
-            return
-
-        # Check that there are residence prefabs to use
-        if len(character_library) == 0:
-            # Both this check and the one before should probably throw exceptions, but
-            # its causing a bunch of trouble. For now, this is a hack. The better
-            # solution is probably moving these systems to their own plugins
-
-            # raise Exception("No character prefabs found")
-            return
-
         # Spawn families in each settlement
-        for _, settlement in self.world.get_component(Settlement):
+        for guid, (settlement, character_spawn_table) in self.world.get_components(
+            (Settlement, CharacterSpawnTable)
+        ):
+            settlement_entity = self.world.get_gameobject(guid)
+
             for _ in range(families_to_spawn):
                 # Try to find a vacant residence
                 vacant_residences = self._get_vacant_residences()
@@ -614,11 +591,11 @@ class SpawnFamilySystem(System):
                     residence = rng.choice(vacant_residences)
                 else:
                     # Try to create a new house
-                    residence = self._try_build_residence(settlement)
+                    residence = self._try_build_residence(settlement_entity)
                     if residence is None:
                         break
 
-                family = self._spawn_family()
+                family = self._spawn_family(character_spawn_table)
 
                 for adult in family.adults:
                     add_character_to_settlement(adult, settlement.gameobject)

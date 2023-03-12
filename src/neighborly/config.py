@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Union
 
 import pydantic
 
-from neighborly.core.ecs import EntityPrefab
 from neighborly.core.time import SimDateTime, TimeDelta
 
 
@@ -31,12 +30,17 @@ class PluginConfig(pydantic.BaseModel):
     options: Dict[str, Any] = pydantic.Field(default_factory=dict)
 
 
+class RelationshipSchema(pydantic.BaseModel):
+
+    components: Dict[str, Dict[str, Any]] = pydantic.Field(default_factory=dict)
+
+
 class NeighborlyConfig(pydantic.BaseModel):
     seed: Union[str, int] = pydantic.Field(
         default_factory=lambda: random.randint(0, 9999999)
     )
-    relationship_schema: EntityPrefab = pydantic.Field(
-        default_factory=lambda: EntityPrefab()
+    relationship_schema: RelationshipSchema = pydantic.Field(
+        default_factory=RelationshipSchema
     )
     plugins: List[PluginConfig] = pydantic.Field(default_factory=list)
     # Months to increment time by each simulation step

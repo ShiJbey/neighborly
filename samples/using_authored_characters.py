@@ -11,6 +11,7 @@ from typing import Any, Dict
 
 from neighborly import ISystem, Neighborly, NeighborlyConfig, SimDateTime
 from neighborly.components import GameCharacter
+from neighborly.core.ecs.ecs import EntityPrefab, GameObjectFactory
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -30,7 +31,6 @@ from neighborly.utils.common import (
     spawn_residence,
     spawn_settlement,
 )
-from neighborly.utils.traits import add_trait
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -141,15 +141,21 @@ def main():
 
     west_world = spawn_settlement(sim.world, "West World")
 
+    GameObjectFactory.add(
+        EntityPrefab(
+            name="westworld::host",
+            extends="character::default::female",
+            components={"Robot": ()},
+        )
+    )
+
     delores = spawn_character(
         sim.world,
-        "character::default::female",
+        "westworld::host",
         first_name="Delores",
         last_name="Abernathy",
         age=32,
     )
-
-    add_trait(delores, Robot())
 
     add_character_to_settlement(delores, west_world)
 
@@ -165,12 +171,6 @@ def main():
 
     print(f"World Date: {str(sim.world.get_resource(SimDateTime))}")
     print("Execution time: ", elapsed_time, "seconds")
-
-    # rel_data = sim.world.get_resource(DataCollector).get_table_dataframe(
-    #     "relationships"
-    # )
-    #
-    # rel_data[:800].to_csv("rel_data.csv")
 
     if EXPORT_SIM:
         with open(f"neighborly_{sim.config.seed}.json", "w") as f:

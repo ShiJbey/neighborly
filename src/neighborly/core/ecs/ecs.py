@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import pathlib
+import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
@@ -47,6 +49,8 @@ from typing import (
 )
 
 import esper
+import pydantic
+import yaml
 from ordered_set import OrderedSet
 
 logger = logging.getLogger(__name__)
@@ -709,7 +713,7 @@ class World:
 
     def get_component(self, component_type: Type[_CT]) -> List[Tuple[int, _CT]]:
         """Get all the gameobjects that have a given component type"""
-        return self._ecs.get_component(component_type)
+        return self._ecs.get_component(component_type)  # type: ignore
 
     def get_component_for_entity(self, guid: int, component_type: Type[_CT]) -> _CT:
         """Return the component type attached to an entity
@@ -1095,3 +1099,141 @@ class World:
             The ID of GameObjects
         """
         return self._added_components[component_type].__iter__()
+
+
+class EntityPrefab(pydantic.BaseModel):
+    """Configuration data for creating a new entity and any children
+
+    Attributes
+    ----------
+    name: str
+        A unique name associated with the prefab
+    is_template: bool, optional
+        Is this prefab prohibited from being instantiated
+        (defaults to False)
+    components: Dict[str, Dict[str, Any]]
+        Configuration data for components to construct with the prefab mapped
+        to the name of the component
+    children: List[EntityPrefab]
+        Information about child prefabs to instantiate along with this one
+    tags: Set[str]
+        String tags for filtering
+    """
+
+    name: str
+    is_template: bool = False
+    extends: List[str] = pydantic.Field(default_factory=list)
+    components: Dict[str, Dict[str, Any]] = pydantic.Field(default_factory=dict)
+    children: List[str] = pydantic.Field(default_factory=list)
+    tags: Set[str] = pydantic.Field(default_factory=set)
+
+    @pydantic.validator("extends", pre=True)  # type: ignore
+    @classmethod
+    def validate_extends(cls, value: Any) -> List[str]:
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return value  # type: ignore
+        else:
+            raise TypeError(f"Expected list str or list of str, but was {type(value)}")
+
+
+class GameObjectFactory:
+    """A static class responsible for managing prefabs and instantiating them"""
+
+    # Stores loaded prefabs in a class variable
+    _prefabs: Dict[str, EntityPrefab] = {}
+
+    @classmethod
+    def get(cls, prefab_name: str) -> EntityPrefab:
+        """Returns an entity prefab"""
+        return cls._prefabs[prefab_name]
+
+    @classmethod
+    def get_matching_prefabs(cls, *patterns: str) -> List[EntityPrefab]:
+        """
+        Get all prefabs with names that match the given regex strings
+
+        Parameters
+        ----------
+        *patterns: Tuple[str, ...]
+            Glob-patterns of names to check for
+
+        Returns
+        -------
+        List[str]
+            The names of prefabs in the table that match the pattern
+        """
+
+        matches: List[EntityPrefab] = []
+
+        for name, prefab in cls._prefabs.items():
+            if any([re.match(p, name) for p in patterns]):
+                matches.append(prefab)
+
+        return matches
+
+    @classmethod
+    def add(cls, prefab: EntityPrefab) -> None:
+        """Add a prefab to the factory"""
+        cls._prefabs[prefab.name] = prefab
+
+    @classmethod
+    def add_from_file(cls, file_path: Union[str, pathlib.Path]) -> None:
+        with open(file_path, "r") as f:
+            data: Dict[str, Any] = yaml.safe_load(f)
+
+        cls.add(EntityPrefab.parse_obj(data))
+
+    @classmethod
+    def instantiate(cls, world: World, name: str) -> GameObject:
+        """Spawn the prefab into the world and return the root-level entity
+
+        Parameters
+        ----------
+        world: World
+            The World instance to spawn this prefab into
+
+        Returns
+        -------
+        GameObject
+            A reference to the spawned entity
+        """
+
+        # spawn the root gameobject
+        prefab = cls._prefabs[name]
+        gameobject = world.spawn_gameobject()
+
+        for component_name, component_data in cls._resolve_components(prefab).items():
+            try:
+                gameobject.add_component(
+                    world.get_component_info(component_name).factory.create(
+                        world, **component_data
+                    )
+                )
+            except KeyError:
+                raise Exception(
+                    f"Cannot find component, {component_name}. "
+                    "Please ensure that this component has "
+                    "been registered with the simulation's world instance."
+                )
+
+        for child in prefab.children:
+            gameobject.add_child(cls.instantiate(world, child))
+
+        return gameobject
+
+    @classmethod
+    def _resolve_components(cls, prefab: EntityPrefab) -> Dict[str, Dict[str, Any]]:
+        components: Dict[str, Dict[str, Any]] = {}
+
+        base_components = [
+            cls._resolve_components(cls._prefabs[base]) for base in prefab.extends
+        ]
+
+        for entry in base_components:
+            components.update(entry)
+
+        components.update(prefab.components)
+
+        return components

@@ -2,15 +2,15 @@ import random
 from typing import List, Optional
 
 from neighborly.components import Active, CurrentSettlement, InTheWorkforce, Unemployed
-from neighborly.content_management import BusinessLibrary, OccupationTypeLibrary
+from neighborly.components.spawn_table import BusinessSpawnTable
+from neighborly.content_management import OccupationTypeLibrary
 from neighborly.core.action import Action
-from neighborly.core.ecs import GameObject, World
+from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory, World
 from neighborly.core.event import EventBuffer
 from neighborly.core.roles import RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.core.time import SimDateTime
 from neighborly.events import StartBusinessEvent
-from neighborly.prefabs import BusinessPrefab
 from neighborly.utils.common import (
     add_business_to_settlement,
     spawn_business,
@@ -50,13 +50,13 @@ class StartBusinessAction(Action):
         # Pick a random lot from those available
         lot = rng.choice(vacancies)
 
-        owner_type = business_prefab.get_owner_type()
+        owner_type = business_prefab.components["Business"]["owner_type"]
 
         assert owner_type
 
         owner_occupation_type = occupation_types.get(owner_type)
 
-        business = spawn_business(world, business_prefab)
+        business = spawn_business(world, business_prefab.name)
 
         add_business_to_settlement(
             business,
@@ -80,28 +80,30 @@ class StartBusinessAction(Action):
     @staticmethod
     def _get_business_character_can_own(
         character: GameObject,
-    ) -> Optional[BusinessPrefab]:
+    ) -> Optional[EntityPrefab]:
         world = character.world
         current_settlement = character.get_component(CurrentSettlement)
         settlement = world.get_gameobject(current_settlement.settlement)
-        business_library = world.get_resource(BusinessLibrary)
+        business_spawn_table = settlement.get_component(BusinessSpawnTable)
         occupation_types = world.get_resource(OccupationTypeLibrary)
         rng = world.get_resource(random.Random)
 
-        choices: List[BusinessPrefab] = []
+        choices: List[EntityPrefab] = []
         weights: List[int] = []
 
-        for prefab in business_library.get_eligible(settlement):
-            if prefab.get_owner_type():
-                owner_occupation_type = occupation_types.get(prefab.get_owner_type())
+        for prefab_name in business_spawn_table.get_eligible(settlement):
+            prefab = GameObjectFactory.get(prefab_name)
+            owner_type = prefab.components["Business"]["owner_type"]
+            if owner_type:
+                owner_occupation_type = occupation_types.get(owner_type)
 
                 if owner_occupation_type.passes_preconditions(character):
                     choices.append(prefab)
-                    weights.append(prefab.spawn_frequency)
+                    weights.append(business_spawn_table.get_frequency(prefab_name))
 
         if choices:
             # Choose an archetype at random
-            return rng.choices(population=choices, weights=weights, k=1)[0]
+            return rng.choices(choices, weights, k=1)[0]
 
         return None
 

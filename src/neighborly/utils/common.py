@@ -53,22 +53,28 @@ from neighborly.components.shared import (
     Position2D,
     PrefabName,
 )
+from neighborly.components.spawn_table import (
+    BusinessSpawnTable,
+    CharacterSpawnTable,
+    ResidenceSpawnTable,
+)
 from neighborly.content_management import (
     ActivityLibrary,
-    BusinessLibrary,
-    CharacterLibrary,
     LocationBiasRuleLibrary,
-    ResidenceLibrary,
     ServiceLibrary,
 )
-from neighborly.core.ecs import ComponentNotFoundError, GameObject, World
+from neighborly.core.ecs import (
+    ComponentNotFoundError,
+    GameObject,
+    GameObjectFactory,
+    World,
+)
 from neighborly.core.event import EventBuffer
 from neighborly.core.life_event import LifeEventBuffer
 from neighborly.core.relationship import InteractionScore
 from neighborly.core.settlement import GridSettlementMap, Settlement
 from neighborly.core.time import SimDateTime, Weekday
 from neighborly.core.tracery import Tracery
-from neighborly.prefabs import BusinessPrefab, CharacterPrefab, ResidencePrefab
 from neighborly.utils.relationships import (
     add_relationship_status,
     get_relationship,
@@ -147,7 +153,18 @@ def spawn_settlement(
     generated_name = world.get_resource(Tracery).generate(settlement_name)
 
     settlement = world.spawn_gameobject(
-        [Settlement(generated_name, GridSettlementMap(settlement_size))],
+        [
+            Settlement(generated_name, GridSettlementMap(settlement_size)),
+            CharacterSpawnTable(
+                [
+                    {"name": "character::default::male"},
+                    {"name": "character::default::female"},
+                    {"name": "character::default::non-binary"},
+                ]
+            ),
+            ResidenceSpawnTable([{"name": "residence::default::house"}]),
+            BusinessSpawnTable([{"name": "Restaurant"}]),
+        ],
         name=generated_name,
     )
 
@@ -211,7 +228,7 @@ def remove_location_from_settlement(
 
 def spawn_character(
     world: World,
-    prefab: Union[str, CharacterPrefab],
+    prefab: str,
     first_name: Optional[str] = None,
     last_name: Optional[str] = None,
     age: Optional[int] = None,
@@ -224,8 +241,8 @@ def spawn_character(
     ----------
     world: World
         The world instance to add the character to
-    prefab: CharacterPrefab
-        A bundle used to construct the character
+    prefab: str
+        The name of the prefab to instantiate
     first_name: str, optional
         first name override (defaults to None)
     last_name: str, optional
@@ -242,13 +259,8 @@ def spawn_character(
     GameObject
         The newly constructed character
     """
-    if isinstance(prefab, str):
-        character_library = world.get_resource(CharacterLibrary)
-        character_prefab = character_library.get(prefab)
-    else:
-        character_prefab = prefab
 
-    character = character_prefab.spawn(world)
+    character = GameObjectFactory.instantiate(world, prefab)
 
     set_character_age(
         character,
@@ -281,7 +293,7 @@ def spawn_character(
         )
     )
 
-    character.add_component(PrefabName(character_prefab.name))
+    character.add_component(PrefabName(prefab))
 
     return character
 
@@ -338,7 +350,7 @@ def remove_character_from_settlement(character: GameObject) -> None:
 
 def spawn_residence(
     world: World,
-    prefab: Union[str, ResidencePrefab],
+    prefab: str,
 ) -> GameObject:
     """Instantiate a residence prefab
 
@@ -346,22 +358,15 @@ def spawn_residence(
     ----------
     world: World
         The world instance to spawn the residence into
-    prefab: Union[str, ResidencePrefab]
-        The prefab to instantiate or the name of a prefab to instantiate
+    prefab: str
+        The name of a prefab to instantiate
 
     Returns
     -------
     GameObject
         The residence instance
     """
-
-    if isinstance(prefab, str):
-        residence_library = world.get_resource(ResidenceLibrary)
-        residence_prefab = residence_library.get(prefab)
-    else:
-        residence_prefab = prefab
-
-    residence = residence_prefab.spawn(world)
+    residence = GameObjectFactory.instantiate(world, prefab)
 
     world.get_resource(EventBuffer).append(
         neighborly.events.NewResidenceEvent(
@@ -369,9 +374,9 @@ def spawn_residence(
         )
     )
 
-    residence.add_component(PrefabName(residence_prefab.name))
+    residence.add_component(PrefabName(prefab))
 
-    residence.name = f"{residence_prefab.name}({residence.uid})"
+    residence.name = f"{prefab}({residence.uid})"
 
     return residence
 
@@ -404,8 +409,7 @@ def add_residence_to_settlement(
 
     # Set the position of the building
     position = settlement_comp.land_map.get_lot_position(lot_id)
-    residence.get_component(Position2D).x = position[0]
-    residence.get_component(Position2D).y = position[1]
+    residence.add_component(Position2D(position[0], position[1]))
 
     residence.add_component(CurrentLot(lot_id))
     add_status(residence, Active())
@@ -415,7 +419,7 @@ def add_residence_to_settlement(
 
 def get_child_prefab(
     parent_a: GameObject, parent_b: Optional[GameObject] = None
-) -> Optional[CharacterPrefab]:
+) -> Optional[str]:
     """Returns a random prefab for a potential child
 
     This function chooses a random Prefab from the union of eligible child prefab names
@@ -430,31 +434,28 @@ def get_child_prefab(
 
     Returns
     -------
-    Optional[CharacterPrefab]
-        A reference to a CharacterPrefab if a matching one is
-        found
+    Optional[str]
+        The name of a prefab for a potential child
     """
 
     world = parent_a.world
     rng = world.get_resource(random.Random)
-    library = world.get_resource(CharacterLibrary)
 
-    eligible_child_configs = [
+    eligible_child_prefabs = [
         *parent_a.get_component(ReproductionConfig).child_prefabs,
     ]
 
     if parent_b:
-        eligible_child_configs.extend(
+        eligible_child_prefabs.extend(
             parent_a.get_component(ReproductionConfig).child_prefabs
         )
 
-    potential_child_bundles = library.get_matching_prefabs(*eligible_child_configs)
+    matching_prefabs = GameObjectFactory.get_matching_prefabs(*eligible_child_prefabs)
 
-    if potential_child_bundles:
+    if matching_prefabs:
+        return rng.choice(matching_prefabs).name
 
-        bundle = rng.choice(potential_child_bundles)
-
-        return bundle
+    return None
 
 
 def set_residence(
@@ -726,24 +727,17 @@ def set_business_name(business: GameObject, name: str) -> None:
 
 def spawn_business(
     world: World,
-    prefab: Union[str, BusinessPrefab],
+    prefab: str,
     name: str = "",
 ) -> GameObject:
-
-    if isinstance(prefab, str):
-        business_library = world.get_resource(BusinessLibrary)
-        business_prefab = business_library.get(prefab)
-    else:
-        business_prefab = prefab
-
-    business = business_prefab.spawn(world)
+    business = GameObjectFactory.instantiate(world, prefab)
 
     if name:
         business.get_component(Name).value = name
 
     business.name = f"{business.get_component(Name).value}({business.uid})"
 
-    business.add_component(PrefabName(business_prefab.name))
+    business.add_component(PrefabName(prefab))
 
     world.get_resource(EventBuffer).append(
         neighborly.events.NewBusinessEvent(

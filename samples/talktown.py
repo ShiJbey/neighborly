@@ -13,7 +13,6 @@ from neighborly.exporter import export_to_json
 from neighborly.simulation import Neighborly
 
 EXPORT_WORLD = False
-DEBUG_LOGGING = False
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -55,7 +54,7 @@ sim = Neighborly(
 
 if __name__ == "__main__":
     st = time.time()
-    sim.run_for(140)
+    sim.run_for(30)
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.date.to_iso_str()}")

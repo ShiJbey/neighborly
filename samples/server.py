@@ -1,5 +1,4 @@
 from neighborly import NeighborlyConfig
-from neighborly.content_management import CharacterLibrary
 from neighborly.data_collection import DataCollector
 from neighborly.server import NeighborlyServer
 from neighborly.utils.common import (
@@ -40,13 +39,12 @@ app = NeighborlyServer(
 
 
 def main():
-    character_library = app.sim.world.get_resource(CharacterLibrary)
 
     west_world = spawn_settlement(app.sim.world, "West World")
 
     delores = spawn_character(
         app.sim.world,
-        character_library.get("character::default::female"),
+        "character::default::female",
         first_name="Delores",
         last_name="Abernathy",
         age=32,

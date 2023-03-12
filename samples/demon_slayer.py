@@ -111,6 +111,7 @@ sim = Neighborly(
                 "neighborly.plugins.defaults.life_events",
                 "neighborly.plugins.defaults.ai",
                 "neighborly.plugins.defaults.social_rules",
+                "neighborly.plugins.talktown",
                 "neighborly.plugins.defaults.location_bias_rules",
             ],
         }
