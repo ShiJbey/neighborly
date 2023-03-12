@@ -3,106 +3,82 @@ This module contains interfaces, components, and systems
 related to character decision-making. Users of this library
 should use these classes to override character decision-making
 processes
+
+This code is adapted from Brian Bucklew's IRDC talk on the AI in Caves of Qud and
+Sproggiwood: 
+
+https://www.youtube.com/watch?v=4uxN5GqXcaA&t=339s&ab_channel=InternationalRoguelikeDeveloperConference
 """
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from neighborly.core.action import Action
-from neighborly.core.ecs import Component, GameObject, World
+from neighborly.core.ecs import Component
 
 
-class IAIBrain(ABC):
-    """
-    Interface defines functions that a class needs to implement to be
-    injected into a MovementAI component.
-    """
+class Action(ABC):
+    """Actions are operations performed by GameObjects to change the simulation"""
 
     @abstractmethod
-    def get_type(self) -> str:
-        """Return this brain type"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_next_location(self, world: World, gameobject: GameObject) -> Optional[int]:
+    def execute(self) -> bool:
         """
-        Returns where the character will move to this simulation tick.
-
-        Parameters
-        ----------
-        world: World
-            The world that the character belongs to
-        gameobject: GameObject
-            The GameObject instance the module is associated with
+        Attempt to perform the action
 
         Returns
         -------
-            The ID of the location to move to next
+        bool
+            Return True if the action was successful, False otherwise
         """
-        raise NotImplementedError
-
-    @abstractmethod
-    def execute_action(self, world: World, gameobject: GameObject) -> None:
-        """
-        Get the next action for this character
-
-        Parameters
-        ----------
-        world: World
-            The world instance the character belongs to
-        gameobject: GameObject
-            The GameObject instance this module is associated with
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def append_action(self, action: Action) -> None:
-        """Add an action to the internal queue"""
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
-class AIComponent(Component, IAIBrain):
-    """
-    Component responsible for moving a character around the simulation. It
-    uses an IMovementAIModule instance to determine where the character
-    should go.
+class Goal(ABC):
+    """Goals drive what it is that a character wants to do"""
 
-    This is a wrapper class that tricks the ECS into thinking that all
-    AI modules are the same, if you subclass this class, it will not be
-    updated by default in the ECS, and will require its own system definition
+    __slots__ = "original_intent"
 
-    Attributes
-    ----------
-    brain: IAIBrain
-        An AI brain responsible for movement decision-making
-    """
-
-    __slots__ = "brain"
-
-    def __init__(self, brain: IAIBrain) -> None:
+    def __init__(self, original_intent: Optional[Goal] = None) -> None:
         super().__init__()
-        self.brain: IAIBrain = brain
+        self.original_intent: Optional[Goal] = original_intent
 
-    def get_type(self) -> str:
-        return self.brain.get_type()
-
-    def get_next_location(self, world: World, gameobject: GameObject) -> Optional[int]:
-        """
-        Returns where the character will move to this simulation tick.
-
-        Parameters
-        ----------
-        world: World
-            The world that the character belongs to
-        gameobject: GameObject
-            The GameObject instance the module is associated with
+    @abstractmethod
+    def is_complete(self) -> bool:
+        """Check if the goal is satisfied
 
         Returns
         -------
-            The ID of the location to move to next
+        bool
+            True if the goal is satisfied, False otherwise
         """
-        return self.brain.get_next_location(world, gameobject)
+        raise NotImplementedError()
 
-    def execute_action(self, world: World, gameobject: GameObject) -> None:
+    @abstractmethod
+    def take_action(self) -> None:
+        """Perform an action in-service of this goal"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the goal to a dictionary"""
+        raise NotImplementedError()
+
+
+class AIComponent(Component):
+    """
+    The AI component is responsible for driving agent behavior by tracking goals that
+    in-turn execute actions and create new goals.
+    """
+
+    __slots__ = "_goals"
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Here we use _goals as a stack. Perhaps in a later update this could change
+        # to something like a priority queue
+        self._goals: List[Goal] = []
+
+    def take_action(self) -> None:
         """
         Get the next action for this character
 
@@ -113,11 +89,15 @@ class AIComponent(Component, IAIBrain):
         gameobject: GameObject
             The GameObject instance this module is associated with
         """
-        self.brain.execute_action(world, gameobject)
+        while self._goals and self._goals[-1].is_complete():
+            self._goals.pop()
 
-    def append_action(self, action: Action) -> None:
-        """Add an action to the internal queue"""
-        self.brain.append_action(action)
+        if self._goals:
+            self._goals[-1].take_action()
+
+    def push_goal(self, goal: Goal) -> None:
+        """Add a goal to the AI"""
+        self._goals.append(goal)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"brain_type": self.brain.get_type()}
+        return {"goals": [g.to_dict() for g in self._goals]}

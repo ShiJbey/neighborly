@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import Any, DefaultDict, List, Optional, Type
 
 import neighborly.events
-from neighborly.actions import StartBusinessAction
+from neighborly.actions import StartBusinessGoal
 from neighborly.components.business import (
     Business,
     InTheWorkforce,
@@ -43,8 +43,6 @@ from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpaw
 from neighborly.config import NeighborlyConfig
 from neighborly.content_management import LifeEventLibrary, OccupationTypeLibrary
 from neighborly.core.ai.brain import AIComponent
-from neighborly.core.ai.movement import MovementAI
-from neighborly.core.ai.socializing import SocialAI
 from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.ecs.ecs import SystemGroup
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
@@ -69,7 +67,6 @@ from neighborly.utils.common import (
     get_life_stage,
     set_character_age,
     set_frequented_locations,
-    set_location,
     set_residence,
     spawn_character,
     spawn_residence,
@@ -348,11 +345,10 @@ class StartBusinessSystem(System):
         super().__init__(interval=TimeDelta(months=1))
 
     def run(self, *args: Any, **kwargs: Any) -> None:
-        date = self.world.get_resource(SimDateTime)
         for g, _ in self.world.get_components((InTheWorkforce, Active, Unemployed)):
             character = self.world.get_gameobject(g)
-            action = StartBusinessAction(date, character)
-            character.get_component(AIComponent).append_action(action)
+            goal = StartBusinessGoal(character)
+            character.get_component(AIComponent).push_goal(goal)
 
 
 @dataclasses.dataclass
@@ -1059,30 +1055,5 @@ class AIActionSystem(System):
     sys_group = "character-update"
 
     def run(self, *args: Any, **kwargs: Any) -> None:
-        for guid, ai_component in self.world.get_component(AIComponent):
-            gameobject = self.world.get_gameobject(guid)
-            ai_component.execute_action(self.world, gameobject)
-
-
-class MovementAISystem(System):
-    """Updates the MovementAI components attached to characters"""
-
-    sys_group = "character-update"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for gid, (movement_ai, _) in self.world.get_components((MovementAI, Active)):
-            next_location = movement_ai.get_next_location(self.world)
-            if next_location is not None:
-                set_location(self.world.get_gameobject(gid), next_location)
-
-
-class SocialAISystem(System):
-    """Characters performs social actions"""
-
-    sys_group = "character-update"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, (social_ai, _) in self.world.get_components((SocialAI, Active)):
-            action_instance = social_ai.get_next_action(self.world)
-            if action_instance is not None:
-                action_instance.execute()
+        for _, (ai_component, _) in self.world.get_components((AIComponent, Active)):
+            ai_component.take_action()

@@ -1,13 +1,13 @@
 import random
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from neighborly.components import Active, CurrentSettlement, InTheWorkforce, Unemployed
+from neighborly.components import CurrentSettlement
+from neighborly.components.business import BusinessOwner, Occupation
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.content_management import OccupationTypeLibrary
-from neighborly.core.action import Action
-from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory, World
+from neighborly.core.ai import Action, Goal
+from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory
 from neighborly.core.event import EventBuffer
-from neighborly.core.roles import RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.core.time import SimDateTime
 from neighborly.events import StartBusinessEvent
@@ -18,16 +18,53 @@ from neighborly.utils.common import (
 )
 
 
-class StartBusinessAction(Action):
-    initiator = "Character"
+class FindEmploymentGoal(Goal):
 
-    def __init__(self, date: SimDateTime, character: GameObject):
-        super().__init__(timestamp=date, roles={"Character": character})
+    __slots__ = "character"
+
+    def __init__(self, character: GameObject) -> None:
+        super().__init__()
+        self.character = character
+
+    def is_complete(self) -> bool:
+        return self.character.has_component(Occupation)
+
+    def take_action(self) -> None:
+        print("Finding Employment")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": self.__class__.__name__, "character": self.character.uid}
+
+
+class StartBusinessGoal(Goal):
+
+    __slots__ = "character"
+
+    def __init__(self, character: GameObject) -> None:
+        super().__init__()
+        self.character = character
+
+    def is_complete(self) -> bool:
+        return self.character.has_component(BusinessOwner)
+
+    def take_action(self) -> None:
+        print("Starting business...")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": self.__class__.__name__, "character": self.character.uid}
+
+
+class StartBusiness(Action):
+
+    __slots__ = "character"
+
+    def __init__(self, character: GameObject):
+        super().__init__()
+        self.character = character
 
     def execute(self) -> bool:
-        character = self["Character"]
-        world = character.world
-        current_settlement = character.get_component(CurrentSettlement)
+        world = self.character.world
+        current_settlement = self.character.get_component(CurrentSettlement)
         settlement = world.get_gameobject(current_settlement.settlement)
         settlement_comp = settlement.get_component(Settlement)
         event_buffer = world.get_resource(EventBuffer)
@@ -36,7 +73,7 @@ class StartBusinessAction(Action):
 
         # Get all the eligible business prefabs that are eligible for building
         # and the character meets the requirements for the owner occupation
-        business_prefab = self._get_business_character_can_own(character)
+        business_prefab = self._get_business_character_can_own(self.character)
 
         if business_prefab is None:
             return False
@@ -67,13 +104,13 @@ class StartBusinessAction(Action):
         event_buffer.append(
             StartBusinessEvent(
                 world.get_resource(SimDateTime),
-                character,
+                self.character,
                 business,
                 owner_occupation_type.name,
             )
         )
 
-        start_job(character, business, owner_occupation_type.name, is_owner=True)
+        start_job(self.character, business, owner_occupation_type.name, is_owner=True)
 
         return True
 
@@ -106,25 +143,3 @@ class StartBusinessAction(Action):
             return rng.choices(choices, weights, k=1)[0]
 
         return None
-
-    @classmethod
-    def instantiate(cls, world: World, bindings: RoleList) -> Optional[Action]:
-        rng = world.get_resource(random.Random)
-
-        if bindings:
-            candidates = [bindings[cls.initiator]]
-        else:
-            candidates = [
-                world.get_gameobject(g)
-                for g, _ in world.get_components((InTheWorkforce, Active, Unemployed))
-            ]
-
-        if not candidates:
-            return None
-
-        # NOTE: It might be nice to eventually swap this out for a
-        # selection strategy that scores the characters based on
-        # who is most likely to take on this role
-        candidate = rng.choice(candidates)
-
-        return cls(world.get_resource(SimDateTime), candidate)

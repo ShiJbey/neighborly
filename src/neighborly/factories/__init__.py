@@ -6,7 +6,6 @@ components.
 """
 
 from .activity import ActivitiesFactory
-from .ai import AIComponentFactory
 from .business import BusinessFactory, OperatingHoursFactory, ServicesFactory
 from .character import GameCharacterFactory, VirtuesFactory
 from .routine import RoutineFactory
@@ -14,7 +13,6 @@ from .shared import FrequentedLocationsFactory, LocationFactory, NameFactory
 
 __all__ = [
     "ActivitiesFactory",
-    "AIComponentFactory",
     "BusinessFactory",
     "ServicesFactory",
     "GameCharacterFactory",

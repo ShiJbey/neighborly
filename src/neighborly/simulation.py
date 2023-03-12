@@ -105,7 +105,6 @@ class Neighborly:
         self.world.add_resource(libraries.ServiceLibrary())
         self.world.add_resource(DataCollector())
         self.world.add_resource(libraries.LocationBiasRuleLibrary())
-        self.world.add_resource(libraries.AIBrainLibrary())
 
         # Add default system groups
         self.world.add_system(systems.InitializationSystemGroup())
@@ -147,9 +146,7 @@ class Neighborly:
 
         # Register components
         self.world.register_component(components.Active)
-        self.world.register_component(
-            AIComponent, factory=factories.AIComponentFactory()
-        )
+        self.world.register_component(AIComponent)
         self.world.register_component(
             components.GameCharacter, factory=factories.GameCharacterFactory()
         )

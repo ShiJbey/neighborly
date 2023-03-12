@@ -4,8 +4,6 @@ Utility decorators that should assist with content authoring
 from typing import Any, Type, TypeVar
 
 from neighborly.content_management import (
-    AIBrainFactory,
-    AIBrainLibrary,
     LifeEventLibrary,
     LocationBiasRuleLibrary,
     SocialRuleLibrary,
@@ -21,14 +19,6 @@ _CF = TypeVar("_CF", bound=IComponentFactory)
 _RT = TypeVar("_RT", bound=Any)
 _ST = TypeVar("_ST", bound=ISystem)
 _LT = TypeVar("_LT", bound=ActionableLifeEvent)
-
-
-def brain_factory(sim: Neighborly, name: str):
-    def decorator(fn: AIBrainFactory):
-        sim.world.get_resource(AIBrainLibrary).add(name, fn)
-        return fn
-
-    return decorator
 
 
 def component(sim: Neighborly):

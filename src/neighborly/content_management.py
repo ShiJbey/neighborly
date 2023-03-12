@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, Iterator, List, Optional, Protocol, Type
+from typing import Dict, Iterator, List, Optional, Type
 
 from neighborly.components.activity import Activity
 from neighborly.components.business import OccupationType, Service
-from neighborly.core.ai.brain import IAIBrain
 from neighborly.core.life_event import ActionableLifeEvent
 from neighborly.core.location_bias import ILocationBiasRule
 from neighborly.core.social_rule import ISocialRule
@@ -215,37 +214,3 @@ class LocationBiasRuleLibrary:
 
     def __iter__(self) -> Iterator[LocationBiasRuleInfo]:
         return self._rules.__iter__()
-
-
-class AIBrainFactory(Protocol):
-    def __call__(self, **kwargs: Any) -> IAIBrain:
-        """Create IAIBrain instance"""
-        raise NotImplementedError
-
-
-class AIBrainLibrary:
-    """Collection of factory callables that produce IAIBrain instances
-
-    This library maps string names to callable instances that instantiate IAIBrains that
-    will be encapsulated inside AIComponents
-    """
-
-    __slots__ = "_brains"
-
-    def __init__(self) -> None:
-        self._brains: Dict[str, AIBrainFactory] = {}
-
-    def add(self, name: str, factory: AIBrainFactory) -> None:
-        """Add a brain instance to the library
-
-        Parameters
-        ----------
-        name: str
-            The name to map the brain to
-        factory: AIBrainFactory
-            Factory callable that creates brain instances
-        """
-        self._brains[name] = factory
-
-    def __getitem__(self, item: str) -> AIBrainFactory:
-        return self._brains[item]
