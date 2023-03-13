@@ -10,20 +10,22 @@ This file contains implementations for:
 - Retiring from employment
 - Moving out of their parents home
 """
+
+
 import random
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from neighborly import NeighborlyConfig
-from neighborly.core.ai.brain import WeightedActionList
-from neighborly.core.ecs import GameObject
 from neighborly.components import Active
-from neighborly.components.character import Adolescent, GameCharacter, Dating
-from neighborly.core.ai import Goal, Action, AIComponent
-from neighborly.core.relationship import RelationshipManager, Romance, Relationship
+from neighborly.components.character import Adolescent, Dating, GameCharacter
+from neighborly.core.ai import Action, AIComponent, Goal
+from neighborly.core.ai.brain import GoalStack, WeightedActionList
+from neighborly.core.ecs import GameObject
+from neighborly.core.relationship import Relationship, RelationshipManager, Romance
 from neighborly.systems import System
 from neighborly.utils.common import get_life_stage
-from neighborly.utils.query import is_single, are_related
-from neighborly.utils.relationships import get_relationship, add_relationship_status
+from neighborly.utils.query import are_related, is_single
+from neighborly.utils.relationships import add_relationship_status, get_relationship
 
 
 class AskOut(Action):
@@ -36,6 +38,10 @@ class AskOut(Action):
         self.target: GameObject = target
 
     def execute(self) -> bool:
+
+        if not is_single(self.target):
+            return False
+
         world = self.initiator.world
 
         romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
@@ -73,7 +79,7 @@ class FindRomanceGoal(Goal):
         """
         return not is_single(self.character)
 
-    def take_action(self) -> None:
+    def take_action(self, goal_stack: GoalStack) -> None:
         """Perform an action in-service of this goal"""
 
         world = self.character.world
@@ -95,7 +101,9 @@ class FindRomanceGoal(Goal):
 
             outgoing_romance = outgoing_relationship.get_component(Romance)
 
-            if not other.has_component(Active) or not other.has_component(GameCharacter):
+            if not other.has_component(Active) or not other.has_component(
+                GameCharacter
+            ):
                 continue
 
             if get_life_stage(other) < Adolescent:
@@ -119,10 +127,7 @@ class FindRomanceGoal(Goal):
             actions.pick_one().execute()
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "type": self.__class__.__name__,
-            "character": self.character.uid
-        }
+        return {"type": self.__class__.__name__, "character": self.character.uid}
 
 
 class EndRomanceGoal(Goal):
@@ -137,24 +142,56 @@ class EndRomanceGoal(Goal):
         return {
             "type": self.__class__.__name__,
             "initiator": self.initiator.uid,
-            "target": self.target.uid
+            "target": self.target.uid,
         }
 
-    def take_action(self) -> None:
+    def take_action(self, goal_stack: GoalStack) -> None:
         ...
 
     def is_complete(self) -> bool:
         ...
 
+
 class EndRomanceSystem(System):
+    @staticmethod
+    def _get_love_interest(character: GameObject) -> Optional[GameObject]:
+        max_romance: int = -1
+        love_interest: Optional[GameObject] = None
+
+        for rel_id in character.get_component(RelationshipManager):
+            relationship = character.world.get_gameobject(rel_id)
+
+            romance = relationship.get_component(Romance).get_value()
+
+            if romance > max_romance:
+                max_romance = romance
+                love_interest = character.world.get_gameobject(
+                    relationship.get_component(Relationship).target
+                )
+
+        return love_interest
+
     def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, (relationship, dating) in self.world.get_components((Relationship, Dating)):
+        for _, (relationship, _, romance) in self.world.get_components(
+            (Relationship, Dating, Romance)
+        ):
             # Check if they like someone else more or if they
             # dislike the person they are with
             owner = self.world.get_gameobject(relationship.owner)
             target = self.world.get_gameobject(relationship.target)
 
-            owner.get_component(AIComponent).push_goal(EndRomanceGoal(owner, target))
+            if romance.get_value() <= -25:
+                owner.get_component(AIComponent).push_goal(
+                    1, EndRomanceGoal(owner, target)
+                )
+                continue
+
+            if love_interest := self._get_love_interest(owner):
+                if love_interest != target:
+                    owner.get_component(AIComponent).push_goal(
+                        1, EndRomanceGoal(owner, target)
+                    )
+                    continue
 
 
 class FindRomanceSystem(System):
@@ -164,8 +201,9 @@ class FindRomanceSystem(System):
     This system is responsible for supplying characters with the goal to start dating or the
     goal to break up if they are already in a romantic relationship.
     """
+
     def run(self, *args: Any, **kwargs: Any) -> None:
         for guid, (ai_component, _) in self.world.get_components((AIComponent, Active)):
             character = self.world.get_gameobject(guid)
             if is_single(character) and get_life_stage(character) >= Adolescent:
-                ai_component.push_goal(FindRomanceGoal(character))
+                ai_component.push_goal(1, FindRomanceGoal(character))

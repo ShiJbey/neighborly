@@ -106,47 +106,68 @@ class Neighborly:
         self.world.add_resource(DataCollector())
         self.world.add_resource(libraries.LocationBiasRuleLibrary())
 
-        # Add default system groups
+        # Add default top-level systems groups (in execution order)
         self.world.add_system(systems.InitializationSystemGroup())
         self.world.add_system(systems.EarlyUpdateSystemGroup())
+        self.world.add_system(systems.UpdateSystemGroup())
+        self.world.add_system(systems.LateUpdateSystemGroup())
+
+        # Add default early-update subgroups (in execution order)
+        self.world.add_system(systems.DataCollectionSystemGroup())
         self.world.add_system(systems.StatusUpdateSystemGroup())
-        self.world.add_system(systems.BusinessUpdateSystemGroup())
-        self.world.add_system(systems.CharacterUpdateSystemGroup())
-        self.world.add_system(systems.EarlyCharacterUpdateSystemGroup())
-        self.world.add_system(systems.LateCharacterUpdateSystemGroup())
+        self.world.add_system(systems.GoalSuggestionSystemGroup())
         self.world.add_system(systems.RelationshipUpdateSystemGroup())
+
+        # Add default late-update subgroups (in execution order)
         self.world.add_system(systems.CoreSystemsSystemGroup())
         self.world.add_system(systems.EventListenersSystemGroup())
-        self.world.add_system(systems.DataCollectionSystemGroup())
         self.world.add_system(systems.CleanUpSystemGroup())
 
-        # Add default systems
+        # Add early-update systems (in execution order)
+        self.world.add_system(systems.MeetNewPeopleSystem())
+        self.world.add_system(systems.LifeEventSystem())
+        self.world.add_system(systems.UpdateFrequentedLocationSystem())
+
+        # Add relationship-update systems (in execution order)
         self.world.add_system(systems.EvaluateSocialRulesSystem())
         self.world.add_system(systems.RelationshipUpdateSystem())
         self.world.add_system(systems.FriendshipStatSystem())
         self.world.add_system(systems.RomanceStatSystem())
-        self.world.add_system(systems.MeetNewPeopleSystem())
-        self.world.add_system(systems.LifeEventSystem())
-        self.world.add_system(systems.LifeEventBufferSystem())
-        self.world.add_system(systems.EventSystem())
-        self.world.add_system(systems.TimeSystem())
+
+        # Add update systems (in execution order)
         self.world.add_system(systems.CharacterAgingSystem())
+        self.world.add_system(systems.AIActionSystem())
+
+        # Add event-listener systems (in execution order)
+        self.world.add_system(systems.LifeEventBufferSystem())
+        self.world.add_system(systems.OnJoinSettlementSystem())
+        self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
+
+        # Add status-update systems (in execution order)
         self.world.add_system(systems.DatingStatusSystem())
         self.world.add_system(systems.MarriedStatusSystem())
         self.world.add_system(systems.PregnantStatusSystem())
         self.world.add_system(systems.UnemployedStatusSystem())
         self.world.add_system(systems.OccupationUpdateSystem())
+
+        # Add goal-suggestion systems (in execution order)
         self.world.add_system(systems.FindEmployeesSystem())
-        self.world.add_system(systems.SpawnFamilySystem())
         self.world.add_system(systems.StartBusinessSystem())
-        self.world.add_system(systems.UpdateFrequentedLocationSystem())
-        self.world.add_system(systems.AIActionSystem())
-        self.world.add_system(systems.OnJoinSettlementSystem())
-        self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
+
+        # Add clean-up systems (in execution order)
+        self.world.add_system(systems.EventSystem())
+        if self.config.verbose:
+            # Configure printing every event to the console
+            self.world.add_system(systems.PrintEventBufferSystem())
+
+        # Time actually sits outside any group and runs last
+        self.world.add_system(systems.TimeSystem())
 
         # Register components
         self.world.register_component(components.Active)
-        self.world.register_component(AIComponent)
+        self.world.register_component(
+            AIComponent, factory=factories.AIComponentFactory()
+        )
         self.world.register_component(
             components.GameCharacter, factory=factories.GameCharacterFactory()
         )
@@ -203,10 +224,6 @@ class Neighborly:
         self.world.register_component(components.OperatingHours)
         self.world.register_component(components.Lifespan)
         self.world.register_component(components.Age)
-
-        # Configure printing every event to the console
-        if self.config.verbose:
-            self.world.add_system(systems.PrintEventBufferSystem())
 
         # Load plugins from the config
         for entry in self.config.plugins:

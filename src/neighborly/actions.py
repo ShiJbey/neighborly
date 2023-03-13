@@ -6,6 +6,7 @@ from neighborly.components.business import BusinessOwner, Occupation
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.content_management import OccupationTypeLibrary
 from neighborly.core.ai import Action, Goal
+from neighborly.core.ai.brain import GoalStack
 from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory
 from neighborly.core.event import EventBuffer
 from neighborly.core.settlement import Settlement
@@ -29,8 +30,9 @@ class FindEmploymentGoal(Goal):
     def is_complete(self) -> bool:
         return self.character.has_component(Occupation)
 
-    def take_action(self) -> None:
-        print("Finding Employment")
+    def take_action(self, goal_stack: GoalStack) -> None:
+        # print("Finding Employment")
+        pass
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.__class__.__name__, "character": self.character.uid}
@@ -47,8 +49,9 @@ class StartBusinessGoal(Goal):
     def is_complete(self) -> bool:
         return self.character.has_component(BusinessOwner)
 
-    def take_action(self) -> None:
-        print("Starting business...")
+    def take_action(self, goal_stack: GoalStack) -> None:
+        # print("Starting business...")
+        pass
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.__class__.__name__, "character": self.character.uid}

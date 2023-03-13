@@ -97,3 +97,6 @@ src_paths = ["src/neighborly", "test", "samples"]
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
+
+[tool.pyright]
+reportMissingTypeStubs = "none"

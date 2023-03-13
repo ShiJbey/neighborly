@@ -50,6 +50,7 @@ from .shared import (
     Name,
     Position2D,
 )
+from .spawn_table import BusinessSpawnTable, CharacterSpawnTable, ResidenceSpawnTable
 
 __all__ = [
     "Active",
@@ -101,4 +102,7 @@ __all__ = [
     "OperatingHours",
     "Lifespan",
     "Age",
+    "CharacterSpawnTable",
+    "BusinessSpawnTable",
+    "ResidenceSpawnTable",
 ]

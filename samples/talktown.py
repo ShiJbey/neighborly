@@ -44,6 +44,7 @@ sim = Neighborly(
                 "neighborly.plugins.defaults.ai",
                 "neighborly.plugins.defaults.social_rules",
                 "neighborly.plugins.defaults.location_bias_rules",
+                "neighborly.plugins.defaults.resident_spawning",
                 "neighborly.plugins.defaults.create_town",
                 "neighborly.plugins.talktown",
             ],
