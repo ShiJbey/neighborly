@@ -14,14 +14,7 @@ from neighborly.components import (
     ResidenceSpawnTable,
     Vacant,
 )
-from neighborly.components.character import (
-    Adult,
-    Child,
-    Married,
-    ParentOf,
-    SiblingOf,
-    YoungAdult,
-)
+from neighborly.components.character import LifeStageType, Married, ParentOf, SiblingOf
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs.ecs import GameObject
 from neighborly.core.life_event import LifeEventBuffer
@@ -135,7 +128,9 @@ class SpawnFamilySystem(System):
         generated_characters = _GeneratedFamily()
 
         # Create a new entity using the archetype
-        character = spawn_character(self.world, prefab, life_stage=YoungAdult)
+        character = spawn_character(
+            self.world, prefab, life_stage=LifeStageType.YoungAdult
+        )
 
         generated_characters.adults.append(character)
 
@@ -152,7 +147,7 @@ class SpawnFamilySystem(System):
                 self.world,
                 spouse_prefab,
                 last_name=character.get_component(GameCharacter).last_name,
-                life_stage=Adult,
+                life_stage=LifeStageType.Adult,
             )
 
             generated_characters.adults.append(spouse)
@@ -195,7 +190,7 @@ class SpawnFamilySystem(System):
                     self.world,
                     child_prefab,
                     last_name=character.get_component(GameCharacter).last_name,
-                    life_stage=Child,
+                    life_stage=LifeStageType.Child,
                 )
                 generated_characters.children.append(child)
                 children.append(child)

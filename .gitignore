@@ -278,6 +278,8 @@ cython_debug/
 **/.DS_Store
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,visualstudiocode,pycharm
 
+samples/scratches/
+
 # Simulation output
 samples/*.json
 samples/*.csv

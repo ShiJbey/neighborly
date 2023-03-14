@@ -64,7 +64,7 @@ Businesses:
       OperatingHours:
         hours: evening
       Activities:
-        value:
+        activities:
           - drinking
           - socializing
 
@@ -625,7 +625,7 @@ Businesses:
       Services:
         services: ["food"]
       Activities:
-        value: ["socializing"]
+        activities: ["socializing"]
 
   - name: School
     extends: TotT::business
@@ -642,7 +642,7 @@ Businesses:
       Services:
         services: ["education"]
       Activities:
-        value: ["studying"]
+        activities: ["studying"]
       Lifespan:
         value: 50
 

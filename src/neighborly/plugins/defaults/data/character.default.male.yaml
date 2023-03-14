@@ -4,3 +4,5 @@ components:
   GameCharacter:
     first_name: "#character::default::first_name::masculine#"
     last_name: "#character::default::last_name#"
+  Gender:
+    gender: Male

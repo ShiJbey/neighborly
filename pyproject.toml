@@ -56,10 +56,6 @@ testing = [
 samples = [
     "notebook"
 ]
-server = [
-    "flask",
-    "flask_restful"
-]
 development = [
     "isort",
     "black",

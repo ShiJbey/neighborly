@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, Optional, Set
+from typing import Any, Dict, Iterable, Iterator, Optional, Set
 
 from ordered_set import OrderedSet  # type: ignore
 
@@ -200,9 +200,9 @@ class FrequentedLocations(Component):
 
     __slots__ = "locations"
 
-    def __init__(self, locations: Optional[Set[int]] = None) -> None:
+    def __init__(self, locations: Optional[Iterable[int]] = None) -> None:
         super().__init__()
-        self.locations: Set[int] = locations if locations else set()
+        self.locations: Set[int] = set(locations) if locations else set()
 
     def add(self, location: int) -> None:
         self.locations.add(location)

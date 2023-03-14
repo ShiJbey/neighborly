@@ -17,13 +17,17 @@ from typing import Any, Dict, Optional
 
 from neighborly import NeighborlyConfig
 from neighborly.components import Active
-from neighborly.components.character import Adolescent, Dating, GameCharacter
+from neighborly.components.character import (
+    Dating,
+    GameCharacter,
+    LifeStage,
+    LifeStageType,
+)
 from neighborly.core.ai import Action, AIComponent, Goal
 from neighborly.core.ai.brain import GoalStack, WeightedActionList
 from neighborly.core.ecs import GameObject
 from neighborly.core.relationship import Relationship, RelationshipManager, Romance
 from neighborly.systems import System
-from neighborly.utils.common import get_life_stage
 from neighborly.utils.query import are_related, is_single
 from neighborly.utils.relationships import add_relationship_status, get_relationship
 
@@ -106,7 +110,7 @@ class FindRomanceGoal(Goal):
             ):
                 continue
 
-            if get_life_stage(other) < Adolescent:
+            if other.get_component(LifeStage).life_stage < LifeStageType.Adolescent:
                 continue
 
             if not is_single(other):
@@ -203,7 +207,12 @@ class FindRomanceSystem(System):
     """
 
     def run(self, *args: Any, **kwargs: Any) -> None:
-        for guid, (ai_component, _) in self.world.get_components((AIComponent, Active)):
+        for guid, (ai_component, _, life_stage) in self.world.get_components(
+            (AIComponent, Active, LifeStage)
+        ):
             character = self.world.get_gameobject(guid)
-            if is_single(character) and get_life_stage(character) >= Adolescent:
+            if (
+                is_single(character)
+                and life_stage.life_stage >= LifeStageType.Adolescent
+            ):
                 ai_component.push_goal(1, FindRomanceGoal(character))

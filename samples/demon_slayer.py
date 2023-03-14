@@ -62,7 +62,7 @@ from neighborly.components import (
     FrequentedLocations,
     GameCharacter,
 )
-from neighborly.components.character import Child
+from neighborly.components.character import LifeStage, LifeStageType
 from neighborly.core.event import EventBuffer
 from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
 from neighborly.core.roles import Role, RoleList
@@ -76,12 +76,7 @@ from neighborly.decorators import (
 )
 from neighborly.exporter import export_to_json
 from neighborly.plugins.defaults.life_events import Die
-from neighborly.utils.common import (
-    add_character_to_settlement,
-    get_life_stage,
-    spawn_character,
-    spawn_settlement,
-)
+from neighborly.utils.common import add_character_to_settlement, spawn_character
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -111,9 +106,12 @@ sim = Neighborly(
                 "neighborly.plugins.defaults.life_events",
                 "neighborly.plugins.defaults.ai",
                 "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.resident_spawning",
-                "neighborly.plugins.talktown",
                 "neighborly.plugins.defaults.location_bias_rules",
+                "neighborly.plugins.defaults.resident_spawning",
+                "neighborly.plugins.defaults.settlement",
+                "neighborly.plugins.defaults.create_town",
+                "neighborly.plugins.talktown.spawn_tables",
+                "neighborly.plugins.talktown",
             ],
         }
     )
@@ -348,7 +346,7 @@ class DemonKingdom:
     _upper_moons: OrderedSet[int]
         The demons ranked as UpperMoon
     _former_upper_moons: OrderedSet[int]
-        The demons that were formerly randed as UpperMoon
+        The demons that were formerly ranked as UpperMoon
     _lower_moons: OrderedSet[int]
         The demons ranked as LowerMoon
     _former_lower_moons: OrderedSet[int]
@@ -622,7 +620,7 @@ class BecomeDemonSlayer(ActionableLifeEvent):
                 continue
             if character.has_component(Demon):
                 continue
-            if get_life_stage(character) >= Child:
+            if character.get_component(LifeStage).life_stage >= LifeStageType.Child:
                 matches.append(character)
 
         if matches:
@@ -1249,7 +1247,7 @@ class RemoveDeceasedDemons(ISystem):
 
 @system(sim)
 class SpawnFirstDemon(ISystem):
-    sys_group = "early-character-update"
+    sys_group = "early-update"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         date = self.world.get_resource(SimDateTime)
@@ -1280,14 +1278,6 @@ class SpawnFirstDemon(ISystem):
             add_character_to_settlement(new_demon, settlement)
 
         self.world.remove_system(type(self))
-
-
-@system(sim)
-class CreateTown(ISystem):
-    sys_group = "initialization"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        spawn_settlement(self.world)
 
 
 ########################################

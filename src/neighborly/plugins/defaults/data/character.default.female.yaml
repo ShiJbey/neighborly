@@ -4,4 +4,6 @@ components:
   GameCharacter:
     first_name: "#character::default::first_name::feminine#"
     last_name: "#character::default::last_name#"
-  CanGetPregnant: { }
+  CanGetPregnant: {}
+  Gender:
+    gender: Female

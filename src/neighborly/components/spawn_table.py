@@ -17,7 +17,7 @@ class CharacterSpawnTable(Component):
         Parameters
         ----------
         entries : Optional[List[Dict[str, Any]]], optional
-            Starting entries in the form [{"name": ..., "spawn_frequency": ...}, ...],
+            Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
         super().__init__()
@@ -33,7 +33,7 @@ class CharacterSpawnTable(Component):
             for entry in entries:
                 self.add(**entry)
 
-    def add(self, name: str, spawn_frequency: int = 1) -> None:
+    def add(self, name: str, frequency: int = 1) -> None:
         """
         Add an entry to the spawn table
 
@@ -41,11 +41,11 @@ class CharacterSpawnTable(Component):
         ----------
         name: str
             The name of a prefab
-        spawn_frequency: int
+        frequency: int
             The relative frequency that this prefab should spawn relative to others
         """
         self._names.append(name)
-        self._frequencies.append(spawn_frequency)
+        self._frequencies.append(frequency)
         self._index_map[name] = self._size
         self._size += 1
 
@@ -123,7 +123,7 @@ class BusinessSpawnTable(Component):
         Parameters
         ----------
         entries : Optional[List[Dict[str, Any]]], optional
-            Starting entries in the form [{"name": ..., "spawn_frequency": ...}, ...],
+            Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
         super().__init__()
@@ -146,7 +146,7 @@ class BusinessSpawnTable(Component):
     def add(
         self,
         name: str,
-        spawn_frequency: int = 1,
+        frequency: int = 1,
         max_instances: int = 9999,
         min_population: int = 0,
         year_available: int = 0,
@@ -159,11 +159,11 @@ class BusinessSpawnTable(Component):
         ----------
         name: str
             The name of a character prefab
-        spawn_frequency: int
+        frequency: int
             The relative frequency that this prefab should spawn relative to others
         """
         self._names.append(name)
-        self._frequencies.append(spawn_frequency)
+        self._frequencies.append(frequency)
         self._max_instances.append(max_instances)
         self._min_population.append(min_population)
         self._year_available.append(year_available)
@@ -269,7 +269,7 @@ class ResidenceSpawnTable(Component):
         Parameters
         ----------
         entries : Optional[List[Dict[str, Any]]], optional
-            Starting entries in the form [{"name": ..., "spawn_frequency": ...}, ...],
+            Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
         super().__init__()
@@ -285,7 +285,7 @@ class ResidenceSpawnTable(Component):
             for entry in entries:
                 self.add(**entry)
 
-    def add(self, name: str, spawn_frequency: int = 1) -> None:
+    def add(self, name: str, frequency: int = 1) -> None:
         """
         Add an entry to the spawn table
 
@@ -293,11 +293,11 @@ class ResidenceSpawnTable(Component):
         ----------
         name: str
             The name of a prefab
-        spawn_frequency: int
+        frequency: int
             The relative frequency that this prefab should spawn relative to others
         """
         self._names.append(name)
-        self._frequencies.append(spawn_frequency)
+        self._frequencies.append(frequency)
         self._index_map[name] = self._size
         self._size += 1
 

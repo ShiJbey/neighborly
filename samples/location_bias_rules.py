@@ -10,7 +10,6 @@ from typing import Any, Dict, Optional
 
 from neighborly import Component, GameObject, Neighborly
 from neighborly.components import Activities, Location
-from neighborly.content_management import ActivityLibrary
 from neighborly.decorators import component, location_bias_rule
 from neighborly.utils.common import (
     calculate_location_probabilities,
@@ -112,10 +111,10 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Recreation"),
-                        sim.world.get_resource(ActivityLibrary).get("Socializing"),
-                    }
+                    [
+                        "Recreation",
+                        "Socializing",
+                    ]
                 ),
             ],
             name="Gym",
@@ -124,9 +123,9 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Reading"),
-                    }
+                    [
+                        "Reading",
+                    ]
                 ),
             ],
             name="Library",
@@ -135,11 +134,11 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Shopping"),
-                        sim.world.get_resource(ActivityLibrary).get("Socializing"),
-                        sim.world.get_resource(ActivityLibrary).get("People Watching"),
-                    }
+                    [
+                        "Shopping",
+                        "Socializing",
+                        "People Watching",
+                    ]
                 ),
             ],
             name="Mall",
@@ -148,10 +147,10 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Drinking"),
-                        sim.world.get_resource(ActivityLibrary).get("Socializing"),
-                    }
+                    [
+                        "Drinking",
+                        "Socializing",
+                    ]
                 ),
             ],
             name="Bar",

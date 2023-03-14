@@ -41,40 +41,8 @@ def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> 
         )
 
 
-def load_character_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """loads a CharacterEntityPrefab from a yaml file"""
-
-    path_obj = pathlib.Path(file_path)
-
-    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
-        raise Exception(
-            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
-        )
-
-    with open(file_path, "r") as f:
-        data: Dict[str, Any] = yaml.safe_load(f)
-
-    GameObjectFactory.add(EntityPrefab.parse_obj(data))
-
-
-def load_business_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """loads a CharacterEntityPrefab from a yaml file"""
-
-    path_obj = pathlib.Path(file_path)
-
-    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
-        raise Exception(
-            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
-        )
-
-    with open(file_path, "r") as f:
-        data: Dict[str, Any] = yaml.safe_load(f)
-
-    GameObjectFactory.add(EntityPrefab.parse_obj(data))
-
-
-def load_residence_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """loads a CharacterEntityPrefab from a yaml file"""
+def load_prefab(file_path: Union[str, pathlib.Path]) -> None:
+    """loads a Prefab from a yaml file"""
 
     path_obj = pathlib.Path(file_path)
 

@@ -501,7 +501,7 @@ class SystemGroup(ISystem, ABC):
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         """Run all sub-systems"""
-        for child in self._sub_systems:
+        for child in [*self._sub_systems]:
             child.process(*args, **kwargs)
 
 

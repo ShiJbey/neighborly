@@ -1,113 +1,12 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, Iterator, List, Optional, Type
+from typing import Dict, Iterator, List, Type
 
-from neighborly.components.activity import Activity
-from neighborly.components.business import OccupationType, Service
+from neighborly.components.business import OccupationType
 from neighborly.core.life_event import ActionableLifeEvent
 from neighborly.core.location_bias import ILocationBiasRule
 from neighborly.core.social_rule import ISocialRule
-
-
-class ActivityLibrary:
-    """
-    Repository of all the various activities that can exist in the simulated world
-
-    Notes
-    -----
-    This classes uses the flyweight design pattern to save memory since many activities
-    are shared between location instances. Also, it makes activity comparisons faster
-    by mapping activity names to integers and comparing those values instead of the
-    name strings.
-    """
-
-    __slots__ = "_activities", "_name_to_id"
-
-    def __init__(self, activities: Optional[List[str]] = None) -> None:
-        self._activities: List[Activity] = []
-        self._name_to_id: Dict[str, int] = {}
-
-        if activities:
-            for activity_name in activities:
-                self.get(activity_name)
-
-    def get(self, activity_name: str) -> Activity:
-        """Get an Activity instance
-
-        Parameters
-        ----------
-        activity_name: str
-            A name of an activity
-
-        Returns
-        -------
-        Activity
-            The activity instance with the given activity name
-        """
-        lc_activity_name = activity_name.lower()
-
-        if lc_activity_name in self._name_to_id:
-            return self._activities[self._name_to_id[lc_activity_name]]
-
-        activity_id = len(self._activities)
-        activity = Activity(activity_id, lc_activity_name)
-        self._activities.append(activity)
-        self._name_to_id[lc_activity_name] = activity_id
-
-        return activity
-
-    def __contains__(self, activity_name: str) -> bool:
-        """Return True if a service type exists with the given name"""
-        return activity_name.lower() in self._name_to_id
-
-    def __iter__(self) -> Iterator[Activity]:
-        """Return iterator for the ActivityLibrary"""
-        return self._activities.__iter__()
-
-    def __repr__(self) -> str:
-        return "{}({})".format(
-            self.__class__.__name__, str([str(a) for a in self._activities])
-        )
-
-
-class ServiceLibrary:
-    """
-    Repository of various services offered by a business
-
-    Attributes
-    ----------
-    _next_id: int
-        The next ID assigned to a new ServiceType instance
-    _services: List[Service]
-        A list of all the possible services a business could have
-    _name_to_id: Dict[str, int]
-        Mapping of service names to indexes into the _services list
-    """
-
-    __slots__ = "_next_id", "_services", "_name_to_id"
-
-    def __init__(self) -> None:
-        self._next_id: int = 0
-        self._services: List[Service] = []
-        self._name_to_id: Dict[str, int] = {}
-
-    def __contains__(self, service_name: str) -> bool:
-        """Return True if a service type exists with the given name"""
-        return service_name.lower() in self._name_to_id
-
-    def get(self, service_name: str) -> Service:
-        lc_service_name = service_name.lower()
-
-        if lc_service_name in self._name_to_id:
-            return self._services[self._name_to_id[lc_service_name]]
-
-        uid = self._next_id
-        self._next_id += 1
-        service_type = Service(uid, lc_service_name)
-        self._services.append(service_type)
-        self._name_to_id[lc_service_name] = uid
-        return service_type
 
 
 class OccupationTypeLibrary:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections import defaultdict
-from typing import Any, ClassVar, DefaultDict, Dict, Iterator, List, Type, TypeVar
+from typing import Any, DefaultDict, Dict, Iterator, List, Type, TypeVar
 
 from neighborly.core.ecs import Component
 from neighborly.core.serializable import ISerializable
@@ -18,7 +18,7 @@ class Event(ABC):
 
     __slots__ = "_timestamp", "_uid"
 
-    _next_event_id: ClassVar[int] = 0
+    _next_event_id: int = 0
 
     def __init__(self, timestamp: SimDateTime) -> None:
         self._uid: int = Event._next_event_id

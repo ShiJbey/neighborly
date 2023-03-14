@@ -1,0 +1,19 @@
+name: "settlement"
+components:
+  Name:
+    value: "#settlement_name#"
+  Settlement:
+    width: 5
+    length: 5
+  CharacterSpawnTable:
+    entries:
+      - name: "character::default::male"
+      - name: "character::default::female"
+      - name: "character::default::non-binary"
+  ResidenceSpawnTable:
+    entries:
+      - name: "residence::default::house"
+  BusinessSpawnTable:
+    entries:
+      - name: "business::default::cafe"
+      - name: "business::default::library"

@@ -11,17 +11,16 @@ from neighborly.components.business import (
     OpenForBusiness,
 )
 from neighborly.components.character import (
-    Adolescent,
     CanGetPregnant,
     Dating,
     Deceased,
     GameCharacter,
+    LifeStage,
+    LifeStageType,
     Married,
     ParentOf,
     Pregnant,
     Retired,
-    Senior,
-    YoungAdult,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.shared import Active, Age, Lifespan
@@ -37,7 +36,6 @@ from neighborly.utils.common import (
     clear_frequented_locations,
     depart_settlement,
     end_job,
-    get_life_stage,
     remove_character_from_settlement,
     set_character_name,
     set_residence,
@@ -86,7 +84,10 @@ class StartDatingLifeEvent(ActionableLifeEvent):
             ]
 
         candidates = [
-            c for c in candidates if is_single(c) and get_life_stage(c) >= Adolescent
+            c
+            for c in candidates
+            if is_single(c)
+            and c.get_component(LifeStage).life_stage >= LifeStageType.Adolescent
         ]
 
         if candidates:
@@ -127,7 +128,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
             if not character.has_component(Active):
                 continue
 
-            if get_life_stage(character) < Adolescent:
+            if character.get_component(LifeStage).life_stage < LifeStageType.Adolescent:
                 continue
 
             if not is_single(character):
@@ -462,7 +463,9 @@ class MarriageLifeEvent(ActionableLifeEvent):
             if not has_status(target, Active):
                 continue
 
-            if get_life_stage(target) < YoungAdult and not is_married(target):
+            if target.get_component(
+                LifeStage
+            ).life_stage < LifeStageType.YoungAdult and not is_married(target):
                 set_character_name(target, last_name=new_last_name)
 
 
@@ -586,7 +589,12 @@ class RetireLifeEvent(ActionableLifeEvent):
     ) -> Optional[ActionableLifeEvent]:
         query = QB.query(
             "Retiree",
-            QB.with_((GameCharacter, Active, Occupation, Senior), "Retiree"),
+            QB.with_((GameCharacter, Active, Occupation, LifeStage), "Retiree"),
+            QB.filter_(
+                lambda gameobject: gameobject.get_component(LifeStage).life_stage
+                == LifeStageType.Senior,
+                "Retiree",
+            ),
             QB.not_(QB.with_(Retired, "Retiree")),
         )
 
@@ -656,11 +664,10 @@ class FindOwnPlaceLifeEvent(ActionableLifeEvent):
     def bind_potential_mover(world: World) -> List[Tuple[Any, ...]]:
         eligible: List[Tuple[Any, ...]] = []
 
-        for gid, (_, _, resident, _) in world.get_components(
-            (GameCharacter, Occupation, Resident, Active)
+        for gid, (_, _, resident, _, life_stage) in world.get_components(
+            (GameCharacter, Occupation, Resident, Active, LifeStage)
         ):
-            character = world.get_gameobject(gid)
-            if get_life_stage(character) < YoungAdult:
+            if life_stage.life_stage < LifeStageType.YoungAdult:
                 continue
 
             residence = world.get_gameobject(resident.residence).get_component(

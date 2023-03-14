@@ -10,12 +10,7 @@ from neighborly.core.time import SimDateTime
 
 
 class LifeEvent(Event, ABC):
-    """
-    User-facing class for implementing behaviors around life events
-
-    This is adapted from:
-    https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
-    """
+    """An event of significant importance in a GameObject's life"""
 
     __slots__ = "_roles"
 
@@ -29,7 +24,7 @@ class LifeEvent(Event, ABC):
         ----------
         timestamp: SimDateTime
             Timestamp for when this event
-        roles: Dict[str, GameObject
+        roles: Iterable[Role]
             The names of roles mapped to GameObjects
         """
         super().__init__(timestamp)

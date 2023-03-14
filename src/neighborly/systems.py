@@ -13,19 +13,16 @@ from neighborly.components.business import (
     Unemployed,
 )
 from neighborly.components.character import (
-    Adolescent,
-    Adult,
     CanAge,
     ChildOf,
-    Dating,
     Departed,
     GameCharacter,
+    LifeStage,
+    LifeStageType,
     Married,
     ParentOf,
     Pregnant,
-    Senior,
     SiblingOf,
-    YoungAdult,
 )
 from neighborly.components.residence import Resident
 from neighborly.components.shared import (
@@ -57,7 +54,6 @@ from neighborly.utils.common import (
     add_character_to_settlement,
     check_share_residence,
     get_child_prefab,
-    get_life_stage,
     set_character_age,
     set_frequented_locations,
     set_residence,
@@ -104,10 +100,6 @@ class LateUpdateSystemGroup(SystemGroup):
     group_name = "late-update"
 
 
-class CoreSystemsSystemGroup(SystemGroup):
-    group_name = "core"
-
-
 class RelationshipUpdateSystemGroup(SystemGroup):
     group_name = "relationship-update"
     sys_group = "early-update"
@@ -137,6 +129,7 @@ class DataCollectionSystemGroup(SystemGroup):
 class CleanUpSystemGroup(SystemGroup):
     """Group of systems that clean-up residual data before the next step"""
 
+    sys_group = "late-update"
     group_name = "clean-up"
     priority = -99999
 
@@ -191,8 +184,8 @@ class TimeSystem(ISystem):
     # The time system should be the last system to run every step. There's always the
     # possibility that a system may need to record the current date. So, we don't want
     # the date changing before all other systems have run.
-    sys_group = "root"
-    priority = -99999
+    sys_group = "late-update"
+    priority = -999999
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         # Get time increment from the simulation configuration
@@ -334,19 +327,7 @@ class StartBusinessSystem(System):
         for g, _ in self.world.get_components((InTheWorkforce, Active, Unemployed)):
             character = self.world.get_gameobject(g)
             goal = StartBusinessGoal(character)
-            character.get_component(AIComponent).push_goal(1, goal)
-
-
-class OccupationUpdateSystem(System):
-    sys_group = "status-update"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, occupation in self.world.get_component(Occupation):
-            # Increment the amount of time that a character has held this occupation
-            occupation.set_years_held(
-                occupation.years_held
-                + (float(self.elapsed_time.total_days) / DAYS_PER_YEAR)
-            )
+            character.get_component(AIComponent).push_goal(0.2, goal)
 
 
 class CharacterAgingSystem(System):
@@ -368,36 +349,36 @@ class CharacterAgingSystem(System):
 
         age_increment = float(self.elapsed_time.total_days) / DAYS_PER_YEAR
 
-        for guid, (_, age, _, _) in self.world.get_components(
-            (GameCharacter, Age, CanAge, Active)
+        for guid, (_, life_stage, age, _, _) in self.world.get_components(
+            (GameCharacter, LifeStage, Age, CanAge, Active)
         ):
             character = self.world.get_gameobject(guid)
 
-            life_stage_value_before = get_life_stage(character).value()
+            life_stage_value_before = int(life_stage)
             set_character_age(character, age.value + age_increment)
-            life_stage_after = get_life_stage(character)
+            life_stage_after = int(life_stage)
 
-            life_stage_changed = life_stage_value_before != life_stage_after.value()
+            life_stage_changed = life_stage_value_before != life_stage_after
 
             if life_stage_changed is False:
                 continue
 
-            if life_stage_after == Adolescent:
+            if life_stage_after == LifeStageType.Adolescent:
                 event_log.append(
                     neighborly.events.BecomeAdolescentEvent(current_date, character)
                 )
 
-            elif life_stage_after == YoungAdult:
+            elif life_stage_after == LifeStageType.YoungAdult:
                 event_log.append(
                     neighborly.events.BecomeYoungAdultEvent(current_date, character)
                 )
 
-            elif life_stage_after == Adult:
+            elif life_stage_after == LifeStageType.Adult:
                 event_log.append(
                     neighborly.events.BecomeAdultEvent(current_date, character)
                 )
 
-            elif life_stage_after == Senior:
+            elif life_stage_after == LifeStageType.Senior:
                 event_log.append(
                     neighborly.events.BecomeSeniorEvent(current_date, character)
                 )
@@ -418,7 +399,7 @@ class LifeEventBufferSystem(ISystem):
         life_event_buffer.clear()
 
 
-class EventSystem(ISystem):
+class ProcessEventBufferSystem(ISystem):
     sys_group = "clean-up"
     priority = -9999
 
@@ -443,8 +424,34 @@ class UnemployedStatusSystem(System):
             )
 
             if years_unemployed < self.years_to_find_a_job:
-                goal = FindEmploymentGoal(character)
-                character.get_component(AIComponent).push_goal(1, goal)
+                # goal = FindEmploymentGoal(character)
+
+                priority_from_time = years_unemployed / self.years_to_find_a_job
+                priority_from_spouse = (
+                    0.7
+                    if len(get_relationships_with_statuses(character, Married)) > 0
+                    else 0.4
+                )
+                priority_from_children = min(
+                    0,
+                    float(len(get_relationships_with_statuses(character, ParentOf)))
+                    / 5.0,
+                )
+                priority_from_life_stage = (
+                    0.8
+                    if character.get_component(LifeStage).life_stage
+                    == LifeStageType.Adult
+                    else 0.6
+                )
+
+                priority = (
+                    priority_from_time
+                    + priority_from_spouse
+                    + priority_from_life_stage
+                    + priority_from_children
+                ) / 4.0
+
+                # character.get_component(AIComponent).push_goal(priority, goal)
                 continue
 
             else:
@@ -595,28 +602,12 @@ class PregnantStatusSystem(System):
             )
 
 
-class MarriedStatusSystem(System):
-    sys_group = "status-update"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, married in self.world.get_component(Married):
-            married.years += self.elapsed_time.total_days / DAYS_PER_YEAR
-
-
-class DatingStatusSystem(System):
-    sys_group = "status-update"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, dating in self.world.get_component(Dating):
-            dating.years += self.elapsed_time.total_days / DAYS_PER_YEAR
-
-
-class RelationshipUpdateSystem(System):
+class RelationshipUpdateSystem(ISystem):
     """Increases the elapsed time for all statuses by one month"""
 
     sys_group = "relationship-update"
 
-    def run(self, *args: Any, **kwargs: Any):
+    def process(self, *args: Any, **kwargs: Any):
         for rel_id, relationship in self.world.get_component(Relationship):
             rel_entity = self.world.get_gameobject(rel_id)
 
@@ -634,32 +625,38 @@ class RelationshipUpdateSystem(System):
                     comp.set_modifier(modifier_acc[type(comp)])
 
 
-class FriendshipStatSystem(System):
+class FriendshipStatSystem(ISystem):
     sys_group = "relationship-update"
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        k = self.world.get_resource(NeighborlyConfig).settings.get(
+            "relationship_growth_constant", 2
+        )
         for _, (friendship, interaction_score) in self.world.get_components(
             (Friendship, InteractionScore)
         ):
             friendship.increment(
                 round(
                     max(0, interaction_score.get_value())
-                    * lerp(-3, 3, friendship.get_normalized_value())
+                    * lerp(-k, k, friendship.get_normalized_value())
                 )
             )
 
 
-class RomanceStatSystem(System):
+class RomanceStatSystem(ISystem):
     sys_group = "relationship-update"
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        k = self.world.get_resource(NeighborlyConfig).settings.get(
+            "relationship_growth_constant", 2
+        )
         for _, (romance, interaction_score) in self.world.get_components(
             (Romance, InteractionScore)
         ):
             romance.increment(
                 round(
                     max(0, interaction_score.get_value())
-                    * lerp(-3, 3, romance.get_normalized_value())
+                    * lerp(-k, k, romance.get_normalized_value())
                 )
             )
 
@@ -676,7 +673,8 @@ class OnJoinSettlementSystem(ISystem):
             # Add young-adult or older characters to the workforce
             if (
                 has_status(event.character, Active)
-                and get_life_stage(event.character) >= YoungAdult
+                and event.character.get_component(LifeStage).life_stage
+                >= LifeStageType.YoungAdult
             ):
                 add_status(event.character, InTheWorkforce())
                 if not event.character.has_component(Occupation):
@@ -798,3 +796,14 @@ class AIActionSystem(System):
     def run(self, *args: Any, **kwargs: Any) -> None:
         for _, (ai_component, _) in self.world.get_components((AIComponent, Active)):
             ai_component.take_action()
+
+
+class ClearGoalsSystem(System):
+    """Clears out all the goals from the last time step"""
+
+    sys_group = "early-update"
+    priority = 999
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for _, (ai_component, _) in self.world.get_components((AIComponent, Active)):
+            ai_component.clear_goals()

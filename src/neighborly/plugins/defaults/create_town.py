@@ -15,7 +15,7 @@ class CreateTown(ISystem):
     sys_group = "initialization"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        spawn_settlement(self.world)
+        spawn_settlement(self.world, "settlement")
 
 
 def setup(sim: Neighborly, **kwargs: Any):

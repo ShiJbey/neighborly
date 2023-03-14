@@ -14,6 +14,7 @@ from neighborly.core.ecs import Component, GameObject
 from neighborly.core.ecs.query import QueryClause, QueryContext, Relation, WithClause
 from neighborly.core.relationship import Relationship, RelationshipManager
 from neighborly.core.status import StatusComponent
+from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 
 
 def with_components(
@@ -68,6 +69,8 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
     def fn(gameobject: GameObject) -> bool:
         total_experience: float = 0
 
+        current_date = gameobject.world.get_resource(SimDateTime)
+
         work_history = gameobject.try_component(WorkHistory)
 
         if work_history is None:
@@ -80,7 +83,10 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
         if gameobject.has_component(Occupation):
             occupation = gameobject.get_component(Occupation)
             if occupation.occupation_type == occupation_type:
-                total_experience += occupation.years_held
+                total_experience += (
+                    float((current_date - occupation.start_date).total_days)
+                    / DAYS_PER_YEAR
+                )
 
         return total_experience >= years_experience
 
@@ -101,6 +107,8 @@ def has_any_work_experience(years_experience: int = 0):
     def fn(gameobject: GameObject) -> bool:
         total_experience: float = 0
 
+        current_date = gameobject.world.get_resource(SimDateTime)
+
         work_history = gameobject.try_component(WorkHistory)
 
         if work_history is None:
@@ -114,7 +122,9 @@ def has_any_work_experience(years_experience: int = 0):
 
         if gameobject.has_component(Occupation):
             occupation = gameobject.get_component(Occupation)
-            total_experience += occupation.years_held
+            total_experience += (
+                float((current_date - occupation.start_date).total_days) / DAYS_PER_YEAR
+            )
 
         return total_experience >= years_experience
 
@@ -141,9 +151,11 @@ def is_married(gameobject: GameObject) -> bool:
     return True
 
 
-def _get_family_members(character: GameObject) -> Set[GameObject]:
+def _get_family_members(
+    character: GameObject, degree_of_sep: int = 2
+) -> Set[GameObject]:
     world = character.world
-    degree_of_sep: int = 0
+
     family_status_types = (ChildOf, ParentOf, SiblingOf)
 
     # Get all familial ties n-degrees of separation from each character
@@ -162,7 +174,7 @@ def _get_family_members(character: GameObject) -> Set[GameObject]:
 
         for relationship_id in character.get_component(
             RelationshipManager
-        ).relationships:
+        ).relationships.values():
             relationship = world.get_gameobject(relationship_id)
             if any([relationship.has_component(st) for st in family_status_types]):
                 family_member = world.get_gameobject(
@@ -176,5 +188,12 @@ def _get_family_members(character: GameObject) -> Set[GameObject]:
     return family_members
 
 
-def are_related(a: GameObject, b: GameObject) -> bool:
-    return len(_get_family_members(a).intersection(_get_family_members(b))) > 0
+def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
+    return (
+        len(
+            _get_family_members(a, degree_of_sep).intersection(
+                _get_family_members(b, degree_of_sep)
+            )
+        )
+        > 0
+    )

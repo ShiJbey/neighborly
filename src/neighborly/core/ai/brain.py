@@ -156,11 +156,16 @@ class WeightedGoalStackList:
 
     def __init__(self, rng: random.Random) -> None:
         self._goals: List[GoalStack] = []
-        self._weights: List[int] = []
+        self._weights: List[float] = []
         self._size: int = 0
         self._rng: random.Random = rng
 
-    def append(self, weight: int, stack: GoalStack) -> None:
+    def clear(self) -> None:
+        self._goals.clear()
+        self._weights.clear()
+        self._size = 0
+
+    def append(self, weight: float, stack: GoalStack) -> None:
         """
         Add an action to the list
 
@@ -228,7 +233,7 @@ class AIComponent(Component):
         if chosen_goal_stack:
             chosen_goal_stack.take_action()
 
-    def push_goal(self, priority: int, goal: Goal) -> None:
+    def push_goal(self, priority: float, goal: Goal) -> None:
         """Add a goal to the AI"""
         # We assume that if someone is pushing a goal directly to the AIComponent, then
         # this is an independent stack of goals
@@ -236,3 +241,6 @@ class AIComponent(Component):
 
     def to_dict(self) -> Dict[str, Any]:
         return {}
+
+    def clear_goals(self) -> None:
+        self._goals.clear()

@@ -33,8 +33,9 @@ from neighborly.core.social_rule import ISocialRule
 from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.core.tracery import Tracery
-from neighborly.core.traits import TraitManager
 from neighborly.data_collection import DataCollector
+from neighborly.factories.settlement import SettlementFactory
+from neighborly.factories.shared import NameFactory
 
 
 class PluginSetupError(Exception):
@@ -95,14 +96,12 @@ class Neighborly:
         self.world.add_resource(random.Random(self.config.seed))
         self.world.add_resource(Tracery())
         self.world.add_resource(libraries.SocialRuleLibrary())
-        self.world.add_resource(libraries.ActivityLibrary())
         self.world.add_resource(self.config.start_date.copy())
         self.world.add_resource(EventBuffer())
         self.world.add_resource(LifeEventBuffer())
         self.world.add_resource(AllEvents())
         self.world.add_resource(libraries.OccupationTypeLibrary())
         self.world.add_resource(libraries.LifeEventLibrary())
-        self.world.add_resource(libraries.ServiceLibrary())
         self.world.add_resource(DataCollector())
         self.world.add_resource(libraries.LocationBiasRuleLibrary())
 
@@ -119,11 +118,11 @@ class Neighborly:
         self.world.add_system(systems.RelationshipUpdateSystemGroup())
 
         # Add default late-update subgroups (in execution order)
-        self.world.add_system(systems.CoreSystemsSystemGroup())
         self.world.add_system(systems.EventListenersSystemGroup())
         self.world.add_system(systems.CleanUpSystemGroup())
 
         # Add early-update systems (in execution order)
+        self.world.add_system(systems.ClearGoalsSystem())
         self.world.add_system(systems.MeetNewPeopleSystem())
         self.world.add_system(systems.LifeEventSystem())
         self.world.add_system(systems.UpdateFrequentedLocationSystem())
@@ -144,18 +143,15 @@ class Neighborly:
         self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
 
         # Add status-update systems (in execution order)
-        self.world.add_system(systems.DatingStatusSystem())
-        self.world.add_system(systems.MarriedStatusSystem())
         self.world.add_system(systems.PregnantStatusSystem())
         self.world.add_system(systems.UnemployedStatusSystem())
-        self.world.add_system(systems.OccupationUpdateSystem())
 
         # Add goal-suggestion systems (in execution order)
         self.world.add_system(systems.FindEmployeesSystem())
         self.world.add_system(systems.StartBusinessSystem())
 
         # Add clean-up systems (in execution order)
-        self.world.add_system(systems.EventSystem())
+        self.world.add_system(systems.ProcessEventBufferSystem())
         if self.config.verbose:
             # Configure printing every event to the console
             self.world.add_system(systems.PrintEventBufferSystem())
@@ -176,23 +172,16 @@ class Neighborly:
         self.world.register_component(relationship.Friendship)
         self.world.register_component(relationship.Romance)
         self.world.register_component(relationship.InteractionScore)
-        self.world.register_component(TraitManager)
-        self.world.register_component(
-            components.Location, factory=factories.LocationFactory()
-        )
+        self.world.register_component(components.Location)
         self.world.register_component(components.FrequentedBy)
         self.world.register_component(components.CurrentSettlement)
         self.world.register_component(
             components.Virtues, factory=factories.VirtuesFactory()
         )
-        self.world.register_component(
-            components.Activities, factory=factories.ActivitiesFactory()
-        )
+        self.world.register_component(components.Activities)
         self.world.register_component(components.Occupation)
         self.world.register_component(components.WorkHistory)
-        self.world.register_component(
-            components.Services, factory=factories.ServicesFactory()
-        )
+        self.world.register_component(components.Services)
         self.world.register_component(components.ClosedForBusiness)
         self.world.register_component(components.OpenForBusiness)
         self.world.register_component(
@@ -211,19 +200,21 @@ class Neighborly:
         self.world.register_component(components.Building)
         self.world.register_component(components.Position2D)
         self.world.register_component(StatusManager)
-        self.world.register_component(
-            components.FrequentedLocations,
-            factory=factories.FrequentedLocationsFactory(),
-        )
-        self.world.register_component(Settlement)
+        self.world.register_component(components.FrequentedLocations)
+        self.world.register_component(Settlement, factory=SettlementFactory())
         self.world.register_component(EventHistory)
         self.world.register_component(components.MarriageConfig)
         self.world.register_component(components.AgingConfig)
         self.world.register_component(components.ReproductionConfig)
-        self.world.register_component(components.Name)
+        self.world.register_component(components.Name, factory=NameFactory())
         self.world.register_component(components.OperatingHours)
         self.world.register_component(components.Lifespan)
         self.world.register_component(components.Age)
+        self.world.register_component(components.CharacterSpawnTable)
+        self.world.register_component(components.BusinessSpawnTable)
+        self.world.register_component(components.ResidenceSpawnTable)
+        self.world.register_component(components.Gender)
+        self.world.register_component(components.LifeStage)
 
         # Load plugins from the config
         for entry in self.config.plugins:

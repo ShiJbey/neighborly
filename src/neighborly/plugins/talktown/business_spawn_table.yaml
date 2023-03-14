@@ -14,7 +14,7 @@
   min_population: 70
 
 - name: Cemetery
-  max_instance: 1
+  max_instances: 1
 
 - name: CityHall
   max_instances: 1

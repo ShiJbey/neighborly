@@ -1,10 +1,10 @@
 import json
 import math
 import random
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import neighborly.events
-from neighborly.components.activity import Activities, Activity
+from neighborly.components.activity import Activities
 from neighborly.components.business import (
     BossOf,
     Business,
@@ -20,22 +20,16 @@ from neighborly.components.business import (
     WorkHistory,
 )
 from neighborly.components.character import (
-    Adolescent,
-    Adult,
     AgingConfig,
-    Child,
     Departed,
-    Female,
     GameCharacter,
     Gender,
+    GenderType,
     LifeStage,
-    Male,
+    LifeStageType,
     Married,
-    NonBinary,
     ParentOf,
     ReproductionConfig,
-    Senior,
-    YoungAdult,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.routine import RoutineEntry, RoutinePriority
@@ -53,28 +47,13 @@ from neighborly.components.shared import (
     Position2D,
     PrefabName,
 )
-from neighborly.components.spawn_table import (
-    BusinessSpawnTable,
-    CharacterSpawnTable,
-    ResidenceSpawnTable,
-)
-from neighborly.content_management import (
-    ActivityLibrary,
-    LocationBiasRuleLibrary,
-    ServiceLibrary,
-)
-from neighborly.core.ecs import (
-    ComponentNotFoundError,
-    GameObject,
-    GameObjectFactory,
-    World,
-)
+from neighborly.content_management import LocationBiasRuleLibrary
+from neighborly.core.ecs import GameObject, GameObjectFactory, World
 from neighborly.core.event import EventBuffer
 from neighborly.core.life_event import LifeEventBuffer
 from neighborly.core.relationship import InteractionScore
-from neighborly.core.settlement import GridSettlementMap, Settlement
-from neighborly.core.time import SimDateTime, Weekday
-from neighborly.core.tracery import Tracery
+from neighborly.core.settlement import Settlement
+from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, Weekday
 from neighborly.utils.relationships import (
     add_relationship_status,
     get_relationship,
@@ -129,9 +108,7 @@ def set_location(
 
 
 def spawn_settlement(
-    world: World,
-    settlement_name: str = "#settlement_name#",
-    settlement_size: Tuple[int, int] = (5, 5),
+    world: World, prefab: str = "settlement", name: str = ""
 ) -> GameObject:
     """Create a new grid-based Settlement GameObject and add it to the world
 
@@ -139,34 +116,22 @@ def spawn_settlement(
     ----------
     world: World
         The world instance to add the settlement to
-    settlement_name: str
-        A tracery grammar that expands to the name of the settlement
-        (defaults to "#settlement_name#")
-    settlement_size: Tuple[int, int], optional
-        The X, Y dimensions of the map of the town (defaults to (5, 5))
+    prefab: str, optional
+        The name of the prefab with settlement data
+    name: str, optional
+        Override name for the town
 
     Returns
     -------
     GameObject
         The newly created Settlement GameObject
     """
-    generated_name = world.get_resource(Tracery).generate(settlement_name)
+    settlement = GameObjectFactory.instantiate(world, prefab)
 
-    settlement = world.spawn_gameobject(
-        [
-            Settlement(generated_name, GridSettlementMap(settlement_size)),
-            CharacterSpawnTable(
-                [
-                    {"name": "character::default::male"},
-                    {"name": "character::default::female"},
-                    {"name": "character::default::non-binary"},
-                ]
-            ),
-            ResidenceSpawnTable([{"name": "residence::default::house"}]),
-            BusinessSpawnTable([{"name": "Restaurant"}]),
-        ],
-        name=generated_name,
-    )
+    if name:
+        settlement.get_component(Name).value = name
+
+    settlement.name = settlement.get_component(Name).value
 
     world.get_resource(EventBuffer).append(
         neighborly.events.NewSettlementEvent(
@@ -232,8 +197,8 @@ def spawn_character(
     first_name: Optional[str] = None,
     last_name: Optional[str] = None,
     age: Optional[int] = None,
-    life_stage: Optional[Type[LifeStage]] = None,
-    gender: Optional[Gender] = None,
+    life_stage: Optional[LifeStageType] = None,
+    gender: Optional[GenderType] = None,
 ) -> GameObject:
     """Create a new GameCharacter GameObject and add it to the world
 
@@ -267,7 +232,7 @@ def spawn_character(
         _generate_age_from_life_stage(
             world.get_resource(random.Random),
             character.get_component(AgingConfig),
-            life_stage if life_stage else YoungAdult,
+            LifeStageType.YoungAdult,
         ),
     )
 
@@ -281,7 +246,7 @@ def spawn_character(
         set_character_age(character, age)
 
     if gender:
-        set_character_gender(character, gender)
+        character.get_component(Gender).gender = gender
 
     character.name = (
         f"{character.get_component(GameCharacter).full_name}({character.uid})"
@@ -584,37 +549,28 @@ def depart_settlement(world: World, character: GameObject, reason: str = "") -> 
 
 
 def _generate_age_from_life_stage(
-    rng: random.Random, aging_config: AgingConfig, life_stage_type: Type[LifeStage]
+    rng: random.Random, aging_config: AgingConfig, life_stage_type: LifeStageType
 ) -> int:
     """Return an age for the character given their life_stage"""
-    if life_stage_type == Child:
+    if life_stage_type == LifeStageType.Child:
         return rng.randint(0, aging_config.adolescent_age - 1)
-    elif life_stage_type == Adolescent:
+    elif life_stage_type == LifeStageType.Adolescent:
         return rng.randint(
             aging_config.adolescent_age,
             aging_config.young_adult_age - 1,
         )
-    elif life_stage_type == YoungAdult:
+    elif life_stage_type == LifeStageType.YoungAdult:
         return rng.randint(
             aging_config.young_adult_age,
             aging_config.adult_age - 1,
         )
-    elif life_stage_type == Adult:
+    elif life_stage_type == LifeStageType.Adult:
         return rng.randint(
             aging_config.adult_age,
             aging_config.senior_age - 1,
         )
     else:
         return aging_config.senior_age + int(10 * rng.random())
-
-
-def set_character_gender(character: GameObject, gender: Gender) -> None:
-    # Remove any gender components
-    for component_type in (Male, Female, NonBinary):
-        if character.has_component(component_type):
-            character.remove_component(component_type)
-
-    character.add_component(gender)
 
 
 def set_character_age(character: GameObject, new_age: float) -> None:
@@ -629,29 +585,26 @@ def set_character_age(character: GameObject, new_age: float) -> None:
 
     aging_config = character.get_component(AgingConfig)
 
-    # Remove any life stage components
-    for status_type in (Child, Adolescent, YoungAdult, Adult, Senior):
-        if has_status(character, status_type):
-            remove_status(character, status_type)
+    life_stage = character.get_component(LifeStage)
 
     if age.value >= aging_config.senior_age:
-        add_status(character, Senior())
+        life_stage.life_stage = LifeStageType.Senior
 
     elif age.value >= aging_config.adult_age:
-        add_status(character, Adult())
+        life_stage.life_stage = LifeStageType.Adult
 
     elif age.value >= aging_config.young_adult_age:
-        add_status(character, YoungAdult())
+        life_stage.life_stage = LifeStageType.YoungAdult
 
     elif age.value >= aging_config.adolescent_age:
-        add_status(character, Adolescent())
+        life_stage.life_stage = LifeStageType.Adolescent
 
     else:
-        add_status(character, Child())
+        life_stage.life_stage = LifeStageType.Child
 
 
 def set_character_life_stage(
-    character: GameObject, life_stage_type: Type[LifeStage]
+    character: GameObject, life_stage_type: LifeStageType
 ) -> None:
     """Sets the name of a business"""
     age = character.get_component(Age)
@@ -663,32 +616,22 @@ def set_character_life_stage(
 
     aging_config = character.get_component(AgingConfig)
 
-    # Remove any life stage components
-    for status_type in (Child, Adolescent, YoungAdult, Adult, Senior):
-        if has_status(character, status_type):
-            remove_status(character, status_type)
+    character.get_component(LifeStage).life_stage = life_stage_type
 
-    if life_stage_type == Senior:
+    if life_stage_type == LifeStageType.Senior:
         age.value = aging_config.senior_age
-        add_status(character, Senior())
 
-    elif life_stage_type == Adult:
+    elif life_stage_type == LifeStageType.Adult:
         age.value = aging_config.adult_age
-        add_status(character, Adult())
 
-    elif life_stage_type == YoungAdult:
+    elif life_stage_type == LifeStageType.YoungAdult:
         age.value = aging_config.young_adult_age
-        add_status(character, YoungAdult())
 
-    elif life_stage_type == Adolescent:
+    elif life_stage_type == LifeStageType.Adolescent:
         age.value = aging_config.adolescent_age
-        add_status(character, Adolescent())
 
-    elif life_stage_type == Child:
+    elif life_stage_type == LifeStageType.Child:
         age.value = 0
-        add_status(character, Child())
-
-    add_status(character, life_stage_type())
 
 
 def set_character_name(
@@ -704,14 +647,6 @@ def set_character_name(
         game_character.last_name = last_name
 
     character.name = f"{game_character.full_name}({character.uid})"
-
-
-def get_life_stage(character: GameObject) -> LifeStage:
-    """Return the LifeStage of the character if present"""
-    for component in character.get_components():
-        if isinstance(component, LifeStage):
-            return component
-    raise ComponentNotFoundError(LifeStage)
 
 
 #######################################
@@ -932,10 +867,13 @@ def end_job(
     if not character.has_component(WorkHistory):
         character.add_component(WorkHistory())
 
+    current_date = character.world.get_resource(SimDateTime)
+
     character.get_component(WorkHistory).add_entry(
         occupation_type=occupation.occupation_type,
         business=business.uid,
-        years_held=occupation.years_held,
+        years_held=float((current_date - occupation.start_date).total_days)
+        / DAYS_PER_YEAR,
         reason_for_leaving=reason,
     )
 
@@ -979,7 +917,9 @@ def start_job(
     """
     world = character.world
     business_comp = business.get_component(Business)
-    occupation = Occupation(occupation_name, business.uid)
+    occupation = Occupation(
+        occupation_name, business.uid, world.get_resource(SimDateTime)
+    )
 
     if character.has_component(Occupation):
         # Character must quit the old job before taking a new one
@@ -1069,11 +1009,8 @@ def get_places_with_services(world: World, *services: str) -> List[int]:
     The IDs of the matching entities
     """
     matches: List[int] = []
-    service_library = world.get_resource(ServiceLibrary)
     for gid, services_component in world.get_component(Services):
-        if all(
-            [services_component.has_service(service_library.get(s)) for s in services]
-        ):
+        if all([s in services_component for s in services]):
             matches.append(gid)
     return matches
 
@@ -1120,19 +1057,16 @@ def get_places_with_activities(
     List[int]
          Returns the identifiers of locations
     """
-    activity_library = world.get_resource(ActivityLibrary)
 
     matches: List[int] = []
 
     settlement_comp = settlement.get_component(Settlement)
 
-    activity_instances = [activity_library.get(a) for a in activities]
-
     for location_id in settlement_comp.locations:
         location_activities = world.get_gameobject(location_id).get_component(
             Activities
         )
-        if all([a in location_activities for a in activity_instances]):
+        if all([a in location_activities for a in activities]):
             matches.append(location_id)
 
     return matches
@@ -1158,13 +1092,10 @@ def get_places_with_any_activities(
     List[int]
          Returns the identifiers of locations
     """
-    activity_library = world.get_resource(ActivityLibrary)
 
-    activity_instances = [activity_library.get(a) for a in activities]
-
-    def score_loc(act_list: Iterable[Activity]) -> int:
+    def score_loc(act_list: Iterable[str]) -> int:
         location_score: int = 0
-        for activity in activity_instances:
+        for activity in activities:
             if activity in act_list:
                 location_score += 1
         return location_score
@@ -1196,9 +1127,8 @@ def location_has_activities(location: GameObject, *activities: str) -> bool:
     bool
         Return True if the activities are offered by the location
     """
-    activity_library = location.world.get_resource(ActivityLibrary)
     activities_comp = location.get_component(Activities)
-    return all([activity_library.get(a) in activities_comp for a in activities])
+    return all([a in activities_comp for a in activities])
 
 
 def _score_location(character: GameObject, location: GameObject) -> int:

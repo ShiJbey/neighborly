@@ -1,12 +1,6 @@
 from typing import Any, List
 
-from neighborly.components.character import (
-    Adolescent,
-    Adult,
-    Child,
-    GameCharacter,
-    YoungAdult,
-)
+from neighborly.components.character import GameCharacter, LifeStage, LifeStageType
 from neighborly.components.shared import Active
 from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.ecs.ecs import World
@@ -45,21 +39,21 @@ class GraduatedFromSchoolEvent(LifeEvent):
 class SchoolSystem(ISystem):
     """Enrolls new students and graduates old students"""
 
+    sys_group = "update"
+
     @staticmethod
     def get_unenrolled_students(world: World) -> List[GameObject]:
         candidates = [
             world.get_gameobject(res[0])
-            for res in world.get_components((GameCharacter, Active, Child))
+            for res in world.get_components((GameCharacter, Active, LifeStage))
         ]
 
-        candidates.extend(
-            [
-                world.get_gameobject(res[0])
-                for res in world.get_components((GameCharacter, Active, Adolescent))
-            ]
-        )
-
-        candidates = [c for c in candidates if not c.has_component(Student)]
+        candidates = [
+            c
+            for c in candidates
+            if c.get_component(LifeStage).life_stage <= LifeStageType.Adolescent
+            and not c.has_component(Student)
+        ]
 
         return candidates
 
@@ -67,15 +61,14 @@ class SchoolSystem(ISystem):
     def get_adult_students(world: World) -> List[GameObject]:
         candidates = [
             world.get_gameobject(res[0])
-            for res in world.get_components((GameCharacter, Active, Student, Adult))
+            for res in world.get_components((GameCharacter, Active, Student, LifeStage))
         ]
 
-        candidates.extend(
-            [
-                world.get_gameobject(res[0])
-                for res in world.get_components((GameCharacter, Active, YoungAdult))
-            ]
-        )
+        candidates = [
+            c
+            for c in candidates
+            if c.get_component(LifeStage).life_stage >= LifeStageType.YoungAdult
+        ]
 
         return candidates
 

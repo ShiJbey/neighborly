@@ -211,7 +211,6 @@ class RelationshipModifier:
 class Relationship(Component):
     __slots__ = (
         "_modifiers",
-        "_is_dirty",
         "_target",
         "_owner",
     )
@@ -221,7 +220,6 @@ class Relationship(Component):
         self._owner: int = owner
         self._target: int = target
         self._modifiers: List[RelationshipModifier] = []
-        self._is_dirty = False
 
     @property
     def owner(self) -> int:

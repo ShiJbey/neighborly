@@ -60,6 +60,12 @@ class Residence(Component):
         """Return True if the given entity is a resident"""
         return character in self.residents
 
+    def __repr__(self) -> str:
+        return f"Residence({self.to_dict()})"
+
+    def __str__(self) -> str:
+        return f"Residence({self.to_dict()})"
+
 
 class Resident(StatusComponent):
     """
@@ -79,6 +85,12 @@ class Resident(StatusComponent):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"residence": self.residence}
+
+    def __repr__(self) -> str:
+        return f"Resident({self.to_dict()})"
+
+    def __str__(self) -> str:
+        return f"Resident({self.to_dict()})"
 
 
 class Vacant(StatusComponent):

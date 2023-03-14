@@ -2,7 +2,12 @@ import random
 from typing import Any, Dict, List, Optional
 
 from neighborly.components import CurrentSettlement
-from neighborly.components.business import BusinessOwner, Occupation
+from neighborly.components.business import (
+    Business,
+    BusinessOwner,
+    Occupation,
+    OpenForBusiness,
+)
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.content_management import OccupationTypeLibrary
 from neighborly.core.ai import Action, Goal
@@ -31,11 +36,36 @@ class FindEmploymentGoal(Goal):
         return self.character.has_component(Occupation)
 
     def take_action(self, goal_stack: GoalStack) -> None:
-        # print("Finding Employment")
-        pass
+        GetJobAction(self.character)
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.__class__.__name__, "character": self.character.uid}
+
+
+class GetJobAction(Action):
+    def __init__(self, owner: GameObject) -> None:
+        super().__init__()
+        self.owner: GameObject = owner
+        self.world = owner.world
+
+    def execute(self) -> bool:
+        occupation_types = self.world.get_resource(OccupationTypeLibrary)
+
+        for guid, (business, _) in self.world.get_components(
+            (Business, OpenForBusiness)
+        ):
+            open_positions = business.get_open_positions()
+
+            for occupation_name in open_positions:
+                occupation_type = occupation_types.get(occupation_name)
+
+                if occupation_type.passes_preconditions(self.owner):
+                    start_job(
+                        self.owner, self.world.get_gameobject(guid), occupation_name
+                    )
+                    return True
+
+        return False
 
 
 class StartBusinessGoal(Goal):
@@ -50,14 +80,14 @@ class StartBusinessGoal(Goal):
         return self.character.has_component(BusinessOwner)
 
     def take_action(self, goal_stack: GoalStack) -> None:
-        # print("Starting business...")
-        pass
+        action = StartBusinessAction(self.character)
+        action.execute()
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.__class__.__name__, "character": self.character.uid}
 
 
-class StartBusiness(Action):
+class StartBusinessAction(Action):
 
     __slots__ = "character"
 

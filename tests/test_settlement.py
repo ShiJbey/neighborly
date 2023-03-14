@@ -1,8 +1,6 @@
 import pytest
 
-from neighborly.core.settlement import Grid, GridSettlementMap, Settlement
-from neighborly.simulation import Neighborly
-from neighborly.utils.common import spawn_settlement
+from neighborly.core.settlement import Grid, GridSettlementMap
 
 
 @pytest.fixture
@@ -30,15 +28,6 @@ def test_set_item(int_grid: Grid[int]):
 def test_set_item_raises_index_error(int_grid: Grid[int]):
     with pytest.raises(IndexError):
         assert int_grid[-1, 0] == 88
-
-
-def test_settlement_to_dict():
-    sim = Neighborly()
-    town = spawn_settlement(sim.world, "Test Town", (5, 5))
-    town.get_component(Settlement).population = 3
-    town_dict = town.get_component(Settlement).to_dict()
-    assert town_dict["name"] == "Test Town"
-    assert town_dict["population"] == 3
 
 
 def test_grid_map_shape():

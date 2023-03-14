@@ -45,6 +45,9 @@ class VirtuesFactory(IComponentFactory):
         elif initialization == "random":
             rng = world.get_resource(random.Random)
 
+            for v in list(Virtue):
+                values_overrides[v.name] = rng.randint(-30, 30)
+
             # Select virtues types
             total_virtues: int = n_likes + n_dislikes
             chosen_virtues = [

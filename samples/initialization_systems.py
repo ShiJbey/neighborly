@@ -7,6 +7,7 @@ the first timestep.
 from typing import Any
 
 from neighborly import ISystem, Neighborly, NeighborlyConfig
+from neighborly.components.shared import Name
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import system
 from neighborly.utils.common import spawn_settlement
@@ -35,8 +36,8 @@ def main():
     for _ in range(10):
         sim.step()
 
-    for guid, settlement in sim.world.get_component(Settlement):
-        print(f"({guid}) {settlement.name}")
+    for guid, (name, _) in sim.world.get_components((Name, Settlement)):
+        print(f"({guid}) {name}")
 
 
 if __name__ == "__main__":

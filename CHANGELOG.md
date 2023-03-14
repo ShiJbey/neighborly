@@ -7,6 +7,31 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
+## [0.10.0]
+
+_This update has breaking changes from version 0.9.x_
+
+- The package has been restructured again to prevent circular dependencies. Component definitions
+  live in a separate `components` sub-package from their factory definitions, or systems.
+- Most functionality is no longer included in the simulation by default. They have been moved to
+  various plugins under `neighborly.plugins.defaults.xxxx`. Please remember to include these in your
+  NeighborlyConfig if needed.
+
+### Added
+
+- Content authoring `neighborly.decorators` for use in single file simulations.
+- `py.typed` stub file to remove PyRight warning about Neighborly missing type stubs
+
+### Updated
+
+- Content loading functions no longer need the world instance passed when loading assets
+
+### Removed
+
+- Prefab-specific libraries (CharacterLibrary, BusinessLibrary, and ResidenceLibrary) and replaced
+  them with the `GameObjectFactory` static class that handles instantiating GameObjects from prefabs
+-
+
 ## [0.9.5]
 
 - The entire package has been restructures as some modules have moved

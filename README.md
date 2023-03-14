@@ -22,8 +22,8 @@
 Neighborly is an extensible, data-driven, agent-based modeling framework
 designed to simulate towns of characters for games. It is intended to be a
 tool for exploring simulationist approaches to character-driven emergent
-narratives. Neighborly's simulation architecture is inspired by Roguelikes
-such as *Caves of Qud* and *Dwarf Fortress*.
+narratives. Neighborly's simulation architecture is inspired by roguelikes
+such as _Caves of Qud_ and _Dwarf Fortress_.
 
 Currently, Neighborly works best as a narrative data generator. It models
 characters’ lives, jobs, routines, relationships, and life
@@ -31,11 +31,11 @@ events. All of these parts are harnessed to produce
 emergent character backstories as they interact with each other, grow, and
 change. You can even specify custom characters, businesses, residences,
 occupations, life events, social rules, and more. Neighborly is meant to
-be customized to the narrative setting of your vision. Check out the
-samples directory to see how we modeled the popular anime, *Demon Slayer*.
+be customized to the narrative setting of your creative vision. Check out the
+samples directory to see how we modeled the popular anime, _Demon Slayer_.
 
 Neighborly was inspired by lessons learned from working with
-[*Talk of the Town*](https://github.com/james-owen-ryan/talktown)
+[_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
 and aims to give people better documentation, simpler interfaces, and more
 opportunities for extension and content authoring.
 
@@ -47,13 +47,19 @@ opportunities for extension and content authoring.
 - Define life events and actions to drive narrative generation
 - Define social rules for how characters should feel about each other
 - Define rules for where characters what locations characters should frequent
+- Goal-driven utility-based AI characters
 - 7-day week daily routines for characters
-- Can model various relationship facets like romance, frienship, trust, and respect
+- Can model various relationship facets like romance, friendship, trust, and respect
 - Collect and export data about agents using Pandas DataFrames
 - Commandline interface (CLI) tool
 - Create plugins to modularize and share custom content
 - Export simulation state to JSON
 - Could be integrated with roguelike development tools like [tcod](https://github.com/libtcod/python-tcod)
+
+## Not yet supported features
+
+- Generating characters with a subset of character traits randomly selected from a
+  pool of traits
 
 # Installation
 
@@ -75,9 +81,9 @@ pip install git+https://github.com/ShiJbey/neighborly.git
 
 If you wish to download a Neighborly for local development or want to play around with
 any of the samples, you need to clone or download this repository and install
-using the *editable* flag (-e). Please see the instructions below. This will install
+using the _editable_ flag (-e). Please see the instructions below. This will install
 a Neighborly into the virtual environment along with all its dependencies and a few
-addition development dependencies such as *black* and *isort* for code formatting.
+addition development dependencies such as _black_ and _isort_ for code formatting.
 
 ```bash
 # Step 1: Clone Repository
@@ -95,7 +101,7 @@ python -m venv venv
 ./venv/Scripts/Activate
 
 # Step 3: Install local build and dependencies
-python -m pip install -e ".[development]"
+python -m pip install -e ".[development,testing]"
 ```
 
 # Usage
@@ -110,6 +116,16 @@ in the [`samples` directory](https://github.com/ShiJbey/neighborly/tree/main/sam
 Neighborly can be used as a library within a Python script or package.
 The `samples` directory contains python scripts that use Neighborly this
 way. Please refer to them when creating new Plugins and other content.
+
+## Writing plugins
+
+Users can extend Neighborly's default content/behavior using plugins.
+A few default plugins come prepackaged with Neighborly to help people get
+started. Plugins are implemented as Python packages or modules and are
+imported by passing their name in the `plugins` section of the configuration.
+
+Please see the [Plugins](https://shijbey.github.io/neighborly/plugins.html)
+section of the documentation for more information about authoring plugins.
 
 ## Running the CLI
 
@@ -166,7 +182,7 @@ Please follow the steps below to run Neighborly's test suite. Neighborly uses
 
 ```bash
 # Step 1: Install dependencies for tests
-python -m pip install -e ".[tests]"
+python -m pip install -e ".[testing]"
 
 # Step 2: Run Pytest
 pytest
@@ -200,7 +216,7 @@ sphinx-apidoc -o docs/source/module_docs/ src/neighborly
 sphinx-build -b html docs/source/ docs/build/html
 ```
 
-If you happen to have *npm* installed, you can use the `package.json` configuration file to
+If you happen to have _npm_ installed, you can use the `package.json` configuration file to
 run build, clean build output, and run a test HTTP server.
 
 # Contributing
@@ -227,8 +243,8 @@ encourage healthy collaboration, and will enforce it if I need to.
 
 # Code Style
 
-Neighborly uses [*Black*](https://black.readthedocs.io/en/stable/) to handle code style
-and sorts imports using [*isort*](https://pycqa.github.io/isort/).
+Neighborly uses [_Black_](https://black.readthedocs.io/en/stable/) to handle code style
+and sorts imports using [_isort_](https://pycqa.github.io/isort/).
 
 # DMCA Statement
 
@@ -236,7 +252,7 @@ Upon receipt of a notice alleging copyright infringement, I will take whatever a
 deems appropriate within its sole discretion, including removal of the allegedly
 infringing materials.
 
-The repo image is something fun that I made. I love *The Simpsons*, and I couldn't think
-of anyone more neighborly than Ned Flanders. If the copyright owner for *The Simpsons*
+The repo image is something fun that I made. I love _The Simpsons_, and I couldn't think
+of anyone more neighborly than Ned Flanders. If the copyright owner for _The Simpsons_
 would like me to take it down, please contact me. The same takedown policy applies to
 any code samples inspired by TV shows, movies, and games.

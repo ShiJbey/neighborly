@@ -3,22 +3,10 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Tuple
 
-from neighborly.components.business import Business, OperatingHours, Services
+from neighborly.components.business import Business, OperatingHours
 from neighborly.components.routine import time_str_to_int
-from neighborly.content_management import ServiceLibrary
 from neighborly.core.ecs import Component, IComponentFactory, World
 from neighborly.core.time import Weekday
-
-
-class ServicesFactory(IComponentFactory):
-    """
-    Factory class that creates instances of Services components
-    """
-
-    def create(self, world: World, **kwargs: Any) -> Component:
-        service_list: List[str] = kwargs.get("services", [])
-        service_library = world.get_resource(ServiceLibrary)
-        return Services(set([service_library.get(s) for s in service_list]))
 
 
 class BusinessFactory(IComponentFactory):

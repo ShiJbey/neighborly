@@ -9,7 +9,7 @@ relationship values.
 import time
 from typing import Any, Dict
 
-from neighborly import ISystem, Neighborly, NeighborlyConfig, SimDateTime
+from neighborly import Component, ISystem, Neighborly, NeighborlyConfig, SimDateTime
 from neighborly.components import GameCharacter
 from neighborly.core.ecs.ecs import EntityPrefab, GameObjectFactory
 from neighborly.core.relationship import (
@@ -19,7 +19,6 @@ from neighborly.core.relationship import (
     Romance,
 )
 from neighborly.core.status import StatusComponent, StatusManager
-from neighborly.core.traits import TraitComponent
 from neighborly.data_collection import DataCollector
 from neighborly.decorators import component, system
 from neighborly.exporter import export_to_json
@@ -35,7 +34,7 @@ from neighborly.utils.common import (
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "seed": 3,
+            "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
                     "Friendship": {
@@ -53,14 +52,9 @@ sim = Neighborly(
                 }
             },
             "plugins": [
-                "neighborly.plugins.defaults.names",
-                "neighborly.plugins.defaults.characters",
-                "neighborly.plugins.defaults.businesses",
-                "neighborly.plugins.defaults.residences",
-                "neighborly.plugins.defaults.life_events",
-                "neighborly.plugins.defaults.ai",
-                "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.location_bias_rules",
+                "neighborly.plugins.defaults.all",
+                "neighborly.plugins.talktown.spawn_tables",
+                "neighborly.plugins.talktown",
             ],
         }
     )
@@ -68,10 +62,17 @@ sim = Neighborly(
 
 
 @component(sim)
-class Robot(TraitComponent):
+class Robot(Component):
     """Tags a character as a Robot"""
 
-    pass
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 @component(sim)
@@ -139,7 +140,7 @@ def main():
         ),
     )
 
-    west_world = spawn_settlement(sim.world, "West World")
+    west_world = spawn_settlement(sim.world, name="West World")
 
     GameObjectFactory.add(
         EntityPrefab(

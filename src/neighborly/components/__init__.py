@@ -1,4 +1,4 @@
-from .activity import Activities, Activity
+from .activity import Activities
 from .business import (
     BossOf,
     Business,
@@ -55,7 +55,6 @@ from .spawn_table import BusinessSpawnTable, CharacterSpawnTable, ResidenceSpawn
 __all__ = [
     "Active",
     "Activities",
-    "Activity",
     "Building",
     "CurrentSettlement",
     "CurrentLot",
