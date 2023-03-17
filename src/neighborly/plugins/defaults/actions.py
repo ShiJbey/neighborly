@@ -13,7 +13,7 @@ This file contains implementations for:
 
 
 import random
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from neighborly import NeighborlyConfig
 from neighborly.components import Active
@@ -23,8 +23,9 @@ from neighborly.components.character import (
     LifeStage,
     LifeStageType,
 )
-from neighborly.core.ai import Action, AIComponent, Goal
-from neighborly.core.ai.brain import GoalStack, WeightedActionList
+from neighborly.core.ai import AIComponent
+from neighborly.core.ai.behavior_tree import NodeState
+from neighborly.core.ai.brain import ActionNode, GoalNode, WeightedActionList
 from neighborly.core.ecs import GameObject
 from neighborly.core.relationship import Relationship, RelationshipManager, Romance
 from neighborly.systems import System
@@ -32,7 +33,7 @@ from neighborly.utils.query import are_related, is_single
 from neighborly.utils.relationships import add_relationship_status, get_relationship
 
 
-class AskOut(Action):
+class AskOut(GoalNode):
 
     __slots__ = "initiator", "target"
 
@@ -41,10 +42,13 @@ class AskOut(Action):
         self.initiator: GameObject = initiator
         self.target: GameObject = target
 
-    def execute(self) -> bool:
+    def satisfied_goals(self) -> List[GoalNode]:
+        return [FindRomance(self.initiator), FindRomance(self.target)]
+
+    def evaluate(self) -> NodeState:
 
         if not is_single(self.target):
-            return False
+            return NodeState.FAILURE
 
         world = self.initiator.world
 
@@ -57,15 +61,19 @@ class AskOut(Action):
         romance = rel_to_initiator.get_component(Romance)
 
         if romance.get_value() < romance_threshold:
-            return False
+            return NodeState.FAILURE
 
         add_relationship_status(self.initiator, self.target, Dating())
         add_relationship_status(self.target, self.initiator, Dating())
 
-        return True
+        return NodeState.SUCCESS
 
 
-class FindRomanceGoal(Goal):
+class FindPotentialLoveInterest(ActionNode):
+    ...
+
+
+class FindRomance(GoalNode):
 
     __slots__ = "character"
 
@@ -73,17 +81,13 @@ class FindRomanceGoal(Goal):
         super().__init__()
         self.character = character
 
-    def is_complete(self) -> bool:
-        """Check if the goal is satisfied
+    def get_utility(self) -> Dict[GameObject, float]:
+        return super().get_utility()
 
-        Returns
-        -------
-        bool
-            True if the goal is satisfied, False otherwise
-        """
-        return not is_single(self.character)
+    def satisfied_goals(self) -> List[GoalNode]:
+        return []
 
-    def take_action(self, goal_stack: GoalStack) -> None:
+    def evaluate(self) -> None:
         """Perform an action in-service of this goal"""
 
         world = self.character.world
@@ -134,7 +138,7 @@ class FindRomanceGoal(Goal):
         return {"type": self.__class__.__name__, "character": self.character.uid}
 
 
-class EndRomanceGoal(Goal):
+class EndRomanceGoal(GoalNode):
     __slots__ = "initiator", "target"
 
     def __init__(self, initiator: GameObject, target: GameObject) -> None:
@@ -142,17 +146,13 @@ class EndRomanceGoal(Goal):
         self.initiator: GameObject = initiator
         self.target: GameObject = target
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "type": self.__class__.__name__,
-            "initiator": self.initiator.uid,
-            "target": self.target.uid,
-        }
+    def get_utility(self) -> Dict[GameObject, float]:
+        return super().get_utility()
 
-    def take_action(self, goal_stack: GoalStack) -> None:
-        ...
+    def satisfied_goals(self) -> List[GoalNode]:
+        return []
 
-    def is_complete(self) -> bool:
+    def evaluate(self) -> NodeState:
         ...
 
 
@@ -215,4 +215,4 @@ class FindRomanceSystem(System):
                 is_single(character)
                 and life_stage.life_stage >= LifeStageType.Adolescent
             ):
-                ai_component.push_goal(1, FindRomanceGoal(character))
+                ai_component.push_goal(1, FindRomance(character))

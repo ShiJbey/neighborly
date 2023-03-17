@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Generic, List, Optional, TypeVar, final
 
-from neighborly.core.ecs import Component
+from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree, NodeState
+from neighborly.core.ecs import Component, GameObject
+
+_T = TypeVar("_T")
 
 
 class Action(ABC):
@@ -34,18 +37,18 @@ class Action(ABC):
         raise NotImplementedError()
 
 
-class WeightedActionList:
+class WeightedList(Generic[_T]):
     """Manages a list of actions mapped to weights to facilitate random selection"""
 
-    __slots__ = "_actions", "_weights", "_size", "_rng"
+    __slots__ = "_items", "_weights", "_size", "_rng"
 
     def __init__(self, rng: random.Random) -> None:
-        self._actions: List[Action] = []
-        self._weights: List[int] = []
+        self._items: List[_T] = []
+        self._weights: List[float] = []
         self._size: int = 0
         self._rng: random.Random = rng
 
-    def append(self, weight: int, action: Action) -> None:
+    def append(self, weight: float, item: _T) -> None:
         """
         Add an action to the list
 
@@ -53,14 +56,14 @@ class WeightedActionList:
         ----------
         weight: int
             The weight associated with the action to add
-        action: Action
-            The action
+        item: _T
+            The item to add
         """
         self._weights.append(weight)
-        self._actions.append(action)
+        self._items.append(item)
         self._size += 1
 
-    def pick_one(self) -> Action:
+    def pick_one(self) -> _T:
         """Perform weighted random selection on the entries
 
         Returns
@@ -68,7 +71,12 @@ class WeightedActionList:
         Action
             An action from the list
         """
-        return self._rng.choices(self._actions, self._weights, k=1)[0]
+        return self._rng.choices(self._items, self._weights, k=1)[0]
+
+    def clear(self) -> None:
+        self._items.clear()
+        self._weights.clear()
+        self._size = 0
 
     def __len__(self) -> int:
         return self._size
@@ -77,16 +85,46 @@ class WeightedActionList:
         return bool(self._size)
 
 
-class Goal(ABC):
-    """Goals drive what it is that a character wants to do"""
+class WeightedActionList(WeightedList[Action]):
+    """Manages a list of actions mapped to weights to facilitate random selection"""
 
-    __slots__ = "original_intent"
+    pass
 
-    def __init__(self, original_intent: Optional[Goal] = None) -> None:
-        super().__init__()
-        self.original_intent: Optional[Goal] = original_intent
+
+class ActionNode(AbstractBTNode):
+    def add_child(self, node: AbstractBTNode) -> None:
+        raise Exception("Action nodes may not have children")
+
+
+class GoalNode(BehaviorTree):
+    """Defines a goal and behavior to achieve that goal including sub-goals"""
+
+    __slots__ = "original_goal"
+
+    def __init__(self, root: Optional[AbstractBTNode] = None) -> None:
+        super().__init__(root)
+        self.original_goal: Optional[GoalNode] = None
+        self.blackboard["goal_stack"] = [self]
 
     @abstractmethod
+    def get_utility(self) -> Dict[GameObject, float]:
+        """
+        Calculate how important and beneficial this goal is
+
+        Returns
+        -------
+        Dict[GameObject, float]
+            GameObjects mapped to the utility they derive from the goal
+        """
+        raise NotImplementedError
+
+    def set_blackboard(self, blackboard: Dict[str, Any]) -> None:
+        super().set_blackboard(blackboard)
+        if "goal_stack" in self.blackboard:
+            self.blackboard["goal_stack"].append(self)
+        else:
+            self.blackboard["goal_stack"] = [self]
+
     def is_complete(self) -> bool:
         """Check if the goal is satisfied
 
@@ -95,106 +133,25 @@ class Goal(ABC):
         bool
             True if the goal is satisfied, False otherwise
         """
-        raise NotImplementedError()
+        return self._state == NodeState.SUCCESS
 
-    @abstractmethod
-    def take_action(self, goal_stack: GoalStack) -> None:
-        """Perform an action in-service of this goal"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize the goal to a dictionary"""
-        raise NotImplementedError()
-
-
-class GoalStack:
-    """A set of goals that all share the same base goal"""
-
-    __slots__ = "_goals"
-
-    def __init__(self, goals: Optional[Iterable[Goal]] = None) -> None:
-        super().__init__()
-        self._goals: List[Goal] = list(goals) if goals else []
-
-    def remove_completed(self) -> None:
-        """Remove completed goals from the top of the stack"""
-        while len(self) and self.peek().is_complete():
-            self.pop()
-
+    @final
     def take_action(self) -> None:
         """Perform an action in-service of this goal"""
-        if len(self):
-            self.peek().take_action(self)
+        self.evaluate()
 
-    def push(self, goal: Goal) -> None:
-        """Add a goal to the top of the stack"""
-        self._goals.append(goal)
+    def get_goal_stack(self) -> List[GoalNode]:
+        stack: List[GoalNode] = [self]
 
-    def pop(self) -> Goal:
-        """Remove the goal at the top of the stack"""
-        return self._goals.pop()
+        if self.original_goal:
+            stack.extend(self.original_goal.get_goal_stack())
 
-    def peek(self) -> Goal:
-        """Returns the Goal at the top of the stack without removing it"""
-        return self._goals[-1]
+        return stack
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {"goals": [g.to_dict() for g in self._goals]}
-
-    def __len__(self) -> int:
-        return len(self._goals)
-
-    def __bool__(self) -> bool:
-        return bool(self._goals)
-
-
-class WeightedGoalStackList:
-    """Manages a list of actions mapped to weights to facilitate random selection"""
-
-    __slots__ = "_goals", "_weights", "_size", "_rng"
-
-    def __init__(self, rng: random.Random) -> None:
-        self._goals: List[GoalStack] = []
-        self._weights: List[float] = []
-        self._size: int = 0
-        self._rng: random.Random = rng
-
-    def clear(self) -> None:
-        self._goals.clear()
-        self._weights.clear()
-        self._size = 0
-
-    def append(self, weight: float, stack: GoalStack) -> None:
-        """
-        Add an action to the list
-
-        Parameters
-        ----------
-        weight: int
-            The weight associated with the action to add
-        stack: GoalStack
-            The stack of goals
-        """
-        self._weights.append(weight)
-        self._goals.append(stack)
-        self._size += 1
-
-    def pick_one(self) -> GoalStack:
-        """Perform weighted random selection on the entries
-
-        Returns
-        -------
-        Action
-            An action from the list
-        """
-        return self._rng.choices(self._goals, self._weights, k=1)[0]
-
-    def __len__(self) -> int:
-        return self._size
-
-    def __bool__(self) -> bool:
-        return bool(self._size)
+    @abstractmethod
+    def satisfied_goals(self) -> List[GoalNode]:
+        """Get a list of goals that this goal satisfies"""
+        raise NotImplementedError
 
 
 class AIComponent(Component):
@@ -207,9 +164,7 @@ class AIComponent(Component):
 
     def __init__(self, rng: random.Random) -> None:
         super().__init__()
-        # Here we use _goals as a stack. Perhaps in a later update this could change
-        # to something like a priority queue
-        self._goals: WeightedGoalStackList = WeightedGoalStackList(rng)
+        self._goals: WeightedList[GoalNode] = WeightedList(rng)
 
     def take_action(self) -> None:
         """
@@ -226,18 +181,13 @@ class AIComponent(Component):
         if not self._goals:
             return
 
-        chosen_goal_stack = self._goals.pick_one()
+        goal = self._goals.pick_one()
 
-        chosen_goal_stack.remove_completed()
+        goal.take_action()
 
-        if chosen_goal_stack:
-            chosen_goal_stack.take_action()
-
-    def push_goal(self, priority: float, goal: Goal) -> None:
+    def push_goal(self, priority: float, goal: GoalNode) -> None:
         """Add a goal to the AI"""
-        # We assume that if someone is pushing a goal directly to the AIComponent, then
-        # this is an independent stack of goals
-        self._goals.append(priority, GoalStack([goal]))
+        self._goals.append(priority, goal)
 
     def to_dict(self) -> Dict[str, Any]:
         return {}

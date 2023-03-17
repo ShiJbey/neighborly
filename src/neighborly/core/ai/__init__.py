@@ -1,3 +1,3 @@
-from .brain import Action, AIComponent, Goal
+from .brain import Action, AIComponent
 
-__all__ = ["Action", "Goal", "AIComponent"]
+__all__ = ["Action", "AIComponent"]

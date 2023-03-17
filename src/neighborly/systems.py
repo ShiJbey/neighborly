@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Any, DefaultDict, List, Optional, Type
 
 import neighborly.events
-from neighborly.actions import FindEmploymentGoal, StartBusinessGoal
+from neighborly.actions import FindEmployment, StartBusiness
 from neighborly.components.business import (
     Business,
     InTheWorkforce,
@@ -326,8 +326,10 @@ class StartBusinessSystem(System):
     def run(self, *args: Any, **kwargs: Any) -> None:
         for g, _ in self.world.get_components((InTheWorkforce, Active, Unemployed)):
             character = self.world.get_gameobject(g)
-            goal = StartBusinessGoal(character)
-            character.get_component(AIComponent).push_goal(0.2, goal)
+            goal = StartBusiness(character)
+            character.get_component(AIComponent).push_goal(
+                goal.get_utility().get(character, 0), goal
+            )
 
 
 class CharacterAgingSystem(System):
@@ -424,7 +426,7 @@ class UnemployedStatusSystem(System):
             )
 
             if years_unemployed < self.years_to_find_a_job:
-                # goal = FindEmploymentGoal(character)
+                goal = FindEmployment(character)
 
                 priority_from_time = years_unemployed / self.years_to_find_a_job
                 priority_from_spouse = (
@@ -451,7 +453,7 @@ class UnemployedStatusSystem(System):
                     + priority_from_children
                 ) / 4.0
 
-                # character.get_component(AIComponent).push_goal(priority, goal)
+                character.get_component(AIComponent).push_goal(priority, goal)
                 continue
 
             else:

@@ -15,6 +15,7 @@ from neighborly.core.ecs.query import QueryClause, QueryContext, Relation, WithC
 from neighborly.core.relationship import Relationship, RelationshipManager
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
+from neighborly.utils.relationships import get_relationships_with_statuses
 
 
 def with_components(
@@ -197,3 +198,16 @@ def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
         )
         > 0
     )
+
+
+def has_family_to_care_of(character: GameObject) -> bool:
+    """Check if this character has a spouse and/or kids they live with"""
+
+    has_spouse = get_relationships_with_statuses(character, Married)
+
+    if has_spouse:
+        return True
+
+    has_children = len(get_relationships_with_statuses(character, ParentOf)) > 0
+
+    return has_children
