@@ -4,7 +4,6 @@ from collections import defaultdict
 from typing import Any, DefaultDict, List, Optional, Type
 
 import neighborly.events
-from neighborly.actions import FindEmployment, StartBusiness
 from neighborly.components.business import (
     Business,
     InTheWorkforce,
@@ -34,7 +33,7 @@ from neighborly.components.shared import (
 )
 from neighborly.config import NeighborlyConfig
 from neighborly.content_management import LifeEventLibrary, OccupationTypeLibrary
-from neighborly.core.ai.brain import AIComponent
+from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.ecs.ecs import SystemGroup
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
@@ -50,6 +49,7 @@ from neighborly.core.relationship import (
 )
 from neighborly.core.roles import RoleList
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
+from neighborly.plugins.defaults.actions import FindEmployment, StartBusiness
 from neighborly.utils.common import (
     add_character_to_settlement,
     check_share_residence,
@@ -327,7 +327,7 @@ class StartBusinessSystem(System):
         for g, _ in self.world.get_components((InTheWorkforce, Active, Unemployed)):
             character = self.world.get_gameobject(g)
             goal = StartBusiness(character)
-            character.get_component(AIComponent).push_goal(
+            character.get_component(Goals).push_goal(
                 goal.get_utility().get(character, 0), goal
             )
 
@@ -435,7 +435,7 @@ class UnemployedStatusSystem(System):
                     else 0.4
                 )
                 priority_from_children = min(
-                    0,
+                    0.0,
                     float(len(get_relationships_with_statuses(character, ParentOf)))
                     / 5.0,
                 )
@@ -453,7 +453,7 @@ class UnemployedStatusSystem(System):
                     + priority_from_children
                 ) / 4.0
 
-                character.get_component(AIComponent).push_goal(priority, goal)
+                character.get_component(Goals).push_goal(priority, goal)
                 continue
 
             else:
@@ -796,8 +796,13 @@ class AIActionSystem(System):
     sys_group = "update"
 
     def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, (ai_component, _) in self.world.get_components((AIComponent, Active)):
-            ai_component.take_action()
+        for _, (brain, goals, _) in self.world.get_components((AIBrain, Goals, Active)):
+            if not goals:
+                return
+
+            goal = goals.pick_one()
+
+            goal.take_action()
 
 
 class ClearGoalsSystem(System):
@@ -807,5 +812,5 @@ class ClearGoalsSystem(System):
     priority = 999
 
     def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, (ai_component, _) in self.world.get_components((AIComponent, Active)):
-            ai_component.clear_goals()
+        for _, (goals, _) in self.world.get_components((Goals, Active)):
+            goals.clear_goals()

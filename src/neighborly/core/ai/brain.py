@@ -12,41 +12,24 @@ https://www.youtube.com/watch?v=4uxN5GqXcaA&t=339s&ab_channel=InternationalRogue
 from __future__ import annotations
 
 import random
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, Dict, Generic, List, Optional, TypeVar, final
 
-from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree, NodeState
+from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree
 from neighborly.core.ecs import Component, GameObject
 
 _T = TypeVar("_T")
 
 
-class Action(ABC):
-    """Actions are operations performed by GameObjects to change the simulation"""
-
-    @abstractmethod
-    def execute(self) -> bool:
-        """
-        Attempt to perform the action
-
-        Returns
-        -------
-        bool
-            Return True if the action was successful, False otherwise
-        """
-        raise NotImplementedError()
-
-
 class WeightedList(Generic[_T]):
     """Manages a list of actions mapped to weights to facilitate random selection"""
 
-    __slots__ = "_items", "_weights", "_size", "_rng"
+    __slots__ = "_items", "_weights", "_size"
 
-    def __init__(self, rng: random.Random) -> None:
+    def __init__(self) -> None:
         self._items: List[_T] = []
         self._weights: List[float] = []
         self._size: int = 0
-        self._rng: random.Random = rng
 
     def append(self, weight: float, item: _T) -> None:
         """
@@ -63,15 +46,15 @@ class WeightedList(Generic[_T]):
         self._items.append(item)
         self._size += 1
 
-    def pick_one(self) -> _T:
+    def pick_one(self, rng: random.Random) -> _T:
         """Perform weighted random selection on the entries
 
         Returns
         -------
-        Action
+        _T
             An action from the list
         """
-        return self._rng.choices(self._items, self._weights, k=1)[0]
+        return rng.choices(self._items, self._weights, k=1)[0]
 
     def clear(self) -> None:
         self._items.clear()
@@ -83,17 +66,6 @@ class WeightedList(Generic[_T]):
 
     def __bool__(self) -> bool:
         return bool(self._size)
-
-
-class WeightedActionList(WeightedList[Action]):
-    """Manages a list of actions mapped to weights to facilitate random selection"""
-
-    pass
-
-
-class ActionNode(AbstractBTNode):
-    def add_child(self, node: AbstractBTNode) -> None:
-        raise Exception("Action nodes may not have children")
 
 
 class GoalNode(BehaviorTree):
@@ -118,6 +90,7 @@ class GoalNode(BehaviorTree):
         """
         raise NotImplementedError
 
+    @final
     def set_blackboard(self, blackboard: Dict[str, Any]) -> None:
         super().set_blackboard(blackboard)
         if "goal_stack" in self.blackboard:
@@ -125,21 +98,12 @@ class GoalNode(BehaviorTree):
         else:
             self.blackboard["goal_stack"] = [self]
 
-    def is_complete(self) -> bool:
-        """Check if the goal is satisfied
-
-        Returns
-        -------
-        bool
-            True if the goal is satisfied, False otherwise
-        """
-        return self._state == NodeState.SUCCESS
-
     @final
     def take_action(self) -> None:
         """Perform an action in-service of this goal"""
         self.evaluate()
 
+    @final
     def get_goal_stack(self) -> List[GoalNode]:
         stack: List[GoalNode] = [self]
 
@@ -153,37 +117,29 @@ class GoalNode(BehaviorTree):
         """Get a list of goals that this goal satisfies"""
         raise NotImplementedError
 
+    @abstractmethod
+    def __eq__(self, __o: object) -> bool:
+        raise NotImplementedError()
 
-class AIComponent(Component):
-    """
-    The AI component is responsible for driving agent behavior by tracking goals that
-    in-turn execute actions and create new goals.
-    """
+
+class Goals(Component):
+    """Tracks the GameObject's current goals that drive behavior"""
 
     __slots__ = "_goals"
 
-    def __init__(self, rng: random.Random) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self._goals: WeightedList[GoalNode] = WeightedList(rng)
+        self._goals: WeightedList[GoalNode] = WeightedList()
 
-    def take_action(self) -> None:
+    def pick_one(self, rng: random.Random) -> GoalNode:
+        """Perform weighted random selection on the entries
+
+        Returns
+        -------
+        GoalNode
+            An action from the list
         """
-        Get the next action for this character
-
-        Parameters
-        ----------
-        world: World
-            The world instance the character belongs to
-        gameobject: GameObject
-            The GameObject instance this module is associated with
-        """
-
-        if not self._goals:
-            return
-
-        goal = self._goals.pick_one()
-
-        goal.take_action()
+        return self._goals.pick_one(rng)
 
     def push_goal(self, priority: float, goal: GoalNode) -> None:
         """Add a goal to the AI"""
@@ -194,3 +150,19 @@ class AIComponent(Component):
 
     def clear_goals(self) -> None:
         self._goals.clear()
+
+    def __len__(self) -> int:
+        return len(self._goals)
+
+    def __bool__(self) -> bool:
+        return bool(self._goals)
+
+
+class AIBrain(Component):
+    """Marks a GameObject as being AI-controlled"""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}

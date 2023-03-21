@@ -16,7 +16,7 @@ import neighborly.factories as factories
 import neighborly.systems as systems
 from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig, PluginConfig
-from neighborly.core.ai.brain import AIComponent
+from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import (
     Component,
     EntityPrefab,
@@ -161,9 +161,8 @@ class Neighborly:
 
         # Register components
         self.world.register_component(components.Active)
-        self.world.register_component(
-            AIComponent, factory=factories.AIComponentFactory()
-        )
+        self.world.register_component(AIBrain)
+        self.world.register_component(Goals)
         self.world.register_component(
             components.GameCharacter, factory=factories.GameCharacterFactory()
         )
