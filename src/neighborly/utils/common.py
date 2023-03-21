@@ -47,25 +47,20 @@ from neighborly.components.shared import (
     Position2D,
     PrefabName,
 )
-from neighborly.content_management import LocationBiasRuleLibrary
 from neighborly.core.ecs import GameObject, GameObjectFactory, World
 from neighborly.core.event import EventBuffer
 from neighborly.core.life_event import LifeEventBuffer
-from neighborly.core.relationship import InteractionScore
-from neighborly.core.settlement import Settlement
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, Weekday
-from neighborly.utils.relationships import (
+from neighborly.core.location_bias import LocationBiasRules
+from neighborly.core.relationship import (
+    InteractionScore,
     add_relationship_status,
     get_relationship,
     has_relationship_status,
     remove_relationship_status,
 )
-from neighborly.utils.statuses import (
-    add_status,
-    clear_statuses,
-    has_status,
-    remove_status,
-)
+from neighborly.core.settlement import Settlement
+from neighborly.core.status import add_status, clear_statuses, has_status, remove_status
+from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, Weekday
 
 
 def set_location(
@@ -244,6 +239,9 @@ def spawn_character(
 
     if age:
         set_character_age(character, age)
+
+    if life_stage:
+        set_character_life_stage(character, life_stage)
 
     if gender:
         character.get_component(Gender).gender = gender
@@ -521,7 +519,6 @@ def depart_settlement(world: World, character: GameObject, reason: str = "") -> 
             departing_characters.append(resident)
 
     for character in departing_characters:
-
         if character.has_component(Occupation):
             end_job(character, reason=reason)
 
@@ -1132,12 +1129,9 @@ def location_has_activities(location: GameObject, *activities: str) -> bool:
 
 
 def _score_location(character: GameObject, location: GameObject) -> int:
-    world = character.world
-    rules = world.get_resource(LocationBiasRuleLibrary)
-
     score: int = 0
 
-    for rule_info in rules:
+    for rule_info in LocationBiasRules.iter_rules():
         if modifier := rule_info.rule(character, location):
             score += modifier
 

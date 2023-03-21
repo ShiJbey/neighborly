@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-import pathlib
 import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -50,7 +49,6 @@ from typing import (
 
 import esper
 import pydantic
-import yaml
 from ordered_set import OrderedSet
 
 logger = logging.getLogger(__name__)
@@ -1179,13 +1177,6 @@ class GameObjectFactory:
         cls._prefabs[prefab.name] = prefab
 
     @classmethod
-    def add_from_file(cls, file_path: Union[str, pathlib.Path]) -> None:
-        with open(file_path, "r") as f:
-            data: Dict[str, Any] = yaml.safe_load(f)
-
-        cls.add(EntityPrefab.parse_obj(data))
-
-    @classmethod
     def instantiate(cls, world: World, name: str) -> GameObject:
         """Spawn the prefab into the world and return the root-level entity
 
@@ -1193,6 +1184,8 @@ class GameObjectFactory:
         ----------
         world: World
             The World instance to spawn this prefab into
+        name: str
+            The name of the prefab to instantiate
 
         Returns
         -------

@@ -11,5 +11,4 @@ class NameFactory(IComponentFactory):
     """Creates instances of Name Components using Tracery"""
 
     def create(self, world: World, value: str = "", **kwargs: Any) -> Name:
-        name_generator = world.get_resource(Tracery)
-        return Name(name_generator.generate(value))
+        return Name(Tracery.generate(value))

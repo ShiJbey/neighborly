@@ -72,7 +72,6 @@ class SalarySystem(ISystem):
 
 @system(sim)
 class BecomeMillionaireEventSystem(ISystem):
-
     sys_group = "character-update"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
@@ -94,7 +93,6 @@ class BecomeMillionaireEvent(Event):
 
 @system(sim)
 class OnBecomeMillionaireSystem(ISystem):
-
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:

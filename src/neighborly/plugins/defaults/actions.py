@@ -9,6 +9,7 @@ from neighborly.components.business import (
     Business,
     BusinessOwner,
     Occupation,
+    OccupationTypes,
     OpenForBusiness,
     Unemployed,
 )
@@ -24,14 +25,21 @@ from neighborly.components.character import (
     Virtues,
 )
 from neighborly.components.spawn_table import BusinessSpawnTable
-from neighborly.content_management import OccupationTypeLibrary
 from neighborly.core.ai.behavior_tree import NodeState, SelectorBTNode, SequenceBTNode
 from neighborly.core.ai.brain import GoalNode, WeightedList
 from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory
 from neighborly.core.ecs.ecs import World
 from neighborly.core.event import EventBuffer
-from neighborly.core.relationship import RelationshipManager, Romance
+from neighborly.core.relationship import (
+    RelationshipManager,
+    Romance,
+    add_relationship_status,
+    get_relationship,
+    get_relationships_with_statuses,
+    has_relationship,
+)
 from neighborly.core.settlement import Settlement
+from neighborly.core.status import add_status
 from neighborly.core.time import DAYS_PER_MONTH, SimDateTime
 from neighborly.events import StartBusinessEvent
 from neighborly.utils.common import (
@@ -47,17 +55,9 @@ from neighborly.utils.query import (
     has_work_experience_as,
     is_single,
 )
-from neighborly.utils.relationships import (
-    add_relationship_status,
-    get_relationship,
-    get_relationships_with_statuses,
-    has_relationship,
-)
-from neighborly.utils.statuses import add_status
 
 
 class FindEmployment(GoalNode):
-
     __slots__ = "character", "world"
 
     def __init__(self, character: GameObject) -> None:
@@ -118,7 +118,6 @@ class FindEmployment(GoalNode):
 
 
 class StartBusiness(GoalNode):
-
     __slots__ = "character", "world"
 
     def __init__(self, character: GameObject):
@@ -180,7 +179,6 @@ class StartBusiness(GoalNode):
         settlement = world.get_gameobject(current_settlement.settlement)
         settlement_comp = settlement.get_component(Settlement)
         event_buffer = world.get_resource(EventBuffer)
-        occupation_types = world.get_resource(OccupationTypeLibrary)
         rng = world.get_resource(random.Random)
 
         # Get all the eligible business prefabs that are eligible for building
@@ -203,7 +201,7 @@ class StartBusiness(GoalNode):
 
         assert owner_type
 
-        owner_occupation_type = occupation_types.get(owner_type)
+        owner_occupation_type = OccupationTypes.get(owner_type)
 
         business = spawn_business(world, business_prefab.name)
 
@@ -234,7 +232,6 @@ class StartBusiness(GoalNode):
         current_settlement = character.get_component(CurrentSettlement)
         settlement = world.get_gameobject(current_settlement.settlement)
         business_spawn_table = settlement.get_component(BusinessSpawnTable)
-        occupation_types = world.get_resource(OccupationTypeLibrary)
         rng = world.get_resource(random.Random)
 
         choices: List[EntityPrefab] = []
@@ -244,7 +241,7 @@ class StartBusiness(GoalNode):
             prefab = GameObjectFactory.get(prefab_name)
             owner_type = prefab.components["Business"]["owner_type"]
             if owner_type:
-                owner_occupation_type = occupation_types.get(owner_type)
+                owner_occupation_type = OccupationTypes.get(owner_type)
 
                 if owner_occupation_type.passes_preconditions(character):
                     choices.append(prefab)
@@ -319,15 +316,13 @@ class GetJob(GoalNode):
         return False
 
     def evaluate(self) -> NodeState:
-        occupation_types = self.world.get_resource(OccupationTypeLibrary)
-
         for guid, (business, _) in self.world.get_components(
             (Business, OpenForBusiness)
         ):
             open_positions = business.get_open_positions()
 
             for occupation_name in open_positions:
-                occupation_type = occupation_types.get(occupation_name)
+                occupation_type = OccupationTypes.get(occupation_name)
 
                 if occupation_type.passes_preconditions(self.character):
                     start_job(
@@ -339,7 +334,6 @@ class GetJob(GoalNode):
 
 
 class FindOwnPlace(GoalNode):
-
     __slots__ = "character"
 
     def __init__(self, character: GameObject) -> None:
@@ -363,7 +357,6 @@ class FindOwnPlace(GoalNode):
 
 
 class FindVacantResidence(GoalNode):
-
     __slots__ = "character", "world"
 
     def __init__(self, character: GameObject) -> None:
@@ -384,7 +377,6 @@ class FindVacantResidence(GoalNode):
 
 
 class DepartSimulation(GoalNode):
-
     __slots__ = "character", "world"
 
     def __init__(self, character: GameObject) -> None:
@@ -439,7 +431,7 @@ class GetMarried(GoalNode):
 
     def satisfied_goals(self) -> List[GoalNode]:
         return []
-    
+
     def is_complete(self) -> bool:
         return bool(get_relationships_with_statuses(self.character, Married))
 
@@ -507,7 +499,6 @@ class BreakUp(GoalNode):
 
 
 class DivorceSpouse(GoalNode):
-
     __slots__ = "initiator", "other"
 
     def __init__(self, initiator: GameObject, other: GameObject) -> None:
@@ -522,7 +513,6 @@ class DivorceSpouse(GoalNode):
 
 
 class Retire(GoalNode):
-
     __slots__ = "character"
 
     def __init__(self, character: GameObject) -> None:
@@ -543,7 +533,6 @@ class Retire(GoalNode):
         # This is a nested function. So, we call it once to return the
         # precondition function, then we call it a second time
         if has_work_experience_as(occupation.occupation_type, 10)(self.character):
-
             utilities[self.character] += 1
 
         utilities[self.character] = utilities[self.character] / 2.0
@@ -562,7 +551,6 @@ class Retire(GoalNode):
 
 
 class AskOut(GoalNode):
-
     __slots__ = "initiator", "target"
 
     def __init__(self, initiator: GameObject, target: GameObject) -> None:
@@ -581,7 +569,6 @@ class AskOut(GoalNode):
         return [FindRomance(self.initiator), FindRomance(self.target)]
 
     def evaluate(self) -> NodeState:
-
         if not is_single(self.target):
             return NodeState.FAILURE
 
@@ -604,7 +591,6 @@ class AskOut(GoalNode):
         return NodeState.SUCCESS
 
     def get_utility(self) -> Dict[GameObject, float]:
-
         utilities: Dict[GameObject, float] = {self.initiator: 0, self.target: 0}
 
         if is_single(self.initiator):
@@ -637,7 +623,6 @@ class FindPotentialLoveInterest(GoalNode):
 
 
 class StartDating(GoalNode):
-
     __slots__ = "initiator"
 
     def __init__(self, initiator: GameObject, other: GameObject) -> None:
@@ -653,7 +638,6 @@ class StartDating(GoalNode):
         ]
 
     def get_utility(self) -> Dict[GameObject, float]:
-
         # The utility of dating someone is increased by how much romance you have
         # toward them, and decreased by any existing relationships
         utilities: Dict[GameObject, float] = {self.initiator: 0, self.other: 0}
@@ -697,7 +681,6 @@ class StartDating(GoalNode):
 
 
 class FindRomance(GoalNode):
-
     __slots__ = "character"
 
     def __init__(self, character: GameObject) -> None:

@@ -155,7 +155,6 @@ class BreathingStyle(IntEnum):
 
 @component(sim)
 class PowerLevel(Component):
-
     __slots__ = "level"
 
     def __init__(self, level: int = 0) -> None:
@@ -589,7 +588,6 @@ class BecomeDemonSlayer(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         # Only create demon slayers if demons are an actual problem
         demons_exist = len(world.get_component(Demon)) > 5
         if demons_exist is False:
@@ -604,7 +602,6 @@ class BecomeDemonSlayer(ActionableLifeEvent):
 
     @staticmethod
     def _bind_character(world: World, candidate: Optional[GameObject] = None):
-
         if candidate:
             candidates = [candidate]
         else:
@@ -648,7 +645,6 @@ class DemonSlayerPromotion(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         character = cls._bind_demon_slayer(world, bindings.get("Character"))
 
         if character is None:
@@ -658,7 +654,6 @@ class DemonSlayerPromotion(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon_slayer(world: World, candidate: Optional[GameObject] = None):
-
         candidates: List[GameObject]
         if candidate:
             candidates = [candidate]
@@ -711,7 +706,6 @@ class DemonChallengeForPower(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         challenger = cls._bind_challenger(world, bindings.get("Challenger"))
 
         if challenger is None:
@@ -815,7 +809,6 @@ class DevourHuman(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         demon = cls._bind_demon(world, bindings.get("Demon"))
 
         if demon is None:
@@ -830,7 +823,6 @@ class DevourHuman(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon(world: World, candidate: Optional[GameObject] = None):
-
         candidates: List[GameObject]
         if candidate:
             candidates = [candidate]
@@ -961,7 +953,6 @@ class Battle(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         challenger = cls._bind_challenger(world, bindings.get("Challenger"))
         opponent = cls._bind_opponent(world, bindings.get("Opponent"))
 
@@ -975,7 +966,6 @@ class Battle(ActionableLifeEvent):
 
     @staticmethod
     def _bind_challenger(world: World, candidate: Optional[GameObject] = None):
-
         candidates: List[GameObject]
         if candidate:
             candidates = [candidate]
@@ -1020,7 +1010,6 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         demon = cls._bind_demon(world, candidate=bindings.get("Demon"))
 
         if demon is None:
@@ -1122,7 +1111,6 @@ class PromotionToLowerMoon(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         demon = cls._bind_demon(world, bindings.get("Character"))
         if demon:
             return cls(world.get_resource(SimDateTime), demon)
@@ -1130,7 +1118,6 @@ class PromotionToLowerMoon(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon(world: World, candidate: Optional[GameObject] = None):
-
         demon_kingdom = world.get_resource(DemonKingdom)
 
         if not demon_kingdom.has_lower_moon_vacancy():
@@ -1186,7 +1173,6 @@ class PromotionToUpperMoon(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon(world: World, candidate: Optional[GameObject] = None):
-
         demon_kingdom = world.get_resource(DemonKingdom)
 
         if not demon_kingdom.has_upper_moon_vacancy():
@@ -1256,7 +1242,6 @@ class SpawnFirstDemon(ISystem):
             return
 
         for guid, _ in self.world.get_component(Settlement):
-
             settlement = self.world.get_gameobject(guid)
 
             new_demon = spawn_character(

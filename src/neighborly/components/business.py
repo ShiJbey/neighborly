@@ -72,10 +72,6 @@ class Occupation(Component):
         """Get the type of occupation this is"""
         return self._occupation_type
 
-    def set_years_held(self, years: float) -> None:
-        """Set the number of years this character has held this job"""
-        self._years_held = years
-
     def __repr__(self) -> str:
         return "Occupation(occupation_type={}, business={}, start_date={})".format(
             self.occupation_type, self.business, self.start_date
@@ -186,14 +182,7 @@ class WorkHistory(Component):
 
 
 class Services(Component):
-    """
-    Tracks the services offered by a business
-
-    Attributes
-    ----------
-    services: Set[Service]
-        The set of services offered by the business
-    """
+    """Tracks the services offered by a business"""
 
     __slots__ = "_services"
 
@@ -473,3 +462,46 @@ class EmployeeOf(RelationshipStatus):
 
 class CoworkerOf(RelationshipStatus):
     pass
+
+
+class OccupationTypes:
+    """Collection OccupationType information for lookup at runtime"""
+
+    _registry: Dict[str, OccupationType] = {}
+
+    @classmethod
+    def add(
+        cls,
+        occupation_type: OccupationType,
+    ) -> None:
+        """
+        Add a new occupation type to the library
+
+        Parameters
+        ----------
+        occupation_type: OccupationType
+            The occupation type instance to add
+        """
+        cls._registry[occupation_type.name] = occupation_type
+
+    @classmethod
+    def get(cls, name: str) -> OccupationType:
+        """
+        Get an OccupationType by name
+
+        Parameters
+        ----------
+        name: str
+            The registered name of the OccupationType
+
+        Returns
+        -------
+        OccupationType
+
+        Raises
+        ------
+        KeyError
+            When there is not an OccupationType
+            registered to that name
+        """
+        return cls._registry[name]

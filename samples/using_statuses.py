@@ -23,9 +23,13 @@ from neighborly import (
     SimDateTime,
 )
 from neighborly.core.event import Event, EventBuffer
-from neighborly.core.status import StatusComponent, StatusManager
+from neighborly.core.status import (
+    StatusComponent,
+    StatusManager,
+    add_status,
+    has_status,
+)
 from neighborly.decorators import component, system
-from neighborly.utils.statuses import add_status, has_status
 
 sim = Neighborly(NeighborlyConfig(verbose=False))
 
@@ -75,7 +79,6 @@ class SalarySystem(ISystem):
 
 @system(sim)
 class BecomeMillionaireEventSystem(ISystem):
-
     sys_group = "character-update"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
@@ -97,7 +100,6 @@ class BecomeMillionaireEvent(Event):
 
 @system(sim)
 class OnBecomeMillionaireSystem(ISystem):
-
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:

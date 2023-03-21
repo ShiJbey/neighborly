@@ -18,7 +18,14 @@ from neighborly.components.character import LifeStageType, Married, ParentOf, Si
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs.ecs import GameObject
 from neighborly.core.life_event import LifeEventBuffer
-from neighborly.core.relationship import Friendship, InteractionScore, Romance
+from neighborly.core.relationship import (
+    Friendship,
+    InteractionScore,
+    Romance,
+    add_relationship,
+    add_relationship_status,
+    get_relationship,
+)
 from neighborly.core.settlement import Settlement
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.events import MoveResidenceEvent
@@ -30,11 +37,6 @@ from neighborly.utils.common import (
     set_residence,
     spawn_character,
     spawn_residence,
-)
-from neighborly.utils.relationships import (
-    add_relationship,
-    add_relationship_status,
-    get_relationship,
 )
 
 plugin_info = PluginInfo(

@@ -158,9 +158,18 @@ class BusinessSpawnTable(Component):
         Parameters
         ----------
         name: str
-            The name of a character prefab
-        frequency: int
-            The relative frequency that this prefab should spawn relative to others
+            The name of a prefab
+        frequency: int, optional
+            The relative frequency that this prefab should spawn relative to others.
+            defaults to 1
+        max_instances: int, optional
+            Max number of instances of the business that may exist, defaults to 9999
+        min_population: int, optional
+            The minimum settlement population required to spawn, defaults to 0
+        year_available: int, optional
+            The minimum year that this business can spawn, defaults to 0
+        year_obsolete: int, optional
+            The maximum year that this business can spawn, defaults to 9999
         """
         self._names.append(name)
         self._frequencies.append(frequency)

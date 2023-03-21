@@ -14,7 +14,6 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any) -> None:
-
     with open(pathlib.Path(__file__).parent / "business_spawn_table.yaml", "r") as f:
         data: List[Dict[str, Any]] = yaml.safe_load(f)
 

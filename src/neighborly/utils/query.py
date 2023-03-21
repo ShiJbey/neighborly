@@ -12,10 +12,13 @@ from neighborly.components.character import (
 )
 from neighborly.core.ecs import Component, GameObject
 from neighborly.core.ecs.query import QueryClause, QueryContext, Relation, WithClause
-from neighborly.core.relationship import Relationship, RelationshipManager
+from neighborly.core.relationship import (
+    Relationship,
+    RelationshipManager,
+    get_relationships_with_statuses,
+)
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
-from neighborly.utils.relationships import get_relationships_with_statuses
 
 
 def with_components(
@@ -166,7 +169,6 @@ def _get_family_members(
     character_queue: List[Tuple[int, GameObject]] = [(0, character)]
 
     while character_queue:
-
         deg, character = character_queue.pop(0)
         visited.add(character)
 

@@ -6,11 +6,9 @@ import random
 import re
 import sys
 from dataclasses import dataclass
-from types import ModuleType
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import Any, Callable, Optional, Type, Union
 
 import neighborly.components as components
-import neighborly.content_management as libraries
 import neighborly.core.relationship as relationship
 import neighborly.factories as factories
 import neighborly.systems as systems
@@ -27,12 +25,9 @@ from neighborly.core.ecs import (
 )
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
 from neighborly.core.life_event import LifeEventBuffer
-from neighborly.core.location_bias import ILocationBiasRule
 from neighborly.core.settlement import Settlement
-from neighborly.core.social_rule import ISocialRule
 from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
-from neighborly.core.tracery import Tracery
 from neighborly.data_collection import DataCollector
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
@@ -63,11 +58,9 @@ class Neighborly:
         Entity-component system (ECS) that manages entities and procedures in the virtual world
     config: neighborly.NeighborlyConfig
         Configuration settings for the simulation
-    plugins: Dict[str, ModuleType]
-        List of loaded plugins and their configuration data
     """
 
-    __slots__ = ("world", "config", "plugins")
+    __slots__ = "world", "config"
 
     def __init__(self, config: Optional[NeighborlyConfig] = None) -> None:
         """
@@ -78,7 +71,6 @@ class Neighborly:
         """
         self.world: World = World()
         self.config: NeighborlyConfig = config if config else NeighborlyConfig()
-        self.plugins: Dict[str, ModuleType] = {}
 
         # Seed RNG for libraries we don't control, like Tracery
         random.seed(self.config.seed)
@@ -94,18 +86,13 @@ class Neighborly:
         # Add default resources
         self.world.add_resource(self.config)
         self.world.add_resource(random.Random(self.config.seed))
-        self.world.add_resource(Tracery())
-        self.world.add_resource(libraries.SocialRuleLibrary())
         self.world.add_resource(self.config.start_date.copy())
         self.world.add_resource(EventBuffer())
         self.world.add_resource(LifeEventBuffer())
         self.world.add_resource(AllEvents())
-        self.world.add_resource(libraries.OccupationTypeLibrary())
-        self.world.add_resource(libraries.LifeEventLibrary())
         self.world.add_resource(DataCollector())
-        self.world.add_resource(libraries.LocationBiasRuleLibrary())
 
-        # Add default top-level systems groups (in execution order)
+        # Add default top-level system groups (in execution order)
         self.world.add_system(systems.InitializationSystemGroup())
         self.world.add_system(systems.EarlyUpdateSystemGroup())
         self.world.add_system(systems.UpdateSystemGroup())
@@ -124,7 +111,7 @@ class Neighborly:
         # Add early-update systems (in execution order)
         self.world.add_system(systems.ClearGoalsSystem())
         self.world.add_system(systems.MeetNewPeopleSystem())
-        self.world.add_system(systems.LifeEventSystem())
+        self.world.add_system(systems.RandomLifeEventSystem())
         self.world.add_system(systems.UpdateFrequentedLocationSystem())
 
         # Add relationship-update systems (in execution order)
@@ -258,7 +245,6 @@ class Neighborly:
             )
 
         if plugin_info.required_version is not None:
-
             if re.fullmatch(r"^<=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
                 if VERSION > plugin_info.required_version:
                     raise PluginSetupError(
@@ -290,8 +276,6 @@ class Neighborly:
                     )
 
         plugin_setup_fn(self)
-
-        self.plugins[plugin_info.plugin_id] = plugin_module
 
         # Remove the given plugin path from the front
         # of the system path to prevent module resolution bugs
@@ -381,11 +365,3 @@ class Neighborly:
         """
 
         self.world.add_system(system)
-
-    def add_location_bias_rule(self, rule: ILocationBiasRule, description: str = ""):
-        self.world.get_resource(libraries.LocationBiasRuleLibrary).add(
-            rule, description
-        )
-
-    def add_social_rule(self, rule: ISocialRule, description: str = ""):
-        self.world.get_resource(libraries.SocialRuleLibrary).add(rule, description)

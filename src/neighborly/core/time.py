@@ -278,9 +278,9 @@ class SimDateTime:
         """Return the number of hours that have elapsed since 01-01-0001 12:00 AM"""
         return (
             self.hour
-            + ((self._day) * HOURS_PER_DAY)
-            + ((self._month) * DAYS_PER_MONTH * HOURS_PER_DAY)
-            + ((self._year) * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
+            + (self._day * HOURS_PER_DAY)
+            + (self._month * DAYS_PER_MONTH * HOURS_PER_DAY)
+            + (self._year * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
         )
 
     def get_time_of_day(self) -> str:

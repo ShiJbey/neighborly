@@ -130,7 +130,6 @@ def test_get_gameobjects():
 
 
 def test_delete_gameobject():
-
     world = World()
 
     g1 = world.spawn_gameobject([ComponentA()])

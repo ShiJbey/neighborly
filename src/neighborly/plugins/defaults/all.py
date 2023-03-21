@@ -3,7 +3,6 @@ from typing import Any
 from neighborly.simulation import Neighborly, PluginInfo
 
 from . import (
-    ai,
     businesses,
     characters,
     create_town,
@@ -24,7 +23,6 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    ai.setup(sim, **kwargs)
     businesses.setup(sim, **kwargs)
     characters.setup(sim, **kwargs)
     settlement.setup(sim, **kwargs)

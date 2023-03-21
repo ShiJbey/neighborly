@@ -101,7 +101,6 @@ def rule(character: GameObject, location: GameObject) -> Optional[int]:
 
 
 def main():
-
     ###############################
     # SPAWN NEW LOCATIONS
     ###############################

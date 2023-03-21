@@ -39,7 +39,6 @@ app = NeighborlyServer(
 
 
 def main():
-
     west_world = spawn_settlement(app.sim.world, "West World")
 
     delores = spawn_character(

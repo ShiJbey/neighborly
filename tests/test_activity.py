@@ -2,7 +2,6 @@ from neighborly.components.activity import Activities
 
 
 def test_activities_contains() -> None:
-
     activity_manager = Activities(
         {
             "Running",

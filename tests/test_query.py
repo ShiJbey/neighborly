@@ -60,7 +60,6 @@ def test_relation_get_tuples():
 
 
 def test_relation_unify():
-
     r0 = Relation.create_empty()
     r1 = Relation(("Hero", "DemonKing"), [(1, 3), (1, 4), (1, 5)])
     r2 = Relation(("Hero", "LoveInterest"), [(1, 4), (2, 6)])
@@ -159,7 +158,6 @@ def test_query_not(sample_world: World):
 
 
 def test_query_bindings(sample_world: World):
-
     query = QB.query("_", QB.with_(Hero, "_"))
     result = set(query.execute(sample_world, {"_": 2}))
     expected = {(2,)}
@@ -167,7 +165,7 @@ def test_query_bindings(sample_world: World):
 
     query = QB.query(
         ("_",),
-        QB.with_((GameCharacter), "_"),
+        QB.with_(GameCharacter, "_"),
         QB.filter_(
             lambda gameobject: gameobject.get_component(Gender).gender
             == GenderType.NonBinary,
@@ -189,7 +187,7 @@ def test_query_bindings(sample_world: World):
 
     query = QB.query(
         "_",
-        QB.with_((GameCharacter), "_"),
+        QB.with_(GameCharacter, "_"),
         QB.filter_(
             lambda gameobject: gameobject.get_component(Gender).gender
             == GenderType.NonBinary,

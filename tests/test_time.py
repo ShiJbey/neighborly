@@ -154,20 +154,20 @@ def test__init__():
 
     with pytest.raises(ValueError):
         # Year cannot be less than 1
-        d = SimDateTime(-1, 10, 10)
+        SimDateTime(-1, 10, 10)
 
     with pytest.raises(ValueError):
         # Month cannot be less than 1
-        d = SimDateTime(0, 10, 10)
+        SimDateTime(0, 10, 10)
 
     with pytest.raises(ValueError):
         # Month cannot be greater than 12
-        d = SimDateTime(2023, 13, 10)
+        SimDateTime(2023, 13, 10)
 
     with pytest.raises(ValueError):
         # Day cannot be less than 1
-        d = SimDateTime(2023, 12, 0)
+        SimDateTime(2023, 12, 0)
 
     with pytest.raises(ValueError):
         # Day cannot be greater than 28
-        d = SimDateTime(2023, 13, 29)
+        SimDateTime(2023, 13, 29)

@@ -8,6 +8,7 @@ from neighborly.components.business import (
     Business,
     InTheWorkforce,
     Occupation,
+    OccupationTypes,
     OpenForBusiness,
     Unemployed,
 )
@@ -32,12 +33,15 @@ from neighborly.components.shared import (
     FrequentedLocations,
 )
 from neighborly.config import NeighborlyConfig
-from neighborly.content_management import LifeEventLibrary, OccupationTypeLibrary
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.ecs.ecs import SystemGroup
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
-from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
+from neighborly.core.life_event import (
+    ActionableLifeEvent,
+    LifeEventBuffer,
+    RandomLifeEvents,
+)
 from neighborly.core.relationship import (
     Friendship,
     IncrementCounter,
@@ -45,9 +49,16 @@ from neighborly.core.relationship import (
     Relationship,
     RelationshipFacet,
     Romance,
+    add_relationship,
+    add_relationship_status,
+    evaluate_social_rules,
+    get_relationship,
+    get_relationships_with_statuses,
+    has_relationship,
     lerp,
 )
 from neighborly.core.roles import RoleList
+from neighborly.core.status import add_status, has_status, remove_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
 from neighborly.plugins.defaults.actions import FindEmployment, StartBusiness
 from neighborly.utils.common import (
@@ -60,15 +71,6 @@ from neighborly.utils.common import (
     spawn_character,
     start_job,
 )
-from neighborly.utils.relationships import (
-    add_relationship,
-    add_relationship_status,
-    evaluate_social_rules,
-    get_relationship,
-    get_relationships_with_statuses,
-    has_relationship,
-)
-from neighborly.utils.statuses import add_status, has_status, remove_status
 
 
 class InitializationSystemGroup(SystemGroup):
@@ -111,7 +113,6 @@ class StatusUpdateSystemGroup(SystemGroup):
 
 
 class GoalSuggestionSystemGroup(SystemGroup):
-
     group_name = "goal-suggestion"
     sys_group = "early-update"
 
@@ -200,7 +201,7 @@ class TimeSystem(ISystem):
         )
 
 
-class LifeEventSystem(System):
+class RandomLifeEventSystem(System):
     """Attempts to execute non-optional life events
 
     Life events triggered by this system do not pass through the character AI. You can
@@ -216,19 +217,17 @@ class LifeEventSystem(System):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         """Simulate LifeEvents for characters"""
-        life_event_lib = self.world.get_resource(LifeEventLibrary)
+        rng = self.world.get_resource(random.Random)
         life_event_buffer = self.world.get_resource(LifeEventBuffer)
-
-        all_event_types = life_event_lib.get_all()
 
         total_population = len(self.world.get_components((GameCharacter, Active)))
 
-        if len(all_event_types) == 0:
+        if RandomLifeEvents.get_size() == 0:
             return
 
         event_type: Type[ActionableLifeEvent]
         for _ in range(total_population // 10):
-            event_type = random.choice(all_event_types)
+            event_type = RandomLifeEvents.pick_one(rng)
             if event := event_type.instantiate(self.world, RoleList()):
                 life_event_buffer.append(event)
                 event.execute()
@@ -285,7 +284,6 @@ class FindEmployeesSystem(ISystem):
     sys_group = "goal-suggestion"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        occupation_types = self.world.get_resource(OccupationTypeLibrary)
         rng = self.world.get_resource(random.Random)
 
         for guid, (business, _) in self.world.get_components(
@@ -294,7 +292,7 @@ class FindEmployeesSystem(ISystem):
             open_positions = business.get_open_positions()
 
             for occupation_name in open_positions:
-                occupation_type = occupation_types.get(occupation_name)
+                occupation_type = OccupationTypes.get(occupation_name)
 
                 candidates = [
                     self.world.get_gameobject(g)
@@ -796,11 +794,12 @@ class AIActionSystem(System):
     sys_group = "update"
 
     def run(self, *args: Any, **kwargs: Any) -> None:
+        rng = self.world.get_resource(random.Random)
         for _, (brain, goals, _) in self.world.get_components((AIBrain, Goals, Active)):
             if not goals:
                 return
 
-            goal = goals.pick_one()
+            goal = goals.pick_one(rng)
 
             goal.take_action()
 

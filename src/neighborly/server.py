@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 from flask import Flask
 from flask_restful import Api, Resource  # type: ignore
 
-from neighborly import NeighborlyConfig
+from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import World
 from neighborly.data_collection import DataCollector
 from neighborly.simulation import Neighborly

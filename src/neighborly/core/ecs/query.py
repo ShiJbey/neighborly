@@ -237,7 +237,6 @@ class QueryClause(Protocol):
 
 
 class WithClause:
-
     __slots__ = "component_types", "variable"
 
     def __init__(
@@ -275,7 +274,6 @@ class QueryFromFn(Protocol):
 
 
 class FromClause:
-
     __slots__ = "fetch_fn", "variables"
 
     def __init__(self, fetch_fn: QueryFromFn, *variables: str) -> None:
@@ -286,7 +284,6 @@ class FromClause:
         results = self.fetch_fn(ctx.world)
 
         if results:
-
             if ctx.relation.is_uninitialized():
                 return Relation(self.variables, results)
 
@@ -296,7 +293,6 @@ class FromClause:
 
 
 class FilterClause:
-
     __slots__ = "filter_fn", "variables"
 
     def __init__(
@@ -357,7 +353,6 @@ class QueryGetFn(Protocol):
 
 
 class GetClause:
-
     __slots__ = "get_fn", "variables"
 
     def __init__(self, get_fn: QueryGetFn, *variables: str) -> None:
@@ -368,7 +363,6 @@ class GetClause:
         results = self.get_fn(ctx, ctx.world, *self.variables)
 
         if results:
-
             if ctx.relation.is_uninitialized():
                 return Relation(self.variables, results)
 
@@ -412,7 +406,6 @@ class OrClause:
 
 
 class NotClause:
-
     __slots__ = "clause"
 
     def __init__(self, clause: QueryClause) -> None:

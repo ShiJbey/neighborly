@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neighborly"
-description = "An extensible agent-based modeling framework designed to simulate towns of characters for games"
+description = "An agent-based modeling framework for simulating towns of characters in games"
 authors = [
     { name = "Shi Johnson-Bey", email = "shijbey@gmail.com" },
 ]
@@ -13,7 +13,6 @@ dynamic = ["version"]
 requires-python = ">=3.8"
 keywords = [
     "social simulation",
-    "orrery",
     "games",
     "simulation",
     "artificial intelligence",

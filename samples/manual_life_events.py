@@ -17,7 +17,7 @@ from neighborly import (
 from neighborly.components import Active, InTheWorkforce, Unemployed
 from neighborly.core.event import EventHistory
 from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
-from neighborly.core.relationship import Romance
+from neighborly.core.relationship import Romance, add_relationship, get_relationship
 from neighborly.core.roles import Role, RoleList
 from neighborly.decorators import component, system
 from neighborly.plugins.defaults.life_events import StartDatingLifeEvent
@@ -26,7 +26,6 @@ from neighborly.utils.common import (
     spawn_character,
     spawn_settlement,
 )
-from neighborly.utils.relationships import add_relationship, get_relationship
 
 sim = Neighborly(
     NeighborlyConfig().parse_obj(
@@ -80,7 +79,6 @@ class SimpleBrain(Component):
 
 @system(sim)
 class SimpleBrainSystem(ISystem):
-
     sys_group = "character-update"
     priority = -20
 
@@ -117,7 +115,6 @@ class FindJob(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         character = bindings["Character"]
         business = world.get_gameobject(world.get_component(MockBiz)[0][0])
         return cls(world.get_resource(SimDateTime), character, business, "worker")

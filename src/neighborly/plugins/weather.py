@@ -2,8 +2,8 @@ import random
 from enum import Enum
 from typing import Any
 
-from neighborly.systems import System
 from neighborly.simulation import Neighborly, PluginInfo
+from neighborly.systems import System
 
 
 class Weather(Enum):

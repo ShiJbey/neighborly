@@ -17,43 +17,36 @@ plugin_info = PluginInfo(
 
 def setup(sim: Neighborly, **kwargs: Any):
     load_names(
-        sim.world,
         rule_name="character::default::last_name",
-        filepath=_RESOURCES_DIR / "names" / "surnames.txt",
+        file_path=_RESOURCES_DIR / "names" / "surnames.txt",
     )
 
     load_names(
-        sim.world,
         rule_name="character::default::first_name::gender-neutral",
-        filepath=_RESOURCES_DIR / "names" / "neutral_names.txt",
+        file_path=_RESOURCES_DIR / "names" / "neutral_names.txt",
     )
 
     load_names(
-        sim.world,
         rule_name="character::default::first_name::feminine",
-        filepath=_RESOURCES_DIR / "names" / "feminine_names.txt",
+        file_path=_RESOURCES_DIR / "names" / "feminine_names.txt",
     )
 
     load_names(
-        sim.world,
         rule_name="character::default::first_name::masculine",
-        filepath=_RESOURCES_DIR / "names" / "masculine_names.txt",
+        file_path=_RESOURCES_DIR / "names" / "masculine_names.txt",
     )
 
     load_names(
-        sim.world,
         rule_name="restaurant_name",
-        filepath=_RESOURCES_DIR / "names" / "restaurant_names.txt",
+        file_path=_RESOURCES_DIR / "names" / "restaurant_names.txt",
     )
 
     load_names(
-        sim.world,
         rule_name="bar_name",
-        filepath=_RESOURCES_DIR / "names" / "bar_names.txt",
+        file_path=_RESOURCES_DIR / "names" / "bar_names.txt",
     )
 
     load_names(
-        sim.world,
         rule_name="settlement_name",
-        filepath=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
+        file_path=_RESOURCES_DIR / "names" / "US_settlement_names.txt",
     )

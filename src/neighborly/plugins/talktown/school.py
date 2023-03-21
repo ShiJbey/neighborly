@@ -6,10 +6,9 @@ from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.ecs.ecs import World
 from neighborly.core.life_event import LifeEvent, LifeEventBuffer
 from neighborly.core.roles import Role
-from neighborly.core.status import StatusComponent
+from neighborly.core.status import StatusComponent, add_status, remove_status
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.talktown.business_components import School
-from neighborly.utils.statuses import add_status, remove_status
 
 
 class Student(StatusComponent):

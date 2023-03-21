@@ -53,7 +53,7 @@ def int_to_roman(num: int) -> str:
         (1, "I"),
     ]
     res = ""
-    for (n, roman) in lookup:
+    for n, roman in lookup:
         (d, num) = divmod(num, n)
         res += roman * d
     return res
@@ -80,8 +80,8 @@ def roman_to_int(roman: str) -> int:
     i = 0
     num = 0
     while i < len(roman):
-        if i + 1 < len(roman) and roman[i : i + 2] in roman_lookup:
-            num += roman_lookup[roman[i : i + 2]]
+        if i + 1 < len(roman) and roman[i: i + 2] in roman_lookup:
+            num += roman_lookup[roman[i: i + 2]]
             i += 2
         else:
             # print(i)

@@ -1,38 +1,35 @@
 from __future__ import annotations
 
+import dataclasses
 import math
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
-from neighborly.core.ecs import Component, GameObject
-from neighborly.core.status import StatusComponent
+from neighborly.core.ecs import Component, GameObject, GameObjectFactory
+from neighborly.core.status import (
+    StatusComponent,
+    StatusManager,
+    add_status,
+    has_status,
+    remove_status,
+)
+from neighborly.core.time import SimDateTime
 
 
 def lerp(a: float, b: float, f: float) -> float:
     return (a * (1.0 - f)) + (b * f)
-
-
-class RelationshipNotFound(Exception):
-    """Exception raised when trying to access a relationship that does not exist"""
-
-    __slots__ = "subject", "target", "message"
-
-    def __init__(self, subject: str, target: str) -> None:
-        super(Exception, self).__init__(target)
-        self.subject: str = subject
-        self.target: str = target
-        self.message: str = (
-            f"Could not find relationship between ({self.subject}) and ({self.target})"
-        )
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __repr__(self) -> str:
-        return "{}(subject={}, target={})".format(
-            self.__class__.__name__, self.subject, self.target
-        )
 
 
 class IncrementCounter:
@@ -298,3 +295,305 @@ class RelationshipManager(Component):
 
     def __repr__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self.relationships)
+
+
+class ISocialRule(Protocol):
+    """SocialRules define how characters should treat each other"""
+
+    def __call__(
+        self, subject: GameObject, target: GameObject
+    ) -> Optional[Dict[Type[RelationshipFacet], int]]:
+        """
+        Calculate relationship modifiers of a subject toward a target
+
+        Parameters
+        ----------
+        subject: GameObject
+            The owner of the relationship
+        target: GameObject
+            The GameObject that we are evaluating the subjects feelings toward
+
+        Returns
+        -------
+        Optional[Dict[Type[RelationshipFacet], int]]
+            Optionally returns a dict mapping relationship facet types to int modifiers
+            that should be applied to those facets based on some precondition(s)
+        """
+        raise NotImplementedError()
+
+
+@dataclasses.dataclass(frozen=True)
+class SocialRuleInfo:
+    """
+    Information about a social rule
+
+    Attributes
+    ----------
+    rule: ISocialRule
+        The callable function that implements the rule
+    description: str
+        A text description of the rule
+    """
+
+    rule: ISocialRule
+    description: str = ""
+
+
+class SocialRules:
+    """Repository of social rules to use during the simulation."""
+
+    _rules: List[SocialRuleInfo] = []
+
+    @classmethod
+    def add(cls, rule: ISocialRule, description: str) -> None:
+        """
+        Register a social rule
+
+        Parameters
+        ----------
+        rule: ISocialRule
+            The rule to register
+        description: str
+            A text description of the rule
+        """
+        cls._rules.append(SocialRuleInfo(rule, description))
+
+    @classmethod
+    def iter_rules(cls) -> Iterator[SocialRuleInfo]:
+        """Return an iterator to the registered social rules"""
+        return cls._rules.__iter__()
+
+
+_RST = TypeVar("_RST", bound=RelationshipStatus)
+
+
+def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
+    """
+    Creates a new relationship from the subject to the target
+
+    Parameters
+    ----------
+    owner: GameObject
+        The GameObject that owns the relationship
+    target: GameObject
+        The GameObject that the Relationship is directed toward
+
+    Returns
+    -------
+    GameObject
+        The new relationship instance
+    """
+    relationship_manager = owner.get_component(RelationshipManager)
+    world = owner.world
+
+    if target.uid in relationship_manager.relationships:
+        return world.get_gameobject(relationship_manager.relationships[target.uid])
+
+    relationship = GameObjectFactory.instantiate(world, "relationship")
+    relationship.add_component(Relationship(owner.uid, target.uid))
+    relationship.add_component(StatusManager())
+
+    relationship.name = f"Rel({owner} -> {target})"
+
+    owner.get_component(RelationshipManager).relationships[
+        target.uid
+    ] = relationship.uid
+
+    owner.add_child(relationship)
+
+    evaluate_social_rules(relationship, owner, target)
+
+    return relationship
+
+
+def get_relationship(
+    subject: GameObject,
+    target: GameObject,
+) -> GameObject:
+    """
+    Get a relationship toward another entity
+
+    Parameters
+    ----------
+    subject: GameObject
+        The owner of the relationship
+    target: GameObject
+        The character the relationship is directed toward
+
+    Returns
+    -------
+    GameObject
+        The relationship instance toward the other entity
+    """
+    if target not in subject.get_component(RelationshipManager):
+        return add_relationship(subject, target)
+
+    return subject.world.get_gameobject(
+        subject.get_component(RelationshipManager)[target]
+    )
+
+
+def has_relationship(subject: GameObject, target: GameObject) -> bool:
+    """
+    Check if there is an existing relationship from the subject to the target
+
+    Parameters
+    ----------
+    subject: GameObject
+        The GameObject to check for a relationship instance on
+    target: GameObject
+        The GameObject to check is the target of an existing relationship instance
+
+    Returns
+    -------
+    bool
+        Returns True if there is an existing Relationship instance with the
+        target as the target
+    """
+    return target.uid in subject.get_component(RelationshipManager).relationships
+
+
+def add_relationship_status(
+    subject: GameObject, target: GameObject, status: RelationshipStatus
+) -> None:
+    """
+    Add a relationship status to the given character
+
+    Parameters
+    ----------
+    subject: GameObject
+        The character to add the relationship status to
+    target: GameObject
+        The character the relationship status is directed toward
+    status: RelationshipStatus
+        The core component of the status
+    """
+    relationship = get_relationship(subject, target)
+    status.set_created(subject.world.get_resource(SimDateTime))
+    add_status(relationship, status)
+
+
+def get_relationship_status(
+    subject: GameObject,
+    target: GameObject,
+    status_type: Type[_RST],
+) -> _RST:
+    """
+    Get a relationship status from the subject to the target
+    of a given type
+
+    Parameters
+    ----------
+    subject: GameObject
+        The character to add the relationship status to
+    target: GameObject
+        The character that is the target of the status
+    status_type: Type[RelationshipStatus]
+        The type of the status
+    """
+
+    relationship = get_relationship(subject, target)
+    return relationship.get_component(status_type)
+
+
+def remove_relationship_status(
+    subject: GameObject,
+    target: GameObject,
+    status_type: Type[RelationshipStatus],
+) -> None:
+    """
+    Remove a relationship status to the given character
+
+    Parameters
+    ----------
+    subject: GameObject
+        The character to add the relationship status to
+    target: GameObject
+        The character that is the target of the status
+    status_type: Type[RelationshipStatus]
+        The type of the relationship status to remove
+    """
+
+    relationship = get_relationship(subject, target)
+    remove_status(relationship, status_type)
+
+
+def has_relationship_status(
+    subject: GameObject,
+    target: GameObject,
+    *status_type: Type[RelationshipStatus],
+) -> bool:
+    """
+    Check if a relationship between characters has a certain status type
+
+    Parameters
+    ----------
+    subject: GameObject
+        The character to add the relationship status to
+    target: GameObject
+        The character that is the target of the status
+    *status_type: Type[RelationshipStatus]
+        The type of the relationship status to remove
+
+    Returns
+    -------
+    bool
+        Returns True if relationship has a given status
+    """
+
+    relationship = get_relationship(subject, target)
+    return all([has_status(relationship, s) for s in status_type])
+
+
+def get_relationships_with_statuses(
+    subject: GameObject, *status_types: Type[RelationshipStatus]
+) -> List[GameObject]:
+    """Get all the relationships with the given status types
+
+    Parameters
+    ----------
+    subject: GameObject
+        The character to check for relationships on
+    *status_types: Type[Component]
+        Status types to check for on relationship instances
+
+    Returns
+    -------
+    List[GameObject]
+        Relationships with the given status types
+    """
+    world = subject.world
+    relationship_manager = subject.get_component(RelationshipManager)
+    matches: List[GameObject] = []
+    for target_id, rel_id in relationship_manager.relationships.items():
+        relationship = world.get_gameobject(rel_id)
+        target = world.get_gameobject(target_id)
+        if has_relationship_status(subject, target, *status_types):
+            matches.append(relationship)
+    return matches
+
+
+def evaluate_social_rules(
+    relationship: GameObject, owner: GameObject, target: GameObject
+) -> None:
+    """
+    Modify the relationship to reflect active social rules
+
+    Parameters
+    ----------
+    relationship: GameObject
+        The relationship to modify
+    owner: GameObject
+        The owner of the relationship
+    target: GameObject
+        The target of the relationship
+    """
+
+    relationship.get_component(Relationship).clear_modifiers()
+
+    for rule_info in SocialRules.iter_rules():
+        modifier = rule_info.rule(owner, target)
+        if modifier:
+            relationship.get_component(Relationship).add_modifier(
+                RelationshipModifier(description=rule_info.description, values=modifier)
+            )

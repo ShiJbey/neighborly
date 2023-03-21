@@ -6,19 +6,62 @@ where within a settlement they choose to frequent
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Protocol
+import dataclasses
+from typing import Iterator, List, Optional, Protocol
 
 from neighborly.core.ecs import GameObject
 
 
 class ILocationBiasRule(Protocol):
-    """Interface for classes that implement location bias rules"""
+    """LocationBiasRules define what locations characters are likely to frequent"""
 
     def __call__(self, character: GameObject, location: GameObject) -> Optional[int]:
-        """Evaluate the bias rule and return the modifier"""
+        """
+        Calculate a weight modifier for a character frequenting a location
+
+        Parameters
+        ----------
+        character: GameObject
+            The character to check
+        location: GameObject
+            The location to check
+
+        Returns
+        -------
+        Optional[int]
+            Optionally returns an integer value representing a weight modifier for
+            how likely the given character would be to frequent the given location
+            based on some precondition(s)
+        """
         raise NotImplementedError
 
 
-class LocationBiasRuleFactory(Protocol):
-    def __call__(self, **kwargs: Any) -> ILocationBiasRule:
-        raise NotImplementedError
+@dataclasses.dataclass(frozen=True)
+class LocationBiasRuleInfo:
+    """
+    Information about a location bias rule
+
+    Attributes
+    ----------
+    rule: ILocationBiasRule
+        The callable function that implements the rule
+    description: str
+        A text description of the rule
+    """
+
+    rule: ILocationBiasRule
+    description: str = ""
+
+
+class LocationBiasRules:
+    """Repository of active rules that determine what location characters frequent"""
+
+    _rules: List[LocationBiasRuleInfo] = []
+
+    @classmethod
+    def add(cls, rule: ILocationBiasRule, description: str = "") -> None:
+        cls._rules.append(LocationBiasRuleInfo(rule, description))
+
+    @classmethod
+    def iter_rules(cls) -> Iterator[LocationBiasRuleInfo]:
+        return cls._rules.__iter__()

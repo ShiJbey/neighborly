@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type
 
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.event import Event
@@ -158,3 +159,36 @@ class LifeEventBuffer:
     def clear(self) -> None:
         """Clears all events from the buffer"""
         self._event_buffer.clear()
+
+
+class RandomLifeEvents:
+    """Static class used to store LifeEvents that can be triggered randomly"""
+
+    _registry: Dict[str, Type[ActionableLifeEvent]] = {}
+
+    @classmethod
+    def add(cls, life_event_type: Type[ActionableLifeEvent]) -> None:
+        """Register a new random LifeEvent type"""
+        cls._registry[life_event_type.__name__] = life_event_type
+
+    @classmethod
+    def pick_one(cls, rng: random.Random) -> Type[ActionableLifeEvent]:
+        """
+        Return a random registered random life event
+
+        Parameters
+        ----------
+        rng: random.Random
+            A random number generator
+
+        Returns
+        -------
+        Type[ActionableLifeEvent]
+            A randomly-chosen random event from the registry
+        """
+        return rng.choice(list(cls._registry.values()))
+
+    @classmethod
+    def get_size(cls) -> int:
+        """Return number of registered random life events"""
+        return len(cls._registry)

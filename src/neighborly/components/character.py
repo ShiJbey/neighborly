@@ -351,7 +351,6 @@ class GenderType(enum.Enum):
 
 
 class Gender(Component):
-
     __slots__ = "gender"
 
     def __init__(self, gender: Union[str, GenderType] = "NotSpecified") -> None:

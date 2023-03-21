@@ -39,9 +39,7 @@ class EndRomanceSystem(System):
             target = self.world.get_gameobject(relationship.target)
 
             if romance.get_value() <= -25:
-                owner.get_component(Goals).push_goal(
-                    1, EndRomanceGoal(owner, target)
-                )
+                owner.get_component(Goals).push_goal(1, EndRomanceGoal(owner, target))
                 continue
 
             if love_interest := self._get_love_interest(owner):

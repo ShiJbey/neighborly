@@ -9,18 +9,28 @@ incrementing to a completely new version number.
 
 ## [0.10.0]
 
-_This update has breaking changes from version 0.9.x_
+**This update has breaking changes from version 0.9.x**
 
-- The package has been restructured again to prevent circular dependencies. Component definitions
-  live in a separate `components` sub-package from their factory definitions, or systems.
-- Most functionality is no longer included in the simulation by default. They have been moved to
-  various plugins under `neighborly.plugins.defaults.xxxx`. Please remember to include these in your
-  NeighborlyConfig if needed.
+- The package has been restructured again to prevent circular dependencies. Classes are
+  now separated into subpackages/modules by function. For example, all the component
+  classes are within `neighborly.components` all the factories are within
+  `neighborly.factories` and all the default systems are within `neighborly.systems`.
+- The default plugins under `neighborly.plugins.defaults.xxxx` have been restructured
+  to allow people to more easily include only the content they need. If you do not care
+  about the specific plugins, `neighborly.plugins.defaults.all` will import all the
+  default plugins into the simulation.
+- Content libraries are now static class instances.
+- GameObject prefabs should now be instantiated using the `GameObjectFactory` class 
+  rather than using the Prefab-specific libraries (CharacterLibrary, BusinessLibrary, 
+  and ResidenceLibrary).
 
 ### Added
 
 - Content authoring `neighborly.decorators` for use in single file simulations.
 - `py.typed` stub file to remove PyRight warning about Neighborly missing type stubs
+- *SystemGroups* were added to allow better systems ordering. The simulation update loop
+  is now separated into 4 phases (initialization, early-update, update, and 
+  late-update).
 
 ### Updated
 
@@ -30,7 +40,6 @@ _This update has breaking changes from version 0.9.x_
 
 - Prefab-specific libraries (CharacterLibrary, BusinessLibrary, and ResidenceLibrary) and replaced
   them with the `GameObjectFactory` static class that handles instantiating GameObjects from prefabs
--
 
 ## [0.9.5]
 

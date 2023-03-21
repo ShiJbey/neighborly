@@ -24,12 +24,25 @@ from neighborly.components.character import (
 )
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.shared import Active, Age, Lifespan
-from neighborly.content_management import LifeEventLibrary
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.ecs.query import QB
-from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
-from neighborly.core.relationship import Relationship, RelationshipManager, Romance
+from neighborly.core.life_event import (
+    ActionableLifeEvent,
+    LifeEventBuffer,
+    RandomLifeEvents,
+)
+from neighborly.core.relationship import (
+    Relationship,
+    RelationshipManager,
+    Romance,
+    add_relationship_status,
+    get_relationship,
+    get_relationships_with_statuses,
+    has_relationship,
+    remove_relationship_status,
+)
 from neighborly.core.roles import Role, RoleList
+from neighborly.core.status import add_status, clear_statuses, has_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.common import (
@@ -42,14 +55,6 @@ from neighborly.utils.common import (
     shutdown_business,
 )
 from neighborly.utils.query import are_related, is_married, is_single, with_relationship
-from neighborly.utils.relationships import (
-    add_relationship_status,
-    get_relationship,
-    get_relationships_with_statuses,
-    has_relationship,
-    remove_relationship_status,
-)
-from neighborly.utils.statuses import add_status, clear_statuses, has_status
 
 
 class StartDatingLifeEvent(ActionableLifeEvent):
@@ -857,14 +862,12 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    life_event_library = sim.world.get_resource(LifeEventLibrary)
-
-    life_event_library.add(MarriageLifeEvent)
-    life_event_library.add(StartDatingLifeEvent)
-    life_event_library.add(DatingBreakUp)
-    life_event_library.add(DivorceLifeEvent)
-    life_event_library.add(GetPregnantLifeEvent)
-    life_event_library.add(RetireLifeEvent)
-    life_event_library.add(FindOwnPlaceLifeEvent)
-    life_event_library.add(DieOfOldAge)
-    life_event_library.add(GoOutOfBusiness)
+    RandomLifeEvents.add(MarriageLifeEvent)
+    RandomLifeEvents.add(StartDatingLifeEvent)
+    RandomLifeEvents.add(DatingBreakUp)
+    RandomLifeEvents.add(DivorceLifeEvent)
+    RandomLifeEvents.add(GetPregnantLifeEvent)
+    RandomLifeEvents.add(RetireLifeEvent)
+    RandomLifeEvents.add(FindOwnPlaceLifeEvent)
+    RandomLifeEvents.add(DieOfOldAge)
+    RandomLifeEvents.add(GoOutOfBusiness)

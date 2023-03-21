@@ -3,15 +3,10 @@ Utility decorators that should assist with content authoring
 """
 from typing import Any, Type, TypeVar
 
-from neighborly.content_management import (
-    LifeEventLibrary,
-    LocationBiasRuleLibrary,
-    SocialRuleLibrary,
-)
 from neighborly.core.ecs import Component, IComponentFactory, ISystem
-from neighborly.core.life_event import ActionableLifeEvent
-from neighborly.core.location_bias import ILocationBiasRule
-from neighborly.core.social_rule import ISocialRule
+from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
+from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRules
+from neighborly.core.relationship import ISocialRule, SocialRules
 from neighborly.simulation import Neighborly
 
 _CT = TypeVar("_CT", bound=Component)
@@ -115,15 +110,15 @@ def life_event(sim: Neighborly):
     """
 
     def decorator(cls: Type[_LT]) -> Type[_LT]:
-        sim.world.get_resource(LifeEventLibrary).add(cls)
+        sim.world.get_resource(RandomLifeEvents).add(cls)
         return cls
 
     return decorator
 
 
-def social_rule(sim: Neighborly, description: str = ""):
+def social_rule(description: str = ""):
     def decorator(rule: ISocialRule):
-        sim.world.get_resource(SocialRuleLibrary).add(rule, description)
+        SocialRules.add(rule, description)
         return rule
 
     return decorator
@@ -131,6 +126,6 @@ def social_rule(sim: Neighborly, description: str = ""):
 
 def location_bias_rule(sim: Neighborly, description: str = ""):
     def decorator(rule: ILocationBiasRule):
-        sim.world.get_resource(LocationBiasRuleLibrary).add(rule, description)
+        sim.world.get_resource(LocationBiasRules).add(rule, description)
 
     return decorator
