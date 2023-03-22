@@ -26,11 +26,8 @@ from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.shared import Active, Age, Lifespan
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.ecs.query import QB
-from neighborly.core.life_event import (
-    ActionableLifeEvent,
-    LifeEventBuffer,
-    RandomLifeEvents,
-)
+from neighborly.core.event import EventBuffer
+from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
 from neighborly.core.relationship import (
     Relationship,
     RelationshipManager,
@@ -755,7 +752,7 @@ class DieOfOldAge(ActionableLifeEvent):
     def execute(self) -> None:
         deceased = self["Deceased"]
         death_event = Die(self.get_timestamp(), deceased)
-        deceased.world.get_resource(LifeEventBuffer).append(death_event)
+        deceased.world.get_resource(EventBuffer).append(death_event)
         death_event.execute()
 
 

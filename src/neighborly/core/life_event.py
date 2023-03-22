@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type
+from typing import Any, Dict, Iterable, Iterator, Optional, Tuple, Type
 
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.event import Event
@@ -128,37 +128,10 @@ class ActionableLifeEvent(LifeEvent):
 
         Returns
         -------
-        Optional[LifeEventInstance]
+        LifeEventInstance or None
             An instance of this life event if all roles are bound successfully
         """
         raise NotImplementedError
-
-
-class LifeEventBuffer:
-    """Manages all the events that have occurred in the simulation during a timestep"""
-
-    __slots__ = ("_event_buffer",)
-
-    def __init__(self) -> None:
-        self._event_buffer: List[LifeEvent] = []
-
-    def iter_events(self) -> Iterator[LifeEvent]:
-        """Return an iterator to all the events in the buffer regardless of type"""
-        return self._event_buffer.__iter__()
-
-    def append(self, event: LifeEvent) -> None:
-        """Add a new event to the buffer
-
-        Parameters
-        ----------
-        event: Event
-            An event instance
-        """
-        self._event_buffer.append(event)
-
-    def clear(self) -> None:
-        """Clears all events from the buffer"""
-        self._event_buffer.clear()
 
 
 class RandomLifeEvents:
@@ -183,7 +156,7 @@ class RandomLifeEvents:
 
         Returns
         -------
-        Type[ActionableLifeEvent]
+        type of ActionableLifeEvent
             A randomly-chosen random event from the registry
         """
         return rng.choice(list(cls._registry.values()))

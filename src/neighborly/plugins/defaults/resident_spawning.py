@@ -17,7 +17,7 @@ from neighborly.components import (
 from neighborly.components.character import LifeStageType, Married, ParentOf, SiblingOf
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs.ecs import GameObject
-from neighborly.core.life_event import LifeEventBuffer
+from neighborly.core.event import EventBuffer
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -268,7 +268,7 @@ class SpawnFamilySystem(System):
         families_to_spawn = families_per_year // 2
 
         rng = self.world.get_resource(random.Random)
-        event_buffer = self.world.get_resource(LifeEventBuffer)
+        event_buffer = self.world.get_resource(EventBuffer)
         date = self.world.get_resource(SimDateTime)
 
         # Spawn families in each settlement

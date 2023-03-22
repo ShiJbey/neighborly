@@ -24,7 +24,6 @@ from neighborly.core.ecs import (
     World,
 )
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
-from neighborly.core.life_event import LifeEventBuffer
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
@@ -88,7 +87,6 @@ class Neighborly:
         self.world.add_resource(random.Random(self.config.seed))
         self.world.add_resource(self.config.start_date.copy())
         self.world.add_resource(EventBuffer())
-        self.world.add_resource(LifeEventBuffer())
         self.world.add_resource(AllEvents())
         self.world.add_resource(DataCollector())
 
@@ -125,7 +123,6 @@ class Neighborly:
         self.world.add_system(systems.AIActionSystem())
 
         # Add event-listener systems (in execution order)
-        self.world.add_system(systems.LifeEventBufferSystem())
         self.world.add_system(systems.OnJoinSettlementSystem())
         self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
 

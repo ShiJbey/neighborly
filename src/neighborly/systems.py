@@ -37,11 +37,7 @@ from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.ecs.ecs import SystemGroup
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
-from neighborly.core.life_event import (
-    ActionableLifeEvent,
-    LifeEventBuffer,
-    RandomLifeEvents,
-)
+from neighborly.core.life_event import ActionableLifeEvent, LifeEvent, RandomLifeEvents
 from neighborly.core.relationship import (
     Friendship,
     IncrementCounter,
@@ -218,7 +214,7 @@ class RandomLifeEventSystem(System):
     def run(self, *args: Any, **kwargs: Any) -> None:
         """Simulate LifeEvents for characters"""
         rng = self.world.get_resource(random.Random)
-        life_event_buffer = self.world.get_resource(LifeEventBuffer)
+        event_buffer = self.world.get_resource(EventBuffer)
 
         total_population = len(self.world.get_components((GameCharacter, Active)))
 
@@ -229,7 +225,7 @@ class RandomLifeEventSystem(System):
         for _ in range(total_population // 10):
             event_type = RandomLifeEvents.pick_one(rng)
             if event := event_type.instantiate(self.world, RoleList()):
-                life_event_buffer.append(event)
+                event_buffer.append(event)
                 event.execute()
 
 
@@ -345,7 +341,7 @@ class CharacterAgingSystem(System):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         current_date = self.world.get_resource(SimDateTime)
-        event_log = self.world.get_resource(LifeEventBuffer)
+        event_buffer = self.world.get_resource(EventBuffer)
 
         age_increment = float(self.elapsed_time.total_days) / DAYS_PER_YEAR
 
@@ -364,39 +360,24 @@ class CharacterAgingSystem(System):
                 continue
 
             if life_stage_after == LifeStageType.Adolescent:
-                event_log.append(
+                event_buffer.append(
                     neighborly.events.BecomeAdolescentEvent(current_date, character)
                 )
 
             elif life_stage_after == LifeStageType.YoungAdult:
-                event_log.append(
+                event_buffer.append(
                     neighborly.events.BecomeYoungAdultEvent(current_date, character)
                 )
 
             elif life_stage_after == LifeStageType.Adult:
-                event_log.append(
+                event_buffer.append(
                     neighborly.events.BecomeAdultEvent(current_date, character)
                 )
 
             elif life_stage_after == LifeStageType.Senior:
-                event_log.append(
+                event_buffer.append(
                     neighborly.events.BecomeSeniorEvent(current_date, character)
                 )
-
-
-class LifeEventBufferSystem(ISystem):
-    sys_group = "event-listeners"
-    priority = 9999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        life_event_buffer = self.world.get_resource(LifeEventBuffer)
-        event_buffer = self.world.get_resource(EventBuffer)
-        for event in life_event_buffer.iter_events():
-            for role in event.iter_roles():
-                if history := role.gameobject.try_component(EventHistory):
-                    history.append(event)
-            event_buffer.append(event)
-        life_event_buffer.clear()
 
 
 class ProcessEventBufferSystem(ISystem):
@@ -404,11 +385,19 @@ class ProcessEventBufferSystem(ISystem):
     priority = -9999
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        event_log = self.world.get_resource(EventBuffer)
         all_events = self.world.get_resource(AllEvents)
-        for event in event_log.iter_events():
-            all_events.append(event)
-        event_log.clear()
+        event_buffer = self.world.get_resource(EventBuffer)
+
+        for event in event_buffer.iter_events():
+
+            if isinstance(event, LifeEvent):
+                for role in event.iter_roles():
+                    if history := role.gameobject.try_component(EventHistory):
+                        history.append(event)
+
+                all_events.append(event)
+
+        event_buffer.clear()
 
 
 class UnemployedStatusSystem(System):
@@ -501,7 +490,7 @@ class UnemployedStatusSystem(System):
                         "unemployment",
                     )
 
-                    self.world.get_resource(LifeEventBuffer).append(event)
+                    self.world.get_resource(EventBuffer).append(event)
 
 
 class PregnantStatusSystem(System):
@@ -591,13 +580,13 @@ class PregnantStatusSystem(System):
 
             # Pregnancy event dates are retro-fit to be the actual date that the
             # child was due.
-            self.world.get_resource(LifeEventBuffer).append(
+            self.world.get_resource(EventBuffer).append(
                 neighborly.events.GiveBirthEvent(
                     current_date, character, other_parent, baby
                 )
             )
 
-            self.world.get_resource(LifeEventBuffer).append(
+            self.world.get_resource(EventBuffer).append(
                 neighborly.events.BirthEvent(current_date, baby)
             )
 

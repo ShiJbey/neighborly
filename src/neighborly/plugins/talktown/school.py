@@ -4,7 +4,8 @@ from neighborly.components.character import GameCharacter, LifeStage, LifeStageT
 from neighborly.components.shared import Active
 from neighborly.core.ecs import GameObject, ISystem
 from neighborly.core.ecs.ecs import World
-from neighborly.core.life_event import LifeEvent, LifeEventBuffer
+from neighborly.core.event import EventBuffer
+from neighborly.core.life_event import LifeEvent
 from neighborly.core.roles import Role
 from neighborly.core.status import StatusComponent, add_status, remove_status
 from neighborly.core.time import SimDateTime
@@ -72,7 +73,7 @@ class SchoolSystem(ISystem):
         return candidates
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        life_event_buffer = self.world.get_resource(LifeEventBuffer)
+        life_event_buffer = self.world.get_resource(EventBuffer)
         date = self.world.get_resource(SimDateTime)
 
         for _, school in self.world.get_component(School):

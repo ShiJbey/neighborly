@@ -747,7 +747,7 @@ class World:
 
         Returns
         -------
-        Optional[_CT]
+        _CT or None
             The instance of the given component type
         """
         try:
@@ -1159,7 +1159,7 @@ class GameObjectFactory:
 
         Returns
         -------
-        List[str]
+        List[EntityPrefab]
             The names of prefabs in the table that match the pattern
         """
 

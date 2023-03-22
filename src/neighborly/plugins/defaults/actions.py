@@ -24,7 +24,7 @@ from neighborly.components.character import (
     Virtue,
     Virtues,
 )
-from neighborly.components.spawn_table import BusinessSpawnTable
+from neighborly.components.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
 from neighborly.core.ai.behavior_tree import NodeState, SelectorBTNode, SequenceBTNode
 from neighborly.core.ai.brain import GoalNode, WeightedList
 from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory
@@ -44,9 +44,12 @@ from neighborly.core.time import DAYS_PER_MONTH, SimDateTime
 from neighborly.events import StartBusinessEvent
 from neighborly.utils.common import (
     add_business_to_settlement,
+    add_residence_to_settlement,
     end_job,
+    set_residence,
     shutdown_business,
     spawn_business,
+    spawn_residence,
     start_job,
 )
 from neighborly.utils.query import (
@@ -339,7 +342,11 @@ class FindOwnPlace(GoalNode):
     def __init__(self, character: GameObject) -> None:
         super().__init__(
             SelectorBTNode(
-                [FindVacantResidence(character), DepartSimulation(character)]
+                [
+                    FindVacantResidence(character),
+                    BuildNewHouse(character),
+                    DepartSimulation(character)
+                ]
             )
         )
         self.character: GameObject = character
@@ -374,6 +381,64 @@ class FindVacantResidence(GoalNode):
         if isinstance(__o, FindVacantResidence):
             return self.character == __o.character
         return False
+
+
+class BuildNewHouse(GoalNode):
+    __slots__ = "character"
+
+    def __init__(self, character: GameObject) -> None:
+        super().__init__()
+        self.character: GameObject = character
+
+    def get_utility(self) -> Dict[GameObject, float]:
+        return {self.character: 0.0}
+
+    def satisfied_goals(self) -> List[GoalNode]:
+        return [
+            FindOwnPlace(self.character),
+            FindVacantResidence(self.character)
+        ]
+
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, BuildNewHouse):
+            return self.character == __o.character
+        return False
+
+    def evaluate(self) -> NodeState:
+        world = self.character.world
+
+        settlement = world.get_gameobject(
+            self.character.get_component(CurrentSettlement).settlement
+        )
+        land_map = settlement.get_component(Settlement).land_map
+        vacancies = land_map.get_vacant_lots()
+        spawn_table = settlement.get_component(ResidenceSpawnTable)
+        rng = world.get_resource(random.Random)
+
+        # Return early if there is nowhere to build
+        if len(vacancies) == 0:
+            return NodeState.FAILURE
+
+        # Don't build more housing if 60% of the land is used for residential buildings
+        if len(vacancies) / float(land_map.get_total_lots()) < 0.4:
+            return NodeState.FAILURE
+
+        # Pick a random lot from those available
+        lot = rng.choice(vacancies)
+
+        prefab = spawn_table.choose_random(rng)
+
+        residence = spawn_residence(world, prefab)
+
+        add_residence_to_settlement(
+            residence,
+            settlement=world.get_gameobject(settlement.uid),
+            lot_id=lot,
+        )
+
+        set_residence(self.character, residence, True)
+
+        return NodeState.SUCCESS
 
 
 class DepartSimulation(GoalNode):

@@ -98,25 +98,26 @@ def system(sim: Neighborly, **kwargs: Any):
     return decorator
 
 
-def life_event(sim: Neighborly):
-    """Add a class as a simulation system
-
-    This decorator adds an instance of the decorated class as a shared resource.
-
-    Parameters
-    ----------
-    sim: Neighborly
-        The simulation instance to register the life event to
-    """
+def random_life_event():
+    """Adds a class type to the registry of random life events"""
 
     def decorator(cls: Type[_LT]) -> Type[_LT]:
-        sim.world.get_resource(RandomLifeEvents).add(cls)
+        RandomLifeEvents.add(cls)
         return cls
 
     return decorator
 
 
-def social_rule(description: str = ""):
+def social_rule(description: str):
+    """
+    Decorator that marks a function as a location bias rule
+
+    Parameters
+    ----------
+    description: str
+        Text description of the rule
+    """
+
     def decorator(rule: ISocialRule):
         SocialRules.add(rule, description)
         return rule
@@ -124,8 +125,17 @@ def social_rule(description: str = ""):
     return decorator
 
 
-def location_bias_rule(sim: Neighborly, description: str = ""):
+def location_bias_rule(description: str):
+    """
+    Decorator that marks a function as a location bias rule
+
+    Parameters
+    ----------
+    description: str
+        Text description of the rule
+    """
+
     def decorator(rule: ILocationBiasRule):
-        sim.world.get_resource(LocationBiasRules).add(rule, description)
+        LocationBiasRules.add(rule, description)
 
     return decorator
