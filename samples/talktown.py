@@ -17,7 +17,6 @@ EXPORT_WORLD = False
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "seed": 3,
             "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
@@ -36,24 +35,13 @@ sim = Neighborly(
                 }
             },
             "plugins": [
-                "neighborly.plugins.defaults.names",
-                "neighborly.plugins.defaults.characters",
-                "neighborly.plugins.defaults.businesses",
-                "neighborly.plugins.defaults.residences",
-                "neighborly.plugins.defaults.life_events",
-                "neighborly.plugins.defaults.ai",
-                "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.location_bias_rules",
-                "neighborly.plugins.defaults.resident_spawning",
-                "neighborly.plugins.defaults.settlement",
-                "neighborly.plugins.defaults.create_town",
+                "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
             ],
         }
     )
 )
-
 
 if __name__ == "__main__":
     st = time.time()

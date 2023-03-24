@@ -15,8 +15,8 @@ from neighborly import (
     World,
 )
 from neighborly.components import Active, InTheWorkforce, Unemployed
-from neighborly.core.event import EventHistory
-from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
+from neighborly.core.event import EventBuffer, EventHistory
+from neighborly.core.life_event import ActionableLifeEvent
 from neighborly.core.relationship import Romance, add_relationship, get_relationship
 from neighborly.core.roles import Role, RoleList
 from neighborly.decorators import component, system
@@ -88,7 +88,7 @@ class SimpleBrainSystem(ISystem):
         for _, brain in brains:
             event = brain.select_life_event(self.world)
             if event:
-                self.world.get_resource(LifeEventBuffer).append(event)
+                self.world.get_resource(EventBuffer).append(event)
                 event.execute()
 
 
@@ -146,7 +146,6 @@ class FindAJobSystem(ISystem):
 
 
 def main():
-    sim.world.add_resource(LifeEventBuffer())
     republic_city = spawn_settlement(sim.world, "Republic City")
 
     sim.world.spawn_gameobject(

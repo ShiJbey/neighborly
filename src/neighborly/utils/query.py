@@ -3,13 +3,7 @@ from __future__ import annotations
 from typing import List, Set, Tuple, Type, Union
 
 from neighborly.components.business import Occupation, WorkHistory
-from neighborly.components.character import (
-    ChildOf,
-    Dating,
-    Married,
-    ParentOf,
-    SiblingOf,
-)
+from neighborly.components.character import Dating, Family, Married, ParentOf
 from neighborly.core.ecs import Component, GameObject
 from neighborly.core.ecs.query import QueryClause, QueryContext, Relation, WithClause
 from neighborly.core.relationship import (
@@ -155,18 +149,11 @@ def is_married(gameobject: GameObject) -> bool:
     return True
 
 
-def _get_family_members(
-    character: GameObject, degree_of_sep: int = 2
-) -> Set[GameObject]:
-    world = character.world
-
-    family_status_types = (ChildOf, ParentOf, SiblingOf)
-
-    # Get all familial ties n-degrees of separation from each character
-    family_members: Set[GameObject] = {character}
+def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
+    world = a.world
 
     visited: Set[GameObject] = set()
-    character_queue: List[Tuple[int, GameObject]] = [(0, character)]
+    character_queue: List[Tuple[int, GameObject]] = [(0, a)]
 
     while character_queue:
         deg, character = character_queue.pop(0)
@@ -175,31 +162,22 @@ def _get_family_members(
         if deg >= degree_of_sep:
             break
 
+        if character == b:
+            return True
+
         for relationship_id in character.get_component(
             RelationshipManager
         ).relationships.values():
             relationship = world.get_gameobject(relationship_id)
-            if any([relationship.has_component(st) for st in family_status_types]):
+            if relationship.has_component(Family):
                 family_member = world.get_gameobject(
                     relationship.get_component(Relationship).target
                 )
 
                 if family_member not in visited:
                     character_queue.append((deg + 1, family_member))
-                    family_members.add(family_member)
 
-    return family_members
-
-
-def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
-    return (
-        len(
-            _get_family_members(a, degree_of_sep).intersection(
-                _get_family_members(b, degree_of_sep)
-            )
-        )
-        > 0
-    )
+    return False
 
 
 def has_family_to_care_of(character: GameObject) -> bool:

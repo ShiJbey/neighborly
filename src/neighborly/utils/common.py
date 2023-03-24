@@ -3,7 +3,6 @@ import math
 import random
 from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
-import neighborly.events
 from neighborly.components.activity import Activities
 from neighborly.components.business import (
     BossOf,
@@ -60,6 +59,18 @@ from neighborly.core.relationship import (
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, clear_statuses, has_status, remove_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, Weekday
+from neighborly.events import (
+    BusinessClosedEvent,
+    DepartEvent,
+    EndJobEvent,
+    JoinSettlementEvent,
+    LeaveSettlementEvent,
+    NewBusinessEvent,
+    NewCharacterEvent,
+    NewResidenceEvent,
+    NewSettlementEvent,
+    StartJobEvent,
+)
 
 
 def set_location(
@@ -128,9 +139,7 @@ def spawn_settlement(
     settlement.name = settlement.get_component(Name).value
 
     world.get_resource(EventBuffer).append(
-        neighborly.events.NewSettlementEvent(
-            date=world.get_resource(SimDateTime), settlement=settlement
-        )
+        NewSettlementEvent(date=world.get_resource(SimDateTime), settlement=settlement)
     )
 
     return settlement
@@ -250,9 +259,7 @@ def spawn_character(
     )
 
     world.get_resource(EventBuffer).append(
-        neighborly.events.NewCharacterEvent(
-            date=world.get_resource(SimDateTime), character=character
-        )
+        NewCharacterEvent(date=world.get_resource(SimDateTime), character=character)
     )
 
     character.add_component(PrefabName(prefab))
@@ -278,7 +285,7 @@ def add_character_to_settlement(character: GameObject, settlement: GameObject) -
     set_frequented_locations(character, settlement)
 
     character.world.get_resource(EventBuffer).append(
-        neighborly.events.JoinSettlementEvent(
+        JoinSettlementEvent(
             character.world.get_resource(SimDateTime), settlement, character
         )
     )
@@ -304,7 +311,7 @@ def remove_character_from_settlement(character: GameObject) -> None:
     remove_status(character, Active)
 
     character.world.get_resource(EventBuffer).append(
-        neighborly.events.LeaveSettlementEvent(
+        LeaveSettlementEvent(
             character.world.get_resource(SimDateTime), settlement, character
         )
     )
@@ -331,9 +338,7 @@ def spawn_residence(
     residence = GameObjectFactory.instantiate(world, prefab)
 
     world.get_resource(EventBuffer).append(
-        neighborly.events.NewResidenceEvent(
-            date=world.get_resource(SimDateTime), residence=residence
-        )
+        NewResidenceEvent(date=world.get_resource(SimDateTime), residence=residence)
     )
 
     residence.add_component(PrefabName(prefab))
@@ -531,7 +536,7 @@ def depart_settlement(world: World, character: GameObject, reason: str = "") -> 
         remove_character_from_settlement(character)
 
     world.get_resource(EventBuffer).append(
-        neighborly.events.DepartEvent(
+        DepartEvent(
             date=world.get_resource(SimDateTime),
             characters=departing_characters,
             reason=reason,
@@ -671,9 +676,7 @@ def spawn_business(
     business.add_component(PrefabName(prefab))
 
     world.get_resource(EventBuffer).append(
-        neighborly.events.NewBusinessEvent(
-            date=world.get_resource(SimDateTime), business=business
-        )
+        NewBusinessEvent(date=world.get_resource(SimDateTime), business=business)
     )
 
     return business
@@ -753,7 +756,7 @@ def shutdown_business(business: GameObject) -> None:
     settlement_obj = business.world.get_gameobject(current_settlement.settlement)
     settlement = settlement_obj.get_component(Settlement)
 
-    event = neighborly.events.BusinessClosedEvent(date, business)
+    event = BusinessClosedEvent(date, business)
 
     # Update the business as no longer active
     remove_status(business, OpenForBusiness)
@@ -875,7 +878,7 @@ def end_job(
 
     # Emit the event
     world.get_resource(EventBuffer).append(
-        neighborly.events.EndJobEvent(
+        EndJobEvent(
             date=world.get_resource(SimDateTime),
             character=character,
             business=business,
@@ -979,7 +982,7 @@ def start_job(
         business_comp.add_employee(character.uid, occupation.occupation_type)
 
     character.world.get_resource(EventBuffer).append(
-        neighborly.events.StartJobEvent(
+        StartJobEvent(
             character.world.get_resource(SimDateTime),
             business=business,
             character=character,

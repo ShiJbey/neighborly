@@ -279,6 +279,10 @@ class Pregnant(StatusComponent):
         }
 
 
+class Family(RelationshipStatus):
+    pass
+
+
 class ParentOf(RelationshipStatus):
     pass
 

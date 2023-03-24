@@ -58,7 +58,7 @@ class Shopaholic(Component):
         return {}
 
 
-@location_bias_rule(sim, "social-butterfly")
+@location_bias_rule("social-butterfly")
 def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(SocialButterfly) and location_has_activities(
         location, "Socializing"
@@ -66,7 +66,7 @@ def social_butterfly_rule(character: GameObject, location: GameObject) -> Option
         return 2
 
 
-@location_bias_rule(sim, "recovering-alcoholic")
+@location_bias_rule("recovering-alcoholic")
 def recovering_alcoholic_rule(
     character: GameObject, location: GameObject
 ) -> Optional[int]:
@@ -76,7 +76,7 @@ def recovering_alcoholic_rule(
         return -3
 
 
-@location_bias_rule(sim, "shop-alcoholic")
+@location_bias_rule("shop-alcoholic")
 def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(Shopaholic) and location_has_activities(
         location, "Shopping"
@@ -84,7 +84,7 @@ def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int
         return 3
 
 
-@location_bias_rule(sim, "book-worm")
+@location_bias_rule("book-worm")
 def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(BookWorm) and location_has_activities(
         location, "Reading"
@@ -92,7 +92,7 @@ def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]
         return 2
 
 
-@location_bias_rule(sim, "health-nut")
+@location_bias_rule("health-nut")
 def rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(HealthNut) and location_has_activities(
         location, "Recreation"

@@ -31,19 +31,19 @@ currently used to drive characters
 - ``StatusManager``: Tracks all instances of StatusComponents attached to the character
 - ``TraitManager``: Tracks all instances of TraitComponents attached to the character
 - ``EventHistory``: Tracks all the life events this character has been a part of
-- ``AIComponent``: Manages decision-making for characters
+- ``AIBrain``: Manages decision-making for characters
 - ``FrequentedLocations``: Tracks what locations character frequent based on their
   characteristics, residence, and current occupation.
 
 Defining a character prefab
 ---------------------------
 
-We construct characters using *CharacterPrefabs*. These prefabs are defined using YAML 
+We construct characters using *CharacterPrefabs*. These prefabs are defined using YAML
 files and loaded into the simulation using  utility functions.
 
-All characters should have atleast one ``GameCharacter`` entry under their 
+All characters should have atleast one ``GameCharacter`` entry under their
 ``components`` specification. That is how we know that they are a character and not a
-business or residential building. 
+business or residential building.
 
 Along with component data, CharacterPrefabs also have fields for:
 
@@ -92,23 +92,23 @@ prefab. It will save you time.
         StatusManager: { }
         TraitManager: { }
         FrequentedLocations: { }
-        AIComponent:
-            brain: "default"
+        AIBrain: { }
+        Goals: { }
         EventHistory: { }
         Age: { }
 
 Loading the prefab
 ------------------
 
-You can add your prefab to the simulation using loader functions included with 
+You can add your prefab to the simulation using loader functions included with
 Neighborly.
 
 1. ``load_character_prefab(sim.world, "path/to/yaml/file")``
 2. ``load_data_file(sim.world, "path/to/yaml/file")``
 
 There is a slight difference between these two functions. The first is intended to load
-a single character prefab from a file. That is what we would use for the example 
-definition above. However, if we placed multiple character prefabs in the same file, 
+a single character prefab from a file. That is what we would use for the example
+definition above. However, if we placed multiple character prefabs in the same file,
 the second function would load them all at once. The only change we would need to make
 the second option work is to place our definitions within a YAML list (see below).
 You can alays reference the included plugin code to get a better understanding of how

@@ -17,7 +17,7 @@ plugin_info = PluginInfo(
 def virtue_to_activity_bias(virtue: Virtue, activity: str, modifier: int):
     def rule(character: GameObject, location: GameObject) -> Optional[int]:
         if virtues := character.try_component(Virtues):
-            if virtue in virtues.get_high_values() and location_has_activities(
+            if virtues[virtue] >= Virtues.STRONG_AGREE and location_has_activities(
                 location, activity
             ):
                 return modifier

@@ -14,7 +14,7 @@ class BusinessFactory(IComponentFactory):
 
     def create(self, world: World, **kwargs: Any) -> Component:
         owner_type: str = kwargs["owner_type"]
-        employee_types: Dict[str, int] = kwargs.get("employees_types", {}).copy()
+        employee_types: Dict[str, int] = kwargs.get("employee_types", {}).copy()
 
         return Business(
             owner_type=owner_type,

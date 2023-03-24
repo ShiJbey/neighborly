@@ -34,7 +34,7 @@
   max_instances: 3
   min_population: 30
 
-- name: DayCareCenter
+- name: DaycareCenter
   max_instances: 3
   min_population: 200
 

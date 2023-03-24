@@ -859,12 +859,12 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    RandomLifeEvents.add(MarriageLifeEvent)
-    RandomLifeEvents.add(StartDatingLifeEvent)
-    RandomLifeEvents.add(DatingBreakUp)
-    RandomLifeEvents.add(DivorceLifeEvent)
+    # RandomLifeEvents.add(MarriageLifeEvent)
+    # RandomLifeEvents.add(StartDatingLifeEvent)
+    # RandomLifeEvents.add(DatingBreakUp)
+    # RandomLifeEvents.add(DivorceLifeEvent)
     RandomLifeEvents.add(GetPregnantLifeEvent)
-    RandomLifeEvents.add(RetireLifeEvent)
-    RandomLifeEvents.add(FindOwnPlaceLifeEvent)
+    # RandomLifeEvents.add(RetireLifeEvent)
+    # RandomLifeEvents.add(FindOwnPlaceLifeEvent)
     RandomLifeEvents.add(DieOfOldAge)
     RandomLifeEvents.add(GoOutOfBusiness)

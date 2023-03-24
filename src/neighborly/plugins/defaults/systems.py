@@ -1,16 +1,30 @@
 from typing import Any, Optional
 
-from neighborly.components.character import Dating, LifeStage, LifeStageType
+from neighborly.components import Occupation, Residence, Resident
+from neighborly.components.character import (
+    Dating,
+    GameCharacter,
+    LifeStage,
+    LifeStageType,
+)
 from neighborly.components.shared import Active
 from neighborly.core.ai.brain import Goals
 from neighborly.core.ecs import GameObject
 from neighborly.core.relationship import Relationship, RelationshipManager, Romance
-from neighborly.plugins.defaults.actions import EndRomanceGoal, FindRomance
+from neighborly.plugins.defaults.actions import (
+    EndRelationship,
+    FindOwnPlace,
+    FindRomance,
+    Retire,
+)
+from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.systems import System
 from neighborly.utils.query import is_single
 
 
 class EndRomanceSystem(System):
+    sys_group = "goal-suggestion"
+
     @staticmethod
     def _get_love_interest(character: GameObject) -> Optional[GameObject]:
         max_romance: int = -1
@@ -30,24 +44,16 @@ class EndRomanceSystem(System):
         return love_interest
 
     def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, (relationship, _, romance) in self.world.get_components(
+        for _, (relationship, _, _) in self.world.get_components(
             (Relationship, Dating, Romance)
         ):
             # Check if they like someone else more or if they
             # dislike the person they are with
             owner = self.world.get_gameobject(relationship.owner)
-            target = self.world.get_gameobject(relationship.target)
-
-            if romance.get_value() <= -25:
-                owner.get_component(Goals).push_goal(1, EndRomanceGoal(owner, target))
-                continue
-
-            if love_interest := self._get_love_interest(owner):
-                if love_interest != target:
-                    owner.get_component(Goals).push_goal(
-                        1, EndRomanceGoal(owner, target)
-                    )
-                    continue
+            goal = EndRelationship(owner)
+            utility = goal.get_utility().get(owner, 0)
+            if utility > 0:
+                owner.get_component(Goals).push_goal(utility, goal)
 
 
 class FindRomanceSystem(System):
@@ -58,6 +64,8 @@ class FindRomanceSystem(System):
     the goal to break up if they are already in a romantic relationship.
     """
 
+    sys_group = "goal-suggestion"
+
     def run(self, *args: Any, **kwargs: Any) -> None:
         for guid, (goals, _, life_stage) in self.world.get_components(
             (Goals, Active, LifeStage)
@@ -67,4 +75,65 @@ class FindRomanceSystem(System):
                 is_single(character)
                 and life_stage.life_stage >= LifeStageType.Adolescent
             ):
-                goals.push_goal(1, FindRomance(character))
+                goal = FindRomance(character)
+                utility = goal.get_utility().get(character, 0)
+                if utility > 0:
+                    goals.push_goal(utility, goal)
+
+
+class FindOwnPlaceSystem(System):
+    """
+    This system looks for young-adult to adult-aged characters who don't own their own
+    residence and encourages them to find their own residence or leave the simulation
+    """
+
+    sys_group = "goal-suggestion"
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for guid, (_, _, life_stage, resident, goals) in self.world.get_components(
+            (GameCharacter, Active, LifeStage, Resident, Goals)
+        ):
+            if (
+                life_stage.life_stage == LifeStageType.Adult
+                or life_stage.life_stage == LifeStageType.YoungAdult
+            ):
+                residence = self.world.get_gameobject(resident.residence).get_component(
+                    Residence
+                )
+                if not residence.is_owner(guid):
+                    character = self.world.get_gameobject(guid)
+                    goal = FindOwnPlace(character)
+                    utility = goal.get_utility()[character]
+                    goals.push_goal(utility, goal)
+
+
+class RetirementSystem(System):
+    """
+    Encourages senior residents to retire from their jobs
+    """
+
+    sys_group = "goal-suggestion"
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for guid, (_, _, life_stage, _, goals) in self.world.get_components(
+            (GameCharacter, Active, LifeStage, Occupation, Goals)
+        ):
+            if life_stage.life_stage == LifeStageType.Senior:
+                character = self.world.get_gameobject(guid)
+                goal = Retire(character)
+                utility = goal.get_utility()[character]
+                goals.push_goal(utility, goal)
+
+
+plugin_info = PluginInfo(
+    name="default systems plugin",
+    plugin_id="default.systems",
+    version="0.1.0",
+)
+
+
+def setup(sim: Neighborly, **kwargs: Any):
+    sim.add_system(EndRomanceSystem())
+    sim.add_system(FindRomanceSystem())
+    sim.add_system(FindOwnPlaceSystem())
+    sim.add_system(RetirementSystem())

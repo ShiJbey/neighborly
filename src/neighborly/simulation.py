@@ -113,7 +113,7 @@ class Neighborly:
         self.world.add_system(systems.UpdateFrequentedLocationSystem())
 
         # Add relationship-update systems (in execution order)
-        self.world.add_system(systems.EvaluateSocialRulesSystem())
+        # self.world.add_system(systems.EvaluateSocialRulesSystem())
         self.world.add_system(systems.RelationshipUpdateSystem())
         self.world.add_system(systems.FriendshipStatSystem())
         self.world.add_system(systems.RomanceStatSystem())
@@ -131,8 +131,8 @@ class Neighborly:
         self.world.add_system(systems.UnemployedStatusSystem())
 
         # Add goal-suggestion systems (in execution order)
-        self.world.add_system(systems.FindEmployeesSystem())
-        self.world.add_system(systems.StartBusinessSystem())
+        # self.world.add_system(systems.FindEmployeesSystem())
+        # self.world.add_system(systems.StartBusinessSystem())
 
         # Add clean-up systems (in execution order)
         self.world.add_system(systems.ProcessEventBufferSystem())

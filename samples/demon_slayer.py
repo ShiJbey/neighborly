@@ -64,7 +64,7 @@ from neighborly.components import (
 )
 from neighborly.components.character import LifeStage, LifeStageType
 from neighborly.core.event import EventBuffer
-from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
+from neighborly.core.life_event import ActionableLifeEvent
 from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
@@ -99,18 +99,7 @@ sim = Neighborly(
                 }
             },
             "plugins": [
-                "neighborly.plugins.defaults.names",
-                "neighborly.plugins.defaults.characters",
-                "neighborly.plugins.defaults.businesses",
-                "neighborly.plugins.defaults.residences",
-                "neighborly.plugins.defaults.life_events",
-                "neighborly.plugins.defaults.ai",
-                "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.location_bias_rules",
-                "neighborly.plugins.defaults.resident_spawning",
-                "neighborly.plugins.defaults.settlement",
-                "neighborly.plugins.defaults.create_town",
-                "neighborly.plugins.talktown.spawn_tables",
+                "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown",
             ],
         }
@@ -566,7 +555,7 @@ def power_level_to_demon_rank(power_level: int) -> DemonRank:
 ########################################
 
 
-@random_life_event(sim)
+@random_life_event()
 class BecomeDemonSlayer(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
@@ -626,7 +615,7 @@ class BecomeDemonSlayer(ActionableLifeEvent):
         return None
 
 
-@random_life_event(sim)
+@random_life_event()
 class DemonSlayerPromotion(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
@@ -679,7 +668,7 @@ class DemonSlayerPromotion(ActionableLifeEvent):
         return None
 
 
-@random_life_event(sim)
+@random_life_event()
 class DemonChallengeForPower(ActionableLifeEvent):
     def __init__(
         self, date: SimDateTime, challenger: GameObject, opponent: GameObject
@@ -696,7 +685,7 @@ class DemonChallengeForPower(ActionableLifeEvent):
 
         battle_event = Battle(world.get_resource(SimDateTime), challenger, opponent)
 
-        world.get_resource(LifeEventBuffer).append(battle_event)
+        world.get_resource(EventBuffer).append(battle_event)
 
         battle_event.execute()
 
@@ -775,7 +764,7 @@ class DemonChallengeForPower(ActionableLifeEvent):
         return None
 
 
-@random_life_event(sim)
+@random_life_event()
 class DevourHuman(ActionableLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, victim: GameObject
@@ -787,7 +776,7 @@ class DevourHuman(ActionableLifeEvent):
         victim = self["Victim"]
         world = demon.world
         date = world.get_resource(SimDateTime)
-        life_event_buffer = world.get_resource(LifeEventBuffer)
+        life_event_buffer = world.get_resource(EventBuffer)
 
         if victim.has_component(DemonSlayer):
             battle_event = Battle(date, demon, victim)
@@ -880,7 +869,7 @@ class DevourHuman(ActionableLifeEvent):
         return None
 
 
-@random_life_event(sim)
+@random_life_event()
 class Battle(ActionableLifeEvent):
     """Have a demon fight a demon slayer"""
 
@@ -900,7 +889,7 @@ class Battle(ActionableLifeEvent):
         challenger_pl = challenger.get_component(PowerLevel)
         opponent_pl = opponent.get_component(PowerLevel)
         date = world.get_resource(SimDateTime)
-        life_event_buffer = world.get_resource(LifeEventBuffer)
+        life_event_buffer = world.get_resource(EventBuffer)
 
         challenger_success_chance = probability_of_winning(
             challenger_pl.level, opponent_pl.level
@@ -997,7 +986,7 @@ class Battle(ActionableLifeEvent):
         return None
 
 
-@random_life_event(sim)
+@random_life_event()
 class TurnSomeoneIntoDemon(ActionableLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, new_demon: GameObject
@@ -1095,7 +1084,7 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
         new_demon.add_component(ConfirmedKills())
 
 
-@random_life_event(sim)
+@random_life_event()
 class PromotionToLowerMoon(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
@@ -1146,7 +1135,7 @@ class PromotionToLowerMoon(ActionableLifeEvent):
         return None
 
 
-@random_life_event(sim)
+@random_life_event()
 class PromotionToUpperMoon(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])

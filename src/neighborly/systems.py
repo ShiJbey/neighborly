@@ -3,19 +3,13 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, DefaultDict, List, Optional, Type
 
-import neighborly.events
-from neighborly.components.business import (
-    Business,
-    InTheWorkforce,
-    Occupation,
-    OccupationTypes,
-    OpenForBusiness,
-    Unemployed,
-)
+# import neighborly.events
+from neighborly.components.business import InTheWorkforce, Occupation, Unemployed
 from neighborly.components.character import (
     CanAge,
     ChildOf,
     Departed,
+    Family,
     GameCharacter,
     LifeStage,
     LifeStageType,
@@ -56,7 +50,17 @@ from neighborly.core.relationship import (
 from neighborly.core.roles import RoleList
 from neighborly.core.status import add_status, has_status, remove_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
-from neighborly.plugins.defaults.actions import FindEmployment, StartBusiness
+from neighborly.events import (
+    BecomeAdolescentEvent,
+    BecomeAdultEvent,
+    BecomeSeniorEvent,
+    BecomeYoungAdultEvent,
+    BirthEvent,
+    DepartEvent,
+    GiveBirthEvent,
+    JoinSettlementEvent,
+)
+from neighborly.plugins.defaults.actions import FindEmployment
 from neighborly.utils.common import (
     add_character_to_settlement,
     check_share_residence,
@@ -65,7 +69,6 @@ from neighborly.utils.common import (
     set_frequented_locations,
     set_residence,
     spawn_character,
-    start_job,
 )
 
 
@@ -274,58 +277,6 @@ class MeetNewPeopleSystem(ISystem):
                 ).increment(candidate_scores[acquaintance])
 
 
-class FindEmployeesSystem(ISystem):
-    """Finds employees to work open positions at businesses"""
-
-    sys_group = "goal-suggestion"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        rng = self.world.get_resource(random.Random)
-
-        for guid, (business, _) in self.world.get_components(
-            (Business, OpenForBusiness)
-        ):
-            open_positions = business.get_open_positions()
-
-            for occupation_name in open_positions:
-                occupation_type = OccupationTypes.get(occupation_name)
-
-                candidates = [
-                    self.world.get_gameobject(g)
-                    for g, _ in self.world.get_components(
-                        (InTheWorkforce, Active, Unemployed)
-                    )
-                ]
-
-                candidates = [
-                    c for c in candidates if occupation_type.passes_preconditions(c)
-                ]
-
-                if not candidates:
-                    continue
-
-                candidate = rng.choice(candidates)
-
-                start_job(candidate, self.world.get_gameobject(guid), occupation_name)
-
-
-class StartBusinessSystem(System):
-    """Build a new business building at a random free space on the land grid."""
-
-    sys_group = "goal-suggestion"
-
-    def __init__(self):
-        super().__init__(interval=TimeDelta(months=1))
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for g, _ in self.world.get_components((InTheWorkforce, Active, Unemployed)):
-            character = self.world.get_gameobject(g)
-            goal = StartBusiness(character)
-            character.get_component(Goals).push_goal(
-                goal.get_utility().get(character, 0), goal
-            )
-
-
 class CharacterAgingSystem(System):
     """
     Updates the ages of characters, adds/removes life
@@ -360,24 +311,16 @@ class CharacterAgingSystem(System):
                 continue
 
             if life_stage_after == LifeStageType.Adolescent:
-                event_buffer.append(
-                    neighborly.events.BecomeAdolescentEvent(current_date, character)
-                )
+                event_buffer.append(BecomeAdolescentEvent(current_date, character))
 
             elif life_stage_after == LifeStageType.YoungAdult:
-                event_buffer.append(
-                    neighborly.events.BecomeYoungAdultEvent(current_date, character)
-                )
+                event_buffer.append(BecomeYoungAdultEvent(current_date, character))
 
             elif life_stage_after == LifeStageType.Adult:
-                event_buffer.append(
-                    neighborly.events.BecomeAdultEvent(current_date, character)
-                )
+                event_buffer.append(BecomeAdultEvent(current_date, character))
 
             elif life_stage_after == LifeStageType.Senior:
-                event_buffer.append(
-                    neighborly.events.BecomeSeniorEvent(current_date, character)
-                )
+                event_buffer.append(BecomeSeniorEvent(current_date, character))
 
 
 class ProcessEventBufferSystem(ISystem):
@@ -440,8 +383,9 @@ class UnemployedStatusSystem(System):
                     + priority_from_children
                 ) / 4.0
 
-                character.get_component(Goals).push_goal(priority, goal)
-                continue
+                if priority > 0:
+                    character.get_component(Goals).push_goal(priority, goal)
+                    continue
 
             else:
                 spouses = get_relationships_with_statuses(character, Married)
@@ -484,7 +428,7 @@ class UnemployedStatusSystem(System):
 
                     remove_status(character, Unemployed)
 
-                    event = neighborly.events.DepartEvent(
+                    event = DepartEvent(
                         self.world.get_resource(SimDateTime),
                         characters_to_depart,
                         "unemployment",
@@ -530,18 +474,22 @@ class PregnantStatusSystem(System):
             # Birthing parent to child
             add_relationship(character, baby)
             add_relationship_status(character, baby, ParentOf())
+            add_relationship_status(character, baby, Family())
 
             # Child to birthing parent
             add_relationship(baby, character)
             add_relationship_status(baby, character, ChildOf())
+            add_relationship_status(baby, character, Family())
 
             # Other parent to child
             add_relationship(other_parent, baby)
             add_relationship_status(other_parent, baby, ParentOf())
+            add_relationship_status(other_parent, baby, Family())
 
             # Child to other parent
             add_relationship(baby, other_parent)
             add_relationship_status(baby, other_parent, ChildOf())
+            add_relationship_status(baby, other_parent, Family())
 
             # Create relationships with children of birthing parent
             for relationship in get_relationships_with_statuses(character, ParentOf):
@@ -555,10 +503,12 @@ class PregnantStatusSystem(System):
                 # Baby to sibling
                 add_relationship(baby, sibling)
                 add_relationship_status(baby, sibling, SiblingOf())
+                add_relationship_status(baby, sibling, Family())
 
                 # Sibling to baby
                 add_relationship(sibling, baby)
                 add_relationship_status(sibling, baby, SiblingOf())
+                add_relationship_status(sibling, baby, Family())
 
             # Create relationships with children of other parent
             for relationship in get_relationships_with_statuses(other_parent, ParentOf):
@@ -571,24 +521,22 @@ class PregnantStatusSystem(System):
                 # Baby to sibling
                 add_relationship(baby, sibling)
                 add_relationship_status(baby, sibling, SiblingOf())
+                add_relationship_status(baby, sibling, Family())
 
                 # Sibling to baby
                 add_relationship(sibling, baby)
                 add_relationship_status(sibling, baby, SiblingOf())
+                add_relationship_status(sibling, baby, Family())
 
             remove_status(character, Pregnant)
 
             # Pregnancy event dates are retro-fit to be the actual date that the
             # child was due.
             self.world.get_resource(EventBuffer).append(
-                neighborly.events.GiveBirthEvent(
-                    current_date, character, other_parent, baby
-                )
+                GiveBirthEvent(current_date, character, other_parent, baby)
             )
 
-            self.world.get_resource(EventBuffer).append(
-                neighborly.events.BirthEvent(current_date, baby)
-            )
+            self.world.get_resource(EventBuffer).append(BirthEvent(current_date, baby))
 
 
 class RelationshipUpdateSystem(ISystem):
@@ -657,7 +605,7 @@ class OnJoinSettlementSystem(ISystem):
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            neighborly.events.JoinSettlementEvent
+            JoinSettlementEvent
         ):
             # Add young-adult or older characters to the workforce
             if (
@@ -677,7 +625,7 @@ class AddYoungAdultToWorkforceSystem(ISystem):
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            neighborly.events.BecomeYoungAdultEvent
+            BecomeYoungAdultEvent
         ):
             add_status(event.character, InTheWorkforce())
 
@@ -784,7 +732,7 @@ class AIActionSystem(System):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         rng = self.world.get_resource(random.Random)
-        for _, (brain, goals, _) in self.world.get_components((AIBrain, Goals, Active)):
+        for _, (_, goals, _) in self.world.get_components((AIBrain, Goals, Active)):
             if not goals:
                 return
 

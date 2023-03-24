@@ -565,11 +565,13 @@ def get_relationships_with_statuses(
     world = subject.world
     relationship_manager = subject.get_component(RelationshipManager)
     matches: List[GameObject] = []
-    for target_id, rel_id in relationship_manager.relationships.items():
+    for _, rel_id in relationship_manager.relationships.items():
         relationship = world.get_gameobject(rel_id)
-        target = world.get_gameobject(target_id)
-        if has_relationship_status(subject, target, *status_types):
+        if all([relationship.has_component(st) for st in status_types]):
             matches.append(relationship)
+        # target = world.get_gameobject(target_id)
+        # if has_relationship_status(subject, target, *status_types):
+        #     matches.append(relationship)
     return matches
 
 

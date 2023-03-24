@@ -116,7 +116,7 @@ Businesses:
         owner_type: Mortician
         employee_types:
           Apprentice: 1
-          GroundsKeeper: 1
+          Groundskeeper: 1
 
   - name: CityHall
     extends: TotT::business
@@ -193,12 +193,12 @@ Businesses:
           Apprentice: 1
           Bottler: 1
 
-  - name: DayCareCenter
+  - name: DaycareCenter
     extends: TotT::business
     max_instances: 3
     min_population: 200
     components:
-      DayCareCenter: {}
+      DaycareCenter: {}
       Name:
         value: Daycare Center
       Business:
@@ -413,9 +413,11 @@ Businesses:
         value: Hospital
       Hospital: {}
       Business:
-        Doctor: 2
-        Nurse: 2
-        Secretary: 1
+        owner_type: Owner
+        employee_types:
+          Doctor: 2
+          Nurse: 2
+          Secretary: 1
 
   - name: Hotel
     extends: TotT::business
@@ -560,7 +562,7 @@ Businesses:
       Name:
         value: Plumbing Company
       Business:
-        owner: Plumber
+        owner_type: Plumber
         employee_types:
           Apprentice: 1
 
@@ -574,7 +576,7 @@ Businesses:
       Name:
         value: Police Station
       Business:
-        owner_type: Municipal
+        owner_type: ""
         employee_types:
           Police Chief: 1
           Police Officer: 2

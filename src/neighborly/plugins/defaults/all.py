@@ -13,6 +13,7 @@ from . import (
     resident_spawning,
     settlement,
     social_rules,
+    systems,
 )
 
 plugin_info = PluginInfo(
@@ -33,3 +34,4 @@ def setup(sim: Neighborly, **kwargs: Any):
     residences.setup(sim, **kwargs)
     resident_spawning.setup(sim, **kwargs)
     social_rules.setup(sim, **kwargs)
+    systems.setup(sim, **kwargs)

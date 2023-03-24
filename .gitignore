@@ -292,3 +292,6 @@ node_modules/
 # Removing configurations because of issues moving between platforms
 .vscode/
 .idea/
+
+# Profiling output
+*.prof

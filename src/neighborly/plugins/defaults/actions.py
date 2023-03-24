@@ -3,8 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Optional
 
-from neighborly import NeighborlyConfig
-from neighborly.components import Active, CurrentSettlement
+from neighborly.components import Active, CurrentSettlement, Residence, Vacant
 from neighborly.components.business import (
     Business,
     BusinessOwner,
@@ -15,6 +14,7 @@ from neighborly.components.business import (
 )
 from neighborly.components.character import (
     Dating,
+    Departed,
     GameCharacter,
     LifeStage,
     LifeStageType,
@@ -25,26 +25,30 @@ from neighborly.components.character import (
     Virtues,
 )
 from neighborly.components.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
-from neighborly.core.ai.behavior_tree import NodeState, SelectorBTNode, SequenceBTNode
+from neighborly.config import NeighborlyConfig
+from neighborly.core.ai.behavior_tree import NodeState, SelectorBTNode
 from neighborly.core.ai.brain import GoalNode, WeightedList
 from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory
 from neighborly.core.ecs.ecs import World
 from neighborly.core.event import EventBuffer
 from neighborly.core.relationship import (
+    Relationship,
     RelationshipManager,
     Romance,
     add_relationship_status,
     get_relationship,
     get_relationships_with_statuses,
     has_relationship,
+    remove_relationship_status,
 )
 from neighborly.core.settlement import Settlement
-from neighborly.core.status import add_status
+from neighborly.core.status import add_status, remove_status
 from neighborly.core.time import DAYS_PER_MONTH, SimDateTime
-from neighborly.events import StartBusinessEvent
+from neighborly.events import DepartEvent, StartBusinessEvent
 from neighborly.utils.common import (
     add_business_to_settlement,
     add_residence_to_settlement,
+    check_share_residence,
     end_job,
     set_residence,
     shutdown_business,
@@ -345,7 +349,7 @@ class FindOwnPlace(GoalNode):
                 [
                     FindVacantResidence(character),
                     BuildNewHouse(character),
-                    DepartSimulation(character)
+                    DepartSimulation(character),
                 ]
             )
         )
@@ -355,7 +359,21 @@ class FindOwnPlace(GoalNode):
         return []
 
     def get_utility(self) -> Dict[GameObject, float]:
-        return super().get_utility()
+        utilities: Dict[GameObject, float] = {self.character: 0}
+
+        life_stage = self.character.get_component(LifeStage)
+
+        if life_stage.life_stage == LifeStageType.Adult:
+            utilities[self.character] = 0.9
+
+        elif life_stage.life_stage == LifeStageType.YoungAdult:
+            utilities[self.character] = 0.5
+
+        if virtues := self.character.try_component(Virtues):
+            if virtues[Virtue.INDEPENDENCE] >= Virtues.AGREE:
+                utilities[self.character] += 0.1
+
+        return utilities
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, FindOwnPlace):
@@ -375,12 +393,20 @@ class FindVacantResidence(GoalNode):
         return []
 
     def get_utility(self) -> Dict[GameObject, float]:
-        return super().get_utility()
+        return {self.character: 1}
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, FindVacantResidence):
             return self.character == __o.character
         return False
+
+    def evaluate(self) -> NodeState:
+        for guid, _ in self.world.get_components((Residence, Active, Vacant)):
+            residence_obj = self.world.get_gameobject(guid)
+            set_residence(self.character, residence_obj, True)
+            return NodeState.SUCCESS
+
+        return NodeState.FAILURE
 
 
 class BuildNewHouse(GoalNode):
@@ -394,10 +420,7 @@ class BuildNewHouse(GoalNode):
         return {self.character: 0.0}
 
     def satisfied_goals(self) -> List[GoalNode]:
-        return [
-            FindOwnPlace(self.character),
-            FindVacantResidence(self.character)
-        ]
+        return [FindOwnPlace(self.character), FindVacantResidence(self.character)]
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, BuildNewHouse):
@@ -450,130 +473,227 @@ class DepartSimulation(GoalNode):
         self.world: World = character.world
 
     def satisfied_goals(self) -> List[GoalNode]:
-        return super().satisfied_goals()
+        return []
 
     def get_utility(self) -> Dict[GameObject, float]:
-        return super().get_utility()
+        return {self.character: 1}
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, DepartSimulation):
             return self.character == __o.character
         return False
 
+    def evaluate(self) -> NodeState:
+        characters_to_depart: List[GameObject] = [self.character]
 
-class StartFamily(GoalNode):
+        # Have all spouses depart
+        # Allows for polygamy
+        spouses = get_relationships_with_statuses(self.character, Married)
+        for relationship in spouses:
+            rel = relationship.get_component(Relationship)
+            spouse = self.world.get_gameobject(rel.target)
+            if spouse.has_component(Active):
+                characters_to_depart.append(spouse)
+
+        # Have all children living in the same house depart
+        children = get_relationships_with_statuses(self.character, ParentOf)
+        for relationship in children:
+            rel = relationship.get_component(Relationship)
+            child = self.world.get_gameobject(rel.target)
+            if child.has_component(Active) and check_share_residence(
+                self.character, child
+            ):
+                characters_to_depart.append(child)
+
+        for c in characters_to_depart:
+            add_status(c, Departed())
+            remove_status(c, Active)
+
+        event = DepartEvent(
+            self.world.get_resource(SimDateTime), characters_to_depart, ""
+        )
+
+        self.world.get_resource(EventBuffer).append(event)
+
+        return NodeState.SUCCESS
+
+
+# class StartFamily(GoalNode):
+#     __slots__ = "character"
+#
+#     def __init__(self, character: GameObject) -> None:
+#         super().__init__(
+#             SequenceBTNode([GetMarried(self.character), HaveChildren(self.character)])
+#         )
+#         self.character: GameObject = character
+#
+#     def is_complete(self) -> bool:
+#         is_married = bool(get_relationships_with_statuses(self.character, Married))
+#         has_children = bool(get_relationships_with_statuses(self.character, ParentOf))
+#         return is_married and has_children
+#
+#     def satisfied_goals(self) -> List[GoalNode]:
+#         return []
+#
+#     def get_utility(self) -> Dict[GameObject, float]:
+#         return super().get_utility()
+#
+#     def __eq__(self, __o: object) -> bool:
+#         if isinstance(__o, StartFamily):
+#             return self.character == __o.character
+#         return False
+#
+
+# class GetMarried(GoalNode):
+#     __slots__ = "character"
+#
+#     def __init__(self, character: GameObject) -> None:
+#         super().__init__()
+#         self.character: GameObject = character
+#
+#     def satisfied_goals(self) -> List[GoalNode]:
+#         return []
+#
+#     def is_complete(self) -> bool:
+#         return bool(get_relationships_with_statuses(self.character, Married))
+#
+#     def __eq__(self, __o: object) -> bool:
+#         if isinstance(__o, GetMarried):
+#             return self.character == __o.character
+#         return False
+#
+#
+# class FindSignificantOther(GoalNode):
+#     __slots__ = "character"
+#
+#     def __init__(self, character: GameObject) -> None:
+#         super().__init__()
+#         self.character: GameObject = character
+#
+#     def __eq__(self, __o: object) -> bool:
+#         if isinstance(__o, FindSignificantOther):
+#             return self.character == __o.character
+#         return False
+#
+#
+# class ProposeMarriage(GoalNode):
+#     ...
+#
+#
+# class HaveChildren(GoalNode):
+#     __slots__ = "character"
+#
+#     def __init__(self, character: GameObject) -> None:
+#         super().__init__()
+#         self.character: GameObject = character
+#
+#     def __eq__(self, __o: object) -> bool:
+#         if isinstance(__o, HaveChildren):
+#             return self.character == __o.character
+#         return False
+#
+#
+# class GetPregnant(GoalNode):
+#     __slots__ = "character"
+#
+#     def __init__(self, character: GameObject) -> None:
+#         super().__init__()
+#         self.character: GameObject = character
+#
+#     def __eq__(self, __o: object) -> bool:
+#         if isinstance(__o, GetPregnant):
+#             return self.character == __o.character
+#         return False
+
+
+class EndRelationship(GoalNode):
     __slots__ = "character"
 
     def __init__(self, character: GameObject) -> None:
-        super().__init__(
-            SequenceBTNode([GetMarried(self.character), HaveChildren(self.character)])
-        )
+        super().__init__()
         self.character: GameObject = character
 
-    def is_complete(self) -> bool:
-        is_married = bool(get_relationships_with_statuses(self.character, Married))
-        has_children = bool(get_relationships_with_statuses(self.character, ParentOf))
-        return is_married and has_children
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, EndRelationship):
+            return self.character == __o.character
+        return False
 
     def satisfied_goals(self) -> List[GoalNode]:
         return []
 
     def get_utility(self) -> Dict[GameObject, float]:
-        return super().get_utility()
+        utilities: Dict[GameObject, float] = {self.character: 0}
 
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, StartFamily):
-            return self.character == __o.character
-        return False
+        rel_to_spouse = get_relationships_with_statuses(self.character, Dating)[0]
+
+        romance = rel_to_spouse.get_component(Romance).get_value()
+
+        utilities[self.character] += (-1.0 * romance) / 100
+
+        if virtues := self.character.try_component(Virtues):
+            if virtues[Virtue.ROMANCE] >= Virtues.STRONG_AGREE:
+                utilities[self.character] += 1
+
+        utilities[self.character] /= 2
+
+        return utilities
+
+    def evaluate(self) -> NodeState:
+        ex_partner = self.character.world.get_gameobject(
+            get_relationships_with_statuses(self.character, Dating)[0]
+            .get_component(Relationship)
+            .target
+        )
+
+        remove_relationship_status(self.character, ex_partner, Dating)
+        remove_relationship_status(ex_partner, self.character, Dating)
+
+        return NodeState.SUCCESS
 
 
-class GetMarried(GoalNode):
+class DivorceSpouse(GoalNode):
     __slots__ = "character"
 
     def __init__(self, character: GameObject) -> None:
         super().__init__()
         self.character: GameObject = character
+
+    def get_utility(self) -> Dict[GameObject, float]:
+        utilities: Dict[GameObject, float] = {}
+
+        rel_to_spouse = get_relationships_with_statuses(self.character, Married)[0]
+
+        romance = rel_to_spouse.get_component(Romance).get_value()
+
+        utilities[self.character] += (-1.0 * romance) / 100
+
+        if virtues := self.character.try_component(Virtues):
+            if virtues[Virtue.ROMANCE] >= Virtues.STRONG_AGREE:
+                utilities[self.character] += 1
+
+        utilities[self.character] /= 2
+
+        return utilities
 
     def satisfied_goals(self) -> List[GoalNode]:
         return []
 
-    def is_complete(self) -> bool:
-        return bool(get_relationships_with_statuses(self.character, Married))
+    def evaluate(self) -> NodeState:
+        world = self.character.world
+        ex_spouse = world.get_gameobject(
+            get_relationships_with_statuses(self.character, Married)[0]
+            .get_component(Relationship)
+            .target
+        )
 
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, GetMarried):
-            return self.character == __o.character
-        return False
+        remove_relationship_status(self.character, ex_spouse, Married)
+        remove_relationship_status(ex_spouse, self.character, Married)
 
-
-class FindSignificantOther(GoalNode):
-    __slots__ = "character"
-
-    def __init__(self, character: GameObject) -> None:
-        super().__init__()
-        self.character: GameObject = character
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, FindSignificantOther):
-            return self.character == __o.character
-        return False
-
-
-class ProposeMarriage(GoalNode):
-    ...
-
-
-class HaveChildren(GoalNode):
-    __slots__ = "character"
-
-    def __init__(self, character: GameObject) -> None:
-        super().__init__()
-        self.character: GameObject = character
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, HaveChildren):
-            return self.character == __o.character
-        return False
-
-
-class GetPregnant(GoalNode):
-    __slots__ = "character"
-
-    def __init__(self, character: GameObject) -> None:
-        super().__init__()
-        self.character: GameObject = character
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, GetPregnant):
-            return self.character == __o.character
-        return False
-
-
-class BreakUp(GoalNode):
-    __slots__ = "initiator", "other"
-
-    def __init__(self, initiator: GameObject, other: GameObject) -> None:
-        super().__init__()
-        self.initiator: GameObject = initiator
-        self.other: GameObject = other
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, BreakUp):
-            return self.initiator == __o.initiator and self.other == __o.other
-        return False
-
-
-class DivorceSpouse(GoalNode):
-    __slots__ = "initiator", "other"
-
-    def __init__(self, initiator: GameObject, other: GameObject) -> None:
-        super().__init__()
-        self.initiator: GameObject = initiator
-        self.other: GameObject = other
+        return NodeState.SUCCESS
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, DivorceSpouse):
-            return self.initiator == __o.initiator and self.other == __o.other
+            return self.character == __o.character
         return False
 
 
@@ -583,7 +703,6 @@ class Retire(GoalNode):
     def __init__(self, character: GameObject) -> None:
         super().__init__()
         self.character = character
-        self.world = character.world
 
     def get_utility(self) -> Dict[GameObject, float]:
         utilities = {self.character: 0.0}
@@ -605,14 +724,23 @@ class Retire(GoalNode):
         return utilities
 
     def evaluate(self) -> NodeState:
+        world = self.character.world
         add_status(self.character, Retired())
 
         if business_owner := self.character.try_component(BusinessOwner):
-            shutdown_business(self.world.get_gameobject(business_owner.business))
+            shutdown_business(world.get_gameobject(business_owner.business))
         else:
             end_job(self.character, "Retired")
 
         return NodeState.SUCCESS
+
+    def satisfied_goals(self) -> List[GoalNode]:
+        return []
+
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, Retire):
+            return self.character == __o.character
+        return False
 
 
 class AskOut(GoalNode):
@@ -660,9 +788,13 @@ class AskOut(GoalNode):
 
         if is_single(self.initiator):
             utilities[self.initiator] += 1
+        else:
+            utilities[self.initiator] -= 0.25
 
         if is_single(self.target):
             utilities[self.target] += 1
+        else:
+            utilities[self.target] -= 0.25
 
         if virtues := self.initiator.try_component(Virtues):
             if virtues[Virtue.ROMANCE] >= Virtues.AGREE:
@@ -672,47 +804,12 @@ class AskOut(GoalNode):
             if virtues[Virtue.ROMANCE] >= Virtues.AGREE:
                 utilities[self.target] += 1
 
-        utilities[self.initiator] /= 2
-        utilities[self.target] /= 2
-
-        return utilities
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, AskOut):
-            return self.initiator == __o.initiator and self.target == __o.target
-        return False
-
-
-class FindPotentialLoveInterest(GoalNode):
-    ...
-
-
-class StartDating(GoalNode):
-    __slots__ = "initiator"
-
-    def __init__(self, initiator: GameObject, other: GameObject) -> None:
-        super().__init__()
-        self.initiator: GameObject = initiator
-        self.other: GameObject = other
-
-    def satisfied_goals(self) -> List[GoalNode]:
-        return [
-            StartDating(self.other, self.initiator),
-            FindRomance(self.initiator),
-            FindRomance(self.other),
-        ]
-
-    def get_utility(self) -> Dict[GameObject, float]:
-        # The utility of dating someone is increased by how much romance you have
-        # toward them, and decreased by any existing relationships
-        utilities: Dict[GameObject, float] = {self.initiator: 0, self.other: 0}
-
         world = self.initiator.world
 
         utilities[self.initiator] += (
             float(
                 world.get_gameobject(
-                    self.initiator.get_component(RelationshipManager)[self.other.uid]
+                    self.initiator.get_component(RelationshipManager)[self.target.uid]
                 )
                 .get_component(Romance)
                 .get_value()
@@ -723,10 +820,10 @@ class StartDating(GoalNode):
         if not is_single(self.initiator):
             utilities[self.initiator] -= 0.25
 
-        utilities[self.other] += (
+        utilities[self.target] += (
             float(
                 world.get_gameobject(
-                    self.other.get_component(RelationshipManager)[self.initiator.uid]
+                    self.target.get_component(RelationshipManager)[self.initiator.uid]
                 )
                 .get_component(Romance)
                 .get_value()
@@ -734,14 +831,14 @@ class StartDating(GoalNode):
             / 100.0
         )
 
-        if not is_single(self.other):
-            utilities[self.other] -= 0.25
+        utilities[self.initiator] /= 3
+        utilities[self.target] /= 3
 
         return utilities
 
     def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, StartDating):
-            return self.initiator == __o.other
+        if isinstance(__o, AskOut):
+            return self.initiator == __o.initiator and self.target == __o.target
         return False
 
 
@@ -766,7 +863,14 @@ class FindRomance(GoalNode):
             elif life_stage.life_stage >= LifeStageType.YoungAdult:
                 utilities[self.character] += 1
 
-        utilities[self.character] /= 3
+        if virtues := self.character.try_component(Virtues):
+            if virtues[Virtue.ROMANCE] >= Virtues.AGREE:
+                utilities[self.character] += 1
+
+            if virtues[Virtue.LUST] >= Virtues.AGREE:
+                utilities[self.character] += 1
+
+        utilities[self.character] /= 5
 
         return utilities
 
@@ -826,6 +930,11 @@ class FindRomance(GoalNode):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.__class__.__name__, "character": self.character.uid}
+
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, FindRomance):
+            return self.character == __o.character
+        return False
 
 
 class EndRomanceGoal(GoalNode):

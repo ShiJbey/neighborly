@@ -14,7 +14,13 @@ from neighborly.components import (
     ResidenceSpawnTable,
     Vacant,
 )
-from neighborly.components.character import LifeStageType, Married, ParentOf, SiblingOf
+from neighborly.components.character import (
+    Family,
+    LifeStageType,
+    Married,
+    ParentOf,
+    SiblingOf,
+)
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs.ecs import GameObject
 from neighborly.core.event import EventBuffer
@@ -200,6 +206,7 @@ class SpawnFamilySystem(System):
                 # Relationship of child to character
                 add_relationship(child, character)
                 add_relationship_status(child, character, ChildOf())
+                add_relationship_status(child, character, Family())
                 get_relationship(child, character).get_component(Friendship).increment(
                     20
                 )
@@ -210,6 +217,7 @@ class SpawnFamilySystem(System):
                 # Relationship of character to child
                 add_relationship(character, child)
                 add_relationship_status(character, child, ParentOf())
+                add_relationship_status(character, child, Family())
                 get_relationship(character, child).get_component(Friendship).increment(
                     20
                 )
@@ -231,6 +239,7 @@ class SpawnFamilySystem(System):
                     # Relationship of spouse to child
                     add_relationship(spouse, child)
                     add_relationship_status(spouse, child, ParentOf())
+                    add_relationship_status(spouse, child, Family())
                     get_relationship(spouse, child).get_component(Friendship).increment(
                         20
                     )
@@ -242,6 +251,7 @@ class SpawnFamilySystem(System):
                     # Relationship of child to sibling
                     add_relationship(child, sibling)
                     add_relationship_status(child, sibling, SiblingOf())
+                    add_relationship_status(child, sibling, Family())
                     get_relationship(child, sibling).get_component(
                         Friendship
                     ).increment(20)
@@ -252,6 +262,7 @@ class SpawnFamilySystem(System):
                     # Relationship of sibling to child
                     add_relationship(sibling, child)
                     add_relationship_status(sibling, child, SiblingOf())
+                    add_relationship_status(sibling, child, Family())
                     get_relationship(sibling, child).get_component(
                         Friendship
                     ).increment(20)

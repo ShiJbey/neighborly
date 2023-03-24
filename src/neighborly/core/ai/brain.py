@@ -5,7 +5,7 @@ should use these classes to override character decision-making
 processes
 
 This code is adapted from Brian Bucklew's IRDC talk on the AI in Caves of Qud and
-Sproggiwood: 
+Sproggiwood:
 
 https://www.youtube.com/watch?v=4uxN5GqXcaA&t=339s&ab_channel=InternationalRoguelikeDeveloperConference
 """
@@ -66,6 +66,59 @@ class WeightedList(Generic[_T]):
 
     def __bool__(self) -> bool:
         return bool(self._size)
+
+
+class Consideration:
+    """Considerations check if a GameObject meets conditions and returns a score"""
+
+    @abstractmethod
+    def __call__(self, gameobject: GameObject) -> float:
+        """
+        Perform consideration score calculation
+
+        Parameters
+        ----------
+        gameobject: GameObject
+            The GameObject to calculate this consideration for
+
+        Returns
+        -------
+        float
+            A score from [0.0, 1.0]
+        """
+        raise NotImplementedError()
+
+
+class ConsiderationList(List[Consideration]):
+    """A collection of considerations usually associated with an action or goal"""
+
+    def calculate_score(self, gameobject: GameObject) -> float:
+        """
+        Scores each consideration and returns an aggregate score
+
+        Parameters
+        ----------
+        gameobject : GameObject
+            The GameObject to score the considerations for
+
+        Returns
+        -------
+        float
+            The aggregate consideration score
+        """
+
+        score: float = 1.0
+
+        for c in self:
+            score *= c(gameobject)
+
+            if score == 0.0:
+                break
+
+        mod_factor = 1.0 - (1.0 / len(self))
+        makeup_value = (1.0 - score) * mod_factor
+        final_score = score + (score * makeup_value)
+        return final_score
 
 
 class GoalNode(BehaviorTree):
