@@ -33,7 +33,6 @@ from neighborly.components.character import (
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.routine import RoutineEntry, RoutinePriority
 from neighborly.components.shared import (
-    Active,
     Age,
     CurrentLocation,
     CurrentLot,
@@ -46,7 +45,7 @@ from neighborly.components.shared import (
     Position2D,
     PrefabName,
 )
-from neighborly.core.ecs import GameObject, GameObjectFactory, World
+from neighborly.core.ecs import Active, GameObject, GameObjectFactory, World
 from neighborly.core.event import EventBuffer
 from neighborly.core.location_bias import LocationBiasRules
 from neighborly.core.relationship import (
@@ -158,7 +157,7 @@ def add_location_to_settlement(
     settlement: GameObject
         The settlement to add the location to
     """
-    add_status(location, Active())
+    location.add_component(Active())
     location.add_component(CurrentSettlement(settlement.uid))
     settlement.get_component(Settlement).locations.add(location.uid)
 
@@ -183,7 +182,7 @@ def remove_location_from_settlement(
 
     location.remove_component(CurrentSettlement)
 
-    remove_status(location, Active)
+    location.remove_component(Active)
 
     if frequented_by := settlement.try_component(FrequentedBy):
         for character_id in frequented_by:
@@ -280,7 +279,7 @@ def add_character_to_settlement(character: GameObject, settlement: GameObject) -
 
     character.add_component(CurrentSettlement(settlement.uid))
 
-    add_status(character, Active())
+    character.add_component(Active())
 
     set_frequented_locations(character, settlement)
 
@@ -308,7 +307,7 @@ def remove_character_from_settlement(character: GameObject) -> None:
 
     clear_frequented_locations(character)
 
-    remove_status(character, Active)
+    character.remove_component(Active)
 
     character.world.get_resource(EventBuffer).append(
         LeaveSettlementEvent(
@@ -379,7 +378,7 @@ def add_residence_to_settlement(
     residence.add_component(Position2D(position[0], position[1]))
 
     residence.add_component(CurrentLot(lot_id))
-    add_status(residence, Active())
+    residence.add_component(Active())
 
     add_location_to_settlement(residence, settlement)
 
@@ -724,7 +723,7 @@ def add_business_to_settlement(
     business.add_component(CurrentSettlement(settlement.uid))
 
     # Mark the business as an active GameObject
-    add_status(business, Active())
+    business.add_component(Active())
     add_status(business, OpenForBusiness())
 
     # Set the current settlement
@@ -784,7 +783,7 @@ def shutdown_business(business: GameObject) -> None:
 
     # Un-mark the business as active so it doesn't appear in queries
     business.remove_component(Location)
-    remove_status(business, Active)
+    business.remove_component(Active)
 
     world.get_resource(EventBuffer).append(event)
 

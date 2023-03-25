@@ -56,13 +56,13 @@ from neighborly import (
     World,
 )
 from neighborly.components import (
-    Active,
     CanAge,
     CanGetPregnant,
     FrequentedLocations,
     GameCharacter,
 )
 from neighborly.components.character import LifeStage, LifeStageType
+from neighborly.core.ecs.ecs import Active
 from neighborly.core.event import EventBuffer
 from neighborly.core.life_event import ActionableLifeEvent
 from neighborly.core.roles import Role, RoleList
@@ -1264,7 +1264,7 @@ EXPORT_WORLD = False
 
 def main():
     st = time.time()
-    sim.run_for(50)
+    sim.run_for(100)
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.world.get_resource(SimDateTime)}")

@@ -4,20 +4,9 @@ import dataclasses
 import math
 from abc import ABC
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Protocol,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, Iterator, List, Optional, Protocol, Tuple, Type, TypeVar
 
-from neighborly.core.ecs import Component, GameObject, GameObjectFactory
+from neighborly.core.ecs import Active, Component, GameObject, GameObjectFactory
 from neighborly.core.status import (
     StatusComponent,
     StatusManager,
@@ -259,42 +248,57 @@ class RelationshipManager(Component):
 
     Attributes
     ----------
-    relationships: Dict[int, int]
+    incoming: Dict[int, int]
+        GameObject ID of relationship owners mapped to the ID of the
+        GameObjects with the relationship data
+    outgoing: Dict[int, int]
         GameObject ID of relationship targets mapped to the ID of the
         GameObjects with the relationship data
     """
 
-    __slots__ = "relationships"
+    __slots__ = "relationships", "incoming", "outgoing"
 
     def __init__(self) -> None:
         super().__init__()
-        self.relationships: Dict[int, int] = {}
+        self.incoming: Dict[int, int] = {}
+        self.outgoing: Dict[int, int] = {}
+
+    def add_incoming(self, owner: int, relationship: int) -> None:
+        """
+        Add a new incoming relationship
+
+        Parameters
+        ----------
+        owner: int
+            The ID of the owner of the relationship
+        relationship: int
+            The ID of the relationship
+        """
+        self.incoming[owner] = relationship
+
+    def add_outgoing(self, target: int, relationship: int) -> None:
+        """
+        Add a new outgoing relationship
+
+        Parameters
+        ----------
+        target : int
+            The ID of the target of the relationship
+        relationship : int
+            The ID of the relationship
+        """
+        self.outgoing[target] = relationship
 
     def to_dict(self) -> Dict[str, Any]:
-        return {str(k): v for k, v in self.relationships.items()}
-
-    def targets(self) -> Iterator[int]:
-        return self.relationships.__iter__()
-
-    def __setitem__(
-        self, key: Union[int, GameObject], value: Union[int, GameObject]
-    ) -> None:
-        self.relationships[int(key)] = int(value)
-
-    def __getitem__(self, key: Union[int, GameObject]) -> int:
-        return self.relationships[int(key)]
-
-    def __contains__(self, item: Union[int, GameObject]):
-        return int(item) in self.relationships
-
-    def __iter__(self) -> Iterator[int]:
-        return self.relationships.values().__iter__()
+        return {str(k): v for k, v in self.outgoing.items()}
 
     def __str__(self) -> str:
         return self.__repr__()
 
     def __repr__(self) -> str:
-        return "{}({})".format(self.__class__.__name__, self.relationships)
+        return "{}(outgoing={}, incoming={})".format(
+            self.__class__.__name__, self.outgoing, self.incoming
+        )
 
 
 class ISocialRule(Protocol):
@@ -386,18 +390,21 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship_manager = owner.get_component(RelationshipManager)
     world = owner.world
 
-    if target.uid in relationship_manager.relationships:
-        return world.get_gameobject(relationship_manager.relationships[target.uid])
+    if target.uid in relationship_manager.outgoing:
+        return world.get_gameobject(relationship_manager.outgoing[target.uid])
 
     relationship = GameObjectFactory.instantiate(world, "relationship")
     relationship.add_component(Relationship(owner.uid, target.uid))
     relationship.add_component(StatusManager())
+    relationship.add_component(Active())
 
     relationship.name = f"Rel({owner} -> {target})"
 
-    owner.get_component(RelationshipManager).relationships[
+    owner.get_component(RelationshipManager).outgoing[
         target.uid
     ] = relationship.uid
+
+    target.get_component(RelationshipManager).incoming[owner.uid] = relationship.uid
 
     owner.add_child(relationship)
 
@@ -425,11 +432,11 @@ def get_relationship(
     GameObject
         The relationship instance toward the other entity
     """
-    if target not in subject.get_component(RelationshipManager):
+    if target.uid not in subject.get_component(RelationshipManager).outgoing:
         return add_relationship(subject, target)
 
     return subject.world.get_gameobject(
-        subject.get_component(RelationshipManager)[target]
+        subject.get_component(RelationshipManager).outgoing[target.uid]
     )
 
 
@@ -450,7 +457,7 @@ def has_relationship(subject: GameObject, target: GameObject) -> bool:
         Returns True if there is an existing Relationship instance with the
         target as the target
     """
-    return target.uid in subject.get_component(RelationshipManager).relationships
+    return target.uid in subject.get_component(RelationshipManager).outgoing
 
 
 def add_relationship_status(
@@ -565,13 +572,10 @@ def get_relationships_with_statuses(
     world = subject.world
     relationship_manager = subject.get_component(RelationshipManager)
     matches: List[GameObject] = []
-    for _, rel_id in relationship_manager.relationships.items():
+    for _, rel_id in relationship_manager.outgoing.items():
         relationship = world.get_gameobject(rel_id)
         if all([relationship.has_component(st) for st in status_types]):
             matches.append(relationship)
-        # target = world.get_gameobject(target_id)
-        # if has_relationship_status(subject, target, *status_types):
-        #     matches.append(relationship)
     return matches
 
 

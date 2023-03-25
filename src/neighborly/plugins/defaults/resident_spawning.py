@@ -3,7 +3,6 @@ import random
 from typing import Any, List, Optional
 
 from neighborly.components import (
-    Active,
     CharacterSpawnTable,
     ChildOf,
     CurrentSettlement,
@@ -22,7 +21,7 @@ from neighborly.components.character import (
     SiblingOf,
 )
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs.ecs import GameObject
+from neighborly.core.ecs import Active, GameObject
 from neighborly.core.event import EventBuffer
 from neighborly.core.relationship import (
     Friendship,

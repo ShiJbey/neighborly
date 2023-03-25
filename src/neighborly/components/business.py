@@ -16,8 +16,7 @@ from typing import (
     Union,
 )
 
-from neighborly.core.ecs import Component
-from neighborly.core.ecs.ecs import GameObject
+from neighborly.core.ecs import Component, GameObject
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime, Weekday

@@ -401,3 +401,14 @@ class RetirementEvent(LifeEvent):
             **super().to_dict(),
             "occupation": self.occupation,
         }
+
+
+class DeathEvent(LifeEvent):
+    initiator = "Character"
+
+    def __init__(self, date: SimDateTime, character: GameObject) -> None:
+        super().__init__(timestamp=date, roles=[Role("Character", character)])
+
+    @property
+    def character(self):
+        return self["Character"]

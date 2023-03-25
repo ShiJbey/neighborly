@@ -1230,3 +1230,10 @@ class GameObjectFactory:
         components.update(prefab.components)
 
         return components
+
+
+class Active(Component):
+    """Tags a GameObject as active within the simulation"""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}

@@ -23,9 +23,8 @@ from neighborly.components.character import (
     Retired,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.shared import Active, Age, Lifespan
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.ecs.query import QB
+from neighborly.components.shared import Age, Lifespan
+from neighborly.core.ecs import QB, Active, GameObject, World
 from neighborly.core.event import EventBuffer
 from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
 from neighborly.core.relationship import (
@@ -115,7 +114,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -231,7 +230,7 @@ class DatingBreakUp(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -366,7 +365,7 @@ class MarriageLifeEvent(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -462,7 +461,7 @@ class MarriageLifeEvent(ActionableLifeEvent):
             if target.uid not in movers:
                 continue
 
-            if not has_status(target, Active):
+            if not target.has_component(Active):
                 continue
 
             if target.get_component(
@@ -518,7 +517,7 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -526,7 +525,7 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         for character in candidates:
             outgoing_relationship = get_relationship(initiator, character)
 
-            if not has_status(character, Active):
+            if not character.has_component(Active):
                 continue
 
             if not (
@@ -710,7 +709,7 @@ class FindOwnPlaceLifeEvent(ActionableLifeEvent):
 
         # Depart if no housing could be found
         else:
-            depart_settlement(character.world, character, self.get_type())
+            depart_settlement(character.world, character, str(type(self)))
 
 
 class DieOfOldAge(ActionableLifeEvent):

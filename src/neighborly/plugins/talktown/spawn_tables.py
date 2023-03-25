@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 import yaml
 
-from neighborly.core.ecs.ecs import GameObjectFactory
+from neighborly.core.ecs import GameObjectFactory
 from neighborly.simulation import Neighborly, PluginInfo
 
 plugin_info = PluginInfo(

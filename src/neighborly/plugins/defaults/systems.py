@@ -7,9 +7,8 @@ from neighborly.components.character import (
     LifeStage,
     LifeStageType,
 )
-from neighborly.components.shared import Active
 from neighborly.core.ai.brain import Goals
-from neighborly.core.ecs import GameObject
+from neighborly.core.ecs import Active, GameObject
 from neighborly.core.relationship import Relationship, RelationshipManager, Romance
 from neighborly.plugins.defaults.actions import (
     EndRelationship,
@@ -30,7 +29,7 @@ class EndRomanceSystem(System):
         max_romance: int = -1
         love_interest: Optional[GameObject] = None
 
-        for rel_id in character.get_component(RelationshipManager):
+        for _, rel_id in character.get_component(RelationshipManager).outgoing.items():
             relationship = character.world.get_gameobject(rel_id)
 
             romance = relationship.get_component(Romance).get_value()

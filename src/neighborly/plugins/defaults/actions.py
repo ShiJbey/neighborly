@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Optional
 
-from neighborly.components import Active, CurrentSettlement, Residence, Vacant
+from neighborly.components import CurrentSettlement, Residence, Vacant
 from neighborly.components.business import (
     Business,
     BusinessOwner,
@@ -28,8 +28,13 @@ from neighborly.components.spawn_table import BusinessSpawnTable, ResidenceSpawn
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.behavior_tree import NodeState, SelectorBTNode
 from neighborly.core.ai.brain import GoalNode, WeightedList
-from neighborly.core.ecs import EntityPrefab, GameObject, GameObjectFactory
-from neighborly.core.ecs.ecs import World
+from neighborly.core.ecs import (
+    Active,
+    EntityPrefab,
+    GameObject,
+    GameObjectFactory,
+    World,
+)
 from neighborly.core.event import EventBuffer
 from neighborly.core.relationship import (
     Relationship,
@@ -42,7 +47,7 @@ from neighborly.core.relationship import (
     remove_relationship_status,
 )
 from neighborly.core.settlement import Settlement
-from neighborly.core.status import add_status, remove_status
+from neighborly.core.status import add_status
 from neighborly.core.time import DAYS_PER_MONTH, SimDateTime
 from neighborly.events import DepartEvent, StartBusinessEvent
 from neighborly.utils.common import (
@@ -507,7 +512,7 @@ class DepartSimulation(GoalNode):
 
         for c in characters_to_depart:
             add_status(c, Departed())
-            remove_status(c, Active)
+            c.remove_component(Active)
 
         event = DepartEvent(
             self.world.get_resource(SimDateTime), characters_to_depart, ""
@@ -809,7 +814,9 @@ class AskOut(GoalNode):
         utilities[self.initiator] += (
             float(
                 world.get_gameobject(
-                    self.initiator.get_component(RelationshipManager)[self.target.uid]
+                    self.initiator.get_component(RelationshipManager).outgoing[
+                        self.target.uid
+                    ]
                 )
                 .get_component(Romance)
                 .get_value()
@@ -823,7 +830,9 @@ class AskOut(GoalNode):
         utilities[self.target] += (
             float(
                 world.get_gameobject(
-                    self.target.get_component(RelationshipManager)[self.initiator.uid]
+                    self.target.get_component(RelationshipManager).outgoing[
+                        self.initiator.uid
+                    ]
                 )
                 .get_component(Romance)
                 .get_value()
@@ -889,7 +898,7 @@ class FindRomance(GoalNode):
         # This character should try asking out another character
         candidates = [
             world.get_gameobject(c)
-            for c in self.character.get_component(RelationshipManager).targets()
+            for c in self.character.get_component(RelationshipManager).outgoing
         ]
 
         actions: WeightedList[GoalNode] = WeightedList()

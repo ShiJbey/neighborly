@@ -1,6 +1,6 @@
 from typing import Any
 
-from neighborly.core.ecs.ecs import ISystem
+from neighborly.core.ecs import ISystem
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.common import spawn_settlement
 

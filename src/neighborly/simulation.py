@@ -16,6 +16,7 @@ from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import (
+    Active,
     Component,
     EntityPrefab,
     GameObjectFactory,
@@ -125,6 +126,7 @@ class Neighborly:
         # Add event-listener systems (in execution order)
         self.world.add_system(systems.OnJoinSettlementSystem())
         self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
+        self.world.add_system(systems.DeactivateRelationshipsSystem())
 
         # Add status-update systems (in execution order)
         self.world.add_system(systems.PregnantStatusSystem())
@@ -144,7 +146,7 @@ class Neighborly:
         self.world.add_system(systems.TimeSystem())
 
         # Register components
-        self.world.register_component(components.Active)
+        self.world.register_component(Active)
         self.world.register_component(AIBrain)
         self.world.register_component(Goals)
         self.world.register_component(

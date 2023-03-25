@@ -14,7 +14,8 @@ from neighborly import (
     SimDateTime,
     World,
 )
-from neighborly.components import Active, InTheWorkforce, Unemployed
+from neighborly.components import InTheWorkforce, Unemployed
+from neighborly.core.ecs.ecs import Active
 from neighborly.core.event import EventBuffer, EventHistory
 from neighborly.core.life_event import ActionableLifeEvent
 from neighborly.core.relationship import Romance, add_relationship, get_relationship

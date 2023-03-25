@@ -1,9 +1,7 @@
 from typing import Any, List
 
 from neighborly.components.character import GameCharacter, LifeStage, LifeStageType
-from neighborly.components.shared import Active
-from neighborly.core.ecs import GameObject, ISystem
-from neighborly.core.ecs.ecs import World
+from neighborly.core.ecs import Active, GameObject, ISystem, World
 from neighborly.core.event import EventBuffer
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.roles import Role

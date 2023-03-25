@@ -20,7 +20,6 @@ from neighborly.components.character import (
 )
 from neighborly.components.residence import Resident
 from neighborly.components.shared import (
-    Active,
     Age,
     CurrentSettlement,
     FrequentedBy,
@@ -28,8 +27,7 @@ from neighborly.components.shared import (
 )
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import GameObject, ISystem
-from neighborly.core.ecs.ecs import SystemGroup
+from neighborly.core.ecs import Active, GameObject, ISystem, SystemGroup
 from neighborly.core.event import AllEvents, EventBuffer, EventHistory
 from neighborly.core.life_event import ActionableLifeEvent, LifeEvent, RandomLifeEvents
 from neighborly.core.relationship import (
@@ -38,6 +36,7 @@ from neighborly.core.relationship import (
     InteractionScore,
     Relationship,
     RelationshipFacet,
+    RelationshipManager,
     Romance,
     add_relationship,
     add_relationship_status,
@@ -48,7 +47,7 @@ from neighborly.core.relationship import (
     lerp,
 )
 from neighborly.core.roles import RoleList
-from neighborly.core.status import add_status, has_status, remove_status
+from neighborly.core.status import add_status, remove_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
 from neighborly.events import (
     BecomeAdolescentEvent,
@@ -56,6 +55,7 @@ from neighborly.events import (
     BecomeSeniorEvent,
     BecomeYoungAdultEvent,
     BirthEvent,
+    DeathEvent,
     DepartEvent,
     GiveBirthEvent,
     JoinSettlementEvent,
@@ -424,7 +424,7 @@ class UnemployedStatusSystem(System):
 
                     for c in characters_to_depart:
                         add_status(c, Departed())
-                        remove_status(c, Active)
+                        c.remove_component(Active)
 
                     remove_status(character, Unemployed)
 
@@ -545,7 +545,9 @@ class RelationshipUpdateSystem(ISystem):
     sys_group = "relationship-update"
 
     def process(self, *args: Any, **kwargs: Any):
-        for rel_id, relationship in self.world.get_component(Relationship):
+        for rel_id, (relationship, _) in self.world.get_components(
+            (Relationship, Active)
+        ):
             rel_entity = self.world.get_gameobject(rel_id)
 
             # Accumulate modifiers
@@ -569,8 +571,8 @@ class FriendshipStatSystem(ISystem):
         k = self.world.get_resource(NeighborlyConfig).settings.get(
             "relationship_growth_constant", 2
         )
-        for _, (friendship, interaction_score) in self.world.get_components(
-            (Friendship, InteractionScore)
+        for _, (friendship, interaction_score, _) in self.world.get_components(
+            (Friendship, InteractionScore, Active)
         ):
             friendship.increment(
                 round(
@@ -587,8 +589,8 @@ class RomanceStatSystem(ISystem):
         k = self.world.get_resource(NeighborlyConfig).settings.get(
             "relationship_growth_constant", 2
         )
-        for _, (romance, interaction_score) in self.world.get_components(
-            (Romance, InteractionScore)
+        for _, (romance, interaction_score, _) in self.world.get_components(
+            (Romance, InteractionScore, Active)
         ):
             romance.increment(
                 round(
@@ -609,7 +611,7 @@ class OnJoinSettlementSystem(ISystem):
         ):
             # Add young-adult or older characters to the workforce
             if (
-                has_status(event.character, Active)
+                event.character.has_component(Active)
                 and event.character.get_component(LifeStage).life_stage
                 >= LifeStageType.YoungAdult
             ):
@@ -631,6 +633,42 @@ class AddYoungAdultToWorkforceSystem(ISystem):
 
             if not event.character.has_component(Occupation):
                 add_status(event.character, Unemployed())
+
+
+class DeactivateRelationshipsSystem(ISystem):
+    sys_group = "event-listeners"
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
+            DeathEvent
+        ):
+            for _, rel_id in event.character.get_component(
+                RelationshipManager
+            ).outgoing.items():
+                relationship = self.world.get_gameobject(rel_id)
+                relationship.remove_component(Active)
+
+            for _, rel_id in event.character.get_component(
+                RelationshipManager
+            ).incoming.items():
+                relationship = self.world.get_gameobject(rel_id)
+                relationship.remove_component(Active)
+
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
+            DepartEvent
+        ):
+            for character in event.characters:
+                for _, rel_id in character.get_component(
+                    RelationshipManager
+                ).outgoing.items():
+                    relationship = self.world.get_gameobject(rel_id)
+                    relationship.remove_component(Active)
+
+                for _, rel_id in character.get_component(
+                    RelationshipManager
+                ).incoming.items():
+                    relationship = self.world.get_gameobject(rel_id)
+                    relationship.remove_component(Active)
 
 
 class PrintEventBufferSystem(ISystem):

@@ -38,7 +38,6 @@ from .character import (
 )
 from .residence import Residence, Resident, Vacant
 from .shared import (
-    Active,
     Age,
     Building,
     CurrentLot,
@@ -53,7 +52,6 @@ from .shared import (
 from .spawn_table import BusinessSpawnTable, CharacterSpawnTable, ResidenceSpawnTable
 
 __all__ = [
-    "Active",
     "Activities",
     "Building",
     "CurrentSettlement",

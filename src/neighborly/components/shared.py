@@ -189,12 +189,6 @@ class Position2D(Component):
         return {"x": self.x, "y": self.y}
 
 
-class Active(StatusComponent):
-    """Tags a GameObject as active within the simulation"""
-
-    pass
-
-
 class FrequentedLocations(Component):
     """Tracks the locations that a character frequents"""
 

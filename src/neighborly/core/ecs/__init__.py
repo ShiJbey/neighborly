@@ -6,6 +6,7 @@ for entities, systems, the world, queries, and entity prefabs.
 """
 
 from .ecs import (
+    Active,
     Component,
     ComponentNotFoundError,
     EntityPrefab,
@@ -21,6 +22,7 @@ from .ecs import (
 from .query import QB, Query, QueryFromFn, QueryGetFn
 
 __all__ = [
+    "Active",
     "Component",
     "ComponentNotFoundError",
     "GameObject",
