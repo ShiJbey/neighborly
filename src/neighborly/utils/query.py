@@ -3,14 +3,10 @@ from __future__ import annotations
 from typing import List, Set, Tuple, Type, Union
 
 from neighborly.components.business import Occupation, WorkHistory
-from neighborly.components.character import Dating, Family, Married, ParentOf
+from neighborly.components.character import Dating, Family, Married
 from neighborly.core.ecs import Component, GameObject
 from neighborly.core.ecs.query import QueryClause, QueryContext, Relation, WithClause
-from neighborly.core.relationship import (
-    Relationship,
-    RelationshipManager,
-    get_relationships_with_statuses,
-)
+from neighborly.core.relationship import Relationship, RelationshipManager
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 
@@ -87,6 +83,44 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
                 )
 
         return total_experience >= years_experience
+
+    return fn
+
+
+def get_work_experience_as(occupation_type: str):
+    """
+    Returns Precondition function that returns true if the entity
+    has experience as a given occupation type.
+
+    Parameters
+    ----------
+    occupation_type: str
+        The name of the occupation to check for
+    """
+
+    def fn(gameobject: GameObject) -> float:
+        total_experience: float = 0
+
+        current_date = gameobject.world.get_resource(SimDateTime)
+
+        work_history = gameobject.try_component(WorkHistory)
+
+        if work_history is None:
+            return False
+
+        for entry in work_history.entries[:-1]:
+            if entry.occupation_type == occupation_type:
+                total_experience += entry.years_held
+
+        if gameobject.has_component(Occupation):
+            occupation = gameobject.get_component(Occupation)
+            if occupation.occupation_type == occupation_type:
+                total_experience += (
+                    float((current_date - occupation.start_date).total_days)
+                    / DAYS_PER_YEAR
+                )
+
+        return total_experience
 
     return fn
 
@@ -176,16 +210,3 @@ def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
                     character_queue.append((deg + 1, family_member))
 
     return False
-
-
-def has_family_to_care_of(character: GameObject) -> bool:
-    """Check if this character has a spouse and/or kids they live with"""
-
-    has_spouse = get_relationships_with_statuses(character, Married)
-
-    if has_spouse:
-        return True
-
-    has_children = len(get_relationships_with_statuses(character, ParentOf)) > 0
-
-    return has_children

@@ -490,11 +490,22 @@ def check_share_residence(gameobject: GameObject, other: GameObject) -> bool:
     )
 
 
-def depart_settlement(world: World, character: GameObject, reason: str = "") -> None:
+def depart_settlement(character: GameObject, reason: str = "") -> None:
     """
     Helper function that handles all the core logistics of moving someone
     out of the town
+
+    This function will also cause any spouses or children that live with
+    the given character to depart too.
+
+    Parameters
+    ----------
+    character: GameObject
+        The character initiating the departure
+    reason: str, optional
+        An optional reason for departing from the settlement
     """
+    world = character.world
 
     residence = world.get_gameobject(
         character.get_component(Resident).residence
@@ -528,11 +539,14 @@ def depart_settlement(world: World, character: GameObject, reason: str = "") -> 
         if character.has_component(Resident):
             set_residence(character, None)
 
-        add_status(character, Departed())
+        remove_character_from_settlement(character)
+
         clear_frequented_locations(character)
         clear_statuses(character)
 
-        remove_character_from_settlement(character)
+        add_status(character, Departed())
+
+
 
     world.get_resource(EventBuffer).append(
         DepartEvent(
@@ -871,7 +885,7 @@ def end_job(
         occupation_type=occupation.occupation_type,
         business=business.uid,
         years_held=float((current_date - occupation.start_date).total_days)
-        / DAYS_PER_YEAR,
+                   / DAYS_PER_YEAR,
         reason_for_leaving=reason,
     )
 

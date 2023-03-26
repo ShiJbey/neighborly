@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Optional
 
-from neighborly.components import CurrentSettlement, Residence, Vacant
+from neighborly.components import CurrentSettlement, Residence, Resident, Vacant
 from neighborly.components.business import (
     Business,
     BusinessOwner,
@@ -14,6 +14,7 @@ from neighborly.components.business import (
 )
 from neighborly.components.character import (
     Dating,
+    Deceased,
     Departed,
     GameCharacter,
     LifeStage,
@@ -26,8 +27,14 @@ from neighborly.components.character import (
 )
 from neighborly.components.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ai.behavior_tree import NodeState, SelectorBTNode
-from neighborly.core.ai.brain import GoalNode, WeightedList
+from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree, NodeState, SelectorBTNode
+from neighborly.core.ai.brain import (
+    Consideration,
+    ConsiderationDict,
+    ConsiderationList,
+    GoalNode,
+    WeightedList,
+)
 from neighborly.core.ecs import (
     Active,
     EntityPrefab,
@@ -37,36 +44,117 @@ from neighborly.core.ecs import (
 )
 from neighborly.core.event import EventBuffer
 from neighborly.core.relationship import (
-    Relationship,
     RelationshipManager,
     Romance,
     add_relationship_status,
     get_relationship,
     get_relationships_with_statuses,
     has_relationship,
+    has_relationship_status,
     remove_relationship_status,
 )
 from neighborly.core.settlement import Settlement
-from neighborly.core.status import add_status
+from neighborly.core.status import add_status, clear_statuses
 from neighborly.core.time import DAYS_PER_MONTH, SimDateTime
-from neighborly.events import DepartEvent, StartBusinessEvent
+from neighborly.events import (
+    BreakUpEvent,
+    DeathEvent,
+    DivorceEvent,
+    MarriageEvent,
+    RetirementEvent,
+    StartBusinessEvent,
+    StartDatingEvent,
+)
 from neighborly.utils.common import (
     add_business_to_settlement,
     add_residence_to_settlement,
-    check_share_residence,
+    clear_frequented_locations,
+    depart_settlement,
     end_job,
+    remove_character_from_settlement,
     set_residence,
     shutdown_business,
     spawn_business,
     spawn_residence,
     start_job,
 )
-from neighborly.utils.query import (
-    are_related,
-    has_family_to_care_of,
-    has_work_experience_as,
-    is_single,
-)
+from neighborly.utils.query import are_related, get_work_experience_as, is_single
+
+####################################
+# CONSIDERATIONS
+####################################
+
+
+def employment_spouse_consideration(gameobject: GameObject) -> Optional[float]:
+    if len(get_relationships_with_statuses(gameobject, Married)) > 0:
+        return 0.7
+
+
+def employment_children_consideration(gameobject: GameObject) -> Optional[float]:
+    child_count = float(len(get_relationships_with_statuses(gameobject, ParentOf)))
+    if child_count:
+        return min(1.0, child_count / 5.0)
+
+
+def has_occupation_consideration(gameobject: GameObject) -> Optional[float]:
+    if gameobject.has_component(Occupation):
+        return 0.0
+
+
+def virtue_consideration(virtue: Virtue):
+    def consideration(gameobject: GameObject) -> Optional[float]:
+        if virtues := gameobject.try_component(Virtues):
+            return (virtues[virtue] + 50.0) / 100.0
+
+    return consideration
+
+
+def ambition_consideration(gameobject: GameObject) -> Optional[float]:
+    if virtues := gameobject.try_component(Virtues):
+        return (virtues[Virtue.AMBITION] + 50.0) / 100.0
+
+
+def reliability_consideration(gameobject: GameObject) -> Optional[float]:
+    if virtues := gameobject.try_component(Virtues):
+        return (virtues[Virtue.RELIABILITY] + 50.0) / 100.0
+
+
+def independence_consideration(gameobject: GameObject) -> Optional[float]:
+    if virtues := gameobject.try_component(Virtues):
+        return (virtues[Virtue.INDEPENDENCE] + 50.0) / 100.0
+
+
+def time_unemployed_consideration(gameobject: GameObject) -> Optional[float]:
+    if unemployed := gameobject.get_component(Unemployed):
+        months_unemployed = (
+            gameobject.world.get_resource(SimDateTime) - unemployed.created
+        ).total_days / DAYS_PER_MONTH
+
+        return min(1.0, float(months_unemployed) / 6.0)
+
+
+def employment_life_stage_consideration(gameobject: GameObject) -> Optional[float]:
+    if life_stage := gameobject.try_component(LifeStage):
+        if life_stage.life_stage == LifeStageType.Child:
+            return 0.0
+        elif life_stage.life_stage == LifeStageType.Adolescent:
+            return 0.0
+        elif life_stage.life_stage == LifeStageType.YoungAdult:
+            return 0.6
+        elif life_stage.life_stage == LifeStageType.Adult:
+            return 0.8
+        elif life_stage.life_stage == LifeStageType.Senior:
+            return 0.05
+
+
+def invert_consideration(c: Consideration):
+    def consideration(gameobject: GameObject) -> Optional[float]:
+        consideration_score = c(gameobject)
+        if consideration_score is None:
+            return None
+        return 1.0 - consideration_score
+
+    return consideration
 
 
 class FindEmployment(GoalNode):
@@ -97,36 +185,22 @@ class FindEmployment(GoalNode):
         Dict[GameObject, float]
             GameObjects mapped to the utility they derive from the goal
         """
-        utilities = {self.character: 0.0}
-
-        # Characters with families get plus one
-        if has_family_to_care_of(self.character):
-            utilities[self.character] += 1
-
-        if self.character.has_component(Occupation):
-            utilities[self.character] = 0
-            return utilities
-
-        if unemployed := self.character.get_component(Unemployed):
-            months_unemployed = (
-                unemployed.created - self.world.get_resource(SimDateTime)
-            ).total_days / DAYS_PER_MONTH
-
-            utilities[self.character] += months_unemployed / 6
-
-        if virtues := self.character.try_component(Virtues):
-            if virtues[Virtue.AMBITION] >= Virtues.AGREE:
-                utilities[self.character] += 1
-            if virtues[Virtue.RELIABILITY] >= Virtues.AGREE:
-                utilities[self.character] += 1
-            if virtues[Virtue.INDEPENDENCE] >= Virtues.AGREE:
-                utilities[self.character] += 1
-
-        # Divide the final score by the max possible score
-        # jank? Yes.
-        utilities[self.character] = utilities[self.character] / 5.0
-
-        return utilities
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        employment_children_consideration,
+                        employment_spouse_consideration,
+                        has_occupation_consideration,
+                        ambition_consideration,
+                        reliability_consideration,
+                        independence_consideration,
+                        time_unemployed_consideration,
+                        employment_life_stage_consideration,
+                    ]
+                )
+            }
+        ).calculate_scores()
 
 
 class StartBusiness(GoalNode):
@@ -136,6 +210,9 @@ class StartBusiness(GoalNode):
         super().__init__()
         self.character = character
         self.world = character.world
+
+    def is_complete(self) -> bool:
+        return self.character.has_component(BusinessOwner)
 
     def satisfied_goals(self) -> List[GoalNode]:
         return [FindEmployment(self.character)]
@@ -154,36 +231,22 @@ class StartBusiness(GoalNode):
         Dict[GameObject, float]
             GameObjects mapped to the utility they derive from the goal
         """
-        utilities = {self.character: 1.0}
-
-        # Characters with families get plus one
-        if has_family_to_care_of(self.character):
-            utilities[self.character] += 1
-
-        if self.character.has_component(Occupation):
-            utilities[self.character] = 0
-            return utilities
-
-        if unemployed := self.character.get_component(Unemployed):
-            months_unemployed = (
-                unemployed.created - self.world.get_resource(SimDateTime)
-            ).total_days / DAYS_PER_MONTH
-
-            utilities[self.character] += months_unemployed / 6
-
-        if virtues := self.character.try_component(Virtues):
-            if virtues[Virtue.AMBITION] >= Virtues.AGREE:
-                utilities[self.character] += 1
-            if virtues[Virtue.RELIABILITY] >= Virtues.AGREE:
-                utilities[self.character] += 1
-            if virtues[Virtue.INDEPENDENCE] >= Virtues.AGREE:
-                utilities[self.character] += 1
-
-        # Divide the final score by the max possible score
-        # jank? Yes.
-        utilities[self.character] = utilities[self.character] / 6.0
-
-        return utilities
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        employment_children_consideration,
+                        employment_spouse_consideration,
+                        has_occupation_consideration,
+                        ambition_consideration,
+                        reliability_consideration,
+                        independence_consideration,
+                        time_unemployed_consideration,
+                        employment_life_stage_consideration,
+                    ]
+                )
+            }
+        ).calculate_scores()
 
     def evaluate(self) -> NodeState:
         world = self.character.world
@@ -285,36 +348,22 @@ class GetJob(GoalNode):
         Dict[GameObject, float]
             GameObjects mapped to the utility they derive from the goal
         """
-        utilities = {self.character: 0.0}
-
-        # Characters with families get plus one
-        if has_family_to_care_of(self.character):
-            utilities[self.character] += 1
-
-        if self.character.has_component(Occupation):
-            utilities[self.character] = 0
-            return utilities
-
-        if unemployed := self.character.get_component(Unemployed):
-            months_unemployed = (
-                unemployed.created - self.world.get_resource(SimDateTime)
-            ).total_days / DAYS_PER_MONTH
-
-            utilities[self.character] += months_unemployed / 6
-
-        if virtues := self.character.try_component(Virtues):
-            if virtues[Virtue.AMBITION] >= Virtues.AGREE:
-                utilities[self.character] += 1
-            if virtues[Virtue.RELIABILITY] >= Virtues.AGREE:
-                utilities[self.character] += 1
-            if virtues[Virtue.INDEPENDENCE] >= Virtues.AGREE:
-                utilities[self.character] += 1
-
-        # Divide the final score by the max possible score
-        # jank? Yes.
-        utilities[self.character] = utilities[self.character] / 5.0
-
-        return utilities
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        employment_children_consideration,
+                        employment_spouse_consideration,
+                        has_occupation_consideration,
+                        ambition_consideration,
+                        reliability_consideration,
+                        independence_consideration,
+                        time_unemployed_consideration,
+                        employment_life_stage_consideration,
+                    ]
+                )
+            }
+        ).calculate_scores()
 
     def is_complete(self) -> bool:
         return self.character.has_component(Occupation)
@@ -360,25 +409,39 @@ class FindOwnPlace(GoalNode):
         )
         self.character: GameObject = character
 
+    def is_complete(self) -> bool:
+        if resident := self.character.try_component(Resident):
+            residence = self.character.world.get_gameobject(resident.residence).get_component(Residence)
+            return residence.is_owner(self.character.uid)
+        return False
+
     def satisfied_goals(self) -> List[GoalNode]:
         return []
 
+    @staticmethod
+    def life_stage_consideration(gameobject: GameObject) -> Optional[float]:
+        if life_stage := gameobject.try_component(LifeStage):
+            if life_stage.life_stage == LifeStageType.Adult:
+                return 0.9
+
+            elif life_stage.life_stage == LifeStageType.YoungAdult:
+                return 0.5
+
+            else:
+                return 0
+
     def get_utility(self) -> Dict[GameObject, float]:
-        utilities: Dict[GameObject, float] = {self.character: 0}
 
-        life_stage = self.character.get_component(LifeStage)
-
-        if life_stage.life_stage == LifeStageType.Adult:
-            utilities[self.character] = 0.9
-
-        elif life_stage.life_stage == LifeStageType.YoungAdult:
-            utilities[self.character] = 0.5
-
-        if virtues := self.character.try_component(Virtues):
-            if virtues[Virtue.INDEPENDENCE] >= Virtues.AGREE:
-                utilities[self.character] += 0.1
-
-        return utilities
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        self.life_stage_consideration,
+                        virtue_consideration(Virtue.INDEPENDENCE),
+                    ]
+                )
+            }
+        ).calculate_scores()
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, FindOwnPlace):
@@ -386,7 +449,7 @@ class FindOwnPlace(GoalNode):
         return False
 
 
-class FindVacantResidence(GoalNode):
+class FindVacantResidence(AbstractBTNode):
     __slots__ = "character", "world"
 
     def __init__(self, character: GameObject) -> None:
@@ -394,43 +457,22 @@ class FindVacantResidence(GoalNode):
         self.character: GameObject = character
         self.world: World = character.world
 
-    def satisfied_goals(self) -> List[GoalNode]:
-        return []
-
-    def get_utility(self) -> Dict[GameObject, float]:
-        return {self.character: 1}
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, FindVacantResidence):
-            return self.character == __o.character
-        return False
-
     def evaluate(self) -> NodeState:
         for guid, _ in self.world.get_components((Residence, Active, Vacant)):
             residence_obj = self.world.get_gameobject(guid)
             set_residence(self.character, residence_obj, True)
             return NodeState.SUCCESS
 
+        self.blackboard["reason_to_depart"] = "No housing"
         return NodeState.FAILURE
 
 
-class BuildNewHouse(GoalNode):
+class BuildNewHouse(AbstractBTNode):
     __slots__ = "character"
 
     def __init__(self, character: GameObject) -> None:
         super().__init__()
         self.character: GameObject = character
-
-    def get_utility(self) -> Dict[GameObject, float]:
-        return {self.character: 0.0}
-
-    def satisfied_goals(self) -> List[GoalNode]:
-        return [FindOwnPlace(self.character), FindVacantResidence(self.character)]
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, BuildNewHouse):
-            return self.character == __o.character
-        return False
 
     def evaluate(self) -> NodeState:
         world = self.character.world
@@ -445,10 +487,12 @@ class BuildNewHouse(GoalNode):
 
         # Return early if there is nowhere to build
         if len(vacancies) == 0:
+            self.blackboard["reason_to_depart"] = "No housing"
             return NodeState.FAILURE
 
         # Don't build more housing if 60% of the land is used for residential buildings
         if len(vacancies) / float(land_map.get_total_lots()) < 0.4:
+            self.blackboard["reason_to_depart"] = "No housing"
             return NodeState.FAILURE
 
         # Pick a random lot from those available
@@ -477,11 +521,23 @@ class DepartSimulation(GoalNode):
         self.character: GameObject = character
         self.world: World = character.world
 
+    def is_complete(self) -> bool:
+        return self.character.has_component(Departed)
+
     def satisfied_goals(self) -> List[GoalNode]:
         return []
 
     def get_utility(self) -> Dict[GameObject, float]:
-        return {self.character: 1}
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        time_unemployed_consideration,
+                        FindOwnPlace.life_stage_consideration,
+                    ]
+                )
+            }
+        ).calculate_scores()
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, DepartSimulation):
@@ -489,37 +545,7 @@ class DepartSimulation(GoalNode):
         return False
 
     def evaluate(self) -> NodeState:
-        characters_to_depart: List[GameObject] = [self.character]
-
-        # Have all spouses depart
-        # Allows for polygamy
-        spouses = get_relationships_with_statuses(self.character, Married)
-        for relationship in spouses:
-            rel = relationship.get_component(Relationship)
-            spouse = self.world.get_gameobject(rel.target)
-            if spouse.has_component(Active):
-                characters_to_depart.append(spouse)
-
-        # Have all children living in the same house depart
-        children = get_relationships_with_statuses(self.character, ParentOf)
-        for relationship in children:
-            rel = relationship.get_component(Relationship)
-            child = self.world.get_gameobject(rel.target)
-            if child.has_component(Active) and check_share_residence(
-                self.character, child
-            ):
-                characters_to_depart.append(child)
-
-        for c in characters_to_depart:
-            add_status(c, Departed())
-            c.remove_component(Active)
-
-        event = DepartEvent(
-            self.world.get_resource(SimDateTime), characters_to_depart, ""
-        )
-
-        self.world.get_resource(EventBuffer).append(event)
-
+        depart_settlement(self.character, self.blackboard.get("reason_to_depart", ""))
         return NodeState.SUCCESS
 
 
@@ -548,24 +574,6 @@ class DepartSimulation(GoalNode):
 #             return self.character == __o.character
 #         return False
 #
-
-# class GetMarried(GoalNode):
-#     __slots__ = "character"
-#
-#     def __init__(self, character: GameObject) -> None:
-#         super().__init__()
-#         self.character: GameObject = character
-#
-#     def satisfied_goals(self) -> List[GoalNode]:
-#         return []
-#
-#     def is_complete(self) -> bool:
-#         return bool(get_relationships_with_statuses(self.character, Married))
-#
-#     def __eq__(self, __o: object) -> bool:
-#         if isinstance(__o, GetMarried):
-#             return self.character == __o.character
-#         return False
 #
 #
 # class FindSignificantOther(GoalNode):
@@ -611,94 +619,208 @@ class DepartSimulation(GoalNode):
 #         return False
 
 
-class EndRelationship(GoalNode):
-    __slots__ = "character"
+class GetMarried(GoalNode):
+    __slots__ = "character", "partner"
 
-    def __init__(self, character: GameObject) -> None:
+    def __init__(self, character: GameObject, partner: GameObject) -> None:
         super().__init__()
         self.character: GameObject = character
+        self.partner: GameObject = partner
+
+    def get_utility(self) -> Dict[GameObject, float]:
+        world = self.character.world
+
+        initiator_to_target_romance = float(
+            world.get_gameobject(
+                self.character.get_component(RelationshipManager).outgoing[
+                    self.partner.uid
+                ]
+            )
+            .get_component(Romance)
+            .get_value()
+        )
+
+        target_to_initiator_romance = float(
+            world.get_gameobject(
+                self.partner.get_component(RelationshipManager).outgoing[
+                    self.character.uid
+                ]
+            )
+            .get_component(Romance)
+            .get_value()
+        )
+
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        lambda gameobject: (initiator_to_target_romance + 100.0)
+                        / 200.0,
+                        lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
+                        virtue_consideration(Virtue.ROMANCE),
+                    ]
+                ),
+                self.partner: ConsiderationList(
+                    [
+                        lambda gameobject: (target_to_initiator_romance + 100.0)
+                        / 200.0,
+                        lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
+                        virtue_consideration(Virtue.ROMANCE),
+                    ]
+                ),
+            }
+        ).calculate_scores()
+
+    def evaluate(self) -> NodeState:
+        if not is_single(self.partner):
+            return NodeState.FAILURE
+
+        world = self.character.world
+        rng = world.get_resource(random.Random)
+
+        rel_to_initiator = get_relationship(self.partner, self.character)
+
+        romance = rel_to_initiator.get_component(Romance)
+
+        if rng.random() > ((romance.get_value() + 100.0) / 200.0) ** 2:
+            return NodeState.FAILURE
+
+        add_relationship_status(self.character, self.partner, Dating())
+        add_relationship_status(self.partner, self.character, Dating())
+
+        self.character.world.get_resource(EventBuffer).append(
+            MarriageEvent(
+                self.character.world.get_resource(SimDateTime),
+                self.character,
+                self.partner,
+            )
+        )
+
+        return NodeState.SUCCESS
+
+    def satisfied_goals(self) -> List[GoalNode]:
+        return [
+            FindRomance(self.character),
+            FindRomance(self.partner),
+            GetMarried(self.partner, self.character),
+        ]
+
+    def is_complete(self) -> bool:
+        return has_relationship_status(self.character, self.partner, Married)
 
     def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, EndRelationship):
-            return self.character == __o.character
+        if isinstance(__o, GetMarried):
+            return self.character == __o.character and self.partner == __o.partner
+        return False
+
+
+class BreakUp(GoalNode):
+    __slots__ = "character", "partner"
+
+    def __init__(self, character: GameObject, partner: GameObject) -> None:
+        super().__init__()
+        self.character: GameObject = character
+        self.partner: GameObject = partner
+
+    def is_complete(self) -> bool:
+        return not has_relationship_status(self.character, self.partner, Dating)
+
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, BreakUp):
+            return self.character == __o.character and self.partner == __o.partner
         return False
 
     def satisfied_goals(self) -> List[GoalNode]:
-        return []
+        return [BreakUp(self.partner, self.character)]
 
     def get_utility(self) -> Dict[GameObject, float]:
-        utilities: Dict[GameObject, float] = {self.character: 0}
+        character_to_partner = get_relationship(self.character, self.partner).get_component(Romance).get_value()
+        partner_to_character = get_relationship(self.partner, self.character).get_component(Romance).get_value()
 
-        rel_to_spouse = get_relationships_with_statuses(self.character, Dating)[0]
-
-        romance = rel_to_spouse.get_component(Romance).get_value()
-
-        utilities[self.character] += (-1.0 * romance) / 100
-
-        if virtues := self.character.try_component(Virtues):
-            if virtues[Virtue.ROMANCE] >= Virtues.STRONG_AGREE:
-                utilities[self.character] += 1
-
-        utilities[self.character] /= 2
-
-        return utilities
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        lambda gameobject: (character_to_partner + 100.0) / 200.0,
+                        invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                    ]
+                ),
+                self.partner: ConsiderationList(
+                    [
+                        lambda gameobject: (partner_to_character + 100.0) / 200.0,
+                        invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                    ]
+                )
+            }
+        ).calculate_scores()
 
     def evaluate(self) -> NodeState:
-        ex_partner = self.character.world.get_gameobject(
-            get_relationships_with_statuses(self.character, Dating)[0]
-            .get_component(Relationship)
-            .target
-        )
+        remove_relationship_status(self.character, self.partner, Dating)
+        remove_relationship_status(self.partner, self.character, Dating)
 
-        remove_relationship_status(self.character, ex_partner, Dating)
-        remove_relationship_status(ex_partner, self.character, Dating)
+        self.character.world.get_resource(EventBuffer).append(
+            BreakUpEvent(
+                self.character.world.get_resource(SimDateTime),
+                self.character,
+                self.partner,
+            )
+        )
 
         return NodeState.SUCCESS
 
 
-class DivorceSpouse(GoalNode):
-    __slots__ = "character"
+class GetDivorced(GoalNode):
+    __slots__ = "character", "partner"
 
-    def __init__(self, character: GameObject) -> None:
+    def __init__(self, character: GameObject, partner: GameObject) -> None:
         super().__init__()
         self.character: GameObject = character
+        self.partner: GameObject = character
+
+    def is_complete(self) -> bool:
+        return not has_relationship_status(self.character, self.partner, Married)
 
     def get_utility(self) -> Dict[GameObject, float]:
-        utilities: Dict[GameObject, float] = {}
+        character_to_partner = get_relationship(self.character, self.partner).get_component(Romance).get_value()
+        partner_to_character = get_relationship(self.partner, self.character).get_component(Romance).get_value()
 
-        rel_to_spouse = get_relationships_with_statuses(self.character, Married)[0]
-
-        romance = rel_to_spouse.get_component(Romance).get_value()
-
-        utilities[self.character] += (-1.0 * romance) / 100
-
-        if virtues := self.character.try_component(Virtues):
-            if virtues[Virtue.ROMANCE] >= Virtues.STRONG_AGREE:
-                utilities[self.character] += 1
-
-        utilities[self.character] /= 2
-
-        return utilities
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        lambda gameobject: (character_to_partner + 100.0) / 200.0,
+                        invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                    ]
+                ),
+                self.partner: ConsiderationList(
+                    [
+                        lambda gameobject: (partner_to_character + 100.0) / 200.0,
+                        invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                    ]
+                )
+            }
+        ).calculate_scores()
 
     def satisfied_goals(self) -> List[GoalNode]:
-        return []
+        return [GetDivorced(self.partner, self.character)]
 
     def evaluate(self) -> NodeState:
-        world = self.character.world
-        ex_spouse = world.get_gameobject(
-            get_relationships_with_statuses(self.character, Married)[0]
-            .get_component(Relationship)
-            .target
-        )
+        remove_relationship_status(self.character, self.partner, Married)
+        remove_relationship_status(self.partner, self.character, Married)
 
-        remove_relationship_status(self.character, ex_spouse, Married)
-        remove_relationship_status(ex_spouse, self.character, Married)
+        self.character.world.get_resource(EventBuffer).append(
+            DivorceEvent(
+                self.character.world.get_resource(SimDateTime),
+                self.character,
+                self.partner,
+            )
+        )
 
         return NodeState.SUCCESS
 
     def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, DivorceSpouse):
-            return self.character == __o.character
+        if isinstance(__o, GetDivorced):
+            return self.character == __o.character and self.partner == __o.partner
         return False
 
 
@@ -709,28 +831,49 @@ class Retire(GoalNode):
         super().__init__()
         self.character = character
 
-    def get_utility(self) -> Dict[GameObject, float]:
-        utilities = {self.character: 0.0}
+    def is_complete(self) -> bool:
+        return self.character.has_component(Retired)
 
-        occupation = self.character.get_component(Occupation)
+    @staticmethod
+    def life_stage_consideration(gameobject: GameObject) -> Optional[float]:
+        if life_stage := gameobject.try_component(LifeStage):
+            if life_stage.life_stage < LifeStageType.Senior:
+                return 0.01
+            else:
+                return 0.85
 
-        if self.character.get_component(LifeStage).life_stage < LifeStageType.Senior:
-            utilities[self.character] -= 1
-        else:
-            utilities[self.character] += 1
-
+    @staticmethod
+    def work_experience_consideration(gameobject: GameObject) -> Optional[float]:
+        occupation = gameobject.get_component(Occupation)
         # This is a nested function. So, we call it once to return the
         # precondition function, then we call it a second time
-        if has_work_experience_as(occupation.occupation_type, 10)(self.character):
-            utilities[self.character] += 1
+        experience = get_work_experience_as(occupation.occupation_type)(gameobject)
 
-        utilities[self.character] = utilities[self.character] / 2.0
+        return min(1.0, experience / 10.0)
 
-        return utilities
+    def get_utility(self) -> Dict[GameObject, float]:
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [self.work_experience_consideration, self.life_stage_consideration]
+                )
+            }
+        ).calculate_scores()
 
     def evaluate(self) -> NodeState:
         world = self.character.world
         add_status(self.character, Retired())
+
+        occupation = self.character.get_component(Occupation)
+
+        world.get_resource(EventBuffer).append(
+            RetirementEvent(
+                world.get_resource(SimDateTime),
+                self.character,
+                world.get_gameobject(occupation.business),
+                occupation.occupation_type,
+            )
+        )
 
         if business_owner := self.character.try_component(BusinessOwner):
             shutdown_business(world.get_gameobject(business_owner.business))
@@ -771,79 +914,71 @@ class AskOut(GoalNode):
             return NodeState.FAILURE
 
         world = self.initiator.world
-
-        romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
-            "dating_romance_threshold", 25
-        )
+        rng = world.get_resource(random.Random)
 
         rel_to_initiator = get_relationship(self.target, self.initiator)
 
         romance = rel_to_initiator.get_component(Romance)
 
-        if romance.get_value() < romance_threshold:
+        if rng.random() > ((romance.get_value() + 100.0) / 200.0) ** 2:
             return NodeState.FAILURE
 
         add_relationship_status(self.initiator, self.target, Dating())
         add_relationship_status(self.target, self.initiator, Dating())
 
+        self.initiator.world.get_resource(EventBuffer).append(
+            StartDatingEvent(
+                self.initiator.world.get_resource(SimDateTime),
+                self.initiator,
+                self.target,
+            )
+        )
+
         return NodeState.SUCCESS
 
     def get_utility(self) -> Dict[GameObject, float]:
-        utilities: Dict[GameObject, float] = {self.initiator: 0, self.target: 0}
-
-        if is_single(self.initiator):
-            utilities[self.initiator] += 1
-        else:
-            utilities[self.initiator] -= 0.25
-
-        if is_single(self.target):
-            utilities[self.target] += 1
-        else:
-            utilities[self.target] -= 0.25
-
-        if virtues := self.initiator.try_component(Virtues):
-            if virtues[Virtue.ROMANCE] >= Virtues.AGREE:
-                utilities[self.initiator] += 1
-
-        if virtues := self.target.try_component(Virtues):
-            if virtues[Virtue.ROMANCE] >= Virtues.AGREE:
-                utilities[self.target] += 1
-
         world = self.initiator.world
 
-        utilities[self.initiator] += (
-            float(
-                world.get_gameobject(
-                    self.initiator.get_component(RelationshipManager).outgoing[
-                        self.target.uid
-                    ]
-                )
-                .get_component(Romance)
-                .get_value()
+        initiator_to_target_romance = float(
+            world.get_gameobject(
+                self.initiator.get_component(RelationshipManager).outgoing[
+                    self.target.uid
+                ]
             )
-            / 100.0
+            .get_component(Romance)
+            .get_value()
         )
 
-        if not is_single(self.initiator):
-            utilities[self.initiator] -= 0.25
-
-        utilities[self.target] += (
-            float(
-                world.get_gameobject(
-                    self.target.get_component(RelationshipManager).outgoing[
-                        self.initiator.uid
-                    ]
-                )
-                .get_component(Romance)
-                .get_value()
+        target_to_initiator_romance = float(
+            world.get_gameobject(
+                self.target.get_component(RelationshipManager).outgoing[
+                    self.initiator.uid
+                ]
             )
-            / 100.0
+            .get_component(Romance)
+            .get_value()
         )
 
-        utilities[self.initiator] /= 3
-        utilities[self.target] /= 3
-
-        return utilities
+        return ConsiderationDict(
+            {
+                self.initiator: ConsiderationList(
+                    [
+                        lambda gameobject: (initiator_to_target_romance + 100.0)
+                        / 200.0,
+                        lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
+                        virtue_consideration(Virtue.ROMANCE),
+                    ]
+                ),
+                self.target: ConsiderationList(
+                    [
+                        lambda gameobject: (target_to_initiator_romance + 100.0)
+                        / 200.0,
+                        lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
+                        virtue_consideration(Virtue.ROMANCE),
+                    ]
+                ),
+            }
+        ).calculate_scores()
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, AskOut):
@@ -858,30 +993,52 @@ class FindRomance(GoalNode):
         super().__init__()
         self.character = character
 
+    def is_complete(self) -> bool:
+        return len(get_relationships_with_statuses(self.character, Dating)) > 0
+
     def get_utility(self) -> Dict[GameObject, float]:
-        utilities: Dict[GameObject, float] = {self.character: 0}
-
-        if not is_single(self.character):
-            return {self.character: 0}
-        else:
-            utilities[self.character] += 1
-
-        if life_stage := self.character.get_component(LifeStage):
-            if life_stage.life_stage == LifeStageType.Adult:
-                utilities[self.character] += 2
-            elif life_stage.life_stage >= LifeStageType.YoungAdult:
-                utilities[self.character] += 1
-
-        if virtues := self.character.try_component(Virtues):
-            if virtues[Virtue.ROMANCE] >= Virtues.AGREE:
-                utilities[self.character] += 1
-
-            if virtues[Virtue.LUST] >= Virtues.AGREE:
-                utilities[self.character] += 1
-
-        utilities[self.character] /= 5
-
-        return utilities
+        life_stage = self.character.get_component(LifeStage).life_stage
+        return ConsiderationDict(
+            {
+                self.character: ConsiderationList(
+                    [
+                        virtue_consideration(Virtue.ROMANCE),
+                        virtue_consideration(Virtue.LUST),
+                        lambda gameobject: 1 if is_single(gameobject) else None,
+                        lambda gameobject: (
+                            0.8
+                            if life_stage
+                            == LifeStageType.YoungAdult
+                            else None
+                        ),
+                        lambda gameobject: (
+                            0.6
+                            if life_stage
+                            == LifeStageType.Adult
+                            else None
+                        ),
+                        lambda gameobject: (
+                            0.0
+                            if life_stage
+                            == LifeStageType.Child
+                            else None
+                        ),
+                        lambda gameobject: (
+                            0.3
+                            if life_stage
+                            == LifeStageType.Senior
+                            else None
+                        ),
+                        lambda gameobject: (
+                            0.7
+                            if life_stage
+                            == LifeStageType.Adolescent
+                            else None
+                        ),
+                    ]
+                )
+            }
+        ).calculate_scores()
 
     def satisfied_goals(self) -> List[GoalNode]:
         return []
@@ -946,24 +1103,33 @@ class FindRomance(GoalNode):
         return False
 
 
-class EndRomanceGoal(GoalNode):
-    __slots__ = "initiator", "target"
+class Die(BehaviorTree):
+    __slots__ = "character"
 
-    def __init__(self, initiator: GameObject, target: GameObject) -> None:
+    def __init__(self, character: GameObject) -> None:
         super().__init__()
-        self.initiator: GameObject = initiator
-        self.target: GameObject = target
-
-    def get_utility(self) -> Dict[GameObject, float]:
-        return super().get_utility()
-
-    def satisfied_goals(self) -> List[GoalNode]:
-        return []
+        self.character: GameObject = character
 
     def evaluate(self) -> NodeState:
-        ...
+        self.character.world.get_resource(EventBuffer).append(
+            DeathEvent(self.character.world.get_resource(SimDateTime), self.character)
+        )
 
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, EndRomanceGoal):
-            return self.initiator == __o.initiator and self.target == __o.target
-        return False
+        if self.character.has_component(Occupation):
+            if business_owner := self.character.try_component(BusinessOwner):
+                shutdown_business(
+                    self.character.world.get_gameobject(business_owner.business)
+                )
+            else:
+                end_job(self.character, reason="Died")
+
+        if self.character.has_component(Resident):
+            set_residence(self.character, None)
+
+        add_status(self.character, Deceased())
+        clear_frequented_locations(self.character)
+        clear_statuses(self.character)
+
+        remove_character_from_settlement(self.character)
+
+        return NodeState.SUCCESS

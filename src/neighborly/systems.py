@@ -1,14 +1,12 @@
 import random
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, DefaultDict, List, Optional, Type
+from typing import Any, DefaultDict, Optional, Type
 
-# import neighborly.events
 from neighborly.components.business import InTheWorkforce, Occupation, Unemployed
 from neighborly.components.character import (
     CanAge,
     ChildOf,
-    Departed,
     Family,
     GameCharacter,
     LifeStage,
@@ -60,10 +58,9 @@ from neighborly.events import (
     GiveBirthEvent,
     JoinSettlementEvent,
 )
-from neighborly.plugins.defaults.actions import FindEmployment
+from neighborly.plugins.defaults.actions import DepartSimulation, FindEmployment
 from neighborly.utils.common import (
     add_character_to_settlement,
-    check_share_residence,
     get_child_prefab,
     set_character_age,
     set_frequented_locations,
@@ -228,8 +225,9 @@ class RandomLifeEventSystem(System):
         for _ in range(total_population // 10):
             event_type = RandomLifeEvents.pick_one(rng)
             if event := event_type.instantiate(self.world, RoleList()):
-                event_buffer.append(event)
-                event.execute()
+                if rng.random() < event.get_probability():
+                    event_buffer.append(event)
+                    event.execute()
 
 
 class MeetNewPeopleSystem(ISystem):
@@ -349,7 +347,7 @@ class UnemployedStatusSystem(System):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         current_date = self.world.get_resource(SimDateTime)
-        for guid, unemployed in self.world.get_component(Unemployed):
+        for guid, (unemployed, _) in self.world.get_components((Unemployed, Active)):
             character = self.world.get_gameobject(guid)
             years_unemployed = (
                 float((current_date - unemployed.created).total_days) / DAYS_PER_YEAR
@@ -357,35 +355,8 @@ class UnemployedStatusSystem(System):
 
             if years_unemployed < self.years_to_find_a_job:
                 goal = FindEmployment(character)
-
-                priority_from_time = years_unemployed / self.years_to_find_a_job
-                priority_from_spouse = (
-                    0.7
-                    if len(get_relationships_with_statuses(character, Married)) > 0
-                    else 0.4
-                )
-                priority_from_children = min(
-                    0.0,
-                    float(len(get_relationships_with_statuses(character, ParentOf)))
-                    / 5.0,
-                )
-                priority_from_life_stage = (
-                    0.8
-                    if character.get_component(LifeStage).life_stage
-                    == LifeStageType.Adult
-                    else 0.6
-                )
-
-                priority = (
-                    priority_from_time
-                    + priority_from_spouse
-                    + priority_from_life_stage
-                    + priority_from_children
-                ) / 4.0
-
-                if priority > 0:
-                    character.get_component(Goals).push_goal(priority, goal)
-                    continue
+                priority = goal.get_utility()[character]
+                character.get_component(Goals).push_goal(priority, goal)
 
             else:
                 spouses = get_relationships_with_statuses(character, Married)
@@ -402,39 +373,9 @@ class UnemployedStatusSystem(System):
                     continue
 
                 else:
-                    characters_to_depart: List[GameObject] = [character]
-
-                    # Have all spouses depart
-                    # Allows for polygamy
-                    for relationship in spouses:
-                        rel = relationship.get_component(Relationship)
-                        spouse = self.world.get_gameobject(rel.target)
-                        if spouse.has_component(Active):
-                            characters_to_depart.append(spouse)
-
-                    # Have all children living in the same house depart
-                    children = get_relationships_with_statuses(character, ParentOf)
-                    for relationship in children:
-                        rel = relationship.get_component(Relationship)
-                        child = self.world.get_gameobject(rel.target)
-                        if child.has_component(Active) and check_share_residence(
-                            character, child
-                        ):
-                            characters_to_depart.append(child)
-
-                    for c in characters_to_depart:
-                        add_status(c, Departed())
-                        c.remove_component(Active)
-
-                    remove_status(character, Unemployed)
-
-                    event = DepartEvent(
-                        self.world.get_resource(SimDateTime),
-                        characters_to_depart,
-                        "unemployment",
-                    )
-
-                    self.world.get_resource(EventBuffer).append(event)
+                    goal = DepartSimulation(character)
+                    priority = goal.get_utility()[character]
+                    character.get_component(Goals).push_goal(priority, goal)
 
 
 class PregnantStatusSystem(System):
@@ -771,10 +712,16 @@ class AIActionSystem(System):
     def run(self, *args: Any, **kwargs: Any) -> None:
         rng = self.world.get_resource(random.Random)
         for _, (_, goals, _) in self.world.get_components((AIBrain, Goals, Active)):
-            if not goals:
-                return
+            if goals.gameobject.has_component(Active) is False:
+                continue
+
+            if not goals.has_options():
+                continue
 
             goal = goals.pick_one(rng)
+
+            if goal.is_complete():
+                continue
 
             goal.take_action()
 

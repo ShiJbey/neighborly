@@ -101,7 +101,7 @@ class RelationshipReporter(ISystem):
                 game_character.first_name == "Delores"
                 and game_character.last_name == "Abernathy"
             ):
-                for target_id, rel_id in relationship_manager.relationships.items():
+                for target_id, rel_id in relationship_manager.outgoing.items():
                     relationship = self.world.get_gameobject(rel_id)
                     data_collector.add_table_row(
                         "relationships",

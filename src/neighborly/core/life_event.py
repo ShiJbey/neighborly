@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, Iterator, Optional, Tuple, Type
+from typing import Any, Dict, Iterable, Iterator, Optional, Type
 
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.event import Event
@@ -65,11 +65,6 @@ class ActionableLifeEvent(LifeEvent):
     https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
     """
 
-    optional: bool = False
-    initiator: str = ""
-    requires_confirmation: Optional[Tuple[str, ...]] = None
-    base_priority: int = 1
-
     __slots__ = "_roles"
 
     def __init__(
@@ -87,7 +82,8 @@ class ActionableLifeEvent(LifeEvent):
         """
         super().__init__(timestamp, roles)
 
-    def get_priority(self) -> float:
+    @abstractmethod
+    def get_probability(self) -> float:
         """Get the probability of an instance of this event happening
 
         Returns
@@ -96,7 +92,7 @@ class ActionableLifeEvent(LifeEvent):
             The probability of the event given the GameObjects bound
             to the roles in the LifeEventInstance
         """
-        return self.base_priority
+        raise NotImplementedError
 
     @abstractmethod
     def execute(self) -> None:
@@ -106,9 +102,6 @@ class ActionableLifeEvent(LifeEvent):
     def is_valid(self, world: World) -> bool:
         """Check that all gameobjects still meet the preconditions for their roles"""
         return self.instantiate(world, bindings=self._roles) is not None
-
-    def get_initiator(self) -> GameObject:
-        return self._roles[self.initiator]
 
     @classmethod
     @abstractmethod

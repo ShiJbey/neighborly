@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import random
 from abc import abstractmethod
-from typing import Any, Dict, Generic, List, Optional, TypeVar, final
+from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar, final
 
 from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree
 from neighborly.core.ecs import Component, GameObject
@@ -21,14 +21,21 @@ from neighborly.core.ecs import Component, GameObject
 _T = TypeVar("_T")
 
 
+class NoPositiveWeights(Exception):
+    """Error raised when a weighted list does not have any positive weights"""
+
+    pass
+
+
 class WeightedList(Generic[_T]):
     """Manages a list of actions mapped to weights to facilitate random selection"""
 
-    __slots__ = "_items", "_weights", "_size"
+    __slots__ = "_items", "_weights", "_size", "_total_weight"
 
     def __init__(self) -> None:
         self._items: List[_T] = []
         self._weights: List[float] = []
+        self._total_weight: float = 0.0
         self._size: int = 0
 
     def append(self, weight: float, item: _T) -> None:
@@ -42,9 +49,11 @@ class WeightedList(Generic[_T]):
         item: _T
             The item to add
         """
+        assert weight >= 0
         self._weights.append(weight)
         self._items.append(item)
         self._size += 1
+        self._total_weight += weight
 
     def pick_one(self, rng: random.Random) -> _T:
         """Perform weighted random selection on the entries
@@ -56,10 +65,15 @@ class WeightedList(Generic[_T]):
         """
         return rng.choices(self._items, self._weights, k=1)[0]
 
+    def has_options(self) -> bool:
+        """Return True if there is at least one item with a positive weight"""
+        return self._total_weight > 0
+
     def clear(self) -> None:
         self._items.clear()
         self._weights.clear()
         self._size = 0
+        self._total_weight = 0.0
 
     def __len__(self) -> int:
         return self._size
@@ -68,11 +82,11 @@ class WeightedList(Generic[_T]):
         return bool(self._size)
 
 
-class Consideration:
+class Consideration(Protocol):
     """Considerations check if a GameObject meets conditions and returns a score"""
 
     @abstractmethod
-    def __call__(self, gameobject: GameObject) -> float:
+    def __call__(self, gameobject: GameObject) -> Optional[float]:
         """
         Perform consideration score calculation
 
@@ -83,7 +97,7 @@ class Consideration:
 
         Returns
         -------
-        float
+        float or None
             A score from [0.0, 1.0]
         """
         raise NotImplementedError()
@@ -107,18 +121,37 @@ class ConsiderationList(List[Consideration]):
             The aggregate consideration score
         """
 
-        score: float = 1.0
+        cumulative_score: float = 1.0
+        consideration_count: int = 0
 
         for c in self:
-            score *= c(gameobject)
+            consideration_score = c(gameobject)
+            if consideration_score is not None:
+                assert 0.0 <= consideration_score <= 1.0
+                cumulative_score *= consideration_score
+                consideration_count += 1
 
-            if score == 0.0:
+            if cumulative_score == 0.0:
                 break
 
-        mod_factor = 1.0 - (1.0 / len(self))
-        makeup_value = (1.0 - score) * mod_factor
-        final_score = score + (score * makeup_value)
+        consideration_count = max(1, consideration_count)
+        mod_factor = 1.0 - (1.0 / consideration_count)
+        makeup_value = (1.0 - cumulative_score) * mod_factor
+        final_score = cumulative_score + (cumulative_score * makeup_value)
         return final_score
+
+
+class ConsiderationDict(Dict[GameObject, ConsiderationList]):
+    """Maps considerations to GameObjects with those considerations"""
+
+    def calculate_scores(self) -> Dict[GameObject, float]:
+        scores: Dict[GameObject, float] = {}
+
+        for gameobject, considerations in self.items():
+            score = considerations.calculate_score(gameobject)
+            scores[gameobject] = score
+
+        return scores
 
 
 class GoalNode(BehaviorTree):
@@ -130,6 +163,12 @@ class GoalNode(BehaviorTree):
         super().__init__(root)
         self.original_goal: Optional[GoalNode] = None
         self.blackboard["goal_stack"] = [self]
+
+    @abstractmethod
+    def is_complete(self) -> bool:
+        """Return True if the goal is complete or invalid, False otherwise"""
+        raise NotImplementedError
+
 
     @abstractmethod
     def get_utility(self) -> Dict[GameObject, float]:
@@ -200,6 +239,9 @@ class Goals(Component):
 
     def to_dict(self) -> Dict[str, Any]:
         return {}
+
+    def has_options(self) -> bool:
+        return self._goals.has_options()
 
     def clear_goals(self) -> None:
         self._goals.clear()

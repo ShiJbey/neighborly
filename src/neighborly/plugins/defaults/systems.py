@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from neighborly.components import Occupation, Residence, Resident
 from neighborly.components.character import (
@@ -6,14 +6,17 @@ from neighborly.components.character import (
     GameCharacter,
     LifeStage,
     LifeStageType,
+    Married,
 )
 from neighborly.core.ai.brain import Goals
-from neighborly.core.ecs import Active, GameObject
-from neighborly.core.relationship import Relationship, RelationshipManager, Romance
+from neighborly.core.ecs import Active
+from neighborly.core.relationship import Relationship
 from neighborly.plugins.defaults.actions import (
-    EndRelationship,
+    BreakUp,
+    GetDivorced,
     FindOwnPlace,
     FindRomance,
+    GetMarried,
     Retire,
 )
 from neighborly.simulation import Neighborly, PluginInfo
@@ -21,35 +24,46 @@ from neighborly.systems import System
 from neighborly.utils.query import is_single
 
 
-class EndRomanceSystem(System):
+class DatingBreakUpSystem(System):
     sys_group = "goal-suggestion"
-
-    @staticmethod
-    def _get_love_interest(character: GameObject) -> Optional[GameObject]:
-        max_romance: int = -1
-        love_interest: Optional[GameObject] = None
-
-        for _, rel_id in character.get_component(RelationshipManager).outgoing.items():
-            relationship = character.world.get_gameobject(rel_id)
-
-            romance = relationship.get_component(Romance).get_value()
-
-            if romance > max_romance:
-                max_romance = romance
-                love_interest = character.world.get_gameobject(
-                    relationship.get_component(Relationship).target
-                )
-
-        return love_interest
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         for _, (relationship, _, _) in self.world.get_components(
-            (Relationship, Dating, Romance)
+            (Relationship, Dating, Active)
         ):
-            # Check if they like someone else more or if they
-            # dislike the person they are with
             owner = self.world.get_gameobject(relationship.owner)
-            goal = EndRelationship(owner)
+            target = self.world.get_gameobject(relationship.target)
+            goal = BreakUp(owner, target)
+            utility = goal.get_utility().get(owner, 0)
+            if utility > 0:
+                owner.get_component(Goals).push_goal(utility, goal)
+
+
+class MarriageSystem(System):
+    sys_group = "goal-suggestion"
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for _, (relationship, _, _) in self.world.get_components(
+            (Relationship, Dating, Active)
+        ):
+            owner = self.world.get_gameobject(relationship.owner)
+            target = self.world.get_gameobject(relationship.target)
+            goal = GetMarried(owner, target)
+            utility = goal.get_utility().get(owner, 0)
+            if utility > 0:
+                owner.get_component(Goals).push_goal(utility, goal)
+
+
+class EndMarriageSystem(System):
+    sys_group = "goal-suggestion"
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        for _, (relationship, _, _) in self.world.get_components(
+            (Relationship, Married, Active)
+        ):
+            owner = self.world.get_gameobject(relationship.owner)
+            target = self.world.get_gameobject(relationship.target)
+            goal = GetDivorced(owner, target)
             utility = goal.get_utility().get(owner, 0)
             if utility > 0:
                 owner.get_component(Goals).push_goal(utility, goal)
@@ -132,7 +146,9 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    sim.add_system(EndRomanceSystem())
+    sim.add_system(DatingBreakUpSystem())
+    sim.add_system(EndMarriageSystem())
+    sim.add_system(MarriageSystem())
     sim.add_system(FindRomanceSystem())
     sim.add_system(FindOwnPlaceSystem())
     sim.add_system(RetirementSystem())

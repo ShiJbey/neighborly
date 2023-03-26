@@ -74,8 +74,9 @@ from neighborly.decorators import (
     resource,
     system,
 )
+from neighborly.events import DeathEvent
 from neighborly.exporter import export_to_json
-from neighborly.plugins.defaults.life_events import Die
+from neighborly.plugins.defaults.actions import Die
 from neighborly.utils.common import add_character_to_settlement, spawn_character
 
 sim = Neighborly(
@@ -560,6 +561,9 @@ class BecomeDemonSlayer(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self) -> None:
         character = self["Character"]
         world = character.world
@@ -620,6 +624,9 @@ class DemonSlayerPromotion(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self) -> None:
         character = self["Character"]
         slayer = character.get_component(DemonSlayer)
@@ -676,6 +683,9 @@ class DemonChallengeForPower(ActionableLifeEvent):
         super().__init__(
             date, [Role("Challenger", challenger), Role("Opponent", opponent)]
         )
+
+    def get_probability(self) -> float:
+        return 0.8
 
     def execute(self) -> None:
         """Execute the battle"""
@@ -771,6 +781,9 @@ class DevourHuman(ActionableLifeEvent):
     ) -> None:
         super().__init__(date, [Role("Demon", demon), Role("Victim", victim)])
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self):
         demon = self["Demon"]
         victim = self["Victim"]
@@ -788,9 +801,7 @@ class DevourHuman(ActionableLifeEvent):
             demon.get_component(Demon).rank = power_level_to_demon_rank(
                 demon.get_component(PowerLevel).level
             )
-            death_event = Die(date, victim)
-            life_event_buffer.append(death_event)
-            death_event.execute()
+            Die(victim).evaluate()
 
     @classmethod
     def instantiate(
@@ -880,6 +891,9 @@ class Battle(ActionableLifeEvent):
             date, [Role("Challenger", challenger), Role("Opponent", opponent)]
         )
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self) -> None:
         """Choose a winner based on their expected success"""
         challenger = self["Challenger"]
@@ -888,8 +902,6 @@ class Battle(ActionableLifeEvent):
         rng = world.get_resource(random.Random)
         challenger_pl = challenger.get_component(PowerLevel)
         opponent_pl = opponent.get_component(PowerLevel)
-        date = world.get_resource(SimDateTime)
-        life_event_buffer = world.get_resource(EventBuffer)
 
         challenger_success_chance = probability_of_winning(
             challenger_pl.level, opponent_pl.level
@@ -910,11 +922,7 @@ class Battle(ActionableLifeEvent):
 
             challenger_pl.level = new_challenger_pl
 
-            death_event = Die(date, opponent)
-
-            life_event_buffer.append(death_event)
-
-            death_event.execute()
+            Die(opponent).evaluate()
 
             challenger.get_component(ConfirmedKills).count += 1
         else:
@@ -928,11 +936,7 @@ class Battle(ActionableLifeEvent):
 
             opponent_pl.level = new_opponent_pl
 
-            death_event = Die(date, challenger)
-
-            life_event_buffer.append(death_event)
-
-            death_event.execute()
+            Die(challenger).evaluate()
 
             opponent.get_component(ConfirmedKills).count += 1
 
@@ -992,6 +996,9 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
         self, date: SimDateTime, demon: GameObject, new_demon: GameObject
     ) -> None:
         super().__init__(date, [Role("Demon", demon), Role("NewDemon", new_demon)])
+
+    def get_probability(self) -> float:
+        return 0.8
 
     @classmethod
     def instantiate(
@@ -1089,6 +1096,9 @@ class PromotionToLowerMoon(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self) -> None:
         character = self["Character"]
         demon = character.get_component(Demon)
@@ -1139,6 +1149,9 @@ class PromotionToLowerMoon(ActionableLifeEvent):
 class PromotionToUpperMoon(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
+
+    def get_probability(self) -> float:
+        return 0.8
 
     def execute(self) -> None:
         character = self["Character"]
@@ -1195,7 +1208,7 @@ class RetireDeceasedHashira(ISystem):
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(Die):
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(DeathEvent):
             if demon_slayer := event["Character"].try_component(DemonSlayer):
                 if demon_slayer.rank == DemonSlayerRank.Hashira:
                     self.world.get_resource(DemonSlayerCorps).retire_hashira(
@@ -1208,7 +1221,7 @@ class RemoveDeceasedDemons(ISystem):
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(Die):
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(DeathEvent):
             if demon := event["Character"].try_component(Demon):
                 if demon.rank == DemonRank.LowerMoon:
                     self.world.get_resource(DemonKingdom).retire_lower_moon(

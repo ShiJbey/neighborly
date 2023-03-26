@@ -256,7 +256,7 @@ class RelationshipManager(Component):
         GameObjects with the relationship data
     """
 
-    __slots__ = "relationships", "incoming", "outgoing"
+    __slots__ = "incoming", "outgoing"
 
     def __init__(self) -> None:
         super().__init__()
