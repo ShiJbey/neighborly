@@ -13,9 +13,9 @@ from neighborly.core.ecs import Active
 from neighborly.core.relationship import Relationship
 from neighborly.plugins.defaults.actions import (
     BreakUp,
-    GetDivorced,
     FindOwnPlace,
     FindRomance,
+    GetDivorced,
     GetMarried,
     Retire,
 )

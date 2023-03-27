@@ -21,12 +21,6 @@ from neighborly.core.ecs import Component, GameObject
 _T = TypeVar("_T")
 
 
-class NoPositiveWeights(Exception):
-    """Error raised when a weighted list does not have any positive weights"""
-
-    pass
-
-
 class WeightedList(Generic[_T]):
     """Manages a list of actions mapped to weights to facilitate random selection"""
 
@@ -64,6 +58,15 @@ class WeightedList(Generic[_T]):
             An action from the list
         """
         return rng.choices(self._items, self._weights, k=1)[0]
+
+    def above_thresh(self, threshold: float) -> WeightedList[_T]:
+        new_list: WeightedList[_T] = WeightedList()
+
+        for i, weight in enumerate(self._weights):
+            if weight >= threshold:
+                new_list.append(weight, self._items[i])
+
+        return new_list
 
     def has_options(self) -> bool:
         """Return True if there is at least one item with a positive weight"""
@@ -134,7 +137,10 @@ class ConsiderationList(List[Consideration]):
             if cumulative_score == 0.0:
                 break
 
-        consideration_count = max(1, consideration_count)
+        if consideration_count == 0:
+            consideration_count = 1
+            cumulative_score = 0.0
+
         mod_factor = 1.0 - (1.0 / consideration_count)
         makeup_value = (1.0 - cumulative_score) * mod_factor
         final_score = cumulative_score + (cumulative_score * makeup_value)
@@ -168,7 +174,6 @@ class GoalNode(BehaviorTree):
     def is_complete(self) -> bool:
         """Return True if the goal is complete or invalid, False otherwise"""
         raise NotImplementedError
-
 
     @abstractmethod
     def get_utility(self) -> Dict[GameObject, float]:

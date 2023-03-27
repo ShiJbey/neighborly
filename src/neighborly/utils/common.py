@@ -507,30 +507,28 @@ def depart_settlement(character: GameObject, reason: str = "") -> None:
     """
     world = character.world
 
-    residence = world.get_gameobject(
-        character.get_component(Resident).residence
-    ).get_component(Residence)
-
-    set_residence(character, None)
     departing_characters: List[GameObject] = [character]
 
-    # Get people that this character lives with and have them depart with their
-    # spouse(s) and children. This function may need to be refactored in the future
-    # to perform BFS on the relationship tree when moving out extended families living
-    # within the same residence
-    for resident_id in residence.residents:
-        resident = world.get_gameobject(resident_id)
+    if character.has_component(Resident):
+        residence = world.get_gameobject(
+            character.get_component(Resident).residence
+        ).get_component(Residence)
 
-        if resident == character:
-            continue
+        # Get people that this character lives with and have them depart with their
+        # spouse(s) and children. This function may need to be refactored in the future
+        # to perform BFS on the relationship tree when moving out extended families living
+        # within the same residence
+        for resident_id in residence.residents:
+            resident = world.get_gameobject(resident_id)
 
-        if has_relationship_status(character, resident, Married):
-            set_residence(resident, None)
-            departing_characters.append(resident)
+            if resident == character:
+                continue
 
-        elif has_relationship_status(character, resident, ParentOf):
-            set_residence(resident, None)
-            departing_characters.append(resident)
+            if has_relationship_status(character, resident, Married):
+                departing_characters.append(resident)
+
+            elif has_relationship_status(character, resident, ParentOf):
+                departing_characters.append(resident)
 
     for character in departing_characters:
         if character.has_component(Occupation):
@@ -545,8 +543,6 @@ def depart_settlement(character: GameObject, reason: str = "") -> None:
         clear_statuses(character)
 
         add_status(character, Departed())
-
-
 
     world.get_resource(EventBuffer).append(
         DepartEvent(
@@ -885,7 +881,7 @@ def end_job(
         occupation_type=occupation.occupation_type,
         business=business.uid,
         years_held=float((current_date - occupation.start_date).total_days)
-                   / DAYS_PER_YEAR,
+        / DAYS_PER_YEAR,
         reason_for_leaving=reason,
     )
 

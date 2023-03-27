@@ -162,7 +162,6 @@ class SpawnFamilySystem(System):
             # Configure relationship from character to spouse
             add_relationship(character, spouse)
             add_relationship_status(character, spouse, Married())
-            add_relationship_status(character, spouse, Married())
             get_relationship(character, spouse).get_component(Romance).increment(45)
             get_relationship(character, spouse).get_component(Friendship).increment(30)
             get_relationship(character, spouse).get_component(

@@ -387,7 +387,7 @@ class PregnantStatusSystem(System):
         for guid, pregnant in self.world.get_component(Pregnant):
             character = self.world.get_gameobject(guid)
 
-            if pregnant.due_date <= current_date:
+            if current_date <= pregnant.due_date:
                 continue
 
             other_parent = self.world.get_gameobject(pregnant.partner_id)
@@ -721,6 +721,9 @@ class AIActionSystem(System):
             goal = goals.pick_one(rng)
 
             if goal.is_complete():
+                continue
+
+            if goal.get_utility()[goals.gameobject] < 0.3:
                 continue
 
             goal.take_action()

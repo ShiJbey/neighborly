@@ -27,7 +27,12 @@ from neighborly.components.character import (
 )
 from neighborly.components.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree, NodeState, SelectorBTNode
+from neighborly.core.ai.behavior_tree import (
+    AbstractBTNode,
+    BehaviorTree,
+    NodeState,
+    SelectorBTNode,
+)
 from neighborly.core.ai.brain import (
     Consideration,
     ConsiderationDict,
@@ -44,6 +49,7 @@ from neighborly.core.ecs import (
 )
 from neighborly.core.event import EventBuffer
 from neighborly.core.relationship import (
+    Friendship,
     RelationshipManager,
     Romance,
     add_relationship_status,
@@ -55,7 +61,7 @@ from neighborly.core.relationship import (
 )
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, clear_statuses
-from neighborly.core.time import DAYS_PER_MONTH, SimDateTime
+from neighborly.core.time import DAYS_PER_MONTH, DAYS_PER_YEAR, SimDateTime
 from neighborly.events import (
     BreakUpEvent,
     DeathEvent,
@@ -411,7 +417,9 @@ class FindOwnPlace(GoalNode):
 
     def is_complete(self) -> bool:
         if resident := self.character.try_component(Resident):
-            residence = self.character.world.get_gameobject(resident.residence).get_component(Residence)
+            residence = self.character.world.get_gameobject(
+                resident.residence
+            ).get_component(Residence)
             return residence.is_owner(self.character.uid)
         return False
 
@@ -685,8 +693,10 @@ class GetMarried(GoalNode):
         if rng.random() > ((romance.get_value() + 100.0) / 200.0) ** 2:
             return NodeState.FAILURE
 
-        add_relationship_status(self.character, self.partner, Dating())
-        add_relationship_status(self.partner, self.character, Dating())
+        remove_relationship_status(self.character, self.partner, Dating)
+        remove_relationship_status(self.partner, self.character, Dating)
+        add_relationship_status(self.character, self.partner, Married())
+        add_relationship_status(self.partner, self.character, Married())
 
         self.character.world.get_resource(EventBuffer).append(
             MarriageEvent(
@@ -733,30 +743,74 @@ class BreakUp(GoalNode):
     def satisfied_goals(self) -> List[GoalNode]:
         return [BreakUp(self.partner, self.character)]
 
+    @staticmethod
+    def time_together_consideration(partner: GameObject):
+        def consideration(gameobject: GameObject) -> Optional[float]:
+            if has_relationship(gameobject, partner):
+                world = gameobject.world
+                current_date = world.get_resource(SimDateTime)
+                rel = get_relationship(gameobject, partner)
+                dating_status = rel.get_component(Dating)
+                time_together = (
+                    float((current_date - dating_status.created).total_days)
+                    / DAYS_PER_YEAR
+                )
+                return time_together / 5.0
+
+            return 0.0
+
+        return consideration
+
     def get_utility(self) -> Dict[GameObject, float]:
-        character_to_partner = get_relationship(self.character, self.partner).get_component(Romance).get_value()
-        partner_to_character = get_relationship(self.partner, self.character).get_component(Romance).get_value()
+        character_to_partner = (
+            get_relationship(self.character, self.partner)
+            .get_component(Romance)
+            .get_value()
+        )
+        partner_to_character = (
+            get_relationship(self.partner, self.character)
+            .get_component(Romance)
+            .get_value()
+        )
 
         return ConsiderationDict(
             {
                 self.character: ConsiderationList(
                     [
-                        lambda gameobject: (character_to_partner + 100.0) / 200.0,
+                        invert_consideration(lambda gameobject: ((character_to_partner + 100.0) / 200.0)
+                        ** 2),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                        self.time_together_consideration(self.partner),
                     ]
                 ),
                 self.partner: ConsiderationList(
                     [
-                        lambda gameobject: (partner_to_character + 100.0) / 200.0,
+                        invert_consideration(lambda gameobject: ((partner_to_character + 100.0) / 200.0)
+                        ** 2),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                        self.time_together_consideration(self.character),
                     ]
-                )
+                ),
             }
         ).calculate_scores()
 
     def evaluate(self) -> NodeState:
         remove_relationship_status(self.character, self.partner, Dating)
         remove_relationship_status(self.partner, self.character, Dating)
+
+        get_relationship(self.character, self.partner).get_component(Romance).increment(
+            -6
+        )
+        get_relationship(self.partner, self.character).get_component(Romance).increment(
+            -6
+        )
+
+        get_relationship(self.character, self.partner).get_component(
+            Friendship
+        ).increment(-6)
+        get_relationship(self.partner, self.character).get_component(
+            Friendship
+        ).increment(-6)
 
         self.character.world.get_resource(EventBuffer).append(
             BreakUpEvent(
@@ -775,29 +829,59 @@ class GetDivorced(GoalNode):
     def __init__(self, character: GameObject, partner: GameObject) -> None:
         super().__init__()
         self.character: GameObject = character
-        self.partner: GameObject = character
+        self.partner: GameObject = partner
 
     def is_complete(self) -> bool:
         return not has_relationship_status(self.character, self.partner, Married)
 
+    @staticmethod
+    def time_together_consideration(partner: GameObject):
+        def consideration(gameobject: GameObject) -> Optional[float]:
+            if has_relationship(gameobject, partner):
+                world = gameobject.world
+                current_date = world.get_resource(SimDateTime)
+                rel = get_relationship(gameobject, partner)
+                married_status = rel.get_component(Married)
+                time_together = (
+                    float((current_date - married_status.created).total_days)
+                    / DAYS_PER_YEAR
+                )
+                return max(0.3, time_together / 10.0)
+
+            return 0.0
+
+        return consideration
+
     def get_utility(self) -> Dict[GameObject, float]:
-        character_to_partner = get_relationship(self.character, self.partner).get_component(Romance).get_value()
-        partner_to_character = get_relationship(self.partner, self.character).get_component(Romance).get_value()
+        character_to_partner = (
+            get_relationship(self.character, self.partner)
+            .get_component(Romance)
+            .get_value()
+        )
+        partner_to_character = (
+            get_relationship(self.partner, self.character)
+            .get_component(Romance)
+            .get_value()
+        )
 
         return ConsiderationDict(
             {
                 self.character: ConsiderationList(
                     [
-                        lambda gameobject: (character_to_partner + 100.0) / 200.0,
+                        invert_consideration(lambda gameobject: ((character_to_partner + 100.0) / 200.0)
+                        ** 2),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                        self.time_together_consideration(self.partner),
                     ]
                 ),
                 self.partner: ConsiderationList(
                     [
-                        lambda gameobject: (partner_to_character + 100.0) / 200.0,
+                        invert_consideration(lambda gameobject: ((partner_to_character + 100.0) / 200.0)
+                        ** 2),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
+                        self.time_together_consideration(self.character),
                     ]
-                )
+                ),
             }
         ).calculate_scores()
 
@@ -807,6 +891,20 @@ class GetDivorced(GoalNode):
     def evaluate(self) -> NodeState:
         remove_relationship_status(self.character, self.partner, Married)
         remove_relationship_status(self.partner, self.character, Married)
+
+        get_relationship(self.character, self.partner).get_component(Romance).increment(
+            -10
+        )
+        get_relationship(self.partner, self.character).get_component(Romance).increment(
+            -10
+        )
+
+        get_relationship(self.character, self.partner).get_component(
+            Friendship
+        ).increment(-10)
+        get_relationship(self.partner, self.character).get_component(
+            Friendship
+        ).increment(-10)
 
         self.character.world.get_resource(EventBuffer).append(
             DivorceEvent(
@@ -844,12 +942,12 @@ class Retire(GoalNode):
 
     @staticmethod
     def work_experience_consideration(gameobject: GameObject) -> Optional[float]:
-        occupation = gameobject.get_component(Occupation)
-        # This is a nested function. So, we call it once to return the
-        # precondition function, then we call it a second time
-        experience = get_work_experience_as(occupation.occupation_type)(gameobject)
+        if occupation := gameobject.get_component(Occupation):
+            # This is a nested function. So, we call it once to return the
+            # precondition function, then we call it a second time
+            experience = get_work_experience_as(occupation.occupation_type)(gameobject)
 
-        return min(1.0, experience / 10.0)
+            return min(1.0, experience / 10.0)
 
     def get_utility(self) -> Dict[GameObject, float]:
         return ConsiderationDict(
@@ -1006,34 +1104,19 @@ class FindRomance(GoalNode):
                         virtue_consideration(Virtue.LUST),
                         lambda gameobject: 1 if is_single(gameobject) else None,
                         lambda gameobject: (
-                            0.8
-                            if life_stage
-                            == LifeStageType.YoungAdult
-                            else None
+                            0.8 if life_stage == LifeStageType.YoungAdult else None
                         ),
                         lambda gameobject: (
-                            0.6
-                            if life_stage
-                            == LifeStageType.Adult
-                            else None
+                            0.6 if life_stage == LifeStageType.Adult else None
                         ),
                         lambda gameobject: (
-                            0.0
-                            if life_stage
-                            == LifeStageType.Child
-                            else None
+                            0.0 if life_stage == LifeStageType.Child else None
                         ),
                         lambda gameobject: (
-                            0.3
-                            if life_stage
-                            == LifeStageType.Senior
-                            else None
+                            0.3 if life_stage == LifeStageType.Senior else None
                         ),
                         lambda gameobject: (
-                            0.7
-                            if life_stage
-                            == LifeStageType.Adolescent
-                            else None
+                            0.7 if life_stage == LifeStageType.Adolescent else None
                         ),
                     ]
                 )

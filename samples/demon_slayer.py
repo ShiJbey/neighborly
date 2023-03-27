@@ -1208,7 +1208,9 @@ class RetireDeceasedHashira(ISystem):
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(DeathEvent):
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
+            DeathEvent
+        ):
             if demon_slayer := event["Character"].try_component(DemonSlayer):
                 if demon_slayer.rank == DemonSlayerRank.Hashira:
                     self.world.get_resource(DemonSlayerCorps).retire_hashira(
@@ -1221,7 +1223,9 @@ class RemoveDeceasedDemons(ISystem):
     sys_group = "event-listeners"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(DeathEvent):
+        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
+            DeathEvent
+        ):
             if demon := event["Character"].try_component(Demon):
                 if demon.rank == DemonRank.LowerMoon:
                     self.world.get_resource(DemonKingdom).retire_lower_moon(
@@ -1277,7 +1281,7 @@ EXPORT_WORLD = False
 
 def main():
     st = time.time()
-    sim.run_for(100)
+    sim.run_for(75)
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.world.get_resource(SimDateTime)}")

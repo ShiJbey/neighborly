@@ -45,7 +45,7 @@ sim = Neighborly(
 
 if __name__ == "__main__":
     st = time.time()
-    sim.run_for(30)
+    sim.run_for(100)
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.date.to_iso_str()}")

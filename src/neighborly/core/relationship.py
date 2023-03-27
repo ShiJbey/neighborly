@@ -400,9 +400,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
 
     relationship.name = f"Rel({owner} -> {target})"
 
-    owner.get_component(RelationshipManager).outgoing[
-        target.uid
-    ] = relationship.uid
+    owner.get_component(RelationshipManager).outgoing[target.uid] = relationship.uid
 
     target.get_component(RelationshipManager).incoming[owner.uid] = relationship.uid
 
