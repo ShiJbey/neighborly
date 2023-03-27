@@ -16,13 +16,13 @@ from typing import Any, Dict
 
 from neighborly import (
     Component,
+    Event,
     GameObject,
     ISystem,
     Neighborly,
     NeighborlyConfig,
     SimDateTime,
 )
-from neighborly.core.event import Event, EventBuffer
 from neighborly.core.status import (
     StatusComponent,
     StatusManager,
@@ -69,7 +69,7 @@ class PaysTaxes(StatusComponent):
 
 @system(sim)
 class SalarySystem(ISystem):
-    sys_group = "character-update"
+    sys_group = "update"
 
     def process(self, *args: Any, **kwargs: Any):
         for _, (actor, job, money) in self.world.get_components((Actor, Job, Money)):
@@ -79,13 +79,13 @@ class SalarySystem(ISystem):
 
 @system(sim)
 class BecomeMillionaireEventSystem(ISystem):
-    sys_group = "character-update"
+    sys_group = "update"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         for guid, money in self.world.get_component(Money):
             character = self.world.get_gameobject(guid)
             if money.amount > 1_000_000:
-                self.world.get_resource(EventBuffer).append(
+                character.fire_event(
                     BecomeMillionaireEvent(
                         self.world.get_resource(SimDateTime), character
                     )
@@ -98,23 +98,21 @@ class BecomeMillionaireEvent(Event):
         self.character = character
 
 
-@system(sim)
-class OnBecomeMillionaireSystem(ISystem):
-    sys_group = "event-listeners"
+def on_become_millionaire(
+    gameobject: GameObject, event: BecomeMillionaireEvent
+) -> None:
+    actor = gameobject.get_component(Actor)
 
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            BecomeMillionaireEvent
-        ):
-            character = event.character
-            actor = character.get_component(Actor)
+    if not has_status(gameobject, PaysTaxes):
+        print(f"{actor.name} became a millionaire. Here comes the IRS")
+        gameobject.get_component(Money).amount -= 750_000
+        add_status(gameobject, PaysTaxes())
+    else:
+        print(f"{actor.name} already paid their taxes.")
 
-            if not has_status(character, PaysTaxes):
-                print(f"{actor.name} became a millionaire. Here comes the IRS")
-                character.get_component(Money).amount -= 750_000
-                add_status(character, PaysTaxes())
-            else:
-                print(f"{actor.name} already paid their taxes.")
+
+# You need to register the event listener with the GameObject class
+GameObject.on(BecomeMillionaireEvent, on_become_millionaire)
 
 
 def main():

@@ -47,7 +47,7 @@ from neighborly.core.ecs import (
     GameObjectFactory,
     World,
 )
-from neighborly.core.event import EventBuffer
+from neighborly.core.life_event import AllEvents
 from neighborly.core.relationship import (
     Friendship,
     RelationshipManager,
@@ -133,8 +133,8 @@ def independence_consideration(gameobject: GameObject) -> Optional[float]:
 def time_unemployed_consideration(gameobject: GameObject) -> Optional[float]:
     if unemployed := gameobject.get_component(Unemployed):
         months_unemployed = (
-            gameobject.world.get_resource(SimDateTime) - unemployed.created
-        ).total_days / DAYS_PER_MONTH
+                                gameobject.world.get_resource(SimDateTime) - unemployed.created
+                            ).total_days / DAYS_PER_MONTH
 
         return min(1.0, float(months_unemployed) / 6.0)
 
@@ -259,7 +259,6 @@ class StartBusiness(GoalNode):
         current_settlement = self.character.get_component(CurrentSettlement)
         settlement = world.get_gameobject(current_settlement.settlement)
         settlement_comp = settlement.get_component(Settlement)
-        event_buffer = world.get_resource(EventBuffer)
         rng = world.get_resource(random.Random)
 
         # Get all the eligible business prefabs that are eligible for building
@@ -292,14 +291,16 @@ class StartBusiness(GoalNode):
             lot_id=lot,
         )
 
-        event_buffer.append(
-            StartBusinessEvent(
-                world.get_resource(SimDateTime),
-                self.character,
-                business,
-                owner_occupation_type.name,
-            )
+        start_business_event = StartBusinessEvent(
+            world.get_resource(SimDateTime),
+            self.character,
+            business,
+            owner_occupation_type.name,
         )
+
+        self.character.fire_event(start_business_event)
+
+        world.get_resource(AllEvents).append(start_business_event)
 
         start_job(self.character, business, owner_occupation_type.name, is_owner=True)
 
@@ -663,7 +664,7 @@ class GetMarried(GoalNode):
                 self.character: ConsiderationList(
                     [
                         lambda gameobject: (initiator_to_target_romance + 100.0)
-                        / 200.0,
+                                           / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -671,7 +672,7 @@ class GetMarried(GoalNode):
                 self.partner: ConsiderationList(
                     [
                         lambda gameobject: (target_to_initiator_romance + 100.0)
-                        / 200.0,
+                                           / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -698,13 +699,16 @@ class GetMarried(GoalNode):
         add_relationship_status(self.character, self.partner, Married())
         add_relationship_status(self.partner, self.character, Married())
 
-        self.character.world.get_resource(EventBuffer).append(
-            MarriageEvent(
-                self.character.world.get_resource(SimDateTime),
-                self.character,
-                self.partner,
-            )
+        event = MarriageEvent(
+            self.character.world.get_resource(SimDateTime),
+            self.character,
+            self.partner,
         )
+
+        self.character.fire_event(event)
+        self.partner.fire_event(event)
+
+        self.character.world.get_resource(AllEvents).append(event)
 
         return NodeState.SUCCESS
 
@@ -777,16 +781,20 @@ class BreakUp(GoalNode):
             {
                 self.character: ConsiderationList(
                     [
-                        invert_consideration(lambda gameobject: ((character_to_partner + 100.0) / 200.0)
-                        ** 2),
+                        invert_consideration(
+                            lambda gameobject: ((character_to_partner + 100.0) / 200.0)
+                                               ** 2
+                        ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.partner),
                     ]
                 ),
                 self.partner: ConsiderationList(
                     [
-                        invert_consideration(lambda gameobject: ((partner_to_character + 100.0) / 200.0)
-                        ** 2),
+                        invert_consideration(
+                            lambda gameobject: ((partner_to_character + 100.0) / 200.0)
+                                               ** 2
+                        ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.character),
                     ]
@@ -812,13 +820,16 @@ class BreakUp(GoalNode):
             Friendship
         ).increment(-6)
 
-        self.character.world.get_resource(EventBuffer).append(
-            BreakUpEvent(
-                self.character.world.get_resource(SimDateTime),
-                self.character,
-                self.partner,
-            )
+        event = BreakUpEvent(
+            self.character.world.get_resource(SimDateTime),
+            self.character,
+            self.partner,
         )
+
+        self.character.fire_event(event)
+        self.partner.fire_event(event)
+
+        self.character.world.get_resource(AllEvents).append(event)
 
         return NodeState.SUCCESS
 
@@ -868,16 +879,20 @@ class GetDivorced(GoalNode):
             {
                 self.character: ConsiderationList(
                     [
-                        invert_consideration(lambda gameobject: ((character_to_partner + 100.0) / 200.0)
-                        ** 2),
+                        invert_consideration(
+                            lambda gameobject: ((character_to_partner + 100.0) / 200.0)
+                                               ** 2
+                        ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.partner),
                     ]
                 ),
                 self.partner: ConsiderationList(
                     [
-                        invert_consideration(lambda gameobject: ((partner_to_character + 100.0) / 200.0)
-                        ** 2),
+                        invert_consideration(
+                            lambda gameobject: ((partner_to_character + 100.0) / 200.0)
+                                               ** 2
+                        ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.character),
                     ]
@@ -906,13 +921,16 @@ class GetDivorced(GoalNode):
             Friendship
         ).increment(-10)
 
-        self.character.world.get_resource(EventBuffer).append(
-            DivorceEvent(
-                self.character.world.get_resource(SimDateTime),
-                self.character,
-                self.partner,
-            )
+        event = DivorceEvent(
+            self.character.world.get_resource(SimDateTime),
+            self.character,
+            self.partner,
         )
+
+        self.character.fire_event(event)
+        self.partner.fire_event(event)
+
+        self.character.world.get_resource(AllEvents).append(event)
 
         return NodeState.SUCCESS
 
@@ -964,14 +982,16 @@ class Retire(GoalNode):
 
         occupation = self.character.get_component(Occupation)
 
-        world.get_resource(EventBuffer).append(
-            RetirementEvent(
-                world.get_resource(SimDateTime),
-                self.character,
-                world.get_gameobject(occupation.business),
-                occupation.occupation_type,
-            )
+        event = RetirementEvent(
+            world.get_resource(SimDateTime),
+            self.character,
+            world.get_gameobject(occupation.business),
+            occupation.occupation_type,
         )
+
+        self.character.fire_event(event)
+
+        world.get_resource(AllEvents).append(event)
 
         if business_owner := self.character.try_component(BusinessOwner):
             shutdown_business(world.get_gameobject(business_owner.business))
@@ -1024,13 +1044,15 @@ class AskOut(GoalNode):
         add_relationship_status(self.initiator, self.target, Dating())
         add_relationship_status(self.target, self.initiator, Dating())
 
-        self.initiator.world.get_resource(EventBuffer).append(
-            StartDatingEvent(
-                self.initiator.world.get_resource(SimDateTime),
-                self.initiator,
-                self.target,
-            )
+        event = StartDatingEvent(
+            self.initiator.world.get_resource(SimDateTime),
+            self.initiator,
+            self.target,
         )
+
+        self.initiator.fire_event(event)
+        self.target.fire_event(event)
+        self.initiator.world.get_resource(AllEvents).append(event)
 
         return NodeState.SUCCESS
 
@@ -1062,7 +1084,7 @@ class AskOut(GoalNode):
                 self.initiator: ConsiderationList(
                     [
                         lambda gameobject: (initiator_to_target_romance + 100.0)
-                        / 200.0,
+                                           / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -1070,7 +1092,7 @@ class AskOut(GoalNode):
                 self.target: ConsiderationList(
                     [
                         lambda gameobject: (target_to_initiator_romance + 100.0)
-                        / 200.0,
+                                           / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -1194,9 +1216,12 @@ class Die(BehaviorTree):
         self.character: GameObject = character
 
     def evaluate(self) -> NodeState:
-        self.character.world.get_resource(EventBuffer).append(
-            DeathEvent(self.character.world.get_resource(SimDateTime), self.character)
+
+        event = DeathEvent(
+            self.character.world.get_resource(SimDateTime), self.character
         )
+        self.character.fire_event(event)
+        self.character.world.get_resource(AllEvents).append(event)
 
         if self.character.has_component(Occupation):
             if business_owner := self.character.try_component(BusinessOwner):

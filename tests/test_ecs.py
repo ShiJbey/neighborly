@@ -175,35 +175,6 @@ def test_delete_gameobject():
     assert world.has_gameobject(g3.uid) is False
 
 
-def test_get_added_component():
-    world = World()
-
-    g1 = world.spawn_gameobject()
-
-    g1.add_component(ComponentA())
-
-    # Test that component type is in added components list
-    assert g1.uid in world.iter_added_component(ComponentA)
-    world.step()
-    assert g1.uid not in world.iter_added_component(ComponentA)
-
-
-def test_get_removed_component():
-    world = World()
-
-    g1 = world.spawn_gameobject([ComponentA()])
-
-    g1.remove_component(ComponentA)
-
-    # Test that component type is in added components list
-    for pair in world.iter_removed_component(ComponentA):
-        assert pair.guid == g1.uid
-
-    world.step()
-
-    assert len(list(world.iter_removed_component(ComponentA))) == 0
-
-
 #########################################
 # TEST WORLD COMPONENT-RELATED METHODS
 #########################################

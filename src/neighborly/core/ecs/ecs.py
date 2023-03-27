@@ -29,16 +29,15 @@ import dataclasses
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import (
     Any,
-    DefaultDict,
+    Callable,
     Dict,
-    Generic,
     Iterator,
     List,
     Optional,
+    Protocol,
     Set,
     Tuple,
     Type,
@@ -56,6 +55,7 @@ logger = logging.getLogger(__name__)
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
 _ST = TypeVar("_ST", bound="ISystem")
+_ET = TypeVar("_ET", bound="Event")
 
 
 class ResourceNotFoundError(Exception):
@@ -160,6 +160,31 @@ class ComponentNotFoundError(Exception):
         )
 
 
+class Event(ABC):
+    """Events signal when things happen in the simulation"""
+
+    def get_type(self) -> str:
+        """Returns the name of the event's type"""
+        return self.__class__.__name__
+
+
+class EventListener(Protocol):
+    """Callback function that does something in response to an event"""
+
+    def __call__(self, gameobject: GameObject, event: Event) -> None:
+        """
+        Do something in response to the event
+
+        Parameters
+        ----------
+        gameobject: GameObject
+            The event's target gameobject
+        event: Event
+            The event
+        """
+        raise NotImplementedError
+
+
 class GameObject:
     """A reference to an entity within the world
 
@@ -175,7 +200,16 @@ class GameObject:
         and are removed when this GameObject is removed
     parent: Optional[GameObject]
         The GameObject that this GameObject is a child of
+
+    Notes
+    -----
+    Event listeners are static and shared across all gameobjects.
     """
+
+    # Manages event listeners that are called when any event fires
+    _general_event_listeners: List[EventListener] = []
+    # Manages event listeners that are only called when a specific type of event fires
+    _specific_event_listeners: Dict[Type[Event], List[EventListener]] = {}
 
     __slots__ = "_id", "name", "_world", "children", "parent", "_is_active"
 
@@ -258,6 +292,7 @@ class GameObject:
         Adding components is an immediate operation.
         """
         self.world.add_component(self.uid, component)
+        self.fire_event(ComponentAddedEvent(component))
 
     def remove_component(self, component_type: Type[Component]) -> None:
         """Remove a component from the GameObject
@@ -267,6 +302,7 @@ class GameObject:
         component_type: Type[Component]
             The type of the component to remove
         """
+        self.fire_event(ComponentRemovedEvent(self.get_component(component_type)))
         self.world.remove_component(self.uid, component_type)
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
@@ -366,6 +402,29 @@ class GameObject:
 
         return ret
 
+    def fire_event(self, event: Event) -> None:
+        """Call the registered callbacks to respond to an event"""
+        for cb in self._general_event_listeners:
+            cb(self, event)
+
+        if type(event) in self._specific_event_listeners:
+            for cb in self._specific_event_listeners[type(event)]:
+                cb(self, event)
+
+    @classmethod
+    def on(
+        cls, event_type: Type[_ET], listener: Callable[[GameObject, _ET], None]
+    ) -> None:
+        """Register a listener function to a specific event type"""
+        if event_type not in cls._specific_event_listeners:
+            cls._specific_event_listeners[event_type] = []
+        cls._specific_event_listeners[event_type].append(listener)
+
+    @classmethod
+    def on_any(cls, listener: Callable[[GameObject, _ET], None]) -> None:
+        """Register a listener function to a specific event type"""
+        cls._general_event_listeners.append(listener)
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, GameObject):
             return self.uid == other.uid
@@ -384,15 +443,6 @@ class GameObject:
         return "{}(id={}, name={}, parent={}, children={})".format(
             self.__class__.__name__, self.uid, self.name, self.parent, self.children
         )
-
-
-@dataclass(frozen=True)
-class RemovedComponentPair(Generic[_CT]):
-    guid: int
-    component: _CT
-
-    def __hash__(self) -> int:
-        return self.guid
 
 
 class Component(ABC):
@@ -576,6 +626,16 @@ class RootSystemGroup(SystemGroup):
     group_name = "root"
 
 
+@dataclass
+class ComponentAddedEvent(Event):
+    component: Component
+
+
+@dataclass
+class ComponentRemovedEvent(Event):
+    component: Component
+
+
 _T1 = TypeVar("_T1", bound=Component)
 _T2 = TypeVar("_T2", bound=Component)
 _T3 = TypeVar("_T3", bound=Component)
@@ -610,8 +670,6 @@ class World:
         "_resources",
         "_component_types",
         "_component_factories",
-        "_removed_components",
-        "_added_components",
         "_systems",
     )
 
@@ -622,12 +680,6 @@ class World:
         self._resources: Dict[Type[Any], Any] = {}
         self._component_types: Dict[str, ComponentInfo] = {}
         self._component_factories: Dict[Type[Component], IComponentFactory] = {}
-        self._removed_components: DefaultDict[
-            Type[Component], OrderedSet[RemovedComponentPair[Any]]
-        ] = defaultdict(lambda: OrderedSet([]))
-        self._added_components: DefaultDict[
-            Type[Component], OrderedSet[int]
-        ] = defaultdict(lambda: OrderedSet([]))
         self._systems: SystemGroup = RootSystemGroup()
         # The RootSystemGroup should be the only system that is directly added
         # to esper
@@ -685,9 +737,7 @@ class World:
     def add_component(self, gid: int, component: Component) -> None:
         """Add a component to an entity"""
         component.set_gameobject(self._gameobjects[gid])
-        component_type = type(component)
-        self._added_components[component_type].append(int(gid))
-        self._ecs.add_component(int(gid), component)
+        self._ecs.add_component(gid, component)
 
     def remove_component(self, gid: int, component_type: Type[Component]) -> None:
         """Remove a component from an entity"""
@@ -696,13 +746,7 @@ class World:
             if not self.has_component(gid, component_type):
                 return
 
-            component = self.get_component_for_entity(gid, component_type)
-
-            self._removed_components[component_type].append(
-                RemovedComponentPair(gid, component)
-            )
-
-            self._ecs.remove_component(int(gid), component_type)
+            self._ecs.remove_component(gid, component_type)
 
         except KeyError:
             # This will throw a key error if the GameObject does not
@@ -998,8 +1042,6 @@ class World:
         """Call the process method on all systems"""
         self._clear_dead_gameobjects()
         self._ecs.process(**kwargs)  # type: ignore
-        self._removed_components.clear()
-        self._added_components.clear()
 
     def add_resource(self, resource: Any) -> None:
         """Add a global resource to the world"""
@@ -1065,38 +1107,6 @@ class World:
         self._component_factories[component_type] = (
             factory if factory is not None else DefaultComponentFactory(component_type)
         )
-
-    def iter_removed_component(
-        self, component_type: Type[_CT]
-    ) -> Iterator[RemovedComponentPair[_CT]]:
-        """Return the IDs of GameObjects that had the given component type added
-
-        Parameters
-        ----------
-        component_type: Type[Component]
-            The component type to check for
-
-        Returns
-        -------
-        List[int]
-            The ID of GameObjects
-        """
-        return self._removed_components[component_type].__iter__()
-
-    def iter_added_component(self, component_type: Type[Component]) -> Iterator[int]:
-        """Return the IDs of GameObjects that had the given component type removed
-
-        Parameters
-        ----------
-        component_type: Type[Component]
-            The component type to check for
-
-        Returns
-        -------
-        List[int]
-            The ID of GameObjects
-        """
-        return self._added_components[component_type].__iter__()
 
 
 class EntityPrefab(pydantic.BaseModel):

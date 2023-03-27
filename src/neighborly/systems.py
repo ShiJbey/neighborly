@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, DefaultDict, Optional, Type
 
-from neighborly.components.business import InTheWorkforce, Occupation, Unemployed
+from neighborly.components.business import Occupation, Unemployed
 from neighborly.components.character import (
     CanAge,
     ChildOf,
@@ -26,15 +26,13 @@ from neighborly.components.shared import (
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import Active, GameObject, ISystem, SystemGroup
-from neighborly.core.event import AllEvents, EventBuffer, EventHistory
-from neighborly.core.life_event import ActionableLifeEvent, LifeEvent, RandomLifeEvents
+from neighborly.core.life_event import ActionableLifeEvent, AllEvents, RandomLifeEvents
 from neighborly.core.relationship import (
     Friendship,
     IncrementCounter,
     InteractionScore,
     Relationship,
     RelationshipFacet,
-    RelationshipManager,
     Romance,
     add_relationship,
     add_relationship_status,
@@ -45,7 +43,7 @@ from neighborly.core.relationship import (
     lerp,
 )
 from neighborly.core.roles import RoleList
-from neighborly.core.status import add_status, remove_status
+from neighborly.core.status import remove_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
 from neighborly.events import (
     BecomeAdolescentEvent,
@@ -53,10 +51,7 @@ from neighborly.events import (
     BecomeSeniorEvent,
     BecomeYoungAdultEvent,
     BirthEvent,
-    DeathEvent,
-    DepartEvent,
     GiveBirthEvent,
-    JoinSettlementEvent,
 )
 from neighborly.plugins.defaults.actions import DepartSimulation, FindEmployment
 from neighborly.utils.common import (
@@ -113,22 +108,9 @@ class GoalSuggestionSystemGroup(SystemGroup):
     sys_group = "early-update"
 
 
-class EventListenersSystemGroup(SystemGroup):
-    group_name = "event-listeners"
-    sys_group = "late-update"
-
-
 class DataCollectionSystemGroup(SystemGroup):
     sys_group = "early-update"
     group_name = "data-collection"
-
-
-class CleanUpSystemGroup(SystemGroup):
-    """Group of systems that clean-up residual data before the next step"""
-
-    sys_group = "late-update"
-    group_name = "clean-up"
-    priority = -99999
 
 
 class System(ISystem, ABC):
@@ -214,7 +196,6 @@ class RandomLifeEventSystem(System):
     def run(self, *args: Any, **kwargs: Any) -> None:
         """Simulate LifeEvents for characters"""
         rng = self.world.get_resource(random.Random)
-        event_buffer = self.world.get_resource(EventBuffer)
 
         total_population = len(self.world.get_components((GameCharacter, Active)))
 
@@ -226,7 +207,6 @@ class RandomLifeEventSystem(System):
             event_type = RandomLifeEvents.pick_one(rng)
             if event := event_type.instantiate(self.world, RoleList()):
                 if rng.random() < event.get_probability():
-                    event_buffer.append(event)
                     event.execute()
 
 
@@ -290,7 +270,7 @@ class CharacterAgingSystem(System):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         current_date = self.world.get_resource(SimDateTime)
-        event_buffer = self.world.get_resource(EventBuffer)
+        all_events = self.world.get_resource(AllEvents)
 
         age_increment = float(self.elapsed_time.total_days) / DAYS_PER_YEAR
 
@@ -309,36 +289,24 @@ class CharacterAgingSystem(System):
                 continue
 
             if life_stage_after == LifeStageType.Adolescent:
-                event_buffer.append(BecomeAdolescentEvent(current_date, character))
-
-            elif life_stage_after == LifeStageType.YoungAdult:
-                event_buffer.append(BecomeYoungAdultEvent(current_date, character))
-
-            elif life_stage_after == LifeStageType.Adult:
-                event_buffer.append(BecomeAdultEvent(current_date, character))
-
-            elif life_stage_after == LifeStageType.Senior:
-                event_buffer.append(BecomeSeniorEvent(current_date, character))
-
-
-class ProcessEventBufferSystem(ISystem):
-    sys_group = "clean-up"
-    priority = -9999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        all_events = self.world.get_resource(AllEvents)
-        event_buffer = self.world.get_resource(EventBuffer)
-
-        for event in event_buffer.iter_events():
-
-            if isinstance(event, LifeEvent):
-                for role in event.iter_roles():
-                    if history := role.gameobject.try_component(EventHistory):
-                        history.append(event)
-
+                event = BecomeAdolescentEvent(current_date, character)
+                character.fire_event(event)
                 all_events.append(event)
 
-        event_buffer.clear()
+            elif life_stage_after == LifeStageType.YoungAdult:
+                event = BecomeYoungAdultEvent(current_date, character)
+                character.fire_event(event)
+                all_events.append(event)
+
+            elif life_stage_after == LifeStageType.Adult:
+                event = BecomeAdultEvent(current_date, character)
+                character.fire_event(event)
+                all_events.append(event)
+
+            elif life_stage_after == LifeStageType.Senior:
+                event = BecomeSeniorEvent(current_date, character)
+                character.fire_event(event)
+                all_events.append(event)
 
 
 class UnemployedStatusSystem(System):
@@ -473,11 +441,17 @@ class PregnantStatusSystem(System):
 
             # Pregnancy event dates are retro-fit to be the actual date that the
             # child was due.
-            self.world.get_resource(EventBuffer).append(
-                GiveBirthEvent(current_date, character, other_parent, baby)
+            child_born_event = GiveBirthEvent(
+                current_date, character, other_parent, baby
             )
+            birth_event = BirthEvent(current_date, baby)
 
-            self.world.get_resource(EventBuffer).append(BirthEvent(current_date, baby))
+            character.fire_event(child_born_event)
+            other_parent.fire_event(child_born_event)
+            baby.fire_event(birth_event)
+
+            self.world.get_resource(AllEvents).append(child_born_event)
+            self.world.get_resource(AllEvents).append(birth_event)
 
 
 class RelationshipUpdateSystem(ISystem):
@@ -539,88 +513,6 @@ class RomanceStatSystem(ISystem):
                     * lerp(-k, k, romance.get_normalized_value())
                 )
             )
-
-
-class OnJoinSettlementSystem(ISystem):
-    """Listens for events indicating a character has joined a settlement"""
-
-    sys_group = "event-listeners"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            JoinSettlementEvent
-        ):
-            # Add young-adult or older characters to the workforce
-            if (
-                event.character.has_component(Active)
-                and event.character.get_component(LifeStage).life_stage
-                >= LifeStageType.YoungAdult
-            ):
-                add_status(event.character, InTheWorkforce())
-                if not event.character.has_component(Occupation):
-                    add_status(event.character, Unemployed())
-
-
-class AddYoungAdultToWorkforceSystem(ISystem):
-    """Adds new young-adult characters to the workforce"""
-
-    sys_group = "event-listeners"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            BecomeYoungAdultEvent
-        ):
-            add_status(event.character, InTheWorkforce())
-
-            if not event.character.has_component(Occupation):
-                add_status(event.character, Unemployed())
-
-
-class DeactivateRelationshipsSystem(ISystem):
-    sys_group = "event-listeners"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            DeathEvent
-        ):
-            for _, rel_id in event.character.get_component(
-                RelationshipManager
-            ).outgoing.items():
-                relationship = self.world.get_gameobject(rel_id)
-                relationship.remove_component(Active)
-
-            for _, rel_id in event.character.get_component(
-                RelationshipManager
-            ).incoming.items():
-                relationship = self.world.get_gameobject(rel_id)
-                relationship.remove_component(Active)
-
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            DepartEvent
-        ):
-            for character in event.characters:
-                for _, rel_id in character.get_component(
-                    RelationshipManager
-                ).outgoing.items():
-                    relationship = self.world.get_gameobject(rel_id)
-                    relationship.remove_component(Active)
-
-                for _, rel_id in character.get_component(
-                    RelationshipManager
-                ).incoming.items():
-                    relationship = self.world.get_gameobject(rel_id)
-                    relationship.remove_component(Active)
-
-
-class PrintEventBufferSystem(ISystem):
-    """Logs events that have happened during the last timestep"""
-
-    sys_group = "clean-up"
-    priority = -9998
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events():
-            print(str(event))
 
 
 class EvaluateSocialRulesSystem(System):
@@ -728,13 +620,4 @@ class AIActionSystem(System):
 
             goal.take_action()
 
-
-class ClearGoalsSystem(System):
-    """Clears out all the goals from the last time step"""
-
-    sys_group = "early-update"
-    priority = 999
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for _, (goals, _) in self.world.get_components((Goals, Active)):
             goals.clear_goals()

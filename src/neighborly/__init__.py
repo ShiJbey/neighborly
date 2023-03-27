@@ -2,6 +2,7 @@ from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import (
     Component,
     EntityPrefab,
+    Event,
     GameObject,
     IComponentFactory,
     ISystem,
@@ -24,4 +25,5 @@ __all__ = [
     "SimDateTime",
     "TimeDelta",
     "IComponentFactory",
+    "Event",
 ]

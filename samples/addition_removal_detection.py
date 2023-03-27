@@ -8,9 +8,15 @@ based on the change in presence of another component
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from neighborly import Component, ISystem, Neighborly
+from neighborly import Component, Neighborly
+from neighborly.core.ecs import (
+    ComponentAddedEvent,
+    ComponentRemovedEvent,
+    Event,
+    GameObject,
+)
 from neighborly.core.status import StatusManager
-from neighborly.decorators import component, system
+from neighborly.decorators import component
 
 sim = Neighborly()
 
@@ -43,26 +49,29 @@ class AttackBuff(Component):
         return {"amount": self.amount}
 
 
-@system(sim)
-class OnAddAttackBuff(ISystem):
-    sys_group = "late-character-update"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for guid in self.world.iter_added_component(AttackBuff):
-            character = self.world.get_gameobject(guid)
-            stats = character.get_component(AdventurerStats)
-            stats.attack += character.get_component(AttackBuff).amount
+def handle_event(gameobject: GameObject, event: Event) -> None:
+    print(f"{gameobject.name}: {str(type(event))}")
 
 
-@system(sim)
-class OnRemoveAttackBuff(ISystem):
-    sys_group = "late-character-update"
+def on_attack_buff_added(gameobject: GameObject, event: ComponentAddedEvent) -> None:
+    c = event.component
+    if isinstance(c, AttackBuff):
+        stats = gameobject.get_component(AdventurerStats)
+        stats.attack += c.amount
 
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for pair in self.world.iter_removed_component(AttackBuff):
-            character = self.world.get_gameobject(pair.guid)
-            stats = character.get_component(AdventurerStats)
-            stats.attack -= pair.component.amount
+
+def on_attack_buffer_removed(
+    gameobject: GameObject, event: ComponentAddedEvent
+) -> None:
+    c = event.component
+    if isinstance(c, AttackBuff):
+        stats = gameobject.get_component(AdventurerStats)
+        stats.attack -= c.amount
+
+
+GameObject.on_any(handle_event)
+GameObject.on(ComponentAddedEvent, on_attack_buff_added)
+GameObject.on(ComponentRemovedEvent, on_attack_buffer_removed)
 
 
 def main():

@@ -63,13 +63,13 @@ from neighborly.components import (
 )
 from neighborly.components.character import LifeStage, LifeStageType
 from neighborly.core.ecs.ecs import Active
-from neighborly.core.event import EventBuffer
-from neighborly.core.life_event import ActionableLifeEvent
+from neighborly.core.life_event import ActionableLifeEvent, AllEvents
 from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
     component,
     component_factory,
+    event_listener,
     random_life_event,
     resource,
     system,
@@ -694,8 +694,9 @@ class DemonChallengeForPower(ActionableLifeEvent):
         world = challenger.world
 
         battle_event = Battle(world.get_resource(SimDateTime), challenger, opponent)
-
-        world.get_resource(EventBuffer).append(battle_event)
+        challenger.fire_event(battle_event)
+        opponent.fire_event(battle_event)
+        world.get_resource(AllEvents).append(battle_event)
 
         battle_event.execute()
 
@@ -789,11 +790,13 @@ class DevourHuman(ActionableLifeEvent):
         victim = self["Victim"]
         world = demon.world
         date = world.get_resource(SimDateTime)
-        life_event_buffer = world.get_resource(EventBuffer)
+        all_events = world.get_resource(AllEvents)
 
         if victim.has_component(DemonSlayer):
             battle_event = Battle(date, demon, victim)
-            life_event_buffer.append(battle_event)
+            demon.fire_event(battle_event)
+            victim.fire_event(battle_event)
+            all_events.append(battle_event)
             battle_event.execute()
 
         else:
@@ -1203,38 +1206,26 @@ class PromotionToUpperMoon(ActionableLifeEvent):
         return None
 
 
-@system(sim)
-class RetireDeceasedHashira(ISystem):
-    sys_group = "event-listeners"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            DeathEvent
-        ):
-            if demon_slayer := event["Character"].try_component(DemonSlayer):
-                if demon_slayer.rank == DemonSlayerRank.Hashira:
-                    self.world.get_resource(DemonSlayerCorps).retire_hashira(
-                        event["Character"].uid
-                    )
+@event_listener()
+def handle_hashira_death(gameobject: GameObject, event: DeathEvent) -> None:
+    if demon_slayer := gameobject.try_component(DemonSlayer):
+        if demon_slayer.rank == DemonSlayerRank.Hashira:
+            gameobject.world.get_resource(DemonSlayerCorps).retire_hashira(
+                gameobject.uid
+            )
 
 
-@system(sim)
-class RemoveDeceasedDemons(ISystem):
-    sys_group = "event-listeners"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(
-            DeathEvent
-        ):
-            if demon := event["Character"].try_component(Demon):
-                if demon.rank == DemonRank.LowerMoon:
-                    self.world.get_resource(DemonKingdom).retire_lower_moon(
-                        event["Character"].uid
-                    )
-                elif demon.rank == DemonRank.UpperMoon:
-                    self.world.get_resource(DemonKingdom).retire_upper_moon(
-                        event["Character"].uid
-                    )
+@event_listener(DeathEvent)
+def handle_demon_death(gameobject: GameObject, event: DeathEvent) -> None:
+    if demon := gameobject.try_component(Demon):
+        if demon.rank == DemonRank.LowerMoon:
+            gameobject.world.get_resource(DemonKingdom).retire_lower_moon(
+                gameobject.uid
+            )
+        elif demon.rank == DemonRank.UpperMoon:
+            gameobject.world.get_resource(DemonKingdom).retire_upper_moon(
+                gameobject.uid
+            )
 
 
 @system(sim)

@@ -9,7 +9,6 @@ Data should be collected within systems that are added to the DataCollectionSyst
 This group runs near the end of a simulation step when all the changes have occurred.
 """
 
-
 from dataclasses import dataclass
 from typing import Any, Dict
 
@@ -50,7 +49,7 @@ class Job(Component):
 
 @system(sim)
 class SalarySystem(ISystem):
-    sys_group = "character-update"
+    sys_group = "update"
 
     def process(self, *args: Any, **kwargs: Any):
         for _, (job, money) in self.world.get_components((Job, Money)):

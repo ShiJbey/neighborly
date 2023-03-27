@@ -22,7 +22,7 @@ from neighborly.components.character import (
 )
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import Active, GameObject
-from neighborly.core.event import EventBuffer
+from neighborly.core.life_event import AllEvents
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -277,7 +277,7 @@ class SpawnFamilySystem(System):
         families_to_spawn = families_per_year // 2
 
         rng = self.world.get_resource(random.Random)
-        event_buffer = self.world.get_resource(EventBuffer)
+        all_events = self.world.get_resource(AllEvents)
         date = self.world.get_resource(SimDateTime)
 
         # Spawn families in each settlement
@@ -299,20 +299,22 @@ class SpawnFamilySystem(System):
 
                 family = self._spawn_family(character_spawn_table)
 
+                event = MoveResidenceEvent(
+                    date, residence, *[*family.adults, *family.children]
+                )
+
                 for adult in family.adults:
                     add_character_to_settlement(adult, settlement.gameobject)
                     set_residence(adult, residence, True)
+                    adult.fire_event(event)
 
                 for child in family.children:
                     add_character_to_settlement(child, settlement.gameobject)
                     set_residence(child, residence, False)
+                    child.fire_event(event)
 
                 # Record a life event
-                event_buffer.append(
-                    MoveResidenceEvent(
-                        date, residence, *[*family.adults, *family.children]
-                    )
-                )
+                all_events.append(event)
 
 
 def setup(sim: Neighborly, **kwargs: Any):

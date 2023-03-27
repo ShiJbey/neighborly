@@ -1,9 +1,9 @@
 """
 Utility decorators that should assist with content authoring
 """
-from typing import Any, Type, TypeVar
+from typing import Any, Callable, Optional, Type, TypeVar
 
-from neighborly.core.ecs import Component, IComponentFactory, ISystem
+from neighborly.core.ecs import Component, Event, GameObject, IComponentFactory, ISystem
 from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
 from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRules
 from neighborly.core.relationship import ISocialRule, SocialRules
@@ -137,5 +137,15 @@ def location_bias_rule(description: str):
 
     def decorator(rule: ILocationBiasRule):
         LocationBiasRules.add(rule, description)
+
+    return decorator
+
+
+def event_listener(event_type: Optional[Type[Event]] = None):
+    def decorator(listener: Callable[[GameObject, Event], None]) -> None:
+        if event_type is None:
+            GameObject.on_any(listener)
+        else:
+            GameObject.on(event_type, listener)
 
     return decorator

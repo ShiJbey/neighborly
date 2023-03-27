@@ -12,7 +12,9 @@ from neighborly.core.settlement import Settlement
 from neighborly.decorators import system
 from neighborly.utils.common import spawn_settlement
 
-sim = Neighborly(NeighborlyConfig(verbose=False))
+sim = Neighborly(
+    NeighborlyConfig.parse_obj({"plugins": ["neighborly.plugins.defaults.settlement"]})
+)
 
 
 @system(sim)
@@ -21,13 +23,13 @@ class InitializeMajorSettlements(ISystem):
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         print("Setting up settlements...")
-        spawn_settlement(self.world, "Winterfell")
-        spawn_settlement(self.world, "The Vale of Arryn")
-        spawn_settlement(self.world, "Casterly Rock")
-        spawn_settlement(self.world, "King's Landing")
-        spawn_settlement(self.world, "Highgarden")
-        spawn_settlement(self.world, "Braavos")
-        spawn_settlement(self.world, "Pentos")
+        spawn_settlement(self.world, "settlement", name="Winterfell")
+        spawn_settlement(self.world, "settlement", name="The Vale of Arryn")
+        spawn_settlement(self.world, "settlement", name="Casterly Rock")
+        spawn_settlement(self.world, "settlement", name="King's Landing")
+        spawn_settlement(self.world, "settlement", name="Highgarden")
+        spawn_settlement(self.world, "settlement", name="Braavos")
+        spawn_settlement(self.world, "settlement", name="Pentos")
 
 
 def main():

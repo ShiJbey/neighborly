@@ -145,26 +145,26 @@ def main():
     GameObjectFactory.add(
         EntityPrefab(
             name="westworld::host",
-            extends="character::default::female",
-            components={"Robot": ()},
+            extends=["character::default::female"],
+            components={"Robot": {}},
         )
     )
 
-    delores = spawn_character(
+    dolores = spawn_character(
         sim.world,
         "westworld::host",
-        first_name="Delores",
+        first_name="Dolores",
         last_name="Abernathy",
         age=32,
     )
 
-    add_character_to_settlement(delores, west_world)
+    add_character_to_settlement(dolores, west_world)
 
     house = spawn_residence(sim.world, "residence::default::house")
 
     add_residence_to_settlement(house, west_world)
 
-    set_residence(delores, house)
+    set_residence(dolores, house)
 
     st = time.time()
     sim.run_for(YEARS_TO_SIMULATE)

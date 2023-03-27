@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, Iterator, Optional, Type
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Type
 
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.event import Event
+from neighborly import Component
+from neighborly.core.ecs import Event, GameObject, World
 from neighborly.core.roles import Role, RoleList
+from neighborly.core.serializable import ISerializable
 from neighborly.core.time import SimDateTime
 
 
 class LifeEvent(Event, ABC):
     """An event of significant importance in a GameObject's life"""
 
-    __slots__ = "_roles"
+    _next_event_id: int = 0
+
+    __slots__ = "_roles", "_timestamp", "_uid"
 
     def __init__(
         self,
@@ -28,13 +31,22 @@ class LifeEvent(Event, ABC):
         roles: Iterable[Role]
             The names of roles mapped to GameObjects
         """
-        super().__init__(timestamp)
+        self._uid: int = LifeEvent._next_event_id
+        LifeEvent._next_event_id += 1
+        self._timestamp: SimDateTime = timestamp.copy()
         self._roles: RoleList = RoleList(roles)
+
+    def get_id(self) -> int:
+        return self._uid
+
+    def get_timestamp(self) -> SimDateTime:
+        return self._timestamp
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
         return {
-            **super().to_dict(),
+            "type": self.get_type(),
+            "timestamp": str(self._timestamp),
             "roles": {role.name: role.gameobject.uid for role in self._roles},
         }
 
@@ -55,6 +67,23 @@ class LifeEvent(Event, ABC):
             str(self.get_timestamp()),
             ", ".join([str(role) for role in self._roles]),
         )
+
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, LifeEvent):
+            return self._uid == __o._uid
+        raise TypeError(f"Expected type Event, but was {type(__o)}")
+
+    def __le__(self, other: LifeEvent) -> bool:
+        return self._uid <= other._uid
+
+    def __lt__(self, other: LifeEvent) -> bool:
+        return self._uid < other._uid
+
+    def __ge__(self, other: LifeEvent) -> bool:
+        return self._uid >= other._uid
+
+    def __gt__(self, other: LifeEvent) -> bool:
+        return self._uid > other._uid
 
 
 class ActionableLifeEvent(LifeEvent):
@@ -158,3 +187,59 @@ class RandomLifeEvents:
     def get_size(cls) -> int:
         """Return number of registered random life events"""
         return len(cls._registry)
+
+
+class EventHistory(Component):
+    """Stores a record of all past events for a specific GameObject"""
+
+    __slots__ = "_history"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._history: List[LifeEvent] = []
+
+    def append(self, event: LifeEvent) -> None:
+        self._history.append(event)
+
+    def __iter__(self) -> Iterator[LifeEvent]:
+        return self._history.__iter__()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"events": [e.get_id() for e in self._history]}
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return "{}({})".format(
+            self.__class__.__name__,
+            [f"{type(e).__name__}({e.get_id()})" for e in self._history],
+        )
+
+
+class AllEvents(ISerializable):
+    """Stores a record of all past events"""
+
+    _event_listeners: List[Callable[[LifeEvent], None]] = []
+
+    __slots__ = "_history"
+
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._history: Dict[int, LifeEvent] = {}
+
+    def append(self, event: LifeEvent) -> None:
+        self._history[event.get_id()] = event
+        for cb in self._event_listeners:
+            cb(event)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {str(key): entry.to_dict() for key, entry in self._history.items()}
+
+    def __iter__(self) -> Iterator[LifeEvent]:
+        return self._history.values().__iter__()
+
+    @classmethod
+    def on_event(cls, listener: Callable[[LifeEvent], None]) -> None:
+        cls._event_listeners.append(listener)

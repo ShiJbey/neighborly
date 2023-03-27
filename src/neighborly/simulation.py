@@ -19,16 +19,30 @@ from neighborly.core.ecs import (
     Active,
     Component,
     EntityPrefab,
+    GameObject,
     GameObjectFactory,
     IComponentFactory,
     ISystem,
     World,
 )
-from neighborly.core.event import AllEvents, EventBuffer, EventHistory
+from neighborly.core.life_event import AllEvents, EventHistory
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.data_collection import DataCollector
+from neighborly.event_listeners import (
+    add_event_to_personal_history,
+    deactivate_relationships_on_death,
+    deactivate_relationships_on_depart,
+    join_workforce_when_young_adult,
+    on_adult_join_settlement,
+)
+from neighborly.events import (
+    BecomeYoungAdultEvent,
+    DeathEvent,
+    DepartEvent,
+    JoinSettlementEvent,
+)
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
 
@@ -87,7 +101,6 @@ class Neighborly:
         self.world.add_resource(self.config)
         self.world.add_resource(random.Random(self.config.seed))
         self.world.add_resource(self.config.start_date.copy())
-        self.world.add_resource(EventBuffer())
         self.world.add_resource(AllEvents())
         self.world.add_resource(DataCollector())
 
@@ -103,12 +116,7 @@ class Neighborly:
         self.world.add_system(systems.GoalSuggestionSystemGroup())
         self.world.add_system(systems.RelationshipUpdateSystemGroup())
 
-        # Add default late-update subgroups (in execution order)
-        self.world.add_system(systems.EventListenersSystemGroup())
-        self.world.add_system(systems.CleanUpSystemGroup())
-
         # Add early-update systems (in execution order)
-        self.world.add_system(systems.ClearGoalsSystem())
         self.world.add_system(systems.MeetNewPeopleSystem())
         self.world.add_system(systems.RandomLifeEventSystem())
         self.world.add_system(systems.UpdateFrequentedLocationSystem())
@@ -123,24 +131,12 @@ class Neighborly:
         self.world.add_system(systems.CharacterAgingSystem())
         self.world.add_system(systems.AIActionSystem())
 
-        # Add event-listener systems (in execution order)
-        self.world.add_system(systems.OnJoinSettlementSystem())
-        self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
-        self.world.add_system(systems.DeactivateRelationshipsSystem())
-
         # Add status-update systems (in execution order)
         self.world.add_system(systems.PregnantStatusSystem())
         self.world.add_system(systems.UnemployedStatusSystem())
 
-        # Add goal-suggestion systems (in execution order)
-        # self.world.add_system(systems.FindEmployeesSystem())
-        # self.world.add_system(systems.StartBusinessSystem())
-
-        # Add clean-up systems (in execution order)
-        self.world.add_system(systems.ProcessEventBufferSystem())
         if self.config.verbose:
-            # Configure printing every event to the console
-            self.world.add_system(systems.PrintEventBufferSystem())
+            AllEvents.on_event(lambda event: print(str(event)))
 
         # Time actually sits outside any group and runs last
         self.world.add_system(systems.TimeSystem())
@@ -200,6 +196,13 @@ class Neighborly:
         self.world.register_component(components.ResidenceSpawnTable)
         self.world.register_component(components.Gender)
         self.world.register_component(components.LifeStage)
+
+        # Event listeners
+        GameObject.on(JoinSettlementEvent, on_adult_join_settlement)
+        GameObject.on(BecomeYoungAdultEvent, join_workforce_when_young_adult)
+        GameObject.on(DeathEvent, deactivate_relationships_on_death)
+        GameObject.on(DepartEvent, deactivate_relationships_on_depart)
+        GameObject.on_any(add_event_to_personal_history)
 
         # Load plugins from the config
         for entry in self.config.plugins:
