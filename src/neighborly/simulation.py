@@ -6,28 +6,45 @@ import random
 import re
 import sys
 from dataclasses import dataclass
-from types import ModuleType
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import Any, Callable, Optional, Type, Union
 
 import neighborly.components as components
-import neighborly.content_management as libraries
 import neighborly.core.relationship as relationship
 import neighborly.factories as factories
 import neighborly.systems as systems
 from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig, PluginConfig
-from neighborly.core.ai.brain import AIComponent
-from neighborly.core.ecs import Component, IComponentFactory, ISystem, World
-from neighborly.core.event import AllEvents, EventBuffer, EventHistory
-from neighborly.core.life_event import LifeEventBuffer
-from neighborly.core.location_bias import ILocationBiasRule
+from neighborly.core.ai.brain import AIBrain, Goals
+from neighborly.core.ecs import (
+    Active,
+    Component,
+    EntityPrefab,
+    GameObject,
+    GameObjectFactory,
+    IComponentFactory,
+    ISystem,
+    World,
+)
+from neighborly.core.life_event import AllEvents, EventHistory
 from neighborly.core.settlement import Settlement
-from neighborly.core.social_rule import ISocialRule
 from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
-from neighborly.core.tracery import Tracery
-from neighborly.core.traits import TraitManager
 from neighborly.data_collection import DataCollector
+from neighborly.event_listeners import (
+    add_event_to_personal_history,
+    deactivate_relationships_on_death,
+    deactivate_relationships_on_depart,
+    join_workforce_when_young_adult,
+    on_adult_join_settlement,
+)
+from neighborly.events import (
+    BecomeYoungAdultEvent,
+    DeathEvent,
+    DepartEvent,
+    JoinSettlementEvent,
+)
+from neighborly.factories.settlement import SettlementFactory
+from neighborly.factories.shared import NameFactory
 
 
 class PluginSetupError(Exception):
@@ -55,11 +72,9 @@ class Neighborly:
         Entity-component system (ECS) that manages entities and procedures in the virtual world
     config: neighborly.NeighborlyConfig
         Configuration settings for the simulation
-    plugins: Dict[str, ModuleType]
-        List of loaded plugins and their configuration data
     """
 
-    __slots__ = ("world", "config", "plugins")
+    __slots__ = "world", "config"
 
     def __init__(self, config: Optional[NeighborlyConfig] = None) -> None:
         """
@@ -70,74 +85,66 @@ class Neighborly:
         """
         self.world: World = World()
         self.config: NeighborlyConfig = config if config else NeighborlyConfig()
-        self.plugins: Dict[str, ModuleType] = {}
 
         # Seed RNG for libraries we don't control, like Tracery
         random.seed(self.config.seed)
 
+        # Set the relationship schema
+        GameObjectFactory.add(
+            EntityPrefab(
+                name="relationship",
+                components={**self.config.relationship_schema.components},
+            )
+        )
+
         # Add default resources
         self.world.add_resource(self.config)
         self.world.add_resource(random.Random(self.config.seed))
-        self.world.add_resource(Tracery())
-        self.world.add_resource(libraries.SocialRuleLibrary())
-        self.world.add_resource(libraries.CharacterLibrary())
-        self.world.add_resource(libraries.BusinessLibrary())
-        self.world.add_resource(libraries.ResidenceLibrary())
-        self.world.add_resource(libraries.ActivityLibrary())
         self.world.add_resource(self.config.start_date.copy())
-        self.world.add_resource(EventBuffer())
-        self.world.add_resource(LifeEventBuffer())
         self.world.add_resource(AllEvents())
-        self.world.add_resource(libraries.OccupationTypeLibrary())
-        self.world.add_resource(libraries.LifeEventLibrary())
-        self.world.add_resource(libraries.ServiceLibrary())
         self.world.add_resource(DataCollector())
-        self.world.add_resource(libraries.LocationBiasRuleLibrary())
-        self.world.add_resource(libraries.AIBrainLibrary())
 
-        # Add default system groups
+        # Add default top-level system groups (in execution order)
         self.world.add_system(systems.InitializationSystemGroup())
         self.world.add_system(systems.EarlyUpdateSystemGroup())
-        self.world.add_system(systems.StatusUpdateSystemGroup())
-        self.world.add_system(systems.BusinessUpdateSystemGroup())
-        self.world.add_system(systems.CharacterUpdateSystemGroup())
-        self.world.add_system(systems.EarlyCharacterUpdateSystemGroup())
-        self.world.add_system(systems.LateCharacterUpdateSystemGroup())
-        self.world.add_system(systems.RelationshipUpdateSystemGroup())
-        self.world.add_system(systems.CoreSystemsSystemGroup())
-        self.world.add_system(systems.EventListenersSystemGroup())
-        self.world.add_system(systems.DataCollectionSystemGroup())
-        self.world.add_system(systems.CleanUpSystemGroup())
+        self.world.add_system(systems.UpdateSystemGroup())
+        self.world.add_system(systems.LateUpdateSystemGroup())
 
-        # Add default systems
-        self.world.add_system(systems.EvaluateSocialRulesSystem())
+        # Add default early-update subgroups (in execution order)
+        self.world.add_system(systems.DataCollectionSystemGroup())
+        self.world.add_system(systems.StatusUpdateSystemGroup())
+        self.world.add_system(systems.GoalSuggestionSystemGroup())
+        self.world.add_system(systems.RelationshipUpdateSystemGroup())
+
+        # Add early-update systems (in execution order)
+        self.world.add_system(systems.MeetNewPeopleSystem())
+        self.world.add_system(systems.RandomLifeEventSystem())
+        self.world.add_system(systems.UpdateFrequentedLocationSystem())
+
+        # Add relationship-update systems (in execution order)
+        # self.world.add_system(systems.EvaluateSocialRulesSystem())
         self.world.add_system(systems.RelationshipUpdateSystem())
         self.world.add_system(systems.FriendshipStatSystem())
         self.world.add_system(systems.RomanceStatSystem())
-        self.world.add_system(systems.MeetNewPeopleSystem())
-        self.world.add_system(systems.LifeEventSystem())
-        self.world.add_system(systems.LifeEventBufferSystem())
-        self.world.add_system(systems.EventSystem())
-        self.world.add_system(systems.TimeSystem())
+
+        # Add update systems (in execution order)
         self.world.add_system(systems.CharacterAgingSystem())
-        self.world.add_system(systems.DatingStatusSystem())
-        self.world.add_system(systems.MarriedStatusSystem())
+        self.world.add_system(systems.AIActionSystem())
+
+        # Add status-update systems (in execution order)
         self.world.add_system(systems.PregnantStatusSystem())
         self.world.add_system(systems.UnemployedStatusSystem())
-        self.world.add_system(systems.OccupationUpdateSystem())
-        self.world.add_system(systems.FindEmployeesSystem())
-        self.world.add_system(systems.SpawnFamilySystem())
-        self.world.add_system(systems.StartBusinessSystem())
-        self.world.add_system(systems.UpdateFrequentedLocationSystem())
-        self.world.add_system(systems.AIActionSystem())
-        self.world.add_system(systems.OnJoinSettlementSystem())
-        self.world.add_system(systems.AddYoungAdultToWorkforceSystem())
+
+        if self.config.verbose:
+            AllEvents.on_event(lambda event: print(str(event)))
+
+        # Time actually sits outside any group and runs last
+        self.world.add_system(systems.TimeSystem())
 
         # Register components
-        self.world.register_component(components.Active)
-        self.world.register_component(
-            AIComponent, factory=factories.AIComponentFactory()
-        )
+        self.world.register_component(Active)
+        self.world.register_component(AIBrain)
+        self.world.register_component(Goals)
         self.world.register_component(
             components.GameCharacter, factory=factories.GameCharacterFactory()
         )
@@ -146,23 +153,16 @@ class Neighborly:
         self.world.register_component(relationship.Friendship)
         self.world.register_component(relationship.Romance)
         self.world.register_component(relationship.InteractionScore)
-        self.world.register_component(TraitManager)
-        self.world.register_component(
-            components.Location, factory=factories.LocationFactory()
-        )
+        self.world.register_component(components.Location)
         self.world.register_component(components.FrequentedBy)
         self.world.register_component(components.CurrentSettlement)
         self.world.register_component(
             components.Virtues, factory=factories.VirtuesFactory()
         )
-        self.world.register_component(
-            components.Activities, factory=factories.ActivitiesFactory()
-        )
+        self.world.register_component(components.Activities)
         self.world.register_component(components.Occupation)
         self.world.register_component(components.WorkHistory)
-        self.world.register_component(
-            components.Services, factory=factories.ServicesFactory()
-        )
+        self.world.register_component(components.Services)
         self.world.register_component(components.ClosedForBusiness)
         self.world.register_component(components.OpenForBusiness)
         self.world.register_component(
@@ -181,23 +181,28 @@ class Neighborly:
         self.world.register_component(components.Building)
         self.world.register_component(components.Position2D)
         self.world.register_component(StatusManager)
-        self.world.register_component(
-            components.FrequentedLocations,
-            factory=factories.FrequentedLocationsFactory(),
-        )
-        self.world.register_component(Settlement)
+        self.world.register_component(components.FrequentedLocations)
+        self.world.register_component(Settlement, factory=SettlementFactory())
         self.world.register_component(EventHistory)
         self.world.register_component(components.MarriageConfig)
         self.world.register_component(components.AgingConfig)
         self.world.register_component(components.ReproductionConfig)
-        self.world.register_component(components.Name)
+        self.world.register_component(components.Name, factory=NameFactory())
         self.world.register_component(components.OperatingHours)
         self.world.register_component(components.Lifespan)
         self.world.register_component(components.Age)
+        self.world.register_component(components.CharacterSpawnTable)
+        self.world.register_component(components.BusinessSpawnTable)
+        self.world.register_component(components.ResidenceSpawnTable)
+        self.world.register_component(components.Gender)
+        self.world.register_component(components.LifeStage)
 
-        # Configure printing every event to the console
-        if self.config.verbose:
-            self.world.add_system(systems.PrintEventBufferSystem())
+        # Event listeners
+        GameObject.on(JoinSettlementEvent, on_adult_join_settlement)
+        GameObject.on(BecomeYoungAdultEvent, join_workforce_when_young_adult)
+        GameObject.on(DeathEvent, deactivate_relationships_on_death)
+        GameObject.on(DepartEvent, deactivate_relationships_on_depart)
+        GameObject.on_any(add_event_to_personal_history)
 
         # Load plugins from the config
         for entry in self.config.plugins:
@@ -242,7 +247,6 @@ class Neighborly:
             )
 
         if plugin_info.required_version is not None:
-
             if re.fullmatch(r"^<=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
                 if VERSION > plugin_info.required_version:
                     raise PluginSetupError(
@@ -274,8 +278,6 @@ class Neighborly:
                     )
 
         plugin_setup_fn(self)
-
-        self.plugins[plugin_info.plugin_id] = plugin_module
 
         # Remove the given plugin path from the front
         # of the system path to prevent module resolution bugs
@@ -365,11 +367,3 @@ class Neighborly:
         """
 
         self.world.add_system(system)
-
-    def add_location_bias_rule(self, rule: ILocationBiasRule, description: str = ""):
-        self.world.get_resource(libraries.LocationBiasRuleLibrary).add(
-            rule, description
-        )
-
-    def add_social_rule(self, rule: ISocialRule, description: str = ""):
-        self.world.get_resource(libraries.SocialRuleLibrary).add(rule, description)

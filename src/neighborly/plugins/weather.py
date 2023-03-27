@@ -2,9 +2,8 @@ import random
 from enum import Enum
 from typing import Any
 
-from neighborly.core.ecs import ISystem
-from neighborly.core.time import SimDateTime
 from neighborly.simulation import Neighborly, PluginInfo
+from neighborly.systems import System
 
 
 class Weather(Enum):
@@ -38,7 +37,7 @@ class WeatherManager:
         return f"Weather({str(self.current_weather.value)})"
 
 
-class WeatherSystem(ISystem):
+class WeatherSystem(System):
     """Updates the current weather state
 
     Attributes
@@ -54,8 +53,7 @@ class WeatherSystem(ISystem):
         super().__init__()
         self.avg_change_interval: int = avg_change_interval
 
-    def process(self, *args: Any, **kwargs: Any):
-        delta_time = self.world.get_resource(SimDateTime).delta_time
+    def run(self, *args: Any, **kwargs: Any) -> None:
         weather_manager = self.world.get_resource(WeatherManager)
         rng = self.world.get_resource(random.Random)
 
@@ -66,7 +64,7 @@ class WeatherSystem(ISystem):
                 rng.normalvariate(mu=self.avg_change_interval, sigma=1)
             )
 
-        weather_manager.time_before_change -= delta_time
+        weather_manager.time_before_change -= self.elapsed_time.hours
 
 
 plugin_info = PluginInfo(

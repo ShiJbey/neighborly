@@ -10,22 +10,20 @@ from typing import Any, Dict, List, Union
 
 import yaml
 
-from neighborly.components.business import OccupationType
-from neighborly.content_management import (
-    BusinessLibrary,
-    CharacterLibrary,
-    OccupationTypeLibrary,
-    ResidenceLibrary,
-)
-from neighborly.core.ecs import World
+from neighborly.components.business import OccupationType, OccupationTypes
+from neighborly.core.ecs import EntityPrefab, GameObjectFactory
 from neighborly.core.tracery import Tracery
-from neighborly.prefabs import BusinessPrefab, CharacterPrefab, ResidencePrefab
-from neighborly.simulation import Neighborly
-from neighborly.utils.common import deep_merge
 
 
-def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """Load virtue mappings for activities"""
+def load_occupation_types(file_path: Union[str, pathlib.Path]) -> None:
+    """
+    Load occupation information from a data file
+
+    Parameters
+    ----------
+    file_path: Union[str, pathlib.Path]
+        The path of the data file to load
+    """
 
     path_obj = pathlib.Path(file_path)
 
@@ -37,10 +35,8 @@ def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> 
     with open(file_path, "r") as f:
         data: List[Dict[str, Any]] = yaml.safe_load(f)
 
-    library = world.get_resource(OccupationTypeLibrary)
-
     for entry in data:
-        library.add(
+        OccupationTypes.add(
             OccupationType(
                 name=entry["name"],
                 level=entry.get("level", 1),
@@ -48,8 +44,15 @@ def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> 
         )
 
 
-def load_character_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """loads a CharacterEntityPrefab from a yaml file"""
+def load_prefab(file_path: Union[str, pathlib.Path]) -> None:
+    """
+    Load a single entity prefab from a data file
+
+    Parameters
+    ----------
+    file_path: Union[str, pathlib.Path]
+        The path of the data file to load
+    """
 
     path_obj = pathlib.Path(file_path)
 
@@ -58,151 +61,64 @@ def load_character_prefab(world: World, file_path: Union[str, pathlib.Path]) -> 
             f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
         )
 
-    library = world.get_resource(CharacterLibrary)
+    with open(file_path, "r") as f:
+        data: Dict[str, Any] = yaml.safe_load(f)
+
+    GameObjectFactory.add(EntityPrefab.parse_obj(data))
+
+
+def load_names(rule_name: str, file_path: Union[str, pathlib.Path]) -> None:
+    """
+    Load names a list of names from a file and register them in Tracery
+
+    This function assumes that names are organized one-per-line in a text file.
+
+    Parameters
+    ----------
+    rule_name: str
+        The name of the rule to register the names under in Tracery
+    file_path: Union[str, pathlib.Path]
+        The path of the data file to load
+    """
+    with open(file_path, "r") as f:
+        Tracery.add_rules({rule_name: f.read().splitlines()})
+
+
+def load_data_file(file_path: Union[str, pathlib.Path]) -> None:
+    """
+    Load various data from a single file
+
+    This function can load multiple prefabs, and occupation types from a single file. It
+    assumes that the data is separated into sections like "Prefabs" and "Occupations".
+
+    Parameters
+    ----------
+    file_path: Union[str, pathlib.Path]
+        The path of the data file to load
+    """
 
     with open(file_path, "r") as f:
         data: Dict[str, Any] = yaml.safe_load(f)
 
-    base_data: Dict[str, Any] = dict()
+    character_data: List[Dict[str, Any]] = data.get("Characters", [])
+    for entry in character_data:
+        GameObjectFactory.add(EntityPrefab.parse_obj(entry))
 
-    data["is_template"] = data.get("is_template", False)
+    business_data: List[Dict[str, Any]] = data.get("Businesses", [])
+    for entry in business_data:
+        GameObjectFactory.add(EntityPrefab.parse_obj(entry))
 
-    if base_prefab_name := data.get("extends", ""):
-        base_data = library.get(base_prefab_name).dict()
+    residence_data: List[Dict[str, Any]] = data.get("Residences", [])
+    for entry in residence_data:
+        GameObjectFactory.add(EntityPrefab.parse_obj(entry))
 
-    full_prefab_data = deep_merge(base_data, data)
+    prefab_data: List[Dict[str, Any]] = data.get("Prefabs", [])
+    for entry in prefab_data:
+        GameObjectFactory.add(EntityPrefab.parse_obj(entry))
 
-    new_prefab = CharacterPrefab.parse_obj(full_prefab_data)
-
-    library.add(new_prefab)
-
-
-def load_business_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """loads a CharacterEntityPrefab from a yaml file"""
-
-    path_obj = pathlib.Path(file_path)
-
-    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
-        raise Exception(
-            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
-        )
-
-    library = world.get_resource(BusinessLibrary)
-
-    with open(file_path, "r") as f:
-        data: Dict[str, Any] = yaml.safe_load(f)
-
-    base_data: Dict[str, Any] = dict()
-
-    data["is_template"] = data.get("is_template", False)
-
-    if base_prefab_name := data.get("extends", ""):
-        base_data = library.get(base_prefab_name).dict()
-
-    full_prefab_data = deep_merge(base_data, data)
-
-    new_prefab = BusinessPrefab.parse_obj(full_prefab_data)
-
-    library.add(new_prefab)
-
-
-def load_residence_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """loads a CharacterEntityPrefab from a yaml file"""
-
-    path_obj = pathlib.Path(file_path)
-
-    if path_obj.suffix.lower() not in (".yaml", ".yml", ".json"):
-        raise Exception(
-            f"Expected YAML or JSON file but file had extension, {path_obj.suffix}"
-        )
-
-    library = world.get_resource(ResidenceLibrary)
-
-    with open(file_path, "r") as f:
-        data: Dict[str, Any] = yaml.safe_load(f)
-
-    base_data: Dict[str, Any] = dict()
-
-    data["is_template"] = data.get("is_template", False)
-
-    if base_prefab_name := data.get("extends", ""):
-        base_data = library.get(base_prefab_name).dict()
-
-    full_prefab_data = deep_merge(base_data, data)
-
-    new_prefab = ResidencePrefab.parse_obj(full_prefab_data)
-
-    library.add(new_prefab)
-
-
-def load_names(
-    world: World, rule_name: str, filepath: Union[str, pathlib.Path]
-) -> None:
-    """Load names a list of names from a text file or given list"""
-    tracery_instance = world.get_resource(Tracery)
-
-    with open(filepath, "r") as f:
-        tracery_instance.add({rule_name: f.read().splitlines()})
-
-
-def load_data_file(sim: Neighborly, file_path: Union[str, pathlib.Path]) -> None:
-    """Load all the fields from the datafile into their respective libraries"""
-
-    with open(file_path, "r") as f:
-        data: Dict[str, Any] = yaml.safe_load(f)
-
-    character_library = sim.world.get_resource(CharacterLibrary)
-    character_defs: List[Dict[str, Any]] = data.get("Characters", [])
-    for entry in character_defs:
-        base_data: Dict[str, Any] = dict()
-
-        entry["is_template"] = entry.get("is_template", False)
-
-        if base_prefab_name := entry.get("extends", ""):
-            base_data = character_library.get(base_prefab_name).dict()
-
-        full_prefab_data = deep_merge(base_data, entry)
-
-        new_prefab = CharacterPrefab.parse_obj(full_prefab_data)
-
-        character_library.add(new_prefab)
-
-    business_library = sim.world.get_resource(BusinessLibrary)
-    business_defs: List[Dict[str, Any]] = data.get("Businesses", [])
-    for entry in business_defs:
-        base_data: Dict[str, Any] = dict()
-
-        entry["is_template"] = entry.get("is_template", False)
-
-        if base_prefab_name := entry.get("extends", ""):
-            base_data = business_library.get(base_prefab_name).dict()
-
-        full_prefab_data = deep_merge(base_data, entry)
-
-        new_prefab = BusinessPrefab.parse_obj(full_prefab_data)
-
-        business_library.add(new_prefab)
-
-    residence_library = sim.world.get_resource(ResidenceLibrary)
-    residence_defs: List[Dict[str, Any]] = data.get("Residences", [])
-    for entry in residence_defs:
-        base_data: Dict[str, Any] = dict()
-
-        entry["is_template"] = entry.get("is_template", False)
-
-        if base_prefab_name := entry.get("extends", ""):
-            base_data = residence_library.get(base_prefab_name).dict()
-
-        full_prefab_data = deep_merge(base_data, entry)
-
-        new_prefab = ResidencePrefab.parse_obj(full_prefab_data)
-
-        residence_library.add(new_prefab)
-
-    occupation_library = sim.world.get_resource(OccupationTypeLibrary)
     occupation_defs: List[Dict[str, Any]] = data.get("Occupations", [])
     for entry in occupation_defs:
-        occupation_library.add(
+        OccupationTypes.add(
             OccupationType(
                 name=entry["name"],
                 level=entry.get("level", 1),
@@ -211,4 +127,4 @@ def load_data_file(sim: Neighborly, file_path: Union[str, pathlib.Path]) -> None
 
     name_data: List[Dict[str, Any]] = data.get("Names", [])
     for entry in name_data:
-        load_names(sim.world, entry["rule"], entry["path"])
+        load_names(entry["rule"], entry["path"])

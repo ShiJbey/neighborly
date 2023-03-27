@@ -106,8 +106,6 @@ class Settlement(Component):
 
     Attributes
     ----------
-    name: str
-        The name of the settlement
     land_map: ISettlementMap
         The map of the town used to manage land usage
     population: int
@@ -125,7 +123,6 @@ class Settlement(Component):
     """
 
     __slots__ = (
-        "name",
         "land_map",
         "population",
         "business_counts",
@@ -133,17 +130,14 @@ class Settlement(Component):
         "businesses",
     )
 
-    def __init__(self, name: str, land_map: ISettlementMap) -> None:
+    def __init__(self, land_map: ISettlementMap) -> None:
         """
         Parameters
         ----------
-        name: str
-            The name of the settlement
         land_map: ISettlementMap
             The map of the town used to manage land usage
         """
         super().__init__()
-        self.name: str = name
         self.land_map: ISettlementMap = land_map
         self.population: int = 0
         self.business_counts: DefaultDict[str, int] = defaultdict(lambda: 0)
@@ -153,16 +147,15 @@ class Settlement(Component):
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the Settlement to a dictionary"""
         return {
-            "name": self.name,
             "population": self.population,
             "land_map": self.land_map.to_dict(),
         }
 
     def __str__(self) -> str:
-        return f"{self.name} (Pop. {self.population})"
+        return f"Settlement(Pop. {self.population})"
 
     def __repr__(self) -> str:
-        return f"Town(name={self.name}, population={self.population})"
+        return f"Settlement(population={self.population})"
 
 
 class GridSettlementMap(ISettlementMap):

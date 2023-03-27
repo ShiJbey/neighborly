@@ -260,11 +260,7 @@ dmypy.json
 cython_debug/
 
 ### VisualStudioCode ###
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 *.code-workspace
 
 # Local History for Visual Studio Code
@@ -282,6 +278,8 @@ cython_debug/
 **/.DS_Store
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,visualstudiocode,pycharm
 
+samples/scratches/
+
 # Simulation output
 samples/*.json
 samples/*.csv
@@ -290,3 +288,10 @@ samples/*.csv
 # Docs NodeJS stuff
 node_modules/
 /docs/node_modules/
+
+# Removing configurations because of issues moving between platforms
+.vscode/
+.idea/
+
+# Profiling output
+*.prof

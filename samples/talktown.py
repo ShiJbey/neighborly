@@ -1,9 +1,10 @@
 """
-samples/talktown.py
+Talk of the Town Sample
+------------------------
 
 This samples shows Neighborly simulating a Talk of the Town-style
-town. It uses the TalkOfTheTown plugin included with Neighborly
-and simulated 140 years of town history.
+town. It uses the talktown plugin included with Neighborly
+and simulates 140 years of town history.
 """
 
 import time
@@ -13,12 +14,10 @@ from neighborly.exporter import export_to_json
 from neighborly.simulation import Neighborly
 
 EXPORT_WORLD = False
-DEBUG_LOGGING = False
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "seed": 3,
             "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
@@ -37,21 +36,13 @@ sim = Neighborly(
                 }
             },
             "plugins": [
-                "neighborly.plugins.defaults.names",
-                "neighborly.plugins.defaults.characters",
-                "neighborly.plugins.defaults.businesses",
-                "neighborly.plugins.defaults.residences",
-                "neighborly.plugins.defaults.life_events",
-                "neighborly.plugins.defaults.ai",
-                "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.location_bias_rules",
-                "neighborly.plugins.defaults.create_town",
+                "neighborly.plugins.defaults.all",
+                "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
             ],
         }
     )
 )
-
 
 if __name__ == "__main__":
     st = time.time()

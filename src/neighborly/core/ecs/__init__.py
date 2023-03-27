@@ -6,9 +6,15 @@ for entities, systems, the world, queries, and entity prefabs.
 """
 
 from .ecs import (
+    Active,
     Component,
+    ComponentAddedEvent,
     ComponentNotFoundError,
+    ComponentRemovedEvent,
+    EntityPrefab,
+    Event,
     GameObject,
+    GameObjectFactory,
     GameObjectNotFoundError,
     IComponentFactory,
     ISystem,
@@ -16,12 +22,15 @@ from .ecs import (
     SystemGroup,
     World,
 )
-from .prefab import EntityPrefab
 from .query import QB, Query, QueryFromFn, QueryGetFn
 
 __all__ = [
+    "Active",
     "Component",
     "ComponentNotFoundError",
+    "ComponentAddedEvent",
+    "ComponentRemovedEvent",
+    "Event",
     "GameObject",
     "GameObjectNotFoundError",
     "IComponentFactory",
@@ -34,4 +43,5 @@ __all__ = [
     "QB",
     "QueryFromFn",
     "QueryGetFn",
+    "GameObjectFactory",
 ]

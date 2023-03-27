@@ -1,67 +1,44 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, List, Optional
 
-from neighborly import NeighborlyConfig
-from neighborly.components.business import (
-    Business,
-    BusinessOwner,
-    InTheWorkforce,
-    Occupation,
-    OpenForBusiness,
-)
+from neighborly.components.business import Business, OpenForBusiness
 from neighborly.components.character import (
-    Adolescent,
     CanGetPregnant,
     Dating,
-    Deceased,
     GameCharacter,
+    LifeStage,
+    LifeStageType,
     Married,
     ParentOf,
     Pregnant,
-    Retired,
-    Senior,
-    YoungAdult,
 )
-from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.shared import Active, Age, Lifespan
-from neighborly.content_management import (
-    BusinessLibrary,
-    LifeEventLibrary,
-    OccupationTypeLibrary,
-)
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.ecs.query import QB
-from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
-from neighborly.core.relationship import RelationshipManager, Romance
-from neighborly.core.roles import Role, RoleList
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
-from neighborly.prefabs import BusinessPrefab
-from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.utils.common import (
-    clear_frequented_locations,
-    depart_settlement,
-    end_job,
-    get_life_stage,
-    remove_character_from_settlement,
-    set_character_name,
-    set_residence,
-    shutdown_business,
-)
-from neighborly.utils.query import are_related, is_married, is_single, with_relationship
-from neighborly.utils.relationships import (
+from neighborly.components.residence import Residence, Resident
+from neighborly.components.shared import Age, Lifespan
+from neighborly.config import NeighborlyConfig
+from neighborly.core.ecs import QB, Active, GameObject, World
+from neighborly.core.life_event import ActionableLifeEvent, AllEvents, RandomLifeEvents
+from neighborly.core.relationship import (
+    Relationship,
+    RelationshipManager,
+    Romance,
     add_relationship_status,
     get_relationship,
     get_relationships_with_statuses,
     has_relationship,
     remove_relationship_status,
 )
-from neighborly.utils.statuses import add_status, clear_statuses, has_status
+from neighborly.core.roles import Role, RoleList
+from neighborly.core.status import add_status, has_status
+from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
+from neighborly.plugins.defaults.actions import Die
+from neighborly.simulation import Neighborly, PluginInfo
+from neighborly.utils.common import set_character_name, set_residence, shutdown_business
+from neighborly.utils.query import are_related, is_married, is_single, with_relationship
 
 
 class StartDatingLifeEvent(ActionableLifeEvent):
-
     optional = True
     initiator = "Initiator"
 
@@ -70,12 +47,16 @@ class StartDatingLifeEvent(ActionableLifeEvent):
     ) -> None:
         super().__init__(date, [Role("Initiator", initiator), Role("Other", other)])
 
-    def get_priority(self) -> float:
+    def get_probability(self) -> float:
         return 1
 
     def execute(self) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
+
+        initiator.fire_event(self)
+        other.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
 
         add_relationship_status(initiator, other, Dating())
         add_relationship_status(other, initiator, Dating())
@@ -93,7 +74,10 @@ class StartDatingLifeEvent(ActionableLifeEvent):
             ]
 
         candidates = [
-            c for c in candidates if is_single(c) and get_life_stage(c) >= Adolescent
+            c
+            for c in candidates
+            if is_single(c)
+               and c.get_component(LifeStage).life_stage >= LifeStageType.Adolescent
         ]
 
         if candidates:
@@ -105,7 +89,6 @@ class StartDatingLifeEvent(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
             "dating_romance_threshold", 25
         )
@@ -120,7 +103,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -135,7 +118,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
             if not character.has_component(Active):
                 continue
 
-            if get_life_stage(character) < Adolescent:
+            if character.get_component(LifeStage).life_stage < LifeStageType.Adolescent:
                 continue
 
             if not is_single(character):
@@ -166,7 +149,6 @@ class StartDatingLifeEvent(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         initiator = cls._bind_initiator(world, bindings.get("Initiator"))
 
         if initiator is None:
@@ -181,7 +163,6 @@ class StartDatingLifeEvent(ActionableLifeEvent):
 
 
 class DatingBreakUp(ActionableLifeEvent):
-
     initiator = "Initiator"
 
     def __init__(
@@ -189,12 +170,16 @@ class DatingBreakUp(ActionableLifeEvent):
     ) -> None:
         super().__init__(date, [Role("Initiator", initiator), Role("Other", other)])
 
-    def get_priority(self) -> float:
+    def get_probability(self) -> float:
         return 1
 
     def execute(self) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
+
+        initiator.fire_event(self)
+        other.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
 
         remove_relationship_status(initiator, other, Dating)
         remove_relationship_status(other, initiator, Dating)
@@ -224,7 +209,6 @@ class DatingBreakUp(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
             "breakup_romance_thresh", -10
         )
@@ -239,7 +223,7 @@ class DatingBreakUp(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -268,7 +252,6 @@ class DatingBreakUp(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         initiator = cls._bind_initiator(world, bindings.get("Initiator"))
 
         if initiator is None:
@@ -296,7 +279,7 @@ class DivorceLifeEvent(ActionableLifeEvent):
             QB.with_(Married, "?relationship"),
             QB.filter_(
                 lambda rel: rel.get_component(Romance).get_value()
-                <= rel.world.get_resource(NeighborlyConfig).settings.get(
+                            <= rel.world.get_resource(NeighborlyConfig).settings.get(
                     "divorce_romance_thresh", -25
                 ),
                 "?relationship",
@@ -317,12 +300,16 @@ class DivorceLifeEvent(ActionableLifeEvent):
                 [Role(title, gameobject) for title, gameobject in roles.items()],
             )
 
-    def get_priority(self) -> float:
+    def get_probability(self) -> float:
         return 0.8
 
     def execute(self):
         initiator = self["Initiator"]
         ex_spouse = self["Other"]
+
+        initiator.fire_event(self)
+        ex_spouse.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
 
         remove_relationship_status(initiator, ex_spouse, Married)
         remove_relationship_status(ex_spouse, initiator, Married)
@@ -359,7 +346,6 @@ class MarriageLifeEvent(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
             "marriage_romance_threshold", 60
         )
@@ -376,7 +362,7 @@ class MarriageLifeEvent(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -434,13 +420,17 @@ class MarriageLifeEvent(ActionableLifeEvent):
 
         return cls(world.get_resource(SimDateTime), initiator, other)
 
-    def get_priority(self) -> float:
+    def get_probability(self) -> float:
         return 0.8
 
     def execute(self) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
         world = initiator.world
+
+        initiator.fire_event(self)
+        other.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
 
         remove_relationship_status(initiator, other, Dating)
         remove_relationship_status(other, initiator, Dating)
@@ -466,15 +456,18 @@ class MarriageLifeEvent(ActionableLifeEvent):
         set_character_name(other, last_name=new_last_name)
 
         for relationship in get_relationships_with_statuses(other, ParentOf):
-            target = world.get_gameobject(relationship.target)
+            rel = relationship.get_component(Relationship)
+            target = world.get_gameobject(rel.target)
 
             if target.uid not in movers:
                 continue
 
-            if not has_status(target, Active):
+            if not target.has_component(Active):
                 continue
 
-            if get_life_stage(target) < YoungAdult and not is_married(target):
+            if target.get_component(
+                LifeStage
+            ).life_stage < LifeStageType.YoungAdult and not is_married(target):
                 set_character_name(target, last_name=new_last_name)
 
 
@@ -515,7 +508,6 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-
         if candidate:
             if has_relationship(initiator, candidate) and has_relationship(
                 candidate, initiator
@@ -526,7 +518,7 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         else:
             candidates = [
                 world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).targets()
+                for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -534,7 +526,7 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         for character in candidates:
             outgoing_relationship = get_relationship(initiator, character)
 
-            if not has_status(character, Active):
+            if not character.has_component(Active):
                 continue
 
             if not (
@@ -573,6 +565,9 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         due_date = current_date.copy()
         due_date.increment(months=9)
 
+        self["PregnantOne"].fire_event(self)
+        self["PregnantOne"].world.get_resource(AllEvents).append(self)
+
         add_status(
             self["PregnantOne"],
             Pregnant(
@@ -581,144 +576,15 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
             ),
         )
 
-    def get_priority(self):
+    def get_probability(self):
         gameobject = self["PregnantOne"]
-        children = get_relationships_with_statuses(gameobject, ParentOf)
-        if len(children) >= 5:
-            return 0.0
-        else:
-            return 4.0 - len(children) / 8.0
+        num_children = len(get_relationships_with_statuses(gameobject, ParentOf))
 
-
-class RetireLifeEvent(ActionableLifeEvent):
-    @classmethod
-    def instantiate(
-        cls,
-        world: World,
-        bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
-        query = QB.query(
-            "Retiree",
-            QB.with_((GameCharacter, Active, Occupation, Senior), "Retiree"),
-            QB.not_(QB.with_(Retired, "Retiree")),
-        )
-
-        if bindings:
-            results = query.execute(world, {r.name: r.gameobject.uid for r in bindings})
-        else:
-            results = query.execute(world)
-
-        if results:
-            chosen_result = world.get_resource(random.Random).choice(results)
-            chosen_objects = [world.get_gameobject(uid) for uid in chosen_result]
-            roles = dict(zip(query.get_symbols(), chosen_objects))
-            return cls(
-                world.get_resource(SimDateTime),
-                [Role(title, gameobject) for title, gameobject in roles.items()],
-            )
-
-    def get_priority(self) -> float:
-        return (
-            self["Retiree"]
-            .world.get_resource(NeighborlyConfig)
-            .settings.get("retirement_prb", 0.4)
-        )
-
-    def execute(self) -> None:
-        retiree = self["Retiree"]
-        add_status(retiree, Retired())
-
-        if business_owner := retiree.try_component(BusinessOwner):
-            shutdown_business(retiree.world.get_gameobject(business_owner.business))
-        else:
-            end_job(retiree, self.get_type())
-
-
-class FindOwnPlaceLifeEvent(ActionableLifeEvent):
-    initiator = "Character"
-
-    @classmethod
-    def instantiate(
-        cls,
-        world: World,
-        bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
-        query = QB.query(
-            "Character",
-            QB.from_(FindOwnPlaceLifeEvent.bind_potential_mover, "Character"),
-        )
-
-        if bindings:
-            results = query.execute(world, {r.name: r.gameobject.uid for r in bindings})
-        else:
-            results = query.execute(world)
-
-        if results:
-            chosen_result = world.get_resource(random.Random).choice(results)
-            chosen_objects = [world.get_gameobject(uid) for uid in chosen_result]
-            roles = dict(zip(query.get_symbols(), chosen_objects))
-            return cls(
-                world.get_resource(SimDateTime),
-                [Role(title, gameobject) for title, gameobject in roles.items()],
-            )
-
-    def get_priority(self) -> float:
-        return 0.7
-
-    @staticmethod
-    def bind_potential_mover(world: World) -> List[Tuple[Any, ...]]:
-        eligible: List[Tuple[Any, ...]] = []
-
-        for gid, (_, _, resident, _) in world.get_components(
-            (GameCharacter, Occupation, Resident, Active)
-        ):
-            character = world.get_gameobject(gid)
-            if get_life_stage(character) < YoungAdult:
-                continue
-
-            residence = world.get_gameobject(resident.residence).get_component(
-                Residence
-            )
-            if gid not in residence.owners:
-                eligible.append((gid,))
-
-        return eligible
-
-    @staticmethod
-    def find_vacant_residences(world: World) -> List[GameObject]:
-        """Try to find a vacant residence to move into"""
-        return list(
-            map(
-                lambda pair: world.get_gameobject(pair[0]),
-                world.get_components((Residence, Vacant)),
-            )
-        )
-
-    @staticmethod
-    def choose_random_vacant_residence(world: World) -> Optional[GameObject]:
-        """Randomly chooses a vacant residence to move into"""
-        vacancies = FindOwnPlaceLifeEvent.find_vacant_residences(world)
-        if vacancies:
-            return world.get_resource(random.Random).choice(vacancies)
-        return None
-
-    def execute(self):
-        # Try to find somewhere to live
-        character = self["Character"]
-        vacant_residence = FindOwnPlaceLifeEvent.choose_random_vacant_residence(
-            character.world
-        )
-        if vacant_residence:
-            # Move into house with any dependent children
-            set_residence(character, vacant_residence)
-
-        # Depart if no housing could be found
-        else:
-            depart_settlement(character.world, character, self.get_type())
+        return 1.0 - (num_children / 5.0)
 
 
 class DieOfOldAge(ActionableLifeEvent):
-    initiator = "Deceased"
+    """Characters can randomly die of old age"""
 
     @classmethod
     def instantiate(
@@ -731,7 +597,7 @@ class DieOfOldAge(ActionableLifeEvent):
             QB.with_((GameCharacter, Active), "Deceased"),
             QB.filter_(
                 lambda gameobject: gameobject.get_component(Age).value
-                >= gameobject.get_component(Lifespan).value,
+                                   >= gameobject.get_component(Lifespan).value,
                 "Deceased",
             ),
         )
@@ -750,70 +616,35 @@ class DieOfOldAge(ActionableLifeEvent):
                 [Role(title, gameobject) for title, gameobject in roles.items()],
             )
 
-    def get_priority(self) -> float:
-        return 0.8
+    def get_probability(self) -> float:
+        character = self["Deceased"]
+        age = float(character.get_component(Age).value)
+        lifespan = float(character.get_component(Lifespan).value)
+
+        return age / (lifespan + 10.0)
 
     def execute(self) -> None:
-        deceased = self["Deceased"]
-        death_event = Die(self.get_timestamp(), deceased)
-        deceased.world.get_resource(LifeEventBuffer).append(death_event)
-        death_event.execute()
-
-
-class Die(ActionableLifeEvent):
-
-    initiator = "Character"
-
-    def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(timestamp=date, roles=[Role("Character", character)])
-
-    def execute(self) -> None:
-        character = self["Character"]
-
-        if character.has_component(Occupation):
-            if business_owner := character.try_component(BusinessOwner):
-                shutdown_business(
-                    character.world.get_gameobject(business_owner.business)
-                )
-            else:
-                end_job(character, reason=self.get_type())
-
-        if character.has_component(Resident):
-            set_residence(character, None)
-
-        add_status(character, Deceased())
-        clear_frequented_locations(character)
-        clear_statuses(character)
-
-        remove_character_from_settlement(character)
-
-    @classmethod
-    def instantiate(
-        cls,
-        world: World,
-        bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
-
-        character = bindings.get("Character")
-
-        if character is None:
-            return None
-
-        return cls(
-            world.get_resource(SimDateTime),
-            character,
-        )
+        self["Deceased"].fire_event(self)
+        self["Deceased"].world.get_resource(AllEvents).append(self)
+        Die(self["Deceased"]).evaluate()
 
 
 class GoOutOfBusiness(ActionableLifeEvent):
-
-    initiator = "Business"
-    optional = False
+    """Businesses can randomly go out of business"""
 
     def execute(self):
+        business = self["Business"]
+
+        owner_id = business.get_component(Business).owner
+
+        if owner_id:
+            owner = business.world.get_gameobject(
+                owner_id
+            )
+            owner.fire_event(self)
         shutdown_business(self["Business"])
 
-    def get_priority(self) -> float:
+    def get_probability(self) -> float:
         business = self["Business"]
         lifespan = business.get_component(Lifespan).value
         current_date = business.world.get_resource(SimDateTime)
@@ -821,18 +652,13 @@ class GoOutOfBusiness(ActionableLifeEvent):
         years_in_business = (
             float(
                 (
-                    business.get_component(OpenForBusiness).created - current_date
+                    current_date - business.get_component(OpenForBusiness).created
                 ).total_days
             )
             / DAYS_PER_YEAR
         )
 
-        if years_in_business < 5:
-            return 0.0
-        elif years_in_business < lifespan:
-            return years_in_business / lifespan
-        else:
-            return 0.7
+        return (years_in_business / (lifespan + 10)) ** 2
 
     @classmethod
     def instantiate(
@@ -858,69 +684,6 @@ class GoOutOfBusiness(ActionableLifeEvent):
             )
 
 
-class StartBusiness(ActionableLifeEvent):
-    """Character is given the option to start a new business"""
-
-    def execute(self) -> None:
-        pass
-
-    @classmethod
-    def instantiate(
-        cls,
-        world: World,
-        bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
-        pass
-
-    # The tuple of the characters that need to approve the life event before
-    # it can take place
-    needs_approval = ("BusinessOwner",)
-
-    def is_optional(self, role_name: str) -> bool:
-        """Returns True if object with the given role needs to approve the event"""
-        return role_name in self.needs_approval
-
-    def check_event_preconditions(self, world: World) -> bool:
-        """Return True if the preconditions for this event pass"""
-        ...
-
-    @staticmethod
-    def _cast_business_owner(world: World) -> Generator[GameObject, None, None]:
-        candidates = [
-            world.get_gameobject(g)
-            for g, _ in world.get_components((GameCharacter, InTheWorkforce))
-        ]
-
-        candidates = filter(
-            lambda g: get_life_stage(g) >= YoungAdult,
-            candidates,
-        )
-
-        for c in candidates:
-            yield c
-
-    @staticmethod
-    def _cast_business_type(
-        world: World, roles: Dict[str, GameObject]
-    ) -> Generator[BusinessPrefab, None, None]:
-        candidates = world.get_resource(BusinessLibrary).get_all()
-        occupation_types = world.get_resource(OccupationTypeLibrary)
-
-        # Filter for business prefabs that specify owners
-        # Filter for all the business types that the potential owner is eligible
-        # to own
-        candidates = [
-            c
-            for c in candidates
-            if occupation_types.get(c.get_owner_type()).passes_preconditions(
-                roles["BusinessOwner"]
-            )
-        ]
-
-        for c in candidates:
-            yield c
-
-
 plugin_info = PluginInfo(
     name="default life events plugin",
     plugin_id="default.life-events",
@@ -929,15 +692,10 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    life_event_library = sim.world.get_resource(LifeEventLibrary)
-
-    life_event_library.add(MarriageLifeEvent)
-    life_event_library.add(StartDatingLifeEvent)
-    life_event_library.add(DatingBreakUp)
-    life_event_library.add(DivorceLifeEvent)
-    life_event_library.add(GetPregnantLifeEvent)
-    life_event_library.add(RetireLifeEvent)
-    life_event_library.add(FindOwnPlaceLifeEvent)
-    life_event_library.add(DieOfOldAge)
-    life_event_library.add(GoOutOfBusiness)
-    life_event_library.add(StartBusiness)
+    # RandomLifeEvents.add(MarriageLifeEvent)
+    # RandomLifeEvents.add(StartDatingLifeEvent)
+    # RandomLifeEvents.add(DatingBreakUp)
+    # RandomLifeEvents.add(DivorceLifeEvent)
+    RandomLifeEvents.add(GetPregnantLifeEvent)
+    RandomLifeEvents.add(DieOfOldAge)
+    RandomLifeEvents.add(GoOutOfBusiness)

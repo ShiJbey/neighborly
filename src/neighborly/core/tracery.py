@@ -1,5 +1,5 @@
 import pathlib
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import tracery as tracery  # type: ignore
 import tracery.modifiers as tracery_modifiers  # type: ignore
@@ -13,7 +13,7 @@ class Tracery:
     incrementally add new rules without manually creating
     new Grammar instances
 
-    Attributes
+    Class Attributes
     ----------
     _all_rules: Dict[str, Union[str, List[str]]]
         Collection off all the grammar rules added to the Tracery instance
@@ -21,27 +21,17 @@ class Tracery:
         A Grammar instance built using all the current rules
     """
 
-    __slots__ = "_all_rules", "_grammar"
+    _all_rules: Dict[str, Union[str, List[str]]] = {}
+    _grammar: tracery.Grammar = tracery.Grammar({})
 
-    def __init__(
-        self, rules: Optional[Dict[str, Union[str, List[str]]]] = None
-    ) -> None:
-        self._all_rules: Dict[str, Union[str, List[str]]] = {}
-        self._grammar: tracery.Grammar = tracery.Grammar(self._all_rules)
-
-        if rules:
-            self.add(rules)
-
-    def add(self, rules: Dict[str, Union[str, List[str]]]) -> None:
+    @classmethod
+    def add_rules(cls, rules: Dict[str, Union[str, List[str]]]) -> None:
         """Add grammar rules"""
-        self._all_rules = {**self._all_rules, **rules}
-        self._rebuild()
+        cls._all_rules = {**cls._all_rules, **rules}
+        cls._grammar = tracery.Grammar(cls._all_rules)
+        cls._grammar.add_modifiers(tracery_modifiers.base_english)  # type: ignore
 
-    def generate(self, seed_str: str) -> str:
+    @classmethod
+    def generate(cls, seed_str: str) -> str:
         """Return a string generated using the grammar rules"""
-        return self._grammar.flatten(seed_str)  # type: ignore
-
-    def _rebuild(self) -> None:
-        """Rebuild the Grammar after adding new rules"""
-        self._grammar = tracery.Grammar(self._all_rules)
-        self._grammar.add_modifiers(tracery_modifiers.base_english)  # type: ignore
+        return cls._grammar.flatten(seed_str)  # type: ignore

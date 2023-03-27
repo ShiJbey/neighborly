@@ -3,13 +3,23 @@ from __future__ import annotations
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Set, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+    Union,
+)
 
-from neighborly.core.ecs import Component
-from neighborly.core.ecs.ecs import GameObject
+from neighborly.core.ecs import Component, GameObject
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
-from neighborly.core.time import Weekday
+from neighborly.core.time import SimDateTime, Weekday
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +27,10 @@ logger = logging.getLogger(__name__)
 class Occupation(Component):
     """Information about a character's employment status"""
 
-    __slots__ = "_occupation_type", "_years_held", "_business"
+    __slots__ = "_occupation_type", "_start_date", "_business"
 
     def __init__(
-        self, occupation_type: str, business: int, years_held: float = 0.0
+        self, occupation_type: str, business: int, start_date: SimDateTime
     ) -> None:
         """
         Parameters
@@ -29,22 +39,21 @@ class Occupation(Component):
             The name of the occupation
         business: int
             The business that the character is work for
-        years_held: float, optional
-            The number of years the character has held this job
-            (defaults to 0.0)
+        start_date: SimDateTime
+            The date they started this occupation
         """
 
         super().__init__()
         self._occupation_type: str = occupation_type
         self._business: int = business
-        self._years_held: float = years_held
+        self._start_date: SimDateTime = start_date.copy()
 
     def to_dict(self) -> Dict[str, Any]:
         """Return serialized dict representation of an Occupation component"""
         return {
             "occupation_type": self._occupation_type,
             "business": self._business,
-            "years_held": self._years_held,
+            "start_date": str(self._start_date),
         }
 
     @property
@@ -53,22 +62,18 @@ class Occupation(Component):
         return self._business
 
     @property
-    def years_held(self) -> float:
-        """Get the number of years this character has worked this job"""
-        return self._years_held
+    def start_date(self) -> SimDateTime:
+        """Get the date the character started the job"""
+        return self._start_date
 
     @property
     def occupation_type(self) -> str:
         """Get the type of occupation this is"""
         return self._occupation_type
 
-    def set_years_held(self, years: float) -> None:
-        """Set the number of years this character has held this job"""
-        self._years_held = years
-
     def __repr__(self) -> str:
-        return "Occupation(occupation_type={}, business={}, years_held={})".format(
-            self.occupation_type, self.business, self.years_held
+        return "Occupation(occupation_type={}, business={}, start_date={})".format(
+            self.occupation_type, self.business, self.start_date
         )
 
 
@@ -175,75 +180,39 @@ class WorkHistory(Component):
         )
 
 
-@dataclass(frozen=True)
-class Service:
-    """A service offered by a business establishment
+class Services(Component):
+    """Tracks the services offered by a business"""
 
-    Attributes
-    ----------
-    uid: int
-        The unique ID for this service type (unique only among other service types)
-    name: str
-        The name of the service offered
+    __slots__ = "_services"
 
-    Notes
-    -----
-    DO NOT INSTANTIATE THIS CLASS DIRECTLY. ServiceType instances are created
-    as needed by the ServiceLibrary class
-    """
+    def __init__(self, services: Optional[Iterable[str]] = None) -> None:
+        super().__init__()
+        self._services: Set[str] = set()
 
-    uid: int
-    name: str
+        if services:
+            for name in services:
+                self.add_service(name)
 
-    def __hash__(self) -> int:
-        return self.uid
+    def add_service(self, service: str) -> None:
+        self._services.add(service.lower())
+
+    def remove_service(self, service: str) -> None:
+        self._services.remove(service.lower())
+
+    def __iter__(self) -> Iterator[str]:
+        return self._services.__iter__()
+
+    def __contains__(self, service: str) -> bool:
+        return service.lower() in self._services
 
     def __str__(self) -> str:
-        return self.name
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Service):
-            return self.uid == other.uid
-        raise TypeError(f"Expected ServiceType but was {type(object)}")
-
-
-class Services(Component):
-    """
-    Tracks the services offered by a business
-
-    Attributes
-    ----------
-    services: Set[Service]
-        The set of services offered by the business
-    """
-
-    __slots__ = "services"
-
-    def __init__(self, services: Set[Service]) -> None:
-        super().__init__()
-        self.services: Set[Service] = services
-
-    def has_service(self, service: Service) -> bool:
-        """
-        Check if a business offers a service
-
-        Parameters
-        ----------
-        service: Service
-            The service to check for
-
-        Returns
-        -------
-        bool
-            Returns True of the business offers this service
-        """
-        return service in self.services
+        return ", ".join(self._services)
 
     def __repr__(self) -> str:
-        return "{}({})".format(self.__class__.__name__, self.services)
+        return "{}({})".format(self.__class__.__name__, self._services)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"services": [str(s) for s in self.services]}
+        return {"services": list(self._services)}
 
 
 class ClosedForBusiness(StatusComponent):
@@ -492,3 +461,46 @@ class EmployeeOf(RelationshipStatus):
 
 class CoworkerOf(RelationshipStatus):
     pass
+
+
+class OccupationTypes:
+    """Collection OccupationType information for lookup at runtime"""
+
+    _registry: Dict[str, OccupationType] = {}
+
+    @classmethod
+    def add(
+        cls,
+        occupation_type: OccupationType,
+    ) -> None:
+        """
+        Add a new occupation type to the library
+
+        Parameters
+        ----------
+        occupation_type: OccupationType
+            The occupation type instance to add
+        """
+        cls._registry[occupation_type.name] = occupation_type
+
+    @classmethod
+    def get(cls, name: str) -> OccupationType:
+        """
+        Get an OccupationType by name
+
+        Parameters
+        ----------
+        name: str
+            The registered name of the OccupationType
+
+        Returns
+        -------
+        OccupationType
+
+        Raises
+        ------
+        KeyError
+            When there is not an OccupationType
+            registered to that name
+        """
+        return cls._registry[name]

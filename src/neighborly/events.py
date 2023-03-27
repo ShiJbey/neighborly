@@ -227,6 +227,32 @@ class DivorceEvent(LifeEvent):
         return self._roles.get_all("Character")
 
 
+class StartDatingEvent(LifeEvent):
+    def __init__(
+        self,
+        date: SimDateTime,
+        *characters: GameObject,
+    ) -> None:
+        super().__init__(date, [Role("Character", c) for c in characters])
+
+    @property
+    def characters(self):
+        return self._roles.get_all("Character")
+
+
+class BreakUpEvent(LifeEvent):
+    def __init__(
+        self,
+        date: SimDateTime,
+        *characters: GameObject,
+    ) -> None:
+        super().__init__(date, [Role("Character", c) for c in characters])
+
+    @property
+    def characters(self):
+        return self._roles.get_all("Character")
+
+
 class StartBusinessEvent(LifeEvent):
     def __init__(
         self,
@@ -401,3 +427,16 @@ class RetirementEvent(LifeEvent):
             **super().to_dict(),
             "occupation": self.occupation,
         }
+
+
+class DeathEvent(LifeEvent):
+    def __init__(
+        self,
+        date: SimDateTime,
+        character: GameObject,
+    ) -> None:
+        super().__init__(date, [Role("Character", character)])
+
+    @property
+    def character(self):
+        return self["Character"]

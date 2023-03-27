@@ -1,6 +1,5 @@
 name: "character::default"
 is_template: true
-spawn_frequency: 1
 components:
   GameCharacter:
     first_name: "#character::default::first_name::gender-neutral#"
@@ -24,9 +23,12 @@ components:
   Virtues: { }
   CanAge: { }
   StatusManager: { }
-  TraitManager: { }
   FrequentedLocations: { }
-  AIComponent:
-    brain: "default"
+  AIBrain: { }
+  Goals: { }
   EventHistory: { }
   Age: { }
+  Gender:
+    gender: NotSpecified
+  LifeStage:
+    life_stage: Adult

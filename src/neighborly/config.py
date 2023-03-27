@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Union
 
 import pydantic
 
-from neighborly.core.ecs import EntityPrefab
 from neighborly.core.time import SimDateTime, TimeDelta
 
 
@@ -31,12 +30,16 @@ class PluginConfig(pydantic.BaseModel):
     options: Dict[str, Any] = pydantic.Field(default_factory=dict)
 
 
+class RelationshipSchema(pydantic.BaseModel):
+    components: Dict[str, Dict[str, Any]] = pydantic.Field(default_factory=dict)
+
+
 class NeighborlyConfig(pydantic.BaseModel):
     seed: Union[str, int] = pydantic.Field(
         default_factory=lambda: random.randint(0, 9999999)
     )
-    relationship_schema: EntityPrefab = pydantic.Field(
-        default_factory=lambda: EntityPrefab()
+    relationship_schema: RelationshipSchema = pydantic.Field(
+        default_factory=RelationshipSchema
     )
     plugins: List[PluginConfig] = pydantic.Field(default_factory=list)
     # Months to increment time by each simulation step
@@ -49,6 +52,7 @@ class NeighborlyConfig(pydantic.BaseModel):
     settings: Dict[str, Any] = pydantic.Field(default_factory=dict)
 
     @pydantic.validator("plugins", pre=True, each_item=True)  # type: ignore
+    @classmethod
     def validate_plugins(cls, value: Any) -> PluginConfig:
         if isinstance(value, PluginConfig):
             return value
@@ -56,13 +60,14 @@ class NeighborlyConfig(pydantic.BaseModel):
             return PluginConfig(name=value)
         elif isinstance(value, dict):
             return PluginConfig(
-                name=value["name"],
+                name=value["name"],  # type: ignore
                 path=value.get("path", "."),  # type: ignore
                 options=value.get("options", {}),  # type: ignore
             )
         raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
 
     @pydantic.validator("start_date", pre=True)  # type: ignore
+    @classmethod
     def validate_date(cls, value: Any) -> SimDateTime:
         if isinstance(value, SimDateTime):
             return value
@@ -71,6 +76,7 @@ class NeighborlyConfig(pydantic.BaseModel):
         raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
 
     @pydantic.validator("time_increment", pre=True)  # type: ignore
+    @classmethod
     def validate_time_increment(cls, value: Any) -> TimeDelta:
         if isinstance(value, TimeDelta):
             return value

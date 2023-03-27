@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from abc import ABC
-from inspect import isclass
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
 from numpy import typing as npt
@@ -13,7 +11,6 @@ from neighborly.core.ecs import Component
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime
-from neighborly.core.traits import TraitComponent
 
 
 class GameCharacter(Component):
@@ -66,12 +63,19 @@ class Departed(StatusComponent):
     is_persistent = True
 
 
-class CanAge(TraitComponent):
+class CanAge(Component):
     """
     Tags a GameObject as being able to change life stages as time passes
     """
 
-    pass
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 class Mortal(StatusComponent):
@@ -82,10 +86,17 @@ class Mortal(StatusComponent):
     is_persistent = True
 
 
-class CanGetPregnant(TraitComponent):
+class CanGetPregnant(Component):
     """Tags a character as capable of giving birth"""
 
-    pass
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 class Deceased(StatusComponent):
@@ -145,6 +156,13 @@ class Virtues(Component):
 
     VIRTUE_MAX = 50
     VIRTUE_MIN = -50
+
+    STRONG_AGREE = 35
+    AGREE = 25
+    WEAK_AGREE = 15
+    WEAK_DISAGREE = -15
+    DISAGREE = -25
+    STRONG_DISAGREE = -35
 
     __slots__ = "_virtues"
 
@@ -261,6 +279,10 @@ class Pregnant(StatusComponent):
         }
 
 
+class Family(RelationshipStatus):
+    pass
+
+
 class ParentOf(RelationshipStatus):
     pass
 
@@ -276,27 +298,13 @@ class SiblingOf(RelationshipStatus):
 class Married(RelationshipStatus):
     """Tags two characters as being married"""
 
-    __slots__ = "years"
-
-    def __init__(self, years: float = 0.0) -> None:
-        super().__init__()
-        self.years: float = years
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "years": self.years}
+    pass
 
 
 class Dating(RelationshipStatus):
     """Tags two characters as dating"""
 
-    __slots__ = "years"
-
-    def __init__(self, years: float = 0.0) -> None:
-        super().__init__()
-        self.years: float = years
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "years": self.years}
+    pass
 
 
 @dataclasses.dataclass()
@@ -339,111 +347,51 @@ class ReproductionConfig(Component):
         }
 
 
-class Gender(TraitComponent, ABC):
+class GenderType(enum.Enum):
+    Male = enum.auto()
+    Female = enum.auto()
+    NonBinary = enum.auto()
+    NotSpecified = enum.auto()
 
-    _value: int
+
+class Gender(Component):
+    __slots__ = "gender"
+
+    def __init__(self, gender: Union[str, GenderType] = "NotSpecified") -> None:
+        super().__init__()
+        self.gender: GenderType = (
+            gender if isinstance(gender, GenderType) else GenderType[gender]
+        )
+
+    def __str__(self) -> str:
+        return self.gender.name
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"gender": self.gender.name}
+
+
+class LifeStageType(enum.IntEnum):
+    Child = 0
+    Adolescent = enum.auto()
+    YoungAdult = enum.auto()
+    Adult = enum.auto()
+    Senior = enum.auto()
+
+
+class LifeStage(Component):
+    def __init__(self, life_stage: Union[str, LifeStageType] = "YoungAdult") -> None:
+        super().__init__()
+        self.life_stage: LifeStageType = (
+            life_stage
+            if isinstance(life_stage, LifeStageType)
+            else LifeStageType[life_stage]
+        )
+
+    def __str__(self) -> str:
+        return self.life_stage.name
 
     def __int__(self) -> int:
-        return self.value()
+        return self.life_stage.value
 
-    @classmethod
-    def value(cls) -> int:
-        return cls._value
-
-    def __eq__(self, other: Union[object, Type[Gender]]) -> bool:
-        if isinstance(other, Gender):
-            return type(self) == type(other)
-        if isclass(other) and issubclass(other, Gender):
-            return type(self) == other
-        raise TypeError(f"Expected type of Gender, but was {other}")
-
-
-class Male(Gender):
-    pass
-
-
-class Female(Gender):
-    pass
-
-
-class NonBinary(Gender):
-    pass
-
-
-class LifeStage(StatusComponent, ABC):
-
-    is_persistent = True
-    _value: int
-
-    def __int__(self) -> int:
-        return self.value()
-
-    @classmethod
-    def value(cls) -> int:
-        return cls._value
-
-    def __eq__(self, other: Union[object, int, Type[LifeStage]]) -> bool:
-        if isinstance(other, int):
-            return self.value() == other
-        if isinstance(other, LifeStage):
-            return self.value() == other.value()
-        if isclass(other) and issubclass(other, LifeStage):
-            return self.value() == other.value()
-        raise TypeError(f"Expected type of LifeStage or int, but was {other}")
-
-    def __ge__(self, other: Union[object, int, Type[LifeStage]]) -> bool:
-        if isinstance(other, int):
-            return self.value() >= other
-        if isinstance(other, LifeStage):
-            return self.value() >= other.value()
-        if isclass(other) and issubclass(other, LifeStage):
-            return self.value() >= other.value()
-        raise TypeError(f"Expected type of LifeStage or int, but was {other}")
-
-    def __le__(self, other: Union[object, int, Type[LifeStage]]) -> bool:
-        if isinstance(other, int):
-            return self.value() <= other
-        if isinstance(other, LifeStage):
-            return self.value() <= other.value()
-        if isclass(other) and issubclass(other, LifeStage):
-            return self.value() <= other.value()
-        raise TypeError(f"Expected type of LifeStage or int, but was {other}")
-
-    def __gt__(self, other: Union[object, int, Type[LifeStage]]) -> bool:
-        if isinstance(other, int):
-            return self.value() > other
-        if isinstance(other, LifeStage):
-            return self.value() > other.value()
-        if isclass(other) and issubclass(other, LifeStage):
-            return self.value() > other.value()
-        raise TypeError(f"Expected type of LifeStage ot int, but was {other}")
-
-    def __lt__(self, other: Union[object, int, Type[LifeStage]]) -> bool:
-        if isinstance(other, int):
-            return self.value() < other
-        if isinstance(other, LifeStage):
-            return self.value() < other.value()
-        if isclass(other) and issubclass(other, LifeStage):
-            return self.value() < other.value()
-        raise TypeError(f"Expected type of LifeStage or int, but was {other}")
-
-
-class Child(LifeStage):
-
-    _value = 0
-
-
-class Adolescent(LifeStage):
-    _value = 1
-
-
-class YoungAdult(LifeStage):
-    _value = 2
-
-
-class Adult(LifeStage):
-    _value = 3
-
-
-class Senior(LifeStage):
-    _value = 4
+    def to_dict(self) -> Dict[str, Any]:
+        return {"life_stage": self.life_stage.name}

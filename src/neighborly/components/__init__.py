@@ -1,4 +1,4 @@
-from .activity import Activities, Activity
+from .activity import Activities
 from .business import (
     BossOf,
     Business,
@@ -38,7 +38,6 @@ from .character import (
 )
 from .residence import Residence, Resident, Vacant
 from .shared import (
-    Active,
     Age,
     Building,
     CurrentLot,
@@ -50,11 +49,10 @@ from .shared import (
     Name,
     Position2D,
 )
+from .spawn_table import BusinessSpawnTable, CharacterSpawnTable, ResidenceSpawnTable
 
 __all__ = [
-    "Active",
     "Activities",
-    "Activity",
     "Building",
     "CurrentSettlement",
     "CurrentLot",
@@ -101,4 +99,7 @@ __all__ = [
     "OperatingHours",
     "Lifespan",
     "Age",
+    "CharacterSpawnTable",
+    "BusinessSpawnTable",
+    "ResidenceSpawnTable",
 ]

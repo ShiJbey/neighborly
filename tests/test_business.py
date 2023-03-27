@@ -5,33 +5,35 @@ Tests for the Neighborly's Business and Occupation logic
 import pytest
 
 from neighborly.components.business import Business
+from neighborly.core.ecs import EntityPrefab, GameObjectFactory
 from neighborly.core.time import Weekday
 from neighborly.factories import OperatingHoursFactory
-from neighborly.prefabs import BusinessPrefab
 from neighborly.simulation import Neighborly
 
 
 def test_construct_business():
     """Constructing business components using BusinessArchetypes"""
-    restaurant_archetype = BusinessPrefab(
-        name="Restaurant",
-        components={
-            "Name": {"value": "Restaurant"},
-            "Business": {
-                "owner_type": "Proprietor",
-                "employee_types": {
-                    "Cook": 1,
-                    "Server": 2,
-                    "Host": 1,
+    GameObjectFactory.add(
+        EntityPrefab(
+            name="Restaurant",
+            components={
+                "Name": {"value": "Restaurant"},
+                "Business": {
+                    "owner_type": "Proprietor",
+                    "employee_types": {
+                        "Cook": 1,
+                        "Server": 2,
+                        "Host": 1,
+                    },
                 },
+                "OperatingHours": {"hours": "11AM - 10PM"},
             },
-            "OperatingHours": {"hours": "11AM - 10PM"},
-        },
+        )
     )
 
     sim = Neighborly()
 
-    restaurant = restaurant_archetype.spawn(sim.world)
+    restaurant = GameObjectFactory.instantiate(sim.world, "Restaurant")
     restaurant_business = restaurant.get_component(Business)
 
     assert restaurant_business.owner_type == "Proprietor"

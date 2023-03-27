@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neighborly"
-description = "An extensible agent-based modeling framework designed to simulate towns of characters for games"
+description = "An agent-based modeling framework for simulating towns of characters in games"
 authors = [
     { name = "Shi Johnson-Bey", email = "shijbey@gmail.com" },
 ]
@@ -13,7 +13,6 @@ dynamic = ["version"]
 requires-python = ">=3.8"
 keywords = [
     "social simulation",
-    "orrery",
     "games",
     "simulation",
     "artificial intelligence",
@@ -34,6 +33,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Life",
     "Topic :: Sociology",
     "Topic :: Software Development :: Libraries",
+    "Typing :: Typed"
 ]
 dependencies = [
     "esper",
@@ -42,7 +42,9 @@ dependencies = [
     "pyYAML",
     "pydantic",
     "tracery",
-    "pandas"
+    "pandas",
+    "flask",
+    "flask_restful"
 ]
 
 [project.optional-dependencies]
@@ -52,10 +54,6 @@ testing = [
 ]
 samples = [
     "notebook"
-]
-server = [
-    "flask",
-    "flask_restful"
 ]
 development = [
     "isort",
@@ -72,6 +70,7 @@ docs = [
 "Bug Tracker" = "https://github.com/ShiJbey/neighborly/issues"
 "Repository" = "https://github.com/ShiJBey/neighborly.git"
 "Changelog" = "https://github.com/ShiJbey/neighborly/blob/main/CHANGELOG.md"
+"Documentation" = "https://shijbey.github.io/neighborly/"
 
 [project.scripts]
 neighborly = "neighborly.__main__:main"
@@ -94,3 +93,6 @@ src_paths = ["src/neighborly", "test", "samples"]
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
+
+[tool.pyright]
+reportMissingTypeStubs = "none"

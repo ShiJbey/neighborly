@@ -1,19 +1,12 @@
 """
 Utility decorators that should assist with content authoring
 """
-from typing import Any, Type, TypeVar
+from typing import Any, Callable, Optional, Type, TypeVar
 
-from neighborly.content_management import (
-    AIBrainFactory,
-    AIBrainLibrary,
-    LifeEventLibrary,
-    LocationBiasRuleLibrary,
-    SocialRuleLibrary,
-)
-from neighborly.core.ecs import Component, IComponentFactory, ISystem
-from neighborly.core.life_event import ActionableLifeEvent
-from neighborly.core.location_bias import ILocationBiasRule
-from neighborly.core.social_rule import ISocialRule
+from neighborly.core.ecs import Component, Event, GameObject, IComponentFactory, ISystem
+from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
+from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRules
+from neighborly.core.relationship import ISocialRule, SocialRules
 from neighborly.simulation import Neighborly
 
 _CT = TypeVar("_CT", bound=Component)
@@ -21,14 +14,6 @@ _CF = TypeVar("_CF", bound=IComponentFactory)
 _RT = TypeVar("_RT", bound=Any)
 _ST = TypeVar("_ST", bound=ISystem)
 _LT = TypeVar("_LT", bound=ActionableLifeEvent)
-
-
-def brain_factory(sim: Neighborly, name: str):
-    def decorator(fn: AIBrainFactory):
-        sim.world.get_resource(AIBrainLibrary).add(name, fn)
-        return fn
-
-    return decorator
 
 
 def component(sim: Neighborly):
@@ -113,34 +98,54 @@ def system(sim: Neighborly, **kwargs: Any):
     return decorator
 
 
-def life_event(sim: Neighborly):
-    """Add a class as a simulation system
-
-    This decorator adds an instance of the decorated class as a shared resource.
-
-    Parameters
-    ----------
-    sim: Neighborly
-        The simulation instance to register the life event to
-    """
+def random_life_event():
+    """Adds a class type to the registry of random life events"""
 
     def decorator(cls: Type[_LT]) -> Type[_LT]:
-        sim.world.get_resource(LifeEventLibrary).add(cls)
+        RandomLifeEvents.add(cls)
         return cls
 
     return decorator
 
 
-def social_rule(sim: Neighborly, description: str = ""):
+def social_rule(description: str):
+    """
+    Decorator that marks a function as a location bias rule
+
+    Parameters
+    ----------
+    description: str
+        Text description of the rule
+    """
+
     def decorator(rule: ISocialRule):
-        sim.world.get_resource(SocialRuleLibrary).add(rule, description)
+        SocialRules.add(rule, description)
         return rule
 
     return decorator
 
 
-def location_bias_rule(sim: Neighborly, description: str = ""):
+def location_bias_rule(description: str):
+    """
+    Decorator that marks a function as a location bias rule
+
+    Parameters
+    ----------
+    description: str
+        Text description of the rule
+    """
+
     def decorator(rule: ILocationBiasRule):
-        sim.world.get_resource(LocationBiasRuleLibrary).add(rule, description)
+        LocationBiasRules.add(rule, description)
+
+    return decorator
+
+
+def event_listener(event_type: Optional[Type[Event]] = None):
+    def decorator(listener: Callable[[GameObject, Event], None]) -> None:
+        if event_type is None:
+            GameObject.on_any(listener)
+        else:
+            GameObject.on(event_type, listener)
 
     return decorator

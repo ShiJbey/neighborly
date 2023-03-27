@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-This sample shows how to construct a social simulation model manually, It starts with
-creating a simulation instance from configuration settings. Next, we use decorator
-methods to register new components (Robot, OwesDebt) and a social rule. Finally, within
-the main function, we define a new settlement, add new characters, and set some
-relationship values.
+Using Authored Characters Sample
+--------------------------------
+
+This samples shows how users may inject user-specified characters into the simulation.
+Normally characters are spawned into the settlement based on the spawn table.
 """
 import time
 from typing import Any, Dict
 
-from neighborly import ISystem, Neighborly, NeighborlyConfig, SimDateTime
+from neighborly import Component, ISystem, Neighborly, NeighborlyConfig, SimDateTime
 from neighborly.components import GameCharacter
+from neighborly.core.ecs.ecs import EntityPrefab, GameObjectFactory
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -18,7 +19,6 @@ from neighborly.core.relationship import (
     Romance,
 )
 from neighborly.core.status import StatusComponent, StatusManager
-from neighborly.core.traits import TraitComponent
 from neighborly.data_collection import DataCollector
 from neighborly.decorators import component, system
 from neighborly.exporter import export_to_json
@@ -30,12 +30,11 @@ from neighborly.utils.common import (
     spawn_residence,
     spawn_settlement,
 )
-from neighborly.utils.traits import add_trait
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "seed": 3,
+            "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
                     "Friendship": {
@@ -53,14 +52,9 @@ sim = Neighborly(
                 }
             },
             "plugins": [
-                "neighborly.plugins.defaults.names",
-                "neighborly.plugins.defaults.characters",
-                "neighborly.plugins.defaults.businesses",
-                "neighborly.plugins.defaults.residences",
-                "neighborly.plugins.defaults.life_events",
-                "neighborly.plugins.defaults.ai",
-                "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.location_bias_rules",
+                "neighborly.plugins.defaults.all",
+                "neighborly.plugins.talktown.spawn_tables",
+                "neighborly.plugins.talktown",
             ],
         }
     )
@@ -68,10 +62,17 @@ sim = Neighborly(
 
 
 @component(sim)
-class Robot(TraitComponent):
+class Robot(Component):
     """Tags a character as a Robot"""
 
-    pass
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
 
 @component(sim)
@@ -100,7 +101,7 @@ class RelationshipReporter(ISystem):
                 game_character.first_name == "Delores"
                 and game_character.last_name == "Abernathy"
             ):
-                for target_id, rel_id in relationship_manager.relationships.items():
+                for target_id, rel_id in relationship_manager.outgoing.items():
                     relationship = self.world.get_gameobject(rel_id)
                     data_collector.add_table_row(
                         "relationships",
@@ -139,25 +140,31 @@ def main():
         ),
     )
 
-    west_world = spawn_settlement(sim.world, "West World")
+    west_world = spawn_settlement(sim.world, name="West World")
 
-    delores = spawn_character(
+    GameObjectFactory.add(
+        EntityPrefab(
+            name="westworld::host",
+            extends=["character::default::female"],
+            components={"Robot": {}},
+        )
+    )
+
+    dolores = spawn_character(
         sim.world,
-        "character::default::female",
-        first_name="Delores",
+        "westworld::host",
+        first_name="Dolores",
         last_name="Abernathy",
         age=32,
     )
 
-    add_trait(delores, Robot())
-
-    add_character_to_settlement(delores, west_world)
+    add_character_to_settlement(dolores, west_world)
 
     house = spawn_residence(sim.world, "residence::default::house")
 
     add_residence_to_settlement(house, west_world)
 
-    set_residence(delores, house)
+    set_residence(dolores, house)
 
     st = time.time()
     sim.run_for(YEARS_TO_SIMULATE)
@@ -165,12 +172,6 @@ def main():
 
     print(f"World Date: {str(sim.world.get_resource(SimDateTime))}")
     print("Execution time: ", elapsed_time, "seconds")
-
-    # rel_data = sim.world.get_resource(DataCollector).get_table_dataframe(
-    #     "relationships"
-    # )
-    #
-    # rel_data[:800].to_csv("rel_data.csv")
 
     if EXPORT_SIM:
         with open(f"neighborly_{sim.config.seed}.json", "w") as f:

@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 import pytest
 
-from neighborly.components.character import Female, GameCharacter, NonBinary, Retired
+from neighborly.components.character import GameCharacter, Gender, GenderType, Retired
 from neighborly.components.shared import Age
 from neighborly.core.ecs import Component, World
 from neighborly.core.ecs.query import QB, Relation
@@ -60,7 +60,6 @@ def test_relation_get_tuples():
 
 
 def test_relation_unify():
-
     r0 = Relation.create_empty()
     r1 = Relation(("Hero", "DemonKing"), [(1, 3), (1, 4), (1, 5)])
     r2 = Relation(("Hero", "LoveInterest"), [(1, 4), (2, 6)])
@@ -113,13 +112,13 @@ def sample_world() -> World:
 
     world.spawn_gameobject([Hero(), GameCharacter("Shi", ""), Age(28)])
     world.spawn_gameobject(
-        [Hero(), GameCharacter("Astrid", ""), Female(), Retired(), Age(24)]
+        [Hero(), GameCharacter("Astrid", ""), Gender("Female"), Retired(), Age(24)]
     )
     world.spawn_gameobject(
         [DemonKing(), GameCharacter("Calvin", ""), Retired(), Age(22)]
     )
     world.spawn_gameobject(
-        [DemonKing(), GameCharacter("Palpatine", ""), NonBinary(), Age(128)]
+        [DemonKing(), GameCharacter("Palpatine", ""), Gender("NonBinary"), Age(128)]
     )
 
     return world
@@ -159,7 +158,6 @@ def test_query_not(sample_world: World):
 
 
 def test_query_bindings(sample_world: World):
-
     query = QB.query("_", QB.with_(Hero, "_"))
     result = set(query.execute(sample_world, {"_": 2}))
     expected = {(2,)}
@@ -167,7 +165,12 @@ def test_query_bindings(sample_world: World):
 
     query = QB.query(
         ("_",),
-        QB.with_((GameCharacter, NonBinary), "_"),
+        QB.with_(GameCharacter, "_"),
+        QB.filter_(
+            lambda gameobject: gameobject.get_component(Gender).gender
+            == GenderType.NonBinary,
+            "_",
+        ),
     )
     result = set(query.execute(sample_world, {"_": 4}))
     expected = {(4,)}
@@ -182,7 +185,15 @@ def test_query_bindings(sample_world: World):
     expected = {(2, 3)}
     assert result == expected
 
-    query = QB.query("_", QB.with_((GameCharacter, NonBinary), "_"))
+    query = QB.query(
+        "_",
+        QB.with_(GameCharacter, "_"),
+        QB.filter_(
+            lambda gameobject: gameobject.get_component(Gender).gender
+            == GenderType.NonBinary,
+            "_",
+        ),
+    )
     result = set(query.execute(sample_world, {"_": 4}))
     expected = {(4,)}
     assert result == expected
@@ -203,7 +214,12 @@ def test_filter(sample_world: World):
 
     query = QB.query(
         "_",
-        QB.with_((GameCharacter, NonBinary), "_"),
+        QB.with_((GameCharacter, Gender), "_"),
+        QB.filter_(
+            lambda gameobject: gameobject.get_component(Gender).gender
+            == GenderType.NonBinary,
+            "_",
+        ),
     )
     result = set(query.execute(sample_world))
     expected = {(4,)}

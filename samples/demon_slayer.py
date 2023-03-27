@@ -5,25 +5,9 @@ demon slayers hunting demons, and regular
 people going about their business.
 
 Demon Slayer takes place during the Taisho
-period in Japan (1912-1926).
-
-Occupations
------------
-- Blacksmith
--
-
-Businesses
-----------
-- Department Store
-- Clothing Store
-- Restaurant
-- Farm
-- University
-- School
-- Art Shop
-
-
-
+period in Japan (1912-1926). However, this
+simulation layers Demon-slayer style elements
+on top of a Talk of the Town-style town.
 
 Key Features
 ------------
@@ -56,32 +40,28 @@ from neighborly import (
     World,
 )
 from neighborly.components import (
-    Active,
     CanAge,
     CanGetPregnant,
     FrequentedLocations,
     GameCharacter,
 )
-from neighborly.components.character import Child
-from neighborly.core.event import EventBuffer
-from neighborly.core.life_event import ActionableLifeEvent, LifeEventBuffer
+from neighborly.components.character import LifeStage, LifeStageType
+from neighborly.core.ecs.ecs import Active
+from neighborly.core.life_event import ActionableLifeEvent, AllEvents
 from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
     component,
     component_factory,
-    life_event,
+    event_listener,
+    random_life_event,
     resource,
     system,
 )
+from neighborly.events import DeathEvent
 from neighborly.exporter import export_to_json
-from neighborly.plugins.defaults.life_events import Die
-from neighborly.utils.common import (
-    add_character_to_settlement,
-    get_life_stage,
-    spawn_character,
-    spawn_settlement,
-)
+from neighborly.plugins.defaults.actions import Die
+from neighborly.utils.common import add_character_to_settlement, spawn_character
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -104,14 +84,8 @@ sim = Neighborly(
                 }
             },
             "plugins": [
-                "neighborly.plugins.defaults.names",
-                "neighborly.plugins.defaults.characters",
-                "neighborly.plugins.defaults.businesses",
-                "neighborly.plugins.defaults.residences",
-                "neighborly.plugins.defaults.life_events",
-                "neighborly.plugins.defaults.ai",
-                "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.location_bias_rules",
+                "neighborly.plugins.defaults.all",
+                "neighborly.plugins.talktown",
             ],
         }
     )
@@ -155,7 +129,6 @@ class BreathingStyle(IntEnum):
 
 @component(sim)
 class PowerLevel(Component):
-
     __slots__ = "level"
 
     def __init__(self, level: int = 0) -> None:
@@ -346,7 +319,7 @@ class DemonKingdom:
     _upper_moons: OrderedSet[int]
         The demons ranked as UpperMoon
     _former_upper_moons: OrderedSet[int]
-        The demons that were formerly randed as UpperMoon
+        The demons that were formerly ranked as UpperMoon
     _lower_moons: OrderedSet[int]
         The demons ranked as LowerMoon
     _former_lower_moons: OrderedSet[int]
@@ -567,10 +540,13 @@ def power_level_to_demon_rank(power_level: int) -> DemonRank:
 ########################################
 
 
-@life_event(sim)
+@random_life_event()
 class BecomeDemonSlayer(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
+
+    def get_probability(self) -> float:
+        return 0.8
 
     def execute(self) -> None:
         character = self["Character"]
@@ -582,6 +558,8 @@ class BecomeDemonSlayer(ActionableLifeEvent):
             PowerLevel(world.get_resource(random.Random).randint(0, HINOTO_PL))
         )
         character.add_component(ConfirmedKills())
+        character.fire_event(self)
+        world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(
@@ -589,7 +567,6 @@ class BecomeDemonSlayer(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         # Only create demon slayers if demons are an actual problem
         demons_exist = len(world.get_component(Demon)) > 5
         if demons_exist is False:
@@ -604,7 +581,6 @@ class BecomeDemonSlayer(ActionableLifeEvent):
 
     @staticmethod
     def _bind_character(world: World, candidate: Optional[GameObject] = None):
-
         if candidate:
             candidates = [candidate]
         else:
@@ -620,7 +596,7 @@ class BecomeDemonSlayer(ActionableLifeEvent):
                 continue
             if character.has_component(Demon):
                 continue
-            if get_life_stage(character) >= Child:
+            if character.get_component(LifeStage).life_stage >= LifeStageType.Child:
                 matches.append(character)
 
         if matches:
@@ -629,10 +605,13 @@ class BecomeDemonSlayer(ActionableLifeEvent):
         return None
 
 
-@life_event(sim)
+@random_life_event()
 class DemonSlayerPromotion(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
+
+    def get_probability(self) -> float:
+        return 0.8
 
     def execute(self) -> None:
         character = self["Character"]
@@ -641,6 +620,8 @@ class DemonSlayerPromotion(ActionableLifeEvent):
             character.get_component(PowerLevel).level
         )
         slayer.rank = power_level_rank
+        character.fire_event(self)
+        character.world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(
@@ -648,7 +629,6 @@ class DemonSlayerPromotion(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         character = cls._bind_demon_slayer(world, bindings.get("Character"))
 
         if character is None:
@@ -658,7 +638,6 @@ class DemonSlayerPromotion(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon_slayer(world: World, candidate: Optional[GameObject] = None):
-
         candidates: List[GameObject]
         if candidate:
             candidates = [candidate]
@@ -684,7 +663,7 @@ class DemonSlayerPromotion(ActionableLifeEvent):
         return None
 
 
-@life_event(sim)
+@random_life_event()
 class DemonChallengeForPower(ActionableLifeEvent):
     def __init__(
         self, date: SimDateTime, challenger: GameObject, opponent: GameObject
@@ -693,6 +672,9 @@ class DemonChallengeForPower(ActionableLifeEvent):
             date, [Role("Challenger", challenger), Role("Opponent", opponent)]
         )
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self) -> None:
         """Execute the battle"""
         challenger = self["Challenger"]
@@ -700,8 +682,9 @@ class DemonChallengeForPower(ActionableLifeEvent):
         world = challenger.world
 
         battle_event = Battle(world.get_resource(SimDateTime), challenger, opponent)
-
-        world.get_resource(LifeEventBuffer).append(battle_event)
+        challenger.fire_event(battle_event)
+        opponent.fire_event(battle_event)
+        world.get_resource(AllEvents).append(battle_event)
 
         battle_event.execute()
 
@@ -711,7 +694,6 @@ class DemonChallengeForPower(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         challenger = cls._bind_challenger(world, bindings.get("Challenger"))
 
         if challenger is None:
@@ -781,23 +763,24 @@ class DemonChallengeForPower(ActionableLifeEvent):
         return None
 
 
-@life_event(sim)
+@random_life_event()
 class DevourHuman(ActionableLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, victim: GameObject
     ) -> None:
         super().__init__(date, [Role("Demon", demon), Role("Victim", victim)])
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self):
         demon = self["Demon"]
         victim = self["Victim"]
         world = demon.world
         date = world.get_resource(SimDateTime)
-        life_event_buffer = world.get_resource(LifeEventBuffer)
 
         if victim.has_component(DemonSlayer):
             battle_event = Battle(date, demon, victim)
-            life_event_buffer.append(battle_event)
             battle_event.execute()
 
         else:
@@ -805,9 +788,9 @@ class DevourHuman(ActionableLifeEvent):
             demon.get_component(Demon).rank = power_level_to_demon_rank(
                 demon.get_component(PowerLevel).level
             )
-            death_event = Die(date, victim)
-            life_event_buffer.append(death_event)
-            death_event.execute()
+            demon.fire_event(self)
+            world.get_resource(AllEvents).append(self)
+            Die(victim).evaluate()
 
     @classmethod
     def instantiate(
@@ -815,7 +798,6 @@ class DevourHuman(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         demon = cls._bind_demon(world, bindings.get("Demon"))
 
         if demon is None:
@@ -830,7 +812,6 @@ class DevourHuman(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon(world: World, candidate: Optional[GameObject] = None):
-
         candidates: List[GameObject]
         if candidate:
             candidates = [candidate]
@@ -888,7 +869,7 @@ class DevourHuman(ActionableLifeEvent):
         return None
 
 
-@life_event(sim)
+@random_life_event()
 class Battle(ActionableLifeEvent):
     """Have a demon fight a demon slayer"""
 
@@ -899,6 +880,9 @@ class Battle(ActionableLifeEvent):
             date, [Role("Challenger", challenger), Role("Opponent", opponent)]
         )
 
+    def get_probability(self) -> float:
+        return 0.8
+
     def execute(self) -> None:
         """Choose a winner based on their expected success"""
         challenger = self["Challenger"]
@@ -907,8 +891,6 @@ class Battle(ActionableLifeEvent):
         rng = world.get_resource(random.Random)
         challenger_pl = challenger.get_component(PowerLevel)
         opponent_pl = opponent.get_component(PowerLevel)
-        date = world.get_resource(SimDateTime)
-        life_event_buffer = world.get_resource(LifeEventBuffer)
 
         challenger_success_chance = probability_of_winning(
             challenger_pl.level, opponent_pl.level
@@ -917,6 +899,10 @@ class Battle(ActionableLifeEvent):
         opponent_success_chance = probability_of_winning(
             opponent_pl.level, challenger_pl.level
         )
+
+        opponent.fire_event(self)
+        challenger.fire_event(self)
+        world.get_resource(AllEvents).append(self)
 
         if rng.random() < challenger_success_chance:
             # Challenger wins
@@ -929,11 +915,7 @@ class Battle(ActionableLifeEvent):
 
             challenger_pl.level = new_challenger_pl
 
-            death_event = Die(date, opponent)
-
-            life_event_buffer.append(death_event)
-
-            death_event.execute()
+            Die(opponent).evaluate()
 
             challenger.get_component(ConfirmedKills).count += 1
         else:
@@ -947,11 +929,7 @@ class Battle(ActionableLifeEvent):
 
             opponent_pl.level = new_opponent_pl
 
-            death_event = Die(date, challenger)
-
-            life_event_buffer.append(death_event)
-
-            death_event.execute()
+            Die(challenger).evaluate()
 
             opponent.get_component(ConfirmedKills).count += 1
 
@@ -961,7 +939,6 @@ class Battle(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         challenger = cls._bind_challenger(world, bindings.get("Challenger"))
         opponent = cls._bind_opponent(world, bindings.get("Opponent"))
 
@@ -975,7 +952,6 @@ class Battle(ActionableLifeEvent):
 
     @staticmethod
     def _bind_challenger(world: World, candidate: Optional[GameObject] = None):
-
         candidates: List[GameObject]
         if candidate:
             candidates = [candidate]
@@ -1007,12 +983,15 @@ class Battle(ActionableLifeEvent):
         return None
 
 
-@life_event(sim)
+@random_life_event()
 class TurnSomeoneIntoDemon(ActionableLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, new_demon: GameObject
     ) -> None:
         super().__init__(date, [Role("Demon", demon), Role("NewDemon", new_demon)])
+
+    def get_probability(self) -> float:
+        return 0.8
 
     @classmethod
     def instantiate(
@@ -1020,7 +999,6 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         demon = cls._bind_demon(world, candidate=bindings.get("Demon"))
 
         if demon is None:
@@ -1105,16 +1083,25 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
         new_demon.add_component(PowerLevel(demon.get_component(PowerLevel).level // 2))
         new_demon.add_component(ConfirmedKills())
 
+        demon.fire_event(self)
+        new_demon.fire_event(self)
+        demon.world.get_resource(AllEvents).append(self)
 
-@life_event(sim)
+
+@random_life_event()
 class PromotionToLowerMoon(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
+
+    def get_probability(self) -> float:
+        return 0.8
 
     def execute(self) -> None:
         character = self["Character"]
         demon = character.get_component(Demon)
         demon.rank = DemonRank.LowerMoon
+        character.fire_event(self)
+        character.world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(
@@ -1122,7 +1109,6 @@ class PromotionToLowerMoon(ActionableLifeEvent):
         world: World,
         bindings: RoleList,
     ) -> Optional[ActionableLifeEvent]:
-
         demon = cls._bind_demon(world, bindings.get("Character"))
         if demon:
             return cls(world.get_resource(SimDateTime), demon)
@@ -1130,7 +1116,6 @@ class PromotionToLowerMoon(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon(world: World, candidate: Optional[GameObject] = None):
-
         demon_kingdom = world.get_resource(DemonKingdom)
 
         if not demon_kingdom.has_lower_moon_vacancy():
@@ -1159,15 +1144,20 @@ class PromotionToLowerMoon(ActionableLifeEvent):
         return None
 
 
-@life_event(sim)
+@random_life_event()
 class PromotionToUpperMoon(ActionableLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
+
+    def get_probability(self) -> float:
+        return 0.8
 
     def execute(self) -> None:
         character = self["Character"]
         demon = character.get_component(Demon)
         demon.rank = DemonRank.UpperMoon
+        character.fire_event(self)
+        character.world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(
@@ -1186,7 +1176,6 @@ class PromotionToUpperMoon(ActionableLifeEvent):
 
     @staticmethod
     def _bind_demon(world: World, candidate: Optional[GameObject] = None):
-
         demon_kingdom = world.get_resource(DemonKingdom)
 
         if not demon_kingdom.has_upper_moon_vacancy():
@@ -1215,39 +1204,31 @@ class PromotionToUpperMoon(ActionableLifeEvent):
         return None
 
 
-@system(sim)
-class RetireDeceasedHashira(ISystem):
-    sys_group = "event-listeners"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(Die):
-            if demon_slayer := event["Character"].try_component(DemonSlayer):
-                if demon_slayer.rank == DemonSlayerRank.Hashira:
-                    self.world.get_resource(DemonSlayerCorps).retire_hashira(
-                        event["Character"].uid
-                    )
+@event_listener()
+def handle_hashira_death(gameobject: GameObject, event: DeathEvent) -> None:
+    if demon_slayer := gameobject.try_component(DemonSlayer):
+        if demon_slayer.rank == DemonSlayerRank.Hashira:
+            gameobject.world.get_resource(DemonSlayerCorps).retire_hashira(
+                gameobject.uid
+            )
 
 
-@system(sim)
-class RemoveDeceasedDemons(ISystem):
-    sys_group = "event-listeners"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        for event in self.world.get_resource(EventBuffer).iter_events_of_type(Die):
-            if demon := event["Character"].try_component(Demon):
-                if demon.rank == DemonRank.LowerMoon:
-                    self.world.get_resource(DemonKingdom).retire_lower_moon(
-                        event["Character"].uid
-                    )
-                elif demon.rank == DemonRank.UpperMoon:
-                    self.world.get_resource(DemonKingdom).retire_upper_moon(
-                        event["Character"].uid
-                    )
+@event_listener(DeathEvent)
+def handle_demon_death(gameobject: GameObject, event: DeathEvent) -> None:
+    if demon := gameobject.try_component(Demon):
+        if demon.rank == DemonRank.LowerMoon:
+            gameobject.world.get_resource(DemonKingdom).retire_lower_moon(
+                gameobject.uid
+            )
+        elif demon.rank == DemonRank.UpperMoon:
+            gameobject.world.get_resource(DemonKingdom).retire_upper_moon(
+                gameobject.uid
+            )
 
 
 @system(sim)
 class SpawnFirstDemon(ISystem):
-    sys_group = "early-character-update"
+    sys_group = "early-update"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         date = self.world.get_resource(SimDateTime)
@@ -1256,7 +1237,6 @@ class SpawnFirstDemon(ISystem):
             return
 
         for guid, _ in self.world.get_component(Settlement):
-
             settlement = self.world.get_gameobject(guid)
 
             new_demon = spawn_character(
@@ -1280,14 +1260,6 @@ class SpawnFirstDemon(ISystem):
         self.world.remove_system(type(self))
 
 
-@system(sim)
-class CreateTown(ISystem):
-    sys_group = "initialization"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        spawn_settlement(self.world)
-
-
 ########################################
 # MAIN FUNCTION
 ########################################
@@ -1298,7 +1270,7 @@ EXPORT_WORLD = False
 
 def main():
     st = time.time()
-    sim.run_for(50)
+    sim.run_for(75)
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.world.get_resource(SimDateTime)}")

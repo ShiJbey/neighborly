@@ -10,7 +10,6 @@ from typing import Any, Dict, Optional
 
 from neighborly import Component, GameObject, Neighborly
 from neighborly.components import Activities, Location
-from neighborly.content_management import ActivityLibrary
 from neighborly.decorators import component, location_bias_rule
 from neighborly.utils.common import (
     calculate_location_probabilities,
@@ -59,7 +58,7 @@ class Shopaholic(Component):
         return {}
 
 
-@location_bias_rule(sim, "social-butterfly")
+@location_bias_rule("social-butterfly")
 def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(SocialButterfly) and location_has_activities(
         location, "Socializing"
@@ -67,7 +66,7 @@ def social_butterfly_rule(character: GameObject, location: GameObject) -> Option
         return 2
 
 
-@location_bias_rule(sim, "recovering-alcoholic")
+@location_bias_rule("recovering-alcoholic")
 def recovering_alcoholic_rule(
     character: GameObject, location: GameObject
 ) -> Optional[int]:
@@ -77,7 +76,7 @@ def recovering_alcoholic_rule(
         return -3
 
 
-@location_bias_rule(sim, "shop-alcoholic")
+@location_bias_rule("shop-alcoholic")
 def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(Shopaholic) and location_has_activities(
         location, "Shopping"
@@ -85,7 +84,7 @@ def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int
         return 3
 
 
-@location_bias_rule(sim, "book-worm")
+@location_bias_rule("book-worm")
 def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(BookWorm) and location_has_activities(
         location, "Reading"
@@ -93,7 +92,7 @@ def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]
         return 2
 
 
-@location_bias_rule(sim, "health-nut")
+@location_bias_rule("health-nut")
 def rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(HealthNut) and location_has_activities(
         location, "Recreation"
@@ -102,7 +101,6 @@ def rule(character: GameObject, location: GameObject) -> Optional[int]:
 
 
 def main():
-
     ###############################
     # SPAWN NEW LOCATIONS
     ###############################
@@ -112,10 +110,10 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Recreation"),
-                        sim.world.get_resource(ActivityLibrary).get("Socializing"),
-                    }
+                    [
+                        "Recreation",
+                        "Socializing",
+                    ]
                 ),
             ],
             name="Gym",
@@ -124,9 +122,9 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Reading"),
-                    }
+                    [
+                        "Reading",
+                    ]
                 ),
             ],
             name="Library",
@@ -135,11 +133,11 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Shopping"),
-                        sim.world.get_resource(ActivityLibrary).get("Socializing"),
-                        sim.world.get_resource(ActivityLibrary).get("People Watching"),
-                    }
+                    [
+                        "Shopping",
+                        "Socializing",
+                        "People Watching",
+                    ]
                 ),
             ],
             name="Mall",
@@ -148,10 +146,10 @@ def main():
             [
                 Location(),
                 Activities(
-                    activities={
-                        sim.world.get_resource(ActivityLibrary).get("Drinking"),
-                        sim.world.get_resource(ActivityLibrary).get("Socializing"),
-                    }
+                    [
+                        "Drinking",
+                        "Socializing",
+                    ]
                 ),
             ],
             name="Bar",

@@ -15,7 +15,6 @@ BIG_FIVE_CAP = 1.0
 
 
 class BigFivePersonality(Component):
-
     __slots__ = (
         "openness",
         "conscientiousness",

@@ -7,6 +7,44 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
+## [0.10.0]
+
+**This update has breaking changes from version 0.9.x**
+
+- The package has been restructured again to prevent circular dependencies. Classes are
+  now separated into subpackages/modules by function. For example, all the component
+  classes are within `neighborly.components` all the factories are within
+  `neighborly.factories` and all the default systems are within `neighborly.systems`.
+- The default plugins under `neighborly.plugins.defaults.xxxx` have been restructured
+  to allow people to more easily include only the content they need. If you do not care
+  about the specific plugins, `neighborly.plugins.defaults.all` will import all the
+  default plugins into the simulation.
+- Content libraries are now static class instances.
+- GameObject prefabs should now be instantiated using the `GameObjectFactory` class
+  rather than using the Prefab-specific libraries (CharacterLibrary, BusinessLibrary,
+  and ResidenceLibrary).
+
+### Added
+
+- Content authoring `neighborly.decorators` for use in single file simulations.
+- `py.typed` stub file to remove PyRight warning about Neighborly missing type stubs
+- *SystemGroups* were added to allow better systems ordering. The simulation update loop
+  is now separated into 4 phases (initialization, early-update, update, and
+  late-update).
+- Utility-based behavior trees for goals
+- Event callback are called directly from GameObjects instead of via systems
+- Events are an integral part of the ECS
+-
+
+### Updated
+
+- Content loading functions no longer need the world instance passed when loading assets
+
+### Removed
+
+- Prefab-specific libraries (CharacterLibrary, BusinessLibrary, and ResidenceLibrary) and replaced
+  them with the `GameObjectFactory` static class that handles instantiating GameObjects from prefabs
+
 ## [0.9.5]
 
 - The entire package has been restructures as some modules have moved

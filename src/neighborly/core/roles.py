@@ -83,7 +83,7 @@ class RoleList:
 
         Returns
         -------
-        Optional[GameObject]
+        GameObject or None
             The bound GameObject or None if no role exists
         """
         if role_name in self._sorted_roles:

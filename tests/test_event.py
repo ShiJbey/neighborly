@@ -1,32 +1,33 @@
-from typing import Any, Dict, Tuple
-
 import pytest
 
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.event import Event
+from neighborly.core.life_event import LifeEvent
+from neighborly.core.roles import Role
 from neighborly.core.time import SimDateTime
 
 
-class PriceDisputeEvent(Event):
+class PriceDisputeEvent(LifeEvent):
     def __init__(
         self, date: SimDateTime, merchant: GameObject, customer: GameObject
     ) -> None:
-        super().__init__(date)
-        self.merchant: GameObject = merchant
-        self.customer: GameObject = customer
+        super().__init__(date, [Role("Merchant", merchant), Role("Customer", customer)])
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "merchant": self.merchant.uid,
-            "customer": self.customer.uid,
-        }
+    @property
+    def merchant(self):
+        return self["Merchant"]
+
+    @property
+    def customer(self):
+        return self["Customer"]
 
 
-class DeclareRivalryEvent(Event):
+class DeclareRivalryEvent(LifeEvent):
     def __init__(self, date: SimDateTime, *characters: GameObject) -> None:
-        super().__init__(date)
-        self.characters: Tuple[GameObject, ...] = characters
+        super().__init__(date, [Role("Character", c) for c in characters])
+
+    @property
+    def characters(self):
+        return self._roles.get_all("Character")
 
 
 @pytest.fixture
@@ -47,13 +48,13 @@ def shared_role_event():
     return DeclareRivalryEvent(SimDateTime(1, 1, 1), character_a, character_b)
 
 
-def test_life_event_get_type(sample_event: Event):
+def test_life_event_get_type(sample_event: LifeEvent):
     assert sample_event.get_type() == "PriceDisputeEvent"
 
 
-def test_life_event_to_dict(sample_event: Event):
+def test_life_event_to_dict(sample_event: LifeEvent):
     serialized_event = sample_event.to_dict()
     assert serialized_event["type"] == "PriceDisputeEvent"
     assert serialized_event["timestamp"] == "0001-01-01T00:00:00"
-    assert serialized_event["merchant"] == 1
-    assert serialized_event["customer"] == 2
+    assert serialized_event["roles"]["Merchant"] == 1
+    assert serialized_event["roles"]["Customer"] == 2

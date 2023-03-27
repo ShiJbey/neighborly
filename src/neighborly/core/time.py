@@ -10,6 +10,7 @@ enums, and helper classes.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import List
@@ -104,13 +105,13 @@ class SimDateTime:
     using 7-day weeks, 4-week months, and 12-month years
     """
 
-    __slots__ = "_hour", "_day", "_month", "_year", "_weekday", "_delta_time"
+    __slots__ = "_hour", "_day", "_month", "_year", "_weekday"
 
     def __init__(
         self,
-        year: int = 0,
-        month: int = 0,
-        day: int = 0,
+        year: int = 1,
+        month: int = 1,
+        day: int = 1,
         hour: int = 0,
     ) -> None:
         if 0 <= hour < HOURS_PER_DAY:
@@ -120,23 +121,22 @@ class SimDateTime:
                 f"Parameter 'hours' must be between 0 and {HOURS_PER_DAY - 1}"
             )
 
-        if 0 <= day < DAYS_PER_MONTH:
-            self._day: int = day
-            self._weekday: int = day % 7
+        if 1 <= day <= DAYS_PER_MONTH:
+            self._day: int = day - 1
+            self._weekday: Weekday = Weekday(self._day % 7)
+        else:
+            raise ValueError(f"Parameter 'day' must be between 1 and {DAYS_PER_MONTH}")
+
+        if 1 <= month <= MONTHS_PER_YEAR:
+            self._month: int = month - 1
         else:
             raise ValueError(
-                f"Parameter 'day' must be between 0 and {DAYS_PER_MONTH - 1}"
+                f"Parameter 'month' must be between 1 and {MONTHS_PER_YEAR}"
             )
 
-        if 0 <= month < MONTHS_PER_YEAR:
-            self._month: int = month
-        else:
-            raise ValueError(
-                f"Parameter 'month' must be between 0 and {MONTHS_PER_YEAR - 1}"
-            )
-
-        self._year: int = year
-        self._delta_time: int = 0
+        if year < 1:
+            raise ValueError("Parameter 'year' must be greater than or equal to 1.")
+        self._year: int = year - 1
 
     def increment(
         self, hours: int = 0, days: int = 0, months: int = 0, years: int = 0
@@ -153,28 +153,24 @@ class SimDateTime:
             raise ValueError("Parameter 'years' may not be negative")
 
         total_hours: int = self._hour + hours
-        carry_days: int = int(total_hours / 24)
+        carry_days: int = total_hours // HOURS_PER_DAY
 
-        self._hour = total_hours % 24
+        self._hour = total_hours % HOURS_PER_DAY
 
-        self._weekday = (self._weekday + days + carry_days) % 7
+        total_days: int = self._day + days + carry_days
 
-        total_days: int = self.day + days + carry_days
-        carry_months: int = int(total_days / 28)  # 28 days per month
-        self._day = total_days % 28
+        carry_months: int = total_days // DAYS_PER_MONTH
+
+        self._day = total_days % DAYS_PER_MONTH
+
+        self._weekday = Weekday(self._day % DAYS_PER_WEEK)
 
         total_months: int = self._month + months + carry_months
-        carry_years: int = int(total_months / 12)
-        self._month = total_months % 12
+        carry_years: int = total_months // MONTHS_PER_YEAR
+
+        self._month = total_months % MONTHS_PER_YEAR
 
         self._year = self._year + years + carry_years
-
-        self._delta_time = (
-            hours
-            + days * HOURS_PER_DAY
-            + months * DAYS_PER_MONTH * HOURS_PER_DAY
-            + years * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY
-        )
 
     @property
     def hour(self) -> int:
@@ -182,23 +178,19 @@ class SimDateTime:
 
     @property
     def day(self) -> int:
-        return self._day
+        return self._day + 1
 
     @property
-    def weekday(self) -> int:
+    def weekday(self) -> Weekday:
         return self._weekday
 
     @property
     def month(self) -> int:
-        return self._month
+        return self._month + 1
 
     @property
     def year(self) -> int:
-        return self._year
-
-    @property
-    def delta_time(self) -> int:
-        return self._delta_time
+        return self._year + 1
 
     @property
     def weekday_str(self) -> str:
@@ -206,10 +198,10 @@ class SimDateTime:
 
     def copy(self) -> SimDateTime:
         return SimDateTime(
-            hour=self._hour,
-            day=self._day,
-            month=self._month,
-            year=self._year,
+            hour=self.hour,
+            day=self.day,
+            month=self.month,
+            year=self.year,
         )
 
     def __repr__(self) -> str:
@@ -255,21 +247,20 @@ class SimDateTime:
         return self
 
     def __le__(self, other: SimDateTime) -> bool:
-        return self.to_iso_str() <= other.to_iso_str()
+        return self.to_hours() <= other.to_hours()
 
     def __lt__(self, other: SimDateTime) -> bool:
-        return self.to_iso_str() < other.to_iso_str()
+        return self.to_hours() < other.to_hours()
 
     def __ge__(self, other: SimDateTime) -> bool:
-        return self.to_iso_str() >= other.to_iso_str()
+        return self.to_hours() >= other.to_hours()
 
     def __gt__(self, other: SimDateTime) -> bool:
-
-        return self.to_iso_str() > other.to_iso_str()
+        return self.to_hours() > other.to_hours()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SimDateTime):
-            raise TypeError(f"expected TimeDelta object but was {type(other)}")
+            raise TypeError(f"expected SimDateTime object but was {type(other)}")
         return self.to_hours() == other.to_hours()
 
     def to_date_str(self) -> str:
@@ -284,20 +275,12 @@ class SimDateTime:
         )
 
     def to_hours(self) -> int:
-        """Return the number of hours that have elapsed since 00-00-0000"""
+        """Return the number of hours that have elapsed since 01-01-0001 12:00 AM"""
         return (
             self.hour
-            + (self.day * HOURS_PER_DAY)
-            + (self.month * DAYS_PER_MONTH * HOURS_PER_DAY)
-            + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
-        )
-
-    def to_ordinal(self) -> int:
-        """Returns the number of elapsed days since 00-00-0000"""
-        return (
-            +self.day
-            + (self.month * DAYS_PER_MONTH)
-            + (self.year * MONTHS_PER_YEAR * DAYS_PER_MONTH)
+            + (self._day * HOURS_PER_DAY)
+            + (self._month * DAYS_PER_MONTH * HOURS_PER_DAY)
+            + (self._year * MONTHS_PER_YEAR * DAYS_PER_MONTH * HOURS_PER_DAY)
         )
 
     def get_time_of_day(self) -> str:
@@ -305,43 +288,44 @@ class SimDateTime:
         return _TIME_OF_DAY[self.hour]
 
     @classmethod
-    def from_ordinal(cls, ordinal_date: int) -> SimDateTime:
-        date = cls()
-        date.increment(days=ordinal_date)
-        return date
-
-    @classmethod
-    def from_iso_str(cls, iso_date: str) -> SimDateTime:
-        """Return a SimDateTime object given an ISO format string"""
-        date_time = iso_date.strip().split("T")
-        date = date_time[0]
-        time = date_time[1] if len(date_time) == 2 else "00:00.000z"
-        year, month, day = tuple(map(lambda s: int(s.strip()), date.split("-")))
-        hour = int(time.split(":")[0])
-        return cls(year=year, month=month, day=day, hour=hour)
-
-    @classmethod
     def from_str(cls, time_str: str) -> SimDateTime:
-        time = cls()
-        items = tuple(time_str.split("-"))
+        """
+        Create a new SimDateTime instance from a date string
 
-        if len(items) == 4:
-            year, month, day, hour = items
-            time._year = int(year)
-            time._month = int(month)
-            time._weekday = int(day) % 7
-            time._day = int(day)
-            time._hour = int(hour)
-            return time
+        Parameters
+        ----------
+        time_str: str
+            A date in DD/MM/YYYY format or YYYY-MM-DDTHH:00:00 ISO 8061 format
 
-        elif len(items) == 3:
-            year, month, day = items
-            time._year = int(year)
-            time._month = int(month)
-            time._weekday = int(day) % 7
-            time._day = int(day)
-            time._hour = 0
-            return time
+        Returns
+        -------
+        SimDateTime
+            A date object set to the date in the string
+        """
+        if m := re.match(
+            "^(?P<DAY>[0-9]{1,2})\\/(?P<MONTH>[0-9]{1,2})\\/(?P<YEAR>[0-9]{4}$)",
+            time_str,
+        ):
+            return cls(
+                year=int(m.group("YEAR")),
+                month=int(m.group("MONTH")),
+                day=int(m.group("DAY")),
+            )
+
+        elif m := re.match(
+            (
+                "^(?P<YEAR>\\d{4})-(?P<MONTH>\\d{2})-(?P<DAY>\\d{2})"
+                "T(?P<HOUR>\\d{2}):(?:\\d{2}):(?:\\d{2}(?:\\.\\d*)?)"
+                "(?:(?:-(?:\\d{2}):(?:\\d{2})|Z)?)$"
+            ),
+            time_str,
+        ):
+            return cls(
+                year=int(m.group("YEAR")),
+                month=int(m.group("MONTH")),
+                day=int(m.group("DAY")),
+                hour=int(m.group("HOUR")),
+            )
 
         else:
             raise ValueError(f"Invalid date string: {time_str}")

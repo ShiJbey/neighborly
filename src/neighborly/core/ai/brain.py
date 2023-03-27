@@ -3,121 +3,277 @@ This module contains interfaces, components, and systems
 related to character decision-making. Users of this library
 should use these classes to override character decision-making
 processes
+
+This code is adapted from Brian Bucklew's IRDC talk on the AI in Caves of Qud and
+Sproggiwood:
+
+https://www.youtube.com/watch?v=4uxN5GqXcaA&t=339s&ab_channel=InternationalRoguelikeDeveloperConference
 """
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from __future__ import annotations
 
-from neighborly.core.action import Action
-from neighborly.core.ecs import Component, GameObject, World
+import random
+from abc import abstractmethod
+from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar, final
+
+from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree
+from neighborly.core.ecs import Component, GameObject
+
+_T = TypeVar("_T")
 
 
-class IAIBrain(ABC):
-    """
-    Interface defines functions that a class needs to implement to be
-    injected into a MovementAI component.
-    """
+class WeightedList(Generic[_T]):
+    """Manages a list of actions mapped to weights to facilitate random selection"""
 
-    @abstractmethod
-    def get_type(self) -> str:
-        """Return this brain type"""
-        raise NotImplementedError
+    __slots__ = "_items", "_weights", "_size", "_total_weight"
 
-    @abstractmethod
-    def get_next_location(self, world: World, gameobject: GameObject) -> Optional[int]:
+    def __init__(self) -> None:
+        self._items: List[_T] = []
+        self._weights: List[float] = []
+        self._total_weight: float = 0.0
+        self._size: int = 0
+
+    def append(self, weight: float, item: _T) -> None:
         """
-        Returns where the character will move to this simulation tick.
+        Add an action to the list
 
         Parameters
         ----------
-        world: World
-            The world that the character belongs to
-        gameobject: GameObject
-            The GameObject instance the module is associated with
+        weight: int
+            The weight associated with the action to add
+        item: _T
+            The item to add
+        """
+        assert weight >= 0
+        self._weights.append(weight)
+        self._items.append(item)
+        self._size += 1
+        self._total_weight += weight
+
+    def pick_one(self, rng: random.Random) -> _T:
+        """Perform weighted random selection on the entries
 
         Returns
         -------
-            The ID of the location to move to next
+        _T
+            An action from the list
         """
-        raise NotImplementedError
+        return rng.choices(self._items, self._weights, k=1)[0]
+
+    def above_thresh(self, threshold: float) -> WeightedList[_T]:
+        new_list: WeightedList[_T] = WeightedList()
+
+        for i, weight in enumerate(self._weights):
+            if weight >= threshold:
+                new_list.append(weight, self._items[i])
+
+        return new_list
+
+    def has_options(self) -> bool:
+        """Return True if there is at least one item with a positive weight"""
+        return self._total_weight > 0
+
+    def clear(self) -> None:
+        self._items.clear()
+        self._weights.clear()
+        self._size = 0
+        self._total_weight = 0.0
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __bool__(self) -> bool:
+        return bool(self._size)
+
+
+class Consideration(Protocol):
+    """Considerations check if a GameObject meets conditions and returns a score"""
 
     @abstractmethod
-    def execute_action(self, world: World, gameobject: GameObject) -> None:
+    def __call__(self, gameobject: GameObject) -> Optional[float]:
         """
-        Get the next action for this character
+        Perform consideration score calculation
 
         Parameters
         ----------
-        world: World
-            The world instance the character belongs to
         gameobject: GameObject
-            The GameObject instance this module is associated with
+            The GameObject to calculate this consideration for
+
+        Returns
+        -------
+        float or None
+            A score from [0.0, 1.0]
         """
+        raise NotImplementedError()
+
+
+class ConsiderationList(List[Consideration]):
+    """A collection of considerations usually associated with an action or goal"""
+
+    def calculate_score(self, gameobject: GameObject) -> float:
+        """
+        Scores each consideration and returns an aggregate score
+
+        Parameters
+        ----------
+        gameobject : GameObject
+            The GameObject to score the considerations for
+
+        Returns
+        -------
+        float
+            The aggregate consideration score
+        """
+
+        cumulative_score: float = 1.0
+        consideration_count: int = 0
+
+        for c in self:
+            consideration_score = c(gameobject)
+            if consideration_score is not None:
+                assert 0.0 <= consideration_score <= 1.0
+                cumulative_score *= consideration_score
+                consideration_count += 1
+
+            if cumulative_score == 0.0:
+                break
+
+        if consideration_count == 0:
+            consideration_count = 1
+            cumulative_score = 0.0
+
+        # Scores are averaged using the Geometric Mean instead of
+        # arithmetic mean. It calculates the mean of a product of
+        # n-numbers by finding the n-th root of the product
+        # Tried using the averaging scheme by Dave Mark, but it
+        # returned values that felt too small and were not easy
+        # to reason about.
+        # Using this method, a cumulative score of zero will still
+        # result in a final score of zero.
+
+        final_score = cumulative_score ** (1 / consideration_count)
+
+        # mod_factor = 1.0 - (1.0 / consideration_count)
+        # makeup_value = (1.0 - cumulative_score) * mod_factor
+        # final_score = cumulative_score + (cumulative_score * makeup_value)
+        return final_score
+
+
+class ConsiderationDict(Dict[GameObject, ConsiderationList]):
+    """Maps considerations to GameObjects with those considerations"""
+
+    def calculate_scores(self) -> Dict[GameObject, float]:
+        scores: Dict[GameObject, float] = {}
+
+        for gameobject, considerations in self.items():
+            score = considerations.calculate_score(gameobject)
+            scores[gameobject] = score
+
+        return scores
+
+
+class GoalNode(BehaviorTree):
+    """Defines a goal and behavior to achieve that goal including sub-goals"""
+
+    __slots__ = "original_goal"
+
+    def __init__(self, root: Optional[AbstractBTNode] = None) -> None:
+        super().__init__(root)
+        self.original_goal: Optional[GoalNode] = None
+        self.blackboard["goal_stack"] = [self]
+
+    @abstractmethod
+    def is_complete(self) -> bool:
+        """Return True if the goal is complete or invalid, False otherwise"""
         raise NotImplementedError
 
     @abstractmethod
-    def append_action(self, action: Action) -> None:
-        """Add an action to the internal queue"""
+    def get_utility(self) -> Dict[GameObject, float]:
+        """
+        Calculate how important and beneficial this goal is
+
+        Returns
+        -------
+        Dict[GameObject, float]
+            GameObjects mapped to the utility they derive from the goal
+        """
         raise NotImplementedError
 
+    @final
+    def set_blackboard(self, blackboard: Dict[str, Any]) -> None:
+        super().set_blackboard(blackboard)
+        if "goal_stack" in self.blackboard:
+            self.blackboard["goal_stack"].append(self)
+        else:
+            self.blackboard["goal_stack"] = [self]
 
-class AIComponent(Component, IAIBrain):
-    """
-    Component responsible for moving a character around the simulation. It
-    uses an IMovementAIModule instance to determine where the character
-    should go.
+    @final
+    def take_action(self) -> None:
+        """Perform an action in-service of this goal"""
+        self.evaluate()
 
-    This is a wrapper class that tricks the ECS into thinking that all
-    AI modules are the same, if you subclass this class, it will not be
-    updated by default in the ECS, and will require its own system definition
+    @final
+    def get_goal_stack(self) -> List[GoalNode]:
+        stack: List[GoalNode] = [self]
 
-    Attributes
-    ----------
-    brain: IAIBrain
-        An AI brain responsible for movement decision-making
-    """
+        if self.original_goal:
+            stack.extend(self.original_goal.get_goal_stack())
 
-    __slots__ = "brain"
+        return stack
 
-    def __init__(self, brain: IAIBrain) -> None:
+    @abstractmethod
+    def satisfied_goals(self) -> List[GoalNode]:
+        """Get a list of goals that this goal satisfies"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def __eq__(self, __o: object) -> bool:
+        raise NotImplementedError()
+
+
+class Goals(Component):
+    """Tracks the GameObject's current goals that drive behavior"""
+
+    __slots__ = "_goals"
+
+    def __init__(self) -> None:
         super().__init__()
-        self.brain: IAIBrain = brain
+        self._goals: WeightedList[GoalNode] = WeightedList()
 
-    def get_type(self) -> str:
-        return self.brain.get_type()
-
-    def get_next_location(self, world: World, gameobject: GameObject) -> Optional[int]:
-        """
-        Returns where the character will move to this simulation tick.
-
-        Parameters
-        ----------
-        world: World
-            The world that the character belongs to
-        gameobject: GameObject
-            The GameObject instance the module is associated with
+    def pick_one(self, rng: random.Random) -> GoalNode:
+        """Perform weighted random selection on the entries
 
         Returns
         -------
-            The ID of the location to move to next
+        GoalNode
+            An action from the list
         """
-        return self.brain.get_next_location(world, gameobject)
+        return self._goals.pick_one(rng)
 
-    def execute_action(self, world: World, gameobject: GameObject) -> None:
-        """
-        Get the next action for this character
-
-        Parameters
-        ----------
-        world: World
-            The world instance the character belongs to
-        gameobject: GameObject
-            The GameObject instance this module is associated with
-        """
-        self.brain.execute_action(world, gameobject)
-
-    def append_action(self, action: Action) -> None:
-        """Add an action to the internal queue"""
-        self.brain.append_action(action)
+    def push_goal(self, priority: float, goal: GoalNode) -> None:
+        """Add a goal to the AI"""
+        self._goals.append(priority, goal)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"brain_type": self.brain.get_type()}
+        return {}
+
+    def has_options(self) -> bool:
+        return self._goals.has_options()
+
+    def clear_goals(self) -> None:
+        self._goals.clear()
+
+    def __len__(self) -> int:
+        return len(self._goals)
+
+    def __bool__(self) -> bool:
+        return bool(self._goals)
+
+
+class AIBrain(Component):
+    """Marks a GameObject as being AI-controlled"""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}

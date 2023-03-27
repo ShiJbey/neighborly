@@ -1,6 +1,6 @@
 from typing import Any
 
-from neighborly.core.ecs.ecs import ISystem
+from neighborly.core.ecs import ISystem
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.common import spawn_settlement
 
@@ -15,7 +15,7 @@ class CreateTown(ISystem):
     sys_group = "initialization"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        spawn_settlement(self.world)
+        spawn_settlement(self.world, "settlement")
 
 
 def setup(sim: Neighborly, **kwargs: Any):
