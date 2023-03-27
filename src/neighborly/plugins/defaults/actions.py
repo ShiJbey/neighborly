@@ -59,6 +59,7 @@ from neighborly.core.relationship import (
     has_relationship_status,
     remove_relationship_status,
 )
+from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, clear_statuses
 from neighborly.core.time import DAYS_PER_MONTH, DAYS_PER_YEAR, SimDateTime
@@ -164,12 +165,30 @@ def invert_consideration(c: Consideration):
 
 
 class FindEmployment(GoalNode):
-    __slots__ = "character", "world"
+    considerations: Dict[str, ConsiderationList] = {
+        "Character": ConsiderationList(
+            [
+                employment_children_consideration,
+                employment_spouse_consideration,
+                has_occupation_consideration,
+                ambition_consideration,
+                reliability_consideration,
+                independence_consideration,
+                time_unemployed_consideration,
+                employment_life_stage_consideration,
+            ]
+        )
+    }
+
+    __slots__ = "roles"
 
     def __init__(self, character: GameObject) -> None:
         super().__init__(SelectorBTNode([GetJob(character), StartBusiness(character)]))
-        self.character = character
-        self.world = character.world
+        self.roles = RoleList([Role("Character", character)])
+
+    @property
+    def character(self):
+        return self.roles["Character"]
 
     def is_complete(self) -> bool:
         return self.character.has_component(Occupation)
@@ -191,22 +210,18 @@ class FindEmployment(GoalNode):
         Dict[GameObject, float]
             GameObjects mapped to the utility they derive from the goal
         """
-        return ConsiderationDict(
-            {
-                self.character: ConsiderationList(
-                    [
-                        employment_children_consideration,
-                        employment_spouse_consideration,
-                        has_occupation_consideration,
-                        ambition_consideration,
-                        reliability_consideration,
-                        independence_consideration,
-                        time_unemployed_consideration,
-                        employment_life_stage_consideration,
-                    ]
-                )
-            }
-        ).calculate_scores()
+        utilities: Dict[GameObject, float] = {}
+
+        for role in self.roles:
+            utilities[role.gameobject] = self.considerations[role.name].calculate_score(
+                role.gameobject
+            )
+
+        return utilities
+
+    @classmethod
+    def add_consideration(cls, role: str, consideration: Consideration) -> None:
+        cls.considerations[role].append(consideration)
 
 
 class StartBusiness(GoalNode):

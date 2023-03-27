@@ -141,9 +141,20 @@ class ConsiderationList(List[Consideration]):
             consideration_count = 1
             cumulative_score = 0.0
 
-        mod_factor = 1.0 - (1.0 / consideration_count)
-        makeup_value = (1.0 - cumulative_score) * mod_factor
-        final_score = cumulative_score + (cumulative_score * makeup_value)
+        # Scores are averaged using the Geometric Mean instead of
+        # arithmetic mean. It calculates the mean of a product of
+        # n-numbers by finding the n-th root of the product
+        # Tried using the averaging scheme by Dave Mark, but it
+        # returned values that felt too small and were not easy
+        # to reason about.
+        # Using this method, a cumulative score of zero will still
+        # result in a final score of zero.
+
+        final_score = cumulative_score ** (1 / consideration_count)
+
+        # mod_factor = 1.0 - (1.0 / consideration_count)
+        # makeup_value = (1.0 - cumulative_score) * mod_factor
+        # final_score = cumulative_score + (cumulative_score * makeup_value)
         return final_score
 
 

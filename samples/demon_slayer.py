@@ -574,6 +574,8 @@ class BecomeDemonSlayer(ActionableLifeEvent):
             PowerLevel(world.get_resource(random.Random).randint(0, HINOTO_PL))
         )
         character.add_component(ConfirmedKills())
+        character.fire_event(self)
+        world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(
@@ -634,6 +636,8 @@ class DemonSlayerPromotion(ActionableLifeEvent):
             character.get_component(PowerLevel).level
         )
         slayer.rank = power_level_rank
+        character.fire_event(self)
+        character.world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(
@@ -790,13 +794,9 @@ class DevourHuman(ActionableLifeEvent):
         victim = self["Victim"]
         world = demon.world
         date = world.get_resource(SimDateTime)
-        all_events = world.get_resource(AllEvents)
 
         if victim.has_component(DemonSlayer):
             battle_event = Battle(date, demon, victim)
-            demon.fire_event(battle_event)
-            victim.fire_event(battle_event)
-            all_events.append(battle_event)
             battle_event.execute()
 
         else:
@@ -804,6 +804,8 @@ class DevourHuman(ActionableLifeEvent):
             demon.get_component(Demon).rank = power_level_to_demon_rank(
                 demon.get_component(PowerLevel).level
             )
+            demon.fire_event(self)
+            world.get_resource(AllEvents).append(self)
             Die(victim).evaluate()
 
     @classmethod
@@ -913,6 +915,10 @@ class Battle(ActionableLifeEvent):
         opponent_success_chance = probability_of_winning(
             opponent_pl.level, challenger_pl.level
         )
+
+        opponent.fire_event(self)
+        challenger.fire_event(self)
+        world.get_resource(AllEvents).append(self)
 
         if rng.random() < challenger_success_chance:
             # Challenger wins
@@ -1093,6 +1099,10 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
         new_demon.add_component(PowerLevel(demon.get_component(PowerLevel).level // 2))
         new_demon.add_component(ConfirmedKills())
 
+        demon.fire_event(self)
+        new_demon.fire_event(self)
+        demon.world.get_resource(AllEvents).append(self)
+
 
 @random_life_event()
 class PromotionToLowerMoon(ActionableLifeEvent):
@@ -1106,6 +1116,8 @@ class PromotionToLowerMoon(ActionableLifeEvent):
         character = self["Character"]
         demon = character.get_component(Demon)
         demon.rank = DemonRank.LowerMoon
+        character.fire_event(self)
+        character.world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(
@@ -1160,6 +1172,8 @@ class PromotionToUpperMoon(ActionableLifeEvent):
         character = self["Character"]
         demon = character.get_component(Demon)
         demon.rank = DemonRank.UpperMoon
+        character.fire_event(self)
+        character.world.get_resource(AllEvents).append(self)
 
     @classmethod
     def instantiate(

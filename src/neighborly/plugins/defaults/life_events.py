@@ -18,7 +18,7 @@ from neighborly.components.residence import Residence, Resident
 from neighborly.components.shared import Age, Lifespan
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import QB, Active, GameObject, World
-from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
+from neighborly.core.life_event import ActionableLifeEvent, AllEvents, RandomLifeEvents
 from neighborly.core.relationship import (
     Relationship,
     RelationshipManager,
@@ -54,6 +54,10 @@ class StartDatingLifeEvent(ActionableLifeEvent):
         initiator = self["Initiator"]
         other = self["Other"]
 
+        initiator.fire_event(self)
+        other.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
+
         add_relationship_status(initiator, other, Dating())
         add_relationship_status(other, initiator, Dating())
 
@@ -73,7 +77,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
             c
             for c in candidates
             if is_single(c)
-            and c.get_component(LifeStage).life_stage >= LifeStageType.Adolescent
+               and c.get_component(LifeStage).life_stage >= LifeStageType.Adolescent
         ]
 
         if candidates:
@@ -173,6 +177,10 @@ class DatingBreakUp(ActionableLifeEvent):
         initiator = self["Initiator"]
         other = self["Other"]
 
+        initiator.fire_event(self)
+        other.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
+
         remove_relationship_status(initiator, other, Dating)
         remove_relationship_status(other, initiator, Dating)
 
@@ -271,7 +279,7 @@ class DivorceLifeEvent(ActionableLifeEvent):
             QB.with_(Married, "?relationship"),
             QB.filter_(
                 lambda rel: rel.get_component(Romance).get_value()
-                <= rel.world.get_resource(NeighborlyConfig).settings.get(
+                            <= rel.world.get_resource(NeighborlyConfig).settings.get(
                     "divorce_romance_thresh", -25
                 ),
                 "?relationship",
@@ -298,6 +306,10 @@ class DivorceLifeEvent(ActionableLifeEvent):
     def execute(self):
         initiator = self["Initiator"]
         ex_spouse = self["Other"]
+
+        initiator.fire_event(self)
+        ex_spouse.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
 
         remove_relationship_status(initiator, ex_spouse, Married)
         remove_relationship_status(ex_spouse, initiator, Married)
@@ -415,6 +427,10 @@ class MarriageLifeEvent(ActionableLifeEvent):
         initiator = self["Initiator"]
         other = self["Other"]
         world = initiator.world
+
+        initiator.fire_event(self)
+        other.fire_event(self)
+        initiator.world.get_resource(AllEvents).append(self)
 
         remove_relationship_status(initiator, other, Dating)
         remove_relationship_status(other, initiator, Dating)
@@ -549,6 +565,9 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         due_date = current_date.copy()
         due_date.increment(months=9)
 
+        self["PregnantOne"].fire_event(self)
+        self["PregnantOne"].world.get_resource(AllEvents).append(self)
+
         add_status(
             self["PregnantOne"],
             Pregnant(
@@ -578,7 +597,7 @@ class DieOfOldAge(ActionableLifeEvent):
             QB.with_((GameCharacter, Active), "Deceased"),
             QB.filter_(
                 lambda gameobject: gameobject.get_component(Age).value
-                >= gameobject.get_component(Lifespan).value,
+                                   >= gameobject.get_component(Lifespan).value,
                 "Deceased",
             ),
         )
@@ -605,6 +624,8 @@ class DieOfOldAge(ActionableLifeEvent):
         return age / (lifespan + 10.0)
 
     def execute(self) -> None:
+        self["Deceased"].fire_event(self)
+        self["Deceased"].world.get_resource(AllEvents).append(self)
         Die(self["Deceased"]).evaluate()
 
 
@@ -612,6 +633,15 @@ class GoOutOfBusiness(ActionableLifeEvent):
     """Businesses can randomly go out of business"""
 
     def execute(self):
+        business = self["Business"]
+
+        owner_id = business.get_component(Business).owner
+
+        if owner_id:
+            owner = business.world.get_gameobject(
+                owner_id
+            )
+            owner.fire_event(self)
         shutdown_business(self["Business"])
 
     def get_probability(self) -> float:
