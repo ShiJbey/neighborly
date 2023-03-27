@@ -47,8 +47,7 @@ opportunities for extension and content authoring.
 - Define life events and actions to drive narrative generation
 - Define social rules for how characters should feel about each other
 - Define rules for where characters what locations characters should frequent
-- Goal-driven utility-based AI characters
-- 7-day week daily routines for characters
+- Specify goal-driven behaviors using behavior trees and utility AI
 - Can model various relationship facets like romance, friendship, trust, and respect
 - Collect and export data about agents using Pandas DataFrames
 - Commandline interface (CLI) tool
@@ -63,8 +62,9 @@ opportunities for extension and content authoring.
 
 # Installation
 
-Neighborly is available to install from PyPI. This will install the latest official
-release.
+Neighborly is available to install from
+[PyPI](https://pypi.org/project/neighborly/). This will install the latest
+official release.
 
 ```bash
 pip install neighborly
@@ -159,7 +159,7 @@ need to run the following command to install all the needed dependencies.
 python -m pip install -e ".[samples]"
 ```
 
-Then start Jupyter and pass the relative path to the notebooks directory. The following
+Then start Jupyter and pass the relative path to the `notebooks` directory. The following
 assumes that the command is being run from the root of the project.
 
 ```bash

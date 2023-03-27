@@ -1,8 +1,14 @@
 """
 samples/initialization_systems.py
 
-This sample shows how to use initialization systems to set up the simulation before
-the first timestep.
+Neighborly is a step-based simulation. So, time advances one timestep at a time. Each
+timestep is divided into three phases: early-update, update, and late-update. There is
+also a special fourth phase called "initialization" that runs only once at the beginning
+of the first timestep. This is where users should place any systems intended to set up
+the simulation.
+
+In this example, we show how a user could add a new initialization system that spawns
+multiple settlements into the simulation.
 """
 from typing import Any
 

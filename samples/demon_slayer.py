@@ -5,25 +5,9 @@ demon slayers hunting demons, and regular
 people going about their business.
 
 Demon Slayer takes place during the Taisho
-period in Japan (1912-1926).
-
-Occupations
------------
-- Blacksmith
--
-
-Businesses
-----------
-- Department Store
-- Clothing Store
-- Restaurant
-- Farm
-- University
-- School
-- Art Shop
-
-
-
+period in Japan (1912-1926). However, this
+simulation layers Demon-slayer style elements
+on top of a Talk of the Town-style town.
 
 Key Features
 ------------

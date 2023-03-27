@@ -3,7 +3,11 @@ samples/addition_removal_detection
 
 This sample script shows how simulation authors can detect when components are added
 or removed. This may be helpful when you need to change the state of other components
-based on the change in presence of another component
+based on the change in presence of another component. In this example, we add and remove
+a status buffer on the character.
+
+Adding new components triggers a ComponentAddedEvent, and we can use the info inside
+the event to make changes.
 """
 from dataclasses import dataclass
 from typing import Any, Dict

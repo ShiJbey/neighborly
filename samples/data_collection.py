@@ -4,6 +4,13 @@
 samples/data_collection.py
 
 This sample script demonstrate shows how users can extract data from the simulation.
+Data collection is very important for most agent-based simulations. Usually we want to
+measure some internal dynamics of the simulation. Using the DataCollector resource
+helps users aggregate all their data tables into a single location.
+
+This example tracks the amount of money that characters have and prints the contents of
+the data table, when the simulation concludes. Data tables are exported as Pandas
+DataFrames to help Neighborly integrate with existing Python data science workflows.
 
 Data should be collected within systems that are added to the DataCollectionSystemGroup.
 This group runs near the end of a simulation step when all the changes have occurred.

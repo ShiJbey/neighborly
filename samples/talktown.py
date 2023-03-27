@@ -1,9 +1,10 @@
 """
-samples/talktown.py
+Talk of the Town Sample
+------------------------
 
 This samples shows Neighborly simulating a Talk of the Town-style
-town. It uses the TalkOfTheTown plugin included with Neighborly
-and simulated 140 years of town history.
+town. It uses the talktown plugin included with Neighborly
+and simulates 140 years of town history.
 """
 
 import time
@@ -45,7 +46,7 @@ sim = Neighborly(
 
 if __name__ == "__main__":
     st = time.time()
-    sim.run_for(100)
+    sim.run_for(140)
     elapsed_time = time.time() - st
 
     print(f"World Date: {sim.date.to_iso_str()}")

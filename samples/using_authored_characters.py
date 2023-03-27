@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-This sample shows how to construct a social simulation model manually, It starts with
-creating a simulation instance from configuration settings. Next, we use decorator
-methods to register new components (Robot, OwesDebt) and a social rule. Finally, within
-the main function, we define a new settlement, add new characters, and set some
-relationship values.
+Using Authored Characters Sample
+--------------------------------
+
+This samples shows how users may inject user-specified characters into the simulation.
+Normally characters are spawned into the settlement based on the spawn table.
 """
 import time
 from typing import Any, Dict

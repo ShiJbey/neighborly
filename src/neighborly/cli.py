@@ -119,15 +119,7 @@ def run():
             },
             "time_increment": "1mo",
             "plugins": [
-                "neighborly.plugins.defaults.names",
-                "neighborly.plugins.defaults.characters",
-                "neighborly.plugins.defaults.businesses",
-                "neighborly.plugins.defaults.residences",
-                "neighborly.plugins.defaults.life_events",
-                "neighborly.plugins.defaults.ai",
-                "neighborly.plugins.defaults.social_rules",
-                "neighborly.plugins.defaults.location_bias_rules",
-                "neighborly.plugins.defaults.create_town",
+                "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown",
             ],
         }

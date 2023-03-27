@@ -20,8 +20,8 @@ incrementing to a completely new version number.
   about the specific plugins, `neighborly.plugins.defaults.all` will import all the
   default plugins into the simulation.
 - Content libraries are now static class instances.
-- GameObject prefabs should now be instantiated using the `GameObjectFactory` class 
-  rather than using the Prefab-specific libraries (CharacterLibrary, BusinessLibrary, 
+- GameObject prefabs should now be instantiated using the `GameObjectFactory` class
+  rather than using the Prefab-specific libraries (CharacterLibrary, BusinessLibrary,
   and ResidenceLibrary).
 
 ### Added
@@ -29,8 +29,12 @@ incrementing to a completely new version number.
 - Content authoring `neighborly.decorators` for use in single file simulations.
 - `py.typed` stub file to remove PyRight warning about Neighborly missing type stubs
 - *SystemGroups* were added to allow better systems ordering. The simulation update loop
-  is now separated into 4 phases (initialization, early-update, update, and 
+  is now separated into 4 phases (initialization, early-update, update, and
   late-update).
+- Utility-based behavior trees for goals
+- Event callback are called directly from GameObjects instead of via systems
+- Events are an integral part of the ECS
+-
 
 ### Updated
 

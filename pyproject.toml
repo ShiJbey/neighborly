@@ -70,6 +70,7 @@ docs = [
 "Bug Tracker" = "https://github.com/ShiJbey/neighborly/issues"
 "Repository" = "https://github.com/ShiJBey/neighborly.git"
 "Changelog" = "https://github.com/ShiJbey/neighborly/blob/main/CHANGELOG.md"
+"Documentation" = "https://shijbey.github.io/neighborly/"
 
 [project.scripts]
 neighborly = "neighborly.__main__:main"
