@@ -4,22 +4,6 @@ neighborly.factories package
 Submodules
 ----------
 
-neighborly.factories.activity module
-------------------------------------
-
-.. automodule:: neighborly.factories.activity
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.factories.ai module
-------------------------------
-
-.. automodule:: neighborly.factories.ai
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.factories.business module
 ------------------------------------
 
@@ -40,6 +24,14 @@ neighborly.factories.routine module
 -----------------------------------
 
 .. automodule:: neighborly.factories.routine
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+neighborly.factories.settlement module
+--------------------------------------
+
+.. automodule:: neighborly.factories.settlement
    :members:
    :undoc-members:
    :show-inheritance:

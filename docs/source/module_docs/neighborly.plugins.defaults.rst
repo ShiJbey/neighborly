@@ -4,10 +4,18 @@ neighborly.plugins.defaults package
 Submodules
 ----------
 
-neighborly.plugins.defaults.ai module
--------------------------------------
+neighborly.plugins.defaults.actions module
+------------------------------------------
 
-.. automodule:: neighborly.plugins.defaults.ai
+.. automodule:: neighborly.plugins.defaults.actions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+neighborly.plugins.defaults.all module
+--------------------------------------
+
+.. automodule:: neighborly.plugins.defaults.all
    :members:
    :undoc-members:
    :show-inheritance:
@@ -68,10 +76,34 @@ neighborly.plugins.defaults.residences module
    :undoc-members:
    :show-inheritance:
 
+neighborly.plugins.defaults.resident\_spawning module
+-----------------------------------------------------
+
+.. automodule:: neighborly.plugins.defaults.resident_spawning
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+neighborly.plugins.defaults.settlement module
+---------------------------------------------
+
+.. automodule:: neighborly.plugins.defaults.settlement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 neighborly.plugins.defaults.social\_rules module
 ------------------------------------------------
 
 .. automodule:: neighborly.plugins.defaults.social_rules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+neighborly.plugins.defaults.systems module
+------------------------------------------
+
+.. automodule:: neighborly.plugins.defaults.systems
    :members:
    :undoc-members:
    :show-inheritance:

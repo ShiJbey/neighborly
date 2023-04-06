@@ -20,30 +20,6 @@ neighborly.utils.query module
    :undoc-members:
    :show-inheritance:
 
-neighborly.utils.relationships module
--------------------------------------
-
-.. automodule:: neighborly.utils.relationships
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.utils.statuses module
---------------------------------
-
-.. automodule:: neighborly.utils.statuses
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.utils.traits module
-------------------------------
-
-.. automodule:: neighborly.utils.traits
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

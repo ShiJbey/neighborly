@@ -36,10 +36,10 @@ neighborly.plugins.talktown.school module
    :undoc-members:
    :show-inheritance:
 
-neighborly.plugins.talktown.utils module
-----------------------------------------
+neighborly.plugins.talktown.spawn\_tables module
+------------------------------------------------
 
-.. automodule:: neighborly.plugins.talktown.utils
+.. automodule:: neighborly.plugins.talktown.spawn_tables
    :members:
    :undoc-members:
    :show-inheritance:

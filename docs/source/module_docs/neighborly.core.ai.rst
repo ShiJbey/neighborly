@@ -20,22 +20,6 @@ neighborly.core.ai.brain module
    :undoc-members:
    :show-inheritance:
 
-neighborly.core.ai.movement module
-----------------------------------
-
-.. automodule:: neighborly.core.ai.movement
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.core.ai.socializing module
--------------------------------------
-
-.. automodule:: neighborly.core.ai.socializing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

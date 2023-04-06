@@ -45,12 +45,15 @@ addition development dependencies such as *black* and *isort* for code formattin
     # Step 3: Install local build and dependencies
     python -m pip install -e ".[development]"
 
+Testing the install
+-------------------
+
 Run the following command in the console to ensure that everything was
 installed properly. It should return "neighborly" followed by the most recent
 version number uploaded to PyPI.
 
 .. code-block:: console
 
-    $ neighborly --version
+    $ python -m neighborly --version
 
 Now you're ready to start creating your own simulations!

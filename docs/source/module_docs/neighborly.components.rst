@@ -52,6 +52,14 @@ neighborly.components.shared module
    :undoc-members:
    :show-inheritance:
 
+neighborly.components.spawn\_table module
+-----------------------------------------
+
+.. automodule:: neighborly.components.spawn_table
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

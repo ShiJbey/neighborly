@@ -13,22 +13,6 @@ Subpackages
 Submodules
 ----------
 
-neighborly.core.action module
------------------------------
-
-.. automodule:: neighborly.core.action
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.core.event module
-----------------------------
-
-.. automodule:: neighborly.core.event
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.core.life\_event module
 ----------------------------------
 
@@ -77,14 +61,6 @@ neighborly.core.settlement module
    :undoc-members:
    :show-inheritance:
 
-neighborly.core.social\_rule module
------------------------------------
-
-.. automodule:: neighborly.core.social_rule
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.core.status module
 -----------------------------
 
@@ -105,14 +81,6 @@ neighborly.core.tracery module
 ------------------------------
 
 .. automodule:: neighborly.core.tracery
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.core.traits module
------------------------------
-
-.. automodule:: neighborly.core.traits
    :members:
    :undoc-members:
    :show-inheritance:
