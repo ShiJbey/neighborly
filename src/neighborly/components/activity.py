@@ -9,8 +9,9 @@ class Activities(Component):
     """A collection of all the activities available at a location
 
     Systems look for an Activities component to:
-    1) Help characters determine where they frequent/want to go
-    2) Add content to flesh out the narrative setting of the simulation
+
+    1. Help characters determine where they frequent/want to go
+    2. Add content to flesh out the narrative setting of the simulation
     """
 
     __slots__ = "_activities"

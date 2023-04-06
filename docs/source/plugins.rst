@@ -98,8 +98,28 @@ When Neighborly imports your package it looks for two things:
 The plugin info and setup function need to be globally visible when importing the plugin. So, they
 should be present in the plugin file or top-level `__init__.py` if the plugin is a python package.
 
-Please refer to the built-in Neighborly plugins as an example.
+Please refer to the built-in Neighborly plugins as an example. Below is the basic
+structure of a plugin.
 
+.. code-block:: python
+
+    # my_plugin.py
+
+    from typing import Any
+
+    from neighborly.simulation import Neighborly, PluginInfo
+
+
+    plugin_info = PluginInfo(
+        name="Your Custom Plugin Name",
+        plugin_id="a_unique_id_for_your_plugin",
+        version="0.0.0",
+    )
+
+
+    def setup(sim: Neighborly, **kwargs: Any):
+        # Register components, add systems, and load other resources here
+        ...
 
 .. Creating your first plugin
 .. --------------------------

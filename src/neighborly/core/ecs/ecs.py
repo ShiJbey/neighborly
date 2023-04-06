@@ -479,24 +479,16 @@ class Component(ABC):
 
 
 class ISystem(ABC, esper.Processor):
-    """Abstract base class implementation for ECS systems
-
-    Class Attributes
-    ----------------
-    sys_group: str
-        The system group this system belongs to
-    run_after: str
-        The system this system must run after
-    world: World
-        The world instance this system belongs to
-    """
+    """Abstract base class implementation for ECS systems"""
 
     sys_group: str = "root"
+    """The system group this system belongs to"""
 
     # We have to re-type the 'world' class variable because
     # it is declared as 'Any' by esper, and we need it to
     # be of type World
     world: World  # type: ignore
+    """The world instance this system belongs to"""
 
     @abstractmethod
     def process(self, *args: Any, **kwargs: Any) -> None:
@@ -512,6 +504,7 @@ class SystemGroup(ISystem, ABC):
     """A group of simulation systems that run as a unit"""
 
     group_name: str = ""
+    """The name associated with this system group"""
 
     __slots__ = "_sub_systems"
 

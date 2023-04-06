@@ -9,16 +9,9 @@ AnyPath = Union[pathlib.Path, str]
 
 class Tracery:
     """
-    Wrapped instance of tracery that allows the user to
+    Wrapped static instance of tracery that allows the user to
     incrementally add new rules without manually creating
     new Grammar instances
-
-    Class Attributes
-    ----------
-    _all_rules: Dict[str, Union[str, List[str]]]
-        Collection off all the grammar rules added to the Tracery instance
-    _grammar: tracery.Grammar
-        A Grammar instance built using all the current rules
     """
 
     _all_rules: Dict[str, Union[str, List[str]]] = {}

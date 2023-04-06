@@ -230,22 +230,14 @@ Strength, Defense, and Speed, you could define a factory for each that accesses 
         ]
     )
 
-Systems
-^^^^^^^
+Systems and SystemGroups
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Systems are objects that inherit from ``ISystem`` or ``System``. They
 override a ``process`` or ``run`` method that gets called every timestep of
 the simulation or on a specified interval. Systems can access GameObjects and
 their components by querying the world instance for GameObjects containing
 particular components.
-
-Systems can only belong to one system group and each system has a priority value, 
-specifying when they should run within their group. The higher the priority the sooner 
-the system runs. Groups and priorities are specified by overwriting the ``sys-group`` 
-and ``priority`` class variables on ISystem subclasses.
-
-System Groups
-^^^^^^^^^^^^^
 
 One of the main challenges of working with an ECS is orchestrating when certain systems
 should run. Even though systems are generally decoupled, some systems depend on changes 
@@ -267,6 +259,33 @@ to determine when a system should run. This library's ECS implementation has one
 create new groups and assign systems as they see fit. System groups are defined 
 the same as systems.
 
+Systems can only belong to one system group and each system has a priority value, 
+specifying when they should run within their group. The higher the priority the sooner 
+the system runs. Groups and priorities are specified by overwriting the ``sys-group`` 
+and ``priority`` class variables on ISystem subclasses.
+
+By default Neighborly has the following system/system group ordering:
+
+- InitializationSystemGroup (runs only once on first timestep)
+- EarlyUpdateSystemGroup
+    - DataCollectionSystemGroup
+    - StatusUpdateSystemGroup
+        - PregnantStatusSystem
+        - UnemployedStatusSystem
+    - Goal SuggestionSystemGroup
+    - RelationshipUpdateSystemGroup
+        - RelationshipUpdateSystem
+        - FriendshipStatSystem
+        - RomanceStatSystem
+    - MeetNewPeopleSystem
+    - RandomLifeEventSystem
+    - UpdateFrequentedLocationSystem
+- UpdateSystemGroup
+    - CharacterAgingSystem
+    - AIActionSystem
+- LateUpdateSystemGroup
+
+
 Resources
 ^^^^^^^^^
 
@@ -275,13 +294,23 @@ Neighborly uses resource classes to manage configuration data, authored content,
 simulation time, random number generation, and more. Many places within the codebase
 we use ``world.get_resource(random.Random)`` to access the random number generator 
 instance. Resources do not need to inherit from any class. All users need to do is
-add an instance to the simulation using ``sim.add_resource(...)`` or 
-``world.add_resource(...)``.
+add an instance to the simulation using ``sim.world.add_resource(...)``.
+
+.. code-block:: python
+
+    # ... omitted imports and simulation instantiation for brevity
+
+    class SharedResource:
+        """Some shared resource"""
+
+        pass
+
+    sim.world.add_resource(SharedResource())
 
 Prefabs
 ^^^^^^^
 
-Prefabs, much like in Unity, are blueprints of how to construct a specific type of 
+Prefabs, like in Unity, are blueprints of how to construct a specific type of 
 GameObject. They allow you to specify what components a GameObject should have, what
 parameters to pass to the component's factory, prefab metadata, and any child prefabs. 
 Prefabs are used to define characters, businesses, residences, and relationships.
@@ -289,29 +318,154 @@ They also allow for a type of inheritance, where one prefab can "extend" another
 adopting it's parents configuration as base, and overwriting and adding data where
 necessary.
 
-Getting started
----------------
+To use a component in a prefab file, users need to ensure that the component type has
+been registered with the simulation's World instance. Also, users should be sure to
+register component factories if needed.
+
+Prefabs are specified in YAML files and loaded at runtime. We can then create an
+instance of the prefab using the ``GameObjectFactory`` class.
+
+.. code-block:: yaml
+
+    # sample_character_prefab.yaml
+
+    # The name of the prefab should be unique. The :: namespace
+    # notation is not required. We use it internally to differentiate
+    # built-in content from user-created content
+    name: "character::sample"
+    # (optional) Marks this prefab as not being able to be instantiated.
+    # Attempting to instantiate a template will result in an error
+    is_template: false
+    # (optional) Prefabs can extend one or more other prefabs. This means that this
+    # prefab definition will get all the components from the parent prefabs
+    # and can overwrite these components in its definition
+    extends: [""]
+    # The components section  contains a map of component type names mapped
+    # to keyword arguments to be passed to the component's registered factory.
+    # If a component appears within one of the prefabs listed int the extends
+    # section, it will be replaced with the parameters listed here.
+    components:
+        GameCharacter:
+            first_name: "#character::default::first_name::gender-neutral#"
+            last_name: "#character::default::last_name#"
+        AgingConfig:
+            adolescent_age: 13
+            young_adult_age: 18
+            adult_age: 30
+            senior_age: 65
+        Lifespan:
+            value: 85
+        MarriageConfig:
+            spouse_prefabs:
+            - "character::default::.*"
+            chance_spawn_with_spouse: 0.5
+        ReproductionConfig:
+            max_children_at_spawn: 3
+            child_prefabs:
+            - "character::default::.*"
+        # Components with empty { } next to their will no have keyword argument passed
+        # to their factories 
+        RelationshipManager: { }
+        Virtues: { }
+        CanAge: { }
+        StatusManager: { }
+        FrequentedLocations: { }
+        AIBrain: { }
+        Goals: { }
+        EventHistory: { }
+        Age: { }
+        Gender:
+            gender: NotSpecified
+        LifeStage:
+            life_stage: Adult
+        AbilityScores: { }
+
+
+Then we can use it in python like this:
+
+.. code-block:: python
+
+    from neighborly.loaders import load_prefab
+
+    # ... omitted imports and simulation instantiation for brevity
+
+    # Here we register the AbilityScores component from the previous samples
+    # and we added it as a component in our prefab definition above
+    sim.world.register_component(AbilityScores, factory=AbilityScoresFactory())
+
+    # We have a utility function that loads prefab data from YAML or
+    # JSON files located at the given path
+    load_prefab("sample_character_prefab.yaml")
+
+
+
+    # The GameObjectFactory class handles instantiating loaded prefabs
+    # It takes a World instance and the name of the prefab as parameters
+    # The prefab name is the one specified in the YAML
+    character = GameObjectFactory.instantiate(sim.world, "character::sample")
+
+
+Events
+------
+
+Users can attach event listener functions to GameObjects. This feature was added to
+allow components to communicate with each other, and for user-created content to 
+tap into built-in and third-party content. By default events are used for component 
+addition/removal detection. We also use them for signaling things like LifeEvents that
+have happened to characters. Currently, event listeners are registered to the GameObject
+class. So, all GameObjects have the same listeners. However, listeners are only fired
+when their specific event fires. Below is an example. Another example is using 
+``ComponentAddedEvent`` and ``ComponentRemovedEvent`` to modify things like character
+ability scores when certain buffs are added or removed.
+
+
+.. code-block:: python
+
+    class CustomEvent:
+
+        def __init__(self, data) -> None:
+            self.data = data
+
+    def custom_event_listener(gameobject, event):
+        # Print the event data to the console
+        print(event.data)
+
+
+    GameObject.on(CustomEvent, custom_event_listener)
+
+    gameobject = sim.world.spawn_gameobject()
+
+    gameobject.fire_event(CustomEvent("This is an event"))
+
+    # Event listeners can also register to be called for any event
+    # regardless of type
+
+    def general_event_listener(gameobject, event):
+        print(f"An event fired of type {type(event)}")
+
+    gameobject.on_any(general_event_listener)
+
+    gameobject.fire_event(CustomEvent("This is another event"))
+
+
+
+Small ECS Sample
+----------------
 
 The easiest way to get started is looking though the sample code and the code for the
-included Neighborly plugins. The sample code below is shows how to make a bare-bones
-job salary simulation using the ECS. Usually, we let the ``Neighborly`` constructor
-create the ``World`` instance instead of doing it directly. However the full Neighborly
-instance adds lots of additional content for the simulation and we wanted this example
-to be simple.
+included Neighborly plugins. The sample code below is shows how to make a
+job salary simulation using the ECS.
 
 .. code-block:: python
 
     import random
 
+    from neighborly import Neighborly
     from neighborly.core.ecs import World, Component
     from neighborly.systems import System
 
     # Creates a new world instance
-    world = World()
-
-    # Add a random number generator as a global resource
-    world.add_resource(random.Random())
-
+    sim = Neighborly()
 
     class Actor(Component):
 
@@ -351,7 +505,7 @@ to be simple.
 
     # You need to register the component with the world instance
     # to use it with the YAML authoring interface
-    world.register_component(Money)
+    sim.world.register_component(Money)
 
     # Create a new character
     alice = world.spawn_gameobject([
@@ -360,11 +514,11 @@ to be simple.
     ])
 
     # Add the system ti the world
-    world.add_system(SalarySystem())
+    sim.world.add_system(SalarySystem())
 
     # Stepping the simulation while Alice has no job will not
     # change her current money
-    world.step()
+    sim.step()
 
     assert alice.get_component(Money).dollars == 10
 
@@ -373,6 +527,6 @@ to be simple.
     alice.add_component(Job("CEO", 500_000))
 
     # Now stepping the simulation should allow Alice to get paid
-    world.step()
+    sim.step()
 
     assert alice.get_component(Money).dollars == 500_010
