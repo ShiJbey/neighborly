@@ -5,20 +5,20 @@ Welcome to Neighborly's documentation!
 It helps users simulate something akin to the settlement simulations seen in games like
 *Dwarf Fortress*, *Rim World*, or *Caves of Qud*. Each character is
 represented as an individual autonomous agent that can make actions, respond
-to events, form relationships, work a job, etc. Neighborly is ideal for modeling 
-background world simulations or pre-generating data for background characters. It's 
+to events, form relationships, work a job, etc. Neighborly is ideal for modeling
+background world simulations or pre-generating data for background characters. It's
 architecture was heavily inspired by Roguelike games.
 
 Neighborly is an experiment in simulationist emergent narrative authoring. Our aim was
 to produce an approachable interface for authoring town-scale social simulations
 intended for games or narrative generation. Therefore, agents that are by default
 modeled with more narratively interesting data than what someone would find in other
-agent-based modeling frameworks like `Mesa <https://mesa.readthedocs.io/en/stable/#>`_ 
+agent-based modeling frameworks like `Mesa <https://mesa.readthedocs.io/en/stable/#>`_
 or `NetLogo <https://ccl.northwestern.edu/netlogo/>`_.
 
-Neighborly places users in control of what kind of characters, places, and things exist 
+Neighborly places users in control of what kind of characters, places, and things exist
 in the settlement. This process can be daunting, so we try to make your life easier
-by offering built-in content plugins to help you get started. 
+by offering built-in content plugins to help you get started.
 
 We can't wait to see what you make with Neighborly!
 
@@ -50,9 +50,9 @@ Running the sample simulation
 
 Neighborly comes preconfigured with a simulation of a small town. Characters
 move in and out of the town, start businesses, work jobs, start families,
-and get into a number of scenarios with each other. 
+and get into a number of scenarios with each other.
 
-All Character activity is printed to the console. And when the simulation ends, 
+All Character activity is printed to the console. And when the simulation ends,
 neighborly will export all the generated simulation data to a ``*.json`` file.
 
 .. Contents
@@ -67,7 +67,6 @@ neighborly will export all the generated simulation data to a ``*.json`` file.
     commandline_tool
     working_with_ecs
     plugins
-    content_management
     characters
     locations
     businesses
@@ -75,8 +74,11 @@ neighborly will export all the generated simulation data to a ``*.json`` file.
     relationships
     social_rules
     location_biases
+    life_events
+    goals_and_actions
     statuses
-    events_and_actions
+    settlements
+    routines
     tracking_backstories
     data_collection
     design_justifications

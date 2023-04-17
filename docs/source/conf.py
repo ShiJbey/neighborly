@@ -15,23 +15,19 @@ sys.path.insert(0, os.path.abspath("../../src"))
 project = "Neighborly"
 copyright = f"2023-{date.today().year}, Shi Johnson-Bey"
 author = "Shi Johnson-Bey"
-release = "0.1.0"
+release = "0.10.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
     "sphinx.ext.napoleon",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.todo",
     "sphinx.ext.viewcode",
 ]
 
 # Napoleon settings
 napoleon_numpy_docstring = True
-napoleon_use_rtype = True
 napoleon_preprocess_types = False
-napoleon_type_aliases = True
 napoleon_attr_annotations = True
 
 templates_path = ["_templates"]

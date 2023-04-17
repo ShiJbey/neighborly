@@ -63,15 +63,14 @@ class PluginInfo:
 
 
 class Neighborly:
-    """
-    Main entry class for running Neighborly simulations.
+    """Main entry class for running Neighborly simulations.
 
     Attributes
     ----------
-    world: World
-        Entity-component system (ECS) that manages entities and procedures in the virtual world
-    config: neighborly.NeighborlyConfig
-        Configuration settings for the simulation
+    world
+        Entity-component system (ECS) that manages the virtual world.
+    config
+        Configuration settings for the simulation.
     """
 
     __slots__ = "world", "config"
@@ -80,8 +79,8 @@ class Neighborly:
         """
         Parameters
         ----------
-        config: Optional[NeighborlyConfig], optional
-            Configuration settings for the simulation, defaults to None
+        config
+            Configuration settings for the simulation.
         """
         self.world: World = World()
         self.config: NeighborlyConfig = config if config else NeighborlyConfig()

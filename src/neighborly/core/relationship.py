@@ -319,7 +319,7 @@ class ISocialRule(Protocol):
 
         Returns
         -------
-        Optional[Dict[Type[RelationshipFacet], int]]
+        Dict[Type[RelationshipFacet], int] or None
             Optionally returns a dict mapping relationship facet types to int modifiers
             that should be applied to those facets based on some precondition(s)
         """
@@ -452,8 +452,8 @@ def has_relationship(subject: GameObject, target: GameObject) -> bool:
     Returns
     -------
     bool
-        Returns True if there is an existing Relationship instance with the
-        target as the target
+        True if there is an existing Relationship instance with the
+        target as the target, False otherwise.
     """
     return target.uid in subject.get_component(RelationshipManager).outgoing
 
@@ -543,7 +543,7 @@ def has_relationship_status(
     Returns
     -------
     bool
-        Returns True if relationship has a given status
+        True if relationship has a given status, False otherwise.
     """
 
     relationship = get_relationship(subject, target)

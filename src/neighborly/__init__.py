@@ -1,3 +1,5 @@
+"""Neighborly Character-Driven Social Simulation Framework."""
+
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import (
     Component,

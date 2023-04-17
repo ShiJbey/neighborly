@@ -41,3 +41,21 @@ Examples of statuses
 
 - ``OpenForBusiness``
 - ``ClosedForBusiness``
+
+
+.. code-block:: python
+
+    sim = Neighborly()
+
+    jessie = sim.world.spawn_gameobject(name="Jessie")
+    chris = sim.world.spawn_gameobject(name="Chris")
+
+    add_status(jessie, Unemployed())
+
+    add_status(get_relationship(jessie, chris), FriendOf())
+    add_status(get_relationship(chris, jessie), FriendOf())
+
+    add_status(get_relationship(jessie, chris), SecretCrush())
+
+    assert get_relationship(jessie, chris).has_component(FriendOf)
+    assert get_relationship(jessie, chris).has_component(SecretCrush)

@@ -488,6 +488,20 @@ def set_residence(
 
 
 def check_share_residence(gameobject: GameObject, other: GameObject) -> bool:
+    """Check if two characters live in the same residence.
+
+    Parameters
+    ----------
+    gameobject
+        A character.
+    other
+        Another character.
+
+    Returns
+    -------
+    bool
+        True if the characters live together, False otherwise.
+    """
     resident_comp = gameobject.try_component(Resident)
     other_resident_comp = other.try_component(Resident)
 
@@ -917,19 +931,19 @@ def start_job(
     occupation_name: str,
     is_owner: bool = False,
 ) -> None:
-    """Start the given character's job at the business
+    """Start the given character's job at the business.
 
     Parameters
     ----------
-    character: GameObject
-        The character starting the job
-    business: GameObject
-        The business they will start working at
-    occupation_name: str
-        The job title for their new occupation
-    is_owner: bool, optional
+    character
+        The character starting the job.
+    business
+        The business they will start working at.
+    occupation_name
+        The job title for their new occupation.
+    is_owner
         Is this character going to be the owner of the
-        business (defaults to False)
+        business (defaults to False).
 
     Raises
     ------
@@ -1140,15 +1154,15 @@ def location_has_activities(location: GameObject, *activities: str) -> bool:
 
     Parameters
     ----------
-    location: GameObject
-        The location to check
-    *activities: str
-        Activity names
+    location
+        The location to check.
+    *activities
+        Activity names.
 
-    Return
-    ------
+    Returns
+    -------
     bool
-        Return True if the activities are offered by the location
+        True if the activities are offered by the location, False otherwise.
     """
     activities_comp = location.get_component(Activities)
     return all([a in activities_comp for a in activities])

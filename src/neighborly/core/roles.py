@@ -51,7 +51,7 @@ class RoleList:
         """
         Parameters
         ----------
-        roles : Optional[Iterable[Role]], optional
+        roles
             Roles to instantiate the list with, by default None
         """
         self._roles: List[Role] = []

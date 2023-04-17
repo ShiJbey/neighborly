@@ -1,9 +1,17 @@
 """
 Utility decorators that should assist with content authoring
 """
-from typing import Any, Callable, Optional, Type, TypeVar
 
-from neighborly.core.ecs import Component, Event, GameObject, IComponentFactory, ISystem
+from typing import Any, Type, TypeVar
+
+from neighborly.core.ecs import (
+    Component,
+    Event,
+    GameObject,
+    IComponentFactory,
+    ISystem,
+    EventListener,
+)
 from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
 from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRules
 from neighborly.core.relationship import ISocialRule, SocialRules
@@ -14,6 +22,7 @@ _CF = TypeVar("_CF", bound=IComponentFactory)
 _RT = TypeVar("_RT", bound=Any)
 _ST = TypeVar("_ST", bound=ISystem)
 _LT = TypeVar("_LT", bound=ActionableLifeEvent)
+_ET_contra = TypeVar("_ET_contra", bound=Event, contravariant=True)
 
 
 def component(sim: Neighborly):
@@ -141,11 +150,26 @@ def location_bias_rule(description: str):
     return decorator
 
 
-def event_listener(event_type: Optional[Type[Event]] = None):
-    def decorator(listener: Callable[[GameObject, Event], None]) -> None:
-        if event_type is None:
-            GameObject.on_any(listener)
-        else:
-            GameObject.on(event_type, listener)
+def on_event(event_type: Type[_ET_contra]):
+    """A decorator that registers a function as an event listener for GameObjects
+
+    Parameters
+    ----------
+    event_type
+        The type of event that this function will listen for
+    """
+
+    def decorator(listener: EventListener[_ET_contra]) -> EventListener[_ET_contra]:
+        GameObject.on(event_type, listener)
+        return listener
 
     return decorator
+
+
+def on_any_event(listener: EventListener[Event]):
+    """A decorator that registers a function as an event listener for GameObjects
+
+    The decorated function will be called in response to all events fired by GameObjects
+    """
+    GameObject.on_any(listener)
+    return listener

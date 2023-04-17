@@ -11,18 +11,17 @@ from neighborly.core.time import SimDateTime, TimeDelta
 
 
 class PluginConfig(pydantic.BaseModel):
-    """
-    Settings for loading and constructing a plugin
+    """settings for loading and constructing a plugin.
 
     Fields
     ----------
-    name: str
-        Name of the plugin's python module
-    path: Optional[str]
-        The path where the plugin is located
-    options: Dict[str, Any]
+    name
+        Name of the plugin's python module.
+    path
+        The path where the plugin is located.
+    options
         Parameters to pass to the plugin when constructing
-        and loading it
+        and loading it.
     """
 
     name: str
@@ -31,10 +30,40 @@ class PluginConfig(pydantic.BaseModel):
 
 
 class RelationshipSchema(pydantic.BaseModel):
+    """Prefab information specifying components attached to Relationship GameObjects.
+
+    Attributes
+    ----------
+    components
+        The component information for relationship instance.
+    """
+
     components: Dict[str, Dict[str, Any]] = pydantic.Field(default_factory=dict)
 
 
 class NeighborlyConfig(pydantic.BaseModel):
+    """Configuration settings for a Neighborly simulation instance.
+
+    Attributes
+    ----------
+    seed
+        A value used to seed the random number generator.
+    relationship_schema
+        The default component configuration of new Relationship GameObjects.
+    plugins
+        Configuration information for plugins to import before running the simulation.
+    time_increment
+        The amount of time to advance the current date by each timestep.
+    years_to_simulate
+        The number of years to simulate.
+    start_date
+        The starting date of the simulation before world generation.
+    verbose
+        Toggle verbose logging.
+    settings
+        Miscellaneous keyword settings.
+    """
+
     seed: Union[str, int] = pydantic.Field(
         default_factory=lambda: random.randint(0, 9999999)
     )

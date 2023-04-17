@@ -145,21 +145,19 @@ def remove_status(gameobject: GameObject, status_type: Type[StatusComponent]) ->
 
 
 def has_status(gameobject: GameObject, status_type: Type[StatusComponent]) -> bool:
-    """
-    Check for a status of a given type
+    """Check for a status of a given type.
 
     Parameters
     ----------
-    gameobject: GameObject
-        The GameObject to add the status to
-    status_type: Type[Status]
-        The status type to remove
+    gameobject
+        The GameObject to add the status to.
+    status_type
+        The status type to remove.
 
     Returns
     -------
     bool
-        Return True if the GameObject has a status
-        of the given type
+        True if the GameObject has a status of the given type, False otherwise.
     """
     return status_type in gameobject.get_component(StatusManager)
 

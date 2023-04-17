@@ -14,12 +14,3 @@ All the events that have occurred in the simulation are stored in a shared,
 a part of. You can use these IDs to retrieve the events from the shared resource
 using the ``get_events_for()`` utility function and pass the character as a
 parameter.
-
-Work History
-------------
-
-This is a specialized subset of data that tracks what occupations characters
-have had, how long, and why they left that job. Think of it like their resume. It
-is mainly used in precondition calculations for various occupations. Without this
-component, we would have to calculate characters' work histories from the events
-in their ``EventHistory`` components

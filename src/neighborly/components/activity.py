@@ -6,12 +6,15 @@ from neighborly.core.ecs import Component
 
 
 class Activities(Component):
-    """A collection of all the activities available at a location
+    """A collection of activity names.
 
-    Systems look for an Activities component to:
+    Notes
+    -----
+    Systems may look for an Activities component to:
 
-    1. Help characters determine where they frequent/want to go
-    2. Add content to flesh out the narrative setting of the simulation
+    1. Describe the activities available at a location
+    2. Help characters determine where they frequent/want to go
+    3. Add content to flesh out the narrative setting of the simulation
     """
 
     __slots__ = "_activities"
@@ -20,8 +23,8 @@ class Activities(Component):
         """
         Parameters
         ----------
-        activities: Set[str]
-            A collection of activities
+        activities
+            A collection of activities.
         """
         super().__init__()
         self._activities: Set[str] = set()
@@ -34,9 +37,23 @@ class Activities(Component):
         return {"activities": [str(a) for a in self._activities]}
 
     def add_activity(self, activity: str) -> None:
+        """Add an activity name.
+
+        Parameters
+        ----------
+        activity
+            The name of an activity.
+        """
         self._activities.add(activity.lower())
 
     def remove_activity(self, activity: str) -> None:
+        """Remove an activity name.
+
+        Parameters
+        ----------
+        activity
+            The name of an activity.
+        """
         self._activities.remove(activity.lower())
 
     def __iter__(self) -> Iterator[str]:

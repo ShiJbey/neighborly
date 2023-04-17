@@ -28,7 +28,7 @@ class ILocationBiasRule(Protocol):
 
         Returns
         -------
-        Optional[int]
+        int or None
             Optionally returns an integer value representing a weight modifier for
             how likely the given character would be to frequent the given location
             based on some precondition(s)

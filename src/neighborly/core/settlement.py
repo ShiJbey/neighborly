@@ -279,9 +279,9 @@ class Grid(Generic[_GT]):
 
         Parameters
         ----------
-        point: Tuple[int, int]
+        point
             The X, Y position of a grid cell
-        include_diagonals: bool, optional
+        include_diagonals
             Flag if to include diagonal neighbors (defaults to False). By default,
             this method only looks at neighbors in the cardinal directions
 

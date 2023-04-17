@@ -37,8 +37,8 @@ class OperatingHoursFactory(IComponentFactory):
 
         Parameters
         ----------
-        operating_hours_str: str
-            String indicating the operating hours
+        operating_hours_str
+            A text string indicating the operating hours
 
         Notes
         -----

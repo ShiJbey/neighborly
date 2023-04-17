@@ -16,7 +16,7 @@ class CharacterSpawnTable(Component):
         """
         Parameters
         ----------
-        entries : Optional[List[Dict[str, Any]]], optional
+        entries
             Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
@@ -34,15 +34,14 @@ class CharacterSpawnTable(Component):
                 self.add(**entry)
 
     def add(self, name: str, frequency: int = 1) -> None:
-        """
-        Add an entry to the spawn table
+        """Add an entry to the spawn table.
 
         Parameters
         ----------
-        name: str
-            The name of a prefab
-        frequency: int
-            The relative frequency that this prefab should spawn relative to others
+        name
+            The name of a prefab.
+        frequency
+            The relative frequency that this prefab should spawn relative to others.
         """
         self._names.append(name)
         self._frequencies.append(frequency)
@@ -50,18 +49,17 @@ class CharacterSpawnTable(Component):
         self._size += 1
 
     def choose_random(self, rng: random.Random) -> str:
-        """
-        Performs a weighted random selection across all prefab names
+        """Performs a weighted random selection across all prefab names.
 
         Parameters
         ----------
-        rng: random.Random
-            A Random rng instance
+        rng
+            A Random instance.
 
         Returns
         -------
         str
-            The name of a prefab
+            The name of a prefab.
         """
 
         if self._size == 0:
@@ -70,18 +68,17 @@ class CharacterSpawnTable(Component):
         return rng.choices(population=self._names, weights=self._frequencies, k=1)[0]
 
     def get_matching_prefabs(self, *patterns: str) -> List[str]:
-        """
-        Get all prefabs with names that match the given regex strings
+        """Get all prefabs with names that match the given regex strings.
 
         Parameters
         ----------
-        *patterns: Tuple[str, ...]
-            Glob-patterns of names to check for
+        *patterns
+            Glob-patterns of names to check for.
 
         Returns
         -------
         List[str]
-            The names of prefabs in the table that match the pattern
+            The names of prefabs in the table that match the pattern.
         """
 
         matches: List[str] = []
@@ -122,7 +119,7 @@ class BusinessSpawnTable(Component):
         """
         Parameters
         ----------
-        entries : Optional[List[Dict[str, Any]]], optional
+        entries
             Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
@@ -157,19 +154,19 @@ class BusinessSpawnTable(Component):
 
         Parameters
         ----------
-        name: str
-            The name of a prefab
-        frequency: int, optional
+        name
+            The name of a prefab.
+        frequency
             The relative frequency that this prefab should spawn relative to others.
             defaults to 1
-        max_instances: int, optional
-            Max number of instances of the business that may exist, defaults to 9999
-        min_population: int, optional
-            The minimum settlement population required to spawn, defaults to 0
-        year_available: int, optional
-            The minimum year that this business can spawn, defaults to 0
-        year_obsolete: int, optional
-            The maximum year that this business can spawn, defaults to 9999
+        max_instances
+            Max number of instances of the business that may exist, defaults to 9999.
+        min_population
+            The minimum settlement population required to spawn, defaults to 0.
+        year_available
+            The minimum year that this business can spawn, defaults to 0.
+        year_obsolete
+            The maximum year that this business can spawn, defaults to 9999.
         """
         self._names.append(name)
         self._frequencies.append(frequency)

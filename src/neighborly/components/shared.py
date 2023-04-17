@@ -10,11 +10,23 @@ from neighborly.core.status import StatusComponent
 
 
 class Name(Component):
-    """The name of the GameObject"""
+    """The name of the GameObject.
+
+    Attributes
+    ----------
+    name
+        The name.
+    """
 
     __slots__ = "value"
 
     def __init__(self, value: str) -> None:
+        """
+        Parameters
+        ----------
+        name
+            The name.
+        """
         super().__init__()
         self.value: str = value
 
@@ -29,13 +41,23 @@ class Name(Component):
 
 
 class Age(Component):
-    """
-    Tracks the number of years old that an entity is
+    """Tracks the number of years old that an GameObject is.
+
+    Attributes
+    ----------
+    value
+        The number of years old.
     """
 
     __slots__ = "value"
 
     def __init__(self, value: float = 0.0) -> None:
+        """
+        Parameters
+        ----------
+        value
+            The number of years old.
+        """
         super().__init__()
         self.value: float = value
 
@@ -56,11 +78,23 @@ class Age(Component):
 
 
 class Lifespan(Component):
-    """Defines how long a GameObject lives on average"""
+    """Defines how long a GameObject lives on average.
+
+    Attributes
+    ----------
+    value
+        The number of years.
+    """
 
     __slots__ = "value"
 
     def __init__(self, value: float) -> None:
+        """
+        Parameters
+        ----------
+        value
+            The number of years.
+        """
         super().__init__()
         self.value: float = value
 
@@ -81,12 +115,18 @@ class Lifespan(Component):
 
 
 class Location(Component):
-    """Anywhere where game characters may be"""
+    """Anywhere where game characters may be.
+
+    Attributes
+    ----------
+    entities
+        All the GameObjects currently at this location.
+    """
 
     __slots__ = "entities"
 
     def __init__(self) -> None:
-        super(Component, self).__init__()
+        super().__init__()
         self.entities: OrderedSet[int] = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
@@ -95,12 +135,38 @@ class Location(Component):
         }
 
     def add_entity(self, entity: int) -> None:
+        """Add an entity to the location.
+
+        Parameters
+        ----------
+        entity
+            The GameObject ID of the entity to add.
+        """
         self.entities.append(entity)
 
     def remove_entity(self, entity: int) -> None:
+        """Remove an entity from the location.
+
+        Parameters
+        ----------
+        entity
+            The GameObject ID of the entity to remove.
+        """
         self.entities.remove(entity)
 
     def has_entity(self, entity: int) -> bool:
+        """Check if an entity is at the location.
+
+        Parameters
+        ----------
+        entity
+            The GameObject ID of the entity to check for.
+
+        Returns
+        -------
+        bool
+            True if the GameObject is present, False otherwise.
+        """
         return entity in self.entities
 
     def __repr__(self) -> str:
@@ -111,14 +177,23 @@ class Location(Component):
 
 
 class MaxCapacity(Component):
-    """
-    Limits the number of characters that may be present at
-    any one location
+    """Limits the number of characters that may be present at a location.
+
+    Attributes
+    ----------
+    value
+        The number of characters.
     """
 
     __slots__ = "value"
 
     def __init__(self, value: int) -> None:
+        """
+        Parameters
+        ----------
+        value
+            The number of characters
+        """
         super().__init__()
         self.value: int = value
 
@@ -127,20 +202,30 @@ class MaxCapacity(Component):
 
 
 class OpenToPublic(StatusComponent):
-    """
-    Tags a location as one that any character may travel to
-    """
+    """Tags a location as being eligible to travel to."""
 
     pass
 
 
 class CurrentLocation(Component):
-    """Tracks the current location of a GameObject"""
+    """Tracks the current location of a GameObject.
+
+    Attributes
+    ----------
+    location
+        The GameObjectID of the location.
+    """
 
     __slots__ = "location"
 
     def __init__(self, location: int) -> None:
-        super(Component, self).__init__()
+        """
+        Parameters
+        ----------
+        location
+            The GameObject ID of a location.
+        """
+        super().__init__()
         self.location: int = location
 
     def to_dict(self) -> Dict[str, Any]:
@@ -151,14 +236,21 @@ class CurrentLocation(Component):
 
 
 class LocationAliases(Component):
-    """
-    Keeps record of strings mapped the IDs of locations in the world
+    """A record of strings mapped the IDs of locations in the world.
+
+    This component allows us to use ID-agnostic location aliases for places like
+    home and work.
+
+    Attributes
+    ----------
+    aliases
+        The aliases of locations mapped to their GameObject ID.
     """
 
     __slots__ = "aliases"
 
     def __init__(self) -> None:
-        super(Component, self).__init__()
+        super().__init__()
         self.aliases: Dict[str, int] = {}
 
     def to_dict(self) -> Dict[str, Any]:
@@ -182,6 +274,16 @@ class LocationAliases(Component):
 
 @dataclass
 class Position2D(Component):
+    """The 2-dimensional position of a GameObject.
+
+    Attributes
+    ----------
+    x
+        The x-position of the GameObject.
+    y
+        The y-position of the GameObject.
+    """
+
     x: float = 0.0
     y: float = 0.0
 
@@ -190,21 +292,48 @@ class Position2D(Component):
 
 
 class FrequentedLocations(Component):
-    """Tracks the locations that a character frequents"""
+    """Tracks the locations that a character frequents.
+
+    Attributes
+    ----------
+    locations
+        A set of GameObject IDs of locations.
+    """
 
     __slots__ = "locations"
 
     def __init__(self, locations: Optional[Iterable[int]] = None) -> None:
+        """
+        Parameters
+        ----------
+        locations
+            An iterable of GameObject IDs of locations.
+        """
         super().__init__()
         self.locations: Set[int] = set(locations) if locations else set()
 
     def add(self, location: int) -> None:
+        """Add a new location.
+
+        Parameters
+        ----------
+        location
+            The GameObject ID of a location.
+        """
         self.locations.add(location)
 
     def remove(self, location: int) -> None:
+        """Remove a location.
+
+        Parameters
+        ----------
+        location
+            The GamerObject ID of the location to remove.
+        """
         self.locations.remove(location)
 
     def clear(self) -> None:
+        """Remove all location IDs from the component."""
         self.locations.clear()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -255,12 +384,12 @@ class Building(Component):
 
 @dataclass
 class CurrentLot(Component):
-    """Tracks the lot that a building belongs to
+    """Tracks the lot that a building belongs to.
 
     Attributes
     ----------
-    lot: int
-        The ID of a lot within a SettlementMap
+    lot
+        The ID of a lot within a SettlementMap.
     """
 
     lot: int
@@ -270,7 +399,7 @@ class CurrentLot(Component):
 
 
 class FrequentedBy(Component):
-    """Tracks the characters that frequent a location"""
+    """Tracks the characters that frequent a location."""
 
     __slots__ = "_characters"
 
@@ -279,12 +408,27 @@ class FrequentedBy(Component):
         self._characters: OrderedSet[int] = OrderedSet([])
 
     def add(self, character: int) -> None:
+        """Add a character.
+
+        Parameters
+        ----------
+        character
+            The GameObject ID of a character.
+        """
         self._characters.add(character)
 
     def remove(self, character: int) -> None:
+        """Remove a character.
+
+        Parameters
+        ----------
+        character
+            The GameObject ID of a character.
+        """
         self._characters.remove(character)
 
     def clear(self) -> None:
+        """Remove all characters from tracking."""
         self._characters.clear()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -310,12 +454,12 @@ class FrequentedBy(Component):
 
 @dataclass
 class CurrentSettlement(Component):
-    """Tracks the ID of the settlement that a GameObject is currently in
+    """Tracks the ID of the settlement that a GameObject is currently in.
 
     Attributes
     ----------
-    settlement: int
-        The GameObject ID of a settlement
+    settlement
+        The GameObject ID of a settlement.
     """
 
     settlement: int
@@ -332,12 +476,12 @@ class CurrentSettlement(Component):
 
 @dataclass
 class PrefabName(Component):
-    """Tracks the ID of the settlement that a GameObject is currently in
+    """Tracks the name of the prefab used to instantiate a GameObject.
 
     Attributes
     ----------
-    prefab: str
-        The name of the prefab used to construct this GameObject
+    prefab
+        The name of a prefab.
     """
 
     prefab: str

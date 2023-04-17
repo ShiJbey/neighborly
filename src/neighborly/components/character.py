@@ -1,8 +1,14 @@
+"""Neighborly Character Components
+
+The module contains definitions of components used to compose Character entities.
+It also contains definitions for common statuses and relationship statuses.
+
+"""
 from __future__ import annotations
 
 import dataclasses
 import enum
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
 from numpy import typing as npt
@@ -14,31 +20,36 @@ from neighborly.core.time import SimDateTime
 
 
 class GameCharacter(Component):
-    """
-    This component is attached to all GameObjects that are characters in the simulation
-
-    Attributes
-    ----------
-    first_name: str
-        The character's first name
-    last_name: str
-        The character's last or family name
-    """
+    """Tags a GameObject as a character and tracks their name."""
 
     __slots__ = "first_name", "last_name"
+
+    first_name: str
+    """The character's first name."""
+
+    last_name: str
+    """The character's last name or family name."""
 
     def __init__(
         self,
         first_name: str,
         last_name: str,
     ) -> None:
+        """
+        Parameters
+        ----------
+        first_name
+            The character's first name.
+        last_name
+            The character's last name or family name.
+        """
         super().__init__()
-        self.first_name: str = first_name
-        self.last_name: str = last_name
+        self.first_name = first_name
+        self.last_name = last_name
 
     @property
     def full_name(self) -> str:
-        """Returns the full name of the character"""
+        """The combined full name of the character."""
         return f"{self.first_name} {self.last_name}"
 
     def to_dict(self) -> Dict[str, Any]:
@@ -58,15 +69,13 @@ class GameCharacter(Component):
 
 
 class Departed(StatusComponent):
-    """Tags a character as departed from the simulation"""
+    """Tags a character as departed from the simulation."""
 
     is_persistent = True
 
 
 class CanAge(Component):
-    """
-    Tags a GameObject as being able to change life stages as time passes
-    """
+    """Tags a GameObject as being able to change life stages as time passes."""
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -79,15 +88,13 @@ class CanAge(Component):
 
 
 class Mortal(StatusComponent):
-    """
-    Tags a GameObject as being able to die from natural causes
-    """
+    """Tags a GameObject as being able to die from natural causes."""
 
     is_persistent = True
 
 
 class CanGetPregnant(Component):
-    """Tags a character as capable of giving birth"""
+    """Tags a character as capable of giving birth."""
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -100,18 +107,20 @@ class CanGetPregnant(Component):
 
 
 class Deceased(StatusComponent):
-    """Tags a character as deceased"""
+    """Tags a character as deceased."""
 
     is_persistent = True
 
 
 class Retired(StatusComponent):
-    """Tags a character as retired"""
+    """Tags a character as retired."""
 
-    # is_persistent = True
+    is_persistent = True
 
 
 class Virtue(enum.IntEnum):
+    """An enumeration of virtue types"""
+
     ADVENTURE = 0
     AMBITION = enum.auto()
     EXCITEMENT = enum.auto()
@@ -151,22 +160,42 @@ class Virtues(Component):
 
     This model of entity values is borrowed from Dwarf Fortress'
     model of entity beliefs/values outlined at the following link
-    https://dwarffortresswiki.org/index.php/DF2014:Personality_trait
+    https://dwarffortresswiki.org/index.php/DF2014:Personality_trait>.
     """
 
-    VIRTUE_MAX = 50
-    VIRTUE_MIN = -50
+    VIRTUE_MAX: ClassVar[int] = 50
+    """The maximum value an virtue can have."""
 
-    STRONG_AGREE = 35
-    AGREE = 25
-    WEAK_AGREE = 15
-    WEAK_DISAGREE = -15
-    DISAGREE = -25
-    STRONG_DISAGREE = -35
+    VIRTUE_MIN: ClassVar[int] = -50
+    """The minimum value a virtue can have."""
+
+    STRONG_AGREE: ClassVar[int] = 35
+    """The threshold for strong agreement with a virtue."""
+
+    AGREE: ClassVar[int] = 25
+    """The threshold for mild agreement with a virtue."""
+
+    WEAK_AGREE: ClassVar[int] = 15
+    """The threshold for weak agreement with a virtue."""
+
+    WEAK_DISAGREE: ClassVar[int] = -15
+    """The threshold for weak disagreement with a virtue."""
+
+    DISAGREE: ClassVar[int] = -25
+    """The threshold for mild disagreement with a virtue."""
+
+    STRONG_DISAGREE: ClassVar[int] = -35
+    """The threshold for strong disagreement with a virtue."""
 
     __slots__ = "_virtues"
 
     def __init__(self, overrides: Optional[Dict[str, int]] = None) -> None:
+        """
+        Parameters
+        ----------
+        overrides
+            Optionally override any virtue with a new value.
+        """
         super().__init__()
         self._virtues: npt.NDArray[np.int32] = np.zeros(  # type: ignore
             len(Virtue), dtype=np.int32
@@ -177,11 +206,11 @@ class Virtues(Component):
                 self[Virtue[trait]] = value
 
     def compatibility(self, other: Virtues) -> int:
-        """Calculates the similarity between two Virtue components
+        """Calculates the similarity between two Virtue components.
 
         Parameters
         ----------
-        other : Virtues
+        other
             The other set of virtues to compare to
 
         Returns
@@ -209,7 +238,13 @@ class Virtues(Component):
         return similarity
 
     def get_high_values(self, n: int = 3) -> List[Virtue]:
-        """Return the virtues names associated with the n-highest values"""
+        """Return the virtues with n-highest values.
+
+        Returns
+        -------
+        List[Virtue]
+            A list of virtues.
+        """
         sorted_index_array = np.argsort(self._virtues)[-n:]  # type: ignore
 
         value_names = list(Virtue)
@@ -217,7 +252,13 @@ class Virtues(Component):
         return [value_names[i] for i in sorted_index_array]
 
     def get_low_values(self, n: int = 3) -> List[Virtue]:
-        """Return the virtues names associated with the n-lowest values"""
+        """Return the virtues with the n-lowest values.
+
+        Returns
+        -------
+        List[Virtue]
+            A list of virtues.
+        """
         sorted_index_array = np.argsort(self._virtues)[:n]  # type: ignore
 
         value_names = list(Virtue)
@@ -253,20 +294,27 @@ class Virtues(Component):
 
 
 class Pregnant(StatusComponent):
-    """
-    Pregnant characters give birth to new child characters after the due_date
+    """Tags a character as pregnant.
 
     Attributes
     ----------
-    partner_id: int
-        The GameObject ID of the character that impregnated this character
-    due_date: SimDateTime
-        The date that the baby is due
+    partner_id
+        The GameObject ID of the character that impregnated this character.
+    due_date
+        The date the baby is expected to be born.
     """
 
     __slots__ = "partner_id", "due_date"
 
     def __init__(self, partner_id: int, due_date: SimDateTime) -> None:
+        """
+        Parameters
+        ----------
+        partner_id
+            The GameObject ID of the character that got this one pregnant.
+        due_date
+            The date the baby is expected to be born.
+        """
         super().__init__()
         self.partner_id: int = partner_id
         self.due_date: SimDateTime = due_date
@@ -280,18 +328,26 @@ class Pregnant(StatusComponent):
 
 
 class Family(RelationshipStatus):
+    """Tags the relationship owner as a member of the target's family."""
+
     pass
 
 
 class ParentOf(RelationshipStatus):
+    """Tags the relationship owner as the parent of the target."""
+
     pass
 
 
 class ChildOf(RelationshipStatus):
+    """Tags the relationship owner as the child of the target."""
+
     pass
 
 
 class SiblingOf(RelationshipStatus):
+    """Tags the relationship owner as a sibling of the target."""
+
     pass
 
 
@@ -309,6 +365,17 @@ class Dating(RelationshipStatus):
 
 @dataclasses.dataclass()
 class MarriageConfig(Component):
+    """A component that tracks configuration settings for marriage.
+
+    Attributes
+    ----------
+    spouse_prefabs
+        A list of the names the prefabs of potential spouses when spawning a character
+        with this component.
+    chance_spawn_with_spouse
+        The probability of this character spawning with a spouse.
+    """
+
     spouse_prefabs: List[str] = dataclasses.field(default_factory=list)
     chance_spawn_with_spouse: float = 0.5
 
@@ -321,10 +388,19 @@ class MarriageConfig(Component):
 
 @dataclasses.dataclass()
 class AgingConfig(Component):
+    """A component that tracks configuration settings for aging."""
+
     adolescent_age: int
+    """The age the character is considered an adolescent."""
+
     young_adult_age: int
+    """The age the character is considered a young-adult."""
+
     adult_age: int
+    """The age the character is considered an adult."""
+
     senior_age: int
+    """The age the character is considered to be a senior."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -337,8 +413,13 @@ class AgingConfig(Component):
 
 @dataclasses.dataclass()
 class ReproductionConfig(Component):
+    """A component that track configuration settings about reproduction."""
+
     max_children_at_spawn: int = 3
+    """The maximum number of children this character can spawn with."""
+
     child_prefabs: List[str] = dataclasses.field(default_factory=list)
+    """The names of prefabs that can spawn as children."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -348,6 +429,8 @@ class ReproductionConfig(Component):
 
 
 class GenderType(enum.Enum):
+    """An enumeration tracking gender expression."""
+
     Male = enum.auto()
     Female = enum.auto()
     NonBinary = enum.auto()
@@ -355,9 +438,23 @@ class GenderType(enum.Enum):
 
 
 class Gender(Component):
+    """A component that tracks a character's gender expression.
+
+    Attributes
+    ----------
+    gender
+        The character's current gender.
+    """
+
     __slots__ = "gender"
 
     def __init__(self, gender: Union[str, GenderType] = "NotSpecified") -> None:
+        """
+        Parameters
+        ----------
+        gender
+            The character's current gender.
+        """
         super().__init__()
         self.gender: GenderType = (
             gender if isinstance(gender, GenderType) else GenderType[gender]
@@ -371,6 +468,8 @@ class Gender(Component):
 
 
 class LifeStageType(enum.IntEnum):
+    """An enumeration of all the various life stages aging characters pass through."""
+
     Child = 0
     Adolescent = enum.auto()
     YoungAdult = enum.auto()
@@ -379,7 +478,21 @@ class LifeStageType(enum.IntEnum):
 
 
 class LifeStage(Component):
+    """A component that tracks the current life stage of a character.
+
+    Attributes
+    ----------
+    life_stage
+        The character's current life stage.
+    """
+
     def __init__(self, life_stage: Union[str, LifeStageType] = "YoungAdult") -> None:
+        """
+        Parameters
+        ----------
+        life_stage
+            The character's current life stage.
+        """
         super().__init__()
         self.life_stage: LifeStageType = (
             life_stage

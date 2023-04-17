@@ -20,17 +20,17 @@ class RoutineEntry:
 
     Attributes
     ----------
-    start: int
+    start
         The time that this routine task begins
-    end: int
+    end
         The time that this routine task ends
-    priority: RoutinePriority
+    priority
         The priority associated with this task. High priority tasks
         override lower priority tasks
-    location: Union[str, int]
+    location
         The location or location alias for a location. Location
         aliases can be looked up on the GameCharacter class
-    tags: Set[str]
+    tags
         A set of tags associated with this entry
     """
 
@@ -85,13 +85,6 @@ class DailyRoutine:
     """
     A collection of RoutineEntries that manage where an
     entity should be for a given day
-
-    Attributes
-    ----------
-    _entries: Dict[str, RoutineEntry]
-        All the RoutineEntry instances associated with this DailyRoutine
-    _tracks: Dict[RoutinePriority, List[List[RoutineEntry]]
-        Pointers to the RoutineEntry instances organized by hour
     """
 
     __slots__ = "_entries", "_tracks"
@@ -151,7 +144,7 @@ class DailyRoutine:
 
         Parameters
         ----------
-        entry_id: str
+        entry_id
             Unique ID of the entry to remove from the routine
         """
         entry = self._entries[entry_id]
@@ -281,7 +274,7 @@ def parse_schedule_str(s: str) -> Dict[str, Tuple[int, int]]:
 
     Returns
     -------
-    dict[str, tuple(int, int)]
+    dict[str, tuple[int, int]]
         Time intervals for RoutineEntries mapped to the day of the week
 
     Notes

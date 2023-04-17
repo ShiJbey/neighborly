@@ -4,10 +4,9 @@ import random
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Type
 
-from neighborly import Component
-from neighborly.core.ecs import Event, GameObject, World
+from neighborly.core.ecs import Component, Event, GameObject, World
 from neighborly.core.roles import Role, RoleList
-from neighborly.core.serializable import ISerializable
+from neighborly.core.ecs.ecs import ISerializable
 from neighborly.core.time import SimDateTime
 
 
@@ -178,7 +177,7 @@ class RandomLifeEvents:
 
         Returns
         -------
-        type of ActionableLifeEvent
+        Type[ActionableLifeEvent]
             A randomly-chosen random event from the registry
         """
         return rng.choice(list(cls._registry.values()))
@@ -223,7 +222,6 @@ class AllEvents(ISerializable):
     _event_listeners: List[Callable[[LifeEvent], None]] = []
 
     __slots__ = "_history"
-
 
     def __init__(self) -> None:
         super().__init__()

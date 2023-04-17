@@ -53,7 +53,7 @@ from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
     component,
     component_factory,
-    event_listener,
+    on_event,
     random_life_event,
     resource,
     system,
@@ -1204,7 +1204,7 @@ class PromotionToUpperMoon(ActionableLifeEvent):
         return None
 
 
-@event_listener()
+@on_event(DeathEvent)
 def handle_hashira_death(gameobject: GameObject, event: DeathEvent) -> None:
     if demon_slayer := gameobject.try_component(DemonSlayer):
         if demon_slayer.rank == DemonSlayerRank.Hashira:
@@ -1213,7 +1213,7 @@ def handle_hashira_death(gameobject: GameObject, event: DeathEvent) -> None:
             )
 
 
-@event_listener(DeathEvent)
+@on_event(DeathEvent)
 def handle_demon_death(gameobject: GameObject, event: DeathEvent) -> None:
     if demon := gameobject.try_component(Demon):
         if demon.rank == DemonRank.LowerMoon:
