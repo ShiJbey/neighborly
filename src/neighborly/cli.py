@@ -1,3 +1,7 @@
+"""Neighborly Commandline Interface.
+
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -16,6 +20,14 @@ from neighborly.simulation import Neighborly
 
 
 def get_args() -> argparse.Namespace:
+    """Configure CLI argument parser and parse args.
+
+    Returns
+    -------
+    argparse.Namespace
+        parsed CLI arguments.
+    """
+
     parser = argparse.ArgumentParser("The Neighborly commandline interface")
 
     parser.add_argument(
@@ -53,13 +65,17 @@ def get_args() -> argparse.Namespace:
 
 
 def load_config_from_path(config_path: str) -> Dict[str, Any]:
-    """
-    This function loads the configuration file at the given path
+    """This function loads the configuration file at the given path.
 
     Parameters
     ----------
-    config_path: str
-        Path to a configuration file to load
+    config_path
+        Path to a configuration file to load.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Configuration settings.
     """
     path = pathlib.Path(os.path.abspath(config_path))
 
@@ -75,10 +91,14 @@ def load_config_from_path(config_path: str) -> Dict[str, Any]:
 
 
 def try_load_local_config() -> Optional[Dict[str, Any]]:
+    """Attempt to load a configuration file in the current working directory.
+
+    Returns
+    -------
+    Dict[str, Any] or None
+        Configuration settings.
     """
-    Attempt to load a configuration file in the current working
-    directory.
-    """
+
     config_load_precedence = [
         os.path.join(os.getcwd(), "neighborly.config.yaml"),
         os.path.join(os.getcwd(), "neighborly.config.yml"),
@@ -93,6 +113,8 @@ def try_load_local_config() -> Optional[Dict[str, Any]]:
 
 
 def run():
+    """Run the commandline interface."""
+
     args = get_args()
 
     if args.version:

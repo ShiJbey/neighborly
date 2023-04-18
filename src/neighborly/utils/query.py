@@ -54,9 +54,9 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
 
     Parameters
     ----------
-    occupation_type: str
+    occupation_type
         The name of the occupation to check for
-    years_experience: int
+    years_experience
         The number of years of experience the entity needs to have
     """
 
@@ -94,7 +94,7 @@ def get_work_experience_as(occupation_type: str):
 
     Parameters
     ----------
-    occupation_type: str
+    occupation_type
         The name of the occupation to check for
     """
 
@@ -132,7 +132,7 @@ def has_any_work_experience(years_experience: int = 0):
 
     Parameters
     ----------
-    years_experience: int
+    years_experience
         The number of years of experience the entity needs to have
     """
 

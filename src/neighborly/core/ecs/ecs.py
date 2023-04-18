@@ -916,11 +916,6 @@ class World:
         -------
         GameObject
             The GameObject with the given ID.
-
-        Raises
-        ------
-        GameObjectNotFoundError
-            Raised when the GameObject does not exist in the world.
         """
         try:
             return self._gameobjects[uid]
@@ -1390,11 +1385,6 @@ class World:
         ----------
         resource_type
             The class type of the resource.
-
-        Raises
-        ------
-        ResourceNotFoundError
-            When the resource did not exist.
         """
         try:
             del self._resources[resource_type]
@@ -1413,11 +1403,6 @@ class World:
         -------
         _RT
             The instance of the resource.
-
-        Raises
-        ------
-        ResourceNotFoundError
-            When the resource does not exist.
         """
         try:
             return self._resources[resource_type]
@@ -1491,11 +1476,6 @@ class World:
         -------
         ComponentInfo
             Information about the desired component class type.
-
-        Raises
-        ------
-        KeyError
-            When do component information is found mapped to the given name.
         """
         return self._component_types[component_name]
 

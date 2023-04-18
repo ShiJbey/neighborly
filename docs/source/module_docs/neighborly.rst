@@ -108,6 +108,3 @@ Module contents
 ---------------
 
 .. automodule:: neighborly
-   :members:
-   :undoc-members:
-   :show-inheritance:

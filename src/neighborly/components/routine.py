@@ -8,31 +8,15 @@ from neighborly.core.time import Weekday
 
 
 class RoutinePriority(IntEnum):
+    """An enumeration of routine entry priority values."""
+
     LOW = 0
     MED = 1
     HIGH = 2
 
 
 class RoutineEntry:
-    """
-    An entry within a routine for when an entity needs to be
-    at a specific location and for how long
-
-    Attributes
-    ----------
-    start
-        The time that this routine task begins
-    end
-        The time that this routine task ends
-    priority
-        The priority associated with this task. High priority tasks
-        override lower priority tasks
-    location
-        The location or location alias for a location. Location
-        aliases can be looked up on the GameCharacter class
-    tags
-        A set of tags associated with this entry
-    """
+    """An entry within a routine."""
 
     __slots__ = (
         "start",
@@ -41,6 +25,21 @@ class RoutineEntry:
         "tags",
         "location",
     )
+
+    start: int
+    """The time that this routine task begins."""
+
+    end: int
+    """The time that this routine task ends."""
+
+    location: Union[str, int]
+    """The location or location alias for a location."""
+
+    priority: RoutinePriority
+    """The priority associated with this task."""
+
+    tags: Set[str]
+    """A set of tags associated with this entry."""
 
     def __init__(
         self,
@@ -82,25 +81,39 @@ class RoutineEntry:
 
 
 class DailyRoutine:
-    """
-    A collection of RoutineEntries that manage where an
-    entity should be for a given day
-    """
+    """A collection of RoutineEntries for a given day"""
 
     __slots__ = "_entries", "_tracks"
 
+    _entries: Dict[str, RoutineEntry]
+    """All the entries within the routine."""
+
+    _tracks: Dict[RoutinePriority, List[List[RoutineEntry]]]
+    """Routine entries separated into tracks by priority"""
+
     def __init__(self) -> None:
-        self._entries: Dict[str, RoutineEntry] = {}
+        self._entries = {}
         # Each track holds 24 slots, one for each hour
         # Each slot holds a list of events registered to that time
-        self._tracks: Dict[RoutinePriority, List[List[RoutineEntry]]] = {
+        self._tracks = {
             RoutinePriority.LOW: [list() for _ in range(24)],
             RoutinePriority.MED: [list() for _ in range(24)],
             RoutinePriority.HIGH: [list() for _ in range(24)],
         }
 
     def get(self, hour: int) -> List[RoutineEntry]:
-        """Get highest-priority entries for a given hour"""
+        """Get highest-priority entries for a given hour.
+
+        Parameters
+        ----------
+        hour
+            The hour of the day
+
+        Returns
+        -------
+        List[RoutineEntry]
+            A list of routines
+        """
         high_priority_entries = self._tracks[RoutinePriority.HIGH][hour]
         if high_priority_entries:
             return high_priority_entries
@@ -112,15 +125,15 @@ class DailyRoutine:
         return self._tracks[RoutinePriority.LOW][hour]
 
     def add(self, entry_id: str, entry: RoutineEntry) -> None:
-        """
-        Add an entry to the DailyRoutine
+        """Add an entry to the DailyRoutine.
 
         Parameters
         ----------
-        entry_id: str
-            Unique ID used to remove this entry at a later time
-        entry: RoutineEntry
-            Entry to add to the routine
+        entry_id
+            Unique ID used to remove this entry at a later time.
+
+        entry
+            Entry to add to the routine.
         """
         if entry_id in self._entries:
             return

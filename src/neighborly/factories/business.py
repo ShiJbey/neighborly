@@ -42,21 +42,19 @@ class OperatingHoursFactory(IComponentFactory):
 
         Notes
         -----
-        The following a re valid formats for the operating hours string
-        (1a interval 24HR) ## - ##
-            Opening hour - closing hour
-            Assumes that the business is open all days of the week
-        (1b interval 12HR AM/PM) ## AM - ## PM
-            Twelve-hour time interval
-        (2 interval-alias) "morning", "day", "night", or ...
-            Single string that maps to a preset time interval
-            Assumes that the business is open all days of the week
-        (3 days + interval) MTWRFSU: ## - ##
-            Specify the time interval and the specific days of the
-            week that the business is open
-        (4 days + interval-alias) MTWRFSU: "morning", or ...
-            Specify the days of the week and a time interval for
-            when the business will be open
+        The following a re valid formats for the operating hours string:
+
+        - (An 24HR interval) ## - ##, representing Opening hour - closing
+          hour, and assumes that the business is open all days of the week.
+        - (A 12HR AM/PM interval) ## AM - ## PM, assumes that the business is open all
+          days of the week.
+        - (interval-alias) "morning", "day", "night", etc, representing a single string
+          that maps to a time interval and assumes that the business is open all days of
+          the week
+        - (days + 24-HR interval) MTWRFSU: ## - ##. Specifies the time interval and the
+          specific days of the week that the business is open
+        - (days + interval-alias) MTWRFSU: "morning", or ... . Specifies the days of the
+          week and a time interval alias for when the business will be open
 
         Returns
         -------

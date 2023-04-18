@@ -56,24 +56,31 @@ class PluginSetupError(Exception):
 
 @dataclass
 class PluginInfo:
+    """Metadata for Neighborly plugins"""
+
     name: str
+    """A display name"""
+
     plugin_id: str
+    """A unique ID that differentiates this plugin from other plugins"""
+
     version: str
+    """The plugin's version number in the form MAJOR.MINOR.PATCH"""
+
     required_version: Optional[str] = None
+    """The version of Neighborly required to load the plugin"""
 
 
 class Neighborly:
-    """Main entry class for running Neighborly simulations.
-
-    Attributes
-    ----------
-    world
-        Entity-component system (ECS) that manages the virtual world.
-    config
-        Configuration settings for the simulation.
-    """
+    """Main entry class for running Neighborly simulations."""
 
     __slots__ = "world", "config"
+
+    world: World
+    """Entity-component system (ECS) that manages the virtual world."""
+
+    config: NeighborlyConfig
+    """Configuration settings for the simulation."""
 
     def __init__(self, config: Optional[NeighborlyConfig] = None) -> None:
         """
@@ -82,8 +89,8 @@ class Neighborly:
         config
             Configuration settings for the simulation.
         """
-        self.world: World = World()
-        self.config: NeighborlyConfig = config if config else NeighborlyConfig()
+        self.world = World()
+        self.config = config if config else NeighborlyConfig()
 
         # Seed RNG for libraries we don't control, like Tracery
         random.seed(self.config.seed)
@@ -209,16 +216,16 @@ class Neighborly:
 
     @property
     def date(self) -> SimDateTime:
-        """Get the simulated DateTime instance used by the simulation"""
+        """The current date of the simulation."""
         return self.world.get_resource(SimDateTime)
 
     def load_plugin(self, plugin: PluginConfig) -> None:
-        """Load a plugin
+        """Load a plugin.
 
         Parameters
         ----------
-        plugin: PluginConfig
-            Configuration data for a plugin to load
+        plugin
+            Configuration data for a plugin to load.
         """
 
         plugin_abs_path = os.path.abspath(plugin.path)
@@ -283,13 +290,12 @@ class Neighborly:
         sys.path.pop(0)
 
     def run_for(self, time_delta: Union[int, TimeDelta]) -> None:
-        """
-        Run the simulation for a given number of simulated years
+        """Run the simulation for a given number of simulated years.
 
         Parameters
         ----------
-        time_delta: Union[int, TimeDelta]
-            Simulated years to run the simulation for
+        time_delta
+            Simulated years to run the simulation for.
         """
         if isinstance(time_delta, int):
             stop_date = self.world.get_resource(SimDateTime).copy() + TimeDelta(
@@ -301,13 +307,12 @@ class Neighborly:
         self.run_until(stop_date)
 
     def run_until(self, stop_date: SimDateTime) -> None:
-        """
-        Run the simulation until a specific date is reached
+        """Run the simulation until a specific date is reached.
 
         Parameters
         ----------
-        stop_date: SimDateTime
-            The date to stop stepping the simulation
+        stop_date
+            The date to stop stepping the simulation.
         """
         try:
             current_date = self.world.get_resource(SimDateTime)
@@ -317,7 +322,7 @@ class Neighborly:
             print("\nStopping Simulation")
 
     def step(self) -> None:
-        """Advance the simulation a single timestep"""
+        """Advance the simulation a single timestep."""
         self.world.step()
 
     def register_component(
@@ -326,7 +331,7 @@ class Neighborly:
         name: Optional[str] = None,
         factory: Optional[IComponentFactory] = None,
     ) -> None:
-        """Register a component type with the  simulation
+        """Register a component type with the  simulation.
 
         Registers a component class type with the simulation's World instance.
         This allows content authors to use the Component in YAML files and
@@ -334,11 +339,11 @@ class Neighborly:
 
         Parameters
         ----------
-        component_type: Type[Component]
+        component_type
             The type of component to add
-        name: str, optional
+        name
             A name to register the component type under (defaults to name of class)
-        factory: IComponentFactory, optional
+        factory
             A factory instance used to construct this component type
             (defaults to DefaultComponentFactory())
         """
@@ -346,23 +351,23 @@ class Neighborly:
         self.world.register_component(component_type, name, factory)
 
     def add_resource(self, resource: Any) -> None:
-        """Add a shared resource
+        """Add a shared resource.
 
         Parameters
         ----------
-        resource: Any
-            An instance of the resource to add to the class
+        resource
+            An instance of the shared resource.
         """
 
         self.world.add_resource(resource)
 
     def add_system(self, system: ISystem) -> None:
-        """Add a simulation system
+        """Add a simulation system.
 
         Parameters
         ----------
-        system: ISystem
-            The system to add
+        system
+            The system to add.
         """
 
         self.world.add_system(system)

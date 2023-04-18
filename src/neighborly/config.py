@@ -11,78 +11,61 @@ from neighborly.core.time import SimDateTime, TimeDelta
 
 
 class PluginConfig(pydantic.BaseModel):
-    """settings for loading and constructing a plugin.
-
-    Fields
-    ----------
-    name
-        Name of the plugin's python module.
-    path
-        The path where the plugin is located.
-    options
-        Parameters to pass to the plugin when constructing
-        and loading it.
-    """
+    """settings for loading and constructing a plugin."""
 
     name: str
+    """Name of the plugin's python module."""
+
     path: str = pydantic.Field(default_factory=lambda: os.getcwd())
+    """The path where the plugin is located."""
+
     options: Dict[str, Any] = pydantic.Field(default_factory=dict)
+    """Parameters to pass to the plugin when constructing and loading it."""
 
 
 class RelationshipSchema(pydantic.BaseModel):
-    """Prefab information specifying components attached to Relationship GameObjects.
-
-    Attributes
-    ----------
-    components
-        The component information for relationship instance.
-    """
+    """Prefab information specifying components for Relationship GameObjects."""
 
     components: Dict[str, Dict[str, Any]] = pydantic.Field(default_factory=dict)
+    """The component information for relationship instance."""
 
 
 class NeighborlyConfig(pydantic.BaseModel):
-    """Configuration settings for a Neighborly simulation instance.
-
-    Attributes
-    ----------
-    seed
-        A value used to seed the random number generator.
-    relationship_schema
-        The default component configuration of new Relationship GameObjects.
-    plugins
-        Configuration information for plugins to import before running the simulation.
-    time_increment
-        The amount of time to advance the current date by each timestep.
-    years_to_simulate
-        The number of years to simulate.
-    start_date
-        The starting date of the simulation before world generation.
-    verbose
-        Toggle verbose logging.
-    settings
-        Miscellaneous keyword settings.
-    """
+    """Configuration settings for a Neighborly simulation instance."""
 
     seed: Union[str, int] = pydantic.Field(
         default_factory=lambda: random.randint(0, 9999999)
     )
+    """A value used to seed the random number generator."""
+
     relationship_schema: RelationshipSchema = pydantic.Field(
         default_factory=RelationshipSchema
     )
+    """The default component configuration of new Relationship GameObjects."""
+
     plugins: List[PluginConfig] = pydantic.Field(default_factory=list)
-    # Months to increment time by each simulation step
+    """Configuration information for plugins to import before running the simulation."""
+
     time_increment: TimeDelta = TimeDelta(hours=4)
+    """The amount of time to advance the current date by each timestep."""
+
     years_to_simulate: int = 50
+    """The number of years to simulate."""
+
     start_date: SimDateTime = pydantic.Field(
         default_factory=lambda: SimDateTime(1, 1, 1)
     )
+    """The starting date of the simulation before world generation."""
+
     verbose: bool = True
+    """Toggle verbose logging."""
+
     settings: Dict[str, Any] = pydantic.Field(default_factory=dict)
+    """Miscellaneous keyword settings."""
 
     @pydantic.validator("plugins", pre=True, each_item=True)  # type: ignore
     @classmethod
-    def validate_plugins(cls, value: Any) -> PluginConfig:
+    def _validate_plugins(cls, value: Any) -> PluginConfig:
         if isinstance(value, PluginConfig):
             return value
         elif isinstance(value, str):
@@ -97,7 +80,7 @@ class NeighborlyConfig(pydantic.BaseModel):
 
     @pydantic.validator("start_date", pre=True)  # type: ignore
     @classmethod
-    def validate_date(cls, value: Any) -> SimDateTime:
+    def _validate_date(cls, value: Any) -> SimDateTime:
         if isinstance(value, SimDateTime):
             return value
         elif isinstance(value, str):
@@ -106,7 +89,7 @@ class NeighborlyConfig(pydantic.BaseModel):
 
     @pydantic.validator("time_increment", pre=True)  # type: ignore
     @classmethod
-    def validate_time_increment(cls, value: Any) -> TimeDelta:
+    def _validate_time_increment(cls, value: Any) -> TimeDelta:
         if isinstance(value, TimeDelta):
             return value
         elif isinstance(value, str):

@@ -16,22 +16,19 @@ class Weather(Enum):
 
 
 class WeatherManager:
-    """Manages the weather in the town
+    """Manages the weather in the town."""
 
-    Attributes
-    ----------
-    current_weather : Weather
-        Current weather in the town
-    time_before_change : int
-        Number of hours before the weather
-        pattern changes
-    """
+    current_weather: Weather
+    """Current weather in the town."""
+
+    time_before_change: int
+    """Number of hours before the weather pattern changes."""
 
     __slots__ = "current_weather", "time_before_change"
 
     def __init__(self, default: Weather = Weather.SUNNY) -> None:
-        self.current_weather: Weather = default
-        self.time_before_change: int = 0
+        self.current_weather = default
+        self.time_before_change = 0
 
     def __repr__(self) -> str:
         return f"Weather({str(self.current_weather.value)})"

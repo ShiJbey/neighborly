@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Iterator, Optional, Set
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, ISerializable
 
 
-class Activities(Component):
+class Activities(Component, ISerializable):
     """A collection of activity names.
 
     Notes
@@ -19,6 +19,9 @@ class Activities(Component):
 
     __slots__ = "_activities"
 
+    _activities: Set[str]
+    """Activity names."""
+
     def __init__(self, activities: Optional[Iterable[str]] = None) -> None:
         """
         Parameters
@@ -27,7 +30,7 @@ class Activities(Component):
             A collection of activities.
         """
         super().__init__()
-        self._activities: Set[str] = set()
+        self._activities = set()
 
         if activities:
             for name in activities:

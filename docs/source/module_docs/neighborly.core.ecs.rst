@@ -24,6 +24,3 @@ Module contents
 ---------------
 
 .. automodule:: neighborly.core.ecs
-   :members:
-   :undoc-members:
-   :show-inheritance:

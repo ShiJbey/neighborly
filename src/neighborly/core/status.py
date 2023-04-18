@@ -6,31 +6,34 @@ be paired with systems and updated every timestep and may be used to represent
 temporary states like mood, unemployment, pregnancies, etc.
 """
 from abc import ABC
-from typing import Any, Dict, Iterator, Set, Type, TypeVar
+from typing import Any, ClassVar, Dict, Iterator, Set, Type, TypeVar
 
-from neighborly.core.ecs import Component, GameObject
+from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.time import SimDateTime
 
 
-class StatusComponent(Component, ABC):
-    """
-    A component that tracks a temporary state of being for an entity
+class StatusComponent(Component, ISerializable, ABC):
+    """A component that tracks a temporary state of being for a GameObject."""
 
-    Attributes
-    ----------
-    created: str
-        A timestamp of when this status was created
-    """
-
-    is_persistent = False
+    is_persistent: ClassVar[bool] = False
 
     __slots__ = "created"
 
+    created: SimDateTime
+    """The date the status was created."""
+
     def __init__(self) -> None:
         super().__init__()
-        self.created: SimDateTime = SimDateTime(1, 1, 1)
+        self.created = SimDateTime(1, 1, 1)
 
     def set_created(self, timestamp: SimDateTime) -> None:
+        """Set the creation timestamp.
+
+        Parameters
+        ----------
+        timestamp
+            The new timestamp.
+        """
         self.created = timestamp.copy()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -43,17 +46,20 @@ class StatusComponent(Component, ABC):
         return "{}(created={})".format(self.__class__.__name__, self.created)
 
 
-class StatusManager(Component):
-    """Manages the state of statuses attached to the GameObject"""
+class StatusManager(Component, ISerializable):
+    """Manages the state of statuses attached to the GameObject."""
 
     __slots__ = "_statuses"
 
+    _statuses: Set[Type[StatusComponent]]
+    """A set of status types attached to the GameObject."""
+
     def __init__(self) -> None:
         super().__init__()
-        self._statuses: Set[Type[StatusComponent]] = set()
+        self._statuses = set()
 
     def add(self, status_type: Type[StatusComponent]) -> None:
-        """Add a status type to the tracker
+        """Add a status type to the tracker.
 
         Parameters
         ----------
@@ -73,7 +79,7 @@ class StatusManager(Component):
         self._statuses.remove(status_type)
 
     def __contains__(self, item: Type[StatusComponent]) -> bool:
-        """Check if a status type is attached to the GameObject"""
+        """Check if a status type is attached to a GameObject"""
         return item in self._statuses
 
     def __iter__(self) -> Iterator[Type[StatusComponent]]:

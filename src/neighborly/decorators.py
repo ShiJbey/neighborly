@@ -26,7 +26,7 @@ _ET_contra = TypeVar("_ET_contra", bound=Event, contravariant=True)
 
 
 def component(sim: Neighborly):
-    """Register a component type with the  simulation
+    """Register a component type with the  simulation.
 
     Registers a component class type with the simulation's World instance.
     This allows content authors to use the Component in YAML files and
@@ -34,8 +34,8 @@ def component(sim: Neighborly):
 
     Parameters
     ----------
-    sim: Neighborly
-        The simulation instance to register the life event to
+    sim
+        The simulation instance to register the life event to.
     """
 
     def decorator(cls: Type[_CT]) -> Type[_CT]:
@@ -46,7 +46,7 @@ def component(sim: Neighborly):
 
 
 def component_factory(sim: Neighborly, component_type: Type[Component], **kwargs: Any):
-    """Register a component type with the  simulation
+    """Register a component type with the  simulation.
 
     Registers a component class type with the simulation's World instance.
     This allows content authors to use the Component in YAML files and
@@ -54,10 +54,10 @@ def component_factory(sim: Neighborly, component_type: Type[Component], **kwargs
 
     Parameters
     ----------
-    sim: Neighborly
-        The simulation instance to register the life event to
-    component_type: Type[Component]
-        The component type the factory instantiates
+    sim
+        The simulation instance to register the life event to.
+    component_type
+        The component type the factory instantiates.
     """
 
     def decorator(cls: Type[_CF]) -> Type[_CF]:
@@ -68,16 +68,16 @@ def component_factory(sim: Neighborly, component_type: Type[Component], **kwargs
 
 
 def resource(sim: Neighborly, **kwargs: Any):
-    """Add a class as a shared resource
+    """Add a class as a shared resource.
 
     This decorator adds an instance of the decorated class as a shared resource.
 
     Parameters
     ----------
-    sim: Neighborly
-        The simulation instance to register the life event to
-    **kwargs: Any
-        Keyword arguments to pass to the constructor of the decorated class
+    sim
+        The simulation instance to register the life event to.
+    **kwargs
+        Keyword arguments to pass to the constructor of the decorated class.
     """
 
     def decorator(cls: Type[_RT]) -> Type[_RT]:
@@ -88,16 +88,16 @@ def resource(sim: Neighborly, **kwargs: Any):
 
 
 def system(sim: Neighborly, **kwargs: Any):
-    """Add a class as a simulation system
+    """Add a class as a simulation system.
 
     This decorator adds an instance of the decorated class as a shared resource.
 
     Parameters
     ----------
-    sim: Neighborly
-        The simulation instance to register the life event to
-    **kwargs: Any
-        Keyword arguments to pass to the constructor of the decorated class
+    sim
+        The simulation instance to register the life event to.
+    **kwargs
+        Keyword arguments to pass to the constructor of the decorated class.
     """
 
     def decorator(cls: Type[_ST]) -> Type[_ST]:
@@ -118,13 +118,12 @@ def random_life_event():
 
 
 def social_rule(description: str):
-    """
-    Decorator that marks a function as a location bias rule
+    """Decorator that marks a function as a location bias rule.
 
     Parameters
     ----------
-    description: str
-        Text description of the rule
+    description
+        Text description of the rule.
     """
 
     def decorator(rule: ISocialRule):
@@ -135,13 +134,12 @@ def social_rule(description: str):
 
 
 def location_bias_rule(description: str):
-    """
-    Decorator that marks a function as a location bias rule
+    """Decorator that marks a function as a location bias rule.
 
     Parameters
     ----------
-    description: str
-        Text description of the rule
+    description
+        Text description of the rule.
     """
 
     def decorator(rule: ILocationBiasRule):
@@ -151,12 +149,12 @@ def location_bias_rule(description: str):
 
 
 def on_event(event_type: Type[_ET_contra]):
-    """A decorator that registers a function as an event listener for GameObjects
+    """A decorator that registers a function as an event listener for GameObjects.
 
     Parameters
     ----------
     event_type
-        The type of event that this function will listen for
+        The type of event that this function will listen for.
     """
 
     def decorator(listener: EventListener[_ET_contra]) -> EventListener[_ET_contra]:
@@ -167,9 +165,10 @@ def on_event(event_type: Type[_ET_contra]):
 
 
 def on_any_event(listener: EventListener[Event]):
-    """A decorator that registers a function as an event listener for GameObjects
+    """A decorator that registers a function as an event listener for GameObjects.
 
-    The decorated function will be called in response to all events fired by GameObjects
+    The decorated function will be called in response to all events fired by
+    GameObjects.
     """
     GameObject.on_any(listener)
     return listener

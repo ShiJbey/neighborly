@@ -118,11 +118,11 @@ def spawn_settlement(
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to add the settlement to
-    prefab: str, optional
+    prefab
         The name of the prefab with settlement data
-    name: str, optional
+    name
         Override name for the town
 
     Returns
@@ -154,9 +154,9 @@ def add_location_to_settlement(
 
     Parameters
     ----------
-    location: GameObject
+    location
         The location to add
-    settlement: GameObject
+    settlement
         The settlement to add the location to
     """
     location.add_component(Active())
@@ -171,7 +171,7 @@ def remove_location_from_settlement(
 
     Parameters
     ----------
-    location: GameObject
+    location
         The location to remove
     """
     world = location.world
@@ -208,19 +208,19 @@ def spawn_character(
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to add the character to
-    prefab: str
+    prefab
         The name of the prefab to instantiate
-    first_name: str, optional
+    first_name
         first name override (defaults to None)
-    last_name: str, optional
+    last_name
         last name override (defaults to None)
-    age: int, optional
+    age
         age override (defaults to None)
-    life_stage: LifeStage, optional
+    life_stage
         life stage override (defaults to None)
-    gender: str, optional
+    gender
         gender override (defaults to None)
 
     Returns
@@ -275,9 +275,9 @@ def add_character_to_settlement(character: GameObject, settlement: GameObject) -
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character to add
-    settlement: GameObject
+    settlement
         The settlement to add the character to
     """
 
@@ -301,7 +301,7 @@ def remove_character_from_settlement(character: GameObject) -> None:
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character to add
     """
 
@@ -332,9 +332,9 @@ def spawn_residence(
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to spawn the residence into
-    prefab: str
+    prefab
         The name of a prefab to instantiate
 
     Returns
@@ -362,11 +362,11 @@ def add_residence_to_settlement(
 
     Parameters
     ----------
-    residence: GameObject
+    residence
         The residence to add
-    settlement: GameObject
+    settlement
         The settlement to add the residence to
-    lot_id: int, optional
+    lot_id
         The ID of a lot to set the residence to
     """
     settlement_comp = settlement.get_component(Settlement)
@@ -401,9 +401,9 @@ def get_child_prefab(
 
     Parameters
     ----------
-    parent_a: GameObject
+    parent_a
         Reference to one parent
-    parent_b: GameObject, optional
+    parent_b
         Reference to another parent if two parents are present
 
     Returns
@@ -522,9 +522,9 @@ def depart_settlement(character: GameObject, reason: str = "") -> None:
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character initiating the departure
-    reason: str, optional
+    reason
         An optional reason for departing from the settlement
     """
     world = character.world
@@ -726,11 +726,11 @@ def add_business_to_settlement(
 
     Parameters
     ----------
-    business: GameObject
+    business
         The business to add
-    settlement: GameObject
+    settlement
         The settlement to add the business to
-    lot_id: int, optional
+    lot_id
         The lot to place the business on (defaults to None)
     """
 
@@ -778,7 +778,7 @@ def shutdown_business(business: GameObject) -> None:
 
     Parameters
     ----------
-    business: GameObject
+    business
         Business to shut down in the town
     """
     world = business.world
@@ -832,9 +832,9 @@ def end_job(
 
     Parameters
     ----------
-    character: GameObject
+    character
         The characters whose job to terminate
-    reason: str, optional
+    reason
         The reason for them leaving their job (defaults to "")
     """
     world = character.world
@@ -944,12 +944,6 @@ def start_job(
     is_owner
         Is this character going to be the owner of the
         business (defaults to False).
-
-    Raises
-    ------
-    RuntimeError
-        If attempting to set the character as the business owner
-        and the business owner is not None
     """
     world = character.world
     business_comp = business.get_component(Business)
@@ -1035,10 +1029,10 @@ def get_places_with_services(world: World, *services: str) -> List[int]:
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to search within
 
-    services: Tuple[str]
+    services
         The services to search for
 
     Returns
@@ -1082,11 +1076,11 @@ def get_places_with_activities(
 
     Parameters
     ----------
-    world: World
+    world
         The World instance of the simulation
-    settlement: GameObject
+    settlement
         The settlement to search within
-    *activities: str
+    *activities
         Activities to search for
 
     Returns
@@ -1117,11 +1111,11 @@ def get_places_with_any_activities(
 
     Parameters
     ----------
-    world: World
+    world
         The World instance of the simulation
-    settlement: GameObject
+    settlement
         The settlement to search within
-    *activities: str
+    *activities
         Activities to search for
 
     Returns
@@ -1210,11 +1204,11 @@ def set_frequented_locations(
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character to set frequented locations for
-    settlement: GameObject
+    settlement
         The settlement to sample frequented locations from
-    max_locations: int
+    max_locations
         The max number of locations to sample
     """
     clear_frequented_locations(character)
@@ -1249,7 +1243,7 @@ def clear_frequented_locations(character: GameObject) -> None:
 
     Parameters
     ----------
-    character: GameObject
+    character
         The GameObject to remove as a frequenter
     """
     world = character.world
@@ -1278,10 +1272,10 @@ def deep_merge(source: Dict[_KT, Any], other: Dict[_KT, Any]) -> Dict[_KT, Any]:
 
     Parameters
     ----------
-    source: Dict[_KT, Any]
+    source
         Dictionary with initial field values
 
-    other: Dict[_KT, Any]
+    other
         Dictionary with fields to override in the source dict
 
     Returns

@@ -45,14 +45,6 @@ neighborly.core.roles module
    :undoc-members:
    :show-inheritance:
 
-neighborly.core.serializable module
------------------------------------
-
-.. automodule:: neighborly.core.serializable
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.core.settlement module
 ---------------------------------
 

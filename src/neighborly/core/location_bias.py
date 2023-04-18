@@ -2,7 +2,8 @@
 location_frequency_rule.py
 
 This module provides interface and classes that help characters determine
-where within a settlement they choose to frequent
+where within a settlement they choose to frequent.
+
 """
 from __future__ import annotations
 
@@ -21,9 +22,9 @@ class ILocationBiasRule(Protocol):
 
         Parameters
         ----------
-        character: GameObject
+        character
             The character to check
-        location: GameObject
+        location
             The location to check
 
         Returns
@@ -38,25 +39,20 @@ class ILocationBiasRule(Protocol):
 
 @dataclasses.dataclass(frozen=True)
 class LocationBiasRuleInfo:
-    """
-    Information about a location bias rule
-
-    Attributes
-    ----------
-    rule: ILocationBiasRule
-        The callable function that implements the rule
-    description: str
-        A text description of the rule
-    """
+    """Information about a location bias rule."""
 
     rule: ILocationBiasRule
+    """The callable function that implements the rule"""
+
     description: str = ""
+    """A text description of the rule"""
 
 
 class LocationBiasRules:
-    """Repository of active rules that determine what location characters frequent"""
+    """Repository of active rules that determine what location characters frequent."""
 
     _rules: List[LocationBiasRuleInfo] = []
+    """All registered rules."""
 
     @classmethod
     def add(cls, rule: ILocationBiasRule, description: str = "") -> None:

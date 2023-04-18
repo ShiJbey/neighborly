@@ -119,7 +119,7 @@ class Retired(StatusComponent):
 
 
 class Virtue(enum.IntEnum):
-    """An enumeration of virtue types"""
+    """An enumeration of virtue types."""
 
     ADVENTURE = 0
     AMBITION = enum.auto()
@@ -189,6 +189,9 @@ class Virtues(Component):
 
     __slots__ = "_virtues"
 
+    _virtues: npt.NDArray[np.int32]
+    """An array representing the values of virtues."""
+
     def __init__(self, overrides: Optional[Dict[str, int]] = None) -> None:
         """
         Parameters
@@ -197,9 +200,7 @@ class Virtues(Component):
             Optionally override any virtue with a new value.
         """
         super().__init__()
-        self._virtues: npt.NDArray[np.int32] = np.zeros(  # type: ignore
-            len(Virtue), dtype=np.int32
-        )
+        self._virtues = np.zeros(len(Virtue), dtype=np.int32)  # type: ignore
 
         if overrides:
             for trait, value in overrides.items():
@@ -294,17 +295,15 @@ class Virtues(Component):
 
 
 class Pregnant(StatusComponent):
-    """Tags a character as pregnant.
-
-    Attributes
-    ----------
-    partner_id
-        The GameObject ID of the character that impregnated this character.
-    due_date
-        The date the baby is expected to be born.
-    """
+    """Tags a character as pregnant."""
 
     __slots__ = "partner_id", "due_date"
+
+    partner_id: int
+    """The GameObject ID of the character that impregnated this character."""
+
+    due_date: SimDateTime
+    """The date the baby is expected to be born."""
 
     def __init__(self, partner_id: int, due_date: SimDateTime) -> None:
         """
@@ -316,8 +315,8 @@ class Pregnant(StatusComponent):
             The date the baby is expected to be born.
         """
         super().__init__()
-        self.partner_id: int = partner_id
-        self.due_date: SimDateTime = due_date
+        self.partner_id = partner_id
+        self.due_date = due_date
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -365,19 +364,13 @@ class Dating(RelationshipStatus):
 
 @dataclasses.dataclass()
 class MarriageConfig(Component):
-    """A component that tracks configuration settings for marriage.
-
-    Attributes
-    ----------
-    spouse_prefabs
-        A list of the names the prefabs of potential spouses when spawning a character
-        with this component.
-    chance_spawn_with_spouse
-        The probability of this character spawning with a spouse.
-    """
+    """A component that tracks configuration settings for marriage."""
 
     spouse_prefabs: List[str] = dataclasses.field(default_factory=list)
+    """The names the prefabs of potential spouses when spawning a character."""
+
     chance_spawn_with_spouse: float = 0.5
+    """The probability of this character spawning with a spouse."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -438,15 +431,12 @@ class GenderType(enum.Enum):
 
 
 class Gender(Component):
-    """A component that tracks a character's gender expression.
-
-    Attributes
-    ----------
-    gender
-        The character's current gender.
-    """
+    """A component that tracks a character's gender expression."""
 
     __slots__ = "gender"
+
+    gender: GenderType
+    """The character's current gender."""
 
     def __init__(self, gender: Union[str, GenderType] = "NotSpecified") -> None:
         """
@@ -456,9 +446,7 @@ class Gender(Component):
             The character's current gender.
         """
         super().__init__()
-        self.gender: GenderType = (
-            gender if isinstance(gender, GenderType) else GenderType[gender]
-        )
+        self.gender = gender if isinstance(gender, GenderType) else GenderType[gender]
 
     def __str__(self) -> str:
         return self.gender.name
@@ -478,13 +466,12 @@ class LifeStageType(enum.IntEnum):
 
 
 class LifeStage(Component):
-    """A component that tracks the current life stage of a character.
+    """A component that tracks the current life stage of a character."""
 
-    Attributes
-    ----------
-    life_stage
-        The character's current life stage.
-    """
+    __slots__ = "life_stage"
+
+    life_stage: LifeStageType
+    """The character's current life stage."""
 
     def __init__(self, life_stage: Union[str, LifeStageType] = "YoungAdult") -> None:
         """
@@ -494,7 +481,7 @@ class LifeStage(Component):
             The character's current life stage.
         """
         super().__init__()
-        self.life_stage: LifeStageType = (
+        self.life_stage = (
             life_stage
             if isinstance(life_stage, LifeStageType)
             else LifeStageType[life_stage]
