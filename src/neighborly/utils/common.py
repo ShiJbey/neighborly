@@ -13,7 +13,6 @@ from neighborly.components.business import (
     EmployeeOf,
     Occupation,
     OpenForBusiness,
-    OperatingHours,
     Services,
     Unemployed,
     WorkHistory,
@@ -31,7 +30,6 @@ from neighborly.components.character import (
     ReproductionConfig,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.routine import RoutineEntry, RoutinePriority
 from neighborly.components.shared import (
     Age,
     CurrentLocation,
@@ -57,7 +55,7 @@ from neighborly.core.relationship import (
 )
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, clear_statuses, has_status, remove_status
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, Weekday
+from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 from neighborly.events import (
     BusinessClosedEvent,
     DepartEvent,
@@ -1044,23 +1042,6 @@ def get_places_with_services(world: World, *services: str) -> List[int]:
         if all([s in services_component for s in services]):
             matches.append(gid)
     return matches
-
-
-def create_routines(business: GameObject) -> Dict[Weekday, RoutineEntry]:
-    """Create routine entries given tuples of time intervals mapped to days of the week"""
-    routine_entries: Dict[Weekday, RoutineEntry] = {}
-    operating_hours = business.get_component(OperatingHours).operating_hours
-
-    for day, (opens, closes) in operating_hours.items():
-        routine_entries[day] = RoutineEntry(
-            start=opens,
-            end=closes,
-            location=business.uid,
-            priority=RoutinePriority.HIGH,
-            tags=["work"],
-        )
-
-    return routine_entries
 
 
 #######################################

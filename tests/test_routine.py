@@ -1,71 +1,117 @@
+from typing import Dict, List
 import pytest
 
 from neighborly.components.routine import (
-    DailyRoutine,
     Routine,
     RoutineEntry,
     RoutinePriority,
     parse_schedule_str,
     time_str_to_int,
 )
-from neighborly.core.ecs import World
+from neighborly.core.ai.brain import GoalNode
+from neighborly.core.ecs import World, GameObject
 from neighborly.core.time import Weekday
 
 
-def test_construct_routine_entry():
+class _GoToWork(GoalNode):
+    def is_complete(self) -> bool:
+        return super().is_complete()
+
+    def get_utility(self) -> Dict[GameObject, float]:
+        return super().get_utility()
+
+    def satisfied_goals(self) -> List[GoalNode]:
+        return super().satisfied_goals()
+
+    def __eq__(self, __o: object) -> bool:
+        return isinstance(__o, _GoToWork)
+
+
+class _GoHome(GoalNode):
+    def is_complete(self) -> bool:
+        return super().is_complete()
+
+    def get_utility(self) -> Dict[GameObject, float]:
+        return super().get_utility()
+
+    def satisfied_goals(self) -> List[GoalNode]:
+        return super().satisfied_goals()
+
+    def __eq__(self, __o: object) -> bool:
+        return isinstance(__o, _GoHome)
+
+
+class _RunErrands(GoalNode):
+    def is_complete(self) -> bool:
+        return super().is_complete()
+
+    def get_utility(self) -> Dict[GameObject, float]:
+        return super().get_utility()
+
+    def satisfied_goals(self) -> List[GoalNode]:
+        return super().satisfied_goals()
+
+    def __eq__(self, __o: object) -> bool:
+        return isinstance(__o, _RunErrands)
+
+
+def test_routine_entry_init():
     """Test that routines entries are created properly"""
 
-    entry_0 = RoutineEntry(8, 12, "home", RoutinePriority.HIGH)
+    entry_0 = RoutineEntry([Weekday.Monday], 8, 12, _GoHome(), RoutinePriority.HIGH)
 
-    assert entry_0.start == 8
-    assert entry_0.end == 12
-    assert entry_0.location == "home"
+    assert entry_0.start_time == 8
+    assert entry_0.end_time == 12
+    assert entry_0.goal == _GoHome()
     assert entry_0.priority == RoutinePriority.HIGH
 
-    entry_1 = RoutineEntry(12, 15, "park")
+    entry_1 = RoutineEntry([Weekday.Monday], 12, 15, _RunErrands())
 
     assert entry_1.priority == RoutinePriority.LOW
 
     with pytest.raises(ValueError):
-        # start greater than the end
-        RoutineEntry(6, 3, "home")
         # start less than zero
-        RoutineEntry(-1, 12, "work")
+        RoutineEntry([Weekday.Monday], -1, 12, _GoToWork())
+
+    with pytest.raises(ValueError):
+        # start greater than 23
+        RoutineEntry([Weekday.Monday], 25, 12, _GoToWork())
+
+    with pytest.raises(ValueError):
+        # end less than zero
+        RoutineEntry([Weekday.Monday], -1, -1, _GoToWork())
+
+    with pytest.raises(ValueError):
         # end greater than 23
-        RoutineEntry(10, 24, "work")
-        # start and end times are the same
-        RoutineEntry(10, 10, "home")
+        RoutineEntry([Weekday.Monday], 10, 24, _GoToWork())
 
 
-def test_daily_routine():
-    """Test retrieving routine entries from a daily routine"""
+def test_routine_get_entry_for_time():
+    routine = Routine()
 
-    daily_routine = DailyRoutine()
+    entry_0 = RoutineEntry([Weekday.Monday], 8, 12, _GoHome(), RoutinePriority.HIGH)
 
-    # Check that there are no entries
-    assert daily_routine.get(8) == []
+    routine.add_entry(entry_0)
 
-    # Add a low priority entry
-    go_to_park = RoutineEntry(19, 15, "park")
-    daily_routine.add("go_to_park", go_to_park)
-    assert daily_routine.get(12) == [go_to_park]
+    result = routine.get_entry_for_time(Weekday.Monday, 10)
 
-    # add two mid-level priority entries
-    buy_milk = RoutineEntry(12, 13, "store", RoutinePriority.MED)
-    walk_dog = RoutineEntry(11, 13, "park", RoutinePriority.MED)
-    daily_routine.add("walk_dog", walk_dog)
-    daily_routine.add("buy_milk", buy_milk)
-    assert daily_routine.get(12) == [walk_dog, buy_milk]
+    assert result == entry_0
 
-    # add one high-level entry
-    mail_taxes = RoutineEntry(11, 16, "post office", RoutinePriority.HIGH)
-    daily_routine.add("mail_taxes", mail_taxes)
-    assert daily_routine.get(12) == [mail_taxes]
+    result = routine.get_entry_for_time(Weekday.Tuesday, 10)
 
-    # remove the high-level entry
-    daily_routine.remove("mail_taxes")
-    daily_routine.remove("walk_dog")
-    assert daily_routine.get(12) == [buy_milk]
+    assert result == None
+
+    result = routine.get_entry_for_time(Weekday.Monday, 7)
+
+    assert result == None
+
+
+def test_routine_add_entry():
+    assert False
+
+
+def test_routine_remove_entry():
+    assert False
 
 
 def test_create_routine():

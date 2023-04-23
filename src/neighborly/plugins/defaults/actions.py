@@ -134,8 +134,8 @@ def independence_consideration(gameobject: GameObject) -> Optional[float]:
 def time_unemployed_consideration(gameobject: GameObject) -> Optional[float]:
     if unemployed := gameobject.get_component(Unemployed):
         months_unemployed = (
-                                gameobject.world.get_resource(SimDateTime) - unemployed.created
-                            ).total_days / DAYS_PER_MONTH
+            gameobject.world.get_resource(SimDateTime) - unemployed.created
+        ).total_days / DAYS_PER_MONTH
 
         return min(1.0, float(months_unemployed) / 6.0)
 
@@ -455,7 +455,6 @@ class FindOwnPlace(GoalNode):
                 return 0
 
     def get_utility(self) -> Dict[GameObject, float]:
-
         return ConsiderationDict(
             {
                 self.character: ConsiderationList(
@@ -679,7 +678,7 @@ class GetMarried(GoalNode):
                 self.character: ConsiderationList(
                     [
                         lambda gameobject: (initiator_to_target_romance + 100.0)
-                                           / 200.0,
+                        / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -687,7 +686,7 @@ class GetMarried(GoalNode):
                 self.partner: ConsiderationList(
                     [
                         lambda gameobject: (target_to_initiator_romance + 100.0)
-                                           / 200.0,
+                        / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -798,7 +797,7 @@ class BreakUp(GoalNode):
                     [
                         invert_consideration(
                             lambda gameobject: ((character_to_partner + 100.0) / 200.0)
-                                               ** 2
+                            ** 2
                         ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.partner),
@@ -808,7 +807,7 @@ class BreakUp(GoalNode):
                     [
                         invert_consideration(
                             lambda gameobject: ((partner_to_character + 100.0) / 200.0)
-                                               ** 2
+                            ** 2
                         ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.character),
@@ -896,7 +895,7 @@ class GetDivorced(GoalNode):
                     [
                         invert_consideration(
                             lambda gameobject: ((character_to_partner + 100.0) / 200.0)
-                                               ** 2
+                            ** 2
                         ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.partner),
@@ -906,7 +905,7 @@ class GetDivorced(GoalNode):
                     [
                         invert_consideration(
                             lambda gameobject: ((partner_to_character + 100.0) / 200.0)
-                                               ** 2
+                            ** 2
                         ),
                         invert_consideration(virtue_consideration(Virtue.ROMANCE)),
                         self.time_together_consideration(self.character),
@@ -1099,7 +1098,7 @@ class AskOut(GoalNode):
                 self.initiator: ConsiderationList(
                     [
                         lambda gameobject: (initiator_to_target_romance + 100.0)
-                                           / 200.0,
+                        / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -1107,7 +1106,7 @@ class AskOut(GoalNode):
                 self.target: ConsiderationList(
                     [
                         lambda gameobject: (target_to_initiator_romance + 100.0)
-                                           / 200.0,
+                        / 200.0,
                         lambda gameobject: 0.75 if is_single(gameobject) else 0.05,
                         virtue_consideration(Virtue.ROMANCE),
                     ]
@@ -1231,7 +1230,6 @@ class Die(BehaviorTree):
         self.character: GameObject = character
 
     def evaluate(self) -> NodeState:
-
         event = DeathEvent(
             self.character.world.get_resource(SimDateTime), self.character
         )
