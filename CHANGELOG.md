@@ -7,7 +7,7 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
-## [0.11.0]
+## [0.11.0] (Unreleased)
 
 **This update has breaking changes from version 0.10.x**
 
@@ -22,6 +22,7 @@ incrementing to a completely new version number.
 
 - A new `AIRoutineSystem` that queries a routine for an entry at the current time and adds the goal
   for that entry as a potential goal to pursue.
+- Systems can now be toggled using the `active` class attribute. This affects all instances of a system and any child systems if it is a SystemGroup.
 
 ### Removed
 

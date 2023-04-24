@@ -607,8 +607,10 @@ class ISystem(ABC, esper.Processor):
     # We have to re-type the 'world' class variable because
     # it is declared as 'Any' by esper, and we need it to
     # be of type World
-    world: World  # type: ignore
+    world: ClassVar[World]  # type: ignore
     """The world instance this system belongs to."""
+
+    active: ClassVar[bool] = True
 
     @abstractmethod
     def process(self, *args: Any, **kwargs: Any) -> None:
@@ -712,8 +714,12 @@ class SystemGroup(ISystem, ABC):
         **kwargs
             Keyword arguments to pass to all subsystems.
         """
+        if type(self).active is False:
+            return
+
         for child in [*self._sub_systems]:
-            child.process(*args, **kwargs)
+            if type(child).active:
+                child.process(*args, **kwargs)
 
 
 class IComponentFactory(ABC):
@@ -1270,7 +1276,7 @@ class World:
         priority
             The priority of the system relative to the others in it's system group.
         """
-        system.world = self
+        type(system).world = self
 
         if priority is not None:
             system.priority = priority
