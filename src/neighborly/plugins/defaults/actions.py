@@ -962,7 +962,9 @@ class Retire(GoalNode):
         self.character = character
 
     def is_complete(self) -> bool:
-        return self.character.has_component(Retired)
+        is_retired = self.character.has_component(Retired)
+        is_not_working = not self.character.has_component(Occupation)
+        return is_retired or is_not_working
 
     @staticmethod
     def life_stage_consideration(gameobject: GameObject) -> Optional[float]:
@@ -974,7 +976,7 @@ class Retire(GoalNode):
 
     @staticmethod
     def work_experience_consideration(gameobject: GameObject) -> Optional[float]:
-        if occupation := gameobject.get_component(Occupation):
+        if occupation := gameobject.try_component(Occupation):
             # This is a nested function. So, we call it once to return the
             # precondition function, then we call it a second time
             experience = get_work_experience_as(occupation.occupation_type)(gameobject)
@@ -1128,7 +1130,9 @@ class FindRomance(GoalNode):
         self.character = character
 
     def is_complete(self) -> bool:
-        return len(get_relationships_with_statuses(self.character, Dating)) > 0
+        is_dating = len(get_relationships_with_statuses(self.character, Dating)) > 0
+        is_married = len(get_relationships_with_statuses(self.character, Married)) > 0
+        return is_married or is_dating
 
     def get_utility(self) -> Dict[GameObject, float]:
         life_stage = self.character.get_component(LifeStage).life_stage
