@@ -27,7 +27,7 @@ from neighborly.components.shared import (
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import Active, GameObject, ISystem, SystemGroup
-from neighborly.core.life_event import ActionableLifeEvent, AllEvents, RandomLifeEvents
+from neighborly.core.life_event import RandomLifeEvent, AllEvents, RandomLifeEvents
 from neighborly.core.relationship import (
     Friendship,
     IncrementCounter,
@@ -203,7 +203,7 @@ class RandomLifeEventSystem(System):
         if RandomLifeEvents.get_size() == 0:
             return
 
-        event_type: Type[ActionableLifeEvent]
+        event_type: Type[RandomLifeEvent]
         for _ in range(total_population // 10):
             event_type = RandomLifeEvents.pick_one(rng)
             if event := event_type.instantiate(self.world, RoleList()):

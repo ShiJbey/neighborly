@@ -15,8 +15,9 @@ incrementing to a completely new version number.
 
 - The `Routine` component has been refactored to be a single collection of routine entries instead
   of a collection of DailyRoutines with individual entries.
-- `RoutineEntry` instances now track what days they apply.
+- `RoutineEntry` instances now track what days they apply to.
 - `RoutineEntries` now use `GoalNodes` to specify behavior instead of location IDs or alias names.
+- `ActionableLifeEvent` has been renamed to `RandomLifeEvent`
 
 ### Added
 

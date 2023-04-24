@@ -12,7 +12,7 @@ from neighborly.core.ecs import (
     ISystem,
     EventListener,
 )
-from neighborly.core.life_event import ActionableLifeEvent, RandomLifeEvents
+from neighborly.core.life_event import RandomLifeEvent, RandomLifeEvents
 from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRules
 from neighborly.core.relationship import ISocialRule, SocialRules
 from neighborly.simulation import Neighborly
@@ -21,7 +21,7 @@ _CT = TypeVar("_CT", bound=Component)
 _CF = TypeVar("_CF", bound=IComponentFactory)
 _RT = TypeVar("_RT", bound=Any)
 _ST = TypeVar("_ST", bound=ISystem)
-_LT = TypeVar("_LT", bound=ActionableLifeEvent)
+_LT = TypeVar("_LT", bound=RandomLifeEvent)
 _ET_contra = TypeVar("_ET_contra", bound=Event, contravariant=True)
 
 

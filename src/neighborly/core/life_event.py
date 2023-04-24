@@ -94,7 +94,7 @@ class LifeEvent(Event, ABC):
         return self._uid > other._uid
 
 
-class ActionableLifeEvent(LifeEvent):
+class RandomLifeEvent(LifeEvent):
     """User-facing class for implementing behaviors around life events.
 
     Notes
@@ -147,7 +147,7 @@ class ActionableLifeEvent(LifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         """Attempts to create a new LifeEvent instance
 
         Parameters
@@ -168,15 +168,15 @@ class ActionableLifeEvent(LifeEvent):
 class RandomLifeEvents:
     """Static class used to store LifeEvents that can be triggered randomly."""
 
-    _registry: Dict[str, Type[ActionableLifeEvent]] = {}
+    _registry: Dict[str, Type[RandomLifeEvent]] = {}
 
     @classmethod
-    def add(cls, life_event_type: Type[ActionableLifeEvent]) -> None:
+    def add(cls, life_event_type: Type[RandomLifeEvent]) -> None:
         """Register a new random LifeEvent type"""
         cls._registry[life_event_type.__name__] = life_event_type
 
     @classmethod
-    def pick_one(cls, rng: random.Random) -> Type[ActionableLifeEvent]:
+    def pick_one(cls, rng: random.Random) -> Type[RandomLifeEvent]:
         """
         Return a random registered random life event
 
@@ -187,7 +187,7 @@ class RandomLifeEvents:
 
         Returns
         -------
-        Type[ActionableLifeEvent]
+        Type[RandomLifeEvent]
             A randomly-chosen random event from the registry
         """
         return rng.choice(list(cls._registry.values()))
