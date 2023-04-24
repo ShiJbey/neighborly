@@ -126,6 +126,7 @@ class Neighborly:
         self.world.add_system(systems.MeetNewPeopleSystem())
         self.world.add_system(systems.RandomLifeEventSystem())
         self.world.add_system(systems.UpdateFrequentedLocationSystem())
+        self.world.add_system(systems.AIRoutineSystem())
 
         # Add relationship-update systems (in execution order)
         # self.world.add_system(systems.EvaluateSocialRulesSystem())

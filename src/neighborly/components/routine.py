@@ -6,12 +6,12 @@ divided into seven daily routines, one for each day of the week.
 """
 from __future__ import annotations
 
+import bisect
 from enum import IntEnum
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
-from heapq import heappush
 
 from neighborly.core.ai.brain import GoalNode
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, ISerializable
 from neighborly.core.time import Weekday
 
 
@@ -23,7 +23,7 @@ class RoutinePriority(IntEnum):
     HIGH = 2
 
 
-PRIORITY_BOOSTS: Dict[RoutinePriority, float] = {
+ROUTINE_PRIORITY_BOOSTS: Dict[RoutinePriority, float] = {
     RoutinePriority.LOW: 0.1,
     RoutinePriority.MED: 0.3,
     RoutinePriority.HIGH: 0.5,
@@ -121,7 +121,7 @@ class RoutineEntry:
         return self.priority > other.priority
 
 
-class Routine(Component):
+class Routine(Component, ISerializable):
     """Collection of daily routines that manage behavior for a 7-day week."""
 
     __slots__ = "_entries"
@@ -148,7 +148,9 @@ class Routine(Component):
         RoutineEntry or None
             Returns an entry, or None if schedule is clear for that time.
         """
-        for entry in self._entries:
+        # iterate in reverse because the entries are stored in increasing priority order
+
+        for entry in reversed(self._entries):
             if day not in entry.days:
                 continue
 
@@ -170,7 +172,7 @@ class Routine(Component):
             The routine entry to add.
         """
         # Entries are stored as a priority queue based on entry priority
-        heappush(self._entries, entry)
+        bisect.insort(self._entries, entry)
 
     def remove_entry(self, entry: RoutineEntry) -> None:
         """Remove an entry from a daily routine.

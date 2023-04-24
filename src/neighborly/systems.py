@@ -17,6 +17,7 @@ from neighborly.components.character import (
     SiblingOf,
 )
 from neighborly.components.residence import Resident
+from neighborly.components.routine import ROUTINE_PRIORITY_BOOSTS, Routine
 from neighborly.components.shared import (
     Age,
     CurrentSettlement,
@@ -621,3 +622,23 @@ class AIActionSystem(System):
             goal.take_action()
 
             goals.clear_goals()
+
+
+class AIRoutineSystem(System):
+    """Adds additional goals to character AI based on a routine."""
+
+    sys_group = "goal-suggestion"
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        current_date = self.world.get_resource(SimDateTime)
+        for guid, (goals, routine) in self.world.get_components((Goals, Routine)):
+            routine_entry = routine.get_entry_for_time(
+                current_date.weekday, current_date.hour
+            )
+            gameobject = self.world.get_gameobject(guid)
+            if routine_entry is not None:
+                g = routine_entry.goal
+                g_priority = g.get_utility()[gameobject]
+                goals.push_goal(
+                    g_priority + ROUTINE_PRIORITY_BOOSTS[routine_entry.priority], g
+                )

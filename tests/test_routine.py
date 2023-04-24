@@ -1,4 +1,5 @@
 from typing import Dict, List
+
 import pytest
 
 from neighborly.components.routine import (
@@ -9,8 +10,9 @@ from neighborly.components.routine import (
     time_str_to_int,
 )
 from neighborly.core.ai.brain import GoalNode
-from neighborly.core.ecs import World, GameObject
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.time import Weekday
+from neighborly.factories.routine import RoutineFactory
 
 
 class _GoToWork(GoalNode):
@@ -107,43 +109,62 @@ def test_routine_get_entry_for_time():
 
 
 def test_routine_add_entry():
-    assert False
+    routine = Routine()
+
+    entry_0 = RoutineEntry([Weekday.Monday], 8, 12, _GoHome(), RoutinePriority.LOW)
+    entry_1 = RoutineEntry([Weekday.Monday], 8, 12, _GoToWork(), RoutinePriority.MED)
+    entry_2 = RoutineEntry([Weekday.Monday], 8, 12, _RunErrands(), RoutinePriority.HIGH)
+    entry_3 = RoutineEntry([Weekday.Monday], 8, 12, _GoHome(), RoutinePriority.HIGH)
+
+    routine.add_entry(entry_0)
+
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_0
+
+    routine.add_entry(entry_1)
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_1
+
+    routine.add_entry(entry_2)
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_2
+
+    routine.add_entry(entry_3)
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_3
 
 
 def test_routine_remove_entry():
-    assert False
+    routine = Routine()
+
+    entry_0 = RoutineEntry([Weekday.Monday], 8, 12, _GoHome(), RoutinePriority.LOW)
+    entry_1 = RoutineEntry([Weekday.Monday], 8, 12, _GoToWork(), RoutinePriority.MED)
+    entry_2 = RoutineEntry([Weekday.Monday], 8, 12, _RunErrands(), RoutinePriority.HIGH)
+    entry_3 = RoutineEntry([Weekday.Monday], 8, 12, _GoHome(), RoutinePriority.HIGH)
+
+    routine.add_entry(entry_0)
+    routine.add_entry(entry_2)
+    routine.add_entry(entry_1)
+    routine.add_entry(entry_3)
+
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_3
+
+    routine.remove_entry(entry_3)
+
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_2
+
+    routine.remove_entry(entry_2)
+
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_1
+
+    routine.remove_entry(entry_1)
+
+    assert routine.get_entry_for_time(Weekday.Monday, 10) == entry_0
 
 
-def test_create_routine():
+def test_routine_factory():
     world = World()
     gameobject = world.spawn_gameobject()
-    gameobject.add_component(Routine())
+    gameobject.add_component(RoutineFactory().create(world))
     routine = gameobject.try_component(Routine)
 
     assert routine is not None
-
-
-def test_routine():
-    """Test Routine class"""
-
-    routine = Routine()
-
-    buy_milk = RoutineEntry(12, 13, "store", RoutinePriority.MED)
-    walk_dog = RoutineEntry(11, 13, "park", RoutinePriority.MED)
-    mail_taxes = RoutineEntry(11, 16, "post office", RoutinePriority.HIGH)
-
-    routine.add_entries("walk_dog", [Weekday.Monday, Weekday.Tuesday], walk_dog)
-    routine.add_entries("mail_taxes", [Weekday.Monday], mail_taxes)
-    routine.add_entries("buy_milk", [Weekday.Tuesday], buy_milk)
-
-    assert routine.get_entries(Weekday.Monday, 12) == [mail_taxes]
-    assert routine.get_entries(Weekday.Tuesday, 12) == [walk_dog, buy_milk]
-
-    routine.remove_entries([Weekday.Monday], "mail_taxes")
-    routine.remove_entries([Weekday.Tuesday], "buy_milk")
-
-    assert routine.get_entries(Weekday.Monday, 12) == [walk_dog]
-    assert routine.get_entries(Weekday.Tuesday, 12) == [walk_dog]
 
 
 def test_time_str_to_int():
