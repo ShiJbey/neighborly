@@ -18,12 +18,16 @@ incrementing to a completely new version number.
 - `RoutineEntry` instances now track what days they apply to.
 - `RoutineEntries` now use `GoalNodes` to specify behavior instead of location IDs or alias names.
 - `ActionableLifeEvent` has been renamed to `RandomLifeEvent`
+- `CreateTown` has been renamed to `DefaultCreateSettlementSystem`
 
 ### Added
 
 - A new `AIRoutineSystem` that queries a routine for an entry at the current time and adds the goal
   for that entry as a potential goal to pursue.
-- Systems can now be toggled using the `active` class attribute. This affects all instances of a system and any child systems if it is a SystemGroup.
+- Systems can now be toggled using the `active` class attribute. This affects all instances of a system and any child
+  systems if it is a SystemGroup.
+- Support for loading character and business spawn tables from CSV files for
+  `DefaultCreateSettlementSystem`
 
 ### Removed
 
@@ -62,7 +66,6 @@ incrementing to a completely new version number.
 - Utility-based behavior trees for goals
 - Event callback are called directly from GameObjects instead of via systems
 - Events are an integral part of the ECS
--
 
 ### Updated
 
