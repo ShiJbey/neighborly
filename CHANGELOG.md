@@ -7,7 +7,7 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
-## [0.11.0] (Unreleased)
+## [0.11.0]
 
 **This update has breaking changes from version 0.10.x**
 
@@ -38,6 +38,7 @@ incrementing to a completely new version number.
 - Type hints have been reformated to prevent duplicate description warnings from sphinx. Class
   attribute type definitions have been moved out of `__init__` and the doc strings for attributes
   are placed below their type hints.
+- Updated to newer build of Tracery (`tracery3`)
 
 ## [0.10.0]
 
