@@ -1,22 +1,29 @@
 Welcome to Neighborly's documentation!
 ======================================
 
-**Neighborly** is a Python framework for developing agent-based social simulations.
-It helps users simulate something akin to the simulations seen in games like
+**Neighborly** is a Python framework for agent-based social simulation in games.
+It helps users simulate something akin to the settlement simulations seen in games like
 *Dwarf Fortress*, *Rim World*, or *Caves of Qud*. Each character is
 represented as an individual autonomous agent that can make actions, respond
-to event in their their social networks, and experience various life events.
+to events, form relationships, work a job, etc. Neighborly is ideal for modeling
+background world simulations or pre-generating data for background characters. It's
+architecture was heavily inspired by Roguelike games.
 
-Our goal with Neighborly is to allow users to simulate backstories of NPCs
-(non-player characters) living in a settlement like a town. Neighborly is designed
-to simulate longer periods of time (months to decades) at a lower-fidelity
-compared to something like *The Sims*.
+Neighborly is an experiment in simulationist emergent narrative authoring. Our aim was
+to produce an approachable interface for authoring town-scale social simulations
+intended for games or narrative generation. Therefore, agents that are by default
+modeled with more narratively interesting data than what someone would find in other
+agent-based modeling frameworks like `Mesa <https://mesa.readthedocs.io/en/stable/#>`_
+or `NetLogo <https://ccl.northwestern.edu/netlogo/>`_.
 
-Neighborly is an experiment in emergent narrative authoring. It places users in
-control of what kind of characters, places, and businesses exist in the
-settlement. This process can be daunting, so we try to make your life easier
-by offering built-in content plugins to help you get started. We can't wait
-to see what you make with Neighborly!
+Neighborly places users in control of what kind of characters, places, and things exist
+in the settlement. This process can be daunting, so we try to make your life easier
+by offering built-in content plugins to help you get started.
+
+We can't wait to see what you make with Neighborly!
+
+Installation
+------------
 
 Neighborly is available to install from PyPI. This will install the latest official
 release.
@@ -39,41 +46,43 @@ Running the sample simulation
 
 .. code-block:: console
 
-    neighborly
+    python -m neighborly
 
 Neighborly comes preconfigured with a simulation of a small town. Characters
 move in and out of the town, start businesses, work jobs, start families,
-and get into a number of scenarios with each other. Character activity is
-printed to the console (unless otherwise specified). At the end of the
-simulation, neighborly will write the state of the simulation to a ``*.json``
-file.
+and get into a number of scenarios with each other.
 
-We are working on a visualization interface for neighborly.
+All Character activity is printed to the console. And when the simulation ends,
+neighborly will export all the generated simulation data to a ``*.json`` file.
 
-Contents
-========
+.. Contents
+.. ========
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
+    :hidden:
+    :titlesonly:
 
-    installation.rst
-    commandline_tool.rst
-    working_with_ecs.rst
-    plugins.rst
-    content_management.rst
-    characters.rst
-    locations.rst
-    businesses.rst
-    residences.rst
-    relationships.rst
-    social_rules.rst
-    location_biases.rst
-    statuses.rst
-    events_and_actions.rst
-    tracking_backstories.rst
-    data_collection.rst
-    design_justifications.rst
-    module_docs/modules.rst
+    installation
+    commandline_tool
+    working_with_ecs
+    plugins
+    characters
+    locations
+    businesses
+    residences
+    relationships
+    social_rules
+    location_biases
+    life_events
+    goals_and_actions
+    statuses
+    settlements
+    routines
+    tracking_backstories
+    data_collection
+    design_justifications
+    module_docs/modules
 
 Indices and tables
 ==================

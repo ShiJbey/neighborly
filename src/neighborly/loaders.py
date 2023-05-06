@@ -16,13 +16,12 @@ from neighborly.core.tracery import Tracery
 
 
 def load_occupation_types(file_path: Union[str, pathlib.Path]) -> None:
-    """
-    Load occupation information from a data file
+    """Load occupation information from a data file.
 
     Parameters
     ----------
-    file_path: Union[str, pathlib.Path]
-        The path of the data file to load
+    file_path
+        The path of the data file to load.
     """
 
     path_obj = pathlib.Path(file_path)
@@ -45,13 +44,12 @@ def load_occupation_types(file_path: Union[str, pathlib.Path]) -> None:
 
 
 def load_prefab(file_path: Union[str, pathlib.Path]) -> None:
-    """
-    Load a single entity prefab from a data file
+    """Load a single entity prefab from a data file.
 
     Parameters
     ----------
-    file_path: Union[str, pathlib.Path]
-        The path of the data file to load
+    file_path
+        The path of the data file to load.
     """
 
     path_obj = pathlib.Path(file_path)
@@ -68,33 +66,31 @@ def load_prefab(file_path: Union[str, pathlib.Path]) -> None:
 
 
 def load_names(rule_name: str, file_path: Union[str, pathlib.Path]) -> None:
-    """
-    Load names a list of names from a file and register them in Tracery
+    """Load names a list of names from a file and register them in Tracery.
 
     This function assumes that names are organized one-per-line in a text file.
 
     Parameters
     ----------
-    rule_name: str
-        The name of the rule to register the names under in Tracery
-    file_path: Union[str, pathlib.Path]
-        The path of the data file to load
+    rule_name
+        The name of the rule to register the names under in Tracery.
+    file_path
+        The path of the data file to load.
     """
     with open(file_path, "r") as f:
         Tracery.add_rules({rule_name: f.read().splitlines()})
 
 
 def load_data_file(file_path: Union[str, pathlib.Path]) -> None:
-    """
-    Load various data from a single file
+    """Load various data from a single file.
 
     This function can load multiple prefabs, and occupation types from a single file. It
     assumes that the data is separated into sections like "Prefabs" and "Occupations".
 
     Parameters
     ----------
-    file_path: Union[str, pathlib.Path]
-        The path of the data file to load
+    file_path
+        The path of the data file to load.
     """
 
     with open(file_path, "r") as f:

@@ -335,18 +335,6 @@ def test_add_resource():
 #########################################
 
 
-def test_gameobject_set_active():
-    world = World()
-
-    adrian = world.spawn_gameobject([Actor("Adrian")])
-
-    assert adrian.is_active is True
-
-    adrian.set_active(False)
-
-    assert adrian.is_active is False
-
-
 def test_gameobject_get_components():
     world = World()
 

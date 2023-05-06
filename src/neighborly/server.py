@@ -6,6 +6,7 @@ from flask_restful import Api, Resource  # type: ignore
 
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import World
+from neighborly.core.ecs.ecs import ISerializable
 from neighborly.data_collection import DataCollector
 from neighborly.simulation import Neighborly
 
@@ -21,13 +22,14 @@ class ComponentResource(Resource):
     world: World
 
     def get(self, guid: int, **kwargs: Any):
-        return (
-            self.world.get_gameobject(guid)
-            .get_component(
-                self.world.get_component_info(kwargs["component_type"]).component_type
-            )
-            .to_dict()
+        component = self.world.get_gameobject(guid).get_component(
+            self.world.get_component_info(kwargs["component_type"]).component_type
         )
+
+        if isinstance(component, ISerializable):
+            return component.to_dict()
+
+        raise TypeError(f"{kwargs['component_type']} is not serializable to JSON")
 
 
 class AllGameObjectsResource(Resource):

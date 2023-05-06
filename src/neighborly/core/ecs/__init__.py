@@ -3,6 +3,8 @@ Entity-Component System
 
 This package contains functionality for the entity-component system. It has definitions
 for entities, systems, the world, queries, and entity prefabs.
+
+
 """
 
 from .ecs import (
@@ -17,10 +19,12 @@ from .ecs import (
     GameObjectFactory,
     GameObjectNotFoundError,
     IComponentFactory,
+    ISerializable,
     ISystem,
     ResourceNotFoundError,
     SystemGroup,
     World,
+    EventListener,
 )
 from .query import QB, Query, QueryFromFn, QueryGetFn
 
@@ -31,9 +35,11 @@ __all__ = [
     "ComponentAddedEvent",
     "ComponentRemovedEvent",
     "Event",
+    "EventListener",
     "GameObject",
     "GameObjectNotFoundError",
     "IComponentFactory",
+    "ISerializable",
     "ISystem",
     "SystemGroup",
     "ResourceNotFoundError",

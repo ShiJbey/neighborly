@@ -7,6 +7,39 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
+## [0.11.0]
+
+**This update has breaking changes from version 0.10.x**
+
+### Changed
+
+- The `Routine` component has been refactored to be a single collection of routine entries instead
+  of a collection of DailyRoutines with individual entries.
+- `RoutineEntry` instances now track what days they apply to.
+- `RoutineEntries` now use `GoalNodes` to specify behavior instead of location IDs or alias names.
+- `ActionableLifeEvent` has been renamed to `RandomLifeEvent`
+- `CreateTown` has been renamed to `DefaultCreateSettlementSystem`
+
+### Added
+
+- A new `AIRoutineSystem` that queries a routine for an entry at the current time and adds the goal
+  for that entry as a potential goal to pursue.
+- Systems can now be toggled using the `active` class attribute. This affects all instances of a system and any child
+  systems if it is a SystemGroup.
+- Support for loading character and business spawn tables from CSV files for
+  `DefaultCreateSettlementSystem`
+
+### Removed
+
+- `IBusinessType` was removed because it added unnecessary complexity to the component definitions.
+
+### Updated
+
+- Type hints have been reformated to prevent duplicate description warnings from sphinx. Class
+  attribute type definitions have been moved out of `__init__` and the doc strings for attributes
+  are placed below their type hints.
+- Updated to newer build of Tracery (`tracery3`)
+
 ## [0.10.0]
 
 **This update has breaking changes from version 0.9.x**
@@ -28,13 +61,12 @@ incrementing to a completely new version number.
 
 - Content authoring `neighborly.decorators` for use in single file simulations.
 - `py.typed` stub file to remove PyRight warning about Neighborly missing type stubs
-- *SystemGroups* were added to allow better systems ordering. The simulation update loop
+- _SystemGroups_ were added to allow better systems ordering. The simulation update loop
   is now separated into 4 phases (initialization, early-update, update, and
   late-update).
 - Utility-based behavior trees for goals
 - Event callback are called directly from GameObjects instead of via systems
 - Events are an integral part of the ECS
--
 
 ### Updated
 

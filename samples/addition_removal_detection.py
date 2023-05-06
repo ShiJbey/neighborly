@@ -65,7 +65,7 @@ def on_attack_buff_added(gameobject: GameObject, event: ComponentAddedEvent) -> 
 
 
 def on_attack_buffer_removed(
-    gameobject: GameObject, event: ComponentAddedEvent
+    gameobject: GameObject, event: ComponentRemovedEvent
 ) -> None:
     c = event.component
     if isinstance(c, AttackBuff):

@@ -4,31 +4,28 @@ from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs.ecs import Component, ISerializable
 from neighborly.core.status import StatusComponent
 
 
-class Residence(Component):
-    """
-    Residence is a place where characters live
-
-    Attributes
-    ----------
-    owners: OrderedSet[int]
-        Characters that currently own the residence
-    residents: OrderedSet[int]
-        All the characters who live at the residence (including non-owners)
-    """
+class Residence(Component, ISerializable):
+    """A Residence is a place where characters live."""
 
     __slots__ = (
         "owners",
         "residents",
     )
 
+    owners: OrderedSet[int]
+    """Characters that currently own the residence."""
+
+    residents: OrderedSet[int]
+    """All the characters who live at the residence (including non-owners)."""
+
     def __init__(self) -> None:
         super().__init__()
-        self.owners: OrderedSet[int] = OrderedSet([])
-        self.residents: OrderedSet[int] = OrderedSet([])
+        self.owners = OrderedSet([])
+        self.residents = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -37,27 +34,63 @@ class Residence(Component):
         }
 
     def add_owner(self, owner: int) -> None:
-        """Add owner to the residence"""
+        """Add owner to the residence.
+
+        Parameters
+        ----------
+        owner
+            The GameObject ID of a residence owner.
+        """
         self.owners.add(owner)
 
     def remove_owner(self, owner: int) -> None:
-        """Remove owner from residence"""
+        """Remove owner from residence.
+
+        Parameters
+        ----------
+        owner
+            The GameObject ID of a residence owner.
+        """
         self.owners.remove(owner)
 
     def is_owner(self, character: int) -> bool:
-        """Return True if the entity is an owner of this residence"""
+        """Check if a GameObject owns a residence.
+
+        Parameters
+        ----------
+        character
+            The GameObject ID of a residence owner.
+        """
         return character in self.owners
 
     def add_resident(self, resident: int) -> None:
-        """Add a tenant to this residence"""
+        """Add a tenant to this residence.
+
+        Parameters
+        ----------
+        resident
+            The GameObject ID of a resident.
+        """
         self.residents.add(resident)
 
     def remove_resident(self, resident: int) -> None:
-        """Remove a tenant rom this residence"""
+        """Remove a tenant rom this residence.
+
+        Parameters
+        ----------
+        resident
+            The GameObject ID of a resident.
+        """
         self.residents.remove(resident)
 
     def is_resident(self, character: int) -> bool:
-        """Return True if the given entity is a resident"""
+        """Check if a GameObject is a resident.
+
+        Parameters
+        ----------
+        character
+            The GameObject ID of a character
+        """
         return character in self.residents
 
     def __repr__(self) -> str:
@@ -68,20 +101,22 @@ class Residence(Component):
 
 
 class Resident(StatusComponent):
-    """
-    Component attached to characters indicating that they live in the town
-
-    Attributes
-    ----------
-    residence: int
-        Unique ID of the Residence GameObject that the resident belongs to
-    """
+    """A Component attached to characters that tracks where they live."""
 
     __slots__ = "residence"
 
+    residence: int
+    """The GameObject ID of their residence."""
+
     def __init__(self, residence: int) -> None:
+        """
+        Parameters
+        ----------
+        residence
+            The GameObject ID of their residence.
+        """
         super().__init__()
-        self.residence: int = residence
+        self.residence = residence
 
     def to_dict(self) -> Dict[str, Any]:
         return {"residence": self.residence}
@@ -94,6 +129,6 @@ class Resident(StatusComponent):
 
 
 class Vacant(StatusComponent):
-    """Tags a residence that does not currently have anyone living there"""
+    """Tags a residence that does not currently have anyone living there."""
 
     pass

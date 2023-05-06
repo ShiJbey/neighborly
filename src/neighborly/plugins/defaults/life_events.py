@@ -18,7 +18,7 @@ from neighborly.components.residence import Residence, Resident
 from neighborly.components.shared import Age, Lifespan
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import QB, Active, GameObject, World
-from neighborly.core.life_event import ActionableLifeEvent, AllEvents, RandomLifeEvents
+from neighborly.core.life_event import RandomLifeEvent, AllEvents, RandomLifeEvents
 from neighborly.core.relationship import (
     Relationship,
     RelationshipManager,
@@ -38,7 +38,7 @@ from neighborly.utils.common import set_character_name, set_residence, shutdown_
 from neighborly.utils.query import are_related, is_married, is_single, with_relationship
 
 
-class StartDatingLifeEvent(ActionableLifeEvent):
+class StartDatingLifeEvent(RandomLifeEvent):
     optional = True
     initiator = "Initiator"
 
@@ -77,7 +77,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
             c
             for c in candidates
             if is_single(c)
-               and c.get_component(LifeStage).life_stage >= LifeStageType.Adolescent
+            and c.get_component(LifeStage).life_stage >= LifeStageType.Adolescent
         ]
 
         if candidates:
@@ -148,7 +148,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         initiator = cls._bind_initiator(world, bindings.get("Initiator"))
 
         if initiator is None:
@@ -162,7 +162,7 @@ class StartDatingLifeEvent(ActionableLifeEvent):
         return cls(world.get_resource(SimDateTime), initiator, other)
 
 
-class DatingBreakUp(ActionableLifeEvent):
+class DatingBreakUp(RandomLifeEvent):
     initiator = "Initiator"
 
     def __init__(
@@ -251,7 +251,7 @@ class DatingBreakUp(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         initiator = cls._bind_initiator(world, bindings.get("Initiator"))
 
         if initiator is None:
@@ -265,13 +265,13 @@ class DatingBreakUp(ActionableLifeEvent):
         return cls(world.get_resource(SimDateTime), initiator, other)
 
 
-class DivorceLifeEvent(ActionableLifeEvent):
+class DivorceLifeEvent(RandomLifeEvent):
     @classmethod
     def instantiate(
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         query = QB.query(
             ("Initiator", "Other"),
             QB.with_((GameCharacter, Active), "Initiator"),
@@ -279,7 +279,7 @@ class DivorceLifeEvent(ActionableLifeEvent):
             QB.with_(Married, "?relationship"),
             QB.filter_(
                 lambda rel: rel.get_component(Romance).get_value()
-                            <= rel.world.get_resource(NeighborlyConfig).settings.get(
+                <= rel.world.get_resource(NeighborlyConfig).settings.get(
                     "divorce_romance_thresh", -25
                 ),
                 "?relationship",
@@ -315,7 +315,7 @@ class DivorceLifeEvent(ActionableLifeEvent):
         remove_relationship_status(ex_spouse, initiator, Married)
 
 
-class MarriageLifeEvent(ActionableLifeEvent):
+class MarriageLifeEvent(RandomLifeEvent):
     def __init__(
         self, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
@@ -407,7 +407,7 @@ class MarriageLifeEvent(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         initiator = cls._bind_initiator(world, bindings.get("Initiator"))
 
         if initiator is None:
@@ -471,7 +471,7 @@ class MarriageLifeEvent(ActionableLifeEvent):
                 set_character_name(target, last_name=new_last_name)
 
 
-class GetPregnantLifeEvent(ActionableLifeEvent):
+class GetPregnantLifeEvent(RandomLifeEvent):
     """Defines an event where two characters stop dating"""
 
     def __init__(
@@ -547,7 +547,7 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         pregnant_one = cls._bind_pregnant_one(world, bindings.get("Initiator"))
 
         if pregnant_one is None:
@@ -583,7 +583,7 @@ class GetPregnantLifeEvent(ActionableLifeEvent):
         return 1.0 - (num_children / 5.0)
 
 
-class DieOfOldAge(ActionableLifeEvent):
+class DieOfOldAge(RandomLifeEvent):
     """Characters can randomly die of old age"""
 
     @classmethod
@@ -591,13 +591,13 @@ class DieOfOldAge(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         query = QB.query(
             "Deceased",
             QB.with_((GameCharacter, Active), "Deceased"),
             QB.filter_(
                 lambda gameobject: gameobject.get_component(Age).value
-                                   >= gameobject.get_component(Lifespan).value,
+                >= gameobject.get_component(Lifespan).value,
                 "Deceased",
             ),
         )
@@ -629,7 +629,7 @@ class DieOfOldAge(ActionableLifeEvent):
         Die(self["Deceased"]).evaluate()
 
 
-class GoOutOfBusiness(ActionableLifeEvent):
+class GoOutOfBusiness(RandomLifeEvent):
     """Businesses can randomly go out of business"""
 
     def execute(self):
@@ -638,9 +638,7 @@ class GoOutOfBusiness(ActionableLifeEvent):
         owner_id = business.get_component(Business).owner
 
         if owner_id:
-            owner = business.world.get_gameobject(
-                owner_id
-            )
+            owner = business.world.get_gameobject(owner_id)
             owner.fire_event(self)
         shutdown_business(self["Business"])
 
@@ -665,7 +663,7 @@ class GoOutOfBusiness(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         query = QB.query(
             "Business", QB.with_((Business, OpenForBusiness, Active), "Business")
         )

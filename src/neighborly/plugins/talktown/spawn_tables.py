@@ -5,6 +5,7 @@ import yaml
 
 from neighborly.core.ecs import GameObjectFactory
 from neighborly.simulation import Neighborly, PluginInfo
+from neighborly.plugins.defaults.create_town import CreateDefaultSettlementSystem
 
 plugin_info = PluginInfo(
     name="Talk of the Town",
@@ -14,11 +15,6 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any) -> None:
-    with open(pathlib.Path(__file__).parent / "business_spawn_table.yaml", "r") as f:
-        data: List[Dict[str, Any]] = yaml.safe_load(f)
-
-    GameObjectFactory.get("settlement").components["BusinessSpawnTable"][
-        "entries"
-    ].extend(data)
-
-    print()
+    CreateDefaultSettlementSystem.load_spawn_table(
+        "businesses", pathlib.Path(__file__).parent / "business_spawn_table.csv"
+    )

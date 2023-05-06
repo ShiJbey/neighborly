@@ -5,18 +5,16 @@ from typing import Any, Dict, Iterable, Iterator, Optional, Set
 
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs.ecs import Component, ISerializable
 from neighborly.core.status import StatusComponent
 
 
-class Name(Component):
-    """The name of the GameObject"""
+@dataclass
+class Name(Component, ISerializable):
+    """The name of the GameObject."""
 
-    __slots__ = "value"
-
-    def __init__(self, value: str) -> None:
-        super().__init__()
-        self.value: str = value
+    value: str
+    """The GameObject's name."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {"value": self.value}
@@ -28,16 +26,12 @@ class Name(Component):
         return f"{self.__class__.__name__}({self.value})"
 
 
-class Age(Component):
-    """
-    Tracks the number of years old that an entity is
-    """
+@dataclass
+class Age(Component, ISerializable):
+    """Tracks the number of years old that an GameObject is."""
 
-    __slots__ = "value"
-
-    def __init__(self, value: float = 0.0) -> None:
-        super().__init__()
-        self.value: float = value
+    value: float = 0.0
+    """The number of years old."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {"value": self.value}
@@ -55,14 +49,12 @@ class Age(Component):
         return f"{self.__class__.__name__}({self.value})"
 
 
-class Lifespan(Component):
-    """Defines how long a GameObject lives on average"""
+@dataclass
+class Lifespan(Component, ISerializable):
+    """Defines how long a GameObject lives on average."""
 
-    __slots__ = "value"
-
-    def __init__(self, value: float) -> None:
-        super().__init__()
-        self.value: float = value
+    value: float
+    """The number of years."""
 
     def __str__(self) -> str:
         return str(self.value)
@@ -80,14 +72,17 @@ class Lifespan(Component):
         return f"{self.__class__.__name__}({self.value})"
 
 
-class Location(Component):
-    """Anywhere where game characters may be"""
+class Location(Component, ISerializable):
+    """Anywhere where game characters may be."""
 
     __slots__ = "entities"
 
+    entities: OrderedSet[int]
+    """All the GameObjects currently at this location."""
+
     def __init__(self) -> None:
-        super(Component, self).__init__()
-        self.entities: OrderedSet[int] = OrderedSet([])
+        super().__init__()
+        self.entities = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -95,12 +90,38 @@ class Location(Component):
         }
 
     def add_entity(self, entity: int) -> None:
+        """Add an entity to the location.
+
+        Parameters
+        ----------
+        entity
+            The GameObject ID of the entity to add.
+        """
         self.entities.append(entity)
 
     def remove_entity(self, entity: int) -> None:
+        """Remove an entity from the location.
+
+        Parameters
+        ----------
+        entity
+            The GameObject ID of the entity to remove.
+        """
         self.entities.remove(entity)
 
     def has_entity(self, entity: int) -> bool:
+        """Check if an entity is at the location.
+
+        Parameters
+        ----------
+        entity
+            The GameObject ID of the entity to check for.
+
+        Returns
+        -------
+        bool
+            True if the GameObject is present, False otherwise.
+        """
         return entity in self.entities
 
     def __repr__(self) -> str:
@@ -110,38 +131,29 @@ class Location(Component):
         )
 
 
-class MaxCapacity(Component):
-    """
-    Limits the number of characters that may be present at
-    any one location
-    """
+@dataclass
+class MaxCapacity(Component, ISerializable):
+    """Limits the number of characters that may be present at a location."""
 
-    __slots__ = "value"
-
-    def __init__(self, value: int) -> None:
-        super().__init__()
-        self.value: int = value
+    value: int
+    """The number of characters."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {"capacity": self.value}
 
 
-class OpenToPublic(StatusComponent):
-    """
-    Tags a location as one that any character may travel to
-    """
+class OpenToPublic(StatusComponent, ISerializable):
+    """Tags a location as being eligible to travel to."""
 
     pass
 
 
-class CurrentLocation(Component):
-    """Tracks the current location of a GameObject"""
+@dataclass
+class CurrentLocation(Component, ISerializable):
+    """Tracks the current location of a GameObject."""
 
-    __slots__ = "location"
-
-    def __init__(self, location: int) -> None:
-        super(Component, self).__init__()
-        self.location: int = location
+    location: int
+    """The GameObjectID of the location."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {"location": self.location}
@@ -150,16 +162,23 @@ class CurrentLocation(Component):
         return f"{self.__class__.__name__}({self.location})"
 
 
-class LocationAliases(Component):
-    """
-    Keeps record of strings mapped the IDs of locations in the world
+class LocationAliases(Component, ISerializable):
+    """A record of strings mapped the IDs of locations in the world.
+
+    Notes
+    -----
+    This component allows us to use ID-agnostic location aliases for places like
+    home and work.
     """
 
     __slots__ = "aliases"
 
+    aliases: Dict[str, int]
+    """The aliases of locations mapped to their GameObject ID."""
+
     def __init__(self) -> None:
-        super(Component, self).__init__()
-        self.aliases: Dict[str, int] = {}
+        super().__init__()
+        self.aliases = {}
 
     def to_dict(self) -> Dict[str, Any]:
         return {"aliases": {**self.aliases}}
@@ -181,30 +200,59 @@ class LocationAliases(Component):
 
 
 @dataclass
-class Position2D(Component):
+class Position2D(Component, ISerializable):
+    """The 2-dimensional position of a GameObject."""
+
     x: float = 0.0
+    """The x-position of the GameObject."""
+
     y: float = 0.0
+    """The y-position of the GameObject."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {"x": self.x, "y": self.y}
 
 
-class FrequentedLocations(Component):
-    """Tracks the locations that a character frequents"""
+class FrequentedLocations(Component, ISerializable):
+    """Tracks the locations that a character frequents."""
 
     __slots__ = "locations"
 
+    locations: Set[int]
+    """A set of GameObject IDs of locations."""
+
     def __init__(self, locations: Optional[Iterable[int]] = None) -> None:
+        """
+        Parameters
+        ----------
+        locations
+            An iterable of GameObject IDs of locations.
+        """
         super().__init__()
-        self.locations: Set[int] = set(locations) if locations else set()
+        self.locations = set(locations) if locations else set()
 
     def add(self, location: int) -> None:
+        """Add a new location.
+
+        Parameters
+        ----------
+        location
+            The GameObject ID of a location.
+        """
         self.locations.add(location)
 
     def remove(self, location: int) -> None:
+        """Remove a location.
+
+        Parameters
+        ----------
+        location
+            The GamerObject ID of the location to remove.
+        """
         self.locations.remove(location)
 
     def clear(self) -> None:
+        """Remove all location IDs from the component."""
         self.locations.clear()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -223,22 +271,22 @@ class FrequentedLocations(Component):
         return f"{self.__class__.__name__}({self.locations.__repr__()})"
 
 
-class Building(Component):
-    """
-    Building components are attached to structures (like businesses and residences)
-    that are currently present in the town.
+class Building(Component, ISerializable):
+    """A physical building in the settlement.
 
-    Attributes
-    ----------
-    building_type: str
-        What kind of building is this
+    Notes
+    -----
+    Building components are attached to structures like businesses and residences.
     """
 
     __slots__ = "building_type"
 
+    building_type: str
+    """What kind of building is this."""
+
     def __init__(self, building_type: str) -> None:
         super().__init__()
-        self.building_type: str = building_type
+        self.building_type = building_type
 
     def to_dict(self) -> Dict[str, Any]:
         return {"building_type": self.building_type}
@@ -254,37 +302,50 @@ class Building(Component):
 
 
 @dataclass
-class CurrentLot(Component):
-    """Tracks the lot that a building belongs to
-
-    Attributes
-    ----------
-    lot: int
-        The ID of a lot within a SettlementMap
-    """
+class CurrentLot(Component, ISerializable):
+    """Tracks the lot that a building belongs to."""
 
     lot: int
+    """The ID of a lot within a SettlementMap."""
 
     def to_dict(self) -> Dict[str, Any]:
         return {"lot": self.lot}
 
 
-class FrequentedBy(Component):
-    """Tracks the characters that frequent a location"""
+class FrequentedBy(Component, ISerializable):
+    """Tracks the characters that frequent a location."""
 
     __slots__ = "_characters"
 
+    _characters: OrderedSet[int]
+    """GameObject IDs of characters that frequent the location."""
+
     def __init__(self) -> None:
         super().__init__()
-        self._characters: OrderedSet[int] = OrderedSet([])
+        self._characters = OrderedSet([])
 
     def add(self, character: int) -> None:
+        """Add a character.
+
+        Parameters
+        ----------
+        character
+            The GameObject ID of a character.
+        """
         self._characters.add(character)
 
     def remove(self, character: int) -> None:
+        """Remove a character.
+
+        Parameters
+        ----------
+        character
+            The GameObject ID of a character.
+        """
         self._characters.remove(character)
 
     def clear(self) -> None:
+        """Remove all characters from tracking."""
         self._characters.clear()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -309,16 +370,11 @@ class FrequentedBy(Component):
 
 
 @dataclass
-class CurrentSettlement(Component):
-    """Tracks the ID of the settlement that a GameObject is currently in
-
-    Attributes
-    ----------
-    settlement: int
-        The GameObject ID of a settlement
-    """
+class CurrentSettlement(Component, ISerializable):
+    """Tracks the ID of the settlement that a GameObject is currently in."""
 
     settlement: int
+    """The GameObject ID of a settlement."""
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -331,16 +387,11 @@ class CurrentSettlement(Component):
 
 
 @dataclass
-class PrefabName(Component):
-    """Tracks the ID of the settlement that a GameObject is currently in
-
-    Attributes
-    ----------
-    prefab: str
-        The name of the prefab used to construct this GameObject
-    """
+class PrefabName(Component, ISerializable):
+    """Tracks the name of the prefab used to instantiate a GameObject."""
 
     prefab: str
+    """The name of a prefab."""
 
     def __str__(self) -> str:
         return self.__repr__()

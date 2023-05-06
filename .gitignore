@@ -280,11 +280,6 @@ cython_debug/
 
 samples/scratches/
 
-# Simulation output
-samples/*.json
-samples/*.csv
-*.csv
-
 # Docs NodeJS stuff
 node_modules/
 /docs/node_modules/

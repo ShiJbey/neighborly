@@ -1,80 +1,163 @@
 Relationships
 =============
 
-Relationships are at the core of agent-based social simulation. In Neighborly,
-relationships track how characters feel about other characters on different
-axes, changes in relationship status, and other informational tags.
+Relationships are at the core of agent-based social simulation along with social rules. In
+Neighborly, relationships track how characters feel about other characters on different
+facets such as friendship, romance, respect, and trust.
 
-Relationships are have two main components. The first is a set of various
-relationship stats. These are specified by the user (explained below) and
-can be used to represent things like platonic feelings, romantic feelings,
-and trust.
+Relationships are GameObjects just like characters. So, they have their own set of components that
+can be queried for and modified by systems.
 
 Defining the schema
 -------------------
 
-Below is an example relationship schema. The RelationshipSchema is
-responsible for telling the simulation how new relationship instances
-are to be configured. In this case there, are three stats within this
-relationship: Friendship, Romance, and Trust. Each axis has a max and min
-of 50 and -50, respectively. There can be as many or as few stats tracked
-as you wish, and there are no rules for names. However, you must be
-consistent in referencing each stat within other simulation code.
+Currently all relationships in Neighborly share the same core structure (components). This structure
+is defined using a relationship schema within the ``NeighborlyConfig`` passed to the simulation.
 
-Something special to note here is the ``changes_with_time`` parameter.
-When it is set to ``True``, that relationship stat will change automatically
-without two characters explicitly interacting. Since Neighborly skips large
-intervals of time, we needed a way to interpolate the relationship value
-to give the impression that two characters most likely interacted during
-that time.
+The schema is just an prefab definition that asks the simulation author to define what components
+should be present on a relationship GameObject at creation time. Usually, this includes naming the
+various facets of the relationship. The two built-in facets are ``Romance`` and ``Friendship``.
+Each facet has a max and min of 50 and -50, respectively. There can be as many or as few facets
+as you wish. Each facet is a Component class that inherits from the ``RelationshipFacet`` class.
+
+The simulation starts with a default relationship schema (see code below). Users are free to change
+this schema, however, it may cause some content in plugins to throw errors or not function as
+expected. So, be careful when removing any components from a schema.
 
 .. code-block:: python
 
+    # This is the default relationship schema
     NeighborlyConfig(
-        # ... other config parameters
-        relationship_schema=RelationshipSchema(
-            stats={
-                "Friendship": RelationshipStatConfig(
-                    min_value=-50, max_value=50, changes_with_time=True
-                ),
-                "Romance": RelationshipStatConfig(
-                    min_value=-50, max_value=50, changes_with_time=True
-                ),
-                "Trust": RelationshipStatConfig(
-                    min_value=-50, max_value=50, changes_with_time=False
-                ),
-            }
+            relationship_schema={
+                "components": {
+                    "Friendship": {
+                        "min_value": -100,
+                        "max_value": 100,
+                    },
+                    "Romance": {
+                        "min_value": -100,
+                        "max_value": 100,
+                    },
+                    "InteractionScore": {
+                        "min_value": -5,
+                        "max_value": 5,
+                    },
+                }
+            },
         ),
     )
+
+
+Relationship Facets
+-------------------
+
+Relationship facets are the various axes of a relationship. Neighborly comes with three (3) default
+facets. ``Romance`` tracks romantic attraction a character feels for another. ``Friendship`` tracks
+platonic affinity from one character to another. And, ``InteractionScore`` is a special component
+that tracks how much two characters should interact over the course of a month.
+
+New facets can be created like any other component. Internally, they track three important scores
+
+1. **Raw Value** - This is the raw score (sum of increments) retrieved with ``.get_raw_value()``.
+2. **Clamped Value** - The score clamped between the min and max values given to the constructor.
+   This value is retrieved using ``.get_value()``.
+3. **Normalized Value** - This value returns a real number on the interval [0, 1.0], representing
+   the total number of positive facet increments divided by the total number of positive and
+   negative relationship increments. This is accessed using ``.get_normalized_value()``.
+
+.. code-block:: python
+
+    from neighborly import Neighborly
+    from neighborly.core.relationship import RelationshipFacet
+
+
+    class Trust(RelationshipFacet):
+        pass
+
+
+    class Respect(RelationshipFacet):
+        pass
+
+    sim = Neighborly()
+
+    # The new facets need to be registered to be used with the schema
+    sim.world.register_component(Trust)
+    sim.world.register_component(Respect)
+
+    # Add the new facets to the schema
+    sim.config.relationship_schema.components["Trust"] = {
+        "min_value": -100,
+        "max_value": 100,
+    }
+
+    sim.config.relationship_schema.components["Respect"] = {
+        "min_value": -100,
+        "max_value": 100,
+    }
 
 
 Creating new relationships
 --------------------------
 
-Relationship instances are created between characters by using the
-``add_relationship`` utility function.
+Relationship instances are created between characters by using the ``add_relationship`` or
+``get_relationship`` utility functions. You need to have references to two (2) GameObjects to
+form a new relationship. Technically, the GameObjects do not need to be characters. They could
+be organizations, inanimate objects, or characters referencing themselves.
 
 .. code-block:: python
 
-    alice = world.spawn_gameobject()
+    from neighborly.core.relationship import add_relationship, get_relationship, has_relationship
+    # ... other set up code
 
+    # You need to have references to two GameObjects to form a relationship.
+    # There is not a requirement that
+    alice = sim.world.spawn_gameobject()
     hatter = world.spawn_gameobject()
 
-    alice_to_hatter = add_relationship(alice, hatter)
+    hatter_to_alice = add_relationship(hatter, alice)
 
-    alice_to_hatter["Friendship"] += 5
-    alice_to_hatter["Trust"] += 2
+    # The get_relationship function will create a new relationship if one does not exist
+    # So this is probably the function you want to use most
+    alice_to_hatter = get_relationship(alice, hatter)
 
-    # Attempting to access a stat not specified in the
-    # schema will give an error
-    alice_to_hatter["Attraction"] += -2 # throws RelationshipStatNotfound error
+    assert has_relationship(alice, hatter)
 
-Updating the stats
-------------------
 
-Relationship stats can be accessed by indexing into a ``Relationship``
-instance using the name of the stat as specified in the schema.
+Modifying relationship facets
+-----------------------------
+
+Sometimes character relationship facets need to be updated to reflect event that have transpired
+between characters. Or, we may want to manually apply initial conditions to the relationship
+facets. We do this by getting a reference to the desired facet and using the increment function
+on them.
 
 .. code-block:: python
 
-    relationship =
+    # Set the base value
+    alice_to_hatter.get_component(Friendship).set_base(5)
+    alice_to_hatter.get_component(Trust).set_base(2)
+
+    # Increment the value with a positive or negative value
+    alice_to_hatter.get_component(Friendship).increment(-3)
+
+Relationship Statuses
+---------------------
+
+Much like how characters can have statuses applied to them, Relationships can also have statuses.
+Relationship statuses track things about the relationship that may or may not change at runtime.
+Statuses can track familial relationships, marriages, dating situationships, crushes, debts and
+more. Since statuses are components, they can be queried for in systems using
+``world.get_components(...)``.
+
+.. code-block:: python
+
+    class OwesMoney(RelationshipStatus):
+
+        def __init__(self, amount: int = 0) -> None:
+            self.amount: int = amount
+
+    add_relationship_status(
+        alice,
+        hatter,
+        OwesMoney(50)
+    )

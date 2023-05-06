@@ -12,14 +12,6 @@ neighborly.core.ecs.ecs module
    :undoc-members:
    :show-inheritance:
 
-neighborly.core.ecs.prefab module
----------------------------------
-
-.. automodule:: neighborly.core.ecs.prefab
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.core.ecs.query module
 --------------------------------
 
@@ -32,6 +24,3 @@ Module contents
 ---------------
 
 .. automodule:: neighborly.core.ecs
-   :members:
-   :undoc-members:
-   :show-inheritance:

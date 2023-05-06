@@ -16,14 +16,6 @@ Subpackages
 Submodules
 ----------
 
-neighborly.actions module
--------------------------
-
-.. automodule:: neighborly.actions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.cli module
 ---------------------
 
@@ -40,14 +32,6 @@ neighborly.config module
    :undoc-members:
    :show-inheritance:
 
-neighborly.content\_management module
--------------------------------------
-
-.. automodule:: neighborly.content_management
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.data\_collection module
 ----------------------------------
 
@@ -60,6 +44,14 @@ neighborly.decorators module
 ----------------------------
 
 .. automodule:: neighborly.decorators
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+neighborly.event\_listeners module
+----------------------------------
+
+.. automodule:: neighborly.event_listeners
    :members:
    :undoc-members:
    :show-inheritance:
@@ -84,14 +76,6 @@ neighborly.loaders module
 -------------------------
 
 .. automodule:: neighborly.loaders
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.prefabs module
--------------------------
-
-.. automodule:: neighborly.prefabs
    :members:
    :undoc-members:
    :show-inheritance:
@@ -124,6 +108,3 @@ Module contents
 ---------------
 
 .. automodule:: neighborly
-   :members:
-   :undoc-members:
-   :show-inheritance:

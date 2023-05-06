@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Type
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Type,
+)
 
-from neighborly import Component
-from neighborly.core.ecs import Event, GameObject, World
+from neighborly.core.ecs import Component, Event, GameObject, World, ISerializable
 from neighborly.core.roles import Role, RoleList
-from neighborly.core.serializable import ISerializable
 from neighborly.core.time import SimDateTime
 
 
@@ -26,9 +34,9 @@ class LifeEvent(Event, ABC):
         """
         Parameters
         ----------
-        timestamp: SimDateTime
+        timestamp
             Timestamp for when this event
-        roles: Iterable[Role]
+        roles
             The names of roles mapped to GameObjects
         """
         self._uid: int = LifeEvent._next_event_id
@@ -86,10 +94,11 @@ class LifeEvent(Event, ABC):
         return self._uid > other._uid
 
 
-class ActionableLifeEvent(LifeEvent):
-    """
-    User-facing class for implementing behaviors around life events
+class RandomLifeEvent(LifeEvent):
+    """User-facing class for implementing behaviors around life events.
 
+    Notes
+    -----
     This is adapted from:
     https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
     """
@@ -104,9 +113,9 @@ class ActionableLifeEvent(LifeEvent):
         """
         Parameters
         ----------
-        timestamp: SimDateTime
+        timestamp
             Timestamp for when this event
-        roles: Dict[str, GameObject
+        roles
             The names of roles mapped to GameObjects
         """
         super().__init__(timestamp, roles)
@@ -125,11 +134,11 @@ class ActionableLifeEvent(LifeEvent):
 
     @abstractmethod
     def execute(self) -> None:
-        """Executes the LifeEvent instance, emitting an event"""
+        """Executes the LifeEvent instance, emitting an event."""
         raise NotImplementedError
 
     def is_valid(self, world: World) -> bool:
-        """Check that all gameobjects still meet the preconditions for their roles"""
+        """Check that all gameobjects still meet the preconditions for their roles."""
         return self.instantiate(world, bindings=self._roles) is not None
 
     @classmethod
@@ -138,14 +147,14 @@ class ActionableLifeEvent(LifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         """Attempts to create a new LifeEvent instance
 
         Parameters
         ----------
-        world: World
+        world
             Neighborly world instance
-        bindings: Dict[str, GameObject], optional
+        bindings
             Suggested bindings of role names mapped to GameObjects
 
         Returns
@@ -157,48 +166,58 @@ class ActionableLifeEvent(LifeEvent):
 
 
 class RandomLifeEvents:
-    """Static class used to store LifeEvents that can be triggered randomly"""
+    """Static class used to store LifeEvents that can be triggered randomly."""
 
-    _registry: Dict[str, Type[ActionableLifeEvent]] = {}
+    _registry: Dict[str, Type[RandomLifeEvent]] = {}
 
     @classmethod
-    def add(cls, life_event_type: Type[ActionableLifeEvent]) -> None:
+    def add(cls, life_event_type: Type[RandomLifeEvent]) -> None:
         """Register a new random LifeEvent type"""
         cls._registry[life_event_type.__name__] = life_event_type
 
     @classmethod
-    def pick_one(cls, rng: random.Random) -> Type[ActionableLifeEvent]:
+    def pick_one(cls, rng: random.Random) -> Type[RandomLifeEvent]:
         """
         Return a random registered random life event
 
         Parameters
         ----------
-        rng: random.Random
+        rng
             A random number generator
 
         Returns
         -------
-        type of ActionableLifeEvent
+        Type[RandomLifeEvent]
             A randomly-chosen random event from the registry
         """
         return rng.choice(list(cls._registry.values()))
 
     @classmethod
     def get_size(cls) -> int:
-        """Return number of registered random life events"""
+        """Get the number of registered random life events."""
         return len(cls._registry)
 
 
-class EventHistory(Component):
-    """Stores a record of all past events for a specific GameObject"""
+class EventHistory(Component, ISerializable):
+    """Stores a record of all past events for a specific GameObject."""
 
     __slots__ = "_history"
 
+    _history: List[LifeEvent]
+    """A list of events in chronological-order."""
+
     def __init__(self) -> None:
         super().__init__()
-        self._history: List[LifeEvent] = []
+        self._history = []
 
     def append(self, event: LifeEvent) -> None:
+        """Record a new life event.
+
+        Parameters
+        ----------
+        event
+            The event to record.
+        """
         self._history.append(event)
 
     def __iter__(self) -> Iterator[LifeEvent]:
@@ -218,18 +237,27 @@ class EventHistory(Component):
 
 
 class AllEvents(ISerializable):
-    """Stores a record of all past events"""
+    """Stores a record of all past life events."""
 
-    _event_listeners: List[Callable[[LifeEvent], None]] = []
+    _event_listeners: ClassVar[List[Callable[[LifeEvent], None]]] = []
 
     __slots__ = "_history"
 
+    _history: Dict[int, LifeEvent]
+    """All recorded life events mapped to their event ID."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._history: Dict[int, LifeEvent] = {}
+        self._history = {}
 
     def append(self, event: LifeEvent) -> None:
+        """Record a new life event.
+
+        Parameters
+        ----------
+        event
+            The event to record.
+        """
         self._history[event.get_id()] = event
         for cb in self._event_listeners:
             cb(event)
@@ -242,4 +270,11 @@ class AllEvents(ISerializable):
 
     @classmethod
     def on_event(cls, listener: Callable[[LifeEvent], None]) -> None:
+        """Registers an event listener called when events are recorded.
+
+        Parameters
+        ----------
+        listener
+            A callback function
+        """
         cls._event_listeners.append(listener)

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Protocol, Tuple, Type, TypeVar
 
 from neighborly.core.ecs import Active, Component, GameObject, GameObjectFactory
+from neighborly.core.ecs.ecs import ISerializable
 from neighborly.core.status import (
     StatusComponent,
     StatusManager,
@@ -194,7 +195,7 @@ class RelationshipModifier:
         }
 
 
-class Relationship(Component):
+class Relationship(Component, ISerializable):
     __slots__ = (
         "_modifiers",
         "_target",
@@ -243,25 +244,26 @@ class Relationship(Component):
         )
 
 
-class RelationshipManager(Component):
-    """Tracks all relationships associated with a GameObject
+class RelationshipManager(Component, ISerializable):
+    """Tracks all relationships associated with a GameObject.
 
-    Attributes
-    ----------
-    incoming: Dict[int, int]
-        GameObject ID of relationship owners mapped to the ID of the
-        GameObjects with the relationship data
-    outgoing: Dict[int, int]
-        GameObject ID of relationship targets mapped to the ID of the
-        GameObjects with the relationship data
+    Notes
+    -----
+    This component helps build a directed graph structure within the ECS.
     """
 
     __slots__ = "incoming", "outgoing"
 
+    incoming: Dict[int, int]
+    """GameObject ID of relationship owners mapped to the Relationship's ID."""
+
+    outgoing: Dict[int, int]
+    """GameObject ID of relationship owners mapped to the Relationship's ID."""
+
     def __init__(self) -> None:
         super().__init__()
-        self.incoming: Dict[int, int] = {}
-        self.outgoing: Dict[int, int] = {}
+        self.incoming = {}
+        self.outgoing = {}
 
     def add_incoming(self, owner: int, relationship: int) -> None:
         """
@@ -269,9 +271,9 @@ class RelationshipManager(Component):
 
         Parameters
         ----------
-        owner: int
+        owner
             The ID of the owner of the relationship
-        relationship: int
+        relationship
             The ID of the relationship
         """
         self.incoming[owner] = relationship
@@ -282,9 +284,9 @@ class RelationshipManager(Component):
 
         Parameters
         ----------
-        target : int
+        target
             The ID of the target of the relationship
-        relationship : int
+        relationship
             The ID of the relationship
         """
         self.outgoing[target] = relationship
@@ -312,14 +314,14 @@ class ISocialRule(Protocol):
 
         Parameters
         ----------
-        subject: GameObject
+        subject
             The owner of the relationship
-        target: GameObject
+        target
             The GameObject that we are evaluating the subjects feelings toward
 
         Returns
         -------
-        Optional[Dict[Type[RelationshipFacet], int]]
+        Dict[Type[RelationshipFacet], int] or None
             Optionally returns a dict mapping relationship facet types to int modifiers
             that should be applied to those facets based on some precondition(s)
         """
@@ -328,19 +330,13 @@ class ISocialRule(Protocol):
 
 @dataclasses.dataclass(frozen=True)
 class SocialRuleInfo:
-    """
-    Information about a social rule
-
-    Attributes
-    ----------
-    rule: ISocialRule
-        The callable function that implements the rule
-    description: str
-        A text description of the rule
-    """
+    """Information about a social rule."""
 
     rule: ISocialRule
+    """The callable function that implements the rule."""
+
     description: str = ""
+    """A text description of the rule."""
 
 
 class SocialRules:
@@ -355,9 +351,9 @@ class SocialRules:
 
         Parameters
         ----------
-        rule: ISocialRule
+        rule
             The rule to register
-        description: str
+        description
             A text description of the rule
         """
         cls._rules.append(SocialRuleInfo(rule, description))
@@ -377,9 +373,9 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
 
     Parameters
     ----------
-    owner: GameObject
+    owner
         The GameObject that owns the relationship
-    target: GameObject
+    target
         The GameObject that the Relationship is directed toward
 
     Returns
@@ -420,9 +416,9 @@ def get_relationship(
 
     Parameters
     ----------
-    subject: GameObject
+    subject
         The owner of the relationship
-    target: GameObject
+    target
         The character the relationship is directed toward
 
     Returns
@@ -444,16 +440,16 @@ def has_relationship(subject: GameObject, target: GameObject) -> bool:
 
     Parameters
     ----------
-    subject: GameObject
+    subject
         The GameObject to check for a relationship instance on
-    target: GameObject
+    target
         The GameObject to check is the target of an existing relationship instance
 
     Returns
     -------
     bool
-        Returns True if there is an existing Relationship instance with the
-        target as the target
+        True if there is an existing Relationship instance with the
+        target as the target, False otherwise.
     """
     return target.uid in subject.get_component(RelationshipManager).outgoing
 
@@ -466,11 +462,11 @@ def add_relationship_status(
 
     Parameters
     ----------
-    subject: GameObject
+    subject
         The character to add the relationship status to
-    target: GameObject
+    target
         The character the relationship status is directed toward
-    status: RelationshipStatus
+    status
         The core component of the status
     """
     relationship = get_relationship(subject, target)
@@ -489,11 +485,11 @@ def get_relationship_status(
 
     Parameters
     ----------
-    subject: GameObject
+    subject
         The character to add the relationship status to
-    target: GameObject
+    target
         The character that is the target of the status
-    status_type: Type[RelationshipStatus]
+    status_type
         The type of the status
     """
 
@@ -511,11 +507,11 @@ def remove_relationship_status(
 
     Parameters
     ----------
-    subject: GameObject
+    subject
         The character to add the relationship status to
-    target: GameObject
+    target
         The character that is the target of the status
-    status_type: Type[RelationshipStatus]
+    status_type
         The type of the relationship status to remove
     """
 
@@ -533,17 +529,17 @@ def has_relationship_status(
 
     Parameters
     ----------
-    subject: GameObject
+    subject
         The character to add the relationship status to
-    target: GameObject
+    target
         The character that is the target of the status
-    *status_type: Type[RelationshipStatus]
+    *status_type
         The type of the relationship status to remove
 
     Returns
     -------
     bool
-        Returns True if relationship has a given status
+        True if relationship has a given status, False otherwise.
     """
 
     relationship = get_relationship(subject, target)
@@ -557,9 +553,9 @@ def get_relationships_with_statuses(
 
     Parameters
     ----------
-    subject: GameObject
+    subject
         The character to check for relationships on
-    *status_types: Type[Component]
+    *status_types
         Status types to check for on relationship instances
 
     Returns
@@ -585,11 +581,11 @@ def evaluate_social_rules(
 
     Parameters
     ----------
-    relationship: GameObject
+    relationship
         The relationship to modify
-    owner: GameObject
+    owner
         The owner of the relationship
-    target: GameObject
+    target
         The target of the relationship
     """
 

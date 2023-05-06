@@ -1,173 +1,190 @@
+"""Neighborly Routine module.
+
+Routines suggest to characters what they should do at a given time. Each routine is
+divided into seven daily routines, one for each day of the week.
+
+"""
 from __future__ import annotations
 
+import bisect
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
-from neighborly.core.ecs import Component
+from neighborly.core.ai.brain import GoalNode
+from neighborly.core.ecs import Component, ISerializable
 from neighborly.core.time import Weekday
 
 
 class RoutinePriority(IntEnum):
+    """An enumeration of routine entry priority values."""
+
     LOW = 0
     MED = 1
     HIGH = 2
 
 
+ROUTINE_PRIORITY_BOOSTS: Dict[RoutinePriority, float] = {
+    RoutinePriority.LOW: 0.1,
+    RoutinePriority.MED: 0.3,
+    RoutinePriority.HIGH: 0.5,
+}
+"""Priority value buffs applied to goals based on their routine priority."""
+
+
 class RoutineEntry:
-    """
-    An entry within a routine for when an entity needs to be
-    at a specific location and for how long
+    """An entry within a routine.
 
-    Attributes
-    ----------
-    start: int
-        The time that this routine task begins
-    end: int
-        The time that this routine task ends
+    Notes
+    -----
+    If the end time is less than the start time, then the entry wraps around to the
+    following day.
+    """
+
+    __slots__ = "days", "start_time", "end_time", "goal", "priority"
+
+    days: Set[Weekday]
+    """What days is this entry for."""
+
+    start_time: int
+    """The time that this routine task begins."""
+
+    end_time: int
+    """The time that this routine task ends."""
+
+    goal: GoalNode
+    """The location or location alias for a location."""
+
     priority: RoutinePriority
-        The priority associated with this task. High priority tasks
-        override lower priority tasks
-    location: Union[str, int]
-        The location or location alias for a location. Location
-        aliases can be looked up on the GameCharacter class
-    tags: Set[str]
-        A set of tags associated with this entry
-    """
-
-    __slots__ = (
-        "start",
-        "end",
-        "priority",
-        "tags",
-        "location",
-    )
+    """How important is this entry."""
 
     def __init__(
         self,
-        start: int,
-        end: int,
-        location: Union[str, int],
+        days: Iterable[Weekday],
+        start_time: int,
+        end_time: int,
+        goal: GoalNode,
         priority: RoutinePriority = RoutinePriority.LOW,
-        tags: Optional[List[str]] = None,
     ) -> None:
-        self.start: int = start
-        self.end: int = end
-        self.location: Union[str, int] = location
-        self.priority: RoutinePriority = priority
-        self.tags: Set[str] = set(*tags) if tags else set()
+        """
+        Parameters
+        ----------
+        days
+            What days is this entry for.
+        start_time
+            The starting time for this entry (0 <= start <= 23).
+        end_time
+            The starting time for this entry (0 <= end <= 23).
+        goal
+            What should the character want to do at this time.
+        priority
+            How important is this entry (defaults to RoutinePriority.LOW).
+        """
+        self.days = set(days)
+        self.start_time = start_time
+        self.end_time = end_time
+        self.goal = goal
+        self.priority = priority
 
-        if start < 0 or start > 23:
+        if start_time < 0 or start_time > 23:
             raise ValueError("Start time must be within range [0, 23] inclusive.")
-        if end < 0 or end > 23:
+
+        if end_time < 0 or end_time > 23:
             raise ValueError("End time must be within range [0,23] inclusive.")
 
     def __repr__(self) -> str:
-        return "{}({:2d}:00-{:2d}:00, location={}, priority={}, tags={})".format(
+        return "{}({:2d}:00-{:2d}:00, goal={})".format(
             self.__class__.__name__,
-            self.start,
-            self.end,
-            self.location,
-            self.priority,
-            self.tags,
+            self.start_time,
+            self.end_time,
+            type(self.goal).__name__,
         )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "start": self.start,
-            "end": self.end,
-            "location": self.location,
-            "priority": self.priority,
-            "tags": list(self.tags),
+            "days": [d.name for d in self.days],
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "goal": type(self.goal).__name__,
+            "priority": self.priority.name,
         }
 
+    def __le__(self, other: RoutineEntry) -> bool:
+        return self.priority <= other.priority
 
-class DailyRoutine:
-    """
-    A collection of RoutineEntries that manage where an
-    entity should be for a given day
+    def __lt__(self, other: RoutineEntry) -> bool:
+        return self.priority < other.priority
 
-    Attributes
-    ----------
-    _entries: Dict[str, RoutineEntry]
-        All the RoutineEntry instances associated with this DailyRoutine
-    _tracks: Dict[RoutinePriority, List[List[RoutineEntry]]
-        Pointers to the RoutineEntry instances organized by hour
-    """
+    def __ge__(self, other: RoutineEntry) -> bool:
+        return self.priority >= other.priority
 
-    __slots__ = "_entries", "_tracks"
+    def __gt__(self, other: RoutineEntry) -> bool:
+        return self.priority > other.priority
+
+
+class Routine(Component, ISerializable):
+    """Collection of daily routines that manage behavior for a 7-day week."""
+
+    __slots__ = "_entries"
+
+    _entries: List[RoutineEntry]
+    """All the entries within the routine."""
 
     def __init__(self) -> None:
-        self._entries: Dict[str, RoutineEntry] = {}
-        # Each track holds 24 slots, one for each hour
-        # Each slot holds a list of events registered to that time
-        self._tracks: Dict[RoutinePriority, List[List[RoutineEntry]]] = {
-            RoutinePriority.LOW: [list() for _ in range(24)],
-            RoutinePriority.MED: [list() for _ in range(24)],
-            RoutinePriority.HIGH: [list() for _ in range(24)],
-        }
+        super().__init__()
+        self._entries = []
 
-    def get(self, hour: int) -> List[RoutineEntry]:
-        """Get highest-priority entries for a given hour"""
-        high_priority_entries = self._tracks[RoutinePriority.HIGH][hour]
-        if high_priority_entries:
-            return high_priority_entries
-
-        med_priority_entries = self._tracks[RoutinePriority.MED][hour]
-        if med_priority_entries:
-            return med_priority_entries
-
-        return self._tracks[RoutinePriority.LOW][hour]
-
-    def add(self, entry_id: str, entry: RoutineEntry) -> None:
-        """
-        Add an entry to the DailyRoutine
+    def get_entry_for_time(self, day: Weekday, hour: int) -> Optional[RoutineEntry]:
+        """Get an entry for a given day and time.
 
         Parameters
         ----------
-        entry_id: str
-            Unique ID used to remove this entry at a later time
-        entry: RoutineEntry
-            Entry to add to the routine
+        day
+            The day of the daily routine
+        hour
+            The hour within the daily routine
+
+        Returns
+        -------
+        RoutineEntry or None
+            Returns an entry, or None if schedule is clear for that time.
         """
-        if entry_id in self._entries:
-            return
+        # iterate in reverse because the entries are stored in increasing priority order
 
-        self._entries[entry_id] = entry
+        for entry in reversed(self._entries):
+            if day not in entry.days:
+                continue
 
-        track = self._tracks[entry.priority]
+            if entry.end_time >= entry.start_time:
+                if entry.start_time <= hour < entry.end_time:
+                    return entry
+            else:
+                if hour >= entry.start_time or hour < entry.end_time:
+                    return entry
 
-        if entry.start > entry.end:
-            duration = (23 - entry.start) + entry.end
-            for hour in range(entry.start, entry.start + duration):
-                track[hour % 24].append(entry)
+        return None
 
-        else:
-            for hour in range(entry.start, entry.end):
-                track[hour].append(entry)
-
-    def remove(self, entry_id: str) -> None:
-        """
-        Remove an entry from this DailyRoutine
+    def add_entry(self, entry: RoutineEntry) -> None:
+        """Add an entry to a daily routine.
 
         Parameters
         ----------
-        entry_id: str
-            Unique ID of the entry to remove from the routine
+        entry
+            The routine entry to add.
         """
-        entry = self._entries[entry_id]
+        # Entries are stored as a priority queue based on entry priority
+        bisect.insort(self._entries, entry)
 
-        track = self._tracks[entry.priority]
+    def remove_entry(self, entry: RoutineEntry) -> None:
+        """Remove an entry from a daily routine.
 
-        if entry.start > entry.end:
-            duration = (23 - entry.start) + entry.end
-            for hour in range(entry.start, entry.start + duration):
-                track[hour % 24].remove(entry)
-
-        else:
-            for hour in range(entry.start, entry.end):
-                track[hour].remove(entry)
-
-        del self._entries[entry_id]
+        Parameters
+        ----------
+        day
+            The day to remove the entry from
+        entry
+            The entry to remove.
+        """
+        self._entries.remove(entry)
 
     def __repr__(self) -> str:
         return "{}({})".format(
@@ -176,73 +193,15 @@ class DailyRoutine:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"entries": {k: v.to_dict() for k, v in self._entries.items()}}
-
-
-class Routine(Component):
-    """
-    Collection of DailyRoutine Instances that manages an entity's
-    behavior for a 7-day week
-
-    Attributes
-    ----------
-    _daily_routines: Tuple[DailyRoutine, DailyRoutine, DailyRoutine,
-        DailyRoutine, DailyRoutine, DailyRoutine, DailyRoutine]
-        DailyRoutines in order from day zero to seven
-    """
-
-    __slots__ = "_daily_routines"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._daily_routines: List[DailyRoutine] = [
-            DailyRoutine(),
-            DailyRoutine(),
-            DailyRoutine(),
-            DailyRoutine(),
-            DailyRoutine(),
-            DailyRoutine(),
-            DailyRoutine(),
-        ]
-
-    def get_entry(self, day: int, hour: int) -> Optional[RoutineEntry]:
-        """Get a single activity for a given day and time"""
-        entries = self._daily_routines[day].get(hour)
-        if entries:
-            return entries[-1]
-        return None
-
-    def get_entries(self, day: int, hour: int) -> List[RoutineEntry]:
-        """Get the scheduled activity for a given day and time"""
-        return self._daily_routines[day].get(hour)
-
-    def add_entries(
-        self, entry_id: str, days: List[int], *entries: RoutineEntry
-    ) -> None:
-        """Add one or more entries to the daily routines on the given days"""
-        for day in days:
-            for entry in entries:
-                self._daily_routines[day].add(entry_id, entry)
-
-    def remove_entries(self, days: List[int], entry_id: str) -> None:
-        """Remove one or more entries from the daily routines on the given days"""
-        for day in days:
-            self._daily_routines[day].remove(entry_id)
-
-    def __repr__(self) -> str:
-        return f"Routine({self._daily_routines})"
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"days": [dr.to_dict() for dr in self._daily_routines]}
+        return {"entries": [e.to_dict() for e in self._entries]}
 
 
 def time_str_to_int(s: str) -> int:
-    """
-    Convert 24-hour or 12-hour time string to int hour of the day
+    """Convert 24-hour or 12-hour time string to int hour of the day.
 
     Parameters
     ----------
-    s : str
+    s
         24-hour or 12-hour time string
 
     Returns
@@ -271,18 +230,17 @@ def time_str_to_int(s: str) -> int:
 
 
 def parse_schedule_str(s: str) -> Dict[str, Tuple[int, int]]:
-    """
-    Convert a schedule string with days and time intervals
+    """Convert a schedule string with days and time intervals.
 
     Arguments
     ---------
-    s: str
-        String representing the hours for a routine entry
+    s
+        String representing the hours for a routine entry.
 
     Returns
     -------
-    dict[str, tuple(int, int)]
-        Time intervals for RoutineEntries mapped to the day of the week
+    dict[str, tuple[int, int]]
+        Time intervals for RoutineEntries mapped to the day of the week.
 
     Notes
     -----

@@ -2,28 +2,35 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Iterator, Optional, Set
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, ISerializable
 
 
-class Activities(Component):
-    """A collection of all the activities available at a location
+class Activities(Component, ISerializable):
+    """A collection of activity names.
 
-    Systems look for an Activities component to:
-    1) Help characters determine where they frequent/want to go
-    2) Add content to flesh out the narrative setting of the simulation
+    Notes
+    -----
+    Systems may look for an Activities component to:
+
+    1. Describe the activities available at a location
+    2. Help characters determine where they frequent/want to go
+    3. Add content to flesh out the narrative setting of the simulation
     """
 
     __slots__ = "_activities"
+
+    _activities: Set[str]
+    """Activity names."""
 
     def __init__(self, activities: Optional[Iterable[str]] = None) -> None:
         """
         Parameters
         ----------
-        activities: Set[str]
-            A collection of activities
+        activities
+            A collection of activities.
         """
         super().__init__()
-        self._activities: Set[str] = set()
+        self._activities = set()
 
         if activities:
             for name in activities:
@@ -33,9 +40,23 @@ class Activities(Component):
         return {"activities": [str(a) for a in self._activities]}
 
     def add_activity(self, activity: str) -> None:
+        """Add an activity name.
+
+        Parameters
+        ----------
+        activity
+            The name of an activity.
+        """
         self._activities.add(activity.lower())
 
     def remove_activity(self, activity: str) -> None:
+        """Remove an activity name.
+
+        Parameters
+        ----------
+        activity
+            The name of an activity.
+        """
         self._activities.remove(activity.lower())
 
     def __iter__(self) -> Iterator[str]:

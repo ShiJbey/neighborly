@@ -47,13 +47,13 @@ from neighborly.components import (
 )
 from neighborly.components.character import LifeStage, LifeStageType
 from neighborly.core.ecs.ecs import Active
-from neighborly.core.life_event import ActionableLifeEvent, AllEvents
+from neighborly.core.life_event import RandomLifeEvent, AllEvents
 from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
     component,
     component_factory,
-    event_listener,
+    on_event,
     random_life_event,
     resource,
     system,
@@ -541,7 +541,7 @@ def power_level_to_demon_rank(power_level: int) -> DemonRank:
 
 
 @random_life_event()
-class BecomeDemonSlayer(ActionableLifeEvent):
+class BecomeDemonSlayer(RandomLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
 
@@ -566,7 +566,7 @@ class BecomeDemonSlayer(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         # Only create demon slayers if demons are an actual problem
         demons_exist = len(world.get_component(Demon)) > 5
         if demons_exist is False:
@@ -606,7 +606,7 @@ class BecomeDemonSlayer(ActionableLifeEvent):
 
 
 @random_life_event()
-class DemonSlayerPromotion(ActionableLifeEvent):
+class DemonSlayerPromotion(RandomLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
 
@@ -628,7 +628,7 @@ class DemonSlayerPromotion(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         character = cls._bind_demon_slayer(world, bindings.get("Character"))
 
         if character is None:
@@ -664,7 +664,7 @@ class DemonSlayerPromotion(ActionableLifeEvent):
 
 
 @random_life_event()
-class DemonChallengeForPower(ActionableLifeEvent):
+class DemonChallengeForPower(RandomLifeEvent):
     def __init__(
         self, date: SimDateTime, challenger: GameObject, opponent: GameObject
     ) -> None:
@@ -693,7 +693,7 @@ class DemonChallengeForPower(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         challenger = cls._bind_challenger(world, bindings.get("Challenger"))
 
         if challenger is None:
@@ -764,7 +764,7 @@ class DemonChallengeForPower(ActionableLifeEvent):
 
 
 @random_life_event()
-class DevourHuman(ActionableLifeEvent):
+class DevourHuman(RandomLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, victim: GameObject
     ) -> None:
@@ -797,7 +797,7 @@ class DevourHuman(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         demon = cls._bind_demon(world, bindings.get("Demon"))
 
         if demon is None:
@@ -870,7 +870,7 @@ class DevourHuman(ActionableLifeEvent):
 
 
 @random_life_event()
-class Battle(ActionableLifeEvent):
+class Battle(RandomLifeEvent):
     """Have a demon fight a demon slayer"""
 
     def __init__(
@@ -938,7 +938,7 @@ class Battle(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         challenger = cls._bind_challenger(world, bindings.get("Challenger"))
         opponent = cls._bind_opponent(world, bindings.get("Opponent"))
 
@@ -984,7 +984,7 @@ class Battle(ActionableLifeEvent):
 
 
 @random_life_event()
-class TurnSomeoneIntoDemon(ActionableLifeEvent):
+class TurnSomeoneIntoDemon(RandomLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, new_demon: GameObject
     ) -> None:
@@ -998,7 +998,7 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         demon = cls._bind_demon(world, candidate=bindings.get("Demon"))
 
         if demon is None:
@@ -1089,7 +1089,7 @@ class TurnSomeoneIntoDemon(ActionableLifeEvent):
 
 
 @random_life_event()
-class PromotionToLowerMoon(ActionableLifeEvent):
+class PromotionToLowerMoon(RandomLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
 
@@ -1108,7 +1108,7 @@ class PromotionToLowerMoon(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         demon = cls._bind_demon(world, bindings.get("Character"))
         if demon:
             return cls(world.get_resource(SimDateTime), demon)
@@ -1145,7 +1145,7 @@ class PromotionToLowerMoon(ActionableLifeEvent):
 
 
 @random_life_event()
-class PromotionToUpperMoon(ActionableLifeEvent):
+class PromotionToUpperMoon(RandomLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(date, [Role("Character", character)])
 
@@ -1164,7 +1164,7 @@ class PromotionToUpperMoon(ActionableLifeEvent):
         cls,
         world: World,
         bindings: RoleList,
-    ) -> Optional[ActionableLifeEvent]:
+    ) -> Optional[RandomLifeEvent]:
         if bindings:
             demon = cls._bind_demon(world, bindings.get("Character"))
         else:
@@ -1204,7 +1204,7 @@ class PromotionToUpperMoon(ActionableLifeEvent):
         return None
 
 
-@event_listener()
+@on_event(DeathEvent)
 def handle_hashira_death(gameobject: GameObject, event: DeathEvent) -> None:
     if demon_slayer := gameobject.try_component(DemonSlayer):
         if demon_slayer.rank == DemonSlayerRank.Hashira:
@@ -1213,7 +1213,7 @@ def handle_hashira_death(gameobject: GameObject, event: DeathEvent) -> None:
             )
 
 
-@event_listener(DeathEvent)
+@on_event(DeathEvent)
 def handle_demon_death(gameobject: GameObject, event: DeathEvent) -> None:
     if demon := gameobject.try_component(Demon):
         if demon.rank == DemonRank.LowerMoon:

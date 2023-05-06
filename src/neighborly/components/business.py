@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import logging
-from abc import ABC
 from dataclasses import dataclass
 from typing import (
     Any,
+    ClassVar,
     Dict,
     Iterable,
     Iterator,
@@ -16,18 +15,25 @@ from typing import (
     Union,
 )
 
-from neighborly.core.ecs import Component, GameObject
+from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime, Weekday
 
-logger = logging.getLogger(__name__)
 
-
-class Occupation(Component):
-    """Information about a character's employment status"""
+class Occupation(Component, ISerializable):
+    """Information about a character's employment status."""
 
     __slots__ = "_occupation_type", "_start_date", "_business"
+
+    _occupation_type: str
+    """The name of the occupation."""
+
+    _business: int
+    """The GameObjectID of the business they work for."""
+
+    _start_date: SimDateTime
+    """The date they started this occupation."""
 
     def __init__(
         self, occupation_type: str, business: int, start_date: SimDateTime
@@ -35,21 +41,19 @@ class Occupation(Component):
         """
         Parameters
         ----------
-        occupation_type: str
-            The name of the occupation
-        business: int
-            The business that the character is work for
-        start_date: SimDateTime
-            The date they started this occupation
+        occupation_type
+            The name of the occupation.
+        business
+            The business that the character is work for.
+        start_date
+            The date they started this occupation.
         """
-
         super().__init__()
-        self._occupation_type: str = occupation_type
-        self._business: int = business
-        self._start_date: SimDateTime = start_date.copy()
+        self._occupation_type = occupation_type
+        self._business = business
+        self._start_date = start_date.copy()
 
     def to_dict(self) -> Dict[str, Any]:
-        """Return serialized dict representation of an Occupation component"""
         return {
             "occupation_type": self._occupation_type,
             "business": self._business,
@@ -58,17 +62,17 @@ class Occupation(Component):
 
     @property
     def business(self) -> int:
-        """Get the business the character works for"""
+        """The GameObject ID of the business they work for."""
         return self._business
 
     @property
     def start_date(self) -> SimDateTime:
-        """Get the date the character started the job"""
+        """The date they started the job."""
         return self._start_date
 
     @property
     def occupation_type(self) -> str:
-        """Get the type of occupation this is"""
+        """The name of the occupation."""
         return self._occupation_type
 
     def __repr__(self) -> str:
@@ -79,29 +83,21 @@ class Occupation(Component):
 
 @dataclass(frozen=True)
 class WorkHistoryEntry:
-    """
-    Record of a job held by a character
-
-    Attributes
-    ----------
-    occupation_type: str
-        The name of the job held
-    business: int
-        The unique ID of the business the character worked at
-    years_held: float
-        The number of years the character held this job
-    reason_for_leaving: Optional[str]
-        Name of the event that caused the character to leave this job
-    """
+    """A record of a previous occupation."""
 
     occupation_type: str
+    """The name of the job held."""
+
     business: int
+    """The GameObjectID ID of the business the character worked at."""
+
     years_held: float = 0
+    """The number of years the character held this job."""
+
     reason_for_leaving: str = ""
+    """Name of the event that caused the character to leave this job."""
 
     def to_dict(self) -> Dict[str, Any]:
-        """Return dictionary representation for serialization"""
-
         return {
             "occupation_type": self.occupation_type,
             "business": self.business,
@@ -110,20 +106,22 @@ class WorkHistoryEntry:
         }
 
 
-class WorkHistory(Component):
-    """Stores information about all the jobs that a character has held"""
+class WorkHistory(Component, ISerializable):
+    """Stores records of all previously held occupations."""
 
-    __slots__ = "_chronological_history", "_categorical_history"
+    __slots__ = "_history"
+
+    _history: List[WorkHistoryEntry]
+    """A collection of previous occupations."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._chronological_history: List[WorkHistoryEntry] = []
-        self._categorical_history: Dict[str, List[WorkHistoryEntry]] = {}
+        self._history = []
 
     @property
     def entries(self) -> List[WorkHistoryEntry]:
-        """Get all WorkHistoryEntries"""
-        return self._chronological_history
+        """All entries in the history."""
+        return self._history
 
     def add_entry(
         self,
@@ -132,19 +130,18 @@ class WorkHistory(Component):
         years_held: float,
         reason_for_leaving: str = "",
     ) -> None:
-        """
-        Add an entry to the work history
+        """Add an entry to the work history.
 
         Parameters
         ----------
-        occupation_type: str
-            The name of the job held
-        business: int
-            The unique ID of the business the character worked at
-        years_held: float
-            The number of years the character held this job
-        reason_for_leaving: str, optional
-            Name of the event that caused the character to leave this job
+        occupation_type
+            The name of the job held.
+        business
+            The GameObject ID of the business the character worked at.
+        years_held
+            The number of years the character held this job.
+        reason_for_leaving
+            Name of the event that caused the character to leave this job.
         """
         entry = WorkHistoryEntry(
             occupation_type=occupation_type,
@@ -153,50 +150,60 @@ class WorkHistory(Component):
             reason_for_leaving=reason_for_leaving,
         )
 
-        self._chronological_history.append(entry)
-
-        if occupation_type not in self._categorical_history:
-            self._categorical_history[occupation_type] = []
-
-        self._categorical_history[occupation_type].append(entry)
-
-    def get_last_entry(self) -> Optional[WorkHistoryEntry]:
-        """Get the latest entry to WorkHistory"""
-        if self._chronological_history:
-            return self._chronological_history[-1]
-        return None
+        self._history.append(entry)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "history": [entry.to_dict() for entry in self._chronological_history],
+            "history": [entry.to_dict() for entry in self._history],
         }
 
     def __len__(self) -> int:
-        return len(self._chronological_history)
+        return len(self._history)
 
     def __repr__(self) -> str:
-        return "WorkHistory({})".format(
-            [e.__repr__() for e in self._chronological_history]
-        )
+        return "WorkHistory({})".format([e.__repr__() for e in self._history])
 
 
-class Services(Component):
-    """Tracks the services offered by a business"""
+class Services(Component, ISerializable):
+    """Tracks a set of services offered by a business."""
 
     __slots__ = "_services"
 
+    _services: Set[str]
+    """Service names."""
+
     def __init__(self, services: Optional[Iterable[str]] = None) -> None:
+        """
+        Parameters
+        ----------
+        services
+            A starting set of service names.
+        """
         super().__init__()
-        self._services: Set[str] = set()
+        self._services = set()
 
         if services:
             for name in services:
                 self.add_service(name)
 
     def add_service(self, service: str) -> None:
+        """Add a service.
+
+        Parameters
+        ----------
+        service
+            The name of a service.
+        """
         self._services.add(service.lower())
 
     def remove_service(self, service: str) -> None:
+        """Remove a service.
+
+        Parameters
+        ----------
+        service:
+            The name of a service.
+        """
         self._services.remove(service.lower())
 
     def __iter__(self) -> Iterator[str]:
@@ -216,58 +223,60 @@ class Services(Component):
 
 
 class ClosedForBusiness(StatusComponent):
+    """Tags a business as closed and no longer active in the simulation."""
+
     is_persistent = True
 
 
 class OpenForBusiness(StatusComponent):
-    __slots__ = "duration"
+    """Tags a business as actively conducting business in the simulation."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.duration: float = 0.0
+    pass
 
 
-class IBusinessType(Component, ABC):
-    """Empty interface for creating types of businesses like Restaurants, ETC"""
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return f"BusinessType({self.__class__.__name__})"
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
-
-
-class OperatingHours(Component):
-    """Defines when a business is open and closed"""
+class OperatingHours(Component, ISerializable):
+    """Defines when a business is open and closed."""
 
     __slots__ = "_hours"
+
+    _hours: Dict[Weekday, Tuple[int, int]]
+    """Weekdays mapped to hour intervals."""
 
     def __init__(self, hours: Dict[Weekday, Tuple[int, int]]) -> None:
         """
         Parameters
         ----------
-        hours: Optional[Dict[Weekday, Tuple[int, int]]]
-            Days of the week mapped to hour intervals that the business
-            is open
+        hours
+            Days of the week mapped to hour intervals that the business is open.
         """
         super().__init__()
-        self._hours: Dict[Weekday, Tuple[int, int]] = hours
+        self._hours = hours
 
     @property
     def operating_hours(self) -> Dict[Weekday, Tuple[int, int]]:
+        """The operating hours for the business."""
         return self.operating_hours
 
     def to_dict(self) -> Dict[str, Any]:
         return {"hours": self._hours}
 
 
-class Business(Component):
-    """Businesses are owned by and employ characters in the simulation"""
+class Business(Component, ISerializable):
+    """Businesses are places where characters are employed."""
 
     __slots__ = ("_owner_type", "_employees", "_open_positions", "_owner")
+
+    _owner_type: str
+    """The name of the occupation that the business owner has."""
+
+    _open_positions: Dict[str, int]
+    """The names of occupations mapped to the number of open positions."""
+
+    _employees: Dict[int, str]
+    """The GameObject IDs of employees mapped to their occupation's name."""
+
+    _owner: Optional[int]
+    """The GameObjectID of the owner of this business."""
 
     def __init__(
         self,
@@ -277,26 +286,28 @@ class Business(Component):
         """
         Parameters
         ----------
-        owner_type: str
+        owner_type
             The name of the OccupationType for the GameObject
-            that owns this business
-        employee_types: Optional[Dict[str, int]]
+            that owns this business.
+        employee_types
             The names of OccupationTypes mapped to the total number
             of that occupation that can work at an instance of this
-            business
+            business.
         """
         super().__init__()
-        self._owner_type: str = owner_type
-        self._open_positions: Dict[str, int] = employee_types
-        self._employees: Dict[int, str] = {}
-        self._owner: Optional[int] = None
+        self._owner_type = owner_type
+        self._open_positions = employee_types
+        self._employees = {}
+        self._owner = None
 
     @property
     def owner(self) -> Optional[int]:
+        """The GameObject ID of the owner of the business."""
         return self._owner
 
     @property
     def owner_type(self) -> str:
+        """The name of the occupation type of the business' owner."""
         return self._owner_type
 
     def to_dict(self) -> Dict[str, Any]:
@@ -313,36 +324,73 @@ class Business(Component):
         }
 
     def needs_owner(self) -> bool:
-        """Returns True if this business needs to hire an owner"""
+        """Check if the business need an owner.
+
+        Returns
+        -------
+        bool
+            True if the business is missing an owner. False otherwise.
+        """
         return self.owner is None
 
     def get_open_positions(self) -> List[str]:
-        """Returns all the open job titles"""
+        """Get all the open job titles.
+
+        Returns
+        -------
+        List[str]
+            All the names of all open positions at the business.
+        """
         return sum(
             [[title] * count for title, count in self._open_positions.items()], []
         )
 
     def get_employees(self) -> List[int]:
-        """Return a list of IDs for current employees"""
+        """Get all current employees.
+
+        Returns
+        -------
+        List[int]
+            Returns the GameObject IDs of all employees of this business.
+        """
         return list(self._employees.keys())
 
     def set_owner(self, owner: Optional[int]) -> None:
-        """Set the ID for the owner of the business"""
+        """Set the ID for the owner of the business.
+
+        Parameters
+        ----------
+        owner
+            The GameObject ID of the new business owner.
+        """
         self._owner = owner
 
-    def add_employee(self, character: int, position: str) -> None:
-        """Add entity to employees and remove a vacant position"""
-        self._employees[character] = position
+    def add_employee(self, employee: int, position: str) -> None:
+        """Add employee and remove a vacant position.
+
+        Parameters
+        ----------
+        character
+            The GameObject ID of the employee.
+        position
+            The name of the employee's position.
+        """
+        self._employees[employee] = position
         self._open_positions[position] -= 1
 
-    def remove_employee(self, character: int) -> None:
-        """Remove an entity as an employee and add a vacant position"""
-        position = self._employees[character]
-        del self._employees[character]
+    def remove_employee(self, employee: int) -> None:
+        """Remove an employee and vacate their position.
+
+        Parameters
+        ----------
+        employee
+            The GameObject ID of an employee.
+        """
+        position = self._employees[employee]
+        del self._employees[employee]
         self._open_positions[position] += 1
 
     def __repr__(self) -> str:
-        """Return printable representation"""
         return "{}(owner={}, employees={}, openings={})".format(
             self.__class__.__name__,
             self.owner,
@@ -352,26 +400,41 @@ class Business(Component):
 
 
 class Precondition(Protocol):
+    """A callable that checks if a GameObjects meets some criteria."""
+
     def __call__(self, gameobject: GameObject) -> bool:
+        """
+        Parameters
+        ----------
+        gameobject
+            The gameobject to check the precondition for.
+
+        Returns
+        -------
+        bool
+            True if the GameObject meets the conditions, False otherwise.
+        """
         raise NotImplementedError
 
 
 class OccupationType:
-    """
-    Shared information about all occupations with this type
+    """Shared information about all occupations with this type."""
 
-    Attributes
-    ----------
+    __slots__ = "name", "level", "rules"
+
     name: str
-        Name of the position
+    """Name of the position."""
+
     level: int
-        Prestige or socioeconomic status associated with the position
-    rules: List[List[Callable[[GameObject], bool]]]
-        Function that determines of a candidate gameobject meets th requirements
-        of the occupation. Preconditions are lists of lists where each sublist is
-        a single rule and all callable in that list need to return true for the
-        rule to pass. Only one rule needs to return True for a GameObject to qualify
-        for the occupation type.
+    """Prestige or socioeconomic status associated with the position."""
+
+    rules: List[Tuple[Precondition, ...]]
+    """
+    Function that determines of a candidate gameobject meets th requirements
+    of the occupation. Preconditions are lists of lists where each sublist is
+    a single rule and all callable in that list need to return true for the
+    rule to pass. Only one rule needs to return True for a GameObject to qualify
+    for the occupation type.
     """
 
     def __init__(
@@ -429,9 +492,20 @@ class OccupationType:
 
 
 class BusinessOwner(StatusComponent):
-    """Marks a character as owning a business"""
+    """Tags a GameObject as being the owner of a business."""
+
+    __slots__ = "business"
+
+    business: int
+    """The GameObject ID of the business owned."""
 
     def __init__(self, business: int) -> None:
+        """
+        Parameters
+        ----------
+        business
+            The GameObject ID of the business owned.
+        """
         super().__init__()
         self.business: int = business
 
@@ -440,67 +514,66 @@ class BusinessOwner(StatusComponent):
 
 
 class Unemployed(StatusComponent):
-    """Marks a character as being able to work but lacking a job"""
+    """Tags a character as being able to work but lacking a job."""
 
     pass
 
 
 class InTheWorkforce(StatusComponent):
-    """Tags a character as being eligible to work"""
+    """Tags a character as being eligible to work."""
 
     pass
 
 
 class BossOf(RelationshipStatus):
+    """Tags the owner of a relationship as being the employer of the target."""
+
     pass
 
 
 class EmployeeOf(RelationshipStatus):
+    """Tags the owner of a relationship as being the employee of the target."""
+
     pass
 
 
 class CoworkerOf(RelationshipStatus):
+    """Tags the owner of a relationship as being a coworker of the target."""
+
     pass
 
 
 class OccupationTypes:
-    """Collection OccupationType information for lookup at runtime"""
+    """A collection of OccupationType information for lookup at runtime."""
 
-    _registry: Dict[str, OccupationType] = {}
+    _registry: ClassVar[Dict[str, OccupationType]] = {}
+    """Occupation names mapped to definition data."""
 
     @classmethod
     def add(
         cls,
         occupation_type: OccupationType,
     ) -> None:
-        """
-        Add a new occupation type to the library
+        """Add a new occupation type to the library.
 
         Parameters
         ----------
-        occupation_type: OccupationType
-            The occupation type instance to add
+        occupation_type
+            The occupation type instance to add.
         """
         cls._registry[occupation_type.name] = occupation_type
 
     @classmethod
     def get(cls, name: str) -> OccupationType:
-        """
-        Get an OccupationType by name
+        """Get an OccupationType by name.
 
         Parameters
         ----------
-        name: str
+        name
             The registered name of the OccupationType
 
         Returns
         -------
         OccupationType
-
-        Raises
-        ------
-        KeyError
-            When there is not an OccupationType
-            registered to that name
         """
         return cls._registry[name]

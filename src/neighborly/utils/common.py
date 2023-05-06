@@ -13,7 +13,6 @@ from neighborly.components.business import (
     EmployeeOf,
     Occupation,
     OpenForBusiness,
-    OperatingHours,
     Services,
     Unemployed,
     WorkHistory,
@@ -31,7 +30,6 @@ from neighborly.components.character import (
     ReproductionConfig,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.routine import RoutineEntry, RoutinePriority
 from neighborly.components.shared import (
     Age,
     CurrentLocation,
@@ -57,7 +55,7 @@ from neighborly.core.relationship import (
 )
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, clear_statuses, has_status, remove_status
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, Weekday
+from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 from neighborly.events import (
     BusinessClosedEvent,
     DepartEvent,
@@ -118,11 +116,11 @@ def spawn_settlement(
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to add the settlement to
-    prefab: str, optional
+    prefab
         The name of the prefab with settlement data
-    name: str, optional
+    name
         Override name for the town
 
     Returns
@@ -154,9 +152,9 @@ def add_location_to_settlement(
 
     Parameters
     ----------
-    location: GameObject
+    location
         The location to add
-    settlement: GameObject
+    settlement
         The settlement to add the location to
     """
     location.add_component(Active())
@@ -171,7 +169,7 @@ def remove_location_from_settlement(
 
     Parameters
     ----------
-    location: GameObject
+    location
         The location to remove
     """
     world = location.world
@@ -208,19 +206,19 @@ def spawn_character(
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to add the character to
-    prefab: str
+    prefab
         The name of the prefab to instantiate
-    first_name: str, optional
+    first_name
         first name override (defaults to None)
-    last_name: str, optional
+    last_name
         last name override (defaults to None)
-    age: int, optional
+    age
         age override (defaults to None)
-    life_stage: LifeStage, optional
+    life_stage
         life stage override (defaults to None)
-    gender: str, optional
+    gender
         gender override (defaults to None)
 
     Returns
@@ -275,9 +273,9 @@ def add_character_to_settlement(character: GameObject, settlement: GameObject) -
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character to add
-    settlement: GameObject
+    settlement
         The settlement to add the character to
     """
 
@@ -301,7 +299,7 @@ def remove_character_from_settlement(character: GameObject) -> None:
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character to add
     """
 
@@ -332,9 +330,9 @@ def spawn_residence(
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to spawn the residence into
-    prefab: str
+    prefab
         The name of a prefab to instantiate
 
     Returns
@@ -362,11 +360,11 @@ def add_residence_to_settlement(
 
     Parameters
     ----------
-    residence: GameObject
+    residence
         The residence to add
-    settlement: GameObject
+    settlement
         The settlement to add the residence to
-    lot_id: int, optional
+    lot_id
         The ID of a lot to set the residence to
     """
     settlement_comp = settlement.get_component(Settlement)
@@ -401,9 +399,9 @@ def get_child_prefab(
 
     Parameters
     ----------
-    parent_a: GameObject
+    parent_a
         Reference to one parent
-    parent_b: GameObject, optional
+    parent_b
         Reference to another parent if two parents are present
 
     Returns
@@ -488,6 +486,20 @@ def set_residence(
 
 
 def check_share_residence(gameobject: GameObject, other: GameObject) -> bool:
+    """Check if two characters live in the same residence.
+
+    Parameters
+    ----------
+    gameobject
+        A character.
+    other
+        Another character.
+
+    Returns
+    -------
+    bool
+        True if the characters live together, False otherwise.
+    """
     resident_comp = gameobject.try_component(Resident)
     other_resident_comp = other.try_component(Resident)
 
@@ -508,9 +520,9 @@ def depart_settlement(character: GameObject, reason: str = "") -> None:
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character initiating the departure
-    reason: str, optional
+    reason
         An optional reason for departing from the settlement
     """
     world = character.world
@@ -712,11 +724,11 @@ def add_business_to_settlement(
 
     Parameters
     ----------
-    business: GameObject
+    business
         The business to add
-    settlement: GameObject
+    settlement
         The settlement to add the business to
-    lot_id: int, optional
+    lot_id
         The lot to place the business on (defaults to None)
     """
 
@@ -764,7 +776,7 @@ def shutdown_business(business: GameObject) -> None:
 
     Parameters
     ----------
-    business: GameObject
+    business
         Business to shut down in the town
     """
     world = business.world
@@ -818,9 +830,9 @@ def end_job(
 
     Parameters
     ----------
-    character: GameObject
+    character
         The characters whose job to terminate
-    reason: str, optional
+    reason
         The reason for them leaving their job (defaults to "")
     """
     world = character.world
@@ -917,25 +929,19 @@ def start_job(
     occupation_name: str,
     is_owner: bool = False,
 ) -> None:
-    """Start the given character's job at the business
+    """Start the given character's job at the business.
 
     Parameters
     ----------
-    character: GameObject
-        The character starting the job
-    business: GameObject
-        The business they will start working at
-    occupation_name: str
-        The job title for their new occupation
-    is_owner: bool, optional
+    character
+        The character starting the job.
+    business
+        The business they will start working at.
+    occupation_name
+        The job title for their new occupation.
+    is_owner
         Is this character going to be the owner of the
-        business (defaults to False)
-
-    Raises
-    ------
-    RuntimeError
-        If attempting to set the character as the business owner
-        and the business owner is not None
+        business (defaults to False).
     """
     world = character.world
     business_comp = business.get_component(Business)
@@ -1021,10 +1027,10 @@ def get_places_with_services(world: World, *services: str) -> List[int]:
 
     Parameters
     ----------
-    world: World
+    world
         The world instance to search within
 
-    services: Tuple[str]
+    services
         The services to search for
 
     Returns
@@ -1036,23 +1042,6 @@ def get_places_with_services(world: World, *services: str) -> List[int]:
         if all([s in services_component for s in services]):
             matches.append(gid)
     return matches
-
-
-def create_routines(business: GameObject) -> Dict[Weekday, RoutineEntry]:
-    """Create routine entries given tuples of time intervals mapped to days of the week"""
-    routine_entries: Dict[Weekday, RoutineEntry] = {}
-    operating_hours = business.get_component(OperatingHours).operating_hours
-
-    for day, (opens, closes) in operating_hours.items():
-        routine_entries[day] = RoutineEntry(
-            start=opens,
-            end=closes,
-            location=business.uid,
-            priority=RoutinePriority.HIGH,
-            tags=["work"],
-        )
-
-    return routine_entries
 
 
 #######################################
@@ -1068,11 +1057,11 @@ def get_places_with_activities(
 
     Parameters
     ----------
-    world: World
+    world
         The World instance of the simulation
-    settlement: GameObject
+    settlement
         The settlement to search within
-    *activities: str
+    *activities
         Activities to search for
 
     Returns
@@ -1103,11 +1092,11 @@ def get_places_with_any_activities(
 
     Parameters
     ----------
-    world: World
+    world
         The World instance of the simulation
-    settlement: GameObject
+    settlement
         The settlement to search within
-    *activities: str
+    *activities
         Activities to search for
 
     Returns
@@ -1140,15 +1129,15 @@ def location_has_activities(location: GameObject, *activities: str) -> bool:
 
     Parameters
     ----------
-    location: GameObject
-        The location to check
-    *activities: str
-        Activity names
+    location
+        The location to check.
+    *activities
+        Activity names.
 
-    Return
-    ------
+    Returns
+    -------
     bool
-        Return True if the activities are offered by the location
+        True if the activities are offered by the location, False otherwise.
     """
     activities_comp = location.get_component(Activities)
     return all([a in activities_comp for a in activities])
@@ -1196,11 +1185,11 @@ def set_frequented_locations(
 
     Parameters
     ----------
-    character: GameObject
+    character
         The character to set frequented locations for
-    settlement: GameObject
+    settlement
         The settlement to sample frequented locations from
-    max_locations: int
+    max_locations
         The max number of locations to sample
     """
     clear_frequented_locations(character)
@@ -1235,7 +1224,7 @@ def clear_frequented_locations(character: GameObject) -> None:
 
     Parameters
     ----------
-    character: GameObject
+    character
         The GameObject to remove as a frequenter
     """
     world = character.world
@@ -1264,10 +1253,10 @@ def deep_merge(source: Dict[_KT, Any], other: Dict[_KT, Any]) -> Dict[_KT, Any]:
 
     Parameters
     ----------
-    source: Dict[_KT, Any]
+    source
         Dictionary with initial field values
 
-    other: Dict[_KT, Any]
+    other
         Dictionary with fields to override in the source dict
 
     Returns

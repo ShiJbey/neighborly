@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 
-from neighborly.core.serializable import ISerializable
+from neighborly.core.ecs.ecs import ISerializable
 from neighborly.simulation import Neighborly
 
 

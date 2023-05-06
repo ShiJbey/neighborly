@@ -1,9 +1,9 @@
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.components.business import IBusinessType
+from neighborly.core.ecs.ecs import Component
 
 
-class ApartmentComplex(IBusinessType):
+class ApartmentComplex(Component):
     """
     Apartment complex manages gameobjects with Apartment component instances.
 
@@ -14,283 +14,283 @@ class ApartmentComplex(IBusinessType):
     pass
 
 
-class Bakery(IBusinessType):
+class Bakery(Component):
     """A bakery."""
 
     pass
 
 
-class Bank(IBusinessType):
+class Bank(Component):
     """A bank."""
 
     pass
 
 
-class Bar(IBusinessType):
+class Bar(Component):
     """A bar."""
 
     pass
 
 
-class BarberShop(IBusinessType):
+class BarberShop(Component):
     """A barbershop."""
 
     pass
 
 
-class BlacksmithShop(IBusinessType):
+class BlacksmithShop(Component):
     """A blacksmith business."""
 
     pass
 
 
-class Brewery(IBusinessType):
+class Brewery(Component):
     """A brewery."""
 
     pass
 
 
-class BusDepot(IBusinessType):
+class BusDepot(Component):
     """A bus depot."""
 
     pass
 
 
-class ButcherShop(IBusinessType):
+class ButcherShop(Component):
     """A butcher business."""
 
     pass
 
 
-class CandyStore(IBusinessType):
+class CandyStore(Component):
     """A candy store."""
 
     pass
 
 
-class CarpentryCompany(IBusinessType):
+class CarpentryCompany(Component):
     """A carpentry company."""
 
     pass
 
 
-class Cemetery(IBusinessType):
+class Cemetery(Component):
     """A cemetery on a tract in a town."""
 
     pass
 
 
-class CityHall(IBusinessType):
+class CityHall(Component):
     """The city hall."""
 
     pass
 
 
-class ClothingStore(IBusinessType):
+class ClothingStore(Component):
     """A store that sells clothing only; i.e., not a department store."""
 
     pass
 
 
-class CoalMine(IBusinessType):
+class CoalMine(Component):
     """A coal mine."""
 
     pass
 
 
-class ConstructionFirm(IBusinessType):
+class ConstructionFirm(Component):
     """A construction firm."""
 
     pass
 
 
-class Dairy(IBusinessType):
+class Dairy(Component):
     """A store where milk is sold and from which milk is distributed."""
 
     pass
 
 
-class DaycareCenter(IBusinessType):
+class DaycareCenter(Component):
     """A day care center for young children."""
 
     pass
 
 
-class Deli(IBusinessType):
+class Deli(Component):
     """A delicatessen."""
 
     pass
 
 
-class DentistOffice(IBusinessType):
+class DentistOffice(Component):
     """A dentist office."""
 
     pass
 
 
-class DepartmentStore(IBusinessType):
+class DepartmentStore(Component):
     """A department store."""
 
     pass
 
 
-class Diner(IBusinessType):
+class Diner(Component):
     """A diner."""
 
     pass
 
 
-class Distillery(IBusinessType):
+class Distillery(Component):
     """A whiskey distillery."""
 
     pass
 
 
-class DrugStore(IBusinessType):
+class DrugStore(Component):
     """A drug store."""
 
     pass
 
 
-class Farm(IBusinessType):
+class Farm(Component):
     """A farm on a tract in a town."""
 
     pass
 
 
-class FireStation(IBusinessType):
+class FireStation(Component):
     """A fire station."""
 
     pass
 
 
-class Foundry(IBusinessType):
+class Foundry(Component):
     """A metal foundry."""
 
     pass
 
 
-class FurnitureStore(IBusinessType):
+class FurnitureStore(Component):
     """A furniture store."""
 
     pass
 
 
-class GeneralStore(IBusinessType):
+class GeneralStore(Component):
     """A general store."""
 
     pass
 
 
-class GroceryStore(IBusinessType):
+class GroceryStore(Component):
     """A grocery store."""
 
     pass
 
 
-class HardwareStore(IBusinessType):
+class HardwareStore(Component):
     """A hardware store."""
 
     pass
 
 
-class Hospital(IBusinessType):
+class Hospital(Component):
     """A hospital."""
 
     pass
 
 
-class Hotel(IBusinessType):
+class Hotel(Component):
     """A hotel."""
 
     pass
 
 
-class Inn(IBusinessType):
+class Inn(Component):
     """An inn."""
 
     pass
 
 
-class InsuranceCompany(IBusinessType):
+class InsuranceCompany(Component):
     """An insurance company."""
 
     pass
 
 
-class JewelryShop(IBusinessType):
+class JewelryShop(Component):
     """A jewelry company."""
 
     pass
 
 
-class LawFirm(IBusinessType):
+class LawFirm(Component):
     """A law firm."""
 
     pass
 
 
-class OptometryClinic(IBusinessType):
+class OptometryClinic(Component):
     """An optometry clinic."""
 
     pass
 
 
-class PaintingCompany(IBusinessType):
+class PaintingCompany(Component):
     """A painting company."""
 
     pass
 
 
-class Park(IBusinessType):
+class Park(Component):
     """A park on a tract in a town."""
 
     pass
 
 
-class Pharmacy(IBusinessType):
+class Pharmacy(Component):
     """A pharmacy."""
 
     pass
 
 
-class PlasticSurgeryClinic(IBusinessType):
+class PlasticSurgeryClinic(Component):
     """A plastic-surgery clinic."""
 
     pass
 
 
-class PlumbingCompany(IBusinessType):
+class PlumbingCompany(Component):
     """A plumbing company."""
 
     pass
 
 
-class PoliceStation(IBusinessType):
+class PoliceStation(Component):
     """A police station."""
 
     pass
 
 
-class Quarry(IBusinessType):
+class Quarry(Component):
     """A rock quarry."""
 
     pass
 
 
-class RealtyFirm(IBusinessType):
+class RealtyFirm(Component):
     """A realty firm."""
 
     pass
 
 
-class Restaurant(IBusinessType):
+class Restaurant(Component):
     """A restaurant."""
 
     pass
 
 
-class School(IBusinessType):
+class School(Component):
     """The local K-12 school."""
 
     __slots__ = "students"
@@ -308,43 +308,43 @@ class School(IBusinessType):
         self.students.add(student)
 
 
-class ShoemakerShop(IBusinessType):
+class ShoemakerShop(Component):
     """A shoemaker's company."""
 
     pass
 
 
-class Supermarket(IBusinessType):
+class Supermarket(Component):
     """A supermarket on a lot in a town."""
 
     pass
 
 
-class TailorShop(IBusinessType):
+class TailorShop(Component):
     """A tailor."""
 
     pass
 
 
-class TattooParlor(IBusinessType):
+class TattooParlor(Component):
     """A tattoo parlor."""
 
     pass
 
 
-class Tavern(IBusinessType):
+class Tavern(Component):
     """A place where alcohol is served in the 19th century, maintained by a barkeeper."""
 
     pass
 
 
-class TaxiDepot(IBusinessType):
+class TaxiDepot(Component):
     """A taxi depot."""
 
     pass
 
 
-class University(IBusinessType):
+class University(Component):
     """The local university."""
 
     pass
