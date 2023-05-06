@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 
-import tracery  # type: ignore
-import tracery.modifiers as tracery_modifiers  # type: ignore
+import tracery
+import tracery.modifiers as tracery_modifiers
 
 
 class Tracery:

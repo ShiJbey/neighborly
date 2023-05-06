@@ -41,7 +41,7 @@ dependencies = [
     "numpy",
     "pyYAML",
     "pydantic",
-    "tracery",
+    "tracery3",
     "pandas",
     "flask",
     "flask_restful"
