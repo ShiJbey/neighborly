@@ -121,7 +121,7 @@ class RoleList:
     def __len__(self) -> int:
         return len(self._roles)
 
-    def __bool__(self) -> int:
+    def __bool__(self) -> bool:
         return bool(self._roles)
 
     def __getitem__(self, role_name: str) -> GameObject:
