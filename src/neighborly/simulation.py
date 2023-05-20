@@ -10,6 +10,7 @@ from typing import Any, Callable, Optional, Type, Union
 
 import neighborly.components as components
 import neighborly.core.relationship as relationship
+from neighborly.core.tracery import Tracery
 import neighborly.factories as factories
 import neighborly.systems as systems
 from neighborly.__version__ import VERSION
@@ -94,6 +95,7 @@ class Neighborly:
 
         # Seed RNG for libraries we don't control, like Tracery
         random.seed(self.config.seed)
+        Tracery.set_rng_seed(self.config.seed)
 
         # Set the relationship schema
         GameObjectFactory.add(

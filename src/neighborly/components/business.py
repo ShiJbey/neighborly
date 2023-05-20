@@ -341,9 +341,12 @@ class Business(Component, ISerializable):
         List[str]
             All the names of all open positions at the business.
         """
-        return sum(
-            [[title] * count for title, count in self._open_positions.items()], []
-        )
+        open_positions: List[str] = []
+
+        for title, count in self._open_positions.items():
+            open_positions.extend([title] * count)
+
+        return open_positions
 
     def get_employees(self) -> List[int]:
         """Get all current employees.

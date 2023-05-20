@@ -7,6 +7,12 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
+## [0.11.1]
+
+### Fixes
+
+- The Tracery class is now seeded inside the Neighborly constructor
+
 ## [0.11.0]
 
 **This update has breaking changes from version 0.10.x**

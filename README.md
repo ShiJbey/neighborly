@@ -5,7 +5,7 @@
     src="https://user-images.githubusercontent.com/11076525/165836171-9ffdea6e-1633-440c-be06-b46e1e3e4e04.png"
   >
   <br>
-  Neighborly (v0.10.0)
+  Neighborly
 </h1>
 
 <p align="center">

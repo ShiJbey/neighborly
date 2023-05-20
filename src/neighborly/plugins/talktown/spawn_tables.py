@@ -1,9 +1,6 @@
 import pathlib
-from typing import Any, Dict, List
+from typing import Any
 
-import yaml
-
-from neighborly.core.ecs import GameObjectFactory
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.plugins.defaults.create_town import CreateDefaultSettlementSystem
 

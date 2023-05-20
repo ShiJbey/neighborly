@@ -36,19 +36,13 @@ class CreateDefaultSettlementSystem(ISystem):
             The file path to the file to load data from.
         """
         with open(file_path, "r") as csv_file:
-            df = pandas.read_csv(csv_file)
+            df = pandas.read_csv(csv_file)  # type: ignore
 
             if table_type not in cls.prefab_data:
                 cls.prefab_data[table_type] = []
 
-            for _, row in df.iterrows():
-                cls.prefab_data[table_type].append(row.to_dict())
-
-            pass
-            # next(reader, None)  # skip the headers
-
-            # for row in reader:
-            #     cls.prefab_data[table_type].append(row)
+            for _, row in df.iterrows():      # type: ignore
+                cls.prefab_data[table_type].append(row.to_dict())     # type: ignore
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         settlement = spawn_settlement(self.world, self.settlement_prefab)
