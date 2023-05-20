@@ -38,7 +38,6 @@ from neighborly.components.shared import (
     FrequentedBy,
     FrequentedLocations,
     Location,
-    LocationAliases,
     Name,
     Position2D,
     PrefabName,
@@ -69,50 +68,101 @@ from neighborly.events import (
     StartJobEvent,
 )
 
+########################################
+# LOCATION MANAGEMENT
+########################################
 
-def set_location(
-    gameobject: GameObject, destination: Optional[Union[int, str]]
-) -> None:
+
+def add_sub_location(parent_location: GameObject, sub_location: GameObject) -> None:
+    """Adds a location as a child of another location.
+
+    Parameters
+    ----------
+    parent_location
+        The location to add a child to.
+    sub_location
+        The new location to add.
+    """
+    parent_location.get_component(Location).children.add(sub_location.uid)
+    sub_location.get_component(Location).parent = parent_location.uid
+    parent_location.add_child(sub_location)
+
+
+def set_location(gameobject: GameObject, location: Optional[GameObject]) -> None:
+    """Move a GameObject to a location.
+
+    Parameters
+    ----------
+    gameobject
+        The object to move.
+    location
+        The location to move the object to.
+    """
     world = gameobject.world
-
-    if isinstance(destination, str):
-        # Check for a location aliases component
-        if location_aliases := gameobject.try_component(LocationAliases):
-            destination_id = location_aliases[destination]
-        else:
-            raise RuntimeError(
-                "Gameobject does not have a LocationAliases component. Destination cannot be a string."
-            )
-    else:
-        destination_id = destination
-
-    # A location cant move to itself
-    if destination_id == gameobject.uid:
-        return
 
     # Update old location if needed
     if current_location_comp := gameobject.try_component(CurrentLocation):
         # Have to check if the location still has a location component
         # in-case te previous location is a closed business or demolished
         # building
-        if world.has_gameobject(current_location_comp.location):
-            current_location = world.get_gameobject(current_location_comp.location)
-            if current_location.has_component(Location):
-                current_location.get_component(Location).remove_entity(gameobject.uid)
+
+        focus = world.get_gameobject(current_location_comp.location)
+
+        while focus is not None:
+            location_component = focus.get_component(Location)
+            location_component.remove_entity(gameobject.uid)
+
+            if location_component.parent:
+                focus = world.get_gameobject(location_component.parent)
+            else:
+                focus = None
 
         gameobject.remove_component(CurrentLocation)
 
     # Move to new location if needed
-    if destination_id is not None:
-        location = world.get_gameobject(destination_id).get_component(Location)
-        location.add_entity(gameobject.uid)
-        gameobject.add_component(CurrentLocation(destination_id))
+    if location is not None:
+
+        gameobject.add_component(CurrentLocation(location.uid))
+
+        focus = location
+
+        while focus is not None:
+            location_component = focus.get_component(Location)
+            location_component.add_entity(gameobject.uid)
+
+            if location_component.parent:
+                focus = world.get_gameobject(location_component.parent)
+            else:
+                focus = None
+
+
+def at_location(gameobject: GameObject, location: GameObject) -> bool:
+    """Check if a GameObject is at a location.
+
+    Parameters
+    ----------
+    gameobject
+        The object to check.
+    location
+        The location to check for the GameObject.
+
+    Returns
+    -------
+    bool
+        True if the object is at the location, False otherwise.
+    """
+    return location.get_component(Location).has_entity(gameobject.uid)
+
+
+########################################
+# SETTLEMENT MANAGEMENT
+########################################
 
 
 def spawn_settlement(
     world: World, prefab: str = "settlement", name: str = ""
 ) -> GameObject:
-    """Create a new grid-based Settlement GameObject and add it to the world
+    """Create a new Settlement GameObject and add it to the world
 
     Parameters
     ----------
@@ -157,9 +207,9 @@ def add_location_to_settlement(
     settlement
         The settlement to add the location to
     """
-    location.add_component(Active())
     location.add_component(CurrentSettlement(settlement.uid))
     settlement.get_component(Settlement).locations.add(location.uid)
+    add_sub_location(settlement, location)
 
 
 def remove_location_from_settlement(
@@ -182,7 +232,7 @@ def remove_location_from_settlement(
 
     location.remove_component(CurrentSettlement)
 
-    location.remove_component(Active)
+    location.deactivate()
 
     if frequented_by := settlement.try_component(FrequentedBy):
         for character_id in frequented_by:

@@ -75,14 +75,22 @@ class Lifespan(Component, ISerializable):
 class Location(Component, ISerializable):
     """Anywhere where game characters may be."""
 
-    __slots__ = "entities"
+    __slots__ = "entities", "parent", "children"
 
     entities: OrderedSet[int]
-    """All the GameObjects currently at this location."""
+    """All the GameObjects currently at this location or any sub-locations."""
+
+    children: Set[int]
+    """All the sub-locations at this location."""
+
+    parent: Optional[int]
+    """The parent location of this location."""
 
     def __init__(self) -> None:
         super().__init__()
+        self.parent = None
         self.entities = OrderedSet([])
+        self.children = set()
 
     def to_dict(self) -> Dict[str, Any]:
         return {

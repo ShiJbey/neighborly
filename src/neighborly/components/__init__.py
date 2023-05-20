@@ -42,6 +42,7 @@ from .shared import (
     Building,
     CurrentLot,
     CurrentSettlement,
+    CurrentLocation,
     FrequentedBy,
     FrequentedLocations,
     Lifespan,
@@ -102,4 +103,5 @@ __all__ = [
     "CharacterSpawnTable",
     "BusinessSpawnTable",
     "ResidenceSpawnTable",
+    "CurrentLocation",
 ]
