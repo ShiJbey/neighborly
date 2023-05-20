@@ -14,7 +14,9 @@ class Tracery:
     _all_rules: Dict[str, Union[str, List[str]]] = {}
     """All the rules that have been added to the grammar."""
 
-    _grammar: tracery.Grammar = tracery.Grammar({})
+    _grammar: tracery.Grammar = tracery.Grammar(
+        {}, modifiers=tracery_modifiers.base_english
+    )
     """The grammar instance."""
 
     @classmethod
@@ -37,9 +39,8 @@ class Tracery:
         rules
             Rule names mapped to strings or lists of string to expend to.
         """
-        cls._all_rules = {**cls._all_rules, **rules}
-        cls._grammar = tracery.Grammar(cls._all_rules)
-        cls._grammar.add_modifiers(tracery_modifiers.base_english)  # type: ignore
+        for rule_name, expansion in rules.items():
+            cls._grammar.push_rules(rule_name, expansion)
 
     @classmethod
     def generate(cls, seed_str: str) -> str:

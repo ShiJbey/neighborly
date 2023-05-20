@@ -319,7 +319,7 @@ class Neighborly:
         """
         try:
             current_date = self.world.get_resource(SimDateTime)
-            while stop_date >= current_date:
+            while stop_date > current_date:
                 self.step()
         except KeyboardInterrupt:
             print("\nStopping Simulation")
