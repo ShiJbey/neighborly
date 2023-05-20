@@ -18,6 +18,17 @@ class Tracery:
     """The grammar instance."""
 
     @classmethod
+    def set_rng_seed(cls, seed: Union[int, str]) -> None:
+        """Set the seed for RNG used during rule evaluation.
+
+        Parameters
+        ----------
+        seed
+            An arbitrary seed value
+        """
+        cls._grammar.rng.seed(seed)
+
+    @classmethod
     def add_rules(cls, rules: Dict[str, Union[str, List[str]]]) -> None:
         """Add grammar rules.
 
