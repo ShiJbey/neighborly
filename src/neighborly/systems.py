@@ -331,7 +331,7 @@ class UnemployedStatusSystem(System):
                 spouses = get_relationships_with_statuses(character, Married)
 
                 # Do not depart if one or more of the entity's spouses has a job
-                if any(
+                if not any(
                     [
                         self.world.get_gameobject(
                             rel.get_component(Relationship).target
@@ -339,9 +339,6 @@ class UnemployedStatusSystem(System):
                         for rel in spouses
                     ]
                 ):
-                    continue
-
-                else:
                     goal = DepartSimulation(character)
                     priority = goal.get_utility()[character]
                     character.get_component(Goals).push_goal(priority, goal)
@@ -591,7 +588,7 @@ class UpdateFrequentedLocationSystem(System):
 
 
 class AIActionSystem(System):
-    """AI Components execute actions
+    """AIs execute actions.
 
     This system loops through all the AIComponents and has them attempt to execute
     actions that have been suggested to them by other systems. This system should run
@@ -602,24 +599,28 @@ class AIActionSystem(System):
 
     sys_group = "update"
 
+    UTILITY_THRESHOLD: float = 0.3
+
     def run(self, *args: Any, **kwargs: Any) -> None:
         rng = self.world.get_resource(random.Random)
         for _, (_, goals, _) in self.world.get_components((AIBrain, Goals, Active)):
+            # GameObjects may have become deactivated by the actions of
+            # another that ran before them in this loop. We need to ensure
+            # that inactive GameObjects are not pursuing goals
             if goals.gameobject.has_component(Active) is False:
                 continue
 
             if not goals.has_options():
+                goals.clear_goals()
                 continue
 
             goal = goals.pick_one(rng)
 
-            if goal.is_complete():
-                continue
-
-            if goal.get_utility()[goals.gameobject] < 0.3:
-                continue
-
-            goal.take_action()
+            if (
+                not goal.is_complete()
+                and goal.get_utility()[goals.gameobject] >= self.UTILITY_THRESHOLD
+            ):
+                goal.take_action()
 
             goals.clear_goals()
 

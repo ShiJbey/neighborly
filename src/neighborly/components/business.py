@@ -341,12 +341,7 @@ class Business(Component, ISerializable):
         List[str]
             All the names of all open positions at the business.
         """
-        open_positions: List[str] = []
-
-        for title, count in self._open_positions.items():
-            open_positions.extend([title] * count)
-
-        return open_positions
+        return [title for title, count in self._open_positions.items() if count > 0]
 
     def get_employees(self) -> List[int]:
         """Get all current employees.

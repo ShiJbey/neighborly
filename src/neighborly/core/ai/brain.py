@@ -22,7 +22,7 @@ _T = TypeVar("_T")
 
 
 class WeightedList(Generic[_T]):
-    """Manages a list of actions mapped to weights to facilitate random selection"""
+    """Manages a list of items mapped to weights to facilitate random selection."""
 
     __slots__ = "_items", "_weights", "_size", "_total_weight"
 
@@ -33,15 +33,14 @@ class WeightedList(Generic[_T]):
         self._size: int = 0
 
     def append(self, weight: float, item: _T) -> None:
-        """
-        Add an action to the list
+        """Add an action to the list.
 
         Parameters
         ----------
-        weight: int
-            The weight associated with the action to add
-        item: _T
-            The item to add
+        weight
+            The weight associated with the action to add.
+        item
+            The item to add.
         """
         assert weight >= 0
         self._weights.append(weight)
@@ -50,16 +49,28 @@ class WeightedList(Generic[_T]):
         self._total_weight += weight
 
     def pick_one(self, rng: random.Random) -> _T:
-        """Perform weighted random selection on the entries
+        """Perform weighted random selection on the entries.
 
         Returns
         -------
         _T
-            An action from the list
+            An action from the list.
         """
         return rng.choices(self._items, self._weights, k=1)[0]
 
     def above_thresh(self, threshold: float) -> WeightedList[_T]:
+        """Filter list for all items with weights above a threshold.
+
+        Parameters
+        ----------
+        threshold
+            The weight threshold.
+
+        Returns
+        -------
+        WeightedList[_T]
+            A new list with the filtered values.
+        """
         new_list: WeightedList[_T] = WeightedList()
 
         for i, weight in enumerate(self._weights):
@@ -69,10 +80,11 @@ class WeightedList(Generic[_T]):
         return new_list
 
     def has_options(self) -> bool:
-        """Return True if there is at least one item with a positive weight"""
+        """Return True if there is at least one item with a positive weight."""
         return self._total_weight > 0
 
     def clear(self) -> None:
+        """Remove all items from the list."""
         self._items.clear()
         self._weights.clear()
         self._size = 0
@@ -86,42 +98,40 @@ class WeightedList(Generic[_T]):
 
 
 class Consideration(Protocol):
-    """Considerations check if a GameObject meets conditions and returns a score"""
+    """Considerations are used to calculate the utility of goals and actions."""
 
     @abstractmethod
     def __call__(self, gameobject: GameObject) -> Optional[float]:
-        """
-        Perform consideration score calculation
+        """Perform utility score calculation for a GameObject.
 
         Parameters
         ----------
-        gameobject: GameObject
-            The GameObject to calculate this consideration for
+        gameobject
+            A GameObject.
 
         Returns
         -------
         float or None
-            A score from [0.0, 1.0]
+            A score from [0.0, 1.0].
         """
         raise NotImplementedError()
 
 
 class ConsiderationList(List[Consideration]):
-    """A collection of considerations usually associated with an action or goal"""
+    """A collection of considerations associated with an action or goal."""
 
     def calculate_score(self, gameobject: GameObject) -> float:
-        """
-        Scores each consideration and returns an aggregate score
+        """Scores each consideration for a GameObject and returns the aggregate score.
 
         Parameters
         ----------
-        gameobject : GameObject
-            The GameObject to score the considerations for
+        gameobject
+            A GameObject.
 
         Returns
         -------
         float
-            The aggregate consideration score
+            The aggregate consideration score.
         """
 
         cumulative_score: float = 1.0
@@ -152,16 +162,20 @@ class ConsiderationList(List[Consideration]):
 
         final_score = cumulative_score ** (1 / consideration_count)
 
-        # mod_factor = 1.0 - (1.0 / consideration_count)
-        # makeup_value = (1.0 - cumulative_score) * mod_factor
-        # final_score = cumulative_score + (cumulative_score * makeup_value)
         return final_score
 
 
 class ConsiderationDict(Dict[GameObject, ConsiderationList]):
-    """Maps considerations to GameObjects with those considerations"""
+    """Map of GameObjects to a collection of considerations."""
 
     def calculate_scores(self) -> Dict[GameObject, float]:
+        """Scores all considerations relative to their mapped GameObject.
+
+        Returns
+        -------
+        Dict[GameObject, float]
+            The aggregate scores for each consideration list mapped to GameObjects.
+        """
         scores: Dict[GameObject, float] = {}
 
         for gameobject, considerations in self.items():
@@ -172,13 +186,10 @@ class ConsiderationDict(Dict[GameObject, ConsiderationList]):
 
 
 class GoalNode(BehaviorTree):
-    """Defines a goal and behavior to achieve that goal including sub-goals"""
-
-    __slots__ = "original_goal"
+    """Defines a goal and behavior tree to achieve that goal."""
 
     def __init__(self, root: Optional[AbstractBTNode] = None) -> None:
         super().__init__(root)
-        self.original_goal: Optional[GoalNode] = None
         self.blackboard["goal_stack"] = [self]
 
     @abstractmethod
@@ -188,13 +199,12 @@ class GoalNode(BehaviorTree):
 
     @abstractmethod
     def get_utility(self) -> Dict[GameObject, float]:
-        """
-        Calculate how important and beneficial this goal is
+        """Calculate how important and beneficial this goal is.
 
         Returns
         -------
         Dict[GameObject, float]
-            GameObjects mapped to the utility they derive from the goal
+            GameObjects mapped to the utility they derive from the goal.
         """
         raise NotImplementedError
 
@@ -213,16 +223,12 @@ class GoalNode(BehaviorTree):
 
     @final
     def get_goal_stack(self) -> List[GoalNode]:
-        stack: List[GoalNode] = [self]
-
-        if self.original_goal:
-            stack.extend(self.original_goal.get_goal_stack())
-
-        return stack
+        """Get the stack of Goals and Sub-goals in this behavior"""
+        return self.blackboard["goal_stack"]
 
     @abstractmethod
     def satisfied_goals(self) -> List[GoalNode]:
-        """Get a list of goals that this goal satisfies"""
+        """Get a list of goals that this goal satisfies."""
         raise NotImplementedError
 
     @abstractmethod
@@ -240,26 +246,43 @@ class Goals(Component):
         self._goals: WeightedList[GoalNode] = WeightedList()
 
     def pick_one(self, rng: random.Random) -> GoalNode:
-        """Perform weighted random selection on the entries
+        """Perform weighted random selection on the entries.
 
         Returns
         -------
         GoalNode
-            An action from the list
+            An action from the list.
         """
         return self._goals.pick_one(rng)
 
     def push_goal(self, priority: float, goal: GoalNode) -> None:
-        """Add a goal to the AI"""
+        """Add a goal to the collection.
+
+        Parameters
+        ----------
+        priority
+            How important is the goal on interval [0.0, 1.0].
+        goal
+            The goal node.
+        """
         self._goals.append(priority, goal)
 
     def to_dict(self) -> Dict[str, Any]:
         return {}
 
     def has_options(self) -> bool:
+        """Check if there are any goals with positive utilities.
+
+        Returns
+        -------
+        bool
+            True if there exists at least one goal with a weight
+            greater than zero. False otherwise.
+        """
         return self._goals.has_options()
 
     def clear_goals(self) -> None:
+        """Clear the collection of goals."""
         self._goals.clear()
 
     def __len__(self) -> int:
@@ -270,7 +293,7 @@ class Goals(Component):
 
 
 class AIBrain(Component):
-    """Marks a GameObject as being AI-controlled"""
+    """Marks a GameObject as being AI-controlled."""
 
     def __init__(self) -> None:
         super().__init__()

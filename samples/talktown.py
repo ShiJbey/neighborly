@@ -10,14 +10,20 @@ and simulates 140 years of town history.
 import time
 
 from neighborly import NeighborlyConfig
+from neighborly.core.ecs.ecs import GameObject
+from neighborly.core.time import SimDateTime
+from neighborly.core.tracery import Tracery
+from neighborly.events import NewSettlementEvent
 from neighborly.exporter import export_to_json
 from neighborly.simulation import Neighborly
+from neighborly.systems import AIActionSystem, RandomLifeEventSystem
 
 EXPORT_WORLD = False
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
+            "seed": "Apples",
             "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
@@ -39,15 +45,19 @@ sim = Neighborly(
                 "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
-            ],
+            ]
         }
     )
 )
 
+RandomLifeEventSystem.active = True
+AIActionSystem.active = True
+
 if __name__ == "__main__":
     st = time.time()
-    sim.run_for(140)
+    sim.run_until(SimDateTime(20, 1, 1))
     elapsed_time = time.time() - st
+
 
     print(f"World Date: {sim.date.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")

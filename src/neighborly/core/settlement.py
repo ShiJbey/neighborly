@@ -15,6 +15,8 @@ from typing import (
     TypeVar,
 )
 
+from ordered_set import OrderedSet
+
 from neighborly.core.ecs import Component, ISerializable
 
 
@@ -132,13 +134,13 @@ class Settlement(Component, ISerializable):
     the business GameObject.
     """
 
-    locations: Set[int]
+    locations: OrderedSet[int]
     """
     The GameObject IDs of all the GameObjects with Location components that belong
     to this settlement.
     """
 
-    businesses: Set[int]
+    businesses: OrderedSet[int]
     """
     The GameObject IDs of all the GameObjects with Business components that belong
     to this settlement.
@@ -155,8 +157,8 @@ class Settlement(Component, ISerializable):
         self.land_map = land_map
         self.population = 0
         self.business_counts = defaultdict(lambda: 0)
-        self.locations = set()
-        self.businesses = set()
+        self.locations = OrderedSet()
+        self.businesses = OrderedSet()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
