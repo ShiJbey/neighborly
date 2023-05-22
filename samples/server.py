@@ -13,13 +13,7 @@ using API calls.
 """
 
 from neighborly import NeighborlyConfig
-from neighborly.data_collection import DataCollector
 from neighborly.server import NeighborlyServer
-from neighborly.utils.common import (
-    add_character_to_settlement,
-    spawn_character,
-    spawn_settlement,
-)
 
 app = NeighborlyServer(
     NeighborlyConfig.parse_obj(

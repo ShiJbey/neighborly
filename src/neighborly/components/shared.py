@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Iterator, Optional, Set
+from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet  # type: ignore
 
