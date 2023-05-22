@@ -43,25 +43,23 @@ class VirtuesFactory(IComponentFactory):
         elif initialization == "random":
             rng = world.get_resource(random.Random)
 
-            for v in list(Virtue):
+            for v in sorted(list(Virtue)):
                 values_overrides[v.name] = rng.randint(-30, 30)
 
             # Select virtues types
             total_virtues: int = n_likes + n_dislikes
-            chosen_virtues = [
-                virtue.name for virtue in rng.sample(list(Virtue), total_virtues)
-            ]
+            chosen_virtues = rng.sample(list(Virtue), total_virtues)
 
             # select likes and dislikes
-            high_values = rng.sample(chosen_virtues, n_likes)
-            low_values = list(set(chosen_virtues) - set(high_values))
+            high_values = sorted(rng.sample(chosen_virtues, n_likes))
+            low_values = sorted(list(set(chosen_virtues) - set(high_values)))
 
             # Generate values for each ([30,50] for high values, [-50,-30] for dislikes)
             for trait in high_values:
-                values_overrides[trait] = rng.randint(30, 50)
+                values_overrides[trait.name] = rng.randint(30, 50)
 
             for trait in low_values:
-                values_overrides[trait] = rng.randint(-50, -30)
+                values_overrides[trait.name] = rng.randint(-50, -30)
         else:
             # Using an unknown virtue doesn't break anything, but we should log it
             logger.warning(f"Unrecognized Virtues initialization '{initialization}'")

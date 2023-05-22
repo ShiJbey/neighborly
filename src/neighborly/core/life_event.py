@@ -268,6 +268,9 @@ class AllEvents(ISerializable):
     def __iter__(self) -> Iterator[LifeEvent]:
         return self._history.values().__iter__()
 
+    def __getitem__(self, key: int) -> LifeEvent:
+        return self._history[key]
+
     @classmethod
     def on_event(cls, listener: Callable[[LifeEvent], None]) -> None:
         """Registers an event listener called when events are recorded.

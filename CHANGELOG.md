@@ -7,6 +7,10 @@ and this project adheres mostly to [Semantic Versioning](https://semver.org/spec
 There may be minor-version updates that contain breaking changes, but do not warrant
 incrementing to a completely new version number.
 
+## [0.11.2]
+
+- Fixed problem with non-determinism caused by VirtuesFactory iterating sets
+
 ## [0.11.1]
 
 ### Fixes

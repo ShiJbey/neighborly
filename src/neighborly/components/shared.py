@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Iterator, Optional, Set
+from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet  # type: ignore
 
@@ -218,7 +218,7 @@ class FrequentedLocations(Component, ISerializable):
 
     __slots__ = "locations"
 
-    locations: Set[int]
+    locations: OrderedSet[int]
     """A set of GameObject IDs of locations."""
 
     def __init__(self, locations: Optional[Iterable[int]] = None) -> None:
@@ -229,7 +229,7 @@ class FrequentedLocations(Component, ISerializable):
             An iterable of GameObject IDs of locations.
         """
         super().__init__()
-        self.locations = set(locations) if locations else set()
+        self.locations = OrderedSet(locations) if locations else OrderedSet()
 
     def add(self, location: int) -> None:
         """Add a new location.

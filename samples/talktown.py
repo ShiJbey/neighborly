@@ -18,6 +18,7 @@ EXPORT_WORLD = False
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
+            "seed": "Apples",
             "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
@@ -39,7 +40,7 @@ sim = Neighborly(
                 "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
-            ],
+            ]
         }
     )
 )
@@ -48,6 +49,7 @@ if __name__ == "__main__":
     st = time.time()
     sim.run_for(140)
     elapsed_time = time.time() - st
+
 
     print(f"World Date: {sim.date.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")

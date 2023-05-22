@@ -399,8 +399,8 @@ class GetJob(GoalNode):
         return False
 
     def evaluate(self) -> NodeState:
-        for guid, (business, _) in self.world.get_components(
-            (Business, OpenForBusiness)
+        for guid, (business, _, _) in self.world.get_components(
+            (Business, OpenForBusiness, Active)
         ):
             open_positions = business.get_open_positions()
 
