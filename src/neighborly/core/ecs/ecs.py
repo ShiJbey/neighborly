@@ -201,12 +201,13 @@ class GameObject:
     Event listeners are static and shared across all gameobjects.
     """
 
-    # Manages event listeners that are called when any event fires
     _general_event_listeners: ClassVar[List[EventListener[Event]]] = []
-    # Manages event listeners that are only called when a specific type of event fires
+    """Event listeners that are called when any event fires."""
+
     _specific_event_listeners: ClassVar[
         Dict[Type[Event], List[EventListener[Event]]]
     ] = {}
+    """Event listeners that are only called when a specific type of event fires."""
 
     __slots__ = "_id", "name", "_world", "children", "parent"
 
@@ -543,6 +544,12 @@ class GameObject:
         """
         cls._general_event_listeners.append(listener)
 
+    @classmethod
+    def clear_event_listeners(cls) -> None:
+        """Removes all event listeners from the GameObject class"""
+        cls._general_event_listeners.clear()
+        cls._specific_event_listeners.clear()
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, GameObject):
             return self.uid == other.uid
@@ -611,6 +618,7 @@ class ISystem(ABC, esper.Processor):
     """The world instance this system belongs to."""
 
     active: ClassVar[bool] = True
+    """Will this system run during the next simulation step."""
 
     @abstractmethod
     def process(self, *args: Any, **kwargs: Any) -> None:

@@ -86,19 +86,17 @@ a Neighborly into the virtual environment along with all its dependencies and a 
 addition development dependencies such as _black_ and _isort_ for code formatting.
 
 ```bash
-# Step 1: Clone Repository
+# Step 1: Clone Repository and change into project directory
 git clone https://github.com/ShiJbey/neighborly.git
-
-# Step 2a: Create and activate python virtual environment
 cd neighborly
 
-# Step 2b: For Linux and MacOS
+# Step 2 (MacOS/Linux): Create and activate a python virtual environment
 python3 -m venv venv
 source ./venv/bin/activate
 
-# Step 2b: For Windows
+# Step 2 (Windows): Create and activate a python virtual environment
 python -m venv venv
-./venv/Scripts/Activate
+.\venv\Scripts\Activate
 
 # Step 3: Install local build and dependencies
 python -m pip install -e ".[development,testing]"

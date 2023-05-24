@@ -281,3 +281,8 @@ class AllEvents(ISerializable):
             A callback function
         """
         cls._event_listeners.append(listener)
+
+    @classmethod
+    def clear_event_listeners(cls) -> None:
+        """Clear all event listeners registered to this class."""
+        cls._event_listeners.clear()
