@@ -1559,6 +1559,19 @@ class EntityPrefab(pydantic.BaseModel):
         else:
             raise TypeError(f"Expected list str or list of str, but was {type(value)}")
 
+    @pydantic.validator("extends", pre=True)  # type: ignore
+    @classmethod
+    def _validate_tags(cls, value: Any) -> Set[str]:
+        """Ensures the `extends` field is a list of str."""
+        if isinstance(value, str):
+            return set([value])
+        if isinstance(value, list):
+            return set(value)  # type: ignore
+        if isinstance(value, set):
+            return value # type: ignore
+        else:
+            raise TypeError(f"Expected list str or list of str, but was {type(value)}")
+
 
 class GameObjectFactory:
     """A static class responsible for managing and instantiating prefabs."""
@@ -1656,7 +1669,7 @@ class GameObjectFactory:
     def _resolve_components(cls, prefab: EntityPrefab) -> Dict[str, Dict[str, Any]]:
         """Create the aggregate collection of components for a prefab and its templates.
 
-        Thi function traverses the inheritance tree of prefabs and creates the final
+        This function traverses the inheritance tree of prefabs and creates the final
         collection of components that will be constructed for an instance of the given
         prefab.
 
@@ -1690,3 +1703,9 @@ class Active(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {}
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__

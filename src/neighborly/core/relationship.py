@@ -258,7 +258,7 @@ class RelationshipManager(Component, ISerializable):
     """GameObject ID of relationship owners mapped to the Relationship's ID."""
 
     outgoing: Dict[int, int]
-    """GameObject ID of relationship owners mapped to the Relationship's ID."""
+    """GameObject ID of relationship targets mapped to the Relationship's ID."""
 
     def __init__(self) -> None:
         super().__init__()
