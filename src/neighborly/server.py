@@ -99,6 +99,16 @@ class SimEventsResource(Resource):
         return self.world.get_resource(AllEvents)[event_id].to_dict()
 
 
+
+class SimAllEventsResource(Resource):
+    world: World
+
+    def get(self) -> Dict[str, Any]:
+        return {
+                "events": [e.to_dict() for e in self.world.get_resource(AllEvents)]
+            }
+
+
 class WorldSeedResource(Resource):
     world: World
     def get(self):
@@ -124,6 +134,7 @@ def run_api_server(sim: Neighborly) -> None:
     QueryGameObjectsResource.world = sim.world
     WorldSeedResource.world = sim.world
     WorldDateResource.world = sim.world
+    SimAllEventsResource.world = sim.world
 
     api.add_resource(GameObjectResource, "/api/gameobject/<int:guid>")  # type: ignore
     api.add_resource(  # type: ignore
@@ -150,6 +161,7 @@ def run_api_server(sim: Neighborly) -> None:
         DataTablesResource,
         "/api/data/<string:table_name>",
     )
+    api.add_resource(SimAllEventsResource, "/api/events/")  # type: ignore
     api.add_resource(SimEventsResource, "/api/events/<int:event_id>")  # type: ignore
 
     server.run(debug=False)

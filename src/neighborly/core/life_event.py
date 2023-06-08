@@ -55,7 +55,7 @@ class LifeEvent(Event, ABC):
         return {
             "type": self.get_type(),
             "timestamp": str(self._timestamp),
-            "roles": {role.name: role.gameobject.uid for role in self._roles},
+            "roles": [role.to_dict() for role in self._roles],
         }
 
     def iter_roles(self) -> Iterator[Role]:

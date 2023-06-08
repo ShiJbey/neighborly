@@ -47,6 +47,8 @@ from neighborly.events import (
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
 
+from neighborly.factories.business import OperatingHoursFactory
+
 
 class PluginSetupError(Exception):
     """Exception thrown when an error occurs while loading a plugin"""
@@ -197,7 +199,7 @@ class Neighborly:
         self.world.register_component(components.AgingConfig)
         self.world.register_component(components.ReproductionConfig)
         self.world.register_component(components.Name, factory=NameFactory())
-        self.world.register_component(components.OperatingHours)
+        self.world.register_component(components.OperatingHours, factory=OperatingHoursFactory())
         self.world.register_component(components.Lifespan)
         self.world.register_component(components.Age)
         self.world.register_component(components.CharacterSpawnTable)

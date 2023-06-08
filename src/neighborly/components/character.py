@@ -18,8 +18,10 @@ from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime
 
+from neighborly.core.ecs.ecs import ISerializable
 
-class GameCharacter(Component):
+
+class GameCharacter(Component, ISerializable):
     """Tags a GameObject as a character and tracks their name."""
 
     __slots__ = "first_name", "last_name"
@@ -74,7 +76,7 @@ class Departed(StatusComponent):
     is_persistent = True
 
 
-class CanAge(Component):
+class CanAge(Component, ISerializable):
     """Tags a GameObject as being able to change life stages as time passes."""
 
     def __str__(self) -> str:
@@ -93,7 +95,7 @@ class Mortal(StatusComponent):
     is_persistent = True
 
 
-class CanGetPregnant(Component):
+class CanGetPregnant(Component, ISerializable):
     """Tags a character as capable of giving birth."""
 
     def __str__(self) -> str:
@@ -149,7 +151,7 @@ class Virtue(enum.IntEnum):
     TRANQUILITY = enum.auto()
 
 
-class Virtues(Component):
+class Virtues(Component, ISerializable):
     """
     Values are what an entity believes in. They are used
     for decision-making and relationship compatibility among
@@ -430,7 +432,7 @@ class GenderType(enum.Enum):
     NotSpecified = enum.auto()
 
 
-class Gender(Component):
+class Gender(Component, ISerializable):
     """A component that tracks a character's gender expression."""
 
     __slots__ = "gender"
@@ -465,7 +467,7 @@ class LifeStageType(enum.IntEnum):
     Senior = enum.auto()
 
 
-class LifeStage(Component):
+class LifeStage(Component, ISerializable):
     """A component that tracks the current life stage of a character."""
 
     __slots__ = "life_stage"

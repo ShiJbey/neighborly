@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Iterator, Optional, Set
+from typing import Any, Dict, Iterable, Iterator, Optional
+
+from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, ISerializable
 
@@ -10,6 +12,8 @@ class Activities(Component, ISerializable):
 
     Notes
     -----
+    Activity names are case-insensitive and are all converted to lowercase upon storage.
+
     Systems may look for an Activities component to:
 
     1. Describe the activities available at a location
@@ -19,7 +23,7 @@ class Activities(Component, ISerializable):
 
     __slots__ = "_activities"
 
-    _activities: Set[str]
+    _activities: OrderedSet[str]
     """Activity names."""
 
     def __init__(self, activities: Optional[Iterable[str]] = None) -> None:
@@ -30,7 +34,7 @@ class Activities(Component, ISerializable):
             A collection of activities.
         """
         super().__init__()
-        self._activities = set()
+        self._activities = OrderedSet([])
 
         if activities:
             for name in activities:

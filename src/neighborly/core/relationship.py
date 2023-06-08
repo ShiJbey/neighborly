@@ -59,7 +59,7 @@ class IncrementCounter:
         return "({}, {})".format(self.increments, self.decrements * -1)
 
 
-class RelationshipFacet(Component, ABC):
+class RelationshipFacet(Component, ISerializable, ABC):
     """
     A scalar value quantifying a relationship facet from one entity to another
     """

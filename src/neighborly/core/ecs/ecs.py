@@ -620,6 +620,9 @@ class ISystem(ABC, esper.Processor):
     active: ClassVar[bool] = True
     """Will this system run during the next simulation step."""
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__()
+
     @abstractmethod
     def process(self, *args: Any, **kwargs: Any) -> None:
         """Perform operations for a single simulation step.
@@ -732,6 +735,9 @@ class SystemGroup(ISystem, ABC):
 
 class IComponentFactory(ABC):
     """Abstract base class for factory object that create Component instances"""
+
+    def __init__(self, **kwargs: Any) -> None:
+        pass
 
     @abstractmethod
     def create(self, world: World, **kwargs: Any) -> Component:

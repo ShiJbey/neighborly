@@ -263,6 +263,8 @@ def spawn_character(
 
     character.fire_event(new_character_event)
 
+    character.world.get_resource(AllEvents).append(new_character_event)
+
     character.add_component(PrefabName(prefab))
 
     return character
@@ -711,6 +713,8 @@ def spawn_business(
     )
 
     business.fire_event(new_business_event)
+
+    business.world.get_resource(AllEvents).append(new_business_event)
 
     return business
 

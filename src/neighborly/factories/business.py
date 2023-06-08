@@ -149,4 +149,6 @@ class OperatingHoursFactory(IComponentFactory):
         raise ValueError(f"Invalid operating hours string: '{operating_hours_str}'")
 
     def create(self, world: World, **kwargs: Any) -> Component:
-        return OperatingHours({})
+        return OperatingHours(
+            OperatingHoursFactory.parse_operating_hour_str(kwargs["hours"])
+        )

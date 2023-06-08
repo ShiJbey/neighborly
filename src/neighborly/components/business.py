@@ -10,10 +10,11 @@ from typing import (
     List,
     Optional,
     Protocol,
-    Set,
     Tuple,
     Union,
 )
+
+from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.relationship import RelationshipStatus
@@ -165,11 +166,16 @@ class WorkHistory(Component, ISerializable):
 
 
 class Services(Component, ISerializable):
-    """Tracks a set of services offered by a business."""
+    """Tracks a set of services offered by a business.
+
+    Notes
+    -----
+    Service names are case-insensitive and are all converted to lowercase upon storage.
+    """
 
     __slots__ = "_services"
 
-    _services: Set[str]
+    _services: OrderedSet[str]
     """Service names."""
 
     def __init__(self, services: Optional[Iterable[str]] = None) -> None:
@@ -180,7 +186,7 @@ class Services(Component, ISerializable):
             A starting set of service names.
         """
         super().__init__()
-        self._services = set()
+        self._services = OrderedSet([])
 
         if services:
             for name in services:
@@ -201,7 +207,7 @@ class Services(Component, ISerializable):
 
         Parameters
         ----------
-        service:
+        service
             The name of a service.
         """
         self._services.remove(service.lower())
@@ -258,7 +264,7 @@ class OperatingHours(Component, ISerializable):
         return self.operating_hours
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"hours": self._hours}
+        return {"hours": {str(day): list(hours) for day, hours in self._hours.items()}}
 
 
 class Business(Component, ISerializable):
