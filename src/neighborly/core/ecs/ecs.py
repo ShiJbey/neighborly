@@ -46,6 +46,7 @@ import esper
 import pydantic
 from ordered_set import OrderedSet
 
+
 logger = logging.getLogger(__name__)
 
 _CT = TypeVar("_CT", bound="Component")
@@ -263,6 +264,14 @@ class GameObject:
     def exists(self) -> bool:
         """True if a GameObject still exists in the ECS."""
         return self.world.has_gameobject(self._id)
+
+    def activate(self) -> None:
+        """Tag this component as active."""
+        self.add_component(Active())
+
+    def deactivate(self) -> None:
+        """Remove the Active tag for this component."""
+        self.remove_component(Active)
 
     def get_components(self) -> Tuple[Component, ...]:
         """Get all component instances associated with a GameObject."""
@@ -921,6 +930,8 @@ class World:
         # Add components
         for c in components_to_add:
             gameobject.add_component(c)
+
+        gameobject.activate()
 
         return gameobject
 
