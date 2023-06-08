@@ -80,7 +80,7 @@ class Location(Component, ISerializable):
     entities: OrderedSet[int]
     """All the GameObjects currently at this location or any sub-locations."""
 
-    children: Set[int]
+    children: OrderedSet[int]
     """All the sub-locations at this location."""
 
     parent: Optional[int]
@@ -90,7 +90,7 @@ class Location(Component, ISerializable):
         super().__init__()
         self.parent = None
         self.entities = OrderedSet([])
-        self.children = set()
+        self.children = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -237,7 +237,7 @@ class FrequentedLocations(Component, ISerializable):
             An iterable of GameObject IDs of locations.
         """
         super().__init__()
-        self.locations = OrderedSet(locations) if locations else OrderedSet()
+        self.locations = OrderedSet(locations) if locations else OrderedSet([])
 
     def add(self, location: int) -> None:
         """Add a new location.

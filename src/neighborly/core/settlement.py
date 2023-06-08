@@ -157,8 +157,8 @@ class Settlement(Component, ISerializable):
         self.land_map = land_map
         self.population = 0
         self.business_counts = defaultdict(lambda: 0)
-        self.locations = OrderedSet()
-        self.businesses = OrderedSet()
+        self.locations = OrderedSet([])
+        self.businesses = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {

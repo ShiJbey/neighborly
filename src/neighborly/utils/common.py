@@ -1,7 +1,7 @@
 import json
 import math
 import random
-from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar
 
 from neighborly.components.activity import Activities
 from neighborly.components.business import (
