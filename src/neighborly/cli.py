@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from neighborly import NeighborlyConfig
+from neighborly.config import NeighborlyConfig
 from neighborly.__version__ import VERSION
 from neighborly.exporter import export_to_json
 from neighborly.simulation import Neighborly
@@ -59,6 +59,13 @@ def get_args() -> argparse.Namespace:
         default=False,
         action="store_true",
         help="Disable all printing to stdout",
+    )
+
+    parser.add_argument(
+        "-s",
+        "--seed",
+        type=str,
+        help="Set the seed for random number generation.",
     )
 
     return parser.parse_args()
@@ -155,6 +162,9 @@ def run():
         loaded_settings = try_load_local_config()
         if loaded_settings:
             config = NeighborlyConfig.from_partial(loaded_settings, config)
+
+    if args.seed:
+        config.seed = args.seed
 
     sim = Neighborly(config)
 
