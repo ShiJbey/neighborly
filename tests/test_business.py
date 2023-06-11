@@ -13,7 +13,10 @@ from neighborly.simulation import Neighborly
 
 def test_construct_business():
     """Constructing business components using BusinessArchetypes"""
-    GameObjectFactory.add(
+
+    sim = Neighborly()
+
+    sim.world.get_resource(GameObjectFactory).add(
         EntityPrefab(
             name="Restaurant",
             components={
@@ -31,9 +34,9 @@ def test_construct_business():
         )
     )
 
-    sim = Neighborly()
-
-    restaurant = GameObjectFactory.instantiate(sim.world, "Restaurant")
+    restaurant = sim.world.get_resource(GameObjectFactory).instantiate(
+        sim.world, "Restaurant"
+    )
     restaurant_business = restaurant.get_component(Business)
 
     assert restaurant_business.owner_type == "Proprietor"

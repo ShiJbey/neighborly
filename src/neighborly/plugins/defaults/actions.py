@@ -47,7 +47,6 @@ from neighborly.core.ecs import (
     GameObjectFactory,
     World,
 )
-from neighborly.core.life_event import AllEvents
 from neighborly.core.relationship import (
     Friendship,
     RelationshipManager,
@@ -81,11 +80,11 @@ from neighborly.utils.common import (
     remove_character_from_settlement,
     set_residence,
     shutdown_business,
-    spawn_business,
-    spawn_residence,
     start_job,
 )
 from neighborly.utils.query import are_related, get_work_experience_as, is_single
+
+from neighborly.command import SpawnBusiness, SpawnResidence
 
 ####################################
 # CONSIDERATIONS
@@ -298,7 +297,7 @@ class StartBusiness(GoalNode):
 
         owner_occupation_type = OccupationTypes.get(owner_type)
 
-        business = spawn_business(world, business_prefab.name)
+        business = SpawnBusiness(business_prefab.name).execute(world).get_result()
 
         add_business_to_settlement(
             business,
@@ -313,9 +312,7 @@ class StartBusiness(GoalNode):
             owner_occupation_type.name,
         )
 
-        self.character.fire_event(start_business_event)
-
-        world.get_resource(AllEvents).append(start_business_event)
+        self.character.world.fire_event(start_business_event)
 
         start_job(self.character, business, owner_occupation_type.name, is_owner=True)
 
@@ -335,7 +332,7 @@ class StartBusiness(GoalNode):
         weights: List[int] = []
 
         for prefab_name in business_spawn_table.get_eligible(settlement):
-            prefab = GameObjectFactory.get(prefab_name)
+            prefab = world.get_resource(GameObjectFactory).get(prefab_name)
             owner_type = prefab.components["Business"]["owner_type"]
             if owner_type:
                 owner_occupation_type = OccupationTypes.get(owner_type)
@@ -523,7 +520,7 @@ class BuildNewHouse(AbstractBTNode):
 
         prefab = spawn_table.choose_random(rng)
 
-        residence = spawn_residence(world, prefab)
+        residence = SpawnResidence(prefab).execute(world).get_result()
 
         add_residence_to_settlement(
             residence,
@@ -719,10 +716,7 @@ class GetMarried(GoalNode):
             self.partner,
         )
 
-        self.character.fire_event(event)
-        self.partner.fire_event(event)
-
-        self.character.world.get_resource(AllEvents).append(event)
+        world.fire_event(event)
 
         return NodeState.SUCCESS
 
@@ -840,10 +834,7 @@ class BreakUp(GoalNode):
             self.partner,
         )
 
-        self.character.fire_event(event)
-        self.partner.fire_event(event)
-
-        self.character.world.get_resource(AllEvents).append(event)
+        self.character.world.fire_event(event)
 
         return NodeState.SUCCESS
 
@@ -941,10 +932,7 @@ class GetDivorced(GoalNode):
             self.partner,
         )
 
-        self.character.fire_event(event)
-        self.partner.fire_event(event)
-
-        self.character.world.get_resource(AllEvents).append(event)
+        self.character.world.fire_event(event)
 
         return NodeState.SUCCESS
 
@@ -1005,9 +993,7 @@ class Retire(GoalNode):
             occupation.occupation_type,
         )
 
-        self.character.fire_event(event)
-
-        world.get_resource(AllEvents).append(event)
+        self.character.world.fire_event(event)
 
         if business_owner := self.character.try_component(BusinessOwner):
             shutdown_business(world.get_gameobject(business_owner.business))
@@ -1066,9 +1052,7 @@ class AskOut(GoalNode):
             self.target,
         )
 
-        self.initiator.fire_event(event)
-        self.target.fire_event(event)
-        self.initiator.world.get_resource(AllEvents).append(event)
+        self.target.world.fire_event(event)
 
         return NodeState.SUCCESS
 
@@ -1237,8 +1221,7 @@ class Die(BehaviorTree):
         event = DeathEvent(
             self.character.world.get_resource(SimDateTime), self.character
         )
-        self.character.fire_event(event)
-        self.character.world.get_resource(AllEvents).append(event)
+        self.character.world.fire_event(event)
 
         if self.character.has_component(Occupation):
             if business_owner := self.character.try_component(BusinessOwner):

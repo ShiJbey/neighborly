@@ -6,7 +6,8 @@ import pandas
 from neighborly.components.spawn_table import BusinessSpawnTable, CharacterSpawnTable
 from neighborly.core.ecs import ISystem
 from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.utils.common import spawn_settlement
+
+from neighborly.command import SpawnSettlement
 
 plugin_info = PluginInfo(
     name="default create town plugin",
@@ -41,11 +42,13 @@ class CreateDefaultSettlementSystem(ISystem):
             if table_type not in cls.prefab_data:
                 cls.prefab_data[table_type] = []
 
-            for _, row in df.iterrows():      # type: ignore
-                cls.prefab_data[table_type].append(row.to_dict())     # type: ignore
+            for _, row in df.iterrows():  # type: ignore
+                cls.prefab_data[table_type].append(row.to_dict())  # type: ignore
 
     def process(self, *args: Any, **kwargs: Any) -> None:
-        settlement = spawn_settlement(self.world, self.settlement_prefab)
+        settlement = (
+            SpawnSettlement(self.settlement_prefab).execute(self.world).get_result()
+        )
 
         for table_name, data in self.prefab_data.items():
             if table_name == "characters":
@@ -61,4 +64,4 @@ class CreateDefaultSettlementSystem(ISystem):
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    sim.add_system(CreateDefaultSettlementSystem())
+    sim.world.add_system(CreateDefaultSettlementSystem())

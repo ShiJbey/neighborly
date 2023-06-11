@@ -1,37 +1,40 @@
-from typing import Dict, List, Union
+"""neighborly.tracery
+
+Neighborly uses Kate Compton's Tracery to generate names for characters, items,
+businesses and other named objects.
+
+"""
+
+from typing import Dict, List, Optional, Union
 
 import tracery
 import tracery.modifiers as tracery_modifiers
 
 
 class Tracery:
-    """A static class that wraps a tracery grammar instance.
+    """A class that wraps a tracery grammar instance."""
 
-    This class allows the user to incrementally add new rules without manually creating
-    new Grammar instances.
-    """
+    __slots__ = "_grammar"
 
-    _all_rules: Dict[str, Union[str, List[str]]] = {}
-    """All the rules that have been added to the grammar."""
-
-    _grammar: tracery.Grammar = tracery.Grammar(
-        {}, modifiers=tracery_modifiers.base_english
-    )
+    _grammar: tracery.Grammar
     """The grammar instance."""
 
-    @classmethod
-    def set_rng_seed(cls, seed: Union[int, str]) -> None:
+    def __init__(self, rng_seed: Optional[Union[str, int]] = None) -> None:
+        self._grammar = tracery.Grammar({}, modifiers=tracery_modifiers.base_english)
+        if rng_seed is not None:
+            self._grammar.rng.seed(rng_seed)
+
+    def set_rng_seed(self, seed: Union[int, str]) -> None:
         """Set the seed for RNG used during rule evaluation.
 
         Parameters
         ----------
         seed
-            An arbitrary seed value
+            An arbitrary seed value.
         """
-        cls._grammar.rng.seed(seed)
+        self._grammar.rng.seed(seed)
 
-    @classmethod
-    def add_rules(cls, rules: Dict[str, Union[str, List[str]]]) -> None:
+    def add_rules(self, rules: Dict[str, Union[str, List[str]]]) -> None:
         """Add grammar rules.
 
         Parameters
@@ -40,20 +43,19 @@ class Tracery:
             Rule names mapped to strings or lists of string to expend to.
         """
         for rule_name, expansion in rules.items():
-            cls._grammar.push_rules(rule_name, expansion)
+            self._grammar.push_rules(rule_name, expansion)
 
-    @classmethod
-    def generate(cls, seed_str: str) -> str:
+    def generate(self, start_string: str) -> str:
         """Return a string generated using the grammar rules.
 
         Parameters
         ----------
-        seed_str
-            The string to expand using grammar rules
+        start_string
+            The string to expand using grammar rules.
 
         Returns
         -------
         str
-            The final string
+            The final string.
         """
-        return cls._grammar.flatten(seed_str)  # type: ignore
+        return self._grammar.flatten(start_string)  # type: ignore

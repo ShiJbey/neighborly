@@ -26,10 +26,9 @@ from neighborly.utils.common import (
     add_character_to_settlement,
     add_residence_to_settlement,
     set_residence,
-    spawn_character,
-    spawn_residence,
-    spawn_settlement,
 )
+
+from neighborly.command import SpawnCharacter, SpawnResidence, SpawnSettlement
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -61,7 +60,7 @@ sim = Neighborly(
 )
 
 
-@component(sim)
+@component(sim.world)
 class Robot(Component):
     """Tags a character as a Robot"""
 
@@ -75,7 +74,7 @@ class Robot(Component):
         return {}
 
 
-@component(sim)
+@component(sim.world)
 class OwesDebt(StatusComponent):
     """Marks a character as owing money to another character"""
 
@@ -87,7 +86,7 @@ class OwesDebt(StatusComponent):
         return {**super().to_dict(), "amount": self.amount}
 
 
-@system(sim)
+@system(sim.world)
 class RelationshipReporter(ISystem):
     sys_group = "data-collection"
 
@@ -140,9 +139,9 @@ def main():
         ),
     )
 
-    west_world = spawn_settlement(sim.world, name="West World")
+    west_world = SpawnSettlement(name="West World").execute(sim.world).get_result()
 
-    GameObjectFactory.add(
+    sim.world.get_resource(GameObjectFactory).add(
         EntityPrefab(
             name="westworld::host",
             extends=["character::default::female"],
@@ -150,17 +149,20 @@ def main():
         )
     )
 
-    dolores = spawn_character(
-        sim.world,
-        "westworld::host",
-        first_name="Dolores",
-        last_name="Abernathy",
-        age=32,
+    dolores = (
+        SpawnCharacter(
+            "westworld::host",
+            first_name="Dolores",
+            last_name="Abernathy",
+            age=32,
+        )
+        .execute(sim.world)
+        .get_result()
     )
 
     add_character_to_settlement(dolores, west_world)
 
-    house = spawn_residence(sim.world, "residence::default::house")
+    house = SpawnResidence("residence::default::house").execute(sim.world).get_result()
 
     add_residence_to_settlement(house, west_world)
 

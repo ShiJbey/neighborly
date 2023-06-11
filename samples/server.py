@@ -40,7 +40,7 @@ app = NeighborlyServer(
                 "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
-            ]
+            ],
         }
     )
 )

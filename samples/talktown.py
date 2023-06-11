@@ -40,7 +40,7 @@ sim = Neighborly(
                 "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
-            ]
+            ],
         }
     )
 )
@@ -49,7 +49,6 @@ if __name__ == "__main__":
     st = time.time()
     sim.run_for(140)
     elapsed_time = time.time() - st
-
 
     print(f"World Date: {sim.date.to_iso_str()}")
     print("Execution time: ", elapsed_time, "seconds")

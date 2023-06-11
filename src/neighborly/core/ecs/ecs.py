@@ -27,6 +27,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import (
     Any,
+    cast,
     ClassVar,
     Dict,
     Iterator,
@@ -38,7 +39,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
     overload,
 )
 
@@ -177,14 +177,14 @@ class Event(ABC):
 class EventListener(Protocol[_ET_contra]):
     """Callback function that does something in response to an event."""
 
-    def __call__(self, gameobject: GameObject, event: _ET_contra) -> None:
+    def __call__(self, world: World, event: _ET_contra) -> None:
         """
         Do something in response to the event.
 
         Parameters
         ----------
-        gameobject
-            The event's target gameobject.
+        world
+            A world instance.
         event
             The event.
         """
@@ -201,14 +201,6 @@ class GameObject:
     -----
     Event listeners are static and shared across all gameobjects.
     """
-
-    _general_event_listeners: ClassVar[List[EventListener[Event]]] = []
-    """Event listeners that are called when any event fires."""
-
-    _specific_event_listeners: ClassVar[
-        Dict[Type[Event], List[EventListener[Event]]]
-    ] = {}
-    """Event listeners that are only called when a specific type of event fires."""
 
     __slots__ = "_id", "name", "_world", "children", "parent"
 
@@ -298,7 +290,7 @@ class GameObject:
         Adding components is an immediate operation and triggers a ComponentAddedEvent.
         """
         self.world.add_component(self.uid, component)
-        self.fire_event(ComponentAddedEvent(component))
+        self.world.fire_event(ComponentAddedEvent(self, component))
 
     def remove_component(self, component_type: Type[Component]) -> None:
         """Remove a component from the GameObject.
@@ -313,7 +305,9 @@ class GameObject:
         Removing components is an immediate operation and triggers a
         ComponentRemovedEvent.
         """
-        self.fire_event(ComponentRemovedEvent(self.get_component(component_type)))
+        self.world.fire_event(
+            ComponentRemovedEvent(self, self.get_component(component_type))
+        )
         self.world.remove_component(self.uid, component_type)
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
@@ -480,7 +474,7 @@ class GameObject:
 
     def destroy(self) -> None:
         """Remove a GameObject from the world."""
-        self.fire_event(GameObjectDestroyedEvent(self))
+        self.world.fire_event(GameObjectDestroyedEvent(self))
         self.world.delete_gameobject(self.uid)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -504,60 +498,6 @@ class GameObject:
         }
 
         return ret
-
-    def fire_event(self, event: Event) -> None:
-        """Call the registered callbacks to respond to an event.
-
-        Parameters
-        ----------
-        event
-            The fired event.
-        """
-        for cb in self._general_event_listeners:
-            cb(self, event)
-
-        if type(event) in self._specific_event_listeners:
-            for cb in self._specific_event_listeners[type(event)]:
-                cb(self, event)
-
-    @classmethod
-    def on(
-        cls,
-        event_type: Type[_ET_contra],
-        listener: EventListener[_ET_contra],
-    ) -> None:
-        """Register a listener function to a specific event type.
-
-        Parameters
-        ----------
-        event_type
-            The type of event to listen for.
-        listener
-            A function to be called when the given event type fires.
-        """
-        if event_type not in cls._specific_event_listeners:
-            cls._specific_event_listeners[event_type] = []
-        listener_list = cast(
-            List[EventListener[_ET_contra]], cls._specific_event_listeners[event_type]
-        )
-        listener_list.append(listener)
-
-    @classmethod
-    def on_any(cls, listener: EventListener[Event]) -> None:
-        """Register a listener function to all event types.
-
-        Parameters
-        ----------
-        listener
-            A function to be called any time an event fires.
-        """
-        cls._general_event_listeners.append(listener)
-
-    @classmethod
-    def clear_event_listeners(cls) -> None:
-        """Removes all event listeners from the GameObject class"""
-        cls._general_event_listeners.clear()
-        cls._specific_event_listeners.clear()
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, GameObject):
@@ -822,6 +762,9 @@ class RootSystemGroup(SystemGroup):
 class ComponentAddedEvent(Event):
     """An event fired when a component is added to a GameObject."""
 
+    gameobject: GameObject
+    """The gameobject that had a the component added."""
+
     component: Component
     """A reference to the added component."""
 
@@ -829,6 +772,9 @@ class ComponentAddedEvent(Event):
 @dataclass
 class ComponentRemovedEvent(Event):
     """An event fired when a component is removed from a GameObject."""
+
+    gameobject: GameObject
+    """The gameobject that had a the component removed."""
 
     component: Component
     """A reference to the removed component."""
@@ -863,6 +809,8 @@ class World:
         "_component_types",
         "_component_factories",
         "_systems",
+        "_general_event_listeners",
+        "_event_listeners_by_type",
     )
 
     _ecs: esper.World
@@ -886,6 +834,12 @@ class World:
     _systems: SystemGroup
     """The systems run every simulation step."""
 
+    _general_event_listeners: OrderedSet[EventListener[Event]]
+    """Event listeners that are called when any event fires."""
+
+    _event_listeners_by_type: Dict[Type[Event], OrderedSet[EventListener[Event]]]
+    """Event listeners that are only called when a specific type of event fires."""
+
     def __init__(self) -> None:
         self._ecs = esper.World()
         self._gameobjects = {}
@@ -897,6 +851,8 @@ class World:
         # The RootSystemGroup should be the only system that is directly added
         # to esper
         self._ecs.add_processor(self._systems)
+        self._general_event_listeners = OrderedSet([])
+        self._event_listeners_by_type = {}
 
     def spawn_gameobject(
         self, components: Optional[List[Component]] = None, name: Optional[str] = None
@@ -1543,6 +1499,54 @@ class World:
             factory if factory is not None else DefaultComponentFactory(component_type)
         )
 
+    def on_event(
+        self,
+        event_type: Type[_ET_contra],
+        listener: EventListener[_ET_contra],
+    ) -> None:
+        """Register a listener function to a specific event type.
+
+        Parameters
+        ----------
+        event_type
+            The type of event to listen for.
+        listener
+            A function to be called when the given event type fires.
+        """
+        if event_type not in self._event_listeners_by_type:
+            self._event_listeners_by_type[event_type] = OrderedSet([])
+        listener_set = cast(
+            OrderedSet[EventListener[_ET_contra]],
+            self._event_listeners_by_type[event_type],
+        )
+        listener_set.add(listener)
+
+    def on_any_event(self, listener: EventListener[Event]) -> None:
+        """Register a listener function to all event types.
+
+        Parameters
+        ----------
+        listener
+            A function to be called any time an event fires.
+        """
+        self._general_event_listeners.append(listener)
+
+    def fire_event(self, event: Event) -> None:
+        """Fire an event and trigger associated event listeners.
+
+        Parameters
+        ----------
+        event
+            The event to fire
+        """
+        for callback_fn in self._event_listeners_by_type.get(
+            type(event), OrderedSet([])
+        ):
+            callback_fn(self, event)
+
+        for callback_fn in self._general_event_listeners:
+            callback_fn(self, event)
+
 
 class EntityPrefab(pydantic.BaseModel):
     """Configuration data for creating a new entity and any children."""
@@ -1585,7 +1589,7 @@ class EntityPrefab(pydantic.BaseModel):
         if isinstance(value, list):
             return set(value)  # type: ignore
         if isinstance(value, set):
-            return value # type: ignore
+            return value  # type: ignore
         else:
             raise TypeError(f"Expected list str or list of str, but was {type(value)}")
 
@@ -1593,11 +1597,15 @@ class EntityPrefab(pydantic.BaseModel):
 class GameObjectFactory:
     """A static class responsible for managing and instantiating prefabs."""
 
-    _prefabs: ClassVar[Dict[str, EntityPrefab]] = {}
+    __slots__ = "_prefabs"
+
+    _prefabs: Dict[str, EntityPrefab]
     """Stores loaded prefabs"""
 
-    @classmethod
-    def get(cls, prefab_name: str) -> EntityPrefab:
+    def __init__(self) -> None:
+        self._prefabs = {}
+
+    def get(self, prefab_name: str) -> EntityPrefab:
         """Retrieve an entity prefab
 
         Parameters
@@ -1605,10 +1613,9 @@ class GameObjectFactory:
         prefab_name
             The name of the prefab
         """
-        return cls._prefabs[prefab_name]
+        return self._prefabs[prefab_name]
 
-    @classmethod
-    def get_matching_prefabs(cls, *patterns: str) -> List[EntityPrefab]:
+    def get_matching_prefabs(self, *patterns: str) -> List[EntityPrefab]:
         """
         Get all prefabs with names that match the given regex strings.
 
@@ -1625,14 +1632,13 @@ class GameObjectFactory:
 
         matches: List[EntityPrefab] = []
 
-        for name, prefab in cls._prefabs.items():
+        for name, prefab in self._prefabs.items():
             if any([re.match(p, name) for p in patterns]):
                 matches.append(prefab)
 
         return matches
 
-    @classmethod
-    def add(cls, prefab: EntityPrefab) -> None:
+    def add(self, prefab: EntityPrefab) -> None:
         """Add a prefab to the factory.
 
         Parameters
@@ -1640,10 +1646,9 @@ class GameObjectFactory:
         prefab
             The prefab to add.
         """
-        cls._prefabs[prefab.name] = prefab
+        self._prefabs[prefab.name] = prefab
 
-    @classmethod
-    def instantiate(cls, world: World, name: str) -> GameObject:
+    def instantiate(self, world: World, name: str) -> GameObject:
         """Spawn the prefab into the world and return the root-level entity.
 
         Parameters
@@ -1660,10 +1665,10 @@ class GameObjectFactory:
         """
 
         # spawn the root gameobject
-        prefab = cls._prefabs[name]
+        prefab = self._prefabs[name]
         gameobject = world.spawn_gameobject()
 
-        for component_name, component_data in cls._resolve_components(prefab).items():
+        for component_name, component_data in self._resolve_components(prefab).items():
             try:
                 gameobject.add_component(
                     world.get_component_info(component_name).factory.create(
@@ -1678,12 +1683,11 @@ class GameObjectFactory:
                 )
 
         for child in prefab.children:
-            gameobject.add_child(cls.instantiate(world, child))
+            gameobject.add_child(self.instantiate(world, child))
 
         return gameobject
 
-    @classmethod
-    def _resolve_components(cls, prefab: EntityPrefab) -> Dict[str, Dict[str, Any]]:
+    def _resolve_components(self, prefab: EntityPrefab) -> Dict[str, Dict[str, Any]]:
         """Create the aggregate collection of components for a prefab and its templates.
 
         This function traverses the inheritance tree of prefabs and creates the final
@@ -1704,7 +1708,7 @@ class GameObjectFactory:
         components: Dict[str, Dict[str, Any]] = {}
 
         base_components = [
-            cls._resolve_components(cls._prefabs[base]) for base in prefab.extends
+            self._resolve_components(self._prefabs[base]) for base in prefab.extends
         ]
 
         for entry in base_components:
@@ -1725,4 +1729,4 @@ class Active(Component, ISerializable):
         return self.__class__.__name__
 
     def __repr__(self) -> str:
-        return self.__class__.__name__
+        return f"self.__class__.__name__()"

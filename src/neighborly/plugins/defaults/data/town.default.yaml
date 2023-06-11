@@ -5,6 +5,7 @@ components:
   Settlement:
     width: 5
     length: 5
+  Location: {}
   CharacterSpawnTable:
     entries:
       - name: "character::default::male"

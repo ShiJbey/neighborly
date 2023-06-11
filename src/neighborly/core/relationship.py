@@ -6,6 +6,8 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Protocol, Tuple, Type, TypeVar
 
+from ordered_set import OrderedSet
+
 from neighborly.core.ecs import Active, Component, GameObject, GameObjectFactory
 from neighborly.core.ecs.ecs import ISerializable
 from neighborly.core.status import (
@@ -339,13 +341,18 @@ class SocialRuleInfo:
     """A text description of the rule."""
 
 
-class SocialRules:
+class SocialRuleLibrary:
     """Repository of social rules to use during the simulation."""
 
-    _rules: List[SocialRuleInfo] = []
+    __slots__ = "_rules"
 
-    @classmethod
-    def add(cls, rule: ISocialRule, description: str) -> None:
+    _rules: OrderedSet[SocialRuleInfo]
+    """Collection of all registered rules"""
+
+    def __init__(self) -> None:
+        self._rules = OrderedSet([])
+
+    def add(self, rule: ISocialRule, description: str) -> None:
         """
         Register a social rule
 
@@ -356,12 +363,11 @@ class SocialRules:
         description
             A text description of the rule
         """
-        cls._rules.append(SocialRuleInfo(rule, description))
+        self._rules.append(SocialRuleInfo(rule, description))
 
-    @classmethod
-    def iter_rules(cls) -> Iterator[SocialRuleInfo]:
+    def iter_rules(self) -> Iterator[SocialRuleInfo]:
         """Return an iterator to the registered social rules"""
-        return cls._rules.__iter__()
+        return self._rules.__iter__()
 
 
 _RST = TypeVar("_RST", bound=RelationshipStatus)
@@ -389,7 +395,9 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     if target.uid in relationship_manager.outgoing:
         return world.get_gameobject(relationship_manager.outgoing[target.uid])
 
-    relationship = GameObjectFactory.instantiate(world, "relationship")
+    relationship = world.get_resource(GameObjectFactory).instantiate(
+        world, "relationship"
+    )
     relationship.add_component(Relationship(owner.uid, target.uid))
     relationship.add_component(StatusManager())
     relationship.add_component(Active())
@@ -588,10 +596,10 @@ def evaluate_social_rules(
     target
         The target of the relationship
     """
-
+    rule_library = relationship.world.get_resource(SocialRuleLibrary)
     relationship.get_component(Relationship).clear_modifiers()
 
-    for rule_info in SocialRules.iter_rules():
+    for rule_info in rule_library.iter_rules():
         modifier = rule_info.rule(owner, target)
         if modifier:
             relationship.get_component(Relationship).add_modifier(

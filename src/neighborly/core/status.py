@@ -4,9 +4,13 @@ status.py
 Statuses represent temporary states of being for gameobjects. They are meant to
 be paired with systems and updated every timestep and may be used to represent
 temporary states like mood, unemployment, pregnancies, etc.
+
 """
+
 from abc import ABC
-from typing import Any, ClassVar, Dict, Iterator, Set, Type, TypeVar
+from typing import Any, ClassVar, Dict, Iterator, Type, TypeVar
+
+from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.time import SimDateTime
@@ -51,30 +55,30 @@ class StatusManager(Component, ISerializable):
 
     __slots__ = "_statuses"
 
-    _statuses: Set[Type[StatusComponent]]
+    _statuses: OrderedSet[Type[StatusComponent]]
     """A set of status types attached to the GameObject."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._statuses = set()
+        self._statuses = OrderedSet([])
 
     def add(self, status_type: Type[StatusComponent]) -> None:
         """Add a status type to the tracker.
 
         Parameters
         ----------
-        status_type: Type[Component]
-            The status type added to the GameObject
+        status_type
+            The status type added to the GameObject.
         """
         self._statuses.add(status_type)
 
     def remove(self, status_type: Type[StatusComponent]) -> None:
-        """Remove a status type from the tracker
+        """Remove a status type from the tracker.
 
         Parameters
         ----------
-        status_type: Type[Component]
-            The status type to be removed from the GameObject
+        status_type
+            The status type to be removed from the GameObject.
         """
         self._statuses.remove(status_type)
 
@@ -100,15 +104,14 @@ _ST = TypeVar("_ST", bound=StatusComponent)
 
 
 def add_status(gameobject: GameObject, status: StatusComponent) -> None:
-    """
-    Add a status to the given GameObject
+    """Add a status to the given GameObject.
 
     Parameters
     ----------
-    gameobject: GameObject
-        The GameObject to add the status to
-    status: Status
-        The status to add
+    gameobject
+        The GameObject to add the status to.
+    status
+        The status to add.
     """
     gameobject.get_component(StatusManager).add(type(status))
     status.set_created(gameobject.world.get_resource(SimDateTime))
@@ -116,34 +119,32 @@ def add_status(gameobject: GameObject, status: StatusComponent) -> None:
 
 
 def get_status(gameobject: GameObject, status_type: Type[_ST]) -> _ST:
-    """
-    Get a status from the given GameObject
+    """Get a status from the given GameObject.
 
     Parameters
     ----------
-    gameobject: GameObject
-        The GameObject to add the status to
-    status_type: Type[Status]
-        The type status of status to retrieve
+    gameobject
+        The GameObject to add the status to.
+    status_type
+        The type status of status to retrieve.
 
     Returns
     -------
     Status
-        The instance of the desired status type
+        The instance of the desired status type.
     """
     return gameobject.get_component(status_type)
 
 
 def remove_status(gameobject: GameObject, status_type: Type[StatusComponent]) -> None:
-    """
-    Remove a status from the given GameObject
+    """Remove a status from the given GameObject.
 
     Parameters
     ----------
-    gameobject: GameObject
-        The GameObject to add the status to
-    status_type: Type[StatusComponentBase]
-        The status type to remove
+    gameobject
+        The GameObject to add the status to.
+    status_type
+        The status type to remove.
     """
     if has_status(gameobject, status_type):
         gameobject.remove_component(status_type)
@@ -169,8 +170,7 @@ def has_status(gameobject: GameObject, status_type: Type[StatusComponent]) -> bo
 
 
 def clear_statuses(gameobject: GameObject) -> None:
-    """
-    Remove all statuses from a GameObject
+    """Remove all statuses from a GameObject.
 
     Parameters
     ----------

@@ -26,7 +26,7 @@ from neighborly.decorators import component, system
 sim = Neighborly(NeighborlyConfig(seed=101))
 
 
-@component(sim)
+@component(sim.world)
 @dataclass
 class Actor(Component):
     name: str
@@ -35,7 +35,7 @@ class Actor(Component):
         return {"name": self.name}
 
 
-@component(sim)
+@component(sim.world)
 @dataclass
 class Money(Component):
     amount: int
@@ -44,7 +44,7 @@ class Money(Component):
         return {"amount": self.amount}
 
 
-@component(sim)
+@component(sim.world)
 @dataclass
 class Job(Component):
     title: str
@@ -54,7 +54,7 @@ class Job(Component):
         return {"title": self.title, "salary": self.salary}
 
 
-@system(sim)
+@system(sim.world)
 class SalarySystem(ISystem):
     sys_group = "update"
 
@@ -63,7 +63,7 @@ class SalarySystem(ISystem):
             money.amount += job.salary // 12
 
 
-@system(sim)
+@system(sim.world)
 class WealthReporter(ISystem):
     sys_group = "data-collection"
 

@@ -134,12 +134,6 @@ class Settlement(Component, ISerializable):
     the business GameObject.
     """
 
-    locations: OrderedSet[int]
-    """
-    The GameObject IDs of all the GameObjects with Location components that belong
-    to this settlement.
-    """
-
     businesses: OrderedSet[int]
     """
     The GameObject IDs of all the GameObjects with Business components that belong
@@ -157,7 +151,6 @@ class Settlement(Component, ISerializable):
         self.land_map = land_map
         self.population = 0
         self.business_counts = defaultdict(lambda: 0)
-        self.locations = OrderedSet([])
         self.businesses = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
@@ -174,12 +167,12 @@ class Settlement(Component, ISerializable):
 
 
 class GridSettlementMap(ISettlementMap):
-    """Stores lots for buildings in a cartesian grid.s"""
+    """Stores lots for buildings in a cartesian grid."""
 
     __slots__ = "_unoccupied", "_occupied", "_grid"
 
     _grid: Grid[Optional[int]]
-    """An internal grid that stores the building IDs"""
+    """An internal grid that stores the building IDs."""
 
     _unoccupied: List[int]
     """The IDs of lots that are not occupied."""
@@ -239,7 +232,7 @@ class GridSettlementMap(ISettlementMap):
         self._occupied.remove(lot_id)
 
     def _position_to_id(self, position: Tuple[int, int]) -> int:
-        """Convert lot position to lot ID
+        """Convert lot position to lot ID.
 
         Parameters
         ----------
@@ -384,7 +377,7 @@ class Grid(Generic[_GT]):
         Parameters
         ----------
         point
-            The X, Y position of a grid cell..
+            The X, Y position of a grid cell.
         value
             The data to store in the grid cell.
         """

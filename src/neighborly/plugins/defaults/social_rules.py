@@ -8,7 +8,7 @@ from neighborly.core.relationship import (
     Friendship,
     RelationshipFacet,
     Romance,
-    SocialRules,
+    SocialRuleLibrary,
     lerp,
 )
 from neighborly.simulation import Neighborly, PluginInfo
@@ -141,150 +141,152 @@ def romance_decrease_for_relationship(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    SocialRules.add(
+    social_rule_library = sim.world.get_resource(SocialRuleLibrary)
+
+    social_rule_library.add(
         romance_boost_from_shared_virtues, "romance boost from shared values"
     )
-    SocialRules.add(
+    social_rule_library.add(
         romance_loss_from_virtue_conflicts, "romance loss from conflicting values"
     )
-    SocialRules.add(
+    social_rule_library.add(
         friendship_virtue_compatibility, "friendship boost from virtue alignment"
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.ADVENTURE, Virtue.TRANQUILITY, {Friendship: -1}),
         "tranquility likes adventure",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.TRANQUILITY, Virtue.ADVENTURE, {Friendship: -1}),
         "adventure likes tranquility",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.ADVENTURE, Virtue.TRADITION, {Friendship: -1}),
         "adventure dislikes tradition",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.TRADITION, Virtue.ADVENTURE, {Friendship: -1}),
         "tradition dislikes adventure",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.EXCITEMENT, Virtue.TRANQUILITY, {Friendship: -1}),
         "excitement dislikes tranquility",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.TRANQUILITY, Virtue.EXCITEMENT, {Friendship: -1}),
         "tranquility dislikes adventure",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.ROMANCE, Virtue.LOYALTY, {Romance: -1}),
         "romance in not attracted to loyalty",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.LOYALTY, Virtue.ROMANCE, {Romance: -1}),
         "loyalty is not attracted to romance",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.PEACE, Virtue.POWER, {Friendship: -1}),
         "peace dislikes power",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.POWER, Virtue.PEACE, {Friendship: -1}),
         "power dislikes peace",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.PEACE, Virtue.EXCITEMENT, {Friendship: -1}),
         "peace dislikes excitement",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.EXCITEMENT, Virtue.PEACE, {Friendship: -1}),
         "excitement dislikes peace",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.WEALTH, Virtue.MATERIAL_THINGS, {Friendship: 1}),
         "wealth likes material things",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.MATERIAL_THINGS, Virtue.WEALTH, {Friendship: 1}),
         "material things likes wealth",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.KNOWLEDGE, Virtue.POWER, {Friendship: 1}),
         "knowledge likes power",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.POWER, Virtue.KNOWLEDGE, {Friendship: 1}),
         "power likes knowledge",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.WEALTH, Virtue.POWER, {Friendship: 1}), "wealth likes power"
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.POWER, Virtue.WEALTH, {Friendship: 1}), "power likes wealth"
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.ROMANCE, Virtue.LUST, {Romance: 1}), "romance likes lust"
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.LUST, Virtue.ROMANCE, {Romance: 1}), "lust likes romance"
     )
 
     # This is not reciprocal
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.INDEPENDENCE, Virtue.FAMILY, {Friendship: -1}),
         "independence dislikes family",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.CURIOSITY, Virtue.KNOWLEDGE, {Friendship: 1}),
         "curiosity likes knowledge",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.KNOWLEDGE, Virtue.CURIOSITY, {Friendship: 1}),
         "knowledge likes curiosity",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.PEACE, Virtue.NATURE, {Friendship: 1}), "peace likes nature"
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.NATURE, Virtue.MATERIAL_THINGS, {Friendship: -1}),
         "nature dislikes material things",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.AMBITION, Virtue.WEALTH, {Friendship: 1}),
         "ambition likes wealth",
     )
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.AMBITION, Virtue.POWER, {Friendship: 1}),
         "ambition likes power",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.INDEPENDENCE, Virtue.HEALTH, {Friendship: 1}),
         "independence likes health",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.LUST, Virtue.INDEPENDENCE, {Romance: 1}),
         "lust is attracted to independence",
     )
 
-    SocialRules.add(
+    social_rule_library.add(
         virtue_rule(Virtue.FRIENDSHIP, Virtue.FAMILY, {Romance: 1}),
         "friendship is attracted to family virtue",
     )
 
-    SocialRules.add(not_attracted_to_family, "related")
+    social_rule_library.add(not_attracted_to_family, "related")
 
-    SocialRules.add(romance_from_age_difference, "age_difference")
+    social_rule_library.add(romance_from_age_difference, "age_difference")

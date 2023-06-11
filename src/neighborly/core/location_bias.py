@@ -8,7 +8,9 @@ where within a settlement they choose to frequent.
 from __future__ import annotations
 
 import dataclasses
-from typing import Iterator, List, Optional, Protocol
+from typing import Iterator, Optional, Protocol
+
+from ordered_set import OrderedSet
 
 from neighborly.core.ecs import GameObject
 
@@ -48,16 +50,19 @@ class LocationBiasRuleInfo:
     """A text description of the rule"""
 
 
-class LocationBiasRules:
+class LocationBiasRuleLibrary:
     """Repository of active rules that determine what location characters frequent."""
 
-    _rules: List[LocationBiasRuleInfo] = []
+    __slots__ = "_rules"
+
+    _rules: OrderedSet[LocationBiasRuleInfo]
     """All registered rules."""
 
-    @classmethod
-    def add(cls, rule: ILocationBiasRule, description: str = "") -> None:
-        cls._rules.append(LocationBiasRuleInfo(rule, description))
+    def __init__(self) -> None:
+        self._rules = OrderedSet([])
 
-    @classmethod
-    def iter_rules(cls) -> Iterator[LocationBiasRuleInfo]:
-        return cls._rules.__iter__()
+    def add(self, rule: ILocationBiasRule, description: str = "") -> None:
+        self._rules.append(LocationBiasRuleInfo(rule, description))
+
+    def iter_rules(self) -> Iterator[LocationBiasRuleInfo]:
+        return self._rules.__iter__()

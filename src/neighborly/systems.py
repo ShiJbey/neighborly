@@ -27,7 +27,7 @@ from neighborly.components.shared import (
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import Active, GameObject, ISystem, SystemGroup
-from neighborly.core.life_event import RandomLifeEvent, AllEvents, RandomLifeEvents
+from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
 from neighborly.core.relationship import (
     Friendship,
     IncrementCounter,
@@ -58,11 +58,11 @@ from neighborly.plugins.defaults.actions import DepartSimulation, FindEmployment
 from neighborly.utils.common import (
     add_character_to_settlement,
     get_child_prefab,
-    set_character_age,
     set_frequented_locations,
     set_residence,
-    spawn_character,
 )
+
+from neighborly.command import SetCharacterAge, SpawnCharacter
 
 
 class InitializationSystemGroup(SystemGroup):
@@ -197,18 +197,19 @@ class RandomLifeEventSystem(System):
     def run(self, *args: Any, **kwargs: Any) -> None:
         """Simulate LifeEvents for characters"""
         rng = self.world.get_resource(random.Random)
+        event_library = self.world.get_resource(RandomLifeEventLibrary)
 
         total_population = len(self.world.get_components((GameCharacter, Active)))
 
-        if RandomLifeEvents.get_size() == 0:
+        if len(event_library) == 0:
             return
 
         event_type: Type[RandomLifeEvent]
         for _ in range(total_population // 10):
-            event_type = RandomLifeEvents.pick_one(rng)
+            event_type = event_library.pick_one(rng)
             if event := event_type.instantiate(self.world, RoleList()):
                 if rng.random() < event.get_probability():
-                    event.execute()
+                    event.execute(self.world)
 
 
 class MeetNewPeopleSystem(ISystem):
@@ -271,7 +272,6 @@ class CharacterAgingSystem(System):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         current_date = self.world.get_resource(SimDateTime)
-        all_events = self.world.get_resource(AllEvents)
 
         age_increment = float(self.elapsed_time.total_days) / DAYS_PER_YEAR
 
@@ -281,7 +281,9 @@ class CharacterAgingSystem(System):
             character = self.world.get_gameobject(guid)
 
             life_stage_value_before = int(life_stage)
-            set_character_age(character, age.value + age_increment)
+
+            SetCharacterAge(character, age.value + age_increment).execute(self.world)
+
             life_stage_after = int(life_stage)
 
             life_stage_changed = life_stage_value_before != life_stage_after
@@ -291,23 +293,19 @@ class CharacterAgingSystem(System):
 
             if life_stage_after == LifeStageType.Adolescent:
                 event = BecomeAdolescentEvent(current_date, character)
-                character.fire_event(event)
-                all_events.append(event)
+                self.world.fire_event(event)
 
             elif life_stage_after == LifeStageType.YoungAdult:
                 event = BecomeYoungAdultEvent(current_date, character)
-                character.fire_event(event)
-                all_events.append(event)
+                self.world.fire_event(event)
 
             elif life_stage_after == LifeStageType.Adult:
                 event = BecomeAdultEvent(current_date, character)
-                character.fire_event(event)
-                all_events.append(event)
+                self.world.fire_event(event)
 
             elif life_stage_after == LifeStageType.Senior:
                 event = BecomeSeniorEvent(current_date, character)
-                character.fire_event(event)
-                all_events.append(event)
+                self.world.fire_event(event)
 
 
 class UnemployedStatusSystem(System):
@@ -362,10 +360,13 @@ class PregnantStatusSystem(System):
 
             assert child_prefab is not None
 
-            baby = spawn_character(
-                self.world,
-                child_prefab,
-                last_name=character.get_component(GameCharacter).last_name,
+            baby = (
+                SpawnCharacter(
+                    child_prefab,
+                    last_name=character.get_component(GameCharacter).last_name,
+                )
+                .execute(self.world)
+                .get_result()
             )
 
             settlement = self.world.get_gameobject(
@@ -444,12 +445,8 @@ class PregnantStatusSystem(System):
             )
             birth_event = BirthEvent(current_date, baby)
 
-            character.fire_event(child_born_event)
-            other_parent.fire_event(child_born_event)
-            baby.fire_event(birth_event)
-
-            self.world.get_resource(AllEvents).append(child_born_event)
-            self.world.get_resource(AllEvents).append(birth_event)
+            self.world.fire_event(child_born_event)
+            self.world.fire_event(birth_event)
 
 
 class RelationshipUpdateSystem(ISystem):

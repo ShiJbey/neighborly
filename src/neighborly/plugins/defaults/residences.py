@@ -15,4 +15,4 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    load_prefab(_RESOURCES_DIR / "residence.default.house.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "residence.default.house.yaml")

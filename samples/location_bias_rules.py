@@ -19,7 +19,7 @@ from neighborly.utils.common import (
 sim = Neighborly()
 
 
-@component(sim)
+@component(sim.world)
 @dataclass
 class Actor(Component):
     name: str
@@ -28,37 +28,37 @@ class Actor(Component):
         return {"name": self.name}
 
 
-@component(sim)
+@component(sim.world)
 class SocialButterfly(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {}
 
 
-@component(sim)
+@component(sim.world)
 class HealthNut(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {}
 
 
-@component(sim)
+@component(sim.world)
 class BookWorm(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {}
 
 
-@component(sim)
+@component(sim.world)
 class RecoveringAlcoholic(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {}
 
 
-@component(sim)
+@component(sim.world)
 class Shopaholic(Component):
     def to_dict(self) -> Dict[str, Any]:
         return {}
 
 
-@location_bias_rule("social-butterfly")
+@location_bias_rule(sim.world, "social-butterfly")
 def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(SocialButterfly) and location_has_activities(
         location, "Socializing"
@@ -66,7 +66,7 @@ def social_butterfly_rule(character: GameObject, location: GameObject) -> Option
         return 2
 
 
-@location_bias_rule("recovering-alcoholic")
+@location_bias_rule(sim.world, "recovering-alcoholic")
 def recovering_alcoholic_rule(
     character: GameObject, location: GameObject
 ) -> Optional[int]:
@@ -76,7 +76,7 @@ def recovering_alcoholic_rule(
         return -3
 
 
-@location_bias_rule("shop-alcoholic")
+@location_bias_rule(sim.world, "shop-alcoholic")
 def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(Shopaholic) and location_has_activities(
         location, "Shopping"
@@ -84,7 +84,7 @@ def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int
         return 3
 
 
-@location_bias_rule("book-worm")
+@location_bias_rule(sim.world, "book-worm")
 def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(BookWorm) and location_has_activities(
         location, "Reading"
@@ -92,7 +92,7 @@ def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]
         return 2
 
 
-@location_bias_rule("health-nut")
+@location_bias_rule(sim.world, "health-nut")
 def rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(HealthNut) and location_has_activities(
         location, "Recreation"
@@ -168,9 +168,9 @@ def main():
 
     for c in characters:
         # Score all the locations in the map
-        probs = calculate_location_probabilities(c, locations)
+        probabilities = calculate_location_probabilities(c, locations)
         print(f"== {c.get_component(Actor).name} ==")
-        print([(loc.name, prob) for prob, loc in probs])
+        print([(loc.name, prob) for prob, loc in probabilities])
 
 
 if __name__ == "__main__":

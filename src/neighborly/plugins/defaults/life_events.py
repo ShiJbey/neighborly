@@ -18,7 +18,7 @@ from neighborly.components.residence import Residence, Resident
 from neighborly.components.shared import Age, Lifespan
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import QB, Active, GameObject, World
-from neighborly.core.life_event import RandomLifeEvent, AllEvents, RandomLifeEvents
+from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
 from neighborly.core.relationship import (
     Relationship,
     RelationshipManager,
@@ -34,8 +34,10 @@ from neighborly.core.status import add_status, has_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 from neighborly.plugins.defaults.actions import Die
 from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.utils.common import set_character_name, set_residence, shutdown_business
+from neighborly.utils.common import set_residence, shutdown_business
 from neighborly.utils.query import are_related, is_married, is_single, with_relationship
+
+from neighborly.command import SetCharacterName
 
 
 class StartDatingLifeEvent(RandomLifeEvent):
@@ -50,16 +52,14 @@ class StartDatingLifeEvent(RandomLifeEvent):
     def get_probability(self) -> float:
         return 1
 
-    def execute(self) -> None:
+    def execute(self, world: World) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
 
-        initiator.fire_event(self)
-        other.fire_event(self)
-        initiator.world.get_resource(AllEvents).append(self)
-
         add_relationship_status(initiator, other, Dating())
         add_relationship_status(other, initiator, Dating())
+
+        initiator.world.fire_event(self)
 
     @staticmethod
     def _bind_initiator(
@@ -173,16 +173,14 @@ class DatingBreakUp(RandomLifeEvent):
     def get_probability(self) -> float:
         return 1
 
-    def execute(self) -> None:
+    def execute(self, world: World) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
 
-        initiator.fire_event(self)
-        other.fire_event(self)
-        initiator.world.get_resource(AllEvents).append(self)
-
         remove_relationship_status(initiator, other, Dating)
         remove_relationship_status(other, initiator, Dating)
+
+        initiator.world.fire_event(self)
 
     @staticmethod
     def _bind_initiator(
@@ -303,16 +301,14 @@ class DivorceLifeEvent(RandomLifeEvent):
     def get_probability(self) -> float:
         return 0.8
 
-    def execute(self):
+    def execute(self, world: World):
         initiator = self["Initiator"]
         ex_spouse = self["Other"]
 
-        initiator.fire_event(self)
-        ex_spouse.fire_event(self)
-        initiator.world.get_resource(AllEvents).append(self)
-
         remove_relationship_status(initiator, ex_spouse, Married)
         remove_relationship_status(ex_spouse, initiator, Married)
+
+        initiator.world.fire_event(self)
 
 
 class MarriageLifeEvent(RandomLifeEvent):
@@ -423,14 +419,9 @@ class MarriageLifeEvent(RandomLifeEvent):
     def get_probability(self) -> float:
         return 0.8
 
-    def execute(self) -> None:
+    def execute(self, world: World) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
-        world = initiator.world
-
-        initiator.fire_event(self)
-        other.fire_event(self)
-        initiator.world.get_resource(AllEvents).append(self)
 
         remove_relationship_status(initiator, other, Dating)
         remove_relationship_status(other, initiator, Dating)
@@ -453,7 +444,7 @@ class MarriageLifeEvent(RandomLifeEvent):
         # Change last names
         new_last_name = initiator.get_component(GameCharacter).last_name
 
-        set_character_name(other, last_name=new_last_name)
+        SetCharacterName(other, last_name=new_last_name).execute(world)
 
         for relationship in get_relationships_with_statuses(other, ParentOf):
             rel = relationship.get_component(Relationship)
@@ -468,7 +459,9 @@ class MarriageLifeEvent(RandomLifeEvent):
             if target.get_component(
                 LifeStage
             ).life_stage < LifeStageType.YoungAdult and not is_married(target):
-                set_character_name(target, last_name=new_last_name)
+                SetCharacterName(target, last_name=new_last_name).execute(world)
+
+        world.fire_event(self)
 
 
 class GetPregnantLifeEvent(RandomLifeEvent):
@@ -560,13 +553,10 @@ class GetPregnantLifeEvent(RandomLifeEvent):
 
         return cls(world.get_resource(SimDateTime), pregnant_one, other)
 
-    def execute(self):
+    def execute(self, world: World):
         current_date = self["PregnantOne"].world.get_resource(SimDateTime)
         due_date = current_date.copy()
         due_date.increment(months=9)
-
-        self["PregnantOne"].fire_event(self)
-        self["PregnantOne"].world.get_resource(AllEvents).append(self)
 
         add_status(
             self["PregnantOne"],
@@ -575,6 +565,8 @@ class GetPregnantLifeEvent(RandomLifeEvent):
                 due_date=due_date,
             ),
         )
+
+        world.fire_event(self)
 
     def get_probability(self):
         gameobject = self["PregnantOne"]
@@ -623,23 +615,22 @@ class DieOfOldAge(RandomLifeEvent):
 
         return age / (lifespan + 10.0)
 
-    def execute(self) -> None:
-        self["Deceased"].fire_event(self)
-        self["Deceased"].world.get_resource(AllEvents).append(self)
+    def execute(self, world: World) -> None:
+        self["Deceased"].world.fire_event(self)
         Die(self["Deceased"]).evaluate()
 
 
 class GoOutOfBusiness(RandomLifeEvent):
     """Businesses can randomly go out of business"""
 
-    def execute(self):
+    def execute(self, world: World):
         business = self["Business"]
 
         owner_id = business.get_component(Business).owner
 
         if owner_id:
             owner = business.world.get_gameobject(owner_id)
-            owner.fire_event(self)
+            owner.world.fire_event(self)
         shutdown_business(self["Business"])
 
     def get_probability(self) -> float:
@@ -690,10 +681,11 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    # RandomLifeEvents.add(MarriageLifeEvent)
-    # RandomLifeEvents.add(StartDatingLifeEvent)
-    # RandomLifeEvents.add(DatingBreakUp)
-    # RandomLifeEvents.add(DivorceLifeEvent)
-    RandomLifeEvents.add(GetPregnantLifeEvent)
-    RandomLifeEvents.add(DieOfOldAge)
-    RandomLifeEvents.add(GoOutOfBusiness)
+    event_library = sim.world.get_resource(RandomLifeEventLibrary)
+    # event_library.add(MarriageLifeEvent)
+    # event_library.add(StartDatingLifeEvent)
+    # event_library.add(DatingBreakUp)
+    # event_library.add(DivorceLifeEvent)
+    event_library.add(GetPregnantLifeEvent)
+    event_library.add(DieOfOldAge)
+    event_library.add(GoOutOfBusiness)

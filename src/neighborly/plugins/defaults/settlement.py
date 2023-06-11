@@ -15,4 +15,4 @@ _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    load_prefab(_RESOURCES_DIR / "town.default.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "town.default.yaml")

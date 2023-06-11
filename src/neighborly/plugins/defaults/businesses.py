@@ -15,8 +15,8 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    load_occupation_types(_RESOURCES_DIR / "occupation_types.yaml")
+    load_occupation_types(sim.world, _RESOURCES_DIR / "occupation_types.yaml")
 
-    load_prefab(_RESOURCES_DIR / "business.default.yaml")
-    load_prefab(_RESOURCES_DIR / "business.default.library.yaml")
-    load_prefab(_RESOURCES_DIR / "business.default.cafe.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "business.default.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "business.default.library.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "business.default.cafe.yaml")

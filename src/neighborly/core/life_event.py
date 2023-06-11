@@ -4,8 +4,6 @@ import random
 from abc import ABC, abstractmethod
 from typing import (
     Any,
-    Callable,
-    ClassVar,
     Dict,
     Iterable,
     Iterator,
@@ -13,6 +11,8 @@ from typing import (
     Optional,
     Type,
 )
+
+from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, Event, GameObject, World, ISerializable
 from neighborly.core.roles import Role, RoleList
@@ -133,7 +133,7 @@ class RandomLifeEvent(LifeEvent):
         raise NotImplementedError
 
     @abstractmethod
-    def execute(self) -> None:
+    def execute(self, world: World) -> None:
         """Executes the LifeEvent instance, emitting an event."""
         raise NotImplementedError
 
@@ -165,18 +165,21 @@ class RandomLifeEvent(LifeEvent):
         raise NotImplementedError
 
 
-class RandomLifeEvents:
-    """Static class used to store LifeEvents that can be triggered randomly."""
+class RandomLifeEventLibrary:
+    """Class used to store LifeEvents that can be triggered randomly."""
 
-    _registry: Dict[str, Type[RandomLifeEvent]] = {}
+    __slots__ = "_event_types"
 
-    @classmethod
-    def add(cls, life_event_type: Type[RandomLifeEvent]) -> None:
+    _event_types: OrderedSet[Type[RandomLifeEvent]]
+
+    def __init__(self) -> None:
+        self._event_types = OrderedSet([])
+
+    def add(self, life_event_type: Type[RandomLifeEvent]) -> None:
         """Register a new random LifeEvent type"""
-        cls._registry[life_event_type.__name__] = life_event_type
+        self._event_types.add(life_event_type)
 
-    @classmethod
-    def pick_one(cls, rng: random.Random) -> Type[RandomLifeEvent]:
+    def pick_one(self, rng: random.Random) -> Type[RandomLifeEvent]:
         """
         Return a random registered random life event
 
@@ -190,12 +193,11 @@ class RandomLifeEvents:
         Type[RandomLifeEvent]
             A randomly-chosen random event from the registry
         """
-        return rng.choice(list(cls._registry.values()))
+        return rng.choice(list(self._event_types))
 
-    @classmethod
-    def get_size(cls) -> int:
+    def __len__(self) -> int:
         """Get the number of registered random life events."""
-        return len(cls._registry)
+        return len(self._event_types)
 
 
 class EventHistory(Component, ISerializable):
@@ -236,10 +238,8 @@ class EventHistory(Component, ISerializable):
         )
 
 
-class AllEvents(ISerializable):
+class EventLog(ISerializable):
     """Stores a record of all past life events."""
-
-    _event_listeners: ClassVar[List[Callable[[LifeEvent], None]]] = []
 
     __slots__ = "_history"
 
@@ -259,8 +259,6 @@ class AllEvents(ISerializable):
             The event to record.
         """
         self._history[event.get_id()] = event
-        for cb in self._event_listeners:
-            cb(event)
 
     def to_dict(self) -> Dict[str, Any]:
         return {str(key): entry.to_dict() for key, entry in self._history.items()}
@@ -270,19 +268,3 @@ class AllEvents(ISerializable):
 
     def __getitem__(self, key: int) -> LifeEvent:
         return self._history[key]
-
-    @classmethod
-    def on_event(cls, listener: Callable[[LifeEvent], None]) -> None:
-        """Registers an event listener called when events are recorded.
-
-        Parameters
-        ----------
-        listener
-            A callback function
-        """
-        cls._event_listeners.append(listener)
-
-    @classmethod
-    def clear_event_listeners(cls) -> None:
-        """Clear all event listeners registered to this class."""
-        cls._event_listeners.clear()

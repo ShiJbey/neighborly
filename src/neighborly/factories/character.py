@@ -17,9 +17,10 @@ class GameCharacterFactory(IComponentFactory):
     def create(self, world: World, **kwargs: Any) -> Component:
         first_name_pattern: str = kwargs["first_name"]
         last_name_pattern: str = kwargs["last_name"]
+        tracery = world.get_resource(Tracery)
 
-        first_name = Tracery.generate(first_name_pattern)
-        last_name = Tracery.generate(last_name_pattern)
+        first_name = tracery.generate(first_name_pattern)
+        last_name = tracery.generate(last_name_pattern)
 
         return GameCharacter(first_name, last_name)
 

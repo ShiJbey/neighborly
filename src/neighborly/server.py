@@ -9,7 +9,7 @@ from marshmallow import Schema, fields
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import World
 from neighborly.core.ecs.ecs import ISerializable
-from neighborly.core.life_event import AllEvents
+from neighborly.core.life_event import EventLog
 from neighborly.core.time import SimDateTime
 from neighborly.data_collection import DataCollector
 from neighborly.simulation import Neighborly
@@ -96,27 +96,26 @@ class SimEventsResource(Resource):
     world: World
 
     def get(self, event_id: int) -> Dict[str, Any]:
-        return self.world.get_resource(AllEvents)[event_id].to_dict()
-
+        return self.world.get_resource(EventLog)[event_id].to_dict()
 
 
 class SimAllEventsResource(Resource):
     world: World
 
     def get(self) -> Dict[str, Any]:
-        return {
-                "events": [e.to_dict() for e in self.world.get_resource(AllEvents)]
-            }
+        return {"events": [e.to_dict() for e in self.world.get_resource(EventLog)]}
 
 
 class WorldSeedResource(Resource):
     world: World
+
     def get(self):
         return self.world.get_resource(NeighborlyConfig).seed
 
 
 class WorldDateResource(Resource):
     world: World
+
     def get(self):
         return self.world.get_resource(SimDateTime).to_date_str()
 

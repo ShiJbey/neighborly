@@ -7,6 +7,10 @@ from neighborly.core.life_event import LifeEvent
 from neighborly.core.roles import Role
 from neighborly.core.time import SimDateTime
 
+from neighborly.core.ecs.ecs import Event
+
+from neighborly.components.character import LifeStageType
+
 
 class JoinSettlementEvent(LifeEvent):
     def __init__(
@@ -297,30 +301,114 @@ class BusinessOpenEvent(LifeEvent):
         return self["Business"]
 
 
-class NewSettlementEvent(LifeEvent):
+class SettlementCreatedEvent(Event):
+    __slots__ = "_timestamp", "_settlement"
+
+    _timestamp: SimDateTime
+    _settlement: GameObject
+
     def __init__(
         self,
         date: SimDateTime,
         settlement: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Settlement", settlement)])
+        self._timestamp = date.copy()
+        self._settlement = settlement
 
     @property
-    def settlement(self):
-        return self["Settlement"]
+    def settlement(self) -> GameObject:
+        return self._settlement
+
+    @property
+    def timestamp(self) -> SimDateTime:
+        return self._timestamp
 
 
-class NewCharacterEvent(LifeEvent):
+class CharacterCreatedEvent(Event):
+    __slots__ = "_character", "_timestamp"
+
     def __init__(
         self,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__()
+        self._character = character
+        self._timestamp = date
 
     @property
-    def character(self):
-        return self["Character"]
+    def character(self) -> GameObject:
+        return self.character
+
+    @property
+    def timestamp(self) -> SimDateTime:
+        return self._timestamp
+
+
+class CharacterNameChangeEvent(Event):
+    __slots__ = "_character", "_timestamp", "_first_name", "_last_name"
+
+    def __init__(
+        self,
+        date: SimDateTime,
+        character: GameObject,
+        first_name: str,
+        last_name: str,
+    ) -> None:
+        super().__init__()
+        self._character = character
+        self._timestamp = date
+        self._first_name = first_name
+        self._last_name = last_name
+
+    @property
+    def character(self) -> GameObject:
+        return self.character
+
+    @property
+    def timestamp(self) -> SimDateTime:
+        return self._timestamp
+
+    @property
+    def first_name(self) -> str:
+        return self._first_name
+
+    @property
+    def last_name(self) -> str:
+        return self._last_name
+
+
+class CharacterAgeChangeEvent(Event):
+    __slots__ = "_character", "_timestamp", "_age", "_life_stage"
+
+    def __init__(
+        self,
+        date: SimDateTime,
+        character: GameObject,
+        age: float,
+        life_stage: LifeStageType,
+    ) -> None:
+        super().__init__()
+        self._character = character
+        self._timestamp = date
+        self._age = age
+        self._life_stage = life_stage
+
+    @property
+    def character(self) -> GameObject:
+        return self.character
+
+    @property
+    def timestamp(self) -> SimDateTime:
+        return self._timestamp
+
+    @property
+    def age(self) -> float:
+        return self._age
+
+    @property
+    def life_stage(self) -> LifeStageType:
+        return self._life_stage
 
 
 class NewBusinessEvent(LifeEvent):
@@ -336,17 +424,31 @@ class NewBusinessEvent(LifeEvent):
         return self["Business"]
 
 
-class NewResidenceEvent(LifeEvent):
+class ResidenceCreatedEvent(Event):
+    __slots__ = "_timestamp", "_residence"
+
+    _timestamp: SimDateTime
+    """Simulation date when event occurred."""
+
+    _residence: GameObject
+    """Reference to the created residence."""
+
     def __init__(
         self,
-        date: SimDateTime,
+        timestamp: SimDateTime,
         residence: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Residence", residence)])
+        super().__init__()
+        self._timestamp = timestamp.copy()
+        self._residence = residence
 
     @property
-    def residence(self):
-        return self["Residence"]
+    def residence(self) -> GameObject:
+        return self._residence
+
+    @property
+    def timestamp(self) -> SimDateTime:
+        return self._timestamp
 
 
 class BecomeAdolescentEvent(LifeEvent):

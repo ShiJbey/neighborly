@@ -16,7 +16,7 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    load_prefab(_RESOURCES_DIR / "character.default.yaml")
-    load_prefab(_RESOURCES_DIR / "character.default.male.yaml")
-    load_prefab(_RESOURCES_DIR / "character.default.female.yaml")
-    load_prefab(_RESOURCES_DIR / "character.default.non-binary.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "character.default.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "character.default.male.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "character.default.female.yaml")
+    load_prefab(sim.world, _RESOURCES_DIR / "character.default.non-binary.yaml")

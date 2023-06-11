@@ -13,19 +13,14 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 from neighborly import Component, Neighborly
-from neighborly.core.ecs import (
-    ComponentAddedEvent,
-    ComponentRemovedEvent,
-    Event,
-    GameObject,
-)
+from neighborly.core.ecs import ComponentAddedEvent, ComponentRemovedEvent, Event, World
 from neighborly.core.status import StatusManager
 from neighborly.decorators import component
 
 sim = Neighborly()
 
 
-@component(sim)
+@component(sim.world)
 @dataclass
 class Actor(Component):
     name: str
@@ -34,7 +29,7 @@ class Actor(Component):
         return {"name": self.name}
 
 
-@component(sim)
+@component(sim.world)
 @dataclass
 class AdventurerStats(Component):
     attack: int
@@ -44,7 +39,7 @@ class AdventurerStats(Component):
         return {"attack": self.attack, "defense": self.defense}
 
 
-@component(sim)
+@component(sim.world)
 @dataclass()
 class AttackBuff(Component):
     amount: int
@@ -53,29 +48,25 @@ class AttackBuff(Component):
         return {"amount": self.amount}
 
 
-def handle_event(gameobject: GameObject, event: Event) -> None:
-    print(f"{gameobject.name}: {str(type(event))}")
+def handle_event(world: World, event: Event) -> None:
+    print(f"{str(type(event))}")
 
 
-def on_attack_buff_added(gameobject: GameObject, event: ComponentAddedEvent) -> None:
-    c = event.component
-    if isinstance(c, AttackBuff):
-        stats = gameobject.get_component(AdventurerStats)
-        stats.attack += c.amount
+def on_attack_buff_added(world: World, event: ComponentAddedEvent) -> None:
+    if isinstance(event.component, AttackBuff):
+        stats = event.gameobject.get_component(AdventurerStats)
+        stats.attack += event.component.amount
 
 
-def on_attack_buffer_removed(
-    gameobject: GameObject, event: ComponentRemovedEvent
-) -> None:
-    c = event.component
-    if isinstance(c, AttackBuff):
-        stats = gameobject.get_component(AdventurerStats)
-        stats.attack -= c.amount
+def on_attack_buffer_removed(world: World, event: ComponentRemovedEvent) -> None:
+    if isinstance(event.component, AttackBuff):
+        stats = event.gameobject.get_component(AdventurerStats)
+        stats.attack -= event.component.amount
 
 
-GameObject.on_any(handle_event)
-GameObject.on(ComponentAddedEvent, on_attack_buff_added)
-GameObject.on(ComponentRemovedEvent, on_attack_buffer_removed)
+sim.world.on_any_event(handle_event)
+sim.world.on_event(ComponentAddedEvent, on_attack_buff_added)
+sim.world.on_event(ComponentRemovedEvent, on_attack_buffer_removed)
 
 
 def main():

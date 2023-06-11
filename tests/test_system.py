@@ -31,7 +31,7 @@ def test_sim() -> Neighborly:
 
 def test_elapsed_time(test_sim: Neighborly):
     elapsed_times = []
-    test_sim.add_system(TestSystem(TimeDelta(), elapsed_times, []))
+    test_sim.world.add_system(TestSystem(TimeDelta(), elapsed_times, []))
     test_sim.step()
     test_sim.step()
     test_sim.step()
@@ -40,7 +40,7 @@ def test_elapsed_time(test_sim: Neighborly):
 
 def test_interval_run(test_sim: Neighborly):
     run_times = []
-    test_sim.add_system(TestSystem(TimeDelta(hours=6), [], run_times))
+    test_sim.world.add_system(TestSystem(TimeDelta(hours=6), [], run_times))
     test_sim.step()
     test_sim.step()
     test_sim.step()

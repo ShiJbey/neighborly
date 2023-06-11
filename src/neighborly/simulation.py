@@ -6,7 +6,7 @@ import random
 import re
 import sys
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Type, Union
+from typing import Callable, Optional, Union
 
 import neighborly.components as components
 import neighborly.core.relationship as relationship
@@ -18,15 +18,11 @@ from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import (
     Active,
-    Component,
     EntityPrefab,
-    GameObject,
     GameObjectFactory,
-    IComponentFactory,
-    ISystem,
     World,
 )
-from neighborly.core.life_event import AllEvents, EventHistory
+from neighborly.core.life_event import EventLog, EventHistory, RandomLifeEventLibrary
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
@@ -37,6 +33,7 @@ from neighborly.event_listeners import (
     deactivate_relationships_on_depart,
     join_workforce_when_young_adult,
     on_adult_join_settlement,
+    print_life_events,
 )
 from neighborly.events import (
     BecomeYoungAdultEvent,
@@ -48,6 +45,8 @@ from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
 
 from neighborly.factories.business import OperatingHoursFactory
+
+from neighborly.core.location_bias import LocationBiasRuleLibrary
 
 
 class PluginSetupError(Exception):
@@ -95,24 +94,28 @@ class Neighborly:
         self.world = World()
         self.config = config if config else NeighborlyConfig()
 
-        # Seed RNG for libraries we don't control, like Tracery
+        # Seed RNG for libraries we don't control
         random.seed(self.config.seed)
-        Tracery.set_rng_seed(self.config.seed)
-
-        # Set the relationship schema
-        GameObjectFactory.add(
-            EntityPrefab(
-                name="relationship",
-                components={**self.config.relationship_schema.components},
-            )
-        )
 
         # Add default resources
         self.world.add_resource(self.config)
         self.world.add_resource(random.Random(self.config.seed))
         self.world.add_resource(self.config.start_date.copy())
-        self.world.add_resource(AllEvents())
+        self.world.add_resource(Tracery(self.config.seed))
+        self.world.add_resource(EventLog())
+        self.world.add_resource(relationship.SocialRuleLibrary())
+        self.world.add_resource(LocationBiasRuleLibrary())
         self.world.add_resource(DataCollector())
+        self.world.add_resource(RandomLifeEventLibrary())
+        self.world.add_resource(GameObjectFactory())
+
+        # Set the relationship schema
+        self.world.get_resource(GameObjectFactory).add(
+            EntityPrefab(
+                name="relationship",
+                components={**self.config.relationship_schema.components},
+            )
+        )
 
         # Add default top-level system groups (in execution order)
         self.world.add_system(systems.InitializationSystemGroup())
@@ -145,9 +148,6 @@ class Neighborly:
         # Add status-update systems (in execution order)
         self.world.add_system(systems.PregnantStatusSystem())
         self.world.add_system(systems.UnemployedStatusSystem())
-
-        if self.config.verbose:
-            AllEvents.on_event(lambda event: print(str(event)))
 
         # Time actually sits outside any group and runs last
         self.world.add_system(systems.TimeSystem())
@@ -199,7 +199,9 @@ class Neighborly:
         self.world.register_component(components.AgingConfig)
         self.world.register_component(components.ReproductionConfig)
         self.world.register_component(components.Name, factory=NameFactory())
-        self.world.register_component(components.OperatingHours, factory=OperatingHoursFactory())
+        self.world.register_component(
+            components.OperatingHours, factory=OperatingHoursFactory()
+        )
         self.world.register_component(components.Lifespan)
         self.world.register_component(components.Age)
         self.world.register_component(components.CharacterSpawnTable)
@@ -209,11 +211,14 @@ class Neighborly:
         self.world.register_component(components.LifeStage)
 
         # Event listeners
-        GameObject.on(JoinSettlementEvent, on_adult_join_settlement)
-        GameObject.on(BecomeYoungAdultEvent, join_workforce_when_young_adult)
-        GameObject.on(DeathEvent, deactivate_relationships_on_death)
-        GameObject.on(DepartEvent, deactivate_relationships_on_depart)
-        GameObject.on_any(add_event_to_personal_history)
+        self.world.on_event(JoinSettlementEvent, on_adult_join_settlement)
+        self.world.on_event(BecomeYoungAdultEvent, join_workforce_when_young_adult)
+        self.world.on_event(DeathEvent, deactivate_relationships_on_death)
+        self.world.on_event(DepartEvent, deactivate_relationships_on_depart)
+        self.world.on_any_event(add_event_to_personal_history)
+
+        if self.config.verbose:
+            self.world.on_any_event(print_life_events)
 
         # Load plugins from the config
         for entry in self.config.plugins:
@@ -329,50 +334,3 @@ class Neighborly:
     def step(self) -> None:
         """Advance the simulation a single timestep."""
         self.world.step()
-
-    def register_component(
-        self,
-        component_type: Type[Component],
-        name: Optional[str] = None,
-        factory: Optional[IComponentFactory] = None,
-    ) -> None:
-        """Register a component type with the  simulation.
-
-        Registers a component class type with the simulation's World instance.
-        This allows content authors to use the Component in YAML files and
-        EntityPrefabs.
-
-        Parameters
-        ----------
-        component_type
-            The type of component to add
-        name
-            A name to register the component type under (defaults to name of class)
-        factory
-            A factory instance used to construct this component type
-            (defaults to DefaultComponentFactory())
-        """
-
-        self.world.register_component(component_type, name, factory)
-
-    def add_resource(self, resource: Any) -> None:
-        """Add a shared resource.
-
-        Parameters
-        ----------
-        resource
-            An instance of the shared resource.
-        """
-
-        self.world.add_resource(resource)
-
-    def add_system(self, system: ISystem) -> None:
-        """Add a simulation system.
-
-        Parameters
-        ----------
-        system
-            The system to add.
-        """
-
-        self.world.add_system(system)

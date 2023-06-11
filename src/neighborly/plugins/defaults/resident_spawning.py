@@ -22,7 +22,6 @@ from neighborly.components.character import (
 )
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import Active, GameObject
-from neighborly.core.life_event import AllEvents
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -40,9 +39,9 @@ from neighborly.utils.common import (
     add_character_to_settlement,
     add_residence_to_settlement,
     set_residence,
-    spawn_character,
-    spawn_residence,
 )
+
+from neighborly.command import SpawnCharacter, SpawnResidence
 
 plugin_info = PluginInfo(
     name="default resident spawning plugin",
@@ -100,7 +99,7 @@ class SpawnFamilySystem(System):
 
         prefab = spawn_table.choose_random(rng)
 
-        residence = spawn_residence(self.world, prefab)
+        residence = SpawnResidence(prefab).execute(self.world).get_result()
 
         add_residence_to_settlement(
             residence,
@@ -135,8 +134,10 @@ class SpawnFamilySystem(System):
         generated_characters = _GeneratedFamily()
 
         # Create a new entity using the archetype
-        character = spawn_character(
-            self.world, prefab, life_stage=LifeStageType.YoungAdult
+        character = (
+            SpawnCharacter(prefab, life_stage=LifeStageType.YoungAdult)
+            .execute(self.world)
+            .get_result()
         )
 
         generated_characters.adults.append(character)
@@ -150,11 +151,14 @@ class SpawnFamilySystem(System):
             )
 
         if spouse_prefab:
-            spouse = spawn_character(
-                self.world,
-                spouse_prefab,
-                last_name=character.get_component(GameCharacter).last_name,
-                life_stage=LifeStageType.Adult,
+            spouse = (
+                SpawnCharacter(
+                    spouse_prefab,
+                    last_name=character.get_component(GameCharacter).last_name,
+                    life_stage=LifeStageType.Adult,
+                )
+                .execute(self.world)
+                .get_result()
             )
 
             generated_characters.adults.append(spouse)
@@ -192,11 +196,14 @@ class SpawnFamilySystem(System):
             chosen_child_prefabs = rng.sample(potential_child_prefabs, num_kids)
 
             for child_prefab in chosen_child_prefabs:
-                child = spawn_character(
-                    self.world,
-                    child_prefab,
-                    last_name=character.get_component(GameCharacter).last_name,
-                    life_stage=LifeStageType.Child,
+                child = (
+                    SpawnCharacter(
+                        child_prefab,
+                        last_name=character.get_component(GameCharacter).last_name,
+                        life_stage=LifeStageType.Child,
+                    )
+                    .execute(self.world)
+                    .get_result()
                 )
                 generated_characters.children.append(child)
                 children.append(child)
@@ -277,7 +284,6 @@ class SpawnFamilySystem(System):
         families_to_spawn = families_per_year // 2
 
         rng = self.world.get_resource(random.Random)
-        all_events = self.world.get_resource(AllEvents)
         date = self.world.get_resource(SimDateTime)
 
         # Spawn families in each settlement
@@ -306,16 +312,13 @@ class SpawnFamilySystem(System):
                 for adult in family.adults:
                     add_character_to_settlement(adult, settlement.gameobject)
                     set_residence(adult, residence, True)
-                    adult.fire_event(event)
+                    adult.world.fire_event(event)
 
                 for child in family.children:
                     add_character_to_settlement(child, settlement.gameobject)
                     set_residence(child, residence, False)
-                    child.fire_event(event)
-
-                # Record a life event
-                all_events.append(event)
+                    child.world.fire_event(event)
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    sim.add_system(SpawnFamilySystem())
+    sim.world.add_system(SpawnFamilySystem())

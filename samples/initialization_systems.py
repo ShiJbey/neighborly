@@ -16,26 +16,27 @@ from neighborly import ISystem, Neighborly, NeighborlyConfig
 from neighborly.components.shared import Name
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import system
-from neighborly.utils.common import spawn_settlement
+
+from neighborly.command import SpawnSettlement
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj({"plugins": ["neighborly.plugins.defaults.settlement"]})
 )
 
 
-@system(sim)
+@system(sim.world)
 class InitializeMajorSettlements(ISystem):
     sys_group = "initialization"
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         print("Setting up settlements...")
-        spawn_settlement(self.world, "settlement", name="Winterfell")
-        spawn_settlement(self.world, "settlement", name="The Vale of Arryn")
-        spawn_settlement(self.world, "settlement", name="Casterly Rock")
-        spawn_settlement(self.world, "settlement", name="King's Landing")
-        spawn_settlement(self.world, "settlement", name="Highgarden")
-        spawn_settlement(self.world, "settlement", name="Braavos")
-        spawn_settlement(self.world, "settlement", name="Pentos")
+        SpawnSettlement("settlement", name="Winterfell").execute(self.world)
+        SpawnSettlement("settlement", name="The Vale of Arryn").execute(self.world)
+        SpawnSettlement("settlement", name="Casterly Rock").execute(self.world)
+        SpawnSettlement("settlement", name="King's Landing").execute(self.world)
+        SpawnSettlement("settlement", name="Highgarden").execute(self.world)
+        SpawnSettlement("settlement", name="Braavos").execute(self.world)
+        SpawnSettlement("settlement", name="Pentos").execute(self.world)
 
 
 def main():

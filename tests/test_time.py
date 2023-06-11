@@ -181,6 +181,6 @@ def test_datetime_strptime_compat() -> None:
     """Test that SimDateTime.to_iso_str is compatible with datetime.strptime"""
 
     date = SimDateTime(2023, 6, 3, 14)
-    parsed_date = datetime.datetime.strptime(str(date),"%Y-%m-%dT%H:%M:%S")
+    parsed_date = datetime.datetime.strptime(str(date), "%Y-%m-%dT%H:%M:%S")
 
     assert parsed_date == datetime.datetime(2023, 6, 3, 14, 0)

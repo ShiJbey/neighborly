@@ -1,7 +1,6 @@
-import json
 import math
 import random
-from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar
+from typing import Iterable, List, Optional, Tuple
 
 from neighborly.components.activity import Activities
 from neighborly.components.business import (
@@ -18,20 +17,13 @@ from neighborly.components.business import (
     WorkHistory,
 )
 from neighborly.components.character import (
-    AgingConfig,
     Departed,
-    GameCharacter,
-    Gender,
-    GenderType,
-    LifeStage,
-    LifeStageType,
     Married,
     ParentOf,
     ReproductionConfig,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.shared import (
-    Age,
     CurrentLocation,
     CurrentLot,
     CurrentSettlement,
@@ -43,8 +35,7 @@ from neighborly.components.shared import (
     PrefabName,
 )
 from neighborly.core.ecs import Active, GameObject, GameObjectFactory, World
-from neighborly.core.life_event import AllEvents
-from neighborly.core.location_bias import LocationBiasRules
+from neighborly.core.location_bias import LocationBiasRuleLibrary
 from neighborly.core.relationship import (
     InteractionScore,
     add_relationship_status,
@@ -61,10 +52,6 @@ from neighborly.events import (
     EndJobEvent,
     JoinSettlementEvent,
     LeaveSettlementEvent,
-    NewBusinessEvent,
-    NewCharacterEvent,
-    NewResidenceEvent,
-    NewSettlementEvent,
     StartJobEvent,
 )
 
@@ -121,7 +108,6 @@ def set_location(gameobject: GameObject, location: Optional[GameObject]) -> None
 
     # Move to new location if needed
     if location is not None:
-
         gameobject.add_component(CurrentLocation(location.uid))
 
         focus = location
@@ -159,41 +145,6 @@ def at_location(gameobject: GameObject, location: GameObject) -> bool:
 ########################################
 
 
-def spawn_settlement(
-    world: World, prefab: str = "settlement", name: str = ""
-) -> GameObject:
-    """Create a new Settlement GameObject and add it to the world
-
-    Parameters
-    ----------
-    world
-        The world instance to add the settlement to
-    prefab
-        The name of the prefab with settlement data
-    name
-        Override name for the town
-
-    Returns
-    -------
-    GameObject
-        The newly created Settlement GameObject
-    """
-    settlement = GameObjectFactory.instantiate(world, prefab)
-
-    if name:
-        settlement.get_component(Name).value = name
-
-    settlement.name = settlement.get_component(Name).value
-
-    new_settlement_event = NewSettlementEvent(
-        date=world.get_resource(SimDateTime), settlement=settlement
-    )
-
-    settlement.fire_event(new_settlement_event)
-
-    return settlement
-
-
 def add_location_to_settlement(
     location: GameObject,
     settlement: GameObject,
@@ -208,7 +159,6 @@ def add_location_to_settlement(
         The settlement to add the location to
     """
     location.add_component(CurrentSettlement(settlement.uid))
-    settlement.get_component(Settlement).locations.add(location.uid)
     add_sub_location(settlement, location)
 
 
@@ -228,8 +178,6 @@ def remove_location_from_settlement(
         location.get_component(CurrentSettlement).settlement
     )
 
-    settlement.get_component(Settlement).locations.remove(location.uid)
-
     location.remove_component(CurrentSettlement)
 
     location.deactivate()
@@ -241,83 +189,6 @@ def remove_location_from_settlement(
                 frequented_locations.remove(location.uid)
 
         frequented_by.clear()
-
-
-def spawn_character(
-    world: World,
-    prefab: str,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
-    age: Optional[int] = None,
-    life_stage: Optional[LifeStageType] = None,
-    gender: Optional[GenderType] = None,
-) -> GameObject:
-    """Create a new GameCharacter GameObject and add it to the world
-
-    Parameters
-    ----------
-    world
-        The world instance to add the character to
-    prefab
-        The name of the prefab to instantiate
-    first_name
-        first name override (defaults to None)
-    last_name
-        last name override (defaults to None)
-    age
-        age override (defaults to None)
-    life_stage
-        life stage override (defaults to None)
-    gender
-        gender override (defaults to None)
-
-    Returns
-    -------
-    GameObject
-        The newly constructed character
-    """
-
-    character = GameObjectFactory.instantiate(world, prefab)
-
-    set_character_age(
-        character,
-        _generate_age_from_life_stage(
-            world.get_resource(random.Random),
-            character.get_component(AgingConfig),
-            LifeStageType.YoungAdult,
-        ),
-    )
-
-    if first_name:
-        set_character_name(character, first_name=first_name)
-
-    if last_name:
-        set_character_name(character, last_name=last_name)
-
-    if age:
-        set_character_age(character, age)
-
-    if life_stage:
-        set_character_life_stage(character, life_stage)
-
-    if gender:
-        character.get_component(Gender).gender = gender
-
-    character.name = (
-        f"{character.get_component(GameCharacter).full_name}({character.uid})"
-    )
-
-    new_character_event = NewCharacterEvent(
-        date=world.get_resource(SimDateTime), character=character
-    )
-
-    character.fire_event(new_character_event)
-
-    character.world.get_resource(AllEvents).append(new_character_event)
-
-    character.add_component(PrefabName(prefab))
-
-    return character
 
 
 def add_character_to_settlement(character: GameObject, settlement: GameObject) -> None:
@@ -341,9 +212,7 @@ def add_character_to_settlement(character: GameObject, settlement: GameObject) -
         character.world.get_resource(SimDateTime), settlement, character
     )
 
-    character.fire_event(join_settlement_event)
-
-    character.world.get_resource(AllEvents).append(join_settlement_event)
+    character.world.fire_event(join_settlement_event)
 
 
 def remove_character_from_settlement(character: GameObject) -> None:
@@ -369,40 +238,7 @@ def remove_character_from_settlement(character: GameObject) -> None:
         character.world.get_resource(SimDateTime), settlement, character
     )
 
-    character.fire_event(leave_settlement_event)
-
-    character.world.get_resource(AllEvents).append(leave_settlement_event)
-
-
-def spawn_residence(
-    world: World,
-    prefab: str,
-) -> GameObject:
-    """Instantiate a residence prefab
-
-    Parameters
-    ----------
-    world
-        The world instance to spawn the residence into
-    prefab
-        The name of a prefab to instantiate
-
-    Returns
-    -------
-    GameObject
-        The residence instance
-    """
-    residence = GameObjectFactory.instantiate(world, prefab)
-
-    residence.fire_event(
-        NewResidenceEvent(date=world.get_resource(SimDateTime), residence=residence)
-    )
-
-    residence.add_component(PrefabName(prefab))
-
-    residence.name = f"{prefab}({residence.uid})"
-
-    return residence
+    world.fire_event(leave_settlement_event)
 
 
 def add_residence_to_settlement(
@@ -474,7 +310,9 @@ def get_child_prefab(
             parent_a.get_component(ReproductionConfig).child_prefabs
         )
 
-    matching_prefabs = GameObjectFactory.get_matching_prefabs(*eligible_child_prefabs)
+    matching_prefabs = world.get_resource(GameObjectFactory).get_matching_prefabs(
+        *eligible_child_prefabs
+    )
 
     if matching_prefabs:
         return rng.choice(matching_prefabs).name
@@ -622,115 +460,7 @@ def depart_settlement(character: GameObject, reason: str = "") -> None:
 
         add_status(character, Departed())
 
-        character.fire_event(depart_event)
-
-    world.get_resource(AllEvents).append(depart_event)
-
-
-#######################################
-# Character Management
-#######################################
-
-
-def _generate_age_from_life_stage(
-    rng: random.Random, aging_config: AgingConfig, life_stage_type: LifeStageType
-) -> int:
-    """Return an age for the character given their life_stage"""
-    if life_stage_type == LifeStageType.Child:
-        return rng.randint(0, aging_config.adolescent_age - 1)
-    elif life_stage_type == LifeStageType.Adolescent:
-        return rng.randint(
-            aging_config.adolescent_age,
-            aging_config.young_adult_age - 1,
-        )
-    elif life_stage_type == LifeStageType.YoungAdult:
-        return rng.randint(
-            aging_config.young_adult_age,
-            aging_config.adult_age - 1,
-        )
-    elif life_stage_type == LifeStageType.Adult:
-        return rng.randint(
-            aging_config.adult_age,
-            aging_config.senior_age - 1,
-        )
-    else:
-        return aging_config.senior_age + int(10 * rng.random())
-
-
-def set_character_age(character: GameObject, new_age: float) -> None:
-    """Sets the name of a business"""
-    age = character.get_component(Age)
-    age.value = new_age
-
-    if not character.has_component(AgingConfig):
-        raise Exception(
-            "Cannot set life stage for a character without an AgingConfig component"
-        )
-
-    aging_config = character.get_component(AgingConfig)
-
-    life_stage = character.get_component(LifeStage)
-
-    if age.value >= aging_config.senior_age:
-        life_stage.life_stage = LifeStageType.Senior
-
-    elif age.value >= aging_config.adult_age:
-        life_stage.life_stage = LifeStageType.Adult
-
-    elif age.value >= aging_config.young_adult_age:
-        life_stage.life_stage = LifeStageType.YoungAdult
-
-    elif age.value >= aging_config.adolescent_age:
-        life_stage.life_stage = LifeStageType.Adolescent
-
-    else:
-        life_stage.life_stage = LifeStageType.Child
-
-
-def set_character_life_stage(
-    character: GameObject, life_stage_type: LifeStageType
-) -> None:
-    """Sets the name of a business"""
-    age = character.get_component(Age)
-
-    if not character.has_component(AgingConfig):
-        raise Exception(
-            "Cannot set life stage for a character without an AgingConfig component"
-        )
-
-    aging_config = character.get_component(AgingConfig)
-
-    character.get_component(LifeStage).life_stage = life_stage_type
-
-    if life_stage_type == LifeStageType.Senior:
-        age.value = aging_config.senior_age
-
-    elif life_stage_type == LifeStageType.Adult:
-        age.value = aging_config.adult_age
-
-    elif life_stage_type == LifeStageType.YoungAdult:
-        age.value = aging_config.young_adult_age
-
-    elif life_stage_type == LifeStageType.Adolescent:
-        age.value = aging_config.adolescent_age
-
-    elif life_stage_type == LifeStageType.Child:
-        age.value = 0
-
-
-def set_character_name(
-    character: GameObject, first_name: str = "", last_name: str = ""
-) -> None:
-    """Sets the name of a business"""
-    game_character = character.get_component(GameCharacter)
-
-    if first_name:
-        game_character.first_name = first_name
-
-    if last_name:
-        game_character.last_name = last_name
-
-    character.name = f"{game_character.full_name}({character.uid})"
+        character.world.fire_event(depart_event)
 
 
 #######################################
@@ -742,31 +472,6 @@ def set_business_name(business: GameObject, name: str) -> None:
     """Sets the name of a business"""
     business.name = name
     business.get_component(Name).value = name
-
-
-def spawn_business(
-    world: World,
-    prefab: str,
-    name: str = "",
-) -> GameObject:
-    business = GameObjectFactory.instantiate(world, prefab)
-
-    if name:
-        business.get_component(Name).value = name
-
-    business.name = f"{business.get_component(Name).value}({business.uid})"
-
-    business.add_component(PrefabName(prefab))
-
-    new_business_event = NewBusinessEvent(
-        date=world.get_resource(SimDateTime), business=business
-    )
-
-    business.fire_event(new_business_event)
-
-    business.world.get_resource(AllEvents).append(new_business_event)
-
-    return business
 
 
 def add_business_to_settlement(
@@ -872,8 +577,7 @@ def shutdown_business(business: GameObject) -> None:
     # Un-mark the business as active so it doesn't appear in queries
     business.remove_component(Location)
 
-    business.fire_event(event)
-    world.get_resource(AllEvents).append(event)
+    world.fire_event(event)
 
 
 def end_job(
@@ -971,10 +675,7 @@ def end_job(
         reason=reason,
     )
 
-    character.fire_event(end_job_event)
-
-    # Emit the event
-    world.get_resource(AllEvents).append(end_job_event)
+    world.fire_event(end_job_event)
 
 
 def start_job(
@@ -1071,8 +772,7 @@ def start_job(
         occupation=occupation.occupation_type,
     )
 
-    character.fire_event(start_job_event)
-    character.world.get_resource(AllEvents).append(start_job_event)
+    world.fire_event(start_job_event)
 
 
 def get_places_with_services(world: World, *services: str) -> List[int]:
@@ -1199,8 +899,8 @@ def location_has_activities(location: GameObject, *activities: str) -> bool:
 
 def _score_location(character: GameObject, location: GameObject) -> int:
     score: int = 0
-
-    for rule_info in LocationBiasRules.iter_rules():
+    rule_library = character.world.get_resource(LocationBiasRuleLibrary)
+    for rule_info in rule_library.iter_rules():
         if modifier := rule_info.rule(character, location):
             score += modifier
 
@@ -1297,47 +997,18 @@ def clear_frequented_locations(character: GameObject) -> None:
 # General Utility Functions
 #######################################
 
-_KT = TypeVar("_KT")
 
-
-def deep_merge(source: Dict[_KT, Any], other: Dict[_KT, Any]) -> Dict[_KT, Any]:
-    """
-    Merges two dictionaries (including any nested dictionaries) by overwriting
-    fields in the source with the fields present in the other
-
-    Parameters
-    ----------
-    source
-        Dictionary with initial field values
-
-    other
-        Dictionary with fields to override in the source dict
-
-    Returns
-    -------
-    Dict[_KT, Any]
-        New dictionary with fields in source overwritten
-        with values from the other
-    """
-    merged_dict = {**source}
-
-    for key, value in other.items():
-        if isinstance(value, dict):
-            # get node or create one
-            node = merged_dict.get(key, {})
-            merged_dict[key] = deep_merge(node, value)  # type: ignore
-        else:
-            merged_dict[key] = value
-
-    return merged_dict
-
-
-def pprint_gameobject(gameobject: GameObject) -> None:
+def debug_print_gameobject(gameobject: GameObject) -> None:
     """Pretty prints a GameObject"""
-    print(
-        json.dumps(
-            gameobject.to_dict(),
-            sort_keys=True,
-            indent=2,
-        )
+
+    component_debug_strings = "".join(
+        [f"\t{c.__repr__()}\n" for c in gameobject.get_components()]
     )
+
+    debug_str = (
+        f"name: {gameobject.name}\n"
+        f"uid: {gameobject.uid}\n"
+        f"components: [\n{component_debug_strings}]"
+    )
+
+    print(debug_str)

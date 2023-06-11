@@ -7,15 +7,14 @@ from typing import Any, Type, TypeVar
 from neighborly.core.ecs import (
     Component,
     Event,
-    GameObject,
     IComponentFactory,
     ISystem,
     EventListener,
+    World,
 )
-from neighborly.core.life_event import RandomLifeEvent, RandomLifeEvents
-from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRules
-from neighborly.core.relationship import ISocialRule, SocialRules
-from neighborly.simulation import Neighborly
+from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
+from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRuleLibrary
+from neighborly.core.relationship import ISocialRule, SocialRuleLibrary
 
 _CT = TypeVar("_CT", bound=Component)
 _CF = TypeVar("_CF", bound=IComponentFactory)
@@ -25,7 +24,7 @@ _LT = TypeVar("_LT", bound=RandomLifeEvent)
 _ET_contra = TypeVar("_ET_contra", bound=Event, contravariant=True)
 
 
-def component(sim: Neighborly):
+def component(world: World):
     """Register a component type with the  simulation.
 
     Registers a component class type with the simulation's World instance.
@@ -39,13 +38,13 @@ def component(sim: Neighborly):
     """
 
     def decorator(cls: Type[_CT]) -> Type[_CT]:
-        sim.world.register_component(cls)
+        world.register_component(cls)
         return cls
 
     return decorator
 
 
-def component_factory(sim: Neighborly, component_type: Type[Component], **kwargs: Any):
+def component_factory(world: World, component_type: Type[Component], **kwargs: Any):
     """Register a component type with the  simulation.
 
     Registers a component class type with the simulation's World instance.
@@ -61,13 +60,13 @@ def component_factory(sim: Neighborly, component_type: Type[Component], **kwargs
     """
 
     def decorator(cls: Type[_CF]) -> Type[_CF]:
-        sim.world.get_component_info(component_type.__name__).factory = cls(**kwargs)
+        world.get_component_info(component_type.__name__).factory = cls(**kwargs)
         return cls
 
     return decorator
 
 
-def resource(sim: Neighborly, **kwargs: Any):
+def resource(world: World, **kwargs: Any):
     """Add a class as a shared resource.
 
     This decorator adds an instance of the decorated class as a shared resource.
@@ -81,13 +80,13 @@ def resource(sim: Neighborly, **kwargs: Any):
     """
 
     def decorator(cls: Type[_RT]) -> Type[_RT]:
-        sim.world.add_resource(cls(**kwargs))
+        world.add_resource(cls(**kwargs))
         return cls
 
     return decorator
 
 
-def system(sim: Neighborly, **kwargs: Any):
+def system(world: World, **kwargs: Any):
     """Add a class as a simulation system.
 
     This decorator adds an instance of the decorated class as a shared resource.
@@ -101,23 +100,23 @@ def system(sim: Neighborly, **kwargs: Any):
     """
 
     def decorator(cls: Type[_ST]) -> Type[_ST]:
-        sim.world.add_system(cls(**kwargs))
+        world.add_system(cls(**kwargs))
         return cls
 
     return decorator
 
 
-def random_life_event():
+def random_life_event(world: World):
     """Adds a class type to the registry of random life events"""
 
     def decorator(cls: Type[_LT]) -> Type[_LT]:
-        RandomLifeEvents.add(cls)
+        world.get_resource(RandomLifeEventLibrary).add(cls)
         return cls
 
     return decorator
 
 
-def social_rule(description: str):
+def social_rule(world: World, description: str):
     """Decorator that marks a function as a location bias rule.
 
     Parameters
@@ -127,13 +126,13 @@ def social_rule(description: str):
     """
 
     def decorator(rule: ISocialRule):
-        SocialRules.add(rule, description)
+        world.get_resource(SocialRuleLibrary).add(rule, description)
         return rule
 
     return decorator
 
 
-def location_bias_rule(description: str):
+def location_bias_rule(world: World, description: str):
     """Decorator that marks a function as a location bias rule.
 
     Parameters
@@ -143,12 +142,12 @@ def location_bias_rule(description: str):
     """
 
     def decorator(rule: ILocationBiasRule):
-        LocationBiasRules.add(rule, description)
+        world.get_resource(LocationBiasRuleLibrary).add(rule, description)
 
     return decorator
 
 
-def on_event(event_type: Type[_ET_contra]):
+def on_event(world: World, event_type: Type[_ET_contra]):
     """A decorator that registers a function as an event listener for GameObjects.
 
     Parameters
@@ -158,17 +157,17 @@ def on_event(event_type: Type[_ET_contra]):
     """
 
     def decorator(listener: EventListener[_ET_contra]) -> EventListener[_ET_contra]:
-        GameObject.on(event_type, listener)
+        world.on_event(event_type, listener)
         return listener
 
     return decorator
 
 
-def on_any_event(listener: EventListener[Event]):
+def on_any_event(world: World, listener: EventListener[Event]):
     """A decorator that registers a function as an event listener for GameObjects.
 
     The decorated function will be called in response to all events fired by
     GameObjects.
     """
-    GameObject.on_any(listener)
+    world.on_any_event(listener)
     return listener

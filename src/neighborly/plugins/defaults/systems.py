@@ -146,9 +146,9 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    sim.add_system(DatingBreakUpSystem())
-    sim.add_system(EndMarriageSystem())
-    sim.add_system(MarriageSystem())
-    sim.add_system(FindRomanceSystem())
-    sim.add_system(FindOwnPlaceSystem())
-    sim.add_system(RetirementSystem())
+    sim.world.add_system(DatingBreakUpSystem())
+    sim.world.add_system(EndMarriageSystem())
+    sim.world.add_system(MarriageSystem())
+    sim.world.add_system(FindRomanceSystem())
+    sim.world.add_system(FindOwnPlaceSystem())
+    sim.world.add_system(RetirementSystem())
