@@ -1639,14 +1639,46 @@ class GameObjectFactory:
         return matches
 
     def add(self, prefab: EntityPrefab) -> None:
-        """Add a prefab to the factory.
+        """Add a prefab to the factory or overwrite an existing one.
 
         Parameters
         ----------
         prefab
             The prefab to add.
         """
-        self._prefabs[prefab.name] = prefab
+
+        if prefab.name in self._prefabs and prefab.name in prefab.extends:
+            # If this condition is true, then we assume
+            # the user wants to extend and overwrite an existing prefab
+            # So we load the existing prefab, update the values, and overwrite it
+            existing_prefab = self._prefabs[prefab.name]
+
+            # We need to remove the name from the extends list
+            # to prevent an infinite loop when instantiating
+            revised_extends_list = [n for n in prefab.extends if n != prefab.name]
+
+            # Only overwrite the children if the new prefab specifies them
+            children = (
+                prefab.children if len(prefab.children) else existing_prefab.children
+            )
+
+            # Allow new components to completely overwrite old ones
+            combined_components = {**existing_prefab.components, **prefab.components}
+
+            combined_prefab = EntityPrefab(
+                name=prefab.name,
+                is_template=prefab.is_template,
+                extends=revised_extends_list,
+                components=combined_components,
+                children=children,
+                tags=existing_prefab.tags.union(prefab.tags),
+            )
+
+            self._prefabs[prefab.name] = combined_prefab
+        else:
+            # Add the prefab to the dictionary and overwrite any existing
+            # prefab with the same name
+            self._prefabs[prefab.name] = prefab
 
     def instantiate(self, world: World, name: str) -> GameObject:
         """Spawn the prefab into the world and return the root-level entity.
