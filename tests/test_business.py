@@ -105,3 +105,129 @@ def test_parse_operating_hours_str():
         parse_operating_hour_str("MONDAY: day")
         parse_operating_hour_str("day - night")
         parse_operating_hour_str("M: 9 - 24")
+
+
+def has_component(*args: Any):
+    s: str
+    (s,) = args
+
+    def fn(gameobject: GameObject) -> bool:
+        return gameobject.has_component(
+            gameobject.world.get_component_info(s).component_type
+        )
+
+    return fn
+
+
+def has_gender(*args: Any):
+    s: str
+    (s,) = args
+
+    def fn(gameobject: GameObject) -> bool:
+        if gender := gameobject.try_component(Gender):
+            return gender.gender == GenderType[s]
+        return False
+
+    return fn
+
+
+def has_last_name(*args: Any):
+    s: str
+    (s,) = args
+
+    def fn(gameobject: GameObject) -> bool:
+        if game_character := gameobject.try_component(GameCharacter):
+            return game_character.last_name == s
+        return False
+
+    return fn
+
+
+def over_age(*args: Any):
+    n: int
+    (n,) = args
+
+    def fn(gameobject: GameObject) -> bool:
+        if age := gameobject.try_component(Age):
+            return age.value > n
+        return False
+
+    return fn
+
+
+class Cyborg(Component):
+    pass
+
+
+def test_parse_job_requirements():
+    sim = Neighborly()
+    library = JobRequirementLibrary()
+    parser = JobRequirementParser(sim.world)
+
+    sim.world.add_resource(library)
+
+    sim.world.register_component(CollegeGraduate)
+    sim.world.register_component(Cyborg)
+
+    library.add("has_gender", has_gender)
+    library.add("over_age", over_age)
+    library.add("has_last_name", has_last_name)
+    library.add("has_component", has_component)
+
+    kieth = sim.world.spawn_gameobject(
+        [GameCharacter("Kieth", "Smith"), Gender("Male"), Age(32)]
+    )
+
+    percy = sim.world.spawn_gameobject(
+        [GameCharacter("Percy", "Jenkins"), Age(51), CollegeGraduate()]
+    )
+
+    dolph = sim.world.spawn_gameobject(
+        [GameCharacter("Dolph", "McKnight"), Age(23), CollegeGraduate(), Cyborg()]
+    )
+
+    rule = parser.parse_string(
+        "(OR (has_gender 'Male') (has_gender 'Female') (over_age 45))"
+    )
+
+    assert rule(kieth) is True
+    assert rule(percy) is True
+    assert rule(dolph) is False
+
+    rule = parser.parse_string('(has_last_name "Smith")')
+
+    assert rule(kieth) is True
+    assert rule(percy) is False
+    assert rule(dolph) is False
+
+    rule = parser.parse_string(
+        "(AND (has_component 'Cyborg') (has_component 'CollegeGraduate'))"
+    )
+
+    assert rule(kieth) is False
+    assert rule(percy) is False
+    assert rule(dolph) is True
+
+    rule = parser.parse_string(
+        "(OR (has_component 'Cyborg') (has_component 'CollegeGraduate'))"
+    )
+
+    assert rule(kieth) is False
+    assert rule(percy) is True
+    assert rule(dolph) is True
+
+    parser.parse_string(
+        """
+    (OR
+        (over_age 45)
+        (AND
+            (has_component 'Cyborg')
+            (has_component 'CollegeGraduate')
+        )
+    )
+    """
+    )
+
+    assert rule(kieth) is False
+    assert rule(percy) is True
+    assert rule(dolph) is True

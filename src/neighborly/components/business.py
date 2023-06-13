@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import (
     Any,
-    ClassVar,
+    Callable,
     Dict,
     Iterable,
     Iterator,
@@ -11,15 +11,18 @@ from typing import (
     Optional,
     Protocol,
     Tuple,
-    Union,
 )
 
+import pyparsing as pp
+from pyparsing import pyparsing_common as ppc
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, GameObject, ISerializable
+from neighborly.core.ecs import World, Component, GameObject, ISerializable
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime, Weekday
+
+from neighborly.core.ecs.ecs import EntityPrefab, GameObjectFactory
 
 
 class Occupation(Component, ISerializable):
@@ -27,7 +30,7 @@ class Occupation(Component, ISerializable):
 
     __slots__ = "_occupation_type", "_start_date", "_business"
 
-    _occupation_type: str
+    _occupation_type: GameObject
     """The name of the occupation."""
 
     _business: int
@@ -37,7 +40,7 @@ class Occupation(Component, ISerializable):
     """The date they started this occupation."""
 
     def __init__(
-        self, occupation_type: str, business: int, start_date: SimDateTime
+        self, occupation_type: GameObject, business: int, start_date: SimDateTime
     ) -> None:
         """
         Parameters
@@ -56,7 +59,7 @@ class Occupation(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "occupation_type": self._occupation_type,
+            "occupation_type": self._occupation_type.uid,
             "business": self._business,
             "start_date": str(self._start_date),
         }
@@ -72,7 +75,7 @@ class Occupation(Component, ISerializable):
         return self._start_date
 
     @property
-    def occupation_type(self) -> str:
+    def occupation_type(self) -> GameObject:
         """The name of the occupation."""
         return self._occupation_type
 
@@ -421,78 +424,48 @@ class Precondition(Protocol):
         raise NotImplementedError
 
 
-class OccupationType:
+class OccupationType(Component, ISerializable):
     """Shared information about all occupations with this type."""
 
-    __slots__ = "name", "level", "rules"
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
 
-    name: str
-    """Name of the position."""
+    def __str__(self) -> str:
+        return type(self).__name__
 
-    level: int
-    """Prestige or socioeconomic status associated with the position."""
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}()"
 
-    rules: List[Tuple[Precondition, ...]]
-    """
-    Function that determines of a candidate gameobject meets th requirements
-    of the occupation. Preconditions are lists of lists where each sublist is
-    a single rule and all callable in that list need to return true for the
-    rule to pass. Only one rule needs to return True for a GameObject to qualify
-    for the occupation type.
-    """
 
-    def __init__(
-        self,
-        name: str,
-        level: int = 1,
-        rules: Optional[
-            Union[
-                Precondition,
-                Tuple[Precondition, ...],
-                List[Tuple[Precondition, ...]],
-            ]
-        ] = None,
-    ) -> None:
-        self.name: str = name
-        self.level: int = level
-        self.rules: List[Tuple[Precondition, ...]] = []
+class SocialStatusLevel(Component, ISerializable):
+    __slots__ = "_status_level"
 
-        if rules:
-            if isinstance(rules, list):
-                self.rules = rules
-            elif isinstance(rules, tuple):
-                self.rules.append(rules)
-            else:
-                self.rules.append((rules,))
+    _status_level: int
 
-    def add_precondition(self, rule: Union[Tuple[Precondition], Precondition]) -> None:
-        """Add a new precondition rule to the occupation"""
-        if isinstance(rule, tuple):
-            self.rules.append(rule)
-        else:
-            self.rules.append((rule,))
+    def __init__(self, status_level: int) -> None:
+        super().__init__()
+        self._status_level = status_level
 
-    def passes_preconditions(self, gameobject: GameObject) -> bool:
-        """Check if a GameObject passes any of the preconditions"""
-        if len(self.rules) == 0:
-            return True
+    @property
+    def status_level(self) -> int:
+        return self._status_level
 
-        for rule in self.rules:
-            satisfies_rule: bool = True
+    def to_dict(self) -> Dict[str, Any]:
+        return {"status_level": self._status_level}
 
-            # All clauses (functions) within a rule (sub-list) need
-            # to return True for the rule to be satisfied
-            for clause in rule:
-                if clause(gameobject) is False:
-                    satisfies_rule = False
-                    break
+    def __str__(self) -> str:
+        return f"{type(self).__name__}(status_level={self.status_level})"
 
-            # Only one rule needs to be satisfied for the gameobject
-            # to pass the preconditions.
-            if satisfies_rule:
-                return True
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(status_level={self.status_level})"
 
-        return False
+
+class JobRequirements(Component):
+    """Specifies precondition functions for occupations."""
+
+    def __init__(self, rules: list[Callable[[GameObject], bool]]) -> None:
+        super().__init__()
+        self.rules = rules
 
 
 class BusinessOwner(StatusComponent):
@@ -547,37 +520,156 @@ class CoworkerOf(RelationshipStatus):
     pass
 
 
-class OccupationTypes:
-    """A collection of OccupationType information for lookup at runtime."""
+class _PreconditionWrapper(Protocol):
+    def __call__(self, *args: Any) -> Callable[[GameObject], bool]:
+        raise NotImplementedError
 
-    _registry: ClassVar[Dict[str, OccupationType]] = {}
-    """Occupation names mapped to definition data."""
 
-    @classmethod
-    def add(
-        cls,
-        occupation_type: OccupationType,
-    ) -> None:
-        """Add a new occupation type to the library.
+class JobRequirementLibrary:
+    def __init__(self) -> None:
+        self.rules: dict[str, _PreconditionWrapper] = {}
 
-        Parameters
-        ----------
-        occupation_type
-            The occupation type instance to add.
-        """
-        cls._registry[occupation_type.name] = occupation_type
+    def add(self, name: str, fn_wrapper: _PreconditionWrapper) -> None:
+        self.rules[name] = fn_wrapper
 
-    @classmethod
-    def get(cls, name: str) -> OccupationType:
-        """Get an OccupationType by name.
 
-        Parameters
-        ----------
-        name
-            The registered name of the OccupationType
+class JobRequirementParser:
+    """Parses strings specifying preconditions for characters to have certain roles.
 
-        Returns
-        -------
-        OccupationType
-        """
-        return cls._registry[name]
+    Preconditions are specified using a Lisp-style prefix-notation. For example,
+
+    (AND
+        (has_component 'CollegeGraduate')
+        (OR
+            (has_gender 'Male')
+            (has_gender 'Female')
+            (over_age 45)
+        )
+    )
+    """
+
+    __slots__ = "_grammar", "_world"
+
+    _grammer: pp.ParserElement
+    """The grammar used to parse requirement strings."""
+
+    _world: World
+    """The world instance to sample precondition functions from."""
+
+    def __init__(self, world: World) -> None:
+        self._grammar = JobRequirementParser._initialize_grammar()
+        self._world = world
+
+    @staticmethod
+    def _initialize_grammar() -> pp.ParserElement:
+        # Convert keywords to python values
+        TRUE = JobRequirementParser._make_keyword(
+            "true", True
+        ) | JobRequirementParser._make_keyword("True", False)
+        FALSE = JobRequirementParser._make_keyword(
+            "false", False
+        ) | JobRequirementParser._make_keyword("False", False)
+        NULL = JobRequirementParser._make_keyword("null", None)
+
+        # Track parentheses and brackets, but don't include in output
+        LPAREN = pp.Suppress("(")
+        RPAREN = pp.Suppress(")")
+
+        # Set up capturing string and number values
+        string_val = pp.QuotedString("'") | pp.QuotedString('"')
+        number_val = ppc.number()  # type: ignore
+
+        # Arguments lists require zero or more values
+        fn_args = pp.Group(
+            pp.ZeroOrMore(string_val | number_val | TRUE | FALSE | NULL)  # type: ignore
+        )
+
+        # Identifier catches an python-allowed identifier name
+        func_name = ppc.identifier
+
+        # Refers to any complete expression
+        expr = pp.Forward().set_name("expr")
+
+        # A single clause contains a function name and arguments surrounded by
+        # parenthesis
+        clause = LPAREN + pp.Group(func_name + fn_args) + RPAREN  # type: ignore
+        and_expr = LPAREN + pp.Group("AND" + pp.Group(expr + pp.OneOrMore(expr))) + RPAREN  # type: ignore
+        or_expr = LPAREN + pp.Group("OR" + pp.Group(expr + pp.OneOrMore(expr))) + RPAREN  # type: ignore
+
+        expr <<= clause | and_expr | or_expr  # type: ignore
+
+        program: pp.ParserElement = expr + pp.string_end  # type: ignore
+
+        return cast(pp.ParserElement, program)  # type: ignore
+
+    @staticmethod
+    def _make_keyword(kwd_str: str, kwd_value: Any):
+        keyword = pp.Keyword(kwd_str).set_parse_action(pp.replaceWith(kwd_value))  # type: ignore
+
+        if keyword is None:
+            raise RuntimeError(f"Failed to create keyword: {kwd_str}")
+
+        return keyword
+
+    def parse_string(self, input_str: str) -> Callable[[GameObject], bool]:
+        """Parse a string into a rule."""
+
+        results = self._grammar.parse_string(input_str, parse_all=True)  # type: ignore
+        rule_data = cast(list[Any], results.as_list()[0])  # type: ignore
+
+        rule = self._process_expr(rule_data)  # type: ignore
+
+        return rule
+
+    def _process_expr(self, expr: list[Any]) -> Callable[[GameObject], bool]:
+        op_name: str = expr[0]
+        op_args: list[Any] = expr[1]
+
+        if op_name == "AND":
+            # Logical-AND of multiple expressions
+            sub_expressions = [self._process_expr(sub_expr) for sub_expr in op_args]
+
+            return lambda gameobject: all(
+                [precond(gameobject) for precond in sub_expressions]
+            )
+
+        elif op_name == "OR":
+            # Logical-OR of multiple expressions
+            sub_expressions = [self._process_expr(sub_expr) for sub_expr in op_args]
+
+            return lambda gameobject: any(
+                [precond(gameobject) for precond in sub_expressions]
+            )
+
+        else:
+            library = self._world.get_resource(JobRequirementLibrary)
+            return library.rules[op_name](*op_args)
+
+
+class OccupationLibrary:
+    """Manages runtime type information for items"""
+
+    __slots__ = "_occupations"
+
+    _occupations: Dict[str, GameObject]
+
+    def __init__(self) -> None:
+        self._occupations = {}
+
+    @property
+    def occupations(self) -> Dict[str, GameObject]:
+        return self._occupations
+
+
+def load_occupation_type(world: World, prefab: EntityPrefab):
+    factory = world.get_resource(GameObjectFactory)
+    factory.add(prefab)
+    occupation_type = factory.instantiate(world, prefab.name)
+    occupation_type.name = prefab.name
+    world.get_resource(OccupationLibrary).occupations[
+        occupation_type.name
+    ] = occupation_type
+
+
+def get_occupation_type(world: World, occupation_name: str) -> GameObject:
+    return world.get_resource(OccupationLibrary).occupations[occupation_name]

@@ -409,3 +409,25 @@ class PrefabName(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"prefab": self.prefab}
+
+
+class Description(Component):
+    "A text description for a GameObject"
+
+    __slots__ = "_description"
+
+    _description: str
+
+    def __init__(self, description: str) -> None:
+        super().__init__()
+        self._description = description
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    def __str__(self) -> str:
+        return self.description
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.description})"

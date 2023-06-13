@@ -3,7 +3,12 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Tuple
 
-from neighborly.components.business import Business, OperatingHours
+from neighborly.components.business import (
+    Business,
+    JobRequirementParser,
+    JobRequirements,
+    OperatingHours,
+)
 from neighborly.components.routine import time_str_to_int
 from neighborly.core.ecs import Component, IComponentFactory, World
 from neighborly.core.time import Weekday
@@ -152,3 +157,14 @@ class OperatingHoursFactory(IComponentFactory):
         return OperatingHours(
             OperatingHoursFactory.parse_operating_hour_str(kwargs["hours"])
         )
+
+
+class JobRequirementsFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
+        rule_strings: list[str] = kwargs["rules"]
+
+        parser = JobRequirementParser(world)
+
+        rules = [parser.parse_string(entry) for entry in rule_strings]
+
+        return JobRequirements(rules)

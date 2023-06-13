@@ -44,9 +44,21 @@ from neighborly.events import (
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
 
-from neighborly.factories.business import OperatingHoursFactory
+from neighborly.factories.business import JobRequirementsFactory, OperatingHoursFactory
 
 from neighborly.core.location_bias import LocationBiasRuleLibrary
+
+from neighborly.components.items import Item, ItemLibrary, ItemType
+
+from neighborly.components.business import (
+    JobRequirementLibrary,
+    JobRequirements,
+    OccupationLibrary,
+    OccupationType,
+    SocialStatusLevel,
+)
+
+from neighborly.components.shared import Description
 
 
 class PluginSetupError(Exception):
@@ -108,6 +120,9 @@ class Neighborly:
         self.world.add_resource(DataCollector())
         self.world.add_resource(RandomLifeEventLibrary())
         self.world.add_resource(GameObjectFactory())
+        self.world.add_resource(ItemLibrary())
+        self.world.add_resource(OccupationLibrary())
+        self.world.add_resource(JobRequirementLibrary())
 
         # Set the relationship schema
         self.world.get_resource(GameObjectFactory).add(
@@ -209,6 +224,12 @@ class Neighborly:
         self.world.register_component(components.ResidenceSpawnTable)
         self.world.register_component(components.Gender)
         self.world.register_component(components.LifeStage)
+        self.world.register_component(ItemType)
+        self.world.register_component(Description)
+        self.world.register_component(Item)
+        self.world.register_component(OccupationType)
+        self.world.register_component(SocialStatusLevel)
+        self.world.register_component(JobRequirements, factory=JobRequirementsFactory())
 
         # Event listeners
         self.world.on_event(JoinSettlementEvent, on_adult_join_settlement)
