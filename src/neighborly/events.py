@@ -7,7 +7,7 @@ from neighborly.core.life_event import LifeEvent
 from neighborly.core.roles import Role
 from neighborly.core.time import SimDateTime
 
-from neighborly.core.ecs.ecs import Event
+from neighborly.core.ecs import Event
 
 from neighborly.components.character import LifeStageType
 

@@ -1,6 +1,6 @@
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.core.ecs.ecs import Component
+from neighborly.core.ecs import Component
 
 
 class ApartmentComplex(Component):

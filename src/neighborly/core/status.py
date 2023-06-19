@@ -20,6 +20,7 @@ class StatusComponent(Component, ISerializable, ABC):
     """A component that tracks a temporary state of being for a GameObject."""
 
     is_persistent: ClassVar[bool] = False
+    """Is this component removed when the gameobject becomes inactive"""
 
     __slots__ = "created"
 

@@ -5,7 +5,7 @@ import pytest
 from neighborly.components.character import GameCharacter, Gender, GenderType, Retired
 from neighborly.components.shared import Age
 from neighborly.core.ecs import Component, World
-from neighborly.core.ecs.query import QB, Relation
+from neighborly.core.query import QB, Relation
 
 
 def test_relation_create_empty():

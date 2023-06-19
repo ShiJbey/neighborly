@@ -8,8 +8,13 @@ from typing import Any, Dict, Iterator, List, Optional, Protocol, Tuple, Type, T
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Active, Component, GameObject, GameObjectFactory
-from neighborly.core.ecs.ecs import ISerializable
+from neighborly.core.ecs import (
+    Active,
+    Component,
+    GameObject,
+    GameObjectFactory,
+    ISerializable,
+)
 from neighborly.core.status import (
     StatusComponent,
     StatusManager,

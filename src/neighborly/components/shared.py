@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.core.ecs.ecs import Component, ISerializable
+from neighborly.core.ecs import Component, ISerializable
 from neighborly.core.status import StatusComponent
 
 

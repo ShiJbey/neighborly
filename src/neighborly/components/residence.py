@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs.ecs import Component, ISerializable
+from neighborly.core.ecs import Component, ISerializable
 from neighborly.core.status import StatusComponent
 
 

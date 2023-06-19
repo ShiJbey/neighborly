@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from neighborly.core.ecs import World
 
-from neighborly.core.ecs.ecs import GameObject, GameObjectFactory
+from neighborly.core.ecs import GameObject, GameObjectFactory
 
 from neighborly.components.character import (
     AgingConfig,

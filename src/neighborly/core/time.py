@@ -322,7 +322,7 @@ class SimDateTime:
         return TimeDelta(years=years, months=months, days=days, hours=hours)
 
     def __add__(self, other: TimeDelta) -> SimDateTime:
-        """Add a TimeDelta to this data"""
+        """Increment a copy of the current date and return."""
         date_copy = self.copy()
         date_copy.increment(
             hours=other.hours, days=other.days, months=other.months, years=other.years
@@ -330,6 +330,7 @@ class SimDateTime:
         return date_copy
 
     def __iadd__(self, other: TimeDelta) -> SimDateTime:
+        """Increment the current date by the TimeDelta."""
         self.increment(
             hours=other.hours, days=other.days, months=other.months, years=other.years
         )
@@ -365,7 +366,7 @@ class SimDateTime:
         )
 
     def to_iso_str(self) -> str:
-        """Create an ISO date string.
+        """Create an ISO date string of format YYYY-MM-DDTHH:00:00.
 
         Returns
         -------
@@ -408,12 +409,12 @@ class SimDateTime:
         Parameters
         ----------
         time_str
-            A date in DD/MM/YYYY format or YYYY-MM-DDTHH:00:00 ISO 8061 format
+            A date in DD/MM/YYYY format or YYYY-MM-DDTHH:00:00 ISO 8061 format.
 
         Returns
         -------
         SimDateTime
-            A date object set to the date in the string
+            A date object set to the date in the string.
         """
         if m := re.match(
             "^(?P<DAY>[0-9]{1,2})\\/(?P<MONTH>[0-9]{1,2})\\/(?P<YEAR>[0-9]{4}$)",

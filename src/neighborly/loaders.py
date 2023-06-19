@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Union
 
 import yaml
 
-from neighborly.components.business import OccupationType, OccupationTypes
+from neighborly.components.business import add_occupation_type
 from neighborly.core.ecs import EntityPrefab, GameObjectFactory, World
 from neighborly.core.tracery import Tracery
 
@@ -20,6 +20,8 @@ def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> 
 
     Parameters
     ----------
+    world
+        The world instance.
     file_path
         The path of the data file to load.
     """
@@ -32,22 +34,24 @@ def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> 
         )
 
     with open(file_path, "r") as f:
-        data: List[Dict[str, Any]] = yaml.safe_load(f)
+        data = yaml.safe_load(f)
 
-    for entry in data:
-        OccupationTypes.add(
-            OccupationType(
-                name=entry["name"],
-                level=entry.get("level", 1),
-            )
-        )
+    if isinstance(data, list):
+        # That data file contains multiple occupation definitions
+        for entry in data:
+            add_occupation_type(world, EntityPrefab.parse_obj(entry))
+    else:
+        # The data file contains only a single occupation definition
+        add_occupation_type(world, EntityPrefab.parse_obj(data))
 
 
-def load_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """Load a single entity prefab from a data file.
+def load_prefabs(world: World, file_path: Union[str, pathlib.Path]) -> None:
+    """Load a entity prefab data from a data file.
 
     Parameters
     ----------
+    world
+        The world instance.
     file_path
         The path of the data file to load.
     """
@@ -62,7 +66,13 @@ def load_prefab(world: World, file_path: Union[str, pathlib.Path]) -> None:
     with open(file_path, "r") as f:
         data: Dict[str, Any] = yaml.safe_load(f)
 
-    world.get_resource(GameObjectFactory).add(EntityPrefab.parse_obj(data))
+    if isinstance(data, list):
+        # That data file contains multiple occupation definitions
+        for entry in data:
+            world.get_resource(GameObjectFactory).add(EntityPrefab.parse_obj(entry))
+    else:
+        # The data file contains only a single occupation definition
+        world.get_resource(GameObjectFactory).add(EntityPrefab.parse_obj(data))
 
 
 def load_names(
@@ -74,6 +84,8 @@ def load_names(
 
     Parameters
     ----------
+    world
+        The world instance.
     rule_name
         The name of the rule to register the names under in Tracery.
     file_path
@@ -81,50 +93,3 @@ def load_names(
     """
     with open(file_path, "r") as f:
         world.get_resource(Tracery).add_rules({rule_name: f.read().splitlines()})
-
-
-def load_data_file(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """Load various data from a single file.
-
-    This function can load multiple prefabs, and occupation types from a single file. It
-    assumes that the data is separated into sections like "Prefabs" and "Occupations".
-
-    Parameters
-    ----------
-    file_path
-        The path of the data file to load.
-    """
-
-    with open(file_path, "r") as f:
-        data: Dict[str, Any] = yaml.safe_load(f)
-
-    game_obj_factory = world.get_resource(GameObjectFactory)
-
-    character_data: List[Dict[str, Any]] = data.get("Characters", [])
-    for entry in character_data:
-        game_obj_factory.add(EntityPrefab.parse_obj(entry))
-
-    business_data: List[Dict[str, Any]] = data.get("Businesses", [])
-    for entry in business_data:
-        game_obj_factory.add(EntityPrefab.parse_obj(entry))
-
-    residence_data: List[Dict[str, Any]] = data.get("Residences", [])
-    for entry in residence_data:
-        game_obj_factory.add(EntityPrefab.parse_obj(entry))
-
-    prefab_data: List[Dict[str, Any]] = data.get("Prefabs", [])
-    for entry in prefab_data:
-        game_obj_factory.add(EntityPrefab.parse_obj(entry))
-
-    occupation_defs: List[Dict[str, Any]] = data.get("Occupations", [])
-    for entry in occupation_defs:
-        OccupationTypes.add(
-            OccupationType(
-                name=entry["name"],
-                level=entry.get("level", 1),
-            )
-        )
-
-    name_data: List[Dict[str, Any]] = data.get("Names", [])
-    for entry in name_data:
-        load_names(world, entry["rule"], entry["path"])

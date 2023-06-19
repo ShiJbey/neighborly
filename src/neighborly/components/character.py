@@ -18,7 +18,7 @@ from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime
 
-from neighborly.core.ecs.ecs import ISerializable
+from neighborly.core.ecs import ISerializable
 
 
 class GameCharacter(Component, ISerializable):

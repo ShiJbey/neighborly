@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 from neighborly import Component, ISystem, Neighborly, NeighborlyConfig, SimDateTime
 from neighborly.components import GameCharacter
-from neighborly.core.ecs.ecs import EntityPrefab, GameObjectFactory
+from neighborly.core.ecs import EntityPrefab, GameObjectFactory
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,

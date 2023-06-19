@@ -8,7 +8,7 @@ from marshmallow import Schema, fields
 
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import World
-from neighborly.core.ecs.ecs import ISerializable
+from neighborly.core.ecs import ISerializable
 from neighborly.core.life_event import EventLog
 from neighborly.core.time import SimDateTime
 from neighborly.data_collection import DataCollector

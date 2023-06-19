@@ -46,7 +46,7 @@ from neighborly.components import (
     GameCharacter,
 )
 from neighborly.components.character import LifeStage, LifeStageType
-from neighborly.core.ecs.ecs import Active
+from neighborly.core.ecs import Active
 from neighborly.core.life_event import RandomLifeEvent
 from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement

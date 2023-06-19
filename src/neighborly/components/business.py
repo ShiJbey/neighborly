@@ -22,7 +22,7 @@ from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime, Weekday
 
-from neighborly.core.ecs.ecs import EntityPrefab, GameObjectFactory
+from neighborly.core.ecs import EntityPrefab, GameObjectFactory
 
 
 class Occupation(Component, ISerializable):
@@ -605,10 +605,6 @@ class JobRequirementParser:
     @staticmethod
     def _make_keyword(kwd_str: str, kwd_value: Any):
         keyword = pp.Keyword(kwd_str).set_parse_action(pp.replaceWith(kwd_value))  # type: ignore
-
-        if keyword is None:
-            raise RuntimeError(f"Failed to create keyword: {kwd_str}")
-
         return keyword
 
     def parse_string(self, input_str: str) -> Callable[[GameObject], bool]:
@@ -661,7 +657,7 @@ class OccupationLibrary:
         return self._occupations
 
 
-def load_occupation_type(world: World, prefab: EntityPrefab):
+def add_occupation_type(world: World, prefab: EntityPrefab):
     factory = world.get_resource(GameObjectFactory)
     factory.add(prefab)
     occupation_type = factory.instantiate(world, prefab.name)

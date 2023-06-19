@@ -5,7 +5,7 @@ from typing import List, Set, Tuple, Type, Union
 from neighborly.components.business import Occupation, WorkHistory
 from neighborly.components.character import Dating, Family, Married
 from neighborly.core.ecs import Component, GameObject
-from neighborly.core.ecs.query import QueryClause, QueryContext, Relation, WithClause
+from neighborly.core.query import QueryClause, QueryContext, Relation, WithClause
 from neighborly.core.relationship import Relationship, RelationshipManager
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime

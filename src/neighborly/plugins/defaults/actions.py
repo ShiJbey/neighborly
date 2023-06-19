@@ -8,7 +8,7 @@ from neighborly.components.business import (
     Business,
     BusinessOwner,
     Occupation,
-    OccupationTypes,
+    OccupationLibrary,
     OpenForBusiness,
     Unemployed,
 )
@@ -295,7 +295,7 @@ class StartBusiness(GoalNode):
 
         assert owner_type
 
-        owner_occupation_type = OccupationTypes.get(owner_type)
+        owner_occupation_type = world.get_resource(OccupationLibrary).get(owner_type)
 
         business = SpawnBusiness(business_prefab.name).execute(world).get_result()
 
@@ -335,7 +335,9 @@ class StartBusiness(GoalNode):
             prefab = world.get_resource(GameObjectFactory).get(prefab_name)
             owner_type = prefab.components["Business"]["owner_type"]
             if owner_type:
-                owner_occupation_type = OccupationTypes.get(owner_type)
+                owner_occupation_type = world.get_resource(OccupationLibrary).get(
+                    owner_type
+                )
 
                 if owner_occupation_type.passes_preconditions(character):
                     choices.append(prefab)
@@ -402,7 +404,9 @@ class GetJob(GoalNode):
             open_positions = business.get_open_positions()
 
             for occupation_name in open_positions:
-                occupation_type = OccupationTypes.get(occupation_name)
+                occupation_type = self.world.get_resource(OccupationLibrary).get(
+                    occupation_name
+                )
 
                 if occupation_type.passes_preconditions(self.character):
                     start_job(
