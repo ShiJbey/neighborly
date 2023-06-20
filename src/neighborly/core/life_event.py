@@ -171,6 +171,7 @@ class RandomLifeEventLibrary:
     __slots__ = "_event_types"
 
     _event_types: OrderedSet[Type[RandomLifeEvent]]
+    """Collection of RandomLifeEvent types used in the simulation."""
 
     def __init__(self) -> None:
         self._event_types = OrderedSet([])
