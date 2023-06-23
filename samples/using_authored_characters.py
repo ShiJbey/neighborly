@@ -9,9 +9,10 @@ Normally characters are spawned into the settlement based on the spawn table.
 import time
 from typing import Any, Dict
 
-from neighborly import Component, ISystem, Neighborly, NeighborlyConfig, SimDateTime
-from neighborly.components import GameCharacter
-from neighborly.core.ecs import EntityPrefab, GameObjectFactory
+from neighborly import ISystem, Neighborly, NeighborlyConfig, SimDateTime
+from neighborly.command import SpawnCharacter, SpawnResidence, SpawnSettlement
+from neighborly.components.character import GameCharacter
+from neighborly.core.ecs import EntityPrefab, GameObjectFactory, TagComponent
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -27,8 +28,6 @@ from neighborly.utils.common import (
     add_residence_to_settlement,
     set_residence,
 )
-
-from neighborly.command import SpawnCharacter, SpawnResidence, SpawnSettlement
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -61,17 +60,10 @@ sim = Neighborly(
 
 
 @component(sim.world)
-class Robot(Component):
+class Robot(TagComponent):
     """Tags a character as a Robot"""
 
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return self.__class__.__name__
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+    pass
 
 
 @component(sim.world)
@@ -100,14 +92,13 @@ class RelationshipReporter(ISystem):
                 game_character.first_name == "Delores"
                 and game_character.last_name == "Abernathy"
             ):
-                for target_id, rel_id in relationship_manager.outgoing.items():
-                    relationship = self.world.get_gameobject(rel_id)
+                for target, relationship in relationship_manager.outgoing.items():
                     data_collector.add_table_row(
                         "relationships",
                         {
                             "timestamp": timestamp,
                             "owner": guid,
-                            "target": target_id,
+                            "target": target.uid,
                             "friendship": relationship.get_component(
                                 Friendship
                             ).get_value(),

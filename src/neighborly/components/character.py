@@ -13,12 +13,10 @@ from typing import Any, ClassVar, Dict, Iterator, List, Optional, Tuple, Union
 import numpy as np
 from numpy import typing as npt
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, ISerializable
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime
-
-from neighborly.core.ecs import ISerializable
 
 
 class GameCharacter(Component, ISerializable):

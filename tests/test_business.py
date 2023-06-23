@@ -2,12 +2,21 @@
 Tests for the Neighborly's Business and Occupation logic
 """
 
+from typing import Any
+
 import pytest
 
-from neighborly.components.business import Business
-from neighborly.core.ecs import EntityPrefab, GameObjectFactory
+from neighborly.components.business import (
+    Business,
+    JobRequirementLibrary,
+    JobRequirementParser,
+)
+from neighborly.components.character import GameCharacter, Gender, GenderType
+from neighborly.components.shared import Age
+from neighborly.core.ecs import Component, EntityPrefab, GameObject, GameObjectFactory
 from neighborly.core.time import Weekday
 from neighborly.factories import OperatingHoursFactory
+from neighborly.plugins.talktown.school import CollegeGraduate
 from neighborly.simulation import Neighborly
 
 
@@ -107,52 +116,37 @@ def test_parse_operating_hours_str():
         parse_operating_hour_str("M: 9 - 24")
 
 
-def has_component(*args: Any):
-    s: str
-    (s,) = args
+def has_last_name(gameobject: GameObject, *args: Any):
+    last_name: str
+    (last_name,) = args
 
-    def fn(gameobject: GameObject) -> bool:
-        return gameobject.has_component(
-            gameobject.world.get_component_info(s).component_type
-        )
-
-    return fn
+    if game_character := gameobject.try_component(GameCharacter):
+        return game_character.last_name == last_name
+    return False
 
 
-def has_gender(*args: Any):
-    s: str
-    (s,) = args
-
-    def fn(gameobject: GameObject) -> bool:
-        if gender := gameobject.try_component(Gender):
-            return gender.gender == GenderType[s]
-        return False
-
-    return fn
+def has_component(gameobject: GameObject, *args: Any) -> bool:
+    component_name: str
+    (component_name,) = args
+    return gameobject.has_component(
+        gameobject.world.get_component_info(component_name).component_type
+    )
 
 
-def has_last_name(*args: Any):
-    s: str
-    (s,) = args
-
-    def fn(gameobject: GameObject) -> bool:
-        if game_character := gameobject.try_component(GameCharacter):
-            return game_character.last_name == s
-        return False
-
-    return fn
+def has_gender(gameobject: GameObject, *args: Any) -> bool:
+    gender_name: str
+    (gender_name,) = args
+    if gender := gameobject.try_component(Gender):
+        return gender.gender == GenderType[gender_name]
+    return False
 
 
-def over_age(*args: Any):
-    n: int
-    (n,) = args
-
-    def fn(gameobject: GameObject) -> bool:
-        if age := gameobject.try_component(Age):
-            return age.value > n
-        return False
-
-    return fn
+def over_age(gameobject: GameObject, *args: Any) -> bool:
+    years: float
+    (years,) = args
+    if age := gameobject.try_component(Age):
+        return age.value > years
+    return False
 
 
 class Cyborg(Component):

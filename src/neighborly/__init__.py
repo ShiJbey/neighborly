@@ -8,6 +8,7 @@ such as Caves of Qud and Dwarf Fortress.
 
 """
 
+from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import (
     Component,
@@ -21,7 +22,6 @@ from neighborly.core.ecs import (
 )
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.__version__ import VERSION
 
 __all__ = [
     "NeighborlyConfig",

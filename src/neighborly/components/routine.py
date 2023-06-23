@@ -179,8 +179,6 @@ class Routine(Component, ISerializable):
 
         Parameters
         ----------
-        day
-            The day to remove the entry from
         entry
             The entry to remove.
         """

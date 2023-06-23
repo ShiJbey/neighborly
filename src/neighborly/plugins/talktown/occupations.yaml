@@ -5,9 +5,9 @@
       value: OccupationBase
     SocialStatusLevel:
       status_level: 1
-    OccupationType: {}
+    OccupationType: { }
     JobRequirements:
-      rules: []
+      rules: [ ]
 
 - name: Architect
   extends: OccupationBase
@@ -41,7 +41,8 @@
 - name: Cashier
   extends: OccupationBase
   components:
-    Name: Cashier
+    Name:
+      value: Cashier
 
 - name: Cook
   extends: OccupationBase

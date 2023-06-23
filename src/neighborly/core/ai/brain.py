@@ -267,9 +267,6 @@ class Goals(Component):
         """
         self._goals.append(priority, goal)
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
-
     def has_options(self) -> bool:
         """Check if there are any goals with positive utilities.
 
@@ -297,6 +294,3 @@ class AIBrain(Component):
 
     def __init__(self) -> None:
         super().__init__()
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {}

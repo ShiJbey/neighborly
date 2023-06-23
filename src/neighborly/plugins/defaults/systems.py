@@ -1,6 +1,6 @@
 from typing import Any
 
-from neighborly.components import Occupation, Residence, Resident
+from neighborly.components.business import Occupation
 from neighborly.components.character import (
     Dating,
     GameCharacter,
@@ -8,6 +8,7 @@ from neighborly.components.character import (
     LifeStageType,
     Married,
 )
+from neighborly.components.residence import Residence, Resident
 from neighborly.core.ai.brain import Goals
 from neighborly.core.ecs import Active
 from neighborly.core.relationship import Relationship
@@ -31,8 +32,8 @@ class DatingBreakUpSystem(System):
         for _, (relationship, _, _) in self.world.get_components(
             (Relationship, Dating, Active)
         ):
-            owner = self.world.get_gameobject(relationship.owner)
-            target = self.world.get_gameobject(relationship.target)
+            owner = relationship.owner
+            target = relationship.target
             goal = BreakUp(owner, target)
             utility = goal.get_utility().get(owner, 0)
             if utility > 0:
@@ -46,8 +47,8 @@ class MarriageSystem(System):
         for _, (relationship, _, _) in self.world.get_components(
             (Relationship, Dating, Active)
         ):
-            owner = self.world.get_gameobject(relationship.owner)
-            target = self.world.get_gameobject(relationship.target)
+            owner = relationship.owner
+            target = relationship.target
             goal = GetMarried(owner, target)
             utility = goal.get_utility().get(owner, 0)
             if utility > 0:
@@ -61,8 +62,8 @@ class EndMarriageSystem(System):
         for _, (relationship, _, _) in self.world.get_components(
             (Relationship, Married, Active)
         ):
-            owner = self.world.get_gameobject(relationship.owner)
-            target = self.world.get_gameobject(relationship.target)
+            owner = relationship.owner
+            target = relationship.target
             goal = GetDivorced(owner, target)
             utility = goal.get_utility().get(owner, 0)
             if utility > 0:
@@ -110,11 +111,9 @@ class FindOwnPlaceSystem(System):
                 life_stage.life_stage == LifeStageType.Adult
                 or life_stage.life_stage == LifeStageType.YoungAdult
             ):
-                residence = self.world.get_gameobject(resident.residence).get_component(
-                    Residence
-                )
-                if not residence.is_owner(guid):
-                    character = self.world.get_gameobject(guid)
+                residence = resident.residence.get_component(Residence)
+                character = self.world.get_gameobject(guid)
+                if not residence.is_owner(character):
                     goal = FindOwnPlace(character)
                     utility = goal.get_utility()[character]
                     goals.push_goal(utility, goal)

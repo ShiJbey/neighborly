@@ -9,9 +9,6 @@ from __future__ import annotations
 import random
 from abc import ABC, abstractmethod
 from typing import Optional
-from neighborly.core.ecs import World
-
-from neighborly.core.ecs import GameObject, GameObjectFactory
 
 from neighborly.components.character import (
     AgingConfig,
@@ -21,11 +18,9 @@ from neighborly.components.character import (
     LifeStage,
     LifeStageType,
 )
-
 from neighborly.components.shared import Age, Name, PrefabName
-
+from neighborly.core.ecs import GameObject, GameObjectFactory, World
 from neighborly.core.time import SimDateTime
-
 from neighborly.events import (
     CharacterAgeChangeEvent,
     CharacterCreatedEvent,
@@ -280,10 +275,6 @@ class SpawnSettlement(SimCommand):
         ----------
         world
             The world instance to add the settlement to
-        prefab
-            The name of the prefab with settlement data
-        name
-            Override name for the town
 
         Returns
         -------

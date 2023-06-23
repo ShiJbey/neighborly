@@ -101,11 +101,11 @@ def test_routine_get_entry_for_time():
 
     result = routine.get_entry_for_time(Weekday.Tuesday, 10)
 
-    assert result == None
+    assert result is None
 
     result = routine.get_entry_for_time(Weekday.Monday, 7)
 
-    assert result == None
+    assert result is None
 
 
 def test_routine_add_entry():

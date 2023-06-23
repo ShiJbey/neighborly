@@ -9,7 +9,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from neighborly import Component, GameObject, Neighborly
-from neighborly.components import Activities, Location
+from neighborly.components.activity import (
+    Activities,
+    ActivityLibrary,
+    register_activity_type,
+)
+from neighborly.components.shared import Location
+from neighborly.core.ecs import EntityPrefab, TagComponent
 from neighborly.decorators import component, location_bias_rule
 from neighborly.utils.common import (
     calculate_location_probabilities,
@@ -29,33 +35,28 @@ class Actor(Component):
 
 
 @component(sim.world)
-class SocialButterfly(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+class SocialButterfly(TagComponent):
+    pass
 
 
 @component(sim.world)
-class HealthNut(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+class HealthNut(TagComponent):
+    pass
 
 
 @component(sim.world)
-class BookWorm(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+class BookWorm(TagComponent):
+    pass
 
 
 @component(sim.world)
-class RecoveringAlcoholic(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+class RecoveringAlcoholic(TagComponent):
+    pass
 
 
 @component(sim.world)
-class Shopaholic(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+class Shopaholic(TagComponent):
+    pass
 
 
 @location_bias_rule(sim.world, "social-butterfly")
@@ -105,14 +106,35 @@ def main():
     # SPAWN NEW LOCATIONS
     ###############################
 
+    register_activity_type(
+        sim.world, EntityPrefab(name="Recreation", components={"ActivityType": {}})
+    )
+    register_activity_type(
+        sim.world, EntityPrefab(name="Socializing", components={"ActivityType": {}})
+    )
+    register_activity_type(
+        sim.world, EntityPrefab(name="Reading", components={"ActivityType": {}})
+    )
+    register_activity_type(
+        sim.world, EntityPrefab(name="Shopping", components={"ActivityType": {}})
+    )
+    register_activity_type(
+        sim.world, EntityPrefab(name="People Watching", components={"ActivityType": {}})
+    )
+    register_activity_type(
+        sim.world, EntityPrefab(name="Drinking", components={"ActivityType": {}})
+    )
+
+    activity_library = sim.world.get_resource(ActivityLibrary)
+
     locations = [
         sim.world.spawn_gameobject(
             [
                 Location(),
                 Activities(
                     [
-                        "Recreation",
-                        "Socializing",
+                        activity_library.get("Recreation"),
+                        activity_library.get("Socializing"),
                     ]
                 ),
             ],
@@ -123,7 +145,7 @@ def main():
                 Location(),
                 Activities(
                     [
-                        "Reading",
+                        activity_library.get("Reading"),
                     ]
                 ),
             ],
@@ -134,9 +156,9 @@ def main():
                 Location(),
                 Activities(
                     [
-                        "Shopping",
-                        "Socializing",
-                        "People Watching",
+                        activity_library.get("Shopping"),
+                        activity_library.get("Socializing"),
+                        activity_library.get("People Watching"),
                     ]
                 ),
             ],
@@ -147,8 +169,8 @@ def main():
                 Location(),
                 Activities(
                     [
-                        "Drinking",
-                        "Socializing",
+                        activity_library.get("Drinking"),
+                        activity_library.get("Socializing"),
                     ]
                 ),
             ],

@@ -8,24 +8,70 @@ import sys
 from dataclasses import dataclass
 from typing import Callable, Optional, Union
 
-import neighborly.components as components
 import neighborly.core.relationship as relationship
-from neighborly.core.tracery import Tracery
 import neighborly.factories as factories
 import neighborly.systems as systems
 from neighborly.__version__ import VERSION
+from neighborly.components.activity import Activities, ActivityLibrary
+from neighborly.components.business import (
+    Business,
+    ClosedForBusiness,
+    InTheWorkforce,
+    JobRequirementLibrary,
+    JobRequirements,
+    Occupation,
+    OccupationLibrary,
+    OccupationType,
+    OpenForBusiness,
+    OperatingHours,
+    ServiceLibrary,
+    Services,
+    SocialStatusLevel,
+    WorkHistory,
+)
+from neighborly.components.character import (
+    AgingConfig,
+    CanAge,
+    CanGetPregnant,
+    Deceased,
+    Departed,
+    GameCharacter,
+    Gender,
+    LifeStage,
+    MarriageConfig,
+    Mortal,
+    ReproductionConfig,
+    Retired,
+    Virtues,
+)
+from neighborly.components.items import Item, ItemLibrary, ItemType
+from neighborly.components.residence import Residence, Resident, Vacant
+from neighborly.components.shared import (
+    Age,
+    Building,
+    CurrentSettlement,
+    Description,
+    FrequentedBy,
+    FrequentedLocations,
+    Lifespan,
+    Location,
+    Name,
+    Position2D,
+)
+from neighborly.components.spawn_table import (
+    BusinessSpawnTable,
+    CharacterSpawnTable,
+    ResidenceSpawnTable,
+)
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import (
-    Active,
-    EntityPrefab,
-    GameObjectFactory,
-    World,
-)
-from neighborly.core.life_event import EventLog, EventHistory, RandomLifeEventLibrary
+from neighborly.core.ecs import Active, EntityPrefab, GameObjectFactory, World
+from neighborly.core.life_event import EventHistory, EventLog, RandomLifeEventLibrary
+from neighborly.core.location_bias import LocationBiasRuleLibrary
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import StatusManager
 from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.core.tracery import Tracery
 from neighborly.data_collection import DataCollector
 from neighborly.event_listeners import (
     add_event_to_personal_history,
@@ -41,24 +87,14 @@ from neighborly.events import (
     DepartEvent,
     JoinSettlementEvent,
 )
+from neighborly.factories.activity import ActivitiesFactory
+from neighborly.factories.business import (
+    JobRequirementsFactory,
+    OperatingHoursFactory,
+    ServicesFactory,
+)
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
-
-from neighborly.factories.business import JobRequirementsFactory, OperatingHoursFactory
-
-from neighborly.core.location_bias import LocationBiasRuleLibrary
-
-from neighborly.components.items import Item, ItemLibrary, ItemType
-
-from neighborly.components.business import (
-    JobRequirementLibrary,
-    JobRequirements,
-    OccupationLibrary,
-    OccupationType,
-    SocialStatusLevel,
-)
-
-from neighborly.components.shared import Description
 
 
 class PluginSetupError(Exception):
@@ -123,6 +159,8 @@ class Neighborly:
         self.world.add_resource(ItemLibrary())
         self.world.add_resource(OccupationLibrary())
         self.world.add_resource(JobRequirementLibrary())
+        self.world.add_resource(ActivityLibrary())
+        self.world.add_resource(ServiceLibrary())
 
         # Set the relationship schema
         self.world.get_resource(GameObjectFactory).add(
@@ -137,6 +175,11 @@ class Neighborly:
         self.world.add_system(systems.EarlyUpdateSystemGroup())
         self.world.add_system(systems.UpdateSystemGroup())
         self.world.add_system(systems.LateUpdateSystemGroup())
+
+        # Initialization systems
+        self.world.add_system(systems.InitializeActivitiesSystem())
+        self.world.add_system(systems.InitializeServicesSystem())
+        self.world.add_system(systems.InitializeOccupationTypesSystem())
 
         # Add default early-update subgroups (in execution order)
         self.world.add_system(systems.DataCollectionSystemGroup())
@@ -172,58 +215,52 @@ class Neighborly:
         self.world.register_component(AIBrain)
         self.world.register_component(Goals)
         self.world.register_component(
-            components.GameCharacter, factory=factories.GameCharacterFactory()
+            GameCharacter, factory=factories.GameCharacterFactory()
         )
         self.world.register_component(relationship.RelationshipManager)
         self.world.register_component(relationship.Relationship)
         self.world.register_component(relationship.Friendship)
         self.world.register_component(relationship.Romance)
         self.world.register_component(relationship.InteractionScore)
-        self.world.register_component(components.Location)
-        self.world.register_component(components.FrequentedBy)
-        self.world.register_component(components.CurrentSettlement)
-        self.world.register_component(
-            components.Virtues, factory=factories.VirtuesFactory()
-        )
-        self.world.register_component(components.Activities)
-        self.world.register_component(components.Occupation)
-        self.world.register_component(components.WorkHistory)
-        self.world.register_component(components.Services)
-        self.world.register_component(components.ClosedForBusiness)
-        self.world.register_component(components.OpenForBusiness)
-        self.world.register_component(
-            components.Business, factory=factories.BusinessFactory()
-        )
-        self.world.register_component(components.InTheWorkforce)
-        self.world.register_component(components.Departed)
-        self.world.register_component(components.CanAge)
-        self.world.register_component(components.Mortal)
-        self.world.register_component(components.CanGetPregnant)
-        self.world.register_component(components.Deceased)
-        self.world.register_component(components.Retired)
-        self.world.register_component(components.Residence)
-        self.world.register_component(components.Resident)
-        self.world.register_component(components.Vacant)
-        self.world.register_component(components.Building)
-        self.world.register_component(components.Position2D)
+        self.world.register_component(Location)
+        self.world.register_component(FrequentedBy)
+        self.world.register_component(CurrentSettlement)
+        self.world.register_component(Virtues, factory=factories.VirtuesFactory())
+        self.world.register_component(Activities, factory=ActivitiesFactory())
+        self.world.register_component(Occupation)
+        self.world.register_component(WorkHistory)
+        self.world.register_component(Services, factory=ServicesFactory())
+        self.world.register_component(ClosedForBusiness)
+        self.world.register_component(OpenForBusiness)
+        self.world.register_component(Business, factory=factories.BusinessFactory())
+        self.world.register_component(InTheWorkforce)
+        self.world.register_component(Departed)
+        self.world.register_component(CanAge)
+        self.world.register_component(Mortal)
+        self.world.register_component(CanGetPregnant)
+        self.world.register_component(Deceased)
+        self.world.register_component(Retired)
+        self.world.register_component(Residence)
+        self.world.register_component(Resident)
+        self.world.register_component(Vacant)
+        self.world.register_component(Building)
+        self.world.register_component(Position2D)
         self.world.register_component(StatusManager)
-        self.world.register_component(components.FrequentedLocations)
+        self.world.register_component(FrequentedLocations)
         self.world.register_component(Settlement, factory=SettlementFactory())
         self.world.register_component(EventHistory)
-        self.world.register_component(components.MarriageConfig)
-        self.world.register_component(components.AgingConfig)
-        self.world.register_component(components.ReproductionConfig)
-        self.world.register_component(components.Name, factory=NameFactory())
-        self.world.register_component(
-            components.OperatingHours, factory=OperatingHoursFactory()
-        )
-        self.world.register_component(components.Lifespan)
-        self.world.register_component(components.Age)
-        self.world.register_component(components.CharacterSpawnTable)
-        self.world.register_component(components.BusinessSpawnTable)
-        self.world.register_component(components.ResidenceSpawnTable)
-        self.world.register_component(components.Gender)
-        self.world.register_component(components.LifeStage)
+        self.world.register_component(MarriageConfig)
+        self.world.register_component(AgingConfig)
+        self.world.register_component(ReproductionConfig)
+        self.world.register_component(Name, factory=NameFactory())
+        self.world.register_component(OperatingHours, factory=OperatingHoursFactory())
+        self.world.register_component(Lifespan)
+        self.world.register_component(Age)
+        self.world.register_component(CharacterSpawnTable)
+        self.world.register_component(BusinessSpawnTable)
+        self.world.register_component(ResidenceSpawnTable)
+        self.world.register_component(Gender)
+        self.world.register_component(LifeStage)
         self.world.register_component(ItemType)
         self.world.register_component(Description)
         self.world.register_component(Item)

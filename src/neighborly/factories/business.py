@@ -7,22 +7,39 @@ from neighborly.components.business import (
     Business,
     JobRequirementParser,
     JobRequirements,
+    OccupationLibrary,
     OperatingHours,
+    ServiceLibrary,
+    Services,
 )
 from neighborly.components.routine import time_str_to_int
-from neighborly.core.ecs import Component, IComponentFactory, World
+from neighborly.core.ecs import Component, GameObject, IComponentFactory, World
 from neighborly.core.time import Weekday
+
+
+class ServicesFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Component:
+        service_library = world.get_resource(ServiceLibrary)
+        services = [
+            service_library.get(service_name) for service_name in kwargs["services"]
+        ]
+        return Services(services)
 
 
 class BusinessFactory(IComponentFactory):
     """Constructs instances of Business components"""
 
     def create(self, world: World, **kwargs: Any) -> Component:
+        occupation_library = world.get_resource(OccupationLibrary)
+
         owner_type: str = kwargs["owner_type"]
-        employee_types: Dict[str, int] = kwargs.get("employee_types", {}).copy()
+        employee_types: Dict[GameObject, int] = {
+            occupation_library.get(occupation_name): num_slots
+            for occupation_name, num_slots in kwargs.get("employee_types", {}).items()
+        }
 
         return Business(
-            owner_type=owner_type,
+            owner_type=occupation_library.get(owner_type),
             employee_types=employee_types,
         )
 

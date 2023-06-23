@@ -17,7 +17,7 @@ from typing import (
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, ISerializable
+from neighborly.core.ecs import Component, GameObject, ISerializable
 
 
 class ISettlementMap(ABC):
@@ -76,15 +76,15 @@ class ISettlementMap(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def reserve_lot(self, lot_id: int, building_id: int) -> None:
+    def reserve_lot(self, lot_id: int, building: GameObject) -> None:
         """Set a lot as being taken by a building.
 
         Parameters
         ----------
         lot_id
             The lot to set as taken.
-        building_id
-            The GameObject ID of the building that owns the spot.
+        building
+            The building that owns the spot.
         """
         raise NotImplementedError
 
@@ -134,9 +134,9 @@ class Settlement(Component, ISerializable):
     the business GameObject.
     """
 
-    businesses: OrderedSet[int]
+    businesses: OrderedSet[GameObject]
     """
-    The GameObject IDs of all the GameObjects with Business components that belong
+    All the GameObjects with Business components that belong
     to this settlement.
     """
 
@@ -157,6 +157,7 @@ class Settlement(Component, ISerializable):
         return {
             "population": self.population,
             "land_map": self.land_map.to_dict(),
+            "businesses": [entry.uid for entry in self.businesses],
         }
 
     def __str__(self) -> str:
@@ -171,7 +172,7 @@ class GridSettlementMap(ISettlementMap):
 
     __slots__ = "_unoccupied", "_occupied", "_grid"
 
-    _grid: Grid[Optional[int]]
+    _grid: Grid[Optional[GameObject]]
     """An internal grid that stores the building IDs."""
 
     _unoccupied: List[int]
@@ -215,12 +216,12 @@ class GridSettlementMap(ISettlementMap):
         neighbor_positions = self._grid.get_neighbors(rounded_position, True)
         return [self._position_to_id(pos) for pos in neighbor_positions]
 
-    def reserve_lot(self, lot_id: int, building_id: int) -> None:
+    def reserve_lot(self, lot_id: int, building: GameObject) -> None:
         if lot_id in self._occupied:
             raise RuntimeError("Lot already occupied")
         position = self.get_lot_position(lot_id)
         rounded_position = (int(position[0]), int(position[1]))
-        self._grid[rounded_position] = building_id
+        self._grid[rounded_position] = building
         self._unoccupied.remove(lot_id)
         self._occupied.add(lot_id)
 
@@ -251,7 +252,7 @@ class GridSettlementMap(ISettlementMap):
             "type": self.__class__.__name__,
             "width": self.get_size()[0],
             "height": self.get_size()[1],
-            "cells": [cell if cell else -1 for cell in self._grid.get_cells()],
+            "cells": [cell.uid if cell else -1 for cell in self._grid.get_cells()],
         }
 
 

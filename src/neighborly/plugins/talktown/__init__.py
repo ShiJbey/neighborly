@@ -1,7 +1,7 @@
 import pathlib
 from typing import Any
 
-from neighborly.loaders import load_prefabs, load_occupation_types
+from neighborly.loaders import load_occupation_types, load_prefabs
 from neighborly.plugins.talktown import business_components
 from neighborly.plugins.talktown.personality import (
     BigFivePersonality,

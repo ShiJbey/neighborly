@@ -2,8 +2,7 @@ from typing import Any, List
 
 from neighborly.components.character import GameCharacter, LifeStage, LifeStageType
 from neighborly.core.ecs import Active, GameObject, ISystem, World
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.roles import Role
+from neighborly.core.life_event import EventRole, LifeEvent
 from neighborly.core.status import StatusComponent, add_status, remove_status
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.talktown.business_components import School
@@ -21,7 +20,7 @@ class EnrolledInSchoolEvent(LifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(
             date,
-            [Role("Character", character)],
+            [EventRole("Character", character)],
         )
 
 
@@ -29,7 +28,7 @@ class GraduatedFromSchoolEvent(LifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
         super().__init__(
             date,
-            [Role("Character", character)],
+            [EventRole("Character", character)],
         )
 
 

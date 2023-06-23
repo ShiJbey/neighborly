@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any, List, Optional
 
+from neighborly.command import SetCharacterName
 from neighborly.components.business import Business, OpenForBusiness
 from neighborly.components.character import (
     CanGetPregnant,
@@ -17,8 +18,14 @@ from neighborly.components.character import (
 from neighborly.components.residence import Residence, Resident
 from neighborly.components.shared import Age, Lifespan
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs import QB, Active, GameObject, World
-from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
+from neighborly.core.ecs import Active, GameObject, World
+from neighborly.core.life_event import (
+    EventRole,
+    EventRoleList,
+    RandomLifeEvent,
+    RandomLifeEventLibrary,
+)
+from neighborly.core.query import QB
 from neighborly.core.relationship import (
     Relationship,
     RelationshipManager,
@@ -29,7 +36,6 @@ from neighborly.core.relationship import (
     has_relationship,
     remove_relationship_status,
 )
-from neighborly.core.roles import Role, RoleList
 from neighborly.core.status import add_status, has_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
 from neighborly.plugins.defaults.actions import Die
@@ -37,17 +43,15 @@ from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.common import set_residence, shutdown_business
 from neighborly.utils.query import are_related, is_married, is_single, with_relationship
 
-from neighborly.command import SetCharacterName
-
 
 class StartDatingLifeEvent(RandomLifeEvent):
-    optional = True
-    initiator = "Initiator"
 
     def __init__(
         self, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
-        super().__init__(date, [Role("Initiator", initiator), Role("Other", other)])
+        super().__init__(
+            date, [EventRole("Initiator", initiator), EventRole("Other", other)]
+        )
 
     def get_probability(self) -> float:
         return 1
@@ -102,8 +106,7 @@ class StartDatingLifeEvent(RandomLifeEvent):
                 return None
         else:
             candidates = [
-                world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).outgoing
+                c for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -147,14 +150,14 @@ class StartDatingLifeEvent(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        initiator = cls._bind_initiator(world, bindings.get("Initiator"))
+        initiator = cls._bind_initiator(world, bindings.get_first("Initiator"))
 
         if initiator is None:
             return None
 
-        other = cls._bind_other(world, initiator, bindings.get("Other"))
+        other = cls._bind_other(world, initiator, bindings.get_first("Other"))
 
         if other is None:
             return None
@@ -163,12 +166,13 @@ class StartDatingLifeEvent(RandomLifeEvent):
 
 
 class DatingBreakUp(RandomLifeEvent):
-    initiator = "Initiator"
 
     def __init__(
         self, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
-        super().__init__(date, [Role("Initiator", initiator), Role("Other", other)])
+        super().__init__(
+            date, [EventRole("Initiator", initiator), EventRole("Other", other)]
+        )
 
     def get_probability(self) -> float:
         return 1
@@ -220,8 +224,7 @@ class DatingBreakUp(RandomLifeEvent):
                 return None
         else:
             candidates = [
-                world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).outgoing
+                c for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -248,14 +251,14 @@ class DatingBreakUp(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        initiator = cls._bind_initiator(world, bindings.get("Initiator"))
+        initiator = cls._bind_initiator(world, bindings.get_first("Initiator"))
 
         if initiator is None:
             return None
 
-        other = cls._bind_other(world, initiator, bindings.get("Other"))
+        other = cls._bind_other(world, initiator, bindings.get_first("Other"))
 
         if other is None:
             return None
@@ -268,7 +271,7 @@ class DivorceLifeEvent(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
         query = QB.query(
             ("Initiator", "Other"),
@@ -277,7 +280,7 @@ class DivorceLifeEvent(RandomLifeEvent):
             QB.with_(Married, "?relationship"),
             QB.filter_(
                 lambda rel: rel.get_component(Romance).get_value()
-                <= rel.world.get_resource(NeighborlyConfig).settings.get(
+                <= rel.world.get_resource(NeighborlyConfig).settings.get_first(
                     "divorce_romance_thresh", -25
                 ),
                 "?relationship",
@@ -295,7 +298,7 @@ class DivorceLifeEvent(RandomLifeEvent):
             roles = dict(zip(query.get_symbols(), chosen_objects))
             return cls(
                 world.get_resource(SimDateTime),
-                [Role(title, gameobject) for title, gameobject in roles.items()],
+                [EventRole(title, gameobject) for title, gameobject in roles.items()],
             )
 
     def get_probability(self) -> float:
@@ -315,7 +318,9 @@ class MarriageLifeEvent(RandomLifeEvent):
     def __init__(
         self, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
-        super().__init__(date, [Role("Initiator", initiator), Role("Other", other)])
+        super().__init__(
+            date, [EventRole("Initiator", initiator), EventRole("Other", other)]
+        )
 
     @staticmethod
     def _bind_initiator(
@@ -357,8 +362,7 @@ class MarriageLifeEvent(RandomLifeEvent):
                 return None
         else:
             candidates = [
-                world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).outgoing
+                c for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -402,14 +406,14 @@ class MarriageLifeEvent(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        initiator = cls._bind_initiator(world, bindings.get("Initiator"))
+        initiator = cls._bind_initiator(world, bindings.get_first("Initiator"))
 
         if initiator is None:
             return None
 
-        other = cls._bind_other(world, initiator, bindings.get("Other"))
+        other = cls._bind_other(world, initiator, bindings.get_first("Other"))
 
         if other is None:
             return None
@@ -429,16 +433,15 @@ class MarriageLifeEvent(RandomLifeEvent):
         add_relationship_status(other, initiator, Married())
 
         # Move in together
-        former_residence = world.get_gameobject(other.get_component(Resident).residence)
-        new_residence = world.get_gameobject(
-            initiator.get_component(Resident).residence
-        )
+        former_residence = other.get_component(Resident).residence
+        new_residence = initiator.get_component(Resident).residence
 
-        movers: List[int] = [*former_residence.get_component(Residence).residents]
+        movers: List[GameObject] = [
+            *former_residence.get_component(Residence).residents
+        ]
 
-        for character_id in movers:
-            character = world.get_gameobject(character_id)
-            is_owner = former_residence.get_component(Residence).is_owner(character_id)
+        for character in movers:
+            is_owner = former_residence.get_component(Residence).is_owner(character)
             set_residence(character, new_residence, is_owner)
 
         # Change last names
@@ -447,10 +450,9 @@ class MarriageLifeEvent(RandomLifeEvent):
         SetCharacterName(other, last_name=new_last_name).execute(world)
 
         for relationship in get_relationships_with_statuses(other, ParentOf):
-            rel = relationship.get_component(Relationship)
-            target = world.get_gameobject(rel.target)
+            target = relationship.get_component(Relationship).target
 
-            if target.uid not in movers:
+            if target not in movers:
                 continue
 
             if not target.has_component(Active):
@@ -471,7 +473,7 @@ class GetPregnantLifeEvent(RandomLifeEvent):
         self, date: SimDateTime, pregnant_one: GameObject, other: GameObject
     ) -> None:
         super().__init__(
-            date, [Role("PregnantOne", pregnant_one), Role("Other", other)]
+            date, [EventRole("PregnantOne", pregnant_one), EventRole("Other", other)]
         )
 
     @staticmethod
@@ -510,8 +512,7 @@ class GetPregnantLifeEvent(RandomLifeEvent):
                 return None
         else:
             candidates = [
-                world.get_gameobject(c)
-                for c in initiator.get_component(RelationshipManager).outgoing
+                c for c in initiator.get_component(RelationshipManager).outgoing
             ]
 
         matches: List[GameObject] = []
@@ -539,14 +540,14 @@ class GetPregnantLifeEvent(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        pregnant_one = cls._bind_pregnant_one(world, bindings.get("Initiator"))
+        pregnant_one = cls._bind_pregnant_one(world, bindings.get_first("Initiator"))
 
         if pregnant_one is None:
             return None
 
-        other = cls._bind_other(world, pregnant_one, bindings.get("Other"))
+        other = cls._bind_other(world, pregnant_one, bindings.get_first("Other"))
 
         if other is None:
             return None
@@ -582,7 +583,7 @@ class DieOfOldAge(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
         query = QB.query(
             "Deceased",
@@ -605,7 +606,7 @@ class DieOfOldAge(RandomLifeEvent):
             roles = dict(zip(query.get_symbols(), chosen_objects))
             return cls(
                 world.get_resource(SimDateTime),
-                [Role(title, gameobject) for title, gameobject in roles.items()],
+                [EventRole(title, gameobject) for title, gameobject in roles.items()],
             )
 
     def get_probability(self) -> float:
@@ -626,10 +627,9 @@ class GoOutOfBusiness(RandomLifeEvent):
     def execute(self, world: World):
         business = self["Business"]
 
-        owner_id = business.get_component(Business).owner
+        owner = business.get_component(Business).owner
 
-        if owner_id:
-            owner = business.world.get_gameobject(owner_id)
+        if owner:
             owner.world.fire_event(self)
         shutdown_business(self["Business"])
 
@@ -653,7 +653,7 @@ class GoOutOfBusiness(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
         query = QB.query(
             "Business", QB.with_((Business, OpenForBusiness, Active), "Business")
@@ -669,7 +669,7 @@ class GoOutOfBusiness(RandomLifeEvent):
             roles = dict(zip(query.get_symbols(), chosen_objects))
             return cls(
                 world.get_resource(SimDateTime),
-                [Role(title, gameobject) for title, gameobject in roles.items()],
+                [EventRole(title, gameobject) for title, gameobject in roles.items()],
             )
 
 

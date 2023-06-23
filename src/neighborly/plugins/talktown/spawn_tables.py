@@ -1,8 +1,8 @@
 import pathlib
 from typing import Any
 
-from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.plugins.defaults.create_town import CreateDefaultSettlementSystem
+from neighborly.simulation import Neighborly, PluginInfo
 
 plugin_info = PluginInfo(
     name="Talk of the Town",
@@ -12,6 +12,6 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any) -> None:
-    CreateDefaultSettlementSystem.load_spawn_table(
+    sim.world.get_system(CreateDefaultSettlementSystem).load_spawn_table(
         "businesses", pathlib.Path(__file__).parent / "business_spawn_table.csv"
     )

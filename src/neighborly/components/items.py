@@ -4,11 +4,11 @@ from typing import Any, Dict
 
 from neighborly.core.ecs import (
     Component,
-    ISerializable,
-    GameObject,
-    World,
     EntityPrefab,
+    GameObject,
     GameObjectFactory,
+    ISerializable,
+    World,
 )
 
 
@@ -137,15 +137,10 @@ class ItemLibrary:
         return self._items
 
 
-def load_item_type(world: World, prefab: EntityPrefab) -> None:
+def register_item_type(world: World, prefab: EntityPrefab) -> None:
     """Loads a new item type into the world's ItemLibrary."""
     factory = world.get_resource(GameObjectFactory)
     factory.add(prefab)
     item_type = factory.instantiate(world, prefab.name)
     item_type.name = prefab.name
     world.get_resource(ItemLibrary).items[item_type.name] = item_type
-
-
-def get_item_type(world: World, item_name: str) -> GameObject:
-    """Retrieve an item type from the world's item library"""
-    return world.get_resource(ItemLibrary).items[item_name]

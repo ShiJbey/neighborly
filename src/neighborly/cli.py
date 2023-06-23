@@ -13,8 +13,8 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from neighborly.config import NeighborlyConfig
 from neighborly.__version__ import VERSION
+from neighborly.config import NeighborlyConfig
 from neighborly.exporter import export_to_json
 from neighborly.simulation import Neighborly
 

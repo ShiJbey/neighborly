@@ -3,10 +3,11 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Optional
 
-from neighborly.components import CurrentSettlement, Residence, Resident, Vacant
+from neighborly.command import SpawnBusiness, SpawnResidence
 from neighborly.components.business import (
     Business,
     BusinessOwner,
+    JobRequirements,
     Occupation,
     OccupationLibrary,
     OpenForBusiness,
@@ -25,6 +26,8 @@ from neighborly.components.character import (
     Virtue,
     Virtues,
 )
+from neighborly.components.residence import Residence, Resident, Vacant
+from neighborly.components.shared import CurrentSettlement
 from neighborly.components.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.behavior_tree import (
@@ -47,6 +50,7 @@ from neighborly.core.ecs import (
     GameObjectFactory,
     World,
 )
+from neighborly.core.life_event import EventRole, EventRoleList
 from neighborly.core.relationship import (
     Friendship,
     RelationshipManager,
@@ -58,7 +62,6 @@ from neighborly.core.relationship import (
     has_relationship_status,
     remove_relationship_status,
 )
-from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, clear_statuses
 from neighborly.core.time import DAYS_PER_MONTH, DAYS_PER_YEAR, SimDateTime
@@ -83,8 +86,6 @@ from neighborly.utils.common import (
     start_job,
 )
 from neighborly.utils.query import are_related, get_work_experience_as, is_single
-
-from neighborly.command import SpawnBusiness, SpawnResidence
 
 ####################################
 # CONSIDERATIONS
@@ -183,7 +184,7 @@ class FindEmployment(GoalNode):
 
     def __init__(self, character: GameObject) -> None:
         super().__init__(SelectorBTNode([GetJob(character), StartBusiness(character)]))
-        self.roles = RoleList([Role("Character", character)])
+        self.roles = EventRoleList([EventRole("Character", character)])
 
     @property
     def character(self):
@@ -271,7 +272,7 @@ class StartBusiness(GoalNode):
     def evaluate(self) -> NodeState:
         world = self.character.world
         current_settlement = self.character.get_component(CurrentSettlement)
-        settlement = world.get_gameobject(current_settlement.settlement)
+        settlement = current_settlement.settlement
         settlement_comp = settlement.get_component(Settlement)
         rng = world.get_resource(random.Random)
 
@@ -309,12 +310,12 @@ class StartBusiness(GoalNode):
             world.get_resource(SimDateTime),
             self.character,
             business,
-            owner_occupation_type.name,
+            owner_occupation_type,
         )
 
         self.character.world.fire_event(start_business_event)
 
-        start_job(self.character, business, owner_occupation_type.name, is_owner=True)
+        start_job(self.character, business, owner_occupation_type, is_owner=True)
 
         return NodeState.SUCCESS
 
@@ -324,7 +325,7 @@ class StartBusiness(GoalNode):
     ) -> Optional[EntityPrefab]:
         world = character.world
         current_settlement = character.get_component(CurrentSettlement)
-        settlement = world.get_gameobject(current_settlement.settlement)
+        settlement = current_settlement.settlement
         business_spawn_table = settlement.get_component(BusinessSpawnTable)
         rng = world.get_resource(random.Random)
 
@@ -339,7 +340,13 @@ class StartBusiness(GoalNode):
                     owner_type
                 )
 
-                if owner_occupation_type.passes_preconditions(character):
+                if job_requirements := owner_occupation_type.try_component(
+                    JobRequirements
+                ):
+                    if job_requirements.passes_requirements(character):
+                        choices.append(prefab)
+                        weights.append(business_spawn_table.get_frequency(prefab_name))
+                else:
                     choices.append(prefab)
                     weights.append(business_spawn_table.get_frequency(prefab_name))
 
@@ -403,14 +410,18 @@ class GetJob(GoalNode):
         ):
             open_positions = business.get_open_positions()
 
-            for occupation_name in open_positions:
-                occupation_type = self.world.get_resource(OccupationLibrary).get(
-                    occupation_name
-                )
-
-                if occupation_type.passes_preconditions(self.character):
+            for occupation_type in open_positions:
+                if job_requirements := occupation_type.try_component(JobRequirements):
+                    if job_requirements.passes_requirements(self.character):
+                        start_job(
+                            self.character,
+                            self.world.get_gameobject(guid),
+                            occupation_type,
+                        )
+                        return NodeState.SUCCESS
+                else:
                     start_job(
-                        self.character, self.world.get_gameobject(guid), occupation_name
+                        self.character, self.world.get_gameobject(guid), occupation_type
                     )
                     return NodeState.SUCCESS
 
@@ -434,10 +445,8 @@ class FindOwnPlace(GoalNode):
 
     def is_complete(self) -> bool:
         if resident := self.character.try_component(Resident):
-            residence = self.character.world.get_gameobject(
-                resident.residence
-            ).get_component(Residence)
-            return residence.is_owner(self.character.uid)
+            residence = resident.residence.get_component(Residence)
+            return residence.is_owner(self.character)
         return False
 
     def satisfied_goals(self) -> List[GoalNode]:
@@ -501,9 +510,7 @@ class BuildNewHouse(AbstractBTNode):
     def evaluate(self) -> NodeState:
         world = self.character.world
 
-        settlement = world.get_gameobject(
-            self.character.get_component(CurrentSettlement).settlement
-        )
+        settlement = self.character.get_component(CurrentSettlement).settlement
         land_map = settlement.get_component(Settlement).land_map
         vacancies = land_map.get_vacant_lots()
         spawn_table = settlement.get_component(ResidenceSpawnTable)
@@ -652,24 +659,16 @@ class GetMarried(GoalNode):
         self.partner: GameObject = partner
 
     def get_utility(self) -> Dict[GameObject, float]:
-        world = self.character.world
-
         initiator_to_target_romance = float(
-            world.get_gameobject(
-                self.character.get_component(RelationshipManager).outgoing[
-                    self.partner.uid
-                ]
-            )
+            self.character.get_component(RelationshipManager)
+            .outgoing[self.partner]
             .get_component(Romance)
             .get_value()
         )
 
         target_to_initiator_romance = float(
-            world.get_gameobject(
-                self.partner.get_component(RelationshipManager).outgoing[
-                    self.character.uid
-                ]
-            )
+            self.partner.get_component(RelationshipManager)
+            .outgoing[self.character]
             .get_component(Romance)
             .get_value()
         )
@@ -993,16 +992,16 @@ class Retire(GoalNode):
         event = RetirementEvent(
             world.get_resource(SimDateTime),
             self.character,
-            world.get_gameobject(occupation.business),
+            occupation.business,
             occupation.occupation_type,
         )
 
         self.character.world.fire_event(event)
 
         if business_owner := self.character.try_component(BusinessOwner):
-            shutdown_business(world.get_gameobject(business_owner.business))
+            shutdown_business(business_owner.business)
         else:
-            end_job(self.character, "Retired")
+            end_job(self.character, event)
 
         return NodeState.SUCCESS
 
@@ -1061,24 +1060,16 @@ class AskOut(GoalNode):
         return NodeState.SUCCESS
 
     def get_utility(self) -> Dict[GameObject, float]:
-        world = self.initiator.world
-
         initiator_to_target_romance = float(
-            world.get_gameobject(
-                self.initiator.get_component(RelationshipManager).outgoing[
-                    self.target.uid
-                ]
-            )
+            self.initiator.get_component(RelationshipManager)
+            .outgoing[self.target]
             .get_component(Romance)
             .get_value()
         )
 
         target_to_initiator_romance = float(
-            world.get_gameobject(
-                self.target.get_component(RelationshipManager).outgoing[
-                    self.initiator.uid
-                ]
-            )
+            self.target.get_component(RelationshipManager)
+            .outgoing[self.initiator]
             .get_component(Romance)
             .get_value()
         )
@@ -1165,8 +1156,7 @@ class FindRomance(GoalNode):
 
         # This character should try asking out another character
         candidates = [
-            world.get_gameobject(c)
-            for c in self.character.get_component(RelationshipManager).outgoing
+            c for c in self.character.get_component(RelationshipManager).outgoing
         ]
 
         actions: WeightedList[GoalNode] = WeightedList()
@@ -1229,11 +1219,9 @@ class Die(BehaviorTree):
 
         if self.character.has_component(Occupation):
             if business_owner := self.character.try_component(BusinessOwner):
-                shutdown_business(
-                    self.character.world.get_gameobject(business_owner.business)
-                )
+                shutdown_business(business_owner.business)
             else:
-                end_job(self.character, reason="Died")
+                end_job(self.character, event)
 
         if self.character.has_component(Resident):
             set_residence(self.character, None)

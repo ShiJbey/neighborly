@@ -1,11 +1,10 @@
 from typing import Any
 
-from neighborly.simulation import Neighborly, PluginInfo
-
-from . import (
+from neighborly.plugins.defaults import (
     businesses,
     characters,
     create_town,
+    job_requirement_rules,
     life_events,
     location_bias_rules,
     names,
@@ -15,6 +14,7 @@ from . import (
     social_rules,
     systems,
 )
+from neighborly.simulation import Neighborly, PluginInfo
 
 plugin_info = PluginInfo(
     name="all default plugins",
@@ -35,3 +35,4 @@ def setup(sim: Neighborly, **kwargs: Any):
     resident_spawning.setup(sim, **kwargs)
     social_rules.setup(sim, **kwargs)
     systems.setup(sim, **kwargs)
+    job_requirement_rules.setup(sim, **kwargs)

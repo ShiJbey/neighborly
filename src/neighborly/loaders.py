@@ -6,11 +6,12 @@ Utility class and functions for importing simulation configuration data
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Union
 
 import yaml
+from pydantic import ValidationError
 
-from neighborly.components.business import add_occupation_type
+from neighborly.components.business import register_occupation_type
 from neighborly.core.ecs import EntityPrefab, GameObjectFactory, World
 from neighborly.core.tracery import Tracery
 
@@ -39,14 +40,19 @@ def load_occupation_types(world: World, file_path: Union[str, pathlib.Path]) -> 
     if isinstance(data, list):
         # That data file contains multiple occupation definitions
         for entry in data:
-            add_occupation_type(world, EntityPrefab.parse_obj(entry))
+            try:
+                register_occupation_type(world, EntityPrefab.parse_obj(entry))
+            except ValidationError as ex:
+                error_msg = f"Encountered error parsing prefab: {entry['name']}"
+                print(error_msg)
+                print(str(ex))
     else:
         # The data file contains only a single occupation definition
-        add_occupation_type(world, EntityPrefab.parse_obj(data))
+        register_occupation_type(world, EntityPrefab.parse_obj(data))
 
 
 def load_prefabs(world: World, file_path: Union[str, pathlib.Path]) -> None:
-    """Load a entity prefab data from a data file.
+    """Load an entity prefab data from a data file.
 
     Parameters
     ----------

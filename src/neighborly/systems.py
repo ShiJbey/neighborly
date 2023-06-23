@@ -3,7 +3,14 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, DefaultDict, Optional, Type
 
-from neighborly.components.business import Occupation, Unemployed
+from neighborly.command import SetCharacterAge, SpawnCharacter
+from neighborly.components.activity import ActivityLibrary
+from neighborly.components.business import (
+    Occupation,
+    OccupationLibrary,
+    ServiceLibrary,
+    Unemployed,
+)
 from neighborly.components.character import (
     CanAge,
     ChildOf,
@@ -26,8 +33,18 @@ from neighborly.components.shared import (
 )
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import Active, GameObject, ISystem, SystemGroup
-from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
+from neighborly.core.ecs import (
+    Active,
+    GameObject,
+    GameObjectFactory,
+    ISystem,
+    SystemGroup,
+)
+from neighborly.core.life_event import (
+    EventRoleList,
+    RandomLifeEvent,
+    RandomLifeEventLibrary,
+)
 from neighborly.core.relationship import (
     Friendship,
     IncrementCounter,
@@ -43,7 +60,6 @@ from neighborly.core.relationship import (
     has_relationship,
     lerp,
 )
-from neighborly.core.roles import RoleList
 from neighborly.core.status import remove_status
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime, TimeDelta
 from neighborly.events import (
@@ -61,8 +77,6 @@ from neighborly.utils.common import (
     set_frequented_locations,
     set_residence,
 )
-
-from neighborly.command import SetCharacterAge, SpawnCharacter
 
 
 class InitializationSystemGroup(SystemGroup):
@@ -207,7 +221,7 @@ class RandomLifeEventSystem(System):
         event_type: Type[RandomLifeEvent]
         for _ in range(total_population // 10):
             event_type = event_library.pick_one(rng)
-            if event := event_type.instantiate(self.world, RoleList()):
+            if event := next(event_type.instantiate(self.world, EventRoleList()), None):
                 if rng.random() < event.get_probability():
                     event.execute(self.world)
 
@@ -225,14 +239,9 @@ class MeetNewPeopleSystem(ISystem):
 
             candidate_scores: DefaultDict[GameObject, int] = defaultdict(int)
 
-            for loc_id in frequented_locations.locations:
-                for other_id in self.world.get_gameobject(loc_id).get_component(
-                    FrequentedBy
-                ):
-                    other = self.world.get_gameobject(other_id)
-                    if other_id != character.uid and not has_relationship(
-                        character, other
-                    ):
+            for loc in frequented_locations:
+                for other in loc.get_component(FrequentedBy):
+                    if other != character and not has_relationship(character, other):
                         candidate_scores[other] += 1
 
             if candidate_scores:
@@ -331,9 +340,7 @@ class UnemployedStatusSystem(System):
                 # Do not depart if one or more of the entity's spouses has a job
                 if not any(
                     [
-                        self.world.get_gameobject(
-                            rel.get_component(Relationship).target
-                        ).has_component(Occupation)
+                        rel.get_component(Relationship).target.has_component(Occupation)
                         for rel in spouses
                     ]
                 ):
@@ -369,14 +376,12 @@ class PregnantStatusSystem(System):
                 .get_result()
             )
 
-            settlement = self.world.get_gameobject(
-                character.get_component(CurrentSettlement).settlement
-            )
+            settlement = character.get_component(CurrentSettlement).settlement
             add_character_to_settlement(baby, settlement)
 
             set_residence(
                 baby,
-                self.world.get_gameobject(character.get_component(Resident).residence),
+                character.get_component(Resident).residence,
             )
 
             # Birthing parent to child
@@ -406,7 +411,7 @@ class PregnantStatusSystem(System):
                 if rel.target == baby.uid:
                     continue
 
-                sibling = self.world.get_gameobject(rel.target)
+                sibling = rel.target
 
                 # Baby to sibling
                 add_relationship(baby, sibling)
@@ -424,7 +429,7 @@ class PregnantStatusSystem(System):
                 if rel.target == baby.uid:
                     continue
 
-                sibling = self.world.get_gameobject(rel.target)
+                sibling = rel.target
 
                 # Baby to sibling
                 add_relationship(baby, sibling)
@@ -527,8 +532,8 @@ class EvaluateSocialRulesSystem(System):
     def run(self, *args: Any, **kwargs: Any) -> None:
         for guid, relationship_comp in self.world.get_component(Relationship):
             relationship = self.world.get_gameobject(guid)
-            subject = self.world.get_gameobject(relationship_comp.owner)
-            target = self.world.get_gameobject(relationship_comp.target)
+            subject = relationship_comp.owner
+            target = relationship_comp.target
 
             # Do not update relationships if any of the character involved are
             # not active in the simulation
@@ -562,26 +567,22 @@ class UpdateFrequentedLocationSystem(System):
             # Sample from available locations
             set_frequented_locations(
                 character,
-                self.world.get_gameobject(current_settlement.settlement),
+                current_settlement.settlement,
             )
 
             # Add residence
             if resident := character.try_component(Resident):
-                residence = self.world.get_gameobject(resident.residence)
+                residence = resident.residence
                 if frequented_by := residence.try_component(FrequentedBy):
-                    frequented_by.add(guid)
-                    character.get_component(FrequentedLocations).locations.add(
-                        residence.uid
-                    )
+                    frequented_by.add(character)
+                    character.get_component(FrequentedLocations).add(residence)
 
             # Add Job location
             if occupation := character.try_component(Occupation):
-                business = self.world.get_gameobject(occupation.business)
+                business = occupation.business
                 if frequented_by := business.try_component(FrequentedBy):
-                    frequented_by.add(guid)
-                    character.get_component(FrequentedLocations).locations.add(
-                        business.uid
-                    )
+                    frequented_by.add(character)
+                    character.get_component(FrequentedLocations).add(business)
 
 
 class AIActionSystem(System):
@@ -640,3 +641,53 @@ class AIRoutineSystem(System):
                 goals.push_goal(
                     g_priority + ROUTINE_PRIORITY_BOOSTS[routine_entry.priority], g
                 )
+
+
+class InitializeActivitiesSystem(ISystem):
+    """Creates Activity Type GameObjects and update the library with references."""
+
+    sys_group = "initialization"
+    priority = 9999
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        activity_library = self.world.get_resource(ActivityLibrary)
+        gameobject_factory = self.world.get_resource(GameObjectFactory)
+
+        for prefab_name in activity_library.activities_to_instantiate:
+            activity_obj = gameobject_factory.instantiate(self.world, prefab_name)
+            activity_obj.name = prefab_name
+            activity_library.add(activity_obj)
+
+
+class InitializeServicesSystem(ISystem):
+    """Creates Service Type GameObjects and update the library with references."""
+
+    sys_group = "initialization"
+    priority = 9999
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        service_library = self.world.get_resource(ServiceLibrary)
+        gameobject_factory = self.world.get_resource(GameObjectFactory)
+
+        for prefab_name in service_library.services_to_instantiate:
+            service_obj = gameobject_factory.instantiate(self.world, prefab_name)
+            service_obj.name = prefab_name
+            service_library.add(service_obj)
+
+
+class InitializeOccupationTypesSystem(ISystem):
+    """Creates Occupation Type GameObjects and updates the library with references."""
+
+    sys_group = "initialization"
+    priority = 9999
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        occupation_library = self.world.get_resource(OccupationLibrary)
+        gameobject_factory = self.world.get_resource(GameObjectFactory)
+
+        for prefab_name in occupation_library.occupations_to_instantiate:
+            occupation_type_obj = gameobject_factory.instantiate(
+                self.world, prefab_name
+            )
+            occupation_type_obj.name = prefab_name
+            occupation_library.add(occupation_type_obj)

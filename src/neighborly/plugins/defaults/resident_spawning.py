@@ -2,24 +2,21 @@ import dataclasses
 import random
 from typing import Any, List, Optional
 
-from neighborly.components import (
-    CharacterSpawnTable,
-    ChildOf,
-    CurrentSettlement,
-    GameCharacter,
-    MarriageConfig,
-    ReproductionConfig,
-    Residence,
-    ResidenceSpawnTable,
-    Vacant,
-)
+from neighborly.command import SpawnCharacter, SpawnResidence
 from neighborly.components.character import (
+    ChildOf,
     Family,
+    GameCharacter,
     LifeStageType,
+    MarriageConfig,
     Married,
     ParentOf,
+    ReproductionConfig,
     SiblingOf,
 )
+from neighborly.components.residence import Residence, Vacant
+from neighborly.components.shared import CurrentSettlement
+from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import Active, GameObject
 from neighborly.core.relationship import (
@@ -40,8 +37,6 @@ from neighborly.utils.common import (
     add_residence_to_settlement,
     set_residence,
 )
-
-from neighborly.command import SpawnCharacter, SpawnResidence
 
 plugin_info = PluginInfo(
     name="default resident spawning plugin",

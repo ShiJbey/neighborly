@@ -1,7 +1,6 @@
 from typing import Any, Optional
 
-from neighborly.components import Virtues
-from neighborly.components.character import Virtue
+from neighborly.components.character import Virtue, Virtues
 from neighborly.core.ecs import GameObject
 from neighborly.core.location_bias import LocationBiasRuleLibrary
 from neighborly.simulation import Neighborly, PluginInfo

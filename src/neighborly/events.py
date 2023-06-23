@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
-from neighborly.core.ecs import GameObject
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.roles import Role
-from neighborly.core.time import SimDateTime
-
-from neighborly.core.ecs import Event
+from typing import Any, Dict, List, Optional
 
 from neighborly.components.character import LifeStageType
+from neighborly.core.ecs import Event, GameObject
+from neighborly.core.life_event import EventRole, LifeEvent
+from neighborly.core.time import SimDateTime
 
 
 class JoinSettlementEvent(LifeEvent):
@@ -20,7 +16,8 @@ class JoinSettlementEvent(LifeEvent):
         character: GameObject,
     ) -> None:
         super().__init__(
-            date, [Role("Settlement", settlement), Role("Character", character)]
+            date,
+            [EventRole("Settlement", settlement), EventRole("Character", character)],
         )
 
     @property
@@ -37,7 +34,8 @@ class LeaveSettlementEvent(LifeEvent):
         self, date: SimDateTime, settlement: GameObject, character: GameObject
     ) -> None:
         super().__init__(
-            date, [Role("Settlement", settlement), Role("Character", character)]
+            date,
+            [EventRole("Settlement", settlement), EventRole("Character", character)],
         )
 
     @property
@@ -51,9 +49,12 @@ class LeaveSettlementEvent(LifeEvent):
 
 class DepartEvent(LifeEvent):
     def __init__(
-        self, date: SimDateTime, characters: List[GameObject], reason: str
+        self,
+        date: SimDateTime,
+        characters: List[GameObject],
+        reason: Optional[LifeEvent] = None,
     ) -> None:
-        super().__init__(date, [Role("Character", c) for c in characters])
+        super().__init__(date, [EventRole("Character", c) for c in characters])
         self.reason = reason
 
     @property
@@ -61,7 +62,7 @@ class DepartEvent(LifeEvent):
         return self._roles.get_all("Character")
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "reason": self.reason}
+        return {**super().to_dict(), "reason": self.reason if self.reason else -1}
 
     def __str__(self) -> str:
         return f"{super().__str__()}, reason={self.reason}"
@@ -73,7 +74,10 @@ class MoveResidenceEvent(LifeEvent):
     ) -> None:
         super().__init__(
             date,
-            [Role("Residence", residence), *[Role("Character", c) for c in characters]],
+            [
+                EventRole("Residence", residence),
+                *[EventRole("Character", c) for c in characters],
+            ],
         )
 
     @property
@@ -87,7 +91,7 @@ class MoveResidenceEvent(LifeEvent):
 
 class BusinessClosedEvent(LifeEvent):
     def __init__(self, date: SimDateTime, business: GameObject) -> None:
-        super().__init__(date, [Role("Business", business)])
+        super().__init__(date, [EventRole("Business", business)])
 
     @property
     def business(self):
@@ -96,7 +100,7 @@ class BusinessClosedEvent(LifeEvent):
 
 class BirthEvent(LifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -114,9 +118,9 @@ class GiveBirthEvent(LifeEvent):
         super().__init__(
             date,
             [
-                Role("BirthingParent", birthing_parent),
-                Role("OtherParent", other_parent),
-                Role("Baby", baby),
+                EventRole("BirthingParent", birthing_parent),
+                EventRole("OtherParent", other_parent),
+                EventRole("Baby", baby),
             ],
         )
 
@@ -139,12 +143,16 @@ class StartJobEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: str,
+        occupation: GameObject,
     ) -> None:
         super().__init__(
-            date, [Role("Character", character), Role("Business", business)]
+            date,
+            [
+                EventRole("Character", character),
+                EventRole("Business", business),
+                EventRole("Occupation", occupation),
+            ],
         )
-        self.occupation: str = occupation
 
     @property
     def character(self):
@@ -154,17 +162,9 @@ class StartJobEvent(LifeEvent):
     def business(self):
         return self["Business"]
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "occupation": self.occupation,
-        }
-
-    def __str__(self) -> str:
-        return "{}, occupation={}".format(
-            super().__str__(),
-            str(self.occupation),
-        )
+    @property
+    def occupation(self):
+        return self["occupation"]
 
 
 class EndJobEvent(LifeEvent):
@@ -173,14 +173,18 @@ class EndJobEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: str,
-        reason: str,
+        occupation: GameObject,
+        reason: LifeEvent,
     ) -> None:
         super().__init__(
-            date, [Role("Character", character), Role("Business", business)]
+            date,
+            [
+                EventRole("Character", character),
+                EventRole("Business", business),
+                EventRole("Occupation", occupation),
+            ],
         )
-        self.occupation: str = occupation
-        self.reason: str = reason
+        self.reason: LifeEvent = reason
 
     @property
     def character(self):
@@ -190,10 +194,13 @@ class EndJobEvent(LifeEvent):
     def business(self):
         return self["Business"]
 
+    @property
+    def occupation(self):
+        return self["occupation"]
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "occupation": self.occupation,
             "reason": self.reason,
         }
 
@@ -211,7 +218,7 @@ class MarriageEvent(LifeEvent):
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", c) for c in characters])
+        super().__init__(date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -224,7 +231,7 @@ class DivorceEvent(LifeEvent):
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", c) for c in characters])
+        super().__init__(date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -237,7 +244,7 @@ class StartDatingEvent(LifeEvent):
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", c) for c in characters])
+        super().__init__(date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -250,7 +257,7 @@ class BreakUpEvent(LifeEvent):
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", c) for c in characters])
+        super().__init__(date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -263,12 +270,16 @@ class StartBusinessEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: str,
+        occupation: GameObject,
     ) -> None:
         super().__init__(
-            date, [Role("Character", character), Role("Business", business)]
+            date,
+            [
+                EventRole("Character", character),
+                EventRole("Business", business),
+                EventRole("Occupation", occupation),
+            ],
         )
-        self.occupation: str = occupation
 
     @property
     def character(self):
@@ -278,14 +289,9 @@ class StartBusinessEvent(LifeEvent):
     def business(self):
         return self["Business"]
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "occupation": self.occupation,
-        }
-
-    def __str__(self) -> str:
-        return "{}, occupation={}".format(super().__str__(), str(self.occupation))
+    @property
+    def occupation(self):
+        return self["occupation"]
 
 
 class BusinessOpenEvent(LifeEvent):
@@ -294,7 +300,7 @@ class BusinessOpenEvent(LifeEvent):
         date: SimDateTime,
         business: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Business", business)])
+        super().__init__(date, [EventRole("Business", business)])
 
     @property
     def business(self):
@@ -417,7 +423,7 @@ class NewBusinessEvent(LifeEvent):
         date: SimDateTime,
         business: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Business", business)])
+        super().__init__(date, [EventRole("Business", business)])
 
     @property
     def business(self):
@@ -457,7 +463,7 @@ class BecomeAdolescentEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -470,7 +476,7 @@ class BecomeYoungAdultEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -483,7 +489,7 @@ class BecomeAdultEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -496,7 +502,7 @@ class BecomeSeniorEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -509,12 +515,16 @@ class RetirementEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: str,
+        occupation: GameObject,
     ) -> None:
         super().__init__(
-            date, [Role("Character", character), Role("Business", business)]
+            date,
+            [
+                EventRole("Character", character),
+                EventRole("Business", business),
+                EventRole("Occupation", occupation),
+            ],
         )
-        self.occupation: str = occupation
 
     @property
     def character(self):
@@ -524,11 +534,9 @@ class RetirementEvent(LifeEvent):
     def business(self):
         return self["Business"]
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "occupation": self.occupation,
-        }
+    @property
+    def occupation(self):
+        return self["Occupation"]
 
 
 class DeathEvent(LifeEvent):
@@ -537,7 +545,7 @@ class DeathEvent(LifeEvent):
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     @property
     def character(self):

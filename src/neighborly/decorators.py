@@ -7,9 +7,9 @@ from typing import Any, Type, TypeVar
 from neighborly.core.ecs import (
     Component,
     Event,
+    EventListener,
     IComponentFactory,
     ISystem,
-    EventListener,
     World,
 )
 from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
@@ -33,8 +33,8 @@ def component(world: World):
 
     Parameters
     ----------
-    sim
-        The simulation instance to register the life event to.
+    world
+        A world instance.
     """
 
     def decorator(cls: Type[_CT]) -> Type[_CT]:
@@ -53,8 +53,8 @@ def component_factory(world: World, component_type: Type[Component], **kwargs: A
 
     Parameters
     ----------
-    sim
-        The simulation instance to register the life event to.
+    world
+        A world instance.
     component_type
         The component type the factory instantiates.
     """
@@ -73,8 +73,8 @@ def resource(world: World, **kwargs: Any):
 
     Parameters
     ----------
-    sim
-        The simulation instance to register the life event to.
+    world
+        A world instance.
     **kwargs
         Keyword arguments to pass to the constructor of the decorated class.
     """
@@ -93,8 +93,8 @@ def system(world: World, **kwargs: Any):
 
     Parameters
     ----------
-    sim
-        The simulation instance to register the life event to.
+    world
+        A world instance.
     **kwargs
         Keyword arguments to pass to the constructor of the decorated class.
     """
@@ -121,6 +121,8 @@ def social_rule(world: World, description: str):
 
     Parameters
     ----------
+    world
+        A world instance.
     description
         Text description of the rule.
     """
@@ -137,6 +139,8 @@ def location_bias_rule(world: World, description: str):
 
     Parameters
     ----------
+    world
+        A world instance.
     description
         Text description of the rule.
     """
@@ -152,6 +156,8 @@ def on_event(world: World, event_type: Type[_ET_contra]):
 
     Parameters
     ----------
+    world
+        A world instance.
     event_type
         The type of event that this function will listen for.
     """
@@ -163,11 +169,20 @@ def on_event(world: World, event_type: Type[_ET_contra]):
     return decorator
 
 
-def on_any_event(world: World, listener: EventListener[Event]):
+def on_any_event(world: World):
     """A decorator that registers a function as an event listener for GameObjects.
 
     The decorated function will be called in response to all events fired by
     GameObjects.
+
+    Parameters
+    ----------
+    world
+        A world instance.
     """
-    world.on_any_event(listener)
-    return listener
+
+    def decorator(listener: EventListener[Event]) -> EventListener[Event]:
+        world.on_any_event(listener)
+        return listener
+
+    return decorator

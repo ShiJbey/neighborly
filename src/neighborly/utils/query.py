@@ -41,7 +41,7 @@ def with_relationship(
             if statuses and not r.has_components(*statuses):
                 continue
 
-            results.append((relationship.owner, relationship.target, rel_id))
+            results.append((relationship.owner.uid, relationship.target.uid, rel_id))
         return Relation((owner_var, target_var, relationship_var), results)
 
     return clause
@@ -87,7 +87,7 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
     return fn
 
 
-def get_work_experience_as(occupation_type: str):
+def get_work_experience_as(occupation_type: GameObject):
     """
     Returns Precondition function that returns true if the entity
     has experience as a given occupation type.
@@ -165,9 +165,9 @@ def has_any_work_experience(years_experience: int = 0):
 
 def is_single(gameobject: GameObject) -> bool:
     """Return true if the character is not dating or married"""
-    world = gameobject.world
-    for _, rel_id in gameobject.get_component(RelationshipManager).outgoing.items():
-        relationship = world.get_gameobject(rel_id)
+    for _, relationship in gameobject.get_component(
+        RelationshipManager
+    ).outgoing.items():
         if relationship.has_component(Dating) or relationship.has_component(Married):
             return False
     return True
@@ -175,17 +175,15 @@ def is_single(gameobject: GameObject) -> bool:
 
 def is_married(gameobject: GameObject) -> bool:
     """Return true if the character is not dating or married"""
-    world = gameobject.world
-    for _, rel_id in gameobject.get_component(RelationshipManager).outgoing.items():
-        relationship = world.get_gameobject(rel_id)
+    for _, relationship in gameobject.get_component(
+        RelationshipManager
+    ).outgoing.items():
         if relationship.has_component(Married):
             return False
     return True
 
 
 def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
-    world = a.world
-
     visited: Set[GameObject] = set()
     character_queue: List[Tuple[int, GameObject]] = [(0, a)]
 
@@ -199,14 +197,11 @@ def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
         if character == b:
             return True
 
-        for target_id, relationship_id in character.get_component(
+        for target, relationship in character.get_component(
             RelationshipManager
         ).outgoing.items():
-            relationship = world.get_gameobject(relationship_id)
             if relationship.has_component(Family):
-                family_member = world.get_gameobject(target_id)
-
-                if family_member not in visited:
-                    character_queue.append((deg + 1, family_member))
+                if target not in visited:
+                    character_queue.append((deg + 1, target))
 
     return False

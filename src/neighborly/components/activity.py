@@ -4,7 +4,21 @@ from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, ISerializable
+from neighborly.core.ecs import (
+    Component,
+    EntityPrefab,
+    GameObject,
+    GameObjectFactory,
+    ISerializable,
+    TagComponent,
+    World,
+)
+
+
+class ActivityType(TagComponent):
+    """Tags a GameObject as being a type of activity."""
+
+    pass
 
 
 class Activities(Component, ISerializable):
@@ -23,10 +37,10 @@ class Activities(Component, ISerializable):
 
     __slots__ = "_activities"
 
-    _activities: OrderedSet[str]
+    _activities: OrderedSet[GameObject]
     """Activity names."""
 
-    def __init__(self, activities: Optional[Iterable[str]] = None) -> None:
+    def __init__(self, activities: Optional[Iterable[GameObject]] = None) -> None:
         """
         Parameters
         ----------
@@ -34,43 +48,79 @@ class Activities(Component, ISerializable):
             A collection of activities.
         """
         super().__init__()
-        self._activities = OrderedSet([])
-
-        if activities:
-            for name in activities:
-                self.add_activity(name)
+        self._activities = OrderedSet(activities if activities else [])
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"activities": [str(a) for a in self._activities]}
+        return {"activities": [a.name for a in self._activities]}
 
-    def add_activity(self, activity: str) -> None:
-        """Add an activity name.
-
-        Parameters
-        ----------
-        activity
-            The name of an activity.
-        """
-        self._activities.add(activity.lower())
-
-    def remove_activity(self, activity: str) -> None:
-        """Remove an activity name.
-
-        Parameters
-        ----------
-        activity
-            The name of an activity.
-        """
-        self._activities.remove(activity.lower())
-
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[GameObject]:
         return self._activities.__iter__()
 
-    def __contains__(self, activity: str) -> bool:
-        return activity.lower() in self._activities
+    def __contains__(self, activity: GameObject) -> bool:
+        return activity in self._activities
 
     def __str__(self) -> str:
-        return ", ".join(self._activities)
+        return ", ".join([a.name for a in self._activities])
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self._activities.__repr__()})"
+        return f"{self.__class__.__name__}({[a.name for a in self._activities]})"
+
+
+class ActivityLibrary:
+    """A collection of references to activity type GameObject instances."""
+
+    __slots__ = "_activity_types", "_activities_to_instantiate"
+
+    _activities_to_instantiate: OrderedSet[str]
+    """The names of activity prefabs to instantiate at the start of the simulation."""
+
+    _activity_types: Dict[str, GameObject]
+    """Activity type names mapped to their GameObject instances."""
+
+    def __init__(self) -> None:
+        self._activities_to_instantiate = OrderedSet([])
+        self._activity_types = {}
+
+    @property
+    def activities_to_instantiate(self) -> OrderedSet[str]:
+        return self._activities_to_instantiate
+
+    def add(self, activity: GameObject) -> None:
+        """Add an activity type to the library.
+
+        Parameters
+        ----------
+        activity
+            An activity type entity.
+        """
+        self._activity_types[activity.name] = activity
+
+    def get(self, name: str) -> GameObject:
+        """Retrieve an activity type entity.
+
+        Parameters
+        ----------
+        name
+            The name of an activity type.
+
+        Returns
+        -------
+        GameObject
+            An activity type entity.
+        """
+        return self._activity_types[name]
+
+
+def register_activity_type(world: World, prefab: EntityPrefab) -> None:
+    """Register a service type for later use.
+
+    Parameters
+    ----------
+    world
+        The world instance to save to service type to.
+    prefab
+        GameObject prefab information about the service type.
+    """
+
+    world.get_resource(GameObjectFactory).add(prefab)
+    world.get_resource(ActivityLibrary).activities_to_instantiate.add(prefab.name)

@@ -27,7 +27,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import (
     Any,
-    cast,
     ClassVar,
     Dict,
     Iterator,
@@ -39,13 +38,13 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
     overload,
 )
 
 import esper
 import pydantic
 from ordered_set import OrderedSet
-
 
 logger = logging.getLogger(__name__)
 
@@ -531,7 +530,7 @@ class Component(ABC):
     _gameobject: Optional[GameObject]
     """The GameObject a component belongs to."""
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__()
         self._gameobject = None
 
@@ -1569,6 +1568,7 @@ class EntityPrefab(pydantic.BaseModel):
     tags: Set[str] = pydantic.Field(default_factory=set)
     """String tags for filtering."""
 
+    # noinspection PyNestedDecorators
     @pydantic.validator("extends", pre=True)  # type: ignore
     @classmethod
     def _validate_extends(cls, value: Any) -> List[str]:
@@ -1580,12 +1580,13 @@ class EntityPrefab(pydantic.BaseModel):
         else:
             raise TypeError(f"Expected list str or list of str, but was {type(value)}")
 
+    # noinspection PyNestedDecorators
     @pydantic.validator("extends", pre=True)  # type: ignore
     @classmethod
     def _validate_tags(cls, value: Any) -> Set[str]:
         """Ensures the `extends` field is a list of str."""
         if isinstance(value, str):
-            return set([value])
+            return {value}
         if isinstance(value, list):
             return set(value)  # type: ignore
         if isinstance(value, set):
@@ -1702,11 +1703,7 @@ class GameObjectFactory:
 
         for component_name, component_data in self._resolve_components(prefab).items():
             try:
-                gameobject.add_component(
-                    world.get_component_info(component_name).factory.create(
-                        world, **component_data
-                    )
-                )
+                component_factory = world.get_component_info(component_name).factory
             except KeyError:
                 raise Exception(
                     f"Cannot find component, {component_name}. "
@@ -1714,8 +1711,12 @@ class GameObjectFactory:
                     "been registered with the simulation's world instance."
                 )
 
+            gameobject.add_component(component_factory.create(world, **component_data))
+
         for child in prefab.children:
             gameobject.add_child(self.instantiate(world, child))
+
+        gameobject.name = prefab.name
 
         return gameobject
 
@@ -1751,9 +1752,7 @@ class GameObjectFactory:
         return components
 
 
-class Active(Component, ISerializable):
-    """Tags a GameObject as active within the simulation."""
-
+class TagComponent(Component, ISerializable):
     def to_dict(self) -> Dict[str, Any]:
         return {}
 
@@ -1762,3 +1761,9 @@ class Active(Component, ISerializable):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
+
+
+class Active(TagComponent):
+    """Tags a GameObject as active within the simulation."""
+
+    pass

@@ -1,6 +1,7 @@
 import pytest
 
 from neighborly.core.settlement import Grid, GridSettlementMap
+from neighborly.simulation import Neighborly
 
 
 @pytest.fixture
@@ -65,16 +66,22 @@ def test_land_grid_get_total_lots():
 
 
 def test_land_grid_get_set_item():
+    sim = Neighborly()
+
+    building_0 = sim.world.spawn_gameobject(name="Building 0")
+
     land_grid = GridSettlementMap((5, 3))
 
     assert len(land_grid.get_vacant_lots()) == 15
 
-    land_grid.reserve_lot(3, 8080)
+    land_grid.reserve_lot(3, building_0)
 
     assert len(land_grid.get_vacant_lots()) == 14
 
     for lot in sorted(list(land_grid.get_vacant_lots())):
-        land_grid.reserve_lot(lot, 8080)
+        building = sim.world.spawn_gameobject(name=f"building_on_lot_{lot}")
+        land_grid.reserve_lot(lot, building)
+
     assert len(land_grid.get_vacant_lots()) == 0
 
     land_grid.free_lot(2)
@@ -82,7 +89,12 @@ def test_land_grid_get_set_item():
 
 
 def test_land_grid_setitem_raises_runtime_error():
+    sim = Neighborly()
+
+    building_0 = sim.world.spawn_gameobject(name="Building 0")
+    building_1 = sim.world.spawn_gameobject(name="Building 1")
+
     land_grid = GridSettlementMap((5, 3))
-    land_grid.reserve_lot(2, 8080)
+    land_grid.reserve_lot(2, building_0)
     with pytest.raises(RuntimeError):
-        land_grid.reserve_lot(2, 700)
+        land_grid.reserve_lot(2, building_1)

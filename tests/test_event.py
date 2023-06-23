@@ -1,8 +1,7 @@
 import pytest
 
 from neighborly.core.ecs import GameObject, World
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.roles import Role
+from neighborly.core.life_event import EventRole, LifeEvent
 from neighborly.core.time import SimDateTime
 
 
@@ -10,7 +9,9 @@ class PriceDisputeEvent(LifeEvent):
     def __init__(
         self, date: SimDateTime, merchant: GameObject, customer: GameObject
     ) -> None:
-        super().__init__(date, [Role("Merchant", merchant), Role("Customer", customer)])
+        super().__init__(
+            date, [EventRole("Merchant", merchant), EventRole("Customer", customer)]
+        )
 
     @property
     def merchant(self):
@@ -23,7 +24,7 @@ class PriceDisputeEvent(LifeEvent):
 
 class DeclareRivalryEvent(LifeEvent):
     def __init__(self, date: SimDateTime, *characters: GameObject) -> None:
-        super().__init__(date, [Role("Character", c) for c in characters])
+        super().__init__(date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):

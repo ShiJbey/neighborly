@@ -1,5 +1,5 @@
-from neighborly.components import InTheWorkforce, LifeStage, Occupation, Unemployed
-from neighborly.components.character import LifeStageType
+from neighborly.components.business import InTheWorkforce, Occupation, Unemployed
+from neighborly.components.character import LifeStage, LifeStageType
 from neighborly.core.ecs import Active, Event, World
 from neighborly.core.life_event import EventHistory, EventLog, LifeEvent
 from neighborly.core.relationship import RelationshipManager
@@ -15,7 +15,7 @@ from neighborly.events import (
 def add_event_to_personal_history(world: World, event: Event) -> None:
     if isinstance(event, LifeEvent):
         world.get_resource(EventLog).append(event)
-        for role in event.iter_roles():
+        for role in event.roles:
             if event_history := role.gameobject.try_component(EventHistory):
                 event_history.append(event)
 

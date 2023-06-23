@@ -1,5 +1,3 @@
-from typing import Any, Dict
-
 import pytest
 
 from neighborly.components.character import GameCharacter, Gender, GenderType, Retired
@@ -97,13 +95,11 @@ def test_relation_copy():
 
 
 class Hero(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+    pass
 
 
 class DemonKing(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+    pass
 
 
 @pytest.fixture()

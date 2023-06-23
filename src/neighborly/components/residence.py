@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, ISerializable
+from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.status import StatusComponent
 
 
@@ -16,10 +16,10 @@ class Residence(Component, ISerializable):
         "residents",
     )
 
-    owners: OrderedSet[int]
+    owners: OrderedSet[GameObject]
     """Characters that currently own the residence."""
 
-    residents: OrderedSet[int]
+    residents: OrderedSet[GameObject]
     """All the characters who live at the residence (including non-owners)."""
 
     def __init__(self) -> None:
@@ -29,67 +29,67 @@ class Residence(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "owners": list(self.owners),
-            "residents": list(self.residents),
+            "owners": [entry.uid for entry in self.owners],
+            "residents": [entry.uid for entry in self.residents],
         }
 
-    def add_owner(self, owner: int) -> None:
+    def add_owner(self, owner: GameObject) -> None:
         """Add owner to the residence.
 
         Parameters
         ----------
         owner
-            The GameObject ID of a residence owner.
+            A GameObject reference to a residence owner.
         """
         self.owners.add(owner)
 
-    def remove_owner(self, owner: int) -> None:
+    def remove_owner(self, owner: GameObject) -> None:
         """Remove owner from residence.
 
         Parameters
         ----------
         owner
-            The GameObject ID of a residence owner.
+            A GameObject reference to a residence owner.
         """
         self.owners.remove(owner)
 
-    def is_owner(self, character: int) -> bool:
+    def is_owner(self, character: GameObject) -> bool:
         """Check if a GameObject owns a residence.
 
         Parameters
         ----------
         character
-            The GameObject ID of a residence owner.
+            A GameObject reference to a residence owner.
         """
         return character in self.owners
 
-    def add_resident(self, resident: int) -> None:
+    def add_resident(self, resident: GameObject) -> None:
         """Add a tenant to this residence.
 
         Parameters
         ----------
         resident
-            The GameObject ID of a resident.
+            A GameObject reference to a resident.
         """
         self.residents.add(resident)
 
-    def remove_resident(self, resident: int) -> None:
+    def remove_resident(self, resident: GameObject) -> None:
         """Remove a tenant rom this residence.
 
         Parameters
         ----------
         resident
-            The GameObject ID of a resident.
+            A GameObject reference to a resident.
         """
         self.residents.remove(resident)
 
-    def is_resident(self, character: int) -> bool:
+    def is_resident(self, character: GameObject) -> bool:
         """Check if a GameObject is a resident.
 
         Parameters
         ----------
         character
-            The GameObject ID of a character
+            A GameObject reference to a character
         """
         return character in self.residents
 
@@ -105,15 +105,15 @@ class Resident(StatusComponent):
 
     __slots__ = "residence"
 
-    residence: int
+    residence: GameObject
     """The GameObject ID of their residence."""
 
-    def __init__(self, residence: int) -> None:
+    def __init__(self, residence: GameObject) -> None:
         """
         Parameters
         ----------
         residence
-            The GameObject ID of their residence.
+            A GameObject reference to their residence.
         """
         super().__init__()
         self.residence = residence

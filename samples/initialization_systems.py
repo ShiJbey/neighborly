@@ -13,11 +13,10 @@ multiple settlements into the simulation.
 from typing import Any
 
 from neighborly import ISystem, Neighborly, NeighborlyConfig
+from neighborly.command import SpawnSettlement
 from neighborly.components.shared import Name
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import system
-
-from neighborly.command import SpawnSettlement
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj({"plugins": ["neighborly.plugins.defaults.settlement"]})

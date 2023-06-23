@@ -3,11 +3,10 @@ from typing import Any, ClassVar, Dict, List, Union
 
 import pandas
 
+from neighborly.command import SpawnSettlement
 from neighborly.components.spawn_table import BusinessSpawnTable, CharacterSpawnTable
 from neighborly.core.ecs import ISystem
 from neighborly.simulation import Neighborly, PluginInfo
-
-from neighborly.command import SpawnSettlement
 
 plugin_info = PluginInfo(
     name="default create town plugin",

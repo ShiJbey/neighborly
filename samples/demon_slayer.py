@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
+from core.life_event import EventRole, EventRoleList
 from neighborly import (
     Component,
     GameObject,
@@ -39,16 +40,18 @@ from neighborly import (
     SimDateTime,
     World,
 )
-from neighborly.components import (
+from neighborly.command import SpawnCharacter
+from neighborly.components.character import (
     CanAge,
     CanGetPregnant,
-    FrequentedLocations,
     GameCharacter,
+    LifeStage,
+    LifeStageType,
 )
-from neighborly.components.character import LifeStage, LifeStageType
+from neighborly.components.shared import FrequentedLocations
+from neighborly.core.ai.brain import ConsiderationList
 from neighborly.core.ecs import Active
 from neighborly.core.life_event import RandomLifeEvent
-from neighborly.core.roles import Role, RoleList
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
     component,
@@ -62,10 +65,6 @@ from neighborly.events import DeathEvent
 from neighborly.exporter import export_to_json
 from neighborly.plugins.defaults.actions import Die
 from neighborly.utils.common import add_character_to_settlement
-
-from neighborly.core.ai.brain import ConsiderationList
-
-from neighborly.command import SpawnCharacter
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -551,7 +550,7 @@ class BecomeDemonSlayer(RandomLifeEvent):
     }
 
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     def get_probability(self) -> float:
         return self.considerations["Character"].calculate_score(self["Character"])
@@ -573,14 +572,14 @@ class BecomeDemonSlayer(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
         # Only create demon slayers if demons are an actual problem
         demons_exist = len(world.get_component(Demon)) > 5
         if demons_exist is False:
             return None
 
-        character = cls._bind_character(world, bindings.get("Character"))
+        character = cls._bind_character(world, bindings.get_first("Character"))
 
         if character:
             return cls(world.get_resource(SimDateTime), character)
@@ -616,7 +615,7 @@ class BecomeDemonSlayer(RandomLifeEvent):
 @random_life_event(sim.world)
 class DemonSlayerPromotion(RandomLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     def get_probability(self) -> float:
         return 0.8
@@ -635,9 +634,9 @@ class DemonSlayerPromotion(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        character = cls._bind_demon_slayer(world, bindings.get("Character"))
+        character = cls._bind_demon_slayer(world, bindings.get_first("Character"))
 
         if character is None:
             return None
@@ -677,7 +676,7 @@ class DemonChallengeForPower(RandomLifeEvent):
         self, date: SimDateTime, challenger: GameObject, opponent: GameObject
     ) -> None:
         super().__init__(
-            date, [Role("Challenger", challenger), Role("Opponent", opponent)]
+            date, [EventRole("Challenger", challenger), EventRole("Opponent", opponent)]
         )
 
     def get_probability(self) -> float:
@@ -699,14 +698,14 @@ class DemonChallengeForPower(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        challenger = cls._bind_challenger(world, bindings.get("Challenger"))
+        challenger = cls._bind_challenger(world, bindings.get_first("Challenger"))
 
         if challenger is None:
             return None
 
-        opponent = cls._bind_opponent(world, challenger, bindings.get("Opponent"))
+        opponent = cls._bind_opponent(world, challenger, bindings.get_first("Opponent"))
 
         if opponent is None:
             return None
@@ -775,7 +774,7 @@ class DevourHuman(RandomLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, victim: GameObject
     ) -> None:
-        super().__init__(date, [Role("Demon", demon), Role("Victim", victim)])
+        super().__init__(date, [EventRole("Demon", demon), EventRole("Victim", victim)])
 
     def get_probability(self) -> float:
         return 0.8
@@ -802,14 +801,14 @@ class DevourHuman(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        demon = cls._bind_demon(world, bindings.get("Demon"))
+        demon = cls._bind_demon(world, bindings.get_first("Demon"))
 
         if demon is None:
             return None
 
-        victim = cls._bind_victim(world, demon, bindings.get("Victim"))
+        victim = cls._bind_victim(world, demon, bindings.get_first("Victim"))
 
         if victim is None:
             return None
@@ -837,7 +836,9 @@ class DevourHuman(RandomLifeEvent):
         world: World, demon: GameObject, candidate: Optional[GameObject] = None
     ):
         """Get all people at the same location who are not demons"""
-        demon_frequented_locations = demon.get_component(FrequentedLocations).locations
+        demon_frequented_locations = OrderedSet(
+            demon.get_component(FrequentedLocations)
+        )
 
         candidates: List[GameObject]
         if candidate:
@@ -858,9 +859,9 @@ class DevourHuman(RandomLifeEvent):
                 # skip
                 continue
 
-            character_frequented = character.get_component(
-                FrequentedLocations
-            ).locations
+            character_frequented = OrderedSet(
+                character.get_component(FrequentedLocations)
+            )
 
             shared_locations = demon_frequented_locations.intersection(
                 character_frequented
@@ -883,7 +884,7 @@ class Battle(RandomLifeEvent):
         self, date: SimDateTime, challenger: GameObject, opponent: GameObject
     ) -> None:
         super().__init__(
-            date, [Role("Challenger", challenger), Role("Opponent", opponent)]
+            date, [EventRole("Challenger", challenger), EventRole("Opponent", opponent)]
         )
 
     def get_probability(self) -> float:
@@ -941,10 +942,10 @@ class Battle(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        challenger = cls._bind_challenger(world, bindings.get("Challenger"))
-        opponent = cls._bind_opponent(world, bindings.get("Opponent"))
+        challenger = cls._bind_challenger(world, bindings.get_first("Challenger"))
+        opponent = cls._bind_opponent(world, bindings.get_first("Opponent"))
 
         if challenger is None:
             return None
@@ -992,7 +993,9 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
     def __init__(
         self, date: SimDateTime, demon: GameObject, new_demon: GameObject
     ) -> None:
-        super().__init__(date, [Role("Demon", demon), Role("NewDemon", new_demon)])
+        super().__init__(
+            date, [EventRole("Demon", demon), EventRole("NewDemon", new_demon)]
+        )
 
     def get_probability(self) -> float:
         return 0.8
@@ -1001,15 +1004,15 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        demon = cls._bind_demon(world, candidate=bindings.get("Demon"))
+        demon = cls._bind_demon(world, candidate=bindings.get_first("Demon"))
 
         if demon is None:
             return None
 
         new_demon = cls._bind_new_demon(
-            world, demon, candidate=bindings.get("NewDemon")
+            world, demon, candidate=bindings.get_first("NewDemon")
         )
 
         if new_demon is None:
@@ -1039,7 +1042,9 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
     def _bind_new_demon(
         world: World, demon: GameObject, candidate: Optional[GameObject]
     ) -> Optional[GameObject]:
-        demon_frequented_locations = demon.get_component(FrequentedLocations).locations
+        demon_frequented_locations = OrderedSet(
+            demon.get_component(FrequentedLocations)
+        )
 
         candidates: List[GameObject]
         if candidate:
@@ -1060,9 +1065,9 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
                 # skip
                 continue
 
-            character_frequented = character.get_component(
-                FrequentedLocations
-            ).locations
+            character_frequented = OrderedSet(
+                character.get_component(FrequentedLocations)
+            )
 
             shared_locations = demon_frequented_locations.intersection(
                 character_frequented
@@ -1093,7 +1098,7 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
 @random_life_event(sim.world)
 class PromotionToLowerMoon(RandomLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     def get_probability(self) -> float:
         return 0.8
@@ -1108,9 +1113,9 @@ class PromotionToLowerMoon(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        demon = cls._bind_demon(world, bindings.get("Character"))
+        demon = cls._bind_demon(world, bindings.get_first("Character"))
         if demon:
             return cls(world.get_resource(SimDateTime), demon)
         return None
@@ -1148,7 +1153,7 @@ class PromotionToLowerMoon(RandomLifeEvent):
 @random_life_event(sim.world)
 class PromotionToUpperMoon(RandomLifeEvent):
     def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(date, [Role("Character", character)])
+        super().__init__(date, [EventRole("Character", character)])
 
     def get_probability(self) -> float:
         return 0.8
@@ -1163,10 +1168,10 @@ class PromotionToUpperMoon(RandomLifeEvent):
     def instantiate(
         cls,
         world: World,
-        bindings: RoleList,
+        bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
         if bindings:
-            demon = cls._bind_demon(world, bindings.get("Character"))
+            demon = cls._bind_demon(world, bindings.get_first("Character"))
         else:
             demon = cls._bind_demon(world)
 

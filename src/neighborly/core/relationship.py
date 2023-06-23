@@ -209,18 +209,27 @@ class Relationship(Component, ISerializable):
         "_owner",
     )
 
-    def __init__(self, owner: int, target: int) -> None:
+    _owner: GameObject
+    """Who owns this relationship."""
+
+    _target: GameObject
+    """Who is the relationship directed toward."""
+
+    _modifiers: List[RelationshipModifier]
+    """Modifiers to the relationship"""
+
+    def __init__(self, owner: GameObject, target: GameObject) -> None:
         super().__init__()
-        self._owner: int = owner
-        self._target: int = target
-        self._modifiers: List[RelationshipModifier] = []
+        self._owner = owner
+        self._target = target
+        self._modifiers = []
 
     @property
-    def owner(self) -> int:
+    def owner(self) -> GameObject:
         return self._owner
 
     @property
-    def target(self) -> int:
+    def target(self) -> GameObject:
         return self._target
 
     def add_modifier(self, modifier: RelationshipModifier) -> None:
@@ -261,18 +270,18 @@ class RelationshipManager(Component, ISerializable):
 
     __slots__ = "incoming", "outgoing"
 
-    incoming: Dict[int, int]
-    """GameObject ID of relationship owners mapped to the Relationship's ID."""
+    incoming: Dict[GameObject, GameObject]
+    """Relationship owners mapped to the Relationship GameObjects."""
 
-    outgoing: Dict[int, int]
-    """GameObject ID of relationship targets mapped to the Relationship's ID."""
+    outgoing: Dict[GameObject, GameObject]
+    """Relationship targets mapped to the Relationship GameObjects."""
 
     def __init__(self) -> None:
         super().__init__()
         self.incoming = {}
         self.outgoing = {}
 
-    def add_incoming(self, owner: int, relationship: int) -> None:
+    def add_incoming(self, owner: GameObject, relationship: GameObject) -> None:
         """
         Add a new incoming relationship
 
@@ -285,7 +294,7 @@ class RelationshipManager(Component, ISerializable):
         """
         self.incoming[owner] = relationship
 
-    def add_outgoing(self, target: int, relationship: int) -> None:
+    def add_outgoing(self, target: GameObject, relationship: GameObject) -> None:
         """
         Add a new outgoing relationship
 
@@ -299,7 +308,7 @@ class RelationshipManager(Component, ISerializable):
         self.outgoing[target] = relationship
 
     def to_dict(self) -> Dict[str, Any]:
-        return {str(k): v for k, v in self.outgoing.items()}
+        return {str(k.uid): v.uid for k, v in self.outgoing.items()}
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -398,20 +407,20 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     world = owner.world
 
     if target.uid in relationship_manager.outgoing:
-        return world.get_gameobject(relationship_manager.outgoing[target.uid])
+        return relationship_manager.outgoing[target]
 
     relationship = world.get_resource(GameObjectFactory).instantiate(
         world, "relationship"
     )
-    relationship.add_component(Relationship(owner.uid, target.uid))
+    relationship.add_component(Relationship(owner, target))
     relationship.add_component(StatusManager())
     relationship.add_component(Active())
 
     relationship.name = f"Rel({owner} -> {target})"
 
-    owner.get_component(RelationshipManager).outgoing[target.uid] = relationship.uid
+    owner.get_component(RelationshipManager).outgoing[target] = relationship
 
-    target.get_component(RelationshipManager).incoming[owner.uid] = relationship.uid
+    target.get_component(RelationshipManager).incoming[owner] = relationship
 
     owner.add_child(relationship)
 
@@ -442,9 +451,7 @@ def get_relationship(
     if target.uid not in subject.get_component(RelationshipManager).outgoing:
         return add_relationship(subject, target)
 
-    return subject.world.get_gameobject(
-        subject.get_component(RelationshipManager).outgoing[target.uid]
-    )
+    return subject.get_component(RelationshipManager).outgoing[target]
 
 
 def has_relationship(subject: GameObject, target: GameObject) -> bool:
@@ -576,11 +583,9 @@ def get_relationships_with_statuses(
     List[GameObject]
         Relationships with the given status types
     """
-    world = subject.world
     relationship_manager = subject.get_component(RelationshipManager)
     matches: List[GameObject] = []
-    for _, rel_id in relationship_manager.outgoing.items():
-        relationship = world.get_gameobject(rel_id)
+    for _, relationship in relationship_manager.outgoing.items():
         if all([relationship.has_component(st) for st in status_types]):
             matches.append(relationship)
     return matches

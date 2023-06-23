@@ -95,11 +95,6 @@ class CharacterSpawnTable(Component):
     def __bool__(self) -> bool:
         return bool(self._size)
 
-    def to_dict(self) -> Dict[str, Any]:
-        # This returns an empty because this would bloat the simulation output with
-        # configuration data
-        return {}
-
 
 class BusinessSpawnTable(Component):
     """Manages the frequency that business prefabs are spawned"""
@@ -259,11 +254,6 @@ class BusinessSpawnTable(Component):
     def __bool__(self) -> bool:
         return bool(self._size)
 
-    def to_dict(self) -> Dict[str, Any]:
-        # This returns an empty because this would bloat the simulation output with
-        # configuration data
-        return {}
-
 
 class ResidenceSpawnTable(Component):
     """Manages the frequency that residence prefabs are spawned"""
@@ -355,8 +345,3 @@ class ResidenceSpawnTable(Component):
 
     def __bool__(self) -> bool:
         return bool(self._size)
-
-    def to_dict(self) -> Dict[str, Any]:
-        # This returns an empty because this would bloat the simulation output with
-        # configuration data
-        return {}

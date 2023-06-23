@@ -1,7 +1,6 @@
 from typing import Any, Dict, Type
 
-from neighborly.components import Virtues
-from neighborly.components.character import GameCharacter, Virtue
+from neighborly.components.character import GameCharacter, Virtue, Virtues
 from neighborly.components.shared import Age
 from neighborly.core.ecs import GameObject
 from neighborly.core.relationship import (

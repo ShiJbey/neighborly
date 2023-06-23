@@ -63,6 +63,7 @@ class NeighborlyConfig(pydantic.BaseModel):
     settings: Dict[str, Any] = pydantic.Field(default_factory=dict)
     """Miscellaneous keyword settings."""
 
+    # noinspection PyNestedDecorators
     @pydantic.validator("plugins", pre=True, each_item=True)  # type: ignore
     @classmethod
     def _validate_plugins(cls, value: Any) -> PluginConfig:
@@ -78,6 +79,7 @@ class NeighborlyConfig(pydantic.BaseModel):
             )
         raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
 
+    # noinspection PyNestedDecorators
     @pydantic.validator("start_date", pre=True)  # type: ignore
     @classmethod
     def _validate_date(cls, value: Any) -> SimDateTime:
@@ -87,6 +89,7 @@ class NeighborlyConfig(pydantic.BaseModel):
             return SimDateTime.from_str(value)
         raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
 
+    # noinspection PyNestedDecorators
     @pydantic.validator("time_increment", pre=True)  # type: ignore
     @classmethod
     def _validate_time_increment(cls, value: Any) -> TimeDelta:

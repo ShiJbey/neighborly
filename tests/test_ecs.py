@@ -18,7 +18,7 @@ class Actor(Component):
     name: str
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"name": str}
+        return {"name": self.name}
 
 
 @dataclass
@@ -55,13 +55,11 @@ class Location(Component):
 
 
 class ComponentA(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+    pass
 
 
 class ComponentB(Component):
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+    pass
 
 
 @dataclass

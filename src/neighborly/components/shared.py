@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.core.ecs import Component, ISerializable
+from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.status import StatusComponent
 
 
@@ -77,13 +77,13 @@ class Location(Component, ISerializable):
 
     __slots__ = "entities", "parent", "children"
 
-    entities: OrderedSet[int]
+    entities: OrderedSet[GameObject]
     """All the GameObjects currently at this location or any sub-locations."""
 
-    children: OrderedSet[int]
+    children: OrderedSet[GameObject]
     """All the sub-locations at this location."""
 
-    parent: Optional[int]
+    parent: Optional[GameObject]
     """The parent location of this location."""
 
     def __init__(self) -> None:
@@ -94,36 +94,38 @@ class Location(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "entities": list(self.entities),
+            "entities": [entry.uid for entry in self.entities],
+            "parent": self.parent.uid if self.parent is not None else -1,
+            "children": [entry.uid for entry in self.children],
         }
 
-    def add_entity(self, entity: int) -> None:
+    def add_entity(self, entity: GameObject) -> None:
         """Add an entity to the location.
 
         Parameters
         ----------
         entity
-            The GameObject ID of the entity to add.
+            An entity to add.
         """
         self.entities.append(entity)
 
-    def remove_entity(self, entity: int) -> None:
+    def remove_entity(self, entity: GameObject) -> None:
         """Remove an entity from the location.
 
         Parameters
         ----------
         entity
-            The GameObject ID of the entity to remove.
+            An entity to remove.
         """
         self.entities.remove(entity)
 
-    def has_entity(self, entity: int) -> bool:
+    def has_entity(self, entity: GameObject) -> bool:
         """Check if an entity is at the location.
 
         Parameters
         ----------
         entity
-            The GameObject ID of the entity to check for.
+            An entity to check for.
 
         Returns
         -------
@@ -160,51 +162,14 @@ class OpenToPublic(StatusComponent, ISerializable):
 class CurrentLocation(Component, ISerializable):
     """Tracks the current location of a GameObject."""
 
-    location: int
+    location: GameObject
     """The GameObjectID of the location."""
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"location": self.location}
+        return {"location": self.location.uid}
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.location})"
-
-
-class LocationAliases(Component, ISerializable):
-    """A record of strings mapped the IDs of locations in the world.
-
-    Notes
-    -----
-    This component allows us to use ID-agnostic location aliases for places like
-    home and work.
-    """
-
-    __slots__ = "aliases"
-
-    aliases: Dict[str, int]
-    """The aliases of locations mapped to their GameObject ID."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.aliases = {}
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"aliases": {**self.aliases}}
-
-    def __contains__(self, item: str) -> bool:
-        return item in self.aliases
-
-    def __getitem__(self, item: str) -> int:
-        return self.aliases[item]
-
-    def __setitem__(self, key: str, value: int) -> None:
-        self.aliases[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        del self.aliases[key]
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.aliases})"
 
 
 @dataclass
@@ -224,12 +189,12 @@ class Position2D(Component, ISerializable):
 class FrequentedLocations(Component, ISerializable):
     """Tracks the locations that a character frequents."""
 
-    __slots__ = "locations"
+    __slots__ = "_locations"
 
-    locations: OrderedSet[int]
+    _locations: OrderedSet[GameObject]
     """A set of GameObject IDs of locations."""
 
-    def __init__(self, locations: Optional[Iterable[int]] = None) -> None:
+    def __init__(self, locations: Optional[Iterable[GameObject]] = None) -> None:
         """
         Parameters
         ----------
@@ -237,46 +202,46 @@ class FrequentedLocations(Component, ISerializable):
             An iterable of GameObject IDs of locations.
         """
         super().__init__()
-        self.locations = OrderedSet(locations) if locations else OrderedSet([])
+        self._locations = OrderedSet(locations) if locations else OrderedSet([])
 
-    def add(self, location: int) -> None:
+    def add(self, location: GameObject) -> None:
         """Add a new location.
 
         Parameters
         ----------
         location
-            The GameObject ID of a location.
+           A GameObject reference to a location.
         """
-        self.locations.add(location)
+        self._locations.add(location)
 
-    def remove(self, location: int) -> None:
+    def remove(self, location: GameObject) -> None:
         """Remove a location.
 
         Parameters
         ----------
         location
-            The GamerObject ID of the location to remove.
+            A GameObject reference to a location to remove.
         """
-        self.locations.remove(location)
+        self._locations.remove(location)
 
     def clear(self) -> None:
         """Remove all location IDs from the component."""
-        self.locations.clear()
+        self._locations.clear()
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"locations": list(self.locations)}
+        return {"locations": [entry.uid for entry in self._locations]}
 
-    def __contains__(self, item: int) -> bool:
-        return item in self.locations
+    def __contains__(self, item: GameObject) -> bool:
+        return item in self._locations
 
-    def __iter__(self) -> Iterator[int]:
-        return self.locations.__iter__()
+    def __iter__(self) -> Iterator[GameObject]:
+        return self._locations.__iter__()
 
     def __str__(self) -> str:
         return self.__repr__()
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.locations.__repr__()})"
+        return f"{self.__class__.__name__}({self._locations.__repr__()})"
 
 
 class Building(Component, ISerializable):
@@ -325,30 +290,30 @@ class FrequentedBy(Component, ISerializable):
 
     __slots__ = "_characters"
 
-    _characters: OrderedSet[int]
+    _characters: OrderedSet[GameObject]
     """GameObject IDs of characters that frequent the location."""
 
     def __init__(self) -> None:
         super().__init__()
         self._characters = OrderedSet([])
 
-    def add(self, character: int) -> None:
+    def add(self, character: GameObject) -> None:
         """Add a character.
 
         Parameters
         ----------
         character
-            The GameObject ID of a character.
+            The GameObject reference to a character.
         """
         self._characters.add(character)
 
-    def remove(self, character: int) -> None:
+    def remove(self, character: GameObject) -> None:
         """Remove a character.
 
         Parameters
         ----------
         character
-            The GameObject ID of a character.
+            The GameObject referenc to a character.
         """
         self._characters.remove(character)
 
@@ -358,13 +323,13 @@ class FrequentedBy(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "characters": list(self._characters),
+            "characters": [entry.uid for entry in self._characters],
         }
 
-    def __contains__(self, item: int) -> bool:
+    def __contains__(self, item: GameObject) -> bool:
         return item in self._characters
 
-    def __iter__(self) -> Iterator[int]:
+    def __iter__(self) -> Iterator[GameObject]:
         return self._characters.__iter__()
 
     def __str__(self):
@@ -381,7 +346,7 @@ class FrequentedBy(Component, ISerializable):
 class CurrentSettlement(Component, ISerializable):
     """Tracks the ID of the settlement that a GameObject is currently in."""
 
-    settlement: int
+    settlement: GameObject
     """The GameObject ID of a settlement."""
 
     def __str__(self) -> str:
@@ -391,7 +356,7 @@ class CurrentSettlement(Component, ISerializable):
         return f"{self.__class__.__name__}({self.settlement})"
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"settlement": self.settlement}
+        return {"settlement": self.settlement.uid}
 
 
 @dataclass
@@ -412,7 +377,7 @@ class PrefabName(Component, ISerializable):
 
 
 class Description(Component):
-    "A text description for a GameObject"
+    """A text description for a GameObject"""
 
     __slots__ = "_description"
 
@@ -431,3 +396,19 @@ class Description(Component):
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.description})"
+
+
+class OwnedBy(Component, ISerializable):
+    """Tags a GameObject as being owned by another."""
+
+    __slots__ = "owner"
+
+    owner: GameObject
+    """GameObject that owns this GameObject."""
+
+    def __init__(self, owner: GameObject) -> None:
+        super().__init__()
+        self.owner = owner
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"owner": self.owner.uid}

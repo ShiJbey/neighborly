@@ -2,7 +2,7 @@ import os
 import pathlib
 from typing import Any
 
-from neighborly.loaders import load_occupation_types, load_prefab
+from neighborly.loaders import load_occupation_types, load_prefabs
 from neighborly.simulation import Neighborly, PluginInfo
 
 _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
@@ -17,6 +17,6 @@ plugin_info = PluginInfo(
 def setup(sim: Neighborly, **kwargs: Any):
     load_occupation_types(sim.world, _RESOURCES_DIR / "occupation_types.yaml")
 
-    load_prefab(sim.world, _RESOURCES_DIR / "business.default.yaml")
-    load_prefab(sim.world, _RESOURCES_DIR / "business.default.library.yaml")
-    load_prefab(sim.world, _RESOURCES_DIR / "business.default.cafe.yaml")
+    load_prefabs(sim.world, _RESOURCES_DIR / "business.default.yaml")
+    load_prefabs(sim.world, _RESOURCES_DIR / "business.default.library.yaml")
+    load_prefabs(sim.world, _RESOURCES_DIR / "business.default.cafe.yaml")
