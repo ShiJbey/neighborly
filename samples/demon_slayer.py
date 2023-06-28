@@ -29,7 +29,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from core.life_event import EventRole, EventRoleList
 from neighborly import (
     Component,
     GameObject,
@@ -51,7 +50,7 @@ from neighborly.components.character import (
 from neighborly.components.shared import FrequentedLocations
 from neighborly.core.ai.brain import ConsiderationList
 from neighborly.core.ecs import Active
-from neighborly.core.life_event import RandomLifeEvent
+from neighborly.core.life_event import EventRole, EventRoleList, RandomLifeEvent
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
     component,
@@ -575,11 +574,13 @@ class BecomeDemonSlayer(RandomLifeEvent):
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
         # Only create demon slayers if demons are an actual problem
+        bindings = bindings if bindings is not None else EventRoleList()
+
         demons_exist = len(world.get_component(Demon)) > 5
         if demons_exist is False:
             return None
 
-        character = cls._bind_character(world, bindings.get_first("Character"))
+        character = cls._bind_character(world, bindings.get_first_or_none("Character"))
 
         if character:
             return cls(world.get_resource(SimDateTime), character)
@@ -636,7 +637,10 @@ class DemonSlayerPromotion(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        character = cls._bind_demon_slayer(world, bindings.get_first("Character"))
+        bindings = bindings if bindings is not None else EventRoleList()
+        character = cls._bind_demon_slayer(
+            world, bindings.get_first_or_none("Character")
+        )
 
         if character is None:
             return None
@@ -700,12 +704,18 @@ class DemonChallengeForPower(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        challenger = cls._bind_challenger(world, bindings.get_first("Challenger"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        challenger = cls._bind_challenger(
+            world, bindings.get_first_or_none("Challenger")
+        )
 
         if challenger is None:
             return None
 
-        opponent = cls._bind_opponent(world, challenger, bindings.get_first("Opponent"))
+        opponent = cls._bind_opponent(
+            world, challenger, bindings.get_first_or_none("Opponent")
+        )
 
         if opponent is None:
             return None
@@ -803,12 +813,14 @@ class DevourHuman(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        demon = cls._bind_demon(world, bindings.get_first("Demon"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        demon = cls._bind_demon(world, bindings.get_first_or_none("Demon"))
 
         if demon is None:
             return None
 
-        victim = cls._bind_victim(world, demon, bindings.get_first("Victim"))
+        victim = cls._bind_victim(world, demon, bindings.get_first_or_none("Victim"))
 
         if victim is None:
             return None
@@ -944,8 +956,12 @@ class Battle(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        challenger = cls._bind_challenger(world, bindings.get_first("Challenger"))
-        opponent = cls._bind_opponent(world, bindings.get_first("Opponent"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        challenger = cls._bind_challenger(
+            world, bindings.get_first_or_none("Challenger")
+        )
+        opponent = cls._bind_opponent(world, bindings.get_first_or_none("Opponent"))
 
         if challenger is None:
             return None
@@ -1006,13 +1022,15 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        demon = cls._bind_demon(world, candidate=bindings.get_first("Demon"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        demon = cls._bind_demon(world, candidate=bindings.get_first_or_none("Demon"))
 
         if demon is None:
             return None
 
         new_demon = cls._bind_new_demon(
-            world, demon, candidate=bindings.get_first("NewDemon")
+            world, demon, candidate=bindings.get_first_or_none("NewDemon")
         )
 
         if new_demon is None:
@@ -1115,7 +1133,9 @@ class PromotionToLowerMoon(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        demon = cls._bind_demon(world, bindings.get_first("Character"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        demon = cls._bind_demon(world, bindings.get_first_or_none("Character"))
         if demon:
             return cls(world.get_resource(SimDateTime), demon)
         return None
@@ -1171,7 +1191,7 @@ class PromotionToUpperMoon(RandomLifeEvent):
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
         if bindings:
-            demon = cls._bind_demon(world, bindings.get_first("Character"))
+            demon = cls._bind_demon(world, bindings.get_first_or_none("Character"))
         else:
             demon = cls._bind_demon(world)
 

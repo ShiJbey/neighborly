@@ -39,30 +39,30 @@ def join_workforce_when_young_adult(world: World, event: BecomeYoungAdultEvent) 
 
 
 def deactivate_relationships_on_death(world: World, event: DeathEvent) -> None:
-    for _, rel_id in event.character.get_component(
+    for _, relationship in event.character.get_component(
         RelationshipManager
     ).outgoing.items():
-        relationship = event.character.world.get_gameobject(rel_id)
         if relationship.has_component(Active):
             relationship.remove_component(Active)
 
-    for _, rel_id in event.character.get_component(
+    for _, relationship in event.character.get_component(
         RelationshipManager
     ).incoming.items():
-        relationship = event.character.world.get_gameobject(rel_id)
         if relationship.has_component(Active):
             relationship.remove_component(Active)
 
 
 def deactivate_relationships_on_depart(world: World, event: DepartEvent) -> None:
     for character in event.characters:
-        for _, rel_id in character.get_component(RelationshipManager).outgoing.items():
-            relationship = character.world.get_gameobject(rel_id)
+        for _, relationship in character.get_component(
+            RelationshipManager
+        ).outgoing.items():
             if relationship.has_component(Active):
                 relationship.remove_component(Active)
 
-        for _, rel_id in character.get_component(RelationshipManager).incoming.items():
-            relationship = character.world.get_gameobject(rel_id)
+        for _, relationship in character.get_component(
+            RelationshipManager
+        ).incoming.items():
             if relationship.has_component(Active):
                 relationship.remove_component(Active)
 

@@ -45,7 +45,6 @@ from neighborly.utils.query import are_related, is_married, is_single, with_rela
 
 
 class StartDatingLifeEvent(RandomLifeEvent):
-
     def __init__(
         self, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
@@ -152,12 +151,14 @@ class StartDatingLifeEvent(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        initiator = cls._bind_initiator(world, bindings.get_first("Initiator"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        initiator = cls._bind_initiator(world, bindings.get_first_or_none("Initiator"))
 
         if initiator is None:
             return None
 
-        other = cls._bind_other(world, initiator, bindings.get_first("Other"))
+        other = cls._bind_other(world, initiator, bindings.get_first_or_none("Other"))
 
         if other is None:
             return None
@@ -166,7 +167,6 @@ class StartDatingLifeEvent(RandomLifeEvent):
 
 
 class DatingBreakUp(RandomLifeEvent):
-
     def __init__(
         self, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
@@ -253,12 +253,14 @@ class DatingBreakUp(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        initiator = cls._bind_initiator(world, bindings.get_first("Initiator"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        initiator = cls._bind_initiator(world, bindings.get_first_or_none("Initiator"))
 
         if initiator is None:
             return None
 
-        other = cls._bind_other(world, initiator, bindings.get_first("Other"))
+        other = cls._bind_other(world, initiator, bindings.get_first_or_none("Other"))
 
         if other is None:
             return None
@@ -280,7 +282,7 @@ class DivorceLifeEvent(RandomLifeEvent):
             QB.with_(Married, "?relationship"),
             QB.filter_(
                 lambda rel: rel.get_component(Romance).get_value()
-                <= rel.world.get_resource(NeighborlyConfig).settings.get_first(
+                <= rel.world.get_resource(NeighborlyConfig).settings.get(
                     "divorce_romance_thresh", -25
                 ),
                 "?relationship",
@@ -408,12 +410,14 @@ class MarriageLifeEvent(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        initiator = cls._bind_initiator(world, bindings.get_first("Initiator"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        initiator = cls._bind_initiator(world, bindings.get_first_or_none("Initiator"))
 
         if initiator is None:
             return None
 
-        other = cls._bind_other(world, initiator, bindings.get_first("Other"))
+        other = cls._bind_other(world, initiator, bindings.get_first_or_none("Other"))
 
         if other is None:
             return None
@@ -542,12 +546,18 @@ class GetPregnantLifeEvent(RandomLifeEvent):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Optional[RandomLifeEvent]:
-        pregnant_one = cls._bind_pregnant_one(world, bindings.get_first("Initiator"))
+        bindings = bindings if bindings is not None else EventRoleList()
+
+        pregnant_one = cls._bind_pregnant_one(
+            world, bindings.get_first_or_none("Initiator")
+        )
 
         if pregnant_one is None:
             return None
 
-        other = cls._bind_other(world, pregnant_one, bindings.get_first("Other"))
+        other = cls._bind_other(
+            world, pregnant_one, bindings.get_first_or_none("Other")
+        )
 
         if other is None:
             return None

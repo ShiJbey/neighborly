@@ -42,6 +42,7 @@ from neighborly.components.character import (
     Mortal,
     ReproductionConfig,
     Retired,
+    RoleTracker,
     Virtues,
 )
 from neighborly.components.items import Item, ItemLibrary, ItemType
@@ -180,6 +181,7 @@ class Neighborly:
         self.world.add_system(systems.InitializeActivitiesSystem())
         self.world.add_system(systems.InitializeServicesSystem())
         self.world.add_system(systems.InitializeOccupationTypesSystem())
+        self.world.add_system(systems.InitializeItemTypeSystem())
 
         # Add default early-update subgroups (in execution order)
         self.world.add_system(systems.DataCollectionSystemGroup())
@@ -267,6 +269,7 @@ class Neighborly:
         self.world.register_component(OccupationType)
         self.world.register_component(SocialStatusLevel)
         self.world.register_component(JobRequirements, factory=JobRequirementsFactory())
+        self.world.register_component(RoleTracker)
 
         # Event listeners
         self.world.on_event(JoinSettlementEvent, on_adult_join_settlement)

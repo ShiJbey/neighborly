@@ -15,9 +15,10 @@ from typing import (
     List,
     Optional,
     Protocol,
+    Tuple,
     Type,
     TypeVar,
-    Tuple, )
+)
 
 from ordered_set import OrderedSet
 
@@ -257,7 +258,7 @@ class EventRoleBindingContext:
     world: World
     """The world instance that the GameObjects in the role list belong to."""
 
-    bindings: Optional[EventRoleList] = dataclasses.field(default_factory=EventRoleList)
+    bindings: EventRoleList = dataclasses.field(default_factory=EventRoleList)
     """The current set of casted roles."""
 
 
@@ -266,18 +267,28 @@ EventRoleBindingGeneratorFn = Callable[
 ]
 """Role casting functions yield GameObjects to bind to a role."""
 
-_T = TypeVar("_T", bound=LifeEvent)
+_T = TypeVar("_T", bound=LifeEvent, contravariant=True)
 
 
-class EventRoleConsideration(Protocol):
+class EventRoleConsideration(Protocol[_T]):
     """A consideration function for evaluating the probability of a GameObject taking on a role in a life event."""
 
     def __call__(self, gameobject: GameObject, event: _T) -> Optional[float]:
         raise NotImplementedError()
 
 
-class EventRoleConsiderationList(List[EventRoleConsideration], Generic[_T]):
+class EventRoleConsiderationList(Generic[_T]):
     """A collection of considerations associated with an event role."""
+
+    __slots__ = "_considerations"
+
+    _considerations: List[EventRoleConsideration[_T]]
+    """Internal list of considerations"""
+
+    def __init__(
+        self, considerations: Optional[Iterable[EventRoleConsideration[_T]]] = None
+    ) -> None:
+        self._considerations = list(considerations if considerations else [])
 
     def calculate_score(self, gameobject: GameObject, event: _T) -> float:
         """Scores each consideration for a GameObject and returns the aggregate score.
@@ -325,6 +336,12 @@ class EventRoleConsiderationList(List[EventRoleConsideration], Generic[_T]):
 
         return final_score
 
+    def __len__(self) -> int:
+        return len(self._considerations)
+
+    def __iter__(self) -> Iterator[EventRoleConsideration[_T]]:
+        return self._considerations.__iter__()
+
 
 class EventRoleInfo:
     """Information about an event role.
@@ -360,15 +377,17 @@ class EventRoleInfo:
 
 
 def event_role(
-    name: str = "", considerations: Optional[EventRoleConsiderationList] = None
+    name: str = "", considerations: Optional[List[EventRoleConsideration[_T]]] = None
 ):
     """A decorator to indicate that a function is for casting a role"""
 
-    def event_role_decorator(fn):
+    def event_role_decorator(fn: EventRoleBindingGeneratorFn):
         return EventRoleInfo(
             name if name else fn.__name__,
             fn,
-            EventRoleConsiderationList(considerations if considerations else []),
+            EventRoleConsiderationList[_T](
+                considerations if considerations is not None else []
+            ),
         )
 
     return event_role_decorator
@@ -434,7 +453,7 @@ class EventRoleSearchState:
     binding_generator: Generator[Tuple[GameObject, ...], None, None]
     """The generator function providing the next set of results."""
 
-    pending: Tuple[EventRoleInfo]
+    pending: Tuple[EventRoleInfo, ...]
     """A queue of remaining event roles to bind."""
 
 
@@ -447,7 +466,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
     https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
     """
 
-    __event_roles__: ClassVar[Tuple[EventRoleInfo]] = ()
+    __event_roles__: ClassVar[Tuple[EventRoleInfo, ...]] = ()
     """Information about this events used for binding GameObjects."""
 
     def __init__(
@@ -495,12 +514,12 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         raise NotImplementedError
 
     @classmethod
-    def instantiate(
+    def generate(
         cls,
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Generator[RandomLifeEvent, None, None]:
-        """Attempts to create a new LifeEvent instance
+        """Attempts to generate multiple valid life event instances
 
         Parameters
         ----------
@@ -511,8 +530,8 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
         Returns
         -------
-        LifeEventInstance or None
-            An instance of this life event if all roles are bound successfully
+        Generator[RandomLifeEvent, None, None]
+            An generator function that produces instance of this life event
         """
 
         # Check if there are any roles that need to be bound
@@ -600,6 +619,32 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                     current_state = history.pop()
                 else:
                     return
+
+    @classmethod
+    def instantiate(
+        cls,
+        world: World,
+        bindings: Optional[EventRoleList] = None,
+    ) -> Optional[RandomLifeEvent]:
+        """Attempts to create a new LifeEvent instance
+
+        Parameters
+        ----------
+        world
+            Neighborly world instance
+        bindings
+            Suggested bindings of role names mapped to GameObjects
+
+        Returns
+        -------
+        LifeEventInstance or None
+            An instance of this life event if all roles are bound successfully
+        """
+
+        try:
+            return next(cls.generate(world, bindings))
+        except:
+            return None
 
 
 class RandomLifeEventLibrary:

@@ -12,8 +12,9 @@ from typing import Any, ClassVar, Dict, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
 from numpy import typing as npt
+from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, ISerializable
+from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime
@@ -495,3 +496,20 @@ class LifeStage(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"life_stage": self.life_stage.name}
+
+
+class RoleTracker(Component, ISerializable):
+    """Tracks the roles currently held by this character."""
+
+    __slots__ = "_roles"
+
+    _roles: OrderedSet[GameObject]
+    """References to the role GameObjects."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._roles = OrderedSet([])
+
+    @property
+    def roles(self) -> OrderedSet[GameObject]:
+        return self._roles

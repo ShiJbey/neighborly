@@ -18,6 +18,7 @@ import pyparsing as pp
 from ordered_set import OrderedSet
 from pyparsing import pyparsing_common as ppc
 
+from neighborly.components.shared import Name
 from neighborly.core.ecs import (
     Component,
     EntityPrefab,
@@ -366,7 +367,8 @@ class Business(Component, ISerializable):
                 for occupation_type, slots in self._open_positions.items()
             },
             "employees": [
-                {"title": title, "uid": uid} for uid, title in self._employees
+                {"title": employee.get_component(Name).value, "uid": employee.uid}
+                for employee in self._employees
             ],
             "owner": {
                 "title": self.owner_type,
@@ -726,9 +728,13 @@ class JobRequirementParser:
         return cast(pp.ParserElement, program)  # type: ignore
 
     @staticmethod
-    def _make_keyword(kwd_str: str, kwd_value: Any):
+    def _make_keyword(kwd_str: str, kwd_value: Any) -> pp.ParserElement:
         """Turn a given string into a keyword for a grammar."""
         keyword = pp.Keyword(kwd_str).set_parse_action(pp.replaceWith(kwd_value))  # type: ignore
+
+        if keyword is None:
+            raise RuntimeError(f"Failed to create keyword: {kwd_str}")
+
         return keyword
 
     def parse_string(self, input_str: str) -> Precondition:

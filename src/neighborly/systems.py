@@ -23,6 +23,7 @@ from neighborly.components.character import (
     Pregnant,
     SiblingOf,
 )
+from neighborly.components.items import ItemLibrary
 from neighborly.components.residence import Resident
 from neighborly.components.routine import ROUTINE_PRIORITY_BOOSTS, Routine
 from neighborly.components.shared import (
@@ -221,7 +222,7 @@ class RandomLifeEventSystem(System):
         event_type: Type[RandomLifeEvent]
         for _ in range(total_population // 10):
             event_type = event_library.pick_one(rng)
-            if event := next(event_type.instantiate(self.world, EventRoleList()), None):
+            if event := event_type.instantiate(self.world, EventRoleList()):
                 if rng.random() < event.get_probability():
                     event.execute(self.world)
 
@@ -408,7 +409,7 @@ class PregnantStatusSystem(System):
             for relationship in get_relationships_with_statuses(character, ParentOf):
                 rel = relationship.get_component(Relationship)
 
-                if rel.target == baby.uid:
+                if rel.target == baby:
                     continue
 
                 sibling = rel.target
@@ -426,7 +427,7 @@ class PregnantStatusSystem(System):
             # Create relationships with children of other parent
             for relationship in get_relationships_with_statuses(other_parent, ParentOf):
                 rel = relationship.get_component(Relationship)
-                if rel.target == baby.uid:
+                if rel.target == baby:
                     continue
 
                 sibling = rel.target
@@ -691,3 +692,19 @@ class InitializeOccupationTypesSystem(ISystem):
             )
             occupation_type_obj.name = prefab_name
             occupation_library.add(occupation_type_obj)
+
+
+class InitializeItemTypeSystem(ISystem):
+    """Creates Item Type GameObjects and updates the library with references."""
+
+    sys_group = "initialization"
+    priority = 9999
+
+    def process(self, *args: Any, **kwargs: Any) -> None:
+        item_library = self.world.get_resource(ItemLibrary)
+        gameobject_factory = self.world.get_resource(GameObjectFactory)
+
+        for prefab_name in item_library.items_to_instantiate:
+            item_type_obj = gameobject_factory.instantiate(self.world, prefab_name)
+            item_type_obj.name = prefab_name
+            item_library.add(item_type_obj)

@@ -383,19 +383,19 @@ class Description(Component):
 
     _description: str
 
-    def __init__(self, description: str) -> None:
+    def __init__(self, value: str) -> None:
         super().__init__()
-        self._description = description
+        self._description = value
 
     @property
-    def description(self) -> str:
+    def value(self) -> str:
         return self._description
 
     def __str__(self) -> str:
-        return self.description
+        return self.value
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.description})"
+        return f"{type(self).__name__}({self.value})"
 
 
 class OwnedBy(Component, ISerializable):

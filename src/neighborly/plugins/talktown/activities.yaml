@@ -1,0 +1,6 @@
+- name: studying
+  components:
+    Name:
+      value: "Studying"
+    Description:
+      value: "A place to hit the books."

@@ -2,27 +2,23 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from ordered_set import OrderedSet
+
 from neighborly.core.ecs import (
     Component,
     EntityPrefab,
     GameObject,
     GameObjectFactory,
     ISerializable,
+    TagComponent,
     World,
 )
 
 
-class ItemType(Component, ISerializable):
+class ItemType(TagComponent):
     """Tags a GameObject as being a definition of an item type."""
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
-
-    def __str__(self) -> str:
-        return type(self).__name__
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}()"
+    pass
 
 
 class Item(Component, ISerializable):
@@ -125,22 +121,49 @@ class Inventory(Component, ISerializable):
 class ItemLibrary:
     """Manages runtime type information for items"""
 
-    __slots__ = "_items"
+    __slots__ = "_item_types", "_items_to_instantiate"
 
-    _items: Dict[str, GameObject]
+    _items_to_instantiate: OrderedSet[str]
+    """Names of item type prefabs to instantiate at the start of the simulation."""
+
+    _item_types: Dict[str, GameObject]
+    """Look-up table of item type names mapped to their instantiated GameObjects."""
 
     def __init__(self) -> None:
-        self._items = {}
+        self._item_types = {}
+        self._items_to_instantiate = OrderedSet([])
 
     @property
-    def items(self) -> Dict[str, GameObject]:
-        return self._items
+    def items_to_instantiate(self) -> OrderedSet[str]:
+        return self._items_to_instantiate
+
+    def add(self, item: GameObject) -> None:
+        """Add an item type to the library.
+
+        Parameters
+        ----------
+        item
+            An item type GameObject.
+        """
+        self._item_types[item.name] = item
+
+    def get(self, name: str) -> GameObject:
+        """Retrieve an item type GameObject.
+
+        Parameters
+        ----------
+        name
+            The name of an item type.
+
+        Returns
+        -------
+        GameObject
+            An item type.
+        """
+        return self._item_types[name]
 
 
 def register_item_type(world: World, prefab: EntityPrefab) -> None:
     """Loads a new item type into the world's ItemLibrary."""
-    factory = world.get_resource(GameObjectFactory)
-    factory.add(prefab)
-    item_type = factory.instantiate(world, prefab.name)
-    item_type.name = prefab.name
-    world.get_resource(ItemLibrary).items[item_type.name] = item_type
+    world.get_resource(GameObjectFactory).add(prefab)
+    world.get_resource(ItemLibrary).items_to_instantiate.add(prefab.name)

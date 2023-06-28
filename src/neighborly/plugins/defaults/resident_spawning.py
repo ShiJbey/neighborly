@@ -98,7 +98,7 @@ class SpawnFamilySystem(System):
 
         add_residence_to_settlement(
             residence,
-            settlement=self.world.get_gameobject(settlement.uid),
+            settlement=settlement,
             lot_id=lot,
         )
 

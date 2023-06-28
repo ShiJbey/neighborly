@@ -124,6 +124,9 @@ class DataCollector:
 class DataCollectionSystem(ISystem):
     """Collects data from the world simulation."""
 
+    sys_group = "early-update"
+    priority = 9999
+
     def process(self, *args: Any, **kwargs: Any) -> None:
         data_collector = self.world.get_resource(DataCollector)
 

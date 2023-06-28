@@ -1277,7 +1277,7 @@ class World:
 
         raise Exception(f"Could not find system group, {system.sys_group}")
 
-    def get_system(self, system_type: Type[_ST]) -> Optional[_ST]:
+    def get_system(self, system_type: Type[_ST]) -> _ST:
         """Attempt to get a System of the given type.
 
         Parameters
@@ -1305,7 +1305,7 @@ class World:
                     for c in current_sys.iter_children():
                         stack.append((current_sys, c))
 
-        return None
+        raise KeyError(f"Not system found with type: {system_type.__name__}")
 
     def remove_system(self, system_type: Type[ISystem]) -> None:
         """Remove all instances of a system type.

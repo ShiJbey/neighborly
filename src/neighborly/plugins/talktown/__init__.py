@@ -1,13 +1,18 @@
 import pathlib
 from typing import Any
 
-from neighborly.loaders import load_occupation_types, load_prefabs
+from neighborly.loaders import (
+    load_activities,
+    load_occupation_types,
+    load_prefabs,
+    load_services,
+)
 from neighborly.plugins.talktown import business_components
 from neighborly.plugins.talktown.personality import (
     BigFivePersonality,
     BigFivePersonalityFactory,
 )
-from neighborly.plugins.talktown.school import SchoolSystem, Student
+from neighborly.plugins.talktown.school import CollegeGraduate, SchoolSystem, Student
 from neighborly.simulation import Neighborly, PluginInfo
 
 plugin_info = PluginInfo(
@@ -22,11 +27,16 @@ def setup(sim: Neighborly, **kwargs: Any) -> None:
 
     # Register student component for school system
     sim.world.register_component(Student)
+    sim.world.register_component(CollegeGraduate)
 
     # Register Personality component
     sim.world.register_component(
         BigFivePersonality, factory=BigFivePersonalityFactory()
     )
+
+    # Load Services and Activities
+    load_services(sim.world, pathlib.Path(__file__).parent / "services.yaml")
+    load_activities(sim.world, pathlib.Path(__file__).parent / "activities.yaml")
 
     # Register Business components
     sim.world.register_component(business_components.ApartmentComplex)

@@ -24,8 +24,7 @@ class CreateDefaultSettlementSystem(ISystem):
 
     prefab_data: ClassVar[Dict[str, List[Dict[str, Any]]]] = {}
 
-    @classmethod
-    def load_spawn_table(cls, table_type: str, file_path: _AnyPath):
+    def load_spawn_table(self, table_type: str, file_path: _AnyPath):
         """Load spawn table data from a CSV file.
 
         Parameters
@@ -38,11 +37,11 @@ class CreateDefaultSettlementSystem(ISystem):
         with open(file_path, "r") as csv_file:
             df = pandas.read_csv(csv_file)  # type: ignore
 
-            if table_type not in cls.prefab_data:
-                cls.prefab_data[table_type] = []
+            if table_type not in self.prefab_data:
+                self.prefab_data[table_type] = []
 
             for _, row in df.iterrows():  # type: ignore
-                cls.prefab_data[table_type].append(row.to_dict())  # type: ignore
+                self.prefab_data[table_type].append(row.to_dict())  # type: ignore
 
     def process(self, *args: Any, **kwargs: Any) -> None:
         settlement = (

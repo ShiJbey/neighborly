@@ -73,7 +73,7 @@ def add_sub_location(parent_location: GameObject, sub_location: GameObject) -> N
         The new location to add.
     """
     parent_location.get_component(Location).children.add(sub_location)
-    sub_location.get_component(Location).parent = parent_location.uid
+    sub_location.get_component(Location).parent = parent_location
     parent_location.add_child(sub_location)
 
 
@@ -173,7 +173,6 @@ def remove_location_from_settlement(
     location
         The location to remove
     """
-    world = location.world
 
     settlement: GameObject = location.get_component(CurrentSettlement).settlement
 
@@ -182,8 +181,7 @@ def remove_location_from_settlement(
     location.deactivate()
 
     if frequented_by := settlement.try_component(FrequentedBy):
-        for character_id in frequented_by:
-            character = world.get_gameobject(character_id)
+        for character in frequented_by:
             if frequented_locations := character.try_component(FrequentedLocations):
                 frequented_locations.remove(location)
 
@@ -939,7 +937,7 @@ def set_frequented_locations(
         for guid, (_, current_settlement, _, _) in character.world.get_components(
             (Location, CurrentSettlement, Activities, Active)
         )
-        if current_settlement.settlement == settlement.uid
+        if current_settlement.settlement == settlement
     ]
 
     scores = [_score_location(character, location) for location in locations]
@@ -948,7 +946,7 @@ def set_frequented_locations(
 
     pairs.sort(key=lambda pair: pair[1])
 
-    selected_locations = [loc.uid for loc, _ in pairs[:max_locations]]
+    selected_locations = [loc for loc, _ in pairs[:max_locations]]
 
     for loc in selected_locations:
         character.get_component(FrequentedLocations).add(loc)

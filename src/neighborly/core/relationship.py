@@ -406,7 +406,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship_manager = owner.get_component(RelationshipManager)
     world = owner.world
 
-    if target.uid in relationship_manager.outgoing:
+    if target in relationship_manager.outgoing:
         return relationship_manager.outgoing[target]
 
     relationship = world.get_resource(GameObjectFactory).instantiate(
@@ -448,7 +448,7 @@ def get_relationship(
     GameObject
         The relationship instance toward the other entity
     """
-    if target.uid not in subject.get_component(RelationshipManager).outgoing:
+    if target not in subject.get_component(RelationshipManager).outgoing:
         return add_relationship(subject, target)
 
     return subject.get_component(RelationshipManager).outgoing[target]
@@ -471,7 +471,7 @@ def has_relationship(subject: GameObject, target: GameObject) -> bool:
         True if there is an existing Relationship instance with the
         target as the target, False otherwise.
     """
-    return target.uid in subject.get_component(RelationshipManager).outgoing
+    return target in subject.get_component(RelationshipManager).outgoing
 
 
 def add_relationship_status(

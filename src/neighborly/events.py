@@ -174,7 +174,7 @@ class EndJobEvent(LifeEvent):
         character: GameObject,
         business: GameObject,
         occupation: GameObject,
-        reason: LifeEvent,
+        reason: Optional[LifeEvent] = None,
     ) -> None:
         super().__init__(
             date,
@@ -184,7 +184,7 @@ class EndJobEvent(LifeEvent):
                 EventRole("Occupation", occupation),
             ],
         )
-        self.reason: LifeEvent = reason
+        self.reason: Optional[LifeEvent] = reason
 
     @property
     def character(self):
@@ -196,19 +196,19 @@ class EndJobEvent(LifeEvent):
 
     @property
     def occupation(self):
-        return self["occupation"]
+        return self["Occupation"]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "reason": self.reason,
+            "reason": self.reason.event_id if self.reason else -1,
         }
 
     def __str__(self) -> str:
         return (
             f"{super().__str__()}, "
-            f"occupation={self.occupation}, "
-            f"reason={self.reason}"
+            f"occupation={str(self.occupation)}, "
+            f"reason={str(self.reason)}"
         )
 
 
