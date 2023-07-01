@@ -13,7 +13,11 @@ from neighborly.components.business import (
 )
 from neighborly.components.character import GameCharacter, Gender, GenderType
 from neighborly.components.shared import Age
-from neighborly.core.ecs import Component, EntityPrefab, GameObject, GameObjectFactory
+from neighborly.core.ecs import (
+    Component,
+    GameObjectPrefab,
+    GameObject,
+)
 from neighborly.core.time import Weekday
 from neighborly.factories import OperatingHoursFactory
 from neighborly.plugins.talktown.school import CollegeGraduate
@@ -25,8 +29,8 @@ def test_construct_business():
 
     sim = Neighborly()
 
-    sim.world.get_resource(GameObjectFactory).add(
-        EntityPrefab(
+    sim.world.resource_manager.get_resource(GameObjectFactory).update(
+        GameObjectPrefab(
             name="Restaurant",
             components={
                 "Name": {"value": "Restaurant"},
@@ -43,7 +47,7 @@ def test_construct_business():
         )
     )
 
-    restaurant = sim.world.get_resource(GameObjectFactory).instantiate(
+    restaurant = sim.world.resource_manager.get_resource(GameObjectFactory).instantiate(
         sim.world, "Restaurant"
     )
     restaurant_business = restaurant.get_component(Business)
@@ -129,7 +133,9 @@ def has_component(gameobject: GameObject, *args: Any) -> bool:
     component_name: str
     (component_name,) = args
     return gameobject.has_component(
-        gameobject.world.get_component_info(component_name).component_type
+        gameobject.world.gameobject_manager.get_component_info(
+            component_name
+        ).component_type
     )
 
 
@@ -158,25 +164,25 @@ def test_parse_job_requirements():
     library = JobRequirementLibrary()
     parser = JobRequirementParser(sim.world)
 
-    sim.world.add_resource(library)
+    sim.world.resource_manager.add_resource(library)
 
-    sim.world.register_component(CollegeGraduate)
-    sim.world.register_component(Cyborg)
+    sim.world.gameobject_manager.register_component(CollegeGraduate)
+    sim.world.gameobject_manager.register_component(Cyborg)
 
     library.add("has_gender", has_gender)
     library.add("over_age", over_age)
     library.add("has_last_name", has_last_name)
     library.add("has_component", has_component)
 
-    kieth = sim.world.spawn_gameobject(
+    kieth = sim.world.gameobject_manager.spawn_gameobject(
         [GameCharacter("Kieth", "Smith"), Gender("Male"), Age(32)]
     )
 
-    percy = sim.world.spawn_gameobject(
+    percy = sim.world.gameobject_manager.spawn_gameobject(
         [GameCharacter("Percy", "Jenkins"), Age(51), CollegeGraduate()]
     )
 
-    dolph = sim.world.spawn_gameobject(
+    dolph = sim.world.gameobject_manager.spawn_gameobject(
         [GameCharacter("Dolph", "McKnight"), Age(23), CollegeGraduate(), Cyborg()]
     )
 

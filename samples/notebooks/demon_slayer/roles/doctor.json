@@ -1,0 +1,14 @@
+{
+  "name": "Doctor",
+  "components": {
+    "Name": {
+      "value": "Doctor"
+    },
+    "SocialEconomicLevel": {
+      "level": 4
+    },
+    "Description": {
+      "description": "This person provides medical assistance."
+    }
+  }
+}

@@ -18,12 +18,10 @@ import pyparsing as pp
 from ordered_set import OrderedSet
 from pyparsing import pyparsing_common as ppc
 
-from neighborly.components.shared import Name
 from neighborly.core.ecs import (
     Component,
-    EntityPrefab,
+    GameObjectPrefab,
     GameObject,
-    GameObjectFactory,
     ISerializable,
     TagComponent,
     World,
@@ -68,7 +66,7 @@ class Occupation(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "occupation_type": self._occupation_type.uid,
+            "occupation_type": self._occupation_type.name,
             "business": self._business.uid,
             "start_date": str(self._start_date),
         }
@@ -361,18 +359,21 @@ class Business(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "owner_type": self.owner_type,
+            "owner_type": self.owner_type.name,
             "open_positions": {
                 occupation_type.name: slots
                 for occupation_type, slots in self._open_positions.items()
             },
             "employees": [
-                {"title": employee.get_component(Name).value, "uid": employee.uid}
+                {
+                    "title": employee.get_component(Occupation).occupation_type.name,
+                    "uid": employee.uid,
+                }
                 for employee in self._employees
             ],
             "owner": {
-                "title": self.owner_type,
-                "uid": self.owner if self.owner is not None else -1,
+                "title": self.owner_type.name,
+                "uid": self.owner.uid if self.owner is not None else -1,
             },
         }
 
@@ -781,7 +782,9 @@ class JobRequirementParser:
         else:
             try:
                 return JobRequirementRule(
-                    self._world.get_resource(JobRequirementLibrary).get(op_name),
+                    self._world.resource_manager.get_resource(
+                        JobRequirementLibrary
+                    ).get(op_name),
                     *op_args,
                 )
             except KeyError:
@@ -835,7 +838,7 @@ class OccupationLibrary:
         return self._occupations[name]
 
 
-def register_occupation_type(world: World, prefab: EntityPrefab) -> None:
+def register_occupation_type(world: World, prefab: GameObjectPrefab) -> None:
     """Register an occupation type for later use.
 
     Parameters
@@ -845,11 +848,13 @@ def register_occupation_type(world: World, prefab: EntityPrefab) -> None:
     prefab
         GameObject prefab information about the occupation.
     """
-    world.get_resource(GameObjectFactory).add(prefab)
-    world.get_resource(OccupationLibrary).occupations_to_instantiate.add(prefab.name)
+    world.gameobject_manager.add_prefab(prefab)
+    world.resource_manager.get_resource(
+        OccupationLibrary
+    ).occupations_to_instantiate.add(prefab.name)
 
 
-def register_service_type(world: World, prefab: EntityPrefab) -> None:
+def register_service_type(world: World, prefab: GameObjectPrefab) -> None:
     """Register a service type for later use.
 
     Parameters
@@ -860,5 +865,7 @@ def register_service_type(world: World, prefab: EntityPrefab) -> None:
         GameObject prefab information about the service type.
     """
 
-    world.get_resource(GameObjectFactory).add(prefab)
-    world.get_resource(ServiceLibrary).services_to_instantiate.add(prefab.name)
+    world.gameobject_manager.add_prefab(prefab)
+    world.resource_manager.get_resource(ServiceLibrary).services_to_instantiate.add(
+        prefab.name
+    )

@@ -1,0 +1,14 @@
+{
+  "name": "Lower-Class Merchant",
+  "components": {
+    "Name": {
+      "value": "Lower-Class Merchant"
+    },
+    "SocialEconomicLevel": {
+      "level": 3
+    },
+    "Description": {
+      "description": "This person sells items, but is held in lower regard."
+    }
+  }
+}

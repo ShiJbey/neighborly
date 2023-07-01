@@ -10,32 +10,30 @@ the simulation.
 In this example, we show how a user could add a new initialization system that spawns
 multiple settlements into the simulation.
 """
-from typing import Any
 
-from neighborly import ISystem, Neighborly, NeighborlyConfig
+from neighborly import ISystem, Neighborly, NeighborlyConfig, World
 from neighborly.command import SpawnSettlement
 from neighborly.components.shared import Name
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import system
+from neighborly.systems import InitializationSystemGroup
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj({"plugins": ["neighborly.plugins.defaults.settlement"]})
 )
 
 
-@system(sim.world)
+@system(sim.world, system_group=InitializationSystemGroup)
 class InitializeMajorSettlements(ISystem):
-    sys_group = "initialization"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
+    def on_update(self, world: World) -> None:
         print("Setting up settlements...")
-        SpawnSettlement("settlement", name="Winterfell").execute(self.world)
-        SpawnSettlement("settlement", name="The Vale of Arryn").execute(self.world)
-        SpawnSettlement("settlement", name="Casterly Rock").execute(self.world)
-        SpawnSettlement("settlement", name="King's Landing").execute(self.world)
-        SpawnSettlement("settlement", name="Highgarden").execute(self.world)
-        SpawnSettlement("settlement", name="Braavos").execute(self.world)
-        SpawnSettlement("settlement", name="Pentos").execute(self.world)
+        SpawnSettlement("settlement", name="Winterfell").execute(world)
+        SpawnSettlement("settlement", name="The Vale of Arryn").execute(world)
+        SpawnSettlement("settlement", name="Casterly Rock").execute(world)
+        SpawnSettlement("settlement", name="King's Landing").execute(world)
+        SpawnSettlement("settlement", name="Highgarden").execute(world)
+        SpawnSettlement("settlement", name="Braavos").execute(world)
+        SpawnSettlement("settlement", name="Pentos").execute(world)
 
 
 def main():

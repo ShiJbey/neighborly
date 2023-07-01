@@ -10,9 +10,9 @@ import time
 from typing import Any, Dict
 
 from neighborly import ISystem, Neighborly, NeighborlyConfig, SimDateTime
-from neighborly.command import SpawnCharacter, SpawnResidence, SpawnSettlement
+from neighborly.command import SpawnSettlement, SpawnCharacter, SpawnResidence
 from neighborly.components.character import GameCharacter
-from neighborly.core.ecs import EntityPrefab, GameObjectFactory, TagComponent
+from neighborly.core.ecs import World, TagComponent, GameObjectPrefab
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -80,12 +80,24 @@ class OwesDebt(StatusComponent):
 
 @system(sim.world)
 class RelationshipReporter(ISystem):
-    sys_group = "data-collection"
+    def on_create(self, world: World) -> None:
+        world.resource_manager.get_resource(DataCollector).create_new_table(
+            "relationships",
+            (
+                "timestamp",
+                "owner",
+                "target",
+                "friendship",
+                "romance",
+                "interaction_score",
+                "statuses",
+            ),
+        )
 
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        timestamp = self.world.get_resource(SimDateTime).to_iso_str()
-        data_collector = self.world.get_resource(DataCollector)
-        for guid, (game_character, relationship_manager) in self.world.get_components(
+    def on_update(self, world: World) -> None:
+        timestamp = world.resource_manager.get_resource(SimDateTime).to_iso_str()
+        data_collector = world.resource_manager.get_resource(DataCollector)
+        for guid, (game_character, relationship_manager) in world.get_components(
             (GameCharacter, RelationshipManager)
         ):
             if (
@@ -111,29 +123,17 @@ class RelationshipReporter(ISystem):
                     )
 
 
-EXPORT_SIM = True
+EXPORT_SIM = False
 YEARS_TO_SIMULATE = 50
 
 
 def main():
     """Main entry point for this module"""
-    sim.world.get_resource(DataCollector).create_new_table(
-        "relationships",
-        (
-            "timestamp",
-            "owner",
-            "target",
-            "friendship",
-            "romance",
-            "interaction_score",
-            "statuses",
-        ),
-    )
 
     west_world = SpawnSettlement(name="West World").execute(sim.world).get_result()
 
-    sim.world.get_resource(GameObjectFactory).add(
-        EntityPrefab(
+    sim.world.gameobject_manager.add_prefab(
+        GameObjectPrefab(
             name="westworld::host",
             extends=["character::default::female"],
             components={"Robot": {}},
@@ -163,7 +163,7 @@ def main():
     sim.run_for(YEARS_TO_SIMULATE)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {str(sim.world.get_resource(SimDateTime))}")
+    print(f"World Date: {str(sim.world.resource_manager.get_resource(SimDateTime))}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_SIM:

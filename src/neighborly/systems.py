@@ -1,7 +1,7 @@
 import random
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import defaultdict
-from typing import Any, DefaultDict, Optional, Type
+from typing import DefaultDict, Optional, Type
 
 from neighborly.command import SetCharacterAge, SpawnCharacter
 from neighborly.components.activity import ActivityLibrary
@@ -36,8 +36,8 @@ from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import (
     Active,
+    World,
     GameObject,
-    GameObjectFactory,
     ISystem,
     SystemGroup,
 )
@@ -81,52 +81,66 @@ from neighborly.utils.common import (
 
 
 class InitializationSystemGroup(SystemGroup):
-    """A group of systems that run once at the beginning of the simulation"""
+    """A group of systems that run once at the beginning of the simulation.
 
-    group_name = "initialization"
-    priority = 99999
+    Any content initialization systems or initial world building systems should
+    belong to this group.
+    """
 
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        super().process(*args, **kwargs)
-        self.world.remove_system(type(self))
+    def on_update(self, world: World) -> None:
+        # Run all child systems first before deactivating
+        super().on_update(world)
+        self.set_active(False)
 
 
 class EarlyUpdateSystemGroup(SystemGroup):
-    """The early phase of the update loop"""
+    """The early phase of the update loop."""
 
-    group_name = "early-update"
+    pass
 
 
 class UpdateSystemGroup(SystemGroup):
-    """The middle phase of the update loop"""
+    """The main phase of the update loop."""
 
-    group_name = "update"
+    pass
 
 
 class LateUpdateSystemGroup(SystemGroup):
-    """The late phase of the update loop"""
+    """The late phase of the update loop."""
 
-    group_name = "late-update"
+    pass
 
 
 class RelationshipUpdateSystemGroup(SystemGroup):
-    group_name = "relationship-update"
-    sys_group = "early-update"
+    """System group for updating relationship components.
+
+    If there are components that should grow or decay over time, their systems
+    should be added to this group.
+    """
+
+    pass
 
 
 class StatusUpdateSystemGroup(SystemGroup):
-    group_name = "status-update"
-    sys_group = "early-update"
+    """System group for updating status components."""
+
+    pass
 
 
 class GoalSuggestionSystemGroup(SystemGroup):
-    group_name = "goal-suggestion"
-    sys_group = "early-update"
+    """System group for suggesting Goals to characters"""
+
+    pass
 
 
 class DataCollectionSystemGroup(SystemGroup):
-    sys_group = "early-update"
-    group_name = "data-collection"
+    """System group for collecting data.
+
+    Any system that collects data during the course of the simulation should
+    belong to this group.
+    """
+
+    pass
 
 
 class System(ISystem, ABC):
@@ -136,18 +150,16 @@ class System(ISystem, ABC):
     time between calls.
     """
 
-    sys_group = "update"
-
     __slots__ = "_interval", "_last_run", "_elapsed_time", "_next_run"
 
     def __init__(
         self,
         interval: Optional[TimeDelta] = None,
     ) -> None:
-        super(ISystem, self).__init__()
-        self._last_run: Optional[SimDateTime] = None
+        super().__init__()
+        self._last_run: SimDateTime = SimDateTime()
         self._interval: TimeDelta = interval if interval else TimeDelta()
-        self._next_run: SimDateTime = SimDateTime(1, 1, 1)
+        self._next_run: SimDateTime = SimDateTime()
         self._elapsed_time: TimeDelta = TimeDelta()
 
     @property
@@ -155,38 +167,38 @@ class System(ISystem, ABC):
         """Returns the amount of simulation time since the last update"""
         return self._elapsed_time
 
-    def process(self, *args: Any, **kwargs: Any) -> None:
+    def is_active(self, world: World) -> bool:
+        date = world.resource_manager.get_resource(SimDateTime)
+        return date >= self._next_run
+
+    def on_start_running(self, world: World) -> None:
         """Handles internal bookkeeping before running the system"""
-        date = self.world.get_resource(SimDateTime)
+        date = world.resource_manager.get_resource(SimDateTime)
 
         if date >= self._next_run:
-            if self._last_run is None:
-                self._elapsed_time = TimeDelta()
-            else:
-                self._elapsed_time = date - self._last_run
-            self._last_run = date.copy()
-            self._next_run = date + self._interval
-            self.run(*args, **kwargs)
+            self._elapsed_time = date - self._last_run
 
-    @abstractmethod
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        raise NotImplementedError
+    def should_run_system(self, world: World) -> bool:
+        if super().should_run_system(world) is False:
+            return False
+
+        date = world.resource_manager.get_resource(SimDateTime)
+        return date >= self._next_run
+
+    def on_stop_running(self, world: World) -> None:
+        date = world.resource_manager.get_resource(SimDateTime)
+        self._last_run = date.copy()
+        self._next_run = date + self._interval
 
 
 class TimeSystem(ISystem):
     """Advances the current date of the simulation"""
 
-    # The time system should be the last system to run every step. There's always the
-    # possibility that a system may need to record the current date. So, we don't want
-    # the date changing before all other systems have run.
-    sys_group = "late-update"
-    priority = -999999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
+    def on_update(self, world: World) -> None:
         # Get time increment from the simulation configuration
         # this may be slow, but it is the cleanest configuration thus far
-        increment = self.world.get_resource(NeighborlyConfig).time_increment
-        current_date = self.world.get_resource(SimDateTime)
+        increment = world.resource_manager.get_resource(NeighborlyConfig).time_increment
+        current_date = world.resource_manager.get_resource(SimDateTime)
         current_date.increment(
             years=increment.years,
             months=increment.months,
@@ -207,14 +219,12 @@ class RandomLifeEventSystem(System):
     allowed to take place.
     """
 
-    sys_group = "update"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
+    def on_update(self, world: World) -> None:
         """Simulate LifeEvents for characters"""
-        rng = self.world.get_resource(random.Random)
-        event_library = self.world.get_resource(RandomLifeEventLibrary)
+        rng = world.resource_manager.get_resource(random.Random)
+        event_library = world.resource_manager.get_resource(RandomLifeEventLibrary)
 
-        total_population = len(self.world.get_components((GameCharacter, Active)))
+        total_population = len(world.get_components((GameCharacter, Active)))
 
         if len(event_library) == 0:
             return
@@ -222,21 +232,19 @@ class RandomLifeEventSystem(System):
         event_type: Type[RandomLifeEvent]
         for _ in range(total_population // 10):
             event_type = event_library.pick_one(rng)
-            if event := event_type.instantiate(self.world, EventRoleList()):
+            if event := event_type.instantiate(world, EventRoleList()):
                 if rng.random() < event.get_probability():
-                    event.execute(self.world)
+                    event.dispatch()
 
 
 class MeetNewPeopleSystem(ISystem):
     """Characters meet new people based on places they frequent"""
 
-    sys_group = "update"
-
-    def process(self, *args: Any, **kwargs: Any):
-        for gid, (_, _, frequented_locations) in self.world.get_components(
+    def on_update(self, world: World) -> None:
+        for gid, (_, _, frequented_locations) in world.get_components(
             (GameCharacter, Active, FrequentedLocations)
         ):
-            character = self.world.get_gameobject(gid)
+            character = world.gameobject_manager.get_gameobject(gid)
 
             candidate_scores: DefaultDict[GameObject, int] = defaultdict(int)
 
@@ -246,7 +254,7 @@ class MeetNewPeopleSystem(ISystem):
                         candidate_scores[other] += 1
 
             if candidate_scores:
-                rng = self.world.get_resource(random.Random)
+                rng = world.resource_manager.get_resource(random.Random)
 
                 acquaintance = rng.choices(
                     list(candidate_scores.keys()),
@@ -278,21 +286,19 @@ class CharacterAgingSystem(System):
     This system runs every time step
     """
 
-    sys_group = "update"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        current_date = self.world.get_resource(SimDateTime)
+    def on_update(self, world: World) -> None:
+        current_date = world.resource_manager.get_resource(SimDateTime)
 
         age_increment = float(self.elapsed_time.total_days) / DAYS_PER_YEAR
 
-        for guid, (_, life_stage, age, _, _) in self.world.get_components(
+        for guid, (_, life_stage, age, _, _) in world.get_components(
             (GameCharacter, LifeStage, Age, CanAge, Active)
         ):
-            character = self.world.get_gameobject(guid)
+            character = world.gameobject_manager.get_gameobject(guid)
 
             life_stage_value_before = int(life_stage)
 
-            SetCharacterAge(character, age.value + age_increment).execute(self.world)
+            SetCharacterAge(character, age.value + age_increment).execute(world)
 
             life_stage_after = int(life_stage)
 
@@ -302,30 +308,33 @@ class CharacterAgingSystem(System):
                 continue
 
             if life_stage_after == LifeStageType.Adolescent:
-                event = BecomeAdolescentEvent(current_date, character)
-                self.world.fire_event(event)
+                event = BecomeAdolescentEvent(world, current_date, character)
+                world.event_manager.dispatch_event(event)
 
             elif life_stage_after == LifeStageType.YoungAdult:
-                event = BecomeYoungAdultEvent(current_date, character)
-                self.world.fire_event(event)
+                event = BecomeYoungAdultEvent(world, current_date, character)
+                world.event_manager.dispatch_event(event)
 
             elif life_stage_after == LifeStageType.Adult:
-                event = BecomeAdultEvent(current_date, character)
-                self.world.fire_event(event)
+                event = BecomeAdultEvent(world, current_date, character)
+                world.event_manager.dispatch_event(event)
 
             elif life_stage_after == LifeStageType.Senior:
-                event = BecomeSeniorEvent(current_date, character)
-                self.world.fire_event(event)
+                event = BecomeSeniorEvent(world, current_date, character)
+                world.event_manager.dispatch_event(event)
 
 
 class UnemployedStatusSystem(System):
-    sys_group = "status-update"
-    years_to_find_a_job: float = 5.0
+    __slots__ = "years_to_find_a_job"
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        current_date = self.world.get_resource(SimDateTime)
-        for guid, (unemployed, _) in self.world.get_components((Unemployed, Active)):
-            character = self.world.get_gameobject(guid)
+    def __init__(self, years_to_find_a_job: float = 5.0) -> None:
+        super().__init__()
+        self.years_to_find_a_job = years_to_find_a_job
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resource_manager.get_resource(SimDateTime)
+        for guid, (unemployed, _) in world.get_components((Unemployed, Active)):
+            character = world.gameobject_manager.get_gameobject(guid)
             years_unemployed = (
                 float((current_date - unemployed.created).total_days) / DAYS_PER_YEAR
             )
@@ -351,18 +360,16 @@ class UnemployedStatusSystem(System):
 
 
 class PregnantStatusSystem(System):
-    sys_group = "status-update"
+    def on_update(self, world: World) -> None:
+        current_date = world.resource_manager.get_resource(SimDateTime)
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        current_date = self.world.get_resource(SimDateTime)
-
-        for guid, pregnant in self.world.get_component(Pregnant):
-            character = self.world.get_gameobject(guid)
+        for guid, pregnant in world.get_component(Pregnant):
+            character = world.gameobject_manager.get_gameobject(guid)
 
             if current_date <= pregnant.due_date:
                 continue
 
-            other_parent = self.world.get_gameobject(pregnant.partner_id)
+            other_parent = world.gameobject_manager.get_gameobject(pregnant.partner_id)
 
             child_prefab = get_child_prefab(character, other_parent)
 
@@ -373,7 +380,7 @@ class PregnantStatusSystem(System):
                     child_prefab,
                     last_name=character.get_component(GameCharacter).last_name,
                 )
-                .execute(self.world)
+                .execute(world)
                 .get_result()
             )
 
@@ -447,24 +454,20 @@ class PregnantStatusSystem(System):
             # Pregnancy event dates are retro-fit to be the actual date that the
             # child was due.
             child_born_event = GiveBirthEvent(
-                current_date, character, other_parent, baby
+                world, current_date, character, other_parent, baby
             )
-            birth_event = BirthEvent(current_date, baby)
+            birth_event = BirthEvent(world, current_date, baby)
 
-            self.world.fire_event(child_born_event)
-            self.world.fire_event(birth_event)
+            world.event_manager.dispatch_event(child_born_event)
+            world.event_manager.dispatch_event(birth_event)
 
 
 class RelationshipUpdateSystem(ISystem):
     """Increases the elapsed time for all statuses by one month"""
 
-    sys_group = "relationship-update"
-
-    def process(self, *args: Any, **kwargs: Any):
-        for rel_id, (relationship, _) in self.world.get_components(
-            (Relationship, Active)
-        ):
-            rel_entity = self.world.get_gameobject(rel_id)
+    def on_update(self, world: World) -> None:
+        for rel_id, (relationship, _) in world.get_components((Relationship, Active)):
+            rel_entity = world.gameobject_manager.get_gameobject(rel_id)
 
             # Accumulate modifiers
             modifier_acc: DefaultDict[
@@ -481,13 +484,11 @@ class RelationshipUpdateSystem(ISystem):
 
 
 class FriendshipStatSystem(ISystem):
-    sys_group = "relationship-update"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        k = self.world.get_resource(NeighborlyConfig).settings.get(
+    def on_update(self, world: World) -> None:
+        k = world.resource_manager.get_resource(NeighborlyConfig).settings.get(
             "relationship_growth_constant", 2
         )
-        for _, (friendship, interaction_score, _) in self.world.get_components(
+        for _, (friendship, interaction_score, _) in world.get_components(
             (Friendship, InteractionScore, Active)
         ):
             friendship.increment(
@@ -499,13 +500,11 @@ class FriendshipStatSystem(ISystem):
 
 
 class RomanceStatSystem(ISystem):
-    sys_group = "relationship-update"
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        k = self.world.get_resource(NeighborlyConfig).settings.get(
+    def on_update(self, world: World) -> None:
+        k = world.resource_manager.get_resource(NeighborlyConfig).settings.get(
             "relationship_growth_constant", 2
         )
-        for _, (romance, interaction_score, _) in self.world.get_components(
+        for _, (romance, interaction_score, _) in world.get_components(
             (Romance, InteractionScore, Active)
         ):
             romance.increment(
@@ -525,14 +524,12 @@ class EvaluateSocialRulesSystem(System):
     last social rule evaluation.
     """
 
-    sys_group = "relationship-update"
-
     def __init__(self):
         super().__init__(interval=TimeDelta(months=4))
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        for guid, relationship_comp in self.world.get_component(Relationship):
-            relationship = self.world.get_gameobject(guid)
+    def on_update(self, world: World) -> None:
+        for guid, relationship_comp in world.get_component(Relationship):
+            relationship = world.gameobject_manager.get_gameobject(guid)
             subject = relationship_comp.owner
             target = relationship_comp.target
 
@@ -552,18 +549,16 @@ class UpdateFrequentedLocationSystem(System):
     It allows characters to choose new places to frequent that maybe didn't exist prior.
     """
 
-    sys_group = "early-update"
-
     def __init__(self):
         super().__init__(interval=TimeDelta(months=3))
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
+    def on_update(self, world: World) -> None:
         # Frequented locations are sampled from the current settlement
         # that the character belongs to
-        for guid, (_, current_settlement, _) in self.world.get_components(
+        for guid, (_, current_settlement, _) in world.get_components(
             (FrequentedLocations, CurrentSettlement, Active)
         ):
-            character = self.world.get_gameobject(guid)
+            character = world.gameobject_manager.get_gameobject(guid)
 
             # Sample from available locations
             set_frequented_locations(
@@ -596,13 +591,11 @@ class AIActionSystem(System):
     generated by actions.
     """
 
-    sys_group = "update"
-
     UTILITY_THRESHOLD: float = 0.3
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        rng = self.world.get_resource(random.Random)
-        for _, (_, goals, _) in self.world.get_components((AIBrain, Goals, Active)):
+    def on_update(self, world: World) -> None:
+        rng = world.resource_manager.get_resource(random.Random)
+        for _, (_, goals, _) in world.get_components((AIBrain, Goals, Active)):
             # GameObjects may have become deactivated by the actions of
             # another that ran before them in this loop. We need to ensure
             # that inactive GameObjects are not pursuing goals
@@ -627,15 +620,13 @@ class AIActionSystem(System):
 class AIRoutineSystem(System):
     """Adds additional goals to character AI based on a routine."""
 
-    sys_group = "goal-suggestion"
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        current_date = self.world.get_resource(SimDateTime)
-        for guid, (goals, routine) in self.world.get_components((Goals, Routine)):
+    def on_update(self, world: World) -> None:
+        current_date = world.resource_manager.get_resource(SimDateTime)
+        for guid, (goals, routine) in world.get_components((Goals, Routine)):
             routine_entry = routine.get_entry_for_time(
                 current_date.weekday, current_date.hour
             )
-            gameobject = self.world.get_gameobject(guid)
+            gameobject = world.gameobject_manager.get_gameobject(guid)
             if routine_entry is not None:
                 g = routine_entry.goal
                 g_priority = g.get_utility()[gameobject]
@@ -647,15 +638,11 @@ class AIRoutineSystem(System):
 class InitializeActivitiesSystem(ISystem):
     """Creates Activity Type GameObjects and update the library with references."""
 
-    sys_group = "initialization"
-    priority = 9999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        activity_library = self.world.get_resource(ActivityLibrary)
-        gameobject_factory = self.world.get_resource(GameObjectFactory)
+    def on_update(self, world: World) -> None:
+        activity_library = world.resource_manager.get_resource(ActivityLibrary)
 
         for prefab_name in activity_library.activities_to_instantiate:
-            activity_obj = gameobject_factory.instantiate(self.world, prefab_name)
+            activity_obj = world.gameobject_manager.instantiate_prefab(prefab_name)
             activity_obj.name = prefab_name
             activity_library.add(activity_obj)
 
@@ -663,15 +650,11 @@ class InitializeActivitiesSystem(ISystem):
 class InitializeServicesSystem(ISystem):
     """Creates Service Type GameObjects and update the library with references."""
 
-    sys_group = "initialization"
-    priority = 9999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        service_library = self.world.get_resource(ServiceLibrary)
-        gameobject_factory = self.world.get_resource(GameObjectFactory)
+    def on_update(self, world: World) -> None:
+        service_library = world.resource_manager.get_resource(ServiceLibrary)
 
         for prefab_name in service_library.services_to_instantiate:
-            service_obj = gameobject_factory.instantiate(self.world, prefab_name)
+            service_obj = world.gameobject_manager.instantiate_prefab(prefab_name)
             service_obj.name = prefab_name
             service_library.add(service_obj)
 
@@ -679,16 +662,12 @@ class InitializeServicesSystem(ISystem):
 class InitializeOccupationTypesSystem(ISystem):
     """Creates Occupation Type GameObjects and updates the library with references."""
 
-    sys_group = "initialization"
-    priority = 9999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        occupation_library = self.world.get_resource(OccupationLibrary)
-        gameobject_factory = self.world.get_resource(GameObjectFactory)
+    def on_update(self, world: World) -> None:
+        occupation_library = world.resource_manager.get_resource(OccupationLibrary)
 
         for prefab_name in occupation_library.occupations_to_instantiate:
-            occupation_type_obj = gameobject_factory.instantiate(
-                self.world, prefab_name
+            occupation_type_obj = world.gameobject_manager.instantiate_prefab(
+                prefab_name
             )
             occupation_type_obj.name = prefab_name
             occupation_library.add(occupation_type_obj)
@@ -697,14 +676,10 @@ class InitializeOccupationTypesSystem(ISystem):
 class InitializeItemTypeSystem(ISystem):
     """Creates Item Type GameObjects and updates the library with references."""
 
-    sys_group = "initialization"
-    priority = 9999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        item_library = self.world.get_resource(ItemLibrary)
-        gameobject_factory = self.world.get_resource(GameObjectFactory)
+    def on_update(self, world: World) -> None:
+        item_library = world.resource_manager.get_resource(ItemLibrary)
 
         for prefab_name in item_library.items_to_instantiate:
-            item_type_obj = gameobject_factory.instantiate(self.world, prefab_name)
+            item_type_obj = world.gameobject_manager.instantiate_prefab(prefab_name)
             item_type_obj.name = prefab_name
             item_library.add(item_type_obj)

@@ -18,7 +18,7 @@ EXPORT_WORLD = False
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "seed": "Apples",
+            # "seed": "Apples",
             "time_increment": "1mo",
             "relationship_schema": {
                 "components": {

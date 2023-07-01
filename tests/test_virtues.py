@@ -72,7 +72,7 @@ def test_virtue_vect_to_dict() -> None:
 
 def test_virtue_vect_factory() -> None:
     world = World()
-    world.add_resource(random.Random(1234))
+    world.resource_manager.add_resource(random.Random(1234))
     factory = VirtuesFactory()
     vector: Virtues = factory.create(world, overrides={"ADVENTURE": 10, "POWER": 20})
     assert vector[Virtue.ADVENTURE] == 10

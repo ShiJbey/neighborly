@@ -12,7 +12,7 @@ import neighborly.core.relationship as relationship
 import neighborly.factories as factories
 import neighborly.systems as systems
 from neighborly.__version__ import VERSION
-from neighborly.components.activity import Activities, ActivityLibrary
+from neighborly.components.activity import Activities, ActivityLibrary, ActivityType
 from neighborly.components.business import (
     Business,
     ClosedForBusiness,
@@ -66,7 +66,7 @@ from neighborly.components.spawn_table import (
 )
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import Active, EntityPrefab, GameObjectFactory, World
+from neighborly.core.ecs import Active, GameObjectPrefab, World
 from neighborly.core.life_event import EventHistory, EventLog, RandomLifeEventLibrary
 from neighborly.core.location_bias import LocationBiasRuleLibrary
 from neighborly.core.settlement import Settlement
@@ -96,6 +96,11 @@ from neighborly.factories.business import (
 )
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
+from neighborly.factories.spawn_table import (
+    CharacterSpawnTableFactory,
+    BusinessSpawnTableFactory,
+    ResidenceSpawnTableFactory,
+)
 
 
 class PluginSetupError(Exception):
@@ -147,139 +152,220 @@ class Neighborly:
         random.seed(self.config.seed)
 
         # Add default resources
-        self.world.add_resource(self.config)
-        self.world.add_resource(random.Random(self.config.seed))
-        self.world.add_resource(self.config.start_date.copy())
-        self.world.add_resource(Tracery(self.config.seed))
-        self.world.add_resource(EventLog())
-        self.world.add_resource(relationship.SocialRuleLibrary())
-        self.world.add_resource(LocationBiasRuleLibrary())
-        self.world.add_resource(DataCollector())
-        self.world.add_resource(RandomLifeEventLibrary())
-        self.world.add_resource(GameObjectFactory())
-        self.world.add_resource(ItemLibrary())
-        self.world.add_resource(OccupationLibrary())
-        self.world.add_resource(JobRequirementLibrary())
-        self.world.add_resource(ActivityLibrary())
-        self.world.add_resource(ServiceLibrary())
+        self.world.resource_manager.add_resource(self.config)
+        self.world.resource_manager.add_resource(random.Random(self.config.seed))
+        self.world.resource_manager.add_resource(self.config.start_date.copy())
+        self.world.resource_manager.add_resource(Tracery(self.config.seed))
+        self.world.resource_manager.add_resource(EventLog())
+        self.world.resource_manager.add_resource(relationship.SocialRuleLibrary())
+        self.world.resource_manager.add_resource(LocationBiasRuleLibrary())
+        self.world.resource_manager.add_resource(DataCollector())
+        self.world.resource_manager.add_resource(RandomLifeEventLibrary())
+        self.world.resource_manager.add_resource(ItemLibrary())
+        self.world.resource_manager.add_resource(OccupationLibrary())
+        self.world.resource_manager.add_resource(JobRequirementLibrary())
+        self.world.resource_manager.add_resource(ActivityLibrary())
+        self.world.resource_manager.add_resource(ServiceLibrary())
 
         # Set the relationship schema
-        self.world.get_resource(GameObjectFactory).add(
-            EntityPrefab(
+        self.world.gameobject_manager.add_prefab(
+            GameObjectPrefab(
                 name="relationship",
                 components={**self.config.relationship_schema.components},
             )
         )
 
         # Add default top-level system groups (in execution order)
-        self.world.add_system(systems.InitializationSystemGroup())
-        self.world.add_system(systems.EarlyUpdateSystemGroup())
-        self.world.add_system(systems.UpdateSystemGroup())
-        self.world.add_system(systems.LateUpdateSystemGroup())
+        self.world.system_manager.add_system(systems.InitializationSystemGroup())
+        self.world.system_manager.add_system(systems.EarlyUpdateSystemGroup())
+        self.world.system_manager.add_system(systems.UpdateSystemGroup())
+        self.world.system_manager.add_system(systems.LateUpdateSystemGroup())
 
         # Initialization systems
-        self.world.add_system(systems.InitializeActivitiesSystem())
-        self.world.add_system(systems.InitializeServicesSystem())
-        self.world.add_system(systems.InitializeOccupationTypesSystem())
-        self.world.add_system(systems.InitializeItemTypeSystem())
+        self.world.system_manager.add_system(
+            systems.InitializeActivitiesSystem(),
+            priority=9999,
+            system_group=systems.InitializationSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.InitializeServicesSystem(),
+            priority=9999,
+            system_group=systems.InitializationSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.InitializeOccupationTypesSystem(),
+            priority=9999,
+            system_group=systems.InitializationSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.InitializeItemTypeSystem(),
+            priority=9999,
+            system_group=systems.InitializationSystemGroup,
+        )
 
         # Add default early-update subgroups (in execution order)
-        self.world.add_system(systems.DataCollectionSystemGroup())
-        self.world.add_system(systems.StatusUpdateSystemGroup())
-        self.world.add_system(systems.GoalSuggestionSystemGroup())
-        self.world.add_system(systems.RelationshipUpdateSystemGroup())
+        self.world.system_manager.add_system(
+            systems.DataCollectionSystemGroup(),
+            system_group=systems.EarlyUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.StatusUpdateSystemGroup(),
+            system_group=systems.EarlyUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.GoalSuggestionSystemGroup(),
+            system_group=systems.EarlyUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.RelationshipUpdateSystemGroup(),
+            system_group=systems.EarlyUpdateSystemGroup,
+        )
 
         # Add early-update systems (in execution order)
-        self.world.add_system(systems.MeetNewPeopleSystem())
-        self.world.add_system(systems.RandomLifeEventSystem())
-        self.world.add_system(systems.UpdateFrequentedLocationSystem())
-        self.world.add_system(systems.AIRoutineSystem())
+        self.world.system_manager.add_system(
+            systems.MeetNewPeopleSystem(), system_group=systems.EarlyUpdateSystemGroup
+        )
+        self.world.system_manager.add_system(
+            systems.RandomLifeEventSystem(), system_group=systems.EarlyUpdateSystemGroup
+        )
+        self.world.system_manager.add_system(
+            systems.UpdateFrequentedLocationSystem(),
+            system_group=systems.EarlyUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.AIRoutineSystem(), system_group=systems.GoalSuggestionSystemGroup
+        )
 
         # Add relationship-update systems (in execution order)
-        # self.world.add_system(systems.EvaluateSocialRulesSystem())
-        self.world.add_system(systems.RelationshipUpdateSystem())
-        self.world.add_system(systems.FriendshipStatSystem())
-        self.world.add_system(systems.RomanceStatSystem())
+        # self.world.systems.add_system(systems.EvaluateSocialRulesSystem())
+        self.world.system_manager.add_system(
+            systems.RelationshipUpdateSystem(),
+            system_group=systems.RelationshipUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.FriendshipStatSystem(),
+            system_group=systems.RelationshipUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.RomanceStatSystem(),
+            system_group=systems.RelationshipUpdateSystemGroup,
+        )
 
         # Add update systems (in execution order)
-        self.world.add_system(systems.CharacterAgingSystem())
-        self.world.add_system(systems.AIActionSystem())
+        self.world.system_manager.add_system(
+            systems.CharacterAgingSystem(), system_group=systems.UpdateSystemGroup
+        )
+        self.world.system_manager.add_system(
+            systems.AIActionSystem(), system_group=systems.UpdateSystemGroup
+        )
 
         # Add status-update systems (in execution order)
-        self.world.add_system(systems.PregnantStatusSystem())
-        self.world.add_system(systems.UnemployedStatusSystem())
+        self.world.system_manager.add_system(
+            systems.PregnantStatusSystem(), system_group=systems.StatusUpdateSystemGroup
+        )
+        self.world.system_manager.add_system(
+            systems.UnemployedStatusSystem(),
+            system_group=systems.StatusUpdateSystemGroup,
+        )
 
         # Time actually sits outside any group and runs last
-        self.world.add_system(systems.TimeSystem())
+        self.world.system_manager.add_system(systems.TimeSystem(), priority=-9999)
 
         # Register components
-        self.world.register_component(Active)
-        self.world.register_component(AIBrain)
-        self.world.register_component(Goals)
-        self.world.register_component(
+        self.world.gameobject_manager.register_component(Active)
+        self.world.gameobject_manager.register_component(AIBrain)
+        self.world.gameobject_manager.register_component(Goals)
+        self.world.gameobject_manager.register_component(
             GameCharacter, factory=factories.GameCharacterFactory()
         )
-        self.world.register_component(relationship.RelationshipManager)
-        self.world.register_component(relationship.Relationship)
-        self.world.register_component(relationship.Friendship)
-        self.world.register_component(relationship.Romance)
-        self.world.register_component(relationship.InteractionScore)
-        self.world.register_component(Location)
-        self.world.register_component(FrequentedBy)
-        self.world.register_component(CurrentSettlement)
-        self.world.register_component(Virtues, factory=factories.VirtuesFactory())
-        self.world.register_component(Activities, factory=ActivitiesFactory())
-        self.world.register_component(Occupation)
-        self.world.register_component(WorkHistory)
-        self.world.register_component(Services, factory=ServicesFactory())
-        self.world.register_component(ClosedForBusiness)
-        self.world.register_component(OpenForBusiness)
-        self.world.register_component(Business, factory=factories.BusinessFactory())
-        self.world.register_component(InTheWorkforce)
-        self.world.register_component(Departed)
-        self.world.register_component(CanAge)
-        self.world.register_component(Mortal)
-        self.world.register_component(CanGetPregnant)
-        self.world.register_component(Deceased)
-        self.world.register_component(Retired)
-        self.world.register_component(Residence)
-        self.world.register_component(Resident)
-        self.world.register_component(Vacant)
-        self.world.register_component(Building)
-        self.world.register_component(Position2D)
-        self.world.register_component(StatusManager)
-        self.world.register_component(FrequentedLocations)
-        self.world.register_component(Settlement, factory=SettlementFactory())
-        self.world.register_component(EventHistory)
-        self.world.register_component(MarriageConfig)
-        self.world.register_component(AgingConfig)
-        self.world.register_component(ReproductionConfig)
-        self.world.register_component(Name, factory=NameFactory())
-        self.world.register_component(OperatingHours, factory=OperatingHoursFactory())
-        self.world.register_component(Lifespan)
-        self.world.register_component(Age)
-        self.world.register_component(CharacterSpawnTable)
-        self.world.register_component(BusinessSpawnTable)
-        self.world.register_component(ResidenceSpawnTable)
-        self.world.register_component(Gender)
-        self.world.register_component(LifeStage)
-        self.world.register_component(ItemType)
-        self.world.register_component(Description)
-        self.world.register_component(Item)
-        self.world.register_component(OccupationType)
-        self.world.register_component(SocialStatusLevel)
-        self.world.register_component(JobRequirements, factory=JobRequirementsFactory())
-        self.world.register_component(RoleTracker)
+        self.world.gameobject_manager.register_component(
+            relationship.RelationshipManager
+        )
+        self.world.gameobject_manager.register_component(relationship.Relationship)
+        self.world.gameobject_manager.register_component(relationship.Friendship)
+        self.world.gameobject_manager.register_component(relationship.Romance)
+        self.world.gameobject_manager.register_component(relationship.InteractionScore)
+        self.world.gameobject_manager.register_component(Location)
+        self.world.gameobject_manager.register_component(FrequentedBy)
+        self.world.gameobject_manager.register_component(CurrentSettlement)
+        self.world.gameobject_manager.register_component(
+            Virtues, factory=factories.VirtuesFactory()
+        )
+        self.world.gameobject_manager.register_component(
+            Activities, factory=ActivitiesFactory()
+        )
+        self.world.gameobject_manager.register_component(ActivityType)
+        self.world.gameobject_manager.register_component(Occupation)
+        self.world.gameobject_manager.register_component(WorkHistory)
+        self.world.gameobject_manager.register_component(
+            Services, factory=ServicesFactory()
+        )
+        self.world.gameobject_manager.register_component(ClosedForBusiness)
+        self.world.gameobject_manager.register_component(OpenForBusiness)
+        self.world.gameobject_manager.register_component(
+            Business, factory=factories.BusinessFactory()
+        )
+        self.world.gameobject_manager.register_component(InTheWorkforce)
+        self.world.gameobject_manager.register_component(Departed)
+        self.world.gameobject_manager.register_component(CanAge)
+        self.world.gameobject_manager.register_component(Mortal)
+        self.world.gameobject_manager.register_component(CanGetPregnant)
+        self.world.gameobject_manager.register_component(Deceased)
+        self.world.gameobject_manager.register_component(Retired)
+        self.world.gameobject_manager.register_component(Residence)
+        self.world.gameobject_manager.register_component(Resident)
+        self.world.gameobject_manager.register_component(Vacant)
+        self.world.gameobject_manager.register_component(Building)
+        self.world.gameobject_manager.register_component(Position2D)
+        self.world.gameobject_manager.register_component(StatusManager)
+        self.world.gameobject_manager.register_component(FrequentedLocations)
+        self.world.gameobject_manager.register_component(
+            Settlement, factory=SettlementFactory()
+        )
+        self.world.gameobject_manager.register_component(EventHistory)
+        self.world.gameobject_manager.register_component(MarriageConfig)
+        self.world.gameobject_manager.register_component(AgingConfig)
+        self.world.gameobject_manager.register_component(ReproductionConfig)
+        self.world.gameobject_manager.register_component(Name, factory=NameFactory())
+        self.world.gameobject_manager.register_component(
+            OperatingHours, factory=OperatingHoursFactory()
+        )
+        self.world.gameobject_manager.register_component(Lifespan)
+        self.world.gameobject_manager.register_component(Age)
+        self.world.gameobject_manager.register_component(
+            CharacterSpawnTable, factory=CharacterSpawnTableFactory()
+        )
+        self.world.gameobject_manager.register_component(
+            BusinessSpawnTable, factory=BusinessSpawnTableFactory()
+        )
+        self.world.gameobject_manager.register_component(
+            ResidenceSpawnTable, factory=ResidenceSpawnTableFactory()
+        )
+        self.world.gameobject_manager.register_component(Gender)
+        self.world.gameobject_manager.register_component(LifeStage)
+        self.world.gameobject_manager.register_component(ItemType)
+        self.world.gameobject_manager.register_component(Description)
+        self.world.gameobject_manager.register_component(Item)
+        self.world.gameobject_manager.register_component(OccupationType)
+        self.world.gameobject_manager.register_component(SocialStatusLevel)
+        self.world.gameobject_manager.register_component(
+            JobRequirements, factory=JobRequirementsFactory()
+        )
+        self.world.gameobject_manager.register_component(RoleTracker)
 
         # Event listeners
-        self.world.on_event(JoinSettlementEvent, on_adult_join_settlement)
-        self.world.on_event(BecomeYoungAdultEvent, join_workforce_when_young_adult)
-        self.world.on_event(DeathEvent, deactivate_relationships_on_death)
-        self.world.on_event(DepartEvent, deactivate_relationships_on_depart)
-        self.world.on_any_event(add_event_to_personal_history)
+        self.world.event_manager.on_event(JoinSettlementEvent, on_adult_join_settlement)
+        self.world.event_manager.on_event(
+            BecomeYoungAdultEvent, join_workforce_when_young_adult
+        )
+        self.world.event_manager.on_event(DeathEvent, deactivate_relationships_on_death)
+        self.world.event_manager.on_event(
+            DepartEvent, deactivate_relationships_on_depart
+        )
+        self.world.event_manager.on_any_event(add_event_to_personal_history)
 
         if self.config.verbose:
-            self.world.on_any_event(print_life_events)
+            self.world.event_manager.on_any_event(print_life_events)
 
         # Load plugins from the config
         for entry in self.config.plugins:
@@ -288,7 +374,7 @@ class Neighborly:
     @property
     def date(self) -> SimDateTime:
         """The current date of the simulation."""
-        return self.world.get_resource(SimDateTime)
+        return self.world.resource_manager.get_resource(SimDateTime)
 
     def load_plugin(self, plugin: PluginConfig) -> None:
         """Load a plugin.
@@ -369,11 +455,14 @@ class Neighborly:
             Simulated years to run the simulation for.
         """
         if isinstance(time_delta, int):
-            stop_date = self.world.get_resource(SimDateTime).copy() + TimeDelta(
-                years=time_delta
-            )
+            stop_date = self.world.resource_manager.get_resource(
+                SimDateTime
+            ).copy() + TimeDelta(years=time_delta)
         else:
-            stop_date = self.world.get_resource(SimDateTime).copy() + time_delta
+            stop_date = (
+                self.world.resource_manager.get_resource(SimDateTime).copy()
+                + time_delta
+            )
 
         self.run_until(stop_date)
 
@@ -386,7 +475,7 @@ class Neighborly:
             The date to stop stepping the simulation.
         """
         try:
-            current_date = self.world.get_resource(SimDateTime)
+            current_date = self.world.resource_manager.get_resource(SimDateTime)
             while stop_date > current_date:
                 self.step()
         except KeyboardInterrupt:

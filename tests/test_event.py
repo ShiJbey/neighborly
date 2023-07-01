@@ -43,14 +43,10 @@ def sample_event():
 @pytest.fixture
 def shared_role_event():
     world = World()
-    character_a = world.spawn_gameobject(name="A")
-    character_b = world.spawn_gameobject(name="B")
+    character_a = world.gameobject_manager.spawn_gameobject(name="A")
+    character_b = world.gameobject_manager.spawn_gameobject(name="B")
 
     return DeclareRivalryEvent(SimDateTime(1, 1, 1), character_a, character_b)
-
-
-def test_life_event_get_type(sample_event: LifeEvent):
-    assert sample_event.get_type() == "PriceDisputeEvent"
 
 
 def test_life_event_to_dict(sample_event: LifeEvent):

@@ -119,7 +119,7 @@ class Resident(StatusComponent):
         self.residence = residence
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"residence": self.residence}
+        return {"residence": self.residence.uid}
 
     def __repr__(self) -> str:
         return f"Resident({self.to_dict()})"

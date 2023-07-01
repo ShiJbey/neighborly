@@ -18,7 +18,7 @@ from neighborly.components.residence import Residence, Vacant
 from neighborly.components.shared import CurrentSettlement
 from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs import Active, GameObject
+from neighborly.core.ecs import Active, GameObject, World
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -62,24 +62,26 @@ class SpawnFamilySystem(System):
     config. You can see how this setting is accessed in the run method below.
     """
 
-    sys_group = "early-update"
-
     def __init__(self) -> None:
         super().__init__(interval=TimeDelta(months=6))
 
-    def _get_vacant_residences(self) -> List[GameObject]:
+    @staticmethod
+    def _get_vacant_residences(world: World) -> List[GameObject]:
         return [
-            self.world.get_gameobject(gid)
-            for gid, _ in self.world.get_components(
+            world.gameobject_manager.get_gameobject(gid)
+            for gid, _ in world.get_components(
                 (Residence, Active, Vacant, CurrentSettlement)
             )
         ]
 
-    def _try_build_residence(self, settlement: GameObject) -> Optional[GameObject]:
+    @staticmethod
+    def _try_build_residence(
+        world: World, settlement: GameObject
+    ) -> Optional[GameObject]:
         land_map = settlement.get_component(Settlement).land_map
         vacancies = land_map.get_vacant_lots()
         spawn_table = settlement.get_component(ResidenceSpawnTable)
-        rng = self.world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         # Return early if there is nowhere to build
         if len(vacancies) == 0:
@@ -94,7 +96,7 @@ class SpawnFamilySystem(System):
 
         prefab = spawn_table.choose_random(rng)
 
-        residence = SpawnResidence(prefab).execute(self.world).get_result()
+        residence = SpawnResidence(prefab).execute(world).get_result()
 
         add_residence_to_settlement(
             residence,
@@ -121,8 +123,11 @@ class SpawnFamilySystem(System):
 
         return None
 
-    def _spawn_family(self, spawn_table: CharacterSpawnTable) -> _GeneratedFamily:
-        rng = self.world.get_resource(random.Random)
+    @staticmethod
+    def _spawn_family(
+        world: World, spawn_table: CharacterSpawnTable
+    ) -> _GeneratedFamily:
+        rng = world.resource_manager.get_resource(random.Random)
         prefab = spawn_table.choose_random(rng)
 
         # Track all the characters generated
@@ -131,7 +136,7 @@ class SpawnFamilySystem(System):
         # Create a new entity using the archetype
         character = (
             SpawnCharacter(prefab, life_stage=LifeStageType.YoungAdult)
-            .execute(self.world)
+            .execute(world)
             .get_result()
         )
 
@@ -141,7 +146,7 @@ class SpawnFamilySystem(System):
         spouse: Optional[GameObject] = None
 
         if marriage_config := character.try_component(MarriageConfig):
-            spouse_prefab = self._try_get_spouse_prefab(
+            spouse_prefab = SpawnFamilySystem._try_get_spouse_prefab(
                 rng, marriage_config, spawn_table
             )
 
@@ -152,7 +157,7 @@ class SpawnFamilySystem(System):
                     last_name=character.get_component(GameCharacter).last_name,
                     life_stage=LifeStageType.Adult,
                 )
-                .execute(self.world)
+                .execute(world)
                 .get_result()
             )
 
@@ -197,7 +202,7 @@ class SpawnFamilySystem(System):
                         last_name=character.get_component(GameCharacter).last_name,
                         life_stage=LifeStageType.Child,
                     )
-                    .execute(self.world)
+                    .execute(world)
                     .get_result()
                 )
                 generated_characters.children.append(child)
@@ -272,48 +277,49 @@ class SpawnFamilySystem(System):
 
         return generated_characters
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        families_per_year: int = self.world.get_resource(NeighborlyConfig).settings.get(
-            "new_families_per_year", 10
-        )
+    def on_update(self, world: World) -> None:
+
+        families_per_year: int = world.resource_manager.get_resource(
+            NeighborlyConfig
+        ).settings.get("new_families_per_year", 10)
         families_to_spawn = families_per_year // 2
 
-        rng = self.world.get_resource(random.Random)
-        date = self.world.get_resource(SimDateTime)
+        rng = world.resource_manager.get_resource(random.Random)
+        date = world.resource_manager.get_resource(SimDateTime)
 
         # Spawn families in each settlement
-        for guid, (settlement, character_spawn_table) in self.world.get_components(
+        for guid, (settlement, character_spawn_table) in world.get_components(
             (Settlement, CharacterSpawnTable)
         ):
-            settlement_entity = self.world.get_gameobject(guid)
+            settlement_entity = world.gameobject_manager.get_gameobject(guid)
 
             for _ in range(families_to_spawn):
                 # Try to find a vacant residence
-                vacant_residences = self._get_vacant_residences()
+                vacant_residences = self._get_vacant_residences(world)
                 if vacant_residences:
                     residence = rng.choice(vacant_residences)
                 else:
                     # Try to create a new house
-                    residence = self._try_build_residence(settlement_entity)
+                    residence = self._try_build_residence(world, settlement_entity)
                     if residence is None:
                         break
 
-                family = self._spawn_family(character_spawn_table)
+                family = self._spawn_family(world, character_spawn_table)
 
                 event = MoveResidenceEvent(
-                    date, residence, *[*family.adults, *family.children]
+                    world, date, residence, *[*family.adults, *family.children]
                 )
 
                 for adult in family.adults:
                     add_character_to_settlement(adult, settlement.gameobject)
                     set_residence(adult, residence, True)
-                    adult.world.fire_event(event)
+                    adult.world.event_manager.dispatch_event(event)
 
                 for child in family.children:
                     add_character_to_settlement(child, settlement.gameobject)
                     set_residence(child, residence, False)
-                    child.world.fire_event(event)
+                    child.world.event_manager.dispatch_event(event)
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    sim.world.add_system(SpawnFamilySystem())
+    sim.world.system_manager.add_system(SpawnFamilySystem())

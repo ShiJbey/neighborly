@@ -45,9 +45,8 @@ from neighborly.core.ai.brain import (
 )
 from neighborly.core.ecs import (
     Active,
-    EntityPrefab,
+    GameObjectPrefab,
     GameObject,
-    GameObjectFactory,
     World,
 )
 from neighborly.core.life_event import EventRole, EventRoleList
@@ -86,6 +85,7 @@ from neighborly.utils.common import (
     start_job,
 )
 from neighborly.utils.query import are_related, get_work_experience_as, is_single
+
 
 ####################################
 # CONSIDERATIONS
@@ -134,7 +134,8 @@ def independence_consideration(gameobject: GameObject) -> Optional[float]:
 def time_unemployed_consideration(gameobject: GameObject) -> Optional[float]:
     if unemployed := gameobject.get_component(Unemployed):
         months_unemployed = (
-            gameobject.world.get_resource(SimDateTime) - unemployed.created
+            gameobject.world.resource_manager.get_resource(SimDateTime)
+            - unemployed.created
         ).total_days / DAYS_PER_MONTH
 
         return min(1.0, float(months_unemployed) / 6.0)
@@ -274,7 +275,7 @@ class StartBusiness(GoalNode):
         current_settlement = self.character.get_component(CurrentSettlement)
         settlement = current_settlement.settlement
         settlement_comp = settlement.get_component(Settlement)
-        rng = world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         # Get all the eligible business prefabs that are eligible for building
         # and the character meets the requirements for the owner occupation
@@ -296,24 +297,27 @@ class StartBusiness(GoalNode):
 
         assert owner_type
 
-        owner_occupation_type = world.get_resource(OccupationLibrary).get(owner_type)
+        owner_occupation_type = world.resource_manager.get_resource(
+            OccupationLibrary
+        ).get(owner_type)
 
         business = SpawnBusiness(business_prefab.name).execute(world).get_result()
 
         add_business_to_settlement(
             business,
-            world.get_gameobject(settlement.uid),
+            world.gameobject_manager.get_gameobject(settlement.uid),
             lot_id=lot,
         )
 
         start_business_event = StartBusinessEvent(
-            world.get_resource(SimDateTime),
+            world,
+            world.resource_manager.get_resource(SimDateTime),
             self.character,
             business,
             owner_occupation_type,
         )
 
-        self.character.world.fire_event(start_business_event)
+        self.character.world.event_manager.dispatch_event(start_business_event)
 
         start_job(self.character, business, owner_occupation_type, is_owner=True)
 
@@ -322,23 +326,23 @@ class StartBusiness(GoalNode):
     @staticmethod
     def _get_business_character_can_own(
         character: GameObject,
-    ) -> Optional[EntityPrefab]:
+    ) -> Optional[GameObjectPrefab]:
         world = character.world
         current_settlement = character.get_component(CurrentSettlement)
         settlement = current_settlement.settlement
         business_spawn_table = settlement.get_component(BusinessSpawnTable)
-        rng = world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
-        choices: List[EntityPrefab] = []
+        choices: List[GameObjectPrefab] = []
         weights: List[int] = []
 
         for prefab_name in business_spawn_table.get_eligible(settlement):
-            prefab = world.get_resource(GameObjectFactory).get(prefab_name)
+            prefab = world.gameobject_manager.get_prefab(prefab_name)
             owner_type = prefab.components["Business"]["owner_type"]
             if owner_type:
-                owner_occupation_type = world.get_resource(OccupationLibrary).get(
-                    owner_type
-                )
+                owner_occupation_type = world.resource_manager.get_resource(
+                    OccupationLibrary
+                ).get(owner_type)
 
                 if job_requirements := owner_occupation_type.try_component(
                     JobRequirements
@@ -415,13 +419,15 @@ class GetJob(GoalNode):
                     if job_requirements.passes_requirements(self.character):
                         start_job(
                             self.character,
-                            self.world.get_gameobject(guid),
+                            self.world.gameobject_manager.get_gameobject(guid),
                             occupation_type,
                         )
                         return NodeState.SUCCESS
                 else:
                     start_job(
-                        self.character, self.world.get_gameobject(guid), occupation_type
+                        self.character,
+                        self.world.gameobject_manager.get_gameobject(guid),
+                        occupation_type,
                     )
                     return NodeState.SUCCESS
 
@@ -492,11 +498,11 @@ class FindVacantResidence(AbstractBTNode):
 
     def evaluate(self) -> NodeState:
         for guid, _ in self.world.get_components((Residence, Active, Vacant)):
-            residence_obj = self.world.get_gameobject(guid)
+            residence_obj = self.world.gameobject_manager.get_gameobject(guid)
             set_residence(self.character, residence_obj, True)
             return NodeState.SUCCESS
 
-        self.blackboard["reason_to_depart"] = "No housing"
+        # self.blackboard["reason_to_depart"] = "No housing"
         return NodeState.FAILURE
 
 
@@ -514,16 +520,16 @@ class BuildNewHouse(AbstractBTNode):
         land_map = settlement.get_component(Settlement).land_map
         vacancies = land_map.get_vacant_lots()
         spawn_table = settlement.get_component(ResidenceSpawnTable)
-        rng = world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         # Return early if there is nowhere to build
         if len(vacancies) == 0:
-            self.blackboard["reason_to_depart"] = "No housing"
+            # self.blackboard["reason_to_depart"] = "No housing"
             return NodeState.FAILURE
 
         # Don't build more housing if 60% of the land is used for residential buildings
         if len(vacancies) / float(land_map.get_total_lots()) < 0.4:
-            self.blackboard["reason_to_depart"] = "No housing"
+            # self.blackboard["reason_to_depart"] = "No housing"
             return NodeState.FAILURE
 
         # Pick a random lot from those available
@@ -535,7 +541,7 @@ class BuildNewHouse(AbstractBTNode):
 
         add_residence_to_settlement(
             residence,
-            settlement=world.get_gameobject(settlement.uid),
+            settlement=world.gameobject_manager.get_gameobject(settlement.uid),
             lot_id=lot,
         )
 
@@ -576,7 +582,7 @@ class DepartSimulation(GoalNode):
         return False
 
     def evaluate(self) -> NodeState:
-        depart_settlement(self.character, self.blackboard.get("reason_to_depart", ""))
+        depart_settlement(self.character, self.blackboard.get("reason_to_depart", None))
         return NodeState.SUCCESS
 
 
@@ -699,7 +705,7 @@ class GetMarried(GoalNode):
             return NodeState.FAILURE
 
         world = self.character.world
-        rng = world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         rel_to_initiator = get_relationship(self.partner, self.character)
 
@@ -714,12 +720,13 @@ class GetMarried(GoalNode):
         add_relationship_status(self.partner, self.character, Married())
 
         event = MarriageEvent(
-            self.character.world.get_resource(SimDateTime),
+            world,
+            self.character.world.resource_manager.get_resource(SimDateTime),
             self.character,
             self.partner,
         )
 
-        world.fire_event(event)
+        world.event_manager.dispatch_event(event)
 
         return NodeState.SUCCESS
 
@@ -763,7 +770,7 @@ class BreakUp(GoalNode):
         def consideration(gameobject: GameObject) -> Optional[float]:
             if has_relationship(gameobject, partner):
                 world = gameobject.world
-                current_date = world.get_resource(SimDateTime)
+                current_date = world.resource_manager.get_resource(SimDateTime)
                 rel = get_relationship(gameobject, partner)
                 dating_status = rel.get_component(Dating)
                 time_together = (
@@ -832,12 +839,13 @@ class BreakUp(GoalNode):
         ).increment(-6)
 
         event = BreakUpEvent(
-            self.character.world.get_resource(SimDateTime),
+            self.character.world,
+            self.character.world.resource_manager.get_resource(SimDateTime),
             self.character,
             self.partner,
         )
 
-        self.character.world.fire_event(event)
+        self.character.world.event_manager.dispatch_event(event)
 
         return NodeState.SUCCESS
 
@@ -858,7 +866,7 @@ class GetDivorced(GoalNode):
         def consideration(gameobject: GameObject) -> Optional[float]:
             if has_relationship(gameobject, partner):
                 world = gameobject.world
-                current_date = world.get_resource(SimDateTime)
+                current_date = world.resource_manager.get_resource(SimDateTime)
                 rel = get_relationship(gameobject, partner)
                 married_status = rel.get_component(Married)
                 time_together = (
@@ -930,12 +938,13 @@ class GetDivorced(GoalNode):
         ).increment(-10)
 
         event = DivorceEvent(
-            self.character.world.get_resource(SimDateTime),
+            self.character.world,
+            self.character.world.resource_manager.get_resource(SimDateTime),
             self.character,
             self.partner,
         )
 
-        self.character.world.fire_event(event)
+        self.character.world.event_manager.dispatch_event(event)
 
         return NodeState.SUCCESS
 
@@ -990,13 +999,14 @@ class Retire(GoalNode):
         occupation = self.character.get_component(Occupation)
 
         event = RetirementEvent(
-            world.get_resource(SimDateTime),
+            world,
+            world.resource_manager.get_resource(SimDateTime),
             self.character,
             occupation.business,
             occupation.occupation_type,
         )
 
-        self.character.world.fire_event(event)
+        self.character.world.event_manager.dispatch_event(event)
 
         if business_owner := self.character.try_component(BusinessOwner):
             shutdown_business(business_owner.business)
@@ -1037,7 +1047,7 @@ class AskOut(GoalNode):
             return NodeState.FAILURE
 
         world = self.initiator.world
-        rng = world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         rel_to_initiator = get_relationship(self.target, self.initiator)
 
@@ -1050,12 +1060,13 @@ class AskOut(GoalNode):
         add_relationship_status(self.target, self.initiator, Dating())
 
         event = StartDatingEvent(
-            self.initiator.world.get_resource(SimDateTime),
+            self.initiator.world,
+            self.initiator.world.resource_manager.get_resource(SimDateTime),
             self.initiator,
             self.target,
         )
 
-        self.target.world.fire_event(event)
+        self.target.world.event_manager.dispatch_event(event)
 
         return NodeState.SUCCESS
 
@@ -1150,9 +1161,9 @@ class FindRomance(GoalNode):
 
         world = self.character.world
 
-        romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
-            "dating_romance_threshold", 25
-        )
+        romance_threshold = world.resource_manager.get_resource(
+            NeighborlyConfig
+        ).settings.get("dating_romance_threshold", 25)
 
         # This character should try asking out another character
         candidates = [
@@ -1189,7 +1200,9 @@ class FindRomance(GoalNode):
             actions.append(outgoing_romance.get_value(), AskOut(self.character, other))
 
         if actions:
-            chosen = actions.pick_one(world.get_resource(random.Random))
+            chosen = actions.pick_one(
+                world.resource_manager.get_resource(random.Random)
+            )
             self.add_child(chosen)
             return chosen.evaluate()
 
@@ -1213,9 +1226,11 @@ class Die(BehaviorTree):
 
     def evaluate(self) -> NodeState:
         event = DeathEvent(
-            self.character.world.get_resource(SimDateTime), self.character
+            self.character.world,
+            self.character.world.resource_manager.get_resource(SimDateTime),
+            self.character,
         )
-        self.character.world.fire_event(event)
+        self.character.world.event_manager.dispatch_event(event)
 
         if self.character.has_component(Occupation):
             if business_owner := self.character.try_component(BusinessOwner):

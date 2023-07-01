@@ -2,7 +2,7 @@
 Utility decorators that should assist with content authoring
 """
 
-from typing import Any, Type, TypeVar
+from typing import Any, Type, TypeVar, Optional
 
 from neighborly.core.ecs import (
     Component,
@@ -11,6 +11,7 @@ from neighborly.core.ecs import (
     IComponentFactory,
     ISystem,
     World,
+    SystemGroup,
 )
 from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
 from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRuleLibrary
@@ -38,7 +39,7 @@ def component(world: World):
     """
 
     def decorator(cls: Type[_CT]) -> Type[_CT]:
-        world.register_component(cls)
+        world.gameobject_manager.register_component(cls)
         return cls
 
     return decorator
@@ -60,7 +61,9 @@ def component_factory(world: World, component_type: Type[Component], **kwargs: A
     """
 
     def decorator(cls: Type[_CF]) -> Type[_CF]:
-        world.get_component_info(component_type.__name__).factory = cls(**kwargs)
+        world.gameobject_manager.get_component_info(
+            component_type.__name__
+        ).factory = cls(**kwargs)
         return cls
 
     return decorator
@@ -80,13 +83,18 @@ def resource(world: World, **kwargs: Any):
     """
 
     def decorator(cls: Type[_RT]) -> Type[_RT]:
-        world.add_resource(cls(**kwargs))
+        world.resource_manager.add_resource(cls(**kwargs))
         return cls
 
     return decorator
 
 
-def system(world: World, **kwargs: Any):
+def system(
+    world: World,
+    priority: int = 0,
+    system_group: Optional[Type[SystemGroup]] = None,
+    **kwargs: Any
+):
     """Add a class as a simulation system.
 
     This decorator adds an instance of the decorated class as a shared resource.
@@ -95,12 +103,18 @@ def system(world: World, **kwargs: Any):
     ----------
     world
         A world instance.
+    priority
+        The priority of this system relative to others in its group.
+    system_group
+        The group to add the system to. (defaults to root-level group)
     **kwargs
         Keyword arguments to pass to the constructor of the decorated class.
     """
 
     def decorator(cls: Type[_ST]) -> Type[_ST]:
-        world.add_system(cls(**kwargs))
+        world.system_manager.add_system(
+            system=cls(**kwargs), priority=priority, system_group=system_group
+        )
         return cls
 
     return decorator
@@ -110,7 +124,7 @@ def random_life_event(world: World):
     """Adds a class type to the registry of random life events"""
 
     def decorator(cls: Type[_LT]) -> Type[_LT]:
-        world.get_resource(RandomLifeEventLibrary).add(cls)
+        world.resource_manager.get_resource(RandomLifeEventLibrary).add(cls)
         return cls
 
     return decorator
@@ -128,7 +142,7 @@ def social_rule(world: World, description: str):
     """
 
     def decorator(rule: ISocialRule):
-        world.get_resource(SocialRuleLibrary).add(rule, description)
+        world.resource_manager.get_resource(SocialRuleLibrary).add(rule, description)
         return rule
 
     return decorator
@@ -146,7 +160,9 @@ def location_bias_rule(world: World, description: str):
     """
 
     def decorator(rule: ILocationBiasRule):
-        world.get_resource(LocationBiasRuleLibrary).add(rule, description)
+        world.resource_manager.get_resource(LocationBiasRuleLibrary).add(
+            rule, description
+        )
 
     return decorator
 
@@ -163,7 +179,7 @@ def on_event(world: World, event_type: Type[_ET_contra]):
     """
 
     def decorator(listener: EventListener[_ET_contra]) -> EventListener[_ET_contra]:
-        world.on_event(event_type, listener)
+        world.event_manager.on_event(event_type, listener)
         return listener
 
     return decorator
@@ -182,7 +198,7 @@ def on_any_event(world: World):
     """
 
     def decorator(listener: EventListener[Event]) -> EventListener[Event]:
-        world.on_any_event(listener)
+        world.event_manager.on_any_event(listener)
         return listener
 
     return decorator

@@ -18,15 +18,17 @@ class GameObjectResource(Resource):
     world: World
 
     def get(self, guid: int):
-        return self.world.get_gameobject(guid).to_dict()
+        return self.world.gameobject_manager.get_gameobject(guid).to_dict()
 
 
 class ComponentResource(Resource):
     world: World
 
     def get(self, guid: int, **kwargs: Any):
-        component = self.world.get_gameobject(guid).get_component(
-            self.world.get_component_info(kwargs["component_type"]).component_type
+        component = self.world.gameobject_manager.get_gameobject(guid).get_component(
+            self.world.gameobject_manager.get_component_info(
+                kwargs["component_type"]
+            ).component_type
         )
 
         if isinstance(component, ISerializable):
@@ -39,7 +41,11 @@ class AllGameObjectsResource(Resource):
     world: World
 
     def get(self):
-        return {"gameobjects": [g.uid for g in self.world.get_gameobjects()]}
+        return {
+            "gameobjects": [
+                g.uid for g in self.world.gameobject_manager.get_gameobjects()
+            ]
+        }
 
 
 class GameObjectQuerySchema(Schema):
@@ -65,14 +71,17 @@ class QueryGameObjectsResource(Resource):
 
         component_types = tuple(
             [
-                self.world.get_component_info(name).component_type
+                self.world.gameobject_manager.get_component_info(name).component_type
                 for name in component_type_names
             ]
         )
 
         results = {
             "gameobjects": [
-                {"guid": guid, "name": self.world.get_gameobject(guid).name}
+                {
+                    "guid": guid,
+                    "name": self.world.gameobject_manager.get_gameobject(guid).name,
+                }
                 for guid, _ in self.world.get_components(component_types)
             ]
         }
@@ -85,7 +94,7 @@ class DataTablesResource(Resource):
 
     def get(self, table_name: str) -> Dict[str, Any]:
         return (
-            self.world.get_resource(DataCollector)
+            self.world.resource_manager.get_resource(DataCollector)
             .get_table_dataframe(table_name)
             .to_dict()  # type: ignore
         )
@@ -95,28 +104,32 @@ class SimEventsResource(Resource):
     world: World
 
     def get(self, event_id: int) -> Dict[str, Any]:
-        return self.world.get_resource(EventLog)[event_id].to_dict()
+        return self.world.resource_manager.get_resource(EventLog)[event_id].to_dict()
 
 
 class SimAllEventsResource(Resource):
     world: World
 
     def get(self) -> Dict[str, Any]:
-        return {"events": [e.to_dict() for e in self.world.get_resource(EventLog)]}
+        return {
+            "events": [
+                e.to_dict() for e in self.world.resource_manager.get_resource(EventLog)
+            ]
+        }
 
 
 class WorldSeedResource(Resource):
     world: World
 
     def get(self):
-        return self.world.get_resource(NeighborlyConfig).seed
+        return self.world.resource_manager.get_resource(NeighborlyConfig).seed
 
 
 class WorldDateResource(Resource):
     world: World
 
     def get(self):
-        return self.world.get_resource(SimDateTime).to_date_str()
+        return self.world.resource_manager.get_resource(SimDateTime).to_date_str()
 
 
 def run_api_server(sim: Neighborly) -> None:

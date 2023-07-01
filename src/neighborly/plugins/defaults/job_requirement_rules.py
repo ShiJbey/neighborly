@@ -31,7 +31,9 @@ def has_component(gameobject: GameObject, *args: Any) -> bool:
     component_name: str
     (component_name,) = args
     return gameobject.has_component(
-        gameobject.world.get_component_info(component_name).component_type
+        gameobject.world.gameobject_manager.get_component_info(
+            component_name
+        ).component_type
     )
 
 
@@ -58,23 +60,21 @@ def has_work_experience_as(gameobject: GameObject, *args: Any) -> bool:
 
     Parameters
     ----------
-    occupation_type
-        The name of the occupation to check for
-    years_experience
-        The number of years of experience the entity needs to have
+    gameobject
+        The gameobject to check
     """
 
     occupation_type_name: str
     years_experience: int
     (occupation_type_name, years_experience) = args
 
-    occupation_type = gameobject.world.get_resource(OccupationLibrary).get(
-        occupation_type_name
-    )
+    occupation_type = gameobject.world.resource_manager.get_resource(
+        OccupationLibrary
+    ).get(occupation_type_name)
 
     total_experience: float = 0
 
-    current_date = gameobject.world.get_resource(SimDateTime)
+    current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
     work_history = gameobject.try_component(WorkHistory)
 
@@ -109,8 +109,8 @@ def has_any_work_experience(gameobject: GameObject, *args: Any) -> bool:
 
     Parameters
     ----------
-    years_experience
-        The number of years of experience the entity needs to have
+    gameobject
+        The gameobject to check
     """
 
     years_experience: int
@@ -118,7 +118,7 @@ def has_any_work_experience(gameobject: GameObject, *args: Any) -> bool:
 
     total_experience: float = 0
 
-    current_date = gameobject.world.get_resource(SimDateTime)
+    current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
     work_history = gameobject.try_component(WorkHistory)
 
@@ -152,7 +152,9 @@ def has_any_work_experience(gameobject: GameObject, *args: Any) -> bool:
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    job_requirement_library = sim.world.get_resource(JobRequirementLibrary)
+    job_requirement_library = sim.world.resource_manager.get_resource(
+        JobRequirementLibrary
+    )
     job_requirement_library.add("has_component", has_component)
     job_requirement_library.add("has_gender", has_gender)
     job_requirement_library.add("over_age", over_age)

@@ -12,7 +12,7 @@ from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import (
     Component,
-    EntityPrefab,
+    GameObjectPrefab,
     Event,
     GameObject,
     IComponentFactory,
@@ -28,7 +28,7 @@ __all__ = [
     "Neighborly",
     "PluginInfo",
     "Component",
-    "EntityPrefab",
+    "GameObjectPrefab",
     "GameObject",
     "ISystem",
     "SystemGroup",

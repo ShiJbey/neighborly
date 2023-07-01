@@ -73,7 +73,7 @@ class AnotherFakeResource:
 
 
 class SalarySystem(ISystem):
-    def process(self, *args: Any, **kwargs: Any):
+    def on_update(self, world: World) -> None:
         for _, (job, money) in self.world.get_components((Job, Money)):
             money.amount += job.salary
 
@@ -103,13 +103,13 @@ def test_spawn_gameobject():
 def test_get_gameobject():
     world = World()
     gameobject = world.spawn_gameobject()
-    assert world.get_gameobject(gameobject.uid) == gameobject
+    assert world.gameobject_manager.get_gameobject(gameobject.uid) == gameobject
 
 
 def test_get_gameobject_raises_exception():
     with pytest.raises(GameObjectNotFoundError):
         world = World()
-        world.get_gameobject(7)
+        world.gameobject_manager.get_gameobject(7)
 
 
 def test_has_gameobject():
@@ -217,7 +217,7 @@ def test_world_add_get_system():
     world = World()
 
     assert world.get_system(SalarySystem) is None
-    world.add_system(SalarySystem())
+    world.system_manager.add_system(SalarySystem())
     assert world.get_system(SalarySystem) is not None
 
 
@@ -225,7 +225,7 @@ def test_world_remove_system():
     world = World()
 
     assert world.get_system(SalarySystem) is None
-    world.add_system(SalarySystem())
+    world.system_manager.add_system(SalarySystem())
     assert world.get_system(SalarySystem) is not None
     world.remove_system(SalarySystem)
     assert world.get_system(SalarySystem) is None
@@ -233,7 +233,7 @@ def test_world_remove_system():
 
 def test_world_step():
     world = World()
-    world.add_system(SalarySystem())
+    world.system_manager.add_system(SalarySystem())
 
     adrian = world.spawn_gameobject([Actor("Adrian"), Money(0), Job("Teacher", 24_000)])
 
@@ -259,8 +259,8 @@ def test_get_all_resources():
     fake_resource = FakeResource()
     another_fake_resource = AnotherFakeResource
 
-    world.add_resource(fake_resource)
-    world.add_resource(another_fake_resource)
+    world.resource_manager.add_resource(fake_resource)
+    world.resource_manager.add_resource(another_fake_resource)
 
     assert world.get_all_resources() == [fake_resource, another_fake_resource]
 
@@ -268,7 +268,7 @@ def test_get_all_resources():
 def test_has_resource():
     world = World()
     assert world.has_resource(FakeResource) is False
-    world.add_resource(FakeResource())
+    world.resource_manager.add_resource(FakeResource())
     assert world.has_resource(FakeResource) is True
 
 
@@ -276,8 +276,8 @@ def test_get_resource():
     world = World()
     fake_resource = FakeResource()
     assert world.has_resource(FakeResource) is False
-    world.add_resource(fake_resource)
-    assert world.get_resource(FakeResource) == fake_resource
+    world.resource_manager.add_resource(fake_resource)
+    assert world.resource_manager.get_resource(FakeResource) == fake_resource
 
 
 def test_get_resource_raises_exception():
@@ -288,12 +288,12 @@ def test_get_resource_raises_exception():
     """
     world = World()
     with pytest.raises(ResourceNotFoundError):
-        assert world.get_resource(FakeResource)
+        assert world.resource_manager.get_resource(FakeResource)
 
 
 def test_remove_resource():
     world = World()
-    world.add_resource(FakeResource())
+    world.resource_manager.add_resource(FakeResource())
     assert world.has_resource(FakeResource) is True
     world.remove_resource(FakeResource)
     assert world.has_resource(FakeResource) is False
@@ -315,7 +315,7 @@ def test_try_resource():
 
     assert world.try_resource(FakeResource) is None
 
-    world.add_resource(FakeResource())
+    world.resource_manager.add_resource(FakeResource())
 
     assert world.try_resource(FakeResource) is not None
 
@@ -324,7 +324,7 @@ def test_add_resource():
     world = World()
     fake_resource = FakeResource()
     assert world.has_resource(FakeResource) is False
-    world.add_resource(fake_resource)
+    world.resource_manager.add_resource(fake_resource)
     assert world.has_resource(FakeResource) is True
 
 

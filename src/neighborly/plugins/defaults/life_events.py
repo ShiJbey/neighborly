@@ -46,23 +46,21 @@ from neighborly.utils.query import are_related, is_married, is_single, with_rela
 
 class StartDatingLifeEvent(RandomLifeEvent):
     def __init__(
-        self, date: SimDateTime, initiator: GameObject, other: GameObject
+        self, world: World, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
         super().__init__(
-            date, [EventRole("Initiator", initiator), EventRole("Other", other)]
+            world, date, [EventRole("Initiator", initiator), EventRole("Other", other)]
         )
 
     def get_probability(self) -> float:
         return 1
 
-    def execute(self, world: World) -> None:
+    def execute(self) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
 
         add_relationship_status(initiator, other, Dating())
         add_relationship_status(other, initiator, Dating())
-
-        initiator.world.fire_event(self)
 
     @staticmethod
     def _bind_initiator(
@@ -72,7 +70,7 @@ class StartDatingLifeEvent(RandomLifeEvent):
             candidates = [candidate]
         else:
             candidates = [
-                world.get_gameobject(result[0])
+                world.gameobject_manager.get_gameobject(result[0])
                 for result in world.get_components((GameCharacter, Active))
             ]
 
@@ -84,7 +82,7 @@ class StartDatingLifeEvent(RandomLifeEvent):
         ]
 
         if candidates:
-            return world.get_resource(random.Random).choice(candidates)
+            return world.resource_manager.get_resource(random.Random).choice(candidates)
 
         return None
 
@@ -92,9 +90,9 @@ class StartDatingLifeEvent(RandomLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-        romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
-            "dating_romance_threshold", 25
-        )
+        romance_threshold = world.resource_manager.get_resource(
+            NeighborlyConfig
+        ).settings.get("dating_romance_threshold", 25)
 
         if candidate:
             if has_relationship(initiator, candidate) and has_relationship(
@@ -141,7 +139,7 @@ class StartDatingLifeEvent(RandomLifeEvent):
             matches.append(character)
 
         if matches:
-            return world.get_resource(random.Random).choice(matches)
+            return world.resource_manager.get_resource(random.Random).choice(matches)
 
         return None
 
@@ -163,28 +161,28 @@ class StartDatingLifeEvent(RandomLifeEvent):
         if other is None:
             return None
 
-        return cls(world.get_resource(SimDateTime), initiator, other)
+        return cls(
+            world, world.resource_manager.get_resource(SimDateTime), initiator, other
+        )
 
 
 class DatingBreakUp(RandomLifeEvent):
     def __init__(
-        self, date: SimDateTime, initiator: GameObject, other: GameObject
+        self, world: World, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
         super().__init__(
-            date, [EventRole("Initiator", initiator), EventRole("Other", other)]
+            world, date, [EventRole("Initiator", initiator), EventRole("Other", other)]
         )
 
     def get_probability(self) -> float:
         return 1
 
-    def execute(self, world: World) -> None:
+    def execute(self) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
 
         remove_relationship_status(initiator, other, Dating)
         remove_relationship_status(other, initiator, Dating)
-
-        initiator.world.fire_event(self)
 
     @staticmethod
     def _bind_initiator(
@@ -194,7 +192,7 @@ class DatingBreakUp(RandomLifeEvent):
             candidates = [candidate]
         else:
             candidates = [
-                world.get_gameobject(result[0])
+                world.gameobject_manager.get_gameobject(result[0])
                 for result in world.get_components((GameCharacter, Active))
             ]
 
@@ -203,7 +201,7 @@ class DatingBreakUp(RandomLifeEvent):
         ]
 
         if candidates:
-            return world.get_resource(random.Random).choice(candidates)
+            return world.resource_manager.get_resource(random.Random).choice(candidates)
 
         return None
 
@@ -211,9 +209,9 @@ class DatingBreakUp(RandomLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-        romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
-            "breakup_romance_thresh", -10
-        )
+        romance_threshold = world.resource_manager.get_resource(
+            NeighborlyConfig
+        ).settings.get("breakup_romance_thresh", -10)
 
         if candidate:
             if has_relationship(initiator, candidate) and has_relationship(
@@ -243,7 +241,7 @@ class DatingBreakUp(RandomLifeEvent):
             matches.append(character)
 
         if matches:
-            return world.get_resource(random.Random).choice(matches)
+            return world.resource_manager.get_resource(random.Random).choice(matches)
 
         return None
 
@@ -265,7 +263,9 @@ class DatingBreakUp(RandomLifeEvent):
         if other is None:
             return None
 
-        return cls(world.get_resource(SimDateTime), initiator, other)
+        return cls(
+            world, world.resource_manager.get_resource(SimDateTime), initiator, other
+        )
 
 
 class DivorceLifeEvent(RandomLifeEvent):
@@ -282,9 +282,9 @@ class DivorceLifeEvent(RandomLifeEvent):
             QB.with_(Married, "?relationship"),
             QB.filter_(
                 lambda rel: rel.get_component(Romance).get_value()
-                <= rel.world.get_resource(NeighborlyConfig).settings.get(
-                    "divorce_romance_thresh", -25
-                ),
+                <= rel.world.resource_manager.get_resource(
+                    NeighborlyConfig
+                ).settings.get("divorce_romance_thresh", -25),
                 "?relationship",
             ),
         )
@@ -295,33 +295,36 @@ class DivorceLifeEvent(RandomLifeEvent):
             results = query.execute(world)
 
         if results:
-            chosen_result = world.get_resource(random.Random).choice(results)
-            chosen_objects = [world.get_gameobject(uid) for uid in chosen_result]
+            chosen_result = world.resource_manager.get_resource(random.Random).choice(
+                results
+            )
+            chosen_objects = [
+                world.gameobject_manager.get_gameobject(uid) for uid in chosen_result
+            ]
             roles = dict(zip(query.get_symbols(), chosen_objects))
             return cls(
-                world.get_resource(SimDateTime),
+                world,
+                world.resource_manager.get_resource(SimDateTime),
                 [EventRole(title, gameobject) for title, gameobject in roles.items()],
             )
 
     def get_probability(self) -> float:
         return 0.8
 
-    def execute(self, world: World):
+    def execute(self):
         initiator = self["Initiator"]
         ex_spouse = self["Other"]
 
         remove_relationship_status(initiator, ex_spouse, Married)
         remove_relationship_status(ex_spouse, initiator, Married)
 
-        initiator.world.fire_event(self)
-
 
 class MarriageLifeEvent(RandomLifeEvent):
     def __init__(
-        self, date: SimDateTime, initiator: GameObject, other: GameObject
+        self, world: World, date: SimDateTime, initiator: GameObject, other: GameObject
     ) -> None:
         super().__init__(
-            date, [EventRole("Initiator", initiator), EventRole("Other", other)]
+            world, date, [EventRole("Initiator", initiator), EventRole("Other", other)]
         )
 
     @staticmethod
@@ -332,7 +335,7 @@ class MarriageLifeEvent(RandomLifeEvent):
             candidates = [candidate]
         else:
             candidates = [
-                world.get_gameobject(result[0])
+                world.gameobject_manager.get_gameobject(result[0])
                 for result in world.get_components((GameCharacter, Active))
             ]
 
@@ -341,7 +344,7 @@ class MarriageLifeEvent(RandomLifeEvent):
         ]
 
         if candidates:
-            return world.get_resource(random.Random).choice(candidates)
+            return world.resource_manager.get_resource(random.Random).choice(candidates)
 
         return None
 
@@ -349,11 +352,11 @@ class MarriageLifeEvent(RandomLifeEvent):
     def _bind_other(
         world: World, initiator: GameObject, candidate: Optional[GameObject] = None
     ) -> Optional[GameObject]:
-        romance_threshold = world.get_resource(NeighborlyConfig).settings.get(
-            "marriage_romance_threshold", 60
-        )
+        romance_threshold = world.resource_manager.get_resource(
+            NeighborlyConfig
+        ).settings.get("marriage_romance_threshold", 60)
 
-        current_date = world.get_resource(SimDateTime)
+        current_date = world.resource_manager.get_resource(SimDateTime)
 
         if candidate:
             if has_relationship(initiator, candidate) and has_relationship(
@@ -400,7 +403,7 @@ class MarriageLifeEvent(RandomLifeEvent):
             matches.append(character)
 
         if matches:
-            return world.get_resource(random.Random).choice(matches)
+            return world.resource_manager.get_resource(random.Random).choice(matches)
 
         return None
 
@@ -422,12 +425,14 @@ class MarriageLifeEvent(RandomLifeEvent):
         if other is None:
             return None
 
-        return cls(world.get_resource(SimDateTime), initiator, other)
+        return cls(
+            world, world.resource_manager.get_resource(SimDateTime), initiator, other
+        )
 
     def get_probability(self) -> float:
         return 0.8
 
-    def execute(self, world: World) -> None:
+    def execute(self) -> None:
         initiator = self["Initiator"]
         other = self["Other"]
 
@@ -467,17 +472,21 @@ class MarriageLifeEvent(RandomLifeEvent):
             ).life_stage < LifeStageType.YoungAdult and not is_married(target):
                 SetCharacterName(target, last_name=new_last_name).execute(world)
 
-        world.fire_event(self)
-
 
 class GetPregnantLifeEvent(RandomLifeEvent):
     """Defines an event where two characters stop dating"""
 
     def __init__(
-        self, date: SimDateTime, pregnant_one: GameObject, other: GameObject
+        self,
+        world: World,
+        date: SimDateTime,
+        pregnant_one: GameObject,
+        other: GameObject,
     ) -> None:
         super().__init__(
-            date, [EventRole("PregnantOne", pregnant_one), EventRole("Other", other)]
+            world,
+            date,
+            [EventRole("PregnantOne", pregnant_one), EventRole("Other", other)],
         )
 
     @staticmethod
@@ -488,7 +497,7 @@ class GetPregnantLifeEvent(RandomLifeEvent):
             candidates = [candidate]
         else:
             candidates = [
-                world.get_gameobject(result[0])
+                world.gameobject_manager.get_gameobject(result[0])
                 for result in world.get_components((GameCharacter, Active))
             ]
 
@@ -499,7 +508,7 @@ class GetPregnantLifeEvent(RandomLifeEvent):
         ]
 
         if candidates:
-            return world.get_resource(random.Random).choice(candidates)
+            return world.resource_manager.get_resource(random.Random).choice(candidates)
 
         return None
 
@@ -536,7 +545,7 @@ class GetPregnantLifeEvent(RandomLifeEvent):
             matches.append(character)
 
         if matches:
-            return world.get_resource(random.Random).choice(matches)
+            return world.resource_manager.get_resource(random.Random).choice(matches)
 
         return None
 
@@ -562,10 +571,14 @@ class GetPregnantLifeEvent(RandomLifeEvent):
         if other is None:
             return None
 
-        return cls(world.get_resource(SimDateTime), pregnant_one, other)
+        return cls(
+            world, world.resource_manager.get_resource(SimDateTime), pregnant_one, other
+        )
 
-    def execute(self, world: World):
-        current_date = self["PregnantOne"].world.get_resource(SimDateTime)
+    def execute(self):
+        current_date = self["PregnantOne"].world.resource_manager.get_resource(
+            SimDateTime
+        )
         due_date = current_date.copy()
         due_date.increment(months=9)
 
@@ -576,8 +589,6 @@ class GetPregnantLifeEvent(RandomLifeEvent):
                 due_date=due_date,
             ),
         )
-
-        world.fire_event(self)
 
     def get_probability(self):
         gameobject = self["PregnantOne"]
@@ -611,11 +622,16 @@ class DieOfOldAge(RandomLifeEvent):
             results = query.execute(world)
 
         if results:
-            chosen_result = world.get_resource(random.Random).choice(results)
-            chosen_objects = [world.get_gameobject(uid) for uid in chosen_result]
+            chosen_result = world.resource_manager.get_resource(random.Random).choice(
+                results
+            )
+            chosen_objects = [
+                world.gameobject_manager.get_gameobject(uid) for uid in chosen_result
+            ]
             roles = dict(zip(query.get_symbols(), chosen_objects))
             return cls(
-                world.get_resource(SimDateTime),
+                world,
+                world.resource_manager.get_resource(SimDateTime),
                 [EventRole(title, gameobject) for title, gameobject in roles.items()],
             )
 
@@ -626,27 +642,24 @@ class DieOfOldAge(RandomLifeEvent):
 
         return age / (lifespan + 10.0)
 
-    def execute(self, world: World) -> None:
-        self["Deceased"].world.fire_event(self)
+    def execute(self) -> None:
         Die(self["Deceased"]).evaluate()
 
 
 class GoOutOfBusiness(RandomLifeEvent):
     """Businesses can randomly go out of business"""
 
-    def execute(self, world: World):
+    def execute(self) -> None:
         business = self["Business"]
 
         owner = business.get_component(Business).owner
 
-        if owner:
-            owner.world.fire_event(self)
         shutdown_business(self["Business"])
 
     def get_probability(self) -> float:
         business = self["Business"]
         lifespan = business.get_component(Lifespan).value
-        current_date = business.world.get_resource(SimDateTime)
+        current_date = business.world.resource_manager.get_resource(SimDateTime)
 
         years_in_business = (
             float(
@@ -674,11 +687,16 @@ class GoOutOfBusiness(RandomLifeEvent):
         )
 
         if results := query.execute(world, processed_bindings):
-            chosen_result = world.get_resource(random.Random).choice(results)
-            chosen_objects = [world.get_gameobject(uid) for uid in chosen_result]
+            chosen_result = world.resource_manager.get_resource(random.Random).choice(
+                results
+            )
+            chosen_objects = [
+                world.gameobject_manager.get_gameobject(uid) for uid in chosen_result
+            ]
             roles = dict(zip(query.get_symbols(), chosen_objects))
             return cls(
-                world.get_resource(SimDateTime),
+                world,
+                world.resource_manager.get_resource(SimDateTime),
                 [EventRole(title, gameobject) for title, gameobject in roles.items()],
             )
 
@@ -691,7 +709,7 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    event_library = sim.world.get_resource(RandomLifeEventLibrary)
+    event_library = sim.world.resource_manager.get_resource(RandomLifeEventLibrary)
     # event_library.add(MarriageLifeEvent)
     # event_library.add(StartDatingLifeEvent)
     # event_library.add(DatingBreakUp)

@@ -1,0 +1,14 @@
+{
+  "name": "Artist",
+  "components": {
+    "Name": {
+      "value": "Artist"
+    },
+    "SocialEconomicLevel": {
+      "level": 3
+    },
+    "Description": {
+      "description": "This person does painting or calligraphy."
+    }
+  }
+}

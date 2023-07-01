@@ -1,0 +1,14 @@
+{
+  "name": "Business Owner",
+  "components": {
+    "Name": {
+      "value": "Business Owner"
+    },
+    "SocialEconomicLevel": {
+      "level": 4
+    },
+    "Description": {
+      "description": "This person owns a business."
+    }
+  }
+}

@@ -19,7 +19,7 @@ from neighborly.components.character import (
     LifeStageType,
 )
 from neighborly.components.shared import Age, Name, PrefabName
-from neighborly.core.ecs import GameObject, GameObjectFactory, World
+from neighborly.core.ecs import GameObject, World
 from neighborly.core.time import SimDateTime
 from neighborly.events import (
     CharacterAgeChangeEvent,
@@ -61,14 +61,12 @@ class SpawnCharacter(SimCommand):
         self.result = None
 
     def execute(self, world: World) -> SpawnCharacter:
-        character = world.get_resource(GameObjectFactory).instantiate(
-            world, self.prefab
-        )
+        character = world.gameobject_manager.instantiate_prefab(self.prefab)
 
         SetCharacterAge(
             character,
             self._generate_age_from_life_stage(
-                world.get_resource(random.Random),
+                world.resource_manager.get_resource(random.Random),
                 character.get_component(AgingConfig),
                 LifeStageType.YoungAdult,
             ),
@@ -95,12 +93,14 @@ class SpawnCharacter(SimCommand):
         character.add_component(PrefabName(self.prefab))
 
         new_character_event = CharacterCreatedEvent(
-            date=world.get_resource(SimDateTime), character=character
+            world=world,
+            date=world.resource_manager.get_resource(SimDateTime),
+            character=character,
         )
 
         self.result = character
 
-        world.fire_event(new_character_event)
+        world.event_manager.dispatch_event(new_character_event)
 
         return self
 
@@ -156,9 +156,10 @@ class SetCharacterAge(SimCommand):
         else:
             raise ValueError("new_age or new_life_stage must be set")
 
-        world.fire_event(
+        world.event_manager.dispatch_event(
             CharacterAgeChangeEvent(
-                world.get_resource(SimDateTime).copy(),
+                world,
+                world.resource_manager.get_resource(SimDateTime).copy(),
                 self.character,
                 self.character.get_component(Age).value,
                 self.character.get_component(LifeStage).life_stage,
@@ -249,9 +250,10 @@ class SetCharacterName(SimCommand):
 
         self.character.name = f"{game_character.full_name}({self.character.uid})"
 
-        world.fire_event(
+        world.event_manager.dispatch_event(
             CharacterNameChangeEvent(
-                world.get_resource(SimDateTime).copy(),
+                world,
+                world.resource_manager.get_resource(SimDateTime).copy(),
                 self.character,
                 game_character.first_name,
                 game_character.last_name,
@@ -281,9 +283,7 @@ class SpawnSettlement(SimCommand):
         GameObject
             The newly created Settlement GameObject
         """
-        settlement = world.get_resource(GameObjectFactory).instantiate(
-            world, self.prefab
-        )
+        settlement = world.gameobject_manager.instantiate_prefab(self.prefab)
 
         if self.name:
             settlement.get_component(Name).value = self.name
@@ -291,10 +291,12 @@ class SpawnSettlement(SimCommand):
         settlement.name = settlement.get_component(Name).value
 
         new_settlement_event = SettlementCreatedEvent(
-            date=world.get_resource(SimDateTime), settlement=settlement
+            world=world,
+            date=world.resource_manager.get_resource(SimDateTime),
+            settlement=settlement,
         )
 
-        world.fire_event(new_settlement_event)
+        world.event_manager.dispatch_event(new_settlement_event)
 
         self.result = settlement
 
@@ -326,13 +328,13 @@ class SpawnResidence(SimCommand):
         self,
         world: World,
     ) -> SpawnResidence:
-        residence = world.get_resource(GameObjectFactory).instantiate(
-            world, self.prefab
-        )
+        residence = world.gameobject_manager.instantiate_prefab(self.prefab)
 
-        world.fire_event(
+        world.event_manager.dispatch_event(
             ResidenceCreatedEvent(
-                timestamp=world.get_resource(SimDateTime), residence=residence
+                world=world,
+                timestamp=world.resource_manager.get_resource(SimDateTime),
+                residence=residence,
             )
         )
 
@@ -374,7 +376,7 @@ class SpawnBusiness(SimCommand):
         self,
         world: World,
     ) -> SpawnBusiness:
-        business = world.get_resource(GameObjectFactory).instantiate(world, self.prefab)
+        business = world.gameobject_manager.instantiate_prefab(self.prefab)
 
         if self.name:
             business.get_component(Name).value = self.name
@@ -384,10 +386,12 @@ class SpawnBusiness(SimCommand):
         business.add_component(PrefabName(self.prefab))
 
         new_business_event = NewBusinessEvent(
-            date=world.get_resource(SimDateTime), business=business
+            world=world,
+            date=world.resource_manager.get_resource(SimDateTime),
+            business=business,
         )
 
-        business.world.fire_event(new_business_event)
+        business.world.event_manager.dispatch_event(new_business_event)
 
         self.result = business
 

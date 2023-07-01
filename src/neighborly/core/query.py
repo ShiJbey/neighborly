@@ -336,7 +336,7 @@ class FilterClause:
             for i, row in enumerate(ctx.relation.get_bindings())
             if self.filter_fn(
                 *[
-                    ctx.world.get_gameobject(gid)
+                    ctx.world.gameobject_manager.get_gameobject(gid)
                     for gid in ctx.relation.get_as_tuple(i, *variables_to_check)
                 ],
             )

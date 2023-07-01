@@ -36,7 +36,7 @@ def with_relationship(
     def clause(ctx: QueryContext) -> Relation:
         results: List[Tuple[int, int, int]] = []
         for rel_id, relationship in ctx.world.get_component(Relationship):
-            r = ctx.world.get_gameobject(rel_id)
+            r = ctx.world.gameobject_manager.get_gameobject(rel_id)
 
             if statuses and not r.has_components(*statuses):
                 continue
@@ -63,7 +63,7 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
     def fn(gameobject: GameObject) -> bool:
         total_experience: float = 0
 
-        current_date = gameobject.world.get_resource(SimDateTime)
+        current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
         work_history = gameobject.try_component(WorkHistory)
 
@@ -101,7 +101,7 @@ def get_work_experience_as(occupation_type: GameObject):
     def fn(gameobject: GameObject) -> float:
         total_experience: float = 0
 
-        current_date = gameobject.world.get_resource(SimDateTime)
+        current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
         work_history = gameobject.try_component(WorkHistory)
 
@@ -139,7 +139,7 @@ def has_any_work_experience(years_experience: int = 0):
     def fn(gameobject: GameObject) -> bool:
         total_experience: float = 0
 
-        current_date = gameobject.world.get_resource(SimDateTime)
+        current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
         work_history = gameobject.try_component(WorkHistory)
 

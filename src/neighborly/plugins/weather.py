@@ -2,6 +2,7 @@ import random
 from enum import Enum
 from typing import Any
 
+from neighborly import World
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.systems import System
 
@@ -44,15 +45,13 @@ class WeatherSystem(System):
         state will last before being changed
     """
 
-    sys_group = "early-update"
-
     def __init__(self, avg_change_interval: int = 24) -> None:
         super().__init__()
         self.avg_change_interval: int = avg_change_interval
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        weather_manager = self.world.get_resource(WeatherManager)
-        rng = self.world.get_resource(random.Random)
+    def on_update(self, world: World) -> None:
+        weather_manager = world.resource_manager.get_resource(WeatherManager)
+        rng = world.resource_manager.get_resource(random.Random)
 
         if weather_manager.time_before_change <= 0:
             # Select the next weather pattern
@@ -72,5 +71,5 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any) -> None:
-    sim.world.add_system(WeatherSystem())
-    sim.world.add_resource(WeatherManager())
+    sim.world.system_manager.add_system(WeatherSystem())
+    sim.world.resource_manager.add_resource(WeatherManager())

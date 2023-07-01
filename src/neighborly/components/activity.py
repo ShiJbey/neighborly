@@ -6,9 +6,8 @@ from ordered_set import OrderedSet
 
 from neighborly.core.ecs import (
     Component,
-    EntityPrefab,
+    GameObjectPrefab,
     GameObject,
-    GameObjectFactory,
     ISerializable,
     TagComponent,
     World,
@@ -38,7 +37,7 @@ class Activities(Component, ISerializable):
     __slots__ = "_activities"
 
     _activities: OrderedSet[GameObject]
-    """Activity names."""
+    """Activity GameObjects."""
 
     def __init__(self, activities: Optional[Iterable[GameObject]] = None) -> None:
         """
@@ -111,7 +110,7 @@ class ActivityLibrary:
         return self._activity_types[name]
 
 
-def register_activity_type(world: World, prefab: EntityPrefab) -> None:
+def register_activity_type(world: World, prefab: GameObjectPrefab) -> None:
     """Register a service type for later use.
 
     Parameters
@@ -122,5 +121,7 @@ def register_activity_type(world: World, prefab: EntityPrefab) -> None:
         GameObject prefab information about the service type.
     """
 
-    world.get_resource(GameObjectFactory).add(prefab)
-    world.get_resource(ActivityLibrary).activities_to_instantiate.add(prefab.name)
+    world.gameobject_manager.add_prefab(prefab)
+    world.resource_manager.get_resource(ActivityLibrary).activities_to_instantiate.add(
+        prefab.name
+    )

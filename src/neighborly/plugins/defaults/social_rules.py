@@ -140,7 +140,7 @@ def romance_decrease_for_relationship(
 
 
 def setup(sim: Neighborly, **kwargs: Any):
-    social_rule_library = sim.world.get_resource(SocialRuleLibrary)
+    social_rule_library = sim.world.resource_manager.get_resource(SocialRuleLibrary)
 
     social_rule_library.add(
         romance_boost_from_shared_virtues, "romance boost from shared values"

@@ -6,9 +6,8 @@ from ordered_set import OrderedSet
 
 from neighborly.core.ecs import (
     Component,
-    EntityPrefab,
+    GameObjectPrefab,
     GameObject,
-    GameObjectFactory,
     ISerializable,
     TagComponent,
     World,
@@ -163,7 +162,9 @@ class ItemLibrary:
         return self._item_types[name]
 
 
-def register_item_type(world: World, prefab: EntityPrefab) -> None:
+def register_item_type(world: World, prefab: GameObjectPrefab) -> None:
     """Loads a new item type into the world's ItemLibrary."""
-    world.get_resource(GameObjectFactory).add(prefab)
-    world.get_resource(ItemLibrary).items_to_instantiate.add(prefab.name)
+    world.gameobject_manager.add_prefab(prefab)
+    world.resource_manager.get_resource(ItemLibrary).items_to_instantiate.add(
+        prefab.name
+    )

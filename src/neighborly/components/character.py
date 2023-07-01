@@ -288,10 +288,7 @@ class Virtues(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            **{
-                virtue.name: int(self._virtues[i])
-                for i, virtue in enumerate(list(Virtue))
-            },
+            virtue.name: int(self._virtues[i]) for i, virtue in enumerate(list(Virtue))
         }
 
 
@@ -513,3 +510,6 @@ class RoleTracker(Component, ISerializable):
     @property
     def roles(self) -> OrderedSet[GameObject]:
         return self._roles
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"roles": [role.uid for role in self.roles]}

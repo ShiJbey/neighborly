@@ -1,8 +1,8 @@
-from typing import Any, List
+from typing import List
 
 import pytest
 
-from neighborly import Neighborly
+from neighborly import Neighborly, World
 from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.systems import System
 
@@ -18,9 +18,9 @@ class TestSystem(System):
         self.elapsed_times: List[int] = elapsed_times
         self.run_times: List[SimDateTime] = run_times
 
-    def run(self, *args: Any, **kwargs: Any) -> None:
+    def on_update(self, world: World) -> None:
         self.elapsed_times.append(self.elapsed_time.total_hours)
-        self.run_times.append(self.world.get_resource(SimDateTime).copy())
+        self.run_times.append(world.resource_manager.get_resource(SimDateTime).copy())
 
 
 @pytest.fixture()
@@ -31,7 +31,7 @@ def test_sim() -> Neighborly:
 
 def test_elapsed_time(test_sim: Neighborly):
     elapsed_times = []
-    test_sim.world.add_system(TestSystem(TimeDelta(), elapsed_times, []))
+    test_sim.world.system_manager.add_system(TestSystem(TimeDelta(), elapsed_times, []))
     test_sim.step()
     test_sim.step()
     test_sim.step()
@@ -40,7 +40,9 @@ def test_elapsed_time(test_sim: Neighborly):
 
 def test_interval_run(test_sim: Neighborly):
     run_times = []
-    test_sim.world.add_system(TestSystem(TimeDelta(hours=6), [], run_times))
+    test_sim.world.system_manager.add_system(
+        TestSystem(TimeDelta(hours=6), [], run_times)
+    )
     test_sim.step()
     test_sim.step()
     test_sim.step()

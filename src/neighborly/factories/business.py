@@ -19,7 +19,7 @@ from neighborly.core.time import Weekday
 
 class ServicesFactory(IComponentFactory):
     def create(self, world: World, **kwargs: Any) -> Component:
-        service_library = world.get_resource(ServiceLibrary)
+        service_library = world.resource_manager.get_resource(ServiceLibrary)
         services = [
             service_library.get(service_name) for service_name in kwargs["services"]
         ]
@@ -30,7 +30,7 @@ class BusinessFactory(IComponentFactory):
     """Constructs instances of Business components"""
 
     def create(self, world: World, **kwargs: Any) -> Component:
-        occupation_library = world.get_resource(OccupationLibrary)
+        occupation_library = world.resource_manager.get_resource(OccupationLibrary)
 
         owner_type: str = kwargs["owner_type"]
         employee_types: Dict[GameObject, int] = {

@@ -1,0 +1,14 @@
+{
+  "name": "Lawyer",
+  "components": {
+    "Name": {
+      "value": "Lawyer"
+    },
+    "SocialEconomicLevel": {
+      "level": 4
+    },
+    "Description": {
+      "description": "This person knows the laws."
+    }
+  }
+}

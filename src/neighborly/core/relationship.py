@@ -12,7 +12,6 @@ from neighborly.core.ecs import (
     Active,
     Component,
     GameObject,
-    GameObjectFactory,
     ISerializable,
 )
 from neighborly.core.status import (
@@ -243,8 +242,8 @@ class Relationship(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "owner": self.owner,
-            "target": self.target,
+            "owner": self.owner.uid,
+            "target": self.target.uid,
             "modifiers": [m.to_dict() for m in self._modifiers],
         }
 
@@ -288,7 +287,7 @@ class RelationshipManager(Component, ISerializable):
         Parameters
         ----------
         owner
-            The ID of the owner of the relationship
+            The ID of the owner
         relationship
             The ID of the relationship
         """
@@ -301,7 +300,7 @@ class RelationshipManager(Component, ISerializable):
         Parameters
         ----------
         target
-            The ID of the target of the relationship
+            The ID of the target
         relationship
             The ID of the relationship
         """
@@ -409,9 +408,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     if target in relationship_manager.outgoing:
         return relationship_manager.outgoing[target]
 
-    relationship = world.get_resource(GameObjectFactory).instantiate(
-        world, "relationship"
-    )
+    relationship = world.gameobject_manager.instantiate_prefab("relationship")
     relationship.add_component(Relationship(owner, target))
     relationship.add_component(StatusManager())
     relationship.add_component(Active())
@@ -490,7 +487,7 @@ def add_relationship_status(
         The core component of the status
     """
     relationship = get_relationship(subject, target)
-    status.set_created(subject.world.get_resource(SimDateTime))
+    status.set_created(subject.world.resource_manager.get_resource(SimDateTime))
     add_status(relationship, status)
 
 
@@ -606,7 +603,7 @@ def evaluate_social_rules(
     target
         The target of the relationship
     """
-    rule_library = relationship.world.get_resource(SocialRuleLibrary)
+    rule_library = relationship.world.resource_manager.get_resource(SocialRuleLibrary)
     relationship.get_component(Relationship).clear_modifiers()
 
     for rule_info in rule_library.iter_rules():

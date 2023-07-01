@@ -73,11 +73,11 @@ class Lifespan(Component, ISerializable):
 
 
 class Location(Component, ISerializable):
-    """Anywhere where game characters may be."""
+    """Anywhere where GameObjects may be."""
 
-    __slots__ = "entities", "parent", "children"
+    __slots__ = "gameobjects", "parent", "children"
 
-    entities: OrderedSet[GameObject]
+    gameobjects: OrderedSet[GameObject]
     """All the GameObjects currently at this location or any sub-locations."""
 
     children: OrderedSet[GameObject]
@@ -89,55 +89,57 @@ class Location(Component, ISerializable):
     def __init__(self) -> None:
         super().__init__()
         self.parent = None
-        self.entities = OrderedSet([])
+        self.gameobjects = OrderedSet([])
         self.children = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "entities": [entry.uid for entry in self.entities],
+            "gameobjects": [entry.uid for entry in self.gameobjects],
             "parent": self.parent.uid if self.parent is not None else -1,
             "children": [entry.uid for entry in self.children],
         }
 
-    def add_entity(self, entity: GameObject) -> None:
-        """Add an entity to the location.
+    def add_gameobject(self, gameobject: GameObject) -> None:
+        """Add a GameObject to the location.
 
         Parameters
         ----------
-        entity
-            An entity to add.
+        gameobject
+            An GameObject to add.
         """
-        self.entities.append(entity)
+        self.gameobjects.append(gameobject)
 
-    def remove_entity(self, entity: GameObject) -> None:
-        """Remove an entity from the location.
+    def remove_gameobject(self, gameobject: GameObject) -> None:
+        """Remove a GameObject from the location.
 
         Parameters
         ----------
-        entity
-            An entity to remove.
+        gameobject
+            An GameObject to remove.
         """
-        self.entities.remove(entity)
+        self.gameobjects.remove(gameobject)
 
-    def has_entity(self, entity: GameObject) -> bool:
-        """Check if an entity is at the location.
+    def has_gameobject(self, gameobject: GameObject) -> bool:
+        """Check if a GameObject is at the location.
 
         Parameters
         ----------
-        entity
-            An entity to check for.
+        gameobject
+            An GameObject to check for.
 
         Returns
         -------
         bool
             True if the GameObject is present, False otherwise.
         """
-        return entity in self.entities
+        return gameobject in self.gameobjects
 
     def __repr__(self) -> str:
-        return "{}(entities={})".format(
+        return "{}(gameobjects={}, parent={}, children={})".format(
             self.__class__.__name__,
-            self.entities,
+            self.gameobjects,
+            self.parent.name if self.parent else "",
+            [child.name for child in self.children],
         )
 
 
@@ -313,7 +315,7 @@ class FrequentedBy(Component, ISerializable):
         Parameters
         ----------
         character
-            The GameObject referenc to a character.
+            The GameObject reference to a character.
         """
         self._characters.remove(character)
 

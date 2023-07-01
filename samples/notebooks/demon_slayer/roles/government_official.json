@@ -1,0 +1,14 @@
+{
+  "name": "Government Official",
+  "components": {
+    "Name": {
+      "value": "Government Official"
+    },
+    "SocialEconomicLevel": {
+      "level": 4
+    },
+    "Description": {
+      "description": "This person is a high-ranking government official."
+    }
+  }
+}

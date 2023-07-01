@@ -15,7 +15,7 @@ from neighborly.components.activity import (
     register_activity_type,
 )
 from neighborly.components.shared import Location
-from neighborly.core.ecs import EntityPrefab, TagComponent
+from neighborly.core.ecs import GameObjectPrefab, TagComponent
 from neighborly.decorators import component, location_bias_rule
 from neighborly.utils.common import (
     calculate_location_probabilities,
@@ -107,28 +107,32 @@ def main():
     ###############################
 
     register_activity_type(
-        sim.world, EntityPrefab(name="Recreation", components={"ActivityType": {}})
+        sim.world, GameObjectPrefab(name="Recreation", components={"ActivityType": {}})
     )
     register_activity_type(
-        sim.world, EntityPrefab(name="Socializing", components={"ActivityType": {}})
+        sim.world, GameObjectPrefab(name="Socializing", components={"ActivityType": {}})
     )
     register_activity_type(
-        sim.world, EntityPrefab(name="Reading", components={"ActivityType": {}})
+        sim.world, GameObjectPrefab(name="Reading", components={"ActivityType": {}})
     )
     register_activity_type(
-        sim.world, EntityPrefab(name="Shopping", components={"ActivityType": {}})
+        sim.world, GameObjectPrefab(name="Shopping", components={"ActivityType": {}})
     )
     register_activity_type(
-        sim.world, EntityPrefab(name="People Watching", components={"ActivityType": {}})
+        sim.world,
+        GameObjectPrefab(name="People Watching", components={"ActivityType": {}}),
     )
     register_activity_type(
-        sim.world, EntityPrefab(name="Drinking", components={"ActivityType": {}})
+        sim.world, GameObjectPrefab(name="Drinking", components={"ActivityType": {}})
     )
 
-    activity_library = sim.world.get_resource(ActivityLibrary)
+    # We need to step the simulation once to create all the activities
+    sim.step()
+
+    activity_library = sim.world.resource_manager.get_resource(ActivityLibrary)
 
     locations = [
-        sim.world.spawn_gameobject(
+        sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
                 Activities(
@@ -140,7 +144,7 @@ def main():
             ],
             name="Gym",
         ),
-        sim.world.spawn_gameobject(
+        sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
                 Activities(
@@ -151,7 +155,7 @@ def main():
             ],
             name="Library",
         ),
-        sim.world.spawn_gameobject(
+        sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
                 Activities(
@@ -164,7 +168,7 @@ def main():
             ],
             name="Mall",
         ),
-        sim.world.spawn_gameobject(
+        sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
                 Activities(
@@ -179,11 +183,13 @@ def main():
     ]
 
     characters = [
-        sim.world.spawn_gameobject([Actor("Alice"), HealthNut(), SocialButterfly()]),
-        sim.world.spawn_gameobject(
+        sim.world.gameobject_manager.spawn_gameobject(
+            [Actor("Alice"), HealthNut(), SocialButterfly()]
+        ),
+        sim.world.gameobject_manager.spawn_gameobject(
             [Actor("James"), Shopaholic(), BookWorm(), HealthNut()]
         ),
-        sim.world.spawn_gameobject(
+        sim.world.gameobject_manager.spawn_gameobject(
             [Actor("Raven"), RecoveringAlcoholic(), HealthNut(), SocialButterfly()]
         ),
     ]

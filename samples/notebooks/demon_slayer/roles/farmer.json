@@ -1,0 +1,14 @@
+{
+  "name": "Farmer",
+  "components": {
+    "Name": {
+      "value": "Farmer"
+    },
+    "SocialEconomicLevel": {
+      "level": 3
+    },
+    "Description": {
+      "description": "This person runs a farm."
+    }
+  }
+}

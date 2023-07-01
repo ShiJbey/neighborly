@@ -45,7 +45,7 @@ class BigFivePersonality(Component):
         """Build a new instance of the component using instances from the parents"""
         parent_a = cast(BigFivePersonality, parent_a)
         parent_b = cast(BigFivePersonality, parent_b)
-        rng = world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         openness: float = clamp(
             (
@@ -121,7 +121,7 @@ def clamp(value: float, minimum: float, maximum: float) -> float:
 
 class BigFivePersonalityFactory(IComponentFactory):
     def create(self, world: World, **kwargs: Any) -> Component:
-        rng = world.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         openness: float = clamp(
             kwargs.get(

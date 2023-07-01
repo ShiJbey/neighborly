@@ -26,7 +26,7 @@ def virtue_to_activity_bias(virtue: Virtue, activity: str, modifier: int):
 
 def setup(sim: Neighborly, **kwargs: Any):
     # For sake of time, use helper the method
-    rule_library = sim.world.get_resource(LocationBiasRuleLibrary)
+    rule_library = sim.world.resource_manager.get_resource(LocationBiasRuleLibrary)
     rule_library.add(virtue_to_activity_bias(Virtue.LEISURE_TIME, "relaxing", 1))
     rule_library.add(virtue_to_activity_bias(Virtue.WEALTH, "gambling", 1))
     rule_library.add(virtue_to_activity_bias(Virtue.EXCITEMENT, "gambling", 1))

@@ -35,7 +35,7 @@ from neighborly.components.shared import (
     Position2D,
     PrefabName,
 )
-from neighborly.core.ecs import Active, GameObject, GameObjectFactory, World
+from neighborly.core.ecs import Active, GameObject, World
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.location_bias import LocationBiasRuleLibrary
 from neighborly.core.relationship import (
@@ -56,6 +56,7 @@ from neighborly.events import (
     LeaveSettlementEvent,
     StartJobEvent,
 )
+
 
 ########################################
 # LOCATION MANAGEMENT
@@ -98,7 +99,7 @@ def set_location(gameobject: GameObject, location: Optional[GameObject]) -> None
 
         while focus is not None:
             location_component = focus.get_component(Location)
-            location_component.remove_entity(gameobject)
+            location_component.remove_gameobject(gameobject)
 
             if location_component.parent:
                 focus = location_component.parent
@@ -115,7 +116,7 @@ def set_location(gameobject: GameObject, location: Optional[GameObject]) -> None
 
         while focus is not None:
             location_component = focus.get_component(Location)
-            location_component.add_entity(gameobject)
+            location_component.add_gameobject(gameobject)
 
             if location_component.parent:
                 focus = location_component.parent
@@ -138,7 +139,7 @@ def at_location(gameobject: GameObject, location: GameObject) -> bool:
     bool
         True if the object is at the location, False otherwise.
     """
-    return location.get_component(Location).has_entity(gameobject)
+    return location.get_component(Location).has_gameobject(gameobject)
 
 
 ########################################
@@ -206,10 +207,13 @@ def add_character_to_settlement(character: GameObject, settlement: GameObject) -
     set_frequented_locations(character, settlement)
 
     join_settlement_event = JoinSettlementEvent(
-        character.world.get_resource(SimDateTime), settlement, character
+        character.world,
+        character.world.resource_manager.get_resource(SimDateTime),
+        settlement,
+        character,
     )
 
-    character.world.fire_event(join_settlement_event)
+    character.world.event_manager.dispatch_event(join_settlement_event)
 
 
 def remove_character_from_settlement(character: GameObject) -> None:
@@ -230,10 +234,13 @@ def remove_character_from_settlement(character: GameObject) -> None:
     character.remove_component(Active)
 
     leave_settlement_event = LeaveSettlementEvent(
-        character.world.get_resource(SimDateTime), settlement, character
+        character.world,
+        character.world.resource_manager.get_resource(SimDateTime),
+        settlement,
+        character,
     )
 
-    world.fire_event(leave_settlement_event)
+    world.event_manager.dispatch_event(leave_settlement_event)
 
 
 def add_residence_to_settlement(
@@ -294,7 +301,7 @@ def get_child_prefab(
     """
 
     world = parent_a.world
-    rng = world.get_resource(random.Random)
+    rng = world.resource_manager.get_resource(random.Random)
 
     eligible_child_prefabs = [
         *parent_a.get_component(ReproductionConfig).child_prefabs,
@@ -305,7 +312,7 @@ def get_child_prefab(
             parent_a.get_component(ReproductionConfig).child_prefabs
         )
 
-    matching_prefabs = world.get_resource(GameObjectFactory).get_matching_prefabs(
+    matching_prefabs = world.gameobject_manager.get_matching_prefabs(
         *eligible_child_prefabs
     )
 
@@ -430,7 +437,8 @@ def depart_settlement(
                 departing_characters.append(resident)
 
     depart_event = DepartEvent(
-        date=world.get_resource(SimDateTime),
+        world=world,
+        date=world.resource_manager.get_resource(SimDateTime),
         characters=departing_characters,
         reason=reason,
     )
@@ -449,7 +457,7 @@ def depart_settlement(
 
         add_status(character, Departed())
 
-        character.world.fire_event(depart_event)
+        character.world.event_manager.dispatch_event(depart_event)
 
 
 #######################################
@@ -528,7 +536,7 @@ def shutdown_business(business: GameObject) -> None:
         Business to shut down in the town
     """
     world = business.world
-    date = world.get_resource(SimDateTime)
+    date = world.resource_manager.get_resource(SimDateTime)
     business_comp = business.get_component(Business)
     prefab_ref = business.get_component(PrefabName)
     # building = business.get_component(Building)
@@ -537,7 +545,7 @@ def shutdown_business(business: GameObject) -> None:
     settlement_obj = current_settlement.settlement
     settlement = settlement_obj.get_component(Settlement)
 
-    event = BusinessClosedEvent(date, business)
+    event = BusinessClosedEvent(world, date, business)
 
     # Update the business as no longer active
     remove_status(business, OpenForBusiness)
@@ -566,7 +574,7 @@ def shutdown_business(business: GameObject) -> None:
     # Un-mark the business as active so it doesn't appear in queries
     business.remove_component(Location)
 
-    world.fire_event(event)
+    world.event_manager.dispatch_event(event)
 
 
 def end_job(
@@ -642,7 +650,7 @@ def end_job(
     if not character.has_component(WorkHistory):
         character.add_component(WorkHistory())
 
-    current_date = character.world.get_resource(SimDateTime)
+    current_date = character.world.resource_manager.get_resource(SimDateTime)
 
     character.get_component(WorkHistory).add_entry(
         occupation_type=occupation.occupation_type,
@@ -653,14 +661,15 @@ def end_job(
     )
 
     end_job_event = EndJobEvent(
-        date=world.get_resource(SimDateTime),
+        world=world,
+        date=world.resource_manager.get_resource(SimDateTime),
         character=character,
         business=business,
         occupation=occupation.occupation_type,
         reason=reason,
     )
 
-    world.fire_event(end_job_event)
+    world.event_manager.dispatch_event(end_job_event)
 
 
 def start_job(
@@ -686,7 +695,9 @@ def start_job(
     world = character.world
     business_comp = business.get_component(Business)
 
-    occupation = Occupation(occupation_type, business, world.get_resource(SimDateTime))
+    occupation = Occupation(
+        occupation_type, business, world.resource_manager.get_resource(SimDateTime)
+    )
 
     if character.has_component(Occupation):
         # Character must quit the old job before taking a new one
@@ -747,13 +758,14 @@ def start_job(
         business_comp.add_employee(character, occupation_type)
 
     start_job_event = StartJobEvent(
-        character.world.get_resource(SimDateTime),
+        world=character.world,
+        date=character.world.resource_manager.get_resource(SimDateTime),
         business=business,
         character=character,
         occupation=occupation_type,
     )
 
-    world.fire_event(start_job_event)
+    world.event_manager.dispatch_event(start_job_event)
 
 
 def get_places_with_services(world: World, *services: str) -> List[GameObject]:
@@ -773,11 +785,11 @@ def get_places_with_services(world: World, *services: str) -> List[GameObject]:
     The IDs of the matching entities
     """
     matches: List[GameObject] = []
-    service_library = world.get_resource(ServiceLibrary)
+    service_library = world.resource_manager.get_resource(ServiceLibrary)
     service_objs = [service_library.get(s) for s in services]
     for gid, services_component in world.get_component(Services):
         if all([s in services_component for s in service_objs]):
-            matches.append(world.get_gameobject(gid))
+            matches.append(world.gameobject_manager.get_gameobject(gid))
     return matches
 
 
@@ -799,7 +811,7 @@ def get_places_with_activities(
     settlement
         The settlement to search within
     *activities
-        Activities to search for
+        The activities to search for
 
     Returns
     -------
@@ -810,7 +822,7 @@ def get_places_with_activities(
     matches: List[GameObject] = []
 
     settlement_comp = settlement.get_component(Settlement)
-    activity_library = world.get_resource(ActivityLibrary)
+    activity_library = world.resource_manager.get_resource(ActivityLibrary)
     activity_types = [activity_library.get(a) for a in activities]
 
     for location in settlement_comp.locations:
@@ -832,7 +844,7 @@ def get_places_with_any_activities(
     settlement
         The settlement to search within
     *activities
-        Activities to search for
+        The activities to search for
 
     Returns
     -------
@@ -875,14 +887,16 @@ def location_has_activities(location: GameObject, *activities: str) -> bool:
         True if the activities are offered by the location, False otherwise.
     """
     activities_comp = location.get_component(Activities)
-    activity_library = location.world.get_resource(ActivityLibrary)
+    activity_library = location.world.resource_manager.get_resource(ActivityLibrary)
     activity_types = [activity_library.get(a) for a in activities]
     return all([a in activities_comp for a in activity_types])
 
 
 def _score_location(character: GameObject, location: GameObject) -> int:
     score: int = 0
-    rule_library = character.world.get_resource(LocationBiasRuleLibrary)
+    rule_library = character.world.resource_manager.get_resource(
+        LocationBiasRuleLibrary
+    )
     for rule_info in rule_library.iter_rules():
         if modifier := rule_info.rule(character, location):
             score += modifier
@@ -933,7 +947,7 @@ def set_frequented_locations(
 
     # For all locations available in the settlement
     locations = [
-        character.world.get_gameobject(guid)
+        character.world.gameobject_manager.get_gameobject(guid)
         for guid, (_, current_settlement, _, _) in character.world.get_components(
             (Location, CurrentSettlement, Activities, Active)
         )

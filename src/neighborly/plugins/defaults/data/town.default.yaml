@@ -5,16 +5,30 @@ components:
   Settlement:
     width: 5
     length: 5
-  Location: {}
+  Location: { }
   CharacterSpawnTable:
     entries:
       - name: "character::default::male"
+        frequency: 1
       - name: "character::default::female"
+        frequency: 1
       - name: "character::default::non-binary"
+        frequency: 1
   ResidenceSpawnTable:
     entries:
       - name: "residence::default::house"
+        frequency: 1
   BusinessSpawnTable:
     entries:
       - name: "business::default::cafe"
+        frequency: 1
+        max_instances: 9999
+        min_population: 0
+        year_available: 0
+        year_obsolete: 9999
       - name: "business::default::library"
+        frequency: 1
+        max_instances: 9999
+        min_population: 0
+        year_available: 0
+        year_obsolete: 9999

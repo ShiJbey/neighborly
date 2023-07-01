@@ -17,7 +17,7 @@ class GameCharacterFactory(IComponentFactory):
     def create(self, world: World, **kwargs: Any) -> Component:
         first_name_pattern: str = kwargs["first_name"]
         last_name_pattern: str = kwargs["last_name"]
-        tracery = world.get_resource(Tracery)
+        tracery = world.resource_manager.get_resource(Tracery)
 
         first_name = tracery.generate(first_name_pattern)
         last_name = tracery.generate(last_name_pattern)
@@ -42,7 +42,7 @@ class VirtuesFactory(IComponentFactory):
             pass
 
         elif initialization == "random":
-            rng = world.get_resource(random.Random)
+            rng = world.resource_manager.get_resource(random.Random)
 
             for v in sorted(list(Virtue)):
                 values_overrides[v.name] = rng.randint(-30, 30)

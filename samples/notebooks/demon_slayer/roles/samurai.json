@@ -1,0 +1,14 @@
+{
+  "name": "Samurai",
+  "components": {
+    "Name": {
+      "value": "Samurai"
+    },
+    "SocialEconomicLevel": {
+      "level": 4
+    },
+    "Description": {
+      "description": "This person serves a noble."
+    }
+  }
+}

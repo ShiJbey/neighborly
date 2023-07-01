@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 from neighborly import Component, Neighborly
-from neighborly.core.ecs import ComponentAddedEvent, ComponentRemovedEvent, Event, World
+from neighborly.core.ecs import ComponentAddedEvent, ComponentRemovedEvent
 from neighborly.core.status import StatusManager
 from neighborly.decorators import component
 
@@ -48,29 +48,24 @@ class AttackBuff(Component):
         return {"amount": self.amount}
 
 
-def handle_event(world: World, event: Event) -> None:
-    print(f"{str(type(event))}")
-
-
-def on_attack_buff_added(world: World, event: ComponentAddedEvent) -> None:
+def on_attack_buff_added(event: ComponentAddedEvent) -> None:
     if isinstance(event.component, AttackBuff):
         stats = event.gameobject.get_component(AdventurerStats)
         stats.attack += event.component.amount
 
 
-def on_attack_buffer_removed(world: World, event: ComponentRemovedEvent) -> None:
+def on_attack_buffer_removed(event: ComponentRemovedEvent) -> None:
     if isinstance(event.component, AttackBuff):
         stats = event.gameobject.get_component(AdventurerStats)
         stats.attack -= event.component.amount
 
 
-sim.world.on_any_event(handle_event)
-sim.world.on_event(ComponentAddedEvent, on_attack_buff_added)
-sim.world.on_event(ComponentRemovedEvent, on_attack_buffer_removed)
+sim.world.event_manager.on_event(ComponentAddedEvent, on_attack_buff_added)
+sim.world.event_manager.on_event(ComponentRemovedEvent, on_attack_buffer_removed)
 
 
 def main():
-    alice = sim.world.spawn_gameobject(
+    alice = sim.world.gameobject_manager.spawn_gameobject(
         [Actor("Alice"), StatusManager(), AdventurerStats(5, 7)]
     )
 
@@ -78,13 +73,9 @@ def main():
 
     alice.add_component(AttackBuff(10))
 
-    sim.step()
-
     print(alice.get_component(AdventurerStats))
 
     alice.remove_component(AttackBuff)
-
-    sim.step()
 
     print(alice.get_component(AdventurerStats))
 

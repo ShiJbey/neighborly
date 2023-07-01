@@ -124,11 +124,8 @@ class DataCollector:
 class DataCollectionSystem(ISystem):
     """Collects data from the world simulation."""
 
-    sys_group = "early-update"
-    priority = 9999
-
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        data_collector = self.world.get_resource(DataCollector)
+    def on_update(self, world: World) -> None:
+        data_collector = world.resource_manager.get_resource(DataCollector)
 
         for table_name, reporter in data_collector.reporters:
-            data_collector.add_table_row(table_name, reporter(self.world))
+            data_collector.add_table_row(table_name, reporter(world))

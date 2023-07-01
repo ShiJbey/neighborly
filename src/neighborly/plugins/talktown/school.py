@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import List
 
 from neighborly.components.character import GameCharacter, LifeStage, LifeStageType
 from neighborly.core.ecs import Active, GameObject, ISystem, World
@@ -17,16 +17,18 @@ class CollegeGraduate(StatusComponent):
 
 
 class EnrolledInSchoolEvent(LifeEvent):
-    def __init__(self, date: SimDateTime, character: GameObject) -> None:
+    def __init__(self, world: World, date: SimDateTime, character: GameObject) -> None:
         super().__init__(
+            world,
             date,
             [EventRole("Character", character)],
         )
 
 
 class GraduatedFromSchoolEvent(LifeEvent):
-    def __init__(self, date: SimDateTime, character: GameObject) -> None:
+    def __init__(self, world: World, date: SimDateTime, character: GameObject) -> None:
         super().__init__(
+            world,
             date,
             [EventRole("Character", character)],
         )
@@ -35,12 +37,10 @@ class GraduatedFromSchoolEvent(LifeEvent):
 class SchoolSystem(ISystem):
     """Enrolls new students and graduates old students"""
 
-    sys_group = "update"
-
     @staticmethod
     def get_unenrolled_students(world: World) -> List[GameObject]:
         candidates = [
-            world.get_gameobject(res[0])
+            world.gameobject_manager.get_gameobject(res[0])
             for res in world.get_components((GameCharacter, Active, LifeStage))
         ]
 
@@ -56,7 +56,7 @@ class SchoolSystem(ISystem):
     @staticmethod
     def get_adult_students(world: World) -> List[GameObject]:
         candidates = [
-            world.get_gameobject(res[0])
+            world.gameobject_manager.get_gameobject(res[0])
             for res in world.get_components((GameCharacter, Active, Student, LifeStage))
         ]
 
@@ -68,19 +68,19 @@ class SchoolSystem(ISystem):
 
         return candidates
 
-    def process(self, *args: Any, **kwargs: Any) -> None:
-        date = self.world.get_resource(SimDateTime)
+    def on_update(self, world: World) -> None:
+        date = world.resource_manager.get_resource(SimDateTime)
 
-        for _, school in self.world.get_component(School):
-            for character in self.get_unenrolled_students(self.world):
+        for _, school in world.get_component(School):
+            for character in self.get_unenrolled_students(world):
                 school.add_student(character.uid)
                 add_status(character, Student())
-                event = EnrolledInSchoolEvent(date, character)
-                self.world.fire_event(event)
+                event = EnrolledInSchoolEvent(world, date, character)
+                world.event_manager.dispatch_event(event)
 
             # Graduate young adults
-            for character in self.get_adult_students(self.world):
+            for character in self.get_adult_students(world):
                 school.remove_student(character.uid)
                 remove_status(character, Student)
-                event = GraduatedFromSchoolEvent(date, character)
-                self.world.fire_event(event)
+                event = GraduatedFromSchoolEvent(world, date, character)
+                world.event_manager.dispatch_event(event)

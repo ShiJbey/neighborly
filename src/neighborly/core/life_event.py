@@ -176,23 +176,29 @@ class EventRoleList:
 class LifeEvent(Event, ABC):
     """An event of significant importance in a GameObject's life"""
 
-    _next_event_id: int = 0
+    # WARNING:: Since this is a class variable, you may have some event
+    # ID interference if running multiple simulations simultaneously
+    _next_event_id: ClassVar[int] = 0
 
     __slots__ = "_roles", "_timestamp", "_uid"
 
     def __init__(
         self,
+        world: World,
         timestamp: SimDateTime,
         roles: Iterable[EventRole],
     ) -> None:
         """
         Parameters
         ----------
+        world
+            The world instance
         timestamp
-            Timestamp for when this event
+            The timestamp for when this event
         roles
             The names of roles mapped to GameObjects
         """
+        super().__init__(world)
         self._uid: int = LifeEvent._next_event_id
         LifeEvent._next_event_id += 1
         self._timestamp: SimDateTime = timestamp.copy()
@@ -213,7 +219,7 @@ class LifeEvent(Event, ABC):
     def to_dict(self) -> Dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
         return {
-            "type": self.get_type(),
+            "type": type(self).__name__,
             "timestamp": str(self._timestamp),
             "roles": [role.to_dict() for role in self._roles],
         }
@@ -223,12 +229,12 @@ class LifeEvent(Event, ABC):
 
     def __repr__(self) -> str:
         return "{}(timestamp={}, roles=[{}])".format(
-            self.get_type(), str(self.timestamp), self._roles
+            type(self).__name__, str(self.timestamp), self._roles
         )
 
     def __str__(self) -> str:
         return "{} [@ {}] {}".format(
-            self.get_type(),
+            type(self).__name__,
             str(self.timestamp),
             ", ".join([str(role) for role in self._roles]),
         )
@@ -263,7 +269,7 @@ class EventRoleBindingContext:
 
 
 EventRoleBindingGeneratorFn = Callable[
-    [EventRoleBindingContext], Generator[tuple[GameObject, ...], None, None]
+    [EventRoleBindingContext], Generator[Tuple[GameObject, ...], None, None]
 ]
 """Role casting functions yield GameObjects to bind to a role."""
 
@@ -372,18 +378,23 @@ class EventRoleInfo:
         self.binding_fn = binding_fn
         self.considerations = considerations
 
+    def __call__(
+        self, ctx: EventRoleBindingContext
+    ) -> Generator[Tuple[GameObject, ...], None, None]:
+        return self.binding_fn(ctx)
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.name})"
 
 
 def event_role(
-    name: str = "", considerations: Optional[List[EventRoleConsideration[_T]]] = None
+    name: str, considerations: Optional[List[EventRoleConsideration[_T]]] = None
 ):
     """A decorator to indicate that a function is for casting a role"""
 
-    def event_role_decorator(fn: EventRoleBindingGeneratorFn):
+    def event_role_decorator(fn: staticmethod):
         return EventRoleInfo(
-            name if name else fn.__name__,
+            name,
             fn,
             EventRoleConsiderationList[_T](
                 considerations if considerations is not None else []
@@ -432,9 +443,11 @@ def _update_roles(cls: type) -> None:
                 event_roles.append(entry)
 
     # Check the declared event role methods
-    for attr_value in cls.__dict__.values():
-        if isinstance(attr_value, EventRoleInfo):
-            event_roles.append(attr_value)
+    for attr_name, attr_value in cls.__dict__.items():
+        if type(attr_value) == staticmethod:
+            attr = getattr(cls, attr_name)
+            if isinstance(attr, EventRoleInfo):
+                event_roles.append(attr)
 
     # Set combined collection of event roles for the given type
     setattr(cls, "__event_roles__", tuple(event_roles))
@@ -471,6 +484,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
     def __init__(
         self,
+        world: World,
         timestamp: SimDateTime,
         roles: Iterable[EventRole],
     ) -> None:
@@ -482,7 +496,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         roles
             The names of roles mapped to GameObjects
         """
-        super().__init__(timestamp, roles)
+        super().__init__(world, timestamp, roles)
 
     def get_probability(self) -> float:
         """Get the probability of an instance of this event happening
@@ -508,8 +522,12 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         else:
             return 0.5
 
+    def dispatch(self) -> None:
+        self.execute()
+        super().dispatch()
+
     @abstractmethod
-    def execute(self, world: World) -> None:
+    def execute(self) -> None:
         """Executes the LifeEvent instance, emitting an event."""
         raise NotImplementedError
 
@@ -536,7 +554,11 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
         # Check if there are any roles that need to be bound
         if len(cls.__event_roles__) == 0:
-            yield cls(world.get_resource(SimDateTime).copy(), EventRoleList())
+            yield cls(
+                world,
+                world.resource_manager.get_resource(SimDateTime).copy(),
+                EventRoleList(),
+            )
             return
 
         # Stack of previous search states for when we fail to find a result
@@ -603,7 +625,11 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                         )
 
                         # yield an instance of the random event
-                        yield cls(world.get_resource(SimDateTime).copy(), new_bindings)
+                        yield cls(
+                            world,
+                            world.resource_manager.get_resource(SimDateTime).copy(),
+                            new_bindings,
+                        )
 
                     # Check if there is any history to backtrack through.
                     # Return if not
@@ -643,7 +669,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
         try:
             return next(cls.generate(world, bindings))
-        except:
+        except StopIteration:
             return None
 
 

@@ -1,7 +1,11 @@
-import pathlib
+"""Talk of the Town business spawn table
+
+Spawn table information for business types in Talk of the Town.
+
+"""
+
 from typing import Any
 
-from neighborly.plugins.defaults.create_town import CreateDefaultSettlementSystem
 from neighborly.simulation import Neighborly, PluginInfo
 
 plugin_info = PluginInfo(
@@ -12,6 +16,9 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly, **kwargs: Any) -> None:
-    sim.world.get_system(CreateDefaultSettlementSystem).load_spawn_table(
-        "businesses", pathlib.Path(__file__).parent / "business_spawn_table.csv"
-    )
+    # sim.world.system_manager.get_system(
+    #     CreateDefaultSettlementSystem
+    # ).additional_business_tables.append(
+    #     pathlib.Path(__file__).parent / "business_spawn_table.csv"
+    # )
+    pass

@@ -1,0 +1,14 @@
+{
+  "name": "Emperor",
+  "components": {
+    "Name": {
+      "value": "Emperor"
+    },
+    "SocialEconomicLevel": {
+      "level": 5
+    },
+    "Description": {
+      "description": "This person rules all of Japan."
+    }
+  }
+}

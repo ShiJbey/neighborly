@@ -1,0 +1,14 @@
+{
+  "name": "Scholar",
+  "components": {
+    "Name": {
+      "value": "Scholar"
+    },
+    "SocialEconomicLevel": {
+      "level": 4
+    },
+    "Description": {
+      "description": "This person devotes themselves to scholastic pursuits."
+    }
+  }
+}

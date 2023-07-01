@@ -115,7 +115,7 @@ def add_status(gameobject: GameObject, status: StatusComponent) -> None:
         The status to add.
     """
     gameobject.get_component(StatusManager).add(type(status))
-    status.set_created(gameobject.world.get_resource(SimDateTime))
+    status.set_created(gameobject.world.resource_manager.get_resource(SimDateTime))
     gameobject.add_component(status)
 
 

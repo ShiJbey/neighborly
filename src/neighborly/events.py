@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from neighborly.components.character import LifeStageType
-from neighborly.core.ecs import Event, GameObject
+from neighborly.core.ecs import Event, GameObject, World
 from neighborly.core.life_event import EventRole, LifeEvent
 from neighborly.core.time import SimDateTime
 
@@ -11,11 +11,13 @@ from neighborly.core.time import SimDateTime
 class JoinSettlementEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         settlement: GameObject,
         character: GameObject,
     ) -> None:
         super().__init__(
+            world,
             date,
             [EventRole("Settlement", settlement), EventRole("Character", character)],
         )
@@ -31,9 +33,14 @@ class JoinSettlementEvent(LifeEvent):
 
 class LeaveSettlementEvent(LifeEvent):
     def __init__(
-        self, date: SimDateTime, settlement: GameObject, character: GameObject
+        self,
+        world: World,
+        date: SimDateTime,
+        settlement: GameObject,
+        character: GameObject,
     ) -> None:
         super().__init__(
+            world,
             date,
             [EventRole("Settlement", settlement), EventRole("Character", character)],
         )
@@ -50,11 +57,12 @@ class LeaveSettlementEvent(LifeEvent):
 class DepartEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         characters: List[GameObject],
         reason: Optional[LifeEvent] = None,
     ) -> None:
-        super().__init__(date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date, [EventRole("Character", c) for c in characters])
         self.reason = reason
 
     @property
@@ -70,9 +78,14 @@ class DepartEvent(LifeEvent):
 
 class MoveResidenceEvent(LifeEvent):
     def __init__(
-        self, date: SimDateTime, residence: GameObject, *characters: GameObject
+        self,
+        world: World,
+        date: SimDateTime,
+        residence: GameObject,
+        *characters: GameObject,
     ) -> None:
         super().__init__(
+            world,
             date,
             [
                 EventRole("Residence", residence),
@@ -90,8 +103,8 @@ class MoveResidenceEvent(LifeEvent):
 
 
 class BusinessClosedEvent(LifeEvent):
-    def __init__(self, date: SimDateTime, business: GameObject) -> None:
-        super().__init__(date, [EventRole("Business", business)])
+    def __init__(self, world: World, date: SimDateTime, business: GameObject) -> None:
+        super().__init__(world, date, [EventRole("Business", business)])
 
     @property
     def business(self):
@@ -99,8 +112,8 @@ class BusinessClosedEvent(LifeEvent):
 
 
 class BirthEvent(LifeEvent):
-    def __init__(self, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(date, [EventRole("Character", character)])
+    def __init__(self, world: World, date: SimDateTime, character: GameObject) -> None:
+        super().__init__(world, date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -110,12 +123,14 @@ class BirthEvent(LifeEvent):
 class GiveBirthEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         birthing_parent: GameObject,
         other_parent: GameObject,
         baby: GameObject,
     ) -> None:
         super().__init__(
+            world,
             date,
             [
                 EventRole("BirthingParent", birthing_parent),
@@ -140,12 +155,14 @@ class GiveBirthEvent(LifeEvent):
 class StartJobEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
         occupation: GameObject,
     ) -> None:
         super().__init__(
+            world,
             date,
             [
                 EventRole("Character", character),
@@ -170,6 +187,7 @@ class StartJobEvent(LifeEvent):
 class EndJobEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
@@ -177,6 +195,7 @@ class EndJobEvent(LifeEvent):
         reason: Optional[LifeEvent] = None,
     ) -> None:
         super().__init__(
+            world,
             date,
             [
                 EventRole("Character", character),
@@ -215,10 +234,11 @@ class EndJobEvent(LifeEvent):
 class MarriageEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -228,10 +248,11 @@ class MarriageEvent(LifeEvent):
 class DivorceEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -241,10 +262,11 @@ class DivorceEvent(LifeEvent):
 class StartDatingEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -254,10 +276,11 @@ class StartDatingEvent(LifeEvent):
 class BreakUpEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -267,12 +290,14 @@ class BreakUpEvent(LifeEvent):
 class StartBusinessEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
         occupation: GameObject,
     ) -> None:
         super().__init__(
+            world,
             date,
             [
                 EventRole("Character", character),
@@ -297,10 +322,11 @@ class StartBusinessEvent(LifeEvent):
 class BusinessOpenEvent(LifeEvent):
     def __init__(
         self,
+        world,
         date: SimDateTime,
         business: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Business", business)])
+        super().__init__(world, date, [EventRole("Business", business)])
 
     @property
     def business(self):
@@ -315,9 +341,11 @@ class SettlementCreatedEvent(Event):
 
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         settlement: GameObject,
     ) -> None:
+        super().__init__(world)
         self._timestamp = date.copy()
         self._settlement = settlement
 
@@ -335,10 +363,11 @@ class CharacterCreatedEvent(Event):
 
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__()
+        super().__init__(world)
         self._character = character
         self._timestamp = date
 
@@ -356,12 +385,13 @@ class CharacterNameChangeEvent(Event):
 
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
         first_name: str,
         last_name: str,
     ) -> None:
-        super().__init__()
+        super().__init__(world)
         self._character = character
         self._timestamp = date
         self._first_name = first_name
@@ -389,12 +419,13 @@ class CharacterAgeChangeEvent(Event):
 
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
         age: float,
         life_stage: LifeStageType,
     ) -> None:
-        super().__init__()
+        super().__init__(world)
         self._character = character
         self._timestamp = date
         self._age = age
@@ -420,10 +451,11 @@ class CharacterAgeChangeEvent(Event):
 class NewBusinessEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         business: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Business", business)])
+        super().__init__(world, date, [EventRole("Business", business)])
 
     @property
     def business(self):
@@ -441,10 +473,11 @@ class ResidenceCreatedEvent(Event):
 
     def __init__(
         self,
+        world: World,
         timestamp: SimDateTime,
         residence: GameObject,
     ) -> None:
-        super().__init__()
+        super().__init__(world)
         self._timestamp = timestamp.copy()
         self._residence = residence
 
@@ -460,10 +493,11 @@ class ResidenceCreatedEvent(Event):
 class BecomeAdolescentEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", character)])
+        super().__init__(world, date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -473,10 +507,11 @@ class BecomeAdolescentEvent(LifeEvent):
 class BecomeYoungAdultEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", character)])
+        super().__init__(world, date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -486,10 +521,11 @@ class BecomeYoungAdultEvent(LifeEvent):
 class BecomeAdultEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", character)])
+        super().__init__(world, date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -499,10 +535,11 @@ class BecomeAdultEvent(LifeEvent):
 class BecomeSeniorEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", character)])
+        super().__init__(world, date, [EventRole("Character", character)])
 
     @property
     def character(self):
@@ -512,12 +549,14 @@ class BecomeSeniorEvent(LifeEvent):
 class RetirementEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
         occupation: GameObject,
     ) -> None:
         super().__init__(
+            world,
             date,
             [
                 EventRole("Character", character),
@@ -542,10 +581,11 @@ class RetirementEvent(LifeEvent):
 class DeathEvent(LifeEvent):
     def __init__(
         self,
+        world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(date, [EventRole("Character", character)])
+        super().__init__(world, date, [EventRole("Character", character)])
 
     @property
     def character(self):
