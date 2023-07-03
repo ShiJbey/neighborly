@@ -27,6 +27,7 @@ from abc import ABC, abstractmethod
 from typing import (
     Any,
     Dict,
+    Iterable,
     Iterator,
     List,
     Optional,
@@ -38,7 +39,6 @@ from typing import (
     Union,
     cast,
     overload,
-    Iterable,
 )
 
 import esper
@@ -651,7 +651,7 @@ class ISystem(ABC):
         Parameters
         ----------
         value
-            The new activity status.
+            The new active status.
         """
         self._active = value
 
@@ -820,7 +820,9 @@ class SystemManager(SystemGroup):
         while stack:
             current_sys = stack.pop()
 
-            if isinstance(current_sys, system_group):
+            if type(current_sys) == system_group and isinstance(
+                current_sys, SystemGroup
+            ):
                 current_sys.add_child(system)
                 system.on_create(self.world)
                 return
@@ -1245,9 +1247,7 @@ class GameObjectManager:
         "_prefabs",
         "_component_metadata",
         "_component_data",
-        "_component_factories",
         "_gameobjects",
-        "_component_metadata",
         "_dead_gameobjects",
     )
 
@@ -1274,7 +1274,6 @@ class GameObjectManager:
         self._prefabs = {}
         self._component_metadata = {}
         self._component_metadata = {}
-        self._component_factories = {}
         self._gameobjects = {}
         self._component_data = esper.World()
         self._dead_gameobjects = OrderedSet([])
@@ -1302,7 +1301,7 @@ class GameObjectManager:
         GameObject
             The created GameObject.
         """
-        components_to_add = components if components else []
+        components_to_add: Iterable[Component] = components if components else []
 
         entity_id = self.component_data.create_entity()
 
@@ -1730,8 +1729,29 @@ class GameObjectManager:
             ),
         )
 
-        self._component_factories[component_type] = (
-            factory if factory is not None else DefaultComponentFactory(component_type)
+    def create_component(
+        self, component_type: Union[str, Type[_CT]], **kwargs: Any
+    ) -> _CT:
+        """Register a component class type with the engine.
+
+        Parameters
+        ----------
+        component_type
+            The class of the component.
+        **kwargs
+            Keyword arguments to pass to the component's factory
+        """
+        component_name = (
+            component_type
+            if isinstance(component_type, str)
+            else component_type.__name__
+        )
+
+        return cast(
+            _CT,
+            self._component_metadata[component_name].factory.create(
+                self.world, **kwargs
+            ),
         )
 
 
@@ -1868,13 +1888,6 @@ class World:
             Type[_T8],
         ],
     ) -> List[Tuple[int, Tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]]:
-        ...
-
-    @overload
-    def get_components(
-        self,
-        component_types: Tuple[Type[Component], ...],
-    ) -> List[Tuple[int, Tuple[Component, ...]]]:
         ...
 
     def get_components(

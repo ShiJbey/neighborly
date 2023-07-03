@@ -10,16 +10,14 @@ from neighborly.components.business import (
     Business,
     JobRequirementLibrary,
     JobRequirementParser,
+    register_service_type,
+    ServiceLibrary,
+    Services,
 )
 from neighborly.components.character import GameCharacter, Gender, GenderType
 from neighborly.components.shared import Age
-from neighborly.core.ecs import (
-    Component,
-    GameObjectPrefab,
-    GameObject,
-)
-from neighborly.core.time import Weekday
-from neighborly.factories import OperatingHoursFactory
+from neighborly.core.ecs import Component, GameObject, GameObjectPrefab
+from neighborly.factories.business import ServicesFactory
 from neighborly.plugins.talktown.school import CollegeGraduate
 from neighborly.simulation import Neighborly
 
@@ -29,7 +27,7 @@ def test_construct_business():
 
     sim = Neighborly()
 
-    sim.world.resource_manager.get_resource(GameObjectFactory).update(
+    sim.world.gameobject_manager.add_prefab(
         GameObjectPrefab(
             name="Restaurant",
             components={
@@ -47,77 +45,12 @@ def test_construct_business():
         )
     )
 
-    restaurant = sim.world.resource_manager.get_resource(GameObjectFactory).instantiate(
-        sim.world, "Restaurant"
-    )
+    restaurant = sim.world.gameobject_manager.instantiate_prefab("Restaurant")
     restaurant_business = restaurant.get_component(Business)
 
     assert restaurant_business.owner_type == "Proprietor"
     assert restaurant_business.owner is None
     assert restaurant_business.needs_owner() is True
-
-
-def test_parse_operating_hours_str():
-    parse_operating_hour_str = OperatingHoursFactory.parse_operating_hour_str
-
-    # Time Interval
-    assert parse_operating_hour_str("00-11")[Weekday.Sunday] == (0, 11)
-    assert parse_operating_hour_str("0-11")[Weekday.Monday] == (0, 11)
-    assert parse_operating_hour_str("2-17")[Weekday.Tuesday] == (2, 17)
-    assert parse_operating_hour_str("00-23")[Weekday.Wednesday] == (0, 23)
-    assert parse_operating_hour_str("21-04")[Weekday.Thursday] == (21, 4)
-    assert parse_operating_hour_str("23-06")[Weekday.Friday] == (23, 6)
-    assert parse_operating_hour_str("23-5")[Weekday.Saturday] == (23, 5)
-
-    # Time Interval Alias
-    assert parse_operating_hour_str("day")[Weekday.Sunday] == (8, 11)
-    assert parse_operating_hour_str("day")[Weekday.Monday] == (8, 11)
-    assert parse_operating_hour_str("day")[Weekday.Tuesday] == (8, 11)
-    assert parse_operating_hour_str("day")[Weekday.Wednesday] == (8, 11)
-    assert parse_operating_hour_str("day")[Weekday.Thursday] == (8, 11)
-    assert parse_operating_hour_str("day")[Weekday.Friday] == (8, 11)
-    assert parse_operating_hour_str("day")[Weekday.Saturday] == (8, 11)
-
-    # Days + Time Interval
-    assert parse_operating_hour_str("MT: 08-11")[Weekday.Monday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("MT: 08-11")[Weekday.Wednesday] == (8, 11)
-
-    assert parse_operating_hour_str("WMF: 8-11")[Weekday.Friday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("MWF: 8-11")[Weekday.Tuesday] == (8, 11)
-
-    assert parse_operating_hour_str("SU: 08 - 11")[Weekday.Sunday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("SU: 8 - 11")[Weekday.Friday] == (8, 11)
-
-    assert parse_operating_hour_str("US: 08 - 11")[Weekday.Sunday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("SU: 8-11")[Weekday.Friday] == (8, 11)
-
-    # Days + Time Interval Alias
-    assert parse_operating_hour_str("MT: day")[Weekday.Monday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("MT: day")[Weekday.Wednesday] == (8, 11)
-
-    assert parse_operating_hour_str("WMF: day")[Weekday.Friday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("MWF: day")[Weekday.Tuesday] == (8, 11)
-
-    assert parse_operating_hour_str("SU: day")[Weekday.Sunday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("SU: day")[Weekday.Friday] == (8, 11)
-
-    assert parse_operating_hour_str("US: day")[Weekday.Sunday] == (8, 11)
-    with pytest.raises(KeyError):
-        assert parse_operating_hour_str("SU: day")[Weekday.Friday] == (8, 11)
-
-    # Invalid values
-    with pytest.raises(ValueError):
-        parse_operating_hour_str("MONDAY")
-        parse_operating_hour_str("MONDAY: day")
-        parse_operating_hour_str("day - night")
-        parse_operating_hour_str("M: 9 - 24")
 
 
 def has_last_name(gameobject: GameObject, *args: Any):
@@ -231,3 +164,134 @@ def test_parse_job_requirements():
     assert rule(kieth) is False
     assert rule(percy) is True
     assert rule(dolph) is True
+
+
+# Create prefabs for service  types
+RUNNING = GameObjectPrefab(
+    name="Running", components={"ServiceType": {}, "Name": {"value": "Running"}}
+)
+EATING = GameObjectPrefab(
+    name="Eating", components={"ServiceType": {}, "Name": {"value": "Eating"}}
+)
+DRINKING = GameObjectPrefab(
+    name="Drinking", components={"ServiceType": {}, "Name": {"value": "Drinking"}}
+)
+SOCIALIZING = GameObjectPrefab(
+    name="Socializing",
+    components={"ServiceType": {}, "Name": {"value": "Socializing"}},
+)
+SHOPPING = GameObjectPrefab(
+    name="Shopping",
+    components={"ServiceType": {}, "Name": {"value": "Shopping"}},
+)
+
+
+def test_register_service_type() -> None:
+    """
+    This test ensures that service type prefabs are properly loaded into the
+    world's GameObject manager.
+    """
+    sim = Neighborly()
+
+    register_service_type(sim.world, RUNNING)
+    register_service_type(sim.world, EATING)
+    register_service_type(sim.world, DRINKING)
+
+    assert sim.world.gameobject_manager.get_prefab("Running") == RUNNING
+    assert sim.world.gameobject_manager.get_prefab("Eating") == EATING
+    assert sim.world.gameobject_manager.get_prefab("Drinking") == DRINKING
+
+
+def test_instantiate_services_system() -> None:
+    """
+    This test ensures that the service types are properly constructed at
+    the beginning of the first call to step() as part of its
+    Initialization system group.
+    """
+
+    sim = Neighborly()
+    service_library = sim.world.resource_manager.get_resource(ServiceLibrary)
+
+    register_service_type(sim.world, RUNNING)
+    register_service_type(sim.world, EATING)
+    register_service_type(sim.world, DRINKING)
+
+    # All services are instantiated at the beginning of the first simulation step
+    sim.step()
+
+    assert service_library.get("Running").name == "Running"
+    assert service_library.get("Eating").name == "Eating"
+    assert service_library.get("Drinking").name == "Drinking"
+
+    with pytest.raises(KeyError):
+        assert service_library.get("Socializing")
+
+
+def test_services_factory() -> None:
+    """
+    This test ensures that the ServicesFactory class successfully constructs new
+    Services classes.
+
+    We have to construct the instances after calling sim.step() because ServiceType
+    GameObject instances are not constructed until the world's InitializationSystemGroup
+    runs.
+    """
+    sim = Neighborly()
+
+    service_library = sim.world.resource_manager.get_resource(ServiceLibrary)
+
+    register_service_type(sim.world, RUNNING)
+    register_service_type(sim.world, EATING)
+    register_service_type(sim.world, DRINKING)
+    register_service_type(sim.world, SOCIALIZING)
+
+    # All service types are instantiated at the beginning of the first simulation step
+    sim.step()
+
+    # Get references to the constructed instances
+    running_type = service_library.get("Running")
+    socializing_type = service_library.get("Socializing")
+    drinking_type = service_library.get("Drinking")
+
+    factory = ServicesFactory()
+
+    services_component: Services = factory.create(
+        sim.world, services=["Running", "Socializing"]
+    )
+
+    assert running_type in services_component
+    assert socializing_type in services_component
+    assert drinking_type not in services_component
+
+
+def test_services_contains() -> None:
+    sim = Neighborly()
+
+    register_service_type(sim.world, RUNNING)
+    register_service_type(sim.world, EATING)
+    register_service_type(sim.world, DRINKING)
+    register_service_type(sim.world, SOCIALIZING)
+    register_service_type(sim.world, SHOPPING)
+
+    sim.step()
+
+    service_library = sim.world.resource_manager.get_resource(ServiceLibrary)
+
+    drinking = service_library.get("Drinking")
+    eating = service_library.get("Eating")
+    running = service_library.get("Running")
+    shopping = service_library.get("Shopping")
+    socializing = service_library.get("Socializing")
+
+    services_component = Services(
+        {
+            drinking,
+            eating,
+            running,
+        }
+    )
+
+    assert drinking in services_component
+    assert eating in services_component
+    assert shopping not in services_component
+    assert socializing not in services_component

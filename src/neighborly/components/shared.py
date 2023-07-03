@@ -1,9 +1,13 @@
+"""Components definitions used by multiple types of GameObjects.
+
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Iterator, Optional
 
-from ordered_set import OrderedSet  # type: ignore
+from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.status import StatusComponent
@@ -378,7 +382,7 @@ class PrefabName(Component, ISerializable):
         return {"prefab": self.prefab}
 
 
-class Description(Component):
+class Description(Component, ISerializable):
     """A text description for a GameObject"""
 
     __slots__ = "_description"
@@ -398,6 +402,9 @@ class Description(Component):
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.value})"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"value": self.value}
 
 
 class OwnedBy(Component, ISerializable):

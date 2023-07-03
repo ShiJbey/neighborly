@@ -1,6 +1,6 @@
 from ordered_set import OrderedSet  # type: ignore
 
-from neighborly.core.ecs import Component
+from neighborly.core.ecs import Component, GameObject
 
 
 class ApartmentComplex(Component):
@@ -295,15 +295,18 @@ class School(Component):
 
     __slots__ = "students"
 
+    students: OrderedSet[GameObject]
+    """Set of student roles associated with this school."""
+
     def __init__(self) -> None:
         super().__init__()
-        self.students: OrderedSet[int] = OrderedSet([])
+        self.students = OrderedSet([])
 
-    def add_student(self, student: int) -> None:
+    def add_student(self, student: GameObject) -> None:
         """Add student to the school"""
         self.students.add(student)
 
-    def remove_student(self, student: int) -> None:
+    def remove_student(self, student: GameObject) -> None:
         """Remove student from the school"""
         self.students.add(student)
 

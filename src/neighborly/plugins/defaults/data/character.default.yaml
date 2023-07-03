@@ -19,16 +19,17 @@ components:
     max_children_at_spawn: 3
     child_prefabs:
       - "character::default::.*"
-  RelationshipManager: { }
-  Virtues: { }
-  CanAge: { }
-  StatusManager: { }
-  FrequentedLocations: { }
-  AIBrain: { }
-  Goals: { }
-  EventHistory: { }
-  Age: { }
+  RelationshipManager: {}
+  Virtues: {}
+  CanAge: {}
+  StatusManager: {}
+  FrequentedLocations: {}
+  AIBrain: {}
+  Goals: {}
+  EventHistory: {}
+  Age: {}
   Gender:
     gender: NotSpecified
   LifeStage:
     life_stage: Adult
+  RoleTracker: {}

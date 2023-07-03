@@ -251,7 +251,7 @@ class WithClause:
         results = list(
             map(
                 lambda result: (result[0],),
-                ctx.world.get_components(self.component_types),
+                ctx.world.get_components(self.component_types),  # type: ignore
             )
         )
 

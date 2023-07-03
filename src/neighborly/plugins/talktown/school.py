@@ -1,15 +1,57 @@
-from typing import List
+import random
+from typing import Any, Dict, List
 
-from neighborly.components.character import GameCharacter, LifeStage, LifeStageType
-from neighborly.core.ecs import Active, GameObject, ISystem, World
+from neighborly.components.character import (
+    GameCharacter,
+    LifeStage,
+    LifeStageType,
+)
+from neighborly.components.role import (
+    IsRole,
+    get_roles_with_components,
+    add_role,
+    remove_role,
+)
+from neighborly.components.shared import (
+    CurrentSettlement,
+    FrequentedBy,
+    FrequentedLocations,
+    Name,
+    OwnedBy,
+)
+from neighborly.core.ecs import (
+    Active,
+    Component,
+    GameObject,
+    ISerializable,
+    ISystem,
+    SystemGroup,
+    World,
+)
 from neighborly.core.life_event import EventRole, LifeEvent
-from neighborly.core.status import StatusComponent, add_status, remove_status
+from neighborly.core.settlement import Settlement
+from neighborly.core.status import StatusComponent
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.talktown.business_components import School
 
 
-class Student(StatusComponent):
-    pass
+class Student(Component, ISerializable):
+    """Component attached to a role that identifies the role owner as a student."""
+
+    __slots__ = "school"
+
+    def __init__(self, school: GameObject) -> None:
+        super().__init__()
+        self.school = school
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(school: {self.school.name})"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"school": self.school.uid}
 
 
 class CollegeGraduate(StatusComponent):
@@ -17,70 +59,146 @@ class CollegeGraduate(StatusComponent):
 
 
 class EnrolledInSchoolEvent(LifeEvent):
-    def __init__(self, world: World, date: SimDateTime, character: GameObject) -> None:
+    def __init__(
+        self, world: World, date: SimDateTime, character: GameObject, school: GameObject
+    ) -> None:
         super().__init__(
             world,
             date,
-            [EventRole("Character", character)],
+            [EventRole("Character", character), EventRole("School", school)],
         )
 
 
 class GraduatedFromSchoolEvent(LifeEvent):
-    def __init__(self, world: World, date: SimDateTime, character: GameObject) -> None:
+    def __init__(
+        self, world: World, date: SimDateTime, character: GameObject, school: GameObject
+    ) -> None:
         super().__init__(
             world,
             date,
-            [EventRole("Character", character)],
+            [EventRole("Character", character), EventRole("School", school)],
         )
 
 
-class SchoolSystem(ISystem):
-    """Enrolls new students and graduates old students"""
+class EnrollInSchoolSystem(ISystem):
+    """Enrolls children and adolescents as new students in schools."""
 
     @staticmethod
-    def get_unenrolled_students(world: World) -> List[GameObject]:
-        candidates = [
-            world.gameobject_manager.get_gameobject(res[0])
-            for res in world.get_components((GameCharacter, Active, LifeStage))
-        ]
+    def get_schools_in_settlement(settlement: GameObject) -> List[GameObject]:
+        """Find all schools within a settlement.
 
-        candidates = [
-            c
-            for c in candidates
-            if c.get_component(LifeStage).life_stage <= LifeStageType.Adolescent
-            and not c.has_component(Student)
-        ]
+        Parameters
+        ----------
+        settlement
+            The settlement to check.
 
-        return candidates
+        Returns
+        -------
+        List[GameObject]
+            A list of all schools in the settlement.
+        """
+        settlement_comp = settlement.get_component(Settlement)
 
-    @staticmethod
-    def get_adult_students(world: World) -> List[GameObject]:
-        candidates = [
-            world.gameobject_manager.get_gameobject(res[0])
-            for res in world.get_components((GameCharacter, Active, Student, LifeStage))
-        ]
+        schools: List[GameObject] = []
 
-        candidates = [
-            c
-            for c in candidates
-            if c.get_component(LifeStage).life_stage >= LifeStageType.YoungAdult
-        ]
+        for entry in settlement_comp.businesses:
+            if entry.has_components(Active, School):
+                schools.append(entry)
 
-        return candidates
+        return schools
 
     def on_update(self, world: World) -> None:
-        date = world.resource_manager.get_resource(SimDateTime)
+        # Cache the lists of schools per settlement to reduce lookups
+        school_list_cache: Dict[GameObject, List[GameObject]] = {}
 
-        for _, school in world.get_component(School):
-            for character in self.get_unenrolled_students(world):
-                school.add_student(character.uid)
-                add_status(character, Student())
-                event = EnrolledInSchoolEvent(world, date, character)
-                world.event_manager.dispatch_event(event)
+        rng = world.resource_manager.get_resource(random.Random)
 
-            # Graduate young adults
-            for character in self.get_adult_students(world):
-                school.remove_student(character.uid)
-                remove_status(character, Student)
-                event = GraduatedFromSchoolEvent(world, date, character)
-                world.event_manager.dispatch_event(event)
+        current_date = world.resource_manager.get_resource(SimDateTime)
+
+        for guid, (_, _, life_stage, current_settlement) in world.get_components(
+            (GameCharacter, Active, LifeStage, CurrentSettlement)
+        ):
+            # Reject anyone older than teenage
+            if life_stage.life_stage > LifeStageType.Adolescent:
+                continue
+
+            # Reject people who are already students
+            if (
+                len(
+                    get_roles_with_components(
+                        world.gameobject_manager.get_gameobject(guid), Student
+                    )
+                )
+                > 0
+            ):
+                continue
+
+            # Choose a school in the settlement to enroll into
+            if current_settlement.settlement in school_list_cache:
+                school_choices = school_list_cache[current_settlement.settlement]
+            else:
+                school_choices = EnrollInSchoolSystem.get_schools_in_settlement(
+                    current_settlement.settlement
+                )
+                school_list_cache[current_settlement.settlement] = school_choices
+
+            if school_choices:
+                chosen_school = rng.choice(school_choices)
+                new_student = world.gameobject_manager.get_gameobject(guid)
+
+                student_role = world.gameobject_manager.spawn_gameobject(
+                    components=[
+                        Name("Student"),
+                        IsRole(),
+                        Student(chosen_school),
+                        OwnedBy(new_student),
+                    ],
+                    name=f"Student @ {chosen_school.get_component(Name).value}",
+                )
+
+                chosen_school.get_component(School).add_student(student_role)
+
+                add_role(new_student, student_role)
+
+                new_student.get_component(FrequentedLocations).add(chosen_school)
+                chosen_school.get_component(FrequentedBy).add(new_student)
+
+                event = EnrolledInSchoolEvent(
+                    world, current_date, new_student, chosen_school
+                )
+
+                event.dispatch()
+
+
+class GraduateAdultStudentsSystem(ISystem):
+    """Graduates all the enrolled students who are now adults."""
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resource_manager.get_resource(SimDateTime)
+
+        for guid, (school,) in world.get_components((School,)):
+            school_obj = world.gameobject_manager.get_gameobject(guid)
+            for student_role in school.students:
+                student = student_role.get_component(OwnedBy).owner
+
+                if (
+                    student.get_component(LifeStage).life_stage
+                    >= LifeStageType.YoungAdult
+                ):
+                    school.remove_student(student_role)
+                    remove_role(student, student_role)
+                    student_role.destroy()
+
+                    student.get_component(FrequentedLocations).remove(school_obj)
+                    school_obj.get_component(FrequentedBy).remove(student)
+
+                    event = GraduatedFromSchoolEvent(
+                        world, current_date, student, school_obj
+                    )
+                    world.event_manager.dispatch_event(event)
+
+
+class SchoolSystemGroup(SystemGroup):
+    """Groups systems related to characters going to school."""
+
+    pass

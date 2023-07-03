@@ -7,10 +7,16 @@ from neighborly.core.time import SimDateTime
 
 class PriceDisputeEvent(LifeEvent):
     def __init__(
-        self, date: SimDateTime, merchant: GameObject, customer: GameObject
+        self,
+        world: World,
+        date: SimDateTime,
+        merchant: GameObject,
+        customer: GameObject,
     ) -> None:
         super().__init__(
-            date, [EventRole("Merchant", merchant), EventRole("Customer", customer)]
+            world,
+            date,
+            [EventRole("Merchant", merchant), EventRole("Customer", customer)],
         )
 
     @property
@@ -23,8 +29,10 @@ class PriceDisputeEvent(LifeEvent):
 
 
 class DeclareRivalryEvent(LifeEvent):
-    def __init__(self, date: SimDateTime, *characters: GameObject) -> None:
-        super().__init__(date, [EventRole("Character", c) for c in characters])
+    def __init__(
+        self, world: World, date: SimDateTime, *characters: GameObject
+    ) -> None:
+        super().__init__(world, date, [EventRole("Character", c) for c in characters])
 
     @property
     def characters(self):
@@ -34,10 +42,10 @@ class DeclareRivalryEvent(LifeEvent):
 @pytest.fixture
 def sample_event():
     world = World()
-    merchant = world.spawn_gameobject(name="Merchant")
-    customer = world.spawn_gameobject(name="customer")
+    merchant = world.gameobject_manager.spawn_gameobject(name="Merchant")
+    customer = world.gameobject_manager.spawn_gameobject(name="customer")
 
-    return PriceDisputeEvent(SimDateTime(1, 1, 1), merchant, customer)
+    return PriceDisputeEvent(world, SimDateTime(1, 1, 1), merchant, customer)
 
 
 @pytest.fixture
@@ -46,7 +54,7 @@ def shared_role_event():
     character_a = world.gameobject_manager.spawn_gameobject(name="A")
     character_b = world.gameobject_manager.spawn_gameobject(name="B")
 
-    return DeclareRivalryEvent(SimDateTime(1, 1, 1), character_a, character_b)
+    return DeclareRivalryEvent(world, SimDateTime(1, 1, 1), character_a, character_b)
 
 
 def test_life_event_to_dict(sample_event: LifeEvent):

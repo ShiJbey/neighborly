@@ -1,31 +1,55 @@
 import pathlib
-from typing import Any
+from typing import Any, Dict, List
 
-from neighborly.loaders import (
-    load_activities,
-    load_occupation_types,
-    load_prefabs,
-    load_services,
-)
+import pandas as pd
+
+from neighborly.loaders import load_occupation_types, load_prefabs
 from neighborly.plugins.talktown import business_components
 from neighborly.plugins.talktown.personality import (
     BigFivePersonality,
     BigFivePersonalityFactory,
 )
-from neighborly.plugins.talktown.school import CollegeGraduate, SchoolSystem, Student
+from neighborly.plugins.talktown.school import (
+    CollegeGraduate,
+    EnrollInSchoolSystem,
+    GraduateAdultStudentsSystem,
+    SchoolSystemGroup,
+    Student,
+)
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.systems import EarlyUpdateSystemGroup
 
 plugin_info = PluginInfo(
-    name="Talk of the Town",
+    name="Talk of the Town Plugin",
     plugin_id="default.talktown",
     version="0.1.0",
 )
 
 
+def _load_business_spawn_table_info(sim: Neighborly, filepath: pathlib.Path) -> None:
+    """Loads business spawn table entries from a *.csv file."""
+    entries: List[Dict[str, Any]] = []
+
+    df: pd.DataFrame = pd.read_csv(filepath)  # type: ignore
+
+    for _, row in df.iterrows():  # type: ignore
+        entries.append({**row})
+
+    # Add this to the simulation config
+    business_spawn_table = sim.config.settings.get("business_spawn_table", [])
+    business_spawn_table.extend(entries)
+    sim.config.settings["business_spawn_table"] = business_spawn_table
+
+
 def setup(sim: Neighborly, **kwargs: Any) -> None:
     sim.world.system_manager.add_system(
-        SchoolSystem(), system_group=EarlyUpdateSystemGroup
+        SchoolSystemGroup(), system_group=EarlyUpdateSystemGroup
+    )
+    sim.world.system_manager.add_system(
+        EnrollInSchoolSystem(), system_group=SchoolSystemGroup
+    )
+    sim.world.system_manager.add_system(
+        GraduateAdultStudentsSystem(), system_group=SchoolSystemGroup
     )
 
     # Register student component for school system
@@ -36,10 +60,6 @@ def setup(sim: Neighborly, **kwargs: Any) -> None:
     sim.world.gameobject_manager.register_component(
         BigFivePersonality, factory=BigFivePersonalityFactory()
     )
-
-    # Load Services and Activities
-    load_services(sim.world, pathlib.Path(__file__).parent / "services.yaml")
-    load_activities(sim.world, pathlib.Path(__file__).parent / "activities.yaml")
 
     # Register Business components
     sim.world.gameobject_manager.register_component(
@@ -111,3 +131,6 @@ def setup(sim: Neighborly, **kwargs: Any) -> None:
     # Load remaining data from data files
     load_occupation_types(sim.world, pathlib.Path(__file__).parent / "occupations.yaml")
     load_prefabs(sim.world, pathlib.Path(__file__).parent / "businesses.yaml")
+    _load_business_spawn_table_info(
+        sim, pathlib.Path(__file__).parent / "business_spawn_table.csv"
+    )

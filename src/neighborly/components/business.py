@@ -1,3 +1,7 @@
+"""Components for businesses and business-related relationship statuses.
+
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,6 +22,7 @@ import pyparsing as pp
 from ordered_set import OrderedSet
 from pyparsing import pyparsing_common as ppc
 
+from neighborly.components.shared import Name
 from neighborly.core.ecs import (
     Component,
     GameObjectPrefab,
@@ -29,7 +34,7 @@ from neighborly.core.ecs import (
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
-from neighborly.core.time import SimDateTime, Weekday
+from neighborly.core.time import SimDateTime
 
 
 class Occupation(Component, ISerializable):
@@ -249,7 +254,7 @@ class ServiceLibrary:
         Parameters
         ----------
         service
-            An activity type entity.
+            An service type GameObject.
         """
         self._service_types[service.name] = service
 
@@ -281,48 +286,21 @@ class OpenForBusiness(StatusComponent):
     pass
 
 
-class OperatingHours(Component, ISerializable):
-    """Defines when a business is open and closed."""
-
-    __slots__ = "_hours"
-
-    _hours: Dict[Weekday, Tuple[int, int]]
-    """Weekdays mapped to hour intervals."""
-
-    def __init__(self, hours: Dict[Weekday, Tuple[int, int]]) -> None:
-        """
-        Parameters
-        ----------
-        hours
-            Days of the week mapped to hour intervals that the business is open.
-        """
-        super().__init__()
-        self._hours = hours
-
-    @property
-    def operating_hours(self) -> Dict[Weekday, Tuple[int, int]]:
-        """The operating hours for the business."""
-        return self.operating_hours
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"hours": {str(day): list(hours) for day, hours in self._hours.items()}}
-
-
 class Business(Component, ISerializable):
     """Businesses are places where characters are employed."""
 
     __slots__ = ("_owner_type", "_employees", "_open_positions", "_owner")
 
     _owner_type: GameObject
-    """The name of the occupation that the business owner has."""
+    """The occupation type of the business owner."""
 
     _open_positions: Dict[GameObject, int]
-    """The names of occupations mapped to the number of open positions."""
+    """Occupation types mapped to the number of open positions."""
 
-    _employees: OrderedSet[GameObject]
-    """The GameObject IDs of employees mapped to their occupation's name."""
+    _employees: Dict[GameObject, GameObject]
+    """The Employee GameObjects mapped to their occupation roles."""
 
-    _owner: Optional[GameObject]
+    _owner: Optional[Tuple[GameObject, GameObject]]
     """The GameObjectID of the owner of this business."""
 
     def __init__(
@@ -344,13 +322,15 @@ class Business(Component, ISerializable):
         super().__init__()
         self._owner_type = owner_type
         self._open_positions = employee_types
-        self._employees = OrderedSet([])
+        self._employees = {}
         self._owner = None
 
     @property
     def owner(self) -> Optional[GameObject]:
         """The GameObject ID of the owner of the business."""
-        return self._owner
+        if self._owner:
+            return self._owner[0]
+        return None
 
     @property
     def owner_type(self) -> GameObject:
@@ -366,14 +346,14 @@ class Business(Component, ISerializable):
             },
             "employees": [
                 {
-                    "title": employee.get_component(Occupation).occupation_type.name,
+                    "title": role.get_component(Name).value,
                     "uid": employee.uid,
                 }
-                for employee in self._employees
+                for employee, role in self._employees.items()
             ],
             "owner": {
-                "title": self.owner_type.name,
-                "uid": self.owner.uid if self.owner is not None else -1,
+                "title": self._owner_type.get_component(Name).value,
+                "uid": self._owner[0].uid if self._owner else -1,
             },
         }
 
@@ -401,7 +381,7 @@ class Business(Component, ISerializable):
             if count > 0
         ]
 
-    def get_employees(self) -> List[GameObject]:
+    def iter_employees(self) -> Iterator[Tuple[GameObject, GameObject]]:
         """Get all current employees.
 
         Returns
@@ -409,30 +389,30 @@ class Business(Component, ISerializable):
         List[int]
             Returns the GameObject IDs of all employees of this business.
         """
-        return list(self._employees)
+        return self._employees.items().__iter__()
 
-    def set_owner(self, owner: Optional[GameObject]) -> None:
+    def set_owner(self, owner: Optional[Tuple[GameObject, GameObject]]) -> None:
         """Set the ID for the owner of the business.
 
         Parameters
         ----------
         owner
-            The GameObject ID of the new business owner.
+            An entry for the new owner and their role, or None if removing the owner.
         """
         self._owner = owner
 
-    def add_employee(self, employee: GameObject, position: GameObject) -> None:
+    def add_employee(self, employee: GameObject, role: GameObject) -> None:
         """Add employee and remove a vacant position.
 
         Parameters
         ----------
         employee
             The GameObject ID of the employee.
-        position
+        role
             The name of the employee's position.
         """
-        self._employees.add(employee)
-        self._open_positions[position] -= 1
+        self._employees[employee] = role
+        self._open_positions[role.get_component(Occupation).occupation_type] -= 1
 
     def remove_employee(self, employee: GameObject) -> None:
         """Remove an employee and vacate their position.
@@ -440,10 +420,26 @@ class Business(Component, ISerializable):
         Parameters
         ----------
         employee
-            The GameObject ID of an employee.
+            The GameObject representing an employee.
         """
-        self._employees.remove(employee)
-        self._open_positions[employee.get_component(Occupation).occupation_type] += 1
+        role = self._employees[employee]
+        self._open_positions[role.get_component(Occupation).occupation_type] += 1
+        del self._employees[employee]
+
+    def get_employee_role(self, employee: GameObject) -> GameObject:
+        """Get the occupation role associated with this employee.
+
+        Parameters
+        ----------
+        employee
+            The employee to get the role for
+
+        Returns
+        -------
+        GameObject
+            Their occupation role
+        """
+        return self._employees[employee]
 
     def __repr__(self) -> str:
         return "{}(owner={}, employees={}, openings={})".format(

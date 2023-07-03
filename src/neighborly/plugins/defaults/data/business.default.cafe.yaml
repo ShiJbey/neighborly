@@ -7,7 +7,7 @@ components:
     owner_type: Owner
     employee_types:
       Barista: 2
-  Activities:
-    activities:
+  Services:
+    services:
       - reading
       - socializing

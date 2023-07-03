@@ -106,14 +106,16 @@ class DemonKing(Component):
 def sample_world() -> World:
     world = World()
 
-    world.spawn_gameobject([Hero(), GameCharacter("Shi", ""), Age(28)])
-    world.spawn_gameobject(
+    world.gameobject_manager.spawn_gameobject(
+        [Hero(), GameCharacter("Shi", ""), Age(28)]
+    )
+    world.gameobject_manager.spawn_gameobject(
         [Hero(), GameCharacter("Astrid", ""), Gender("Female"), Retired(), Age(24)]
     )
-    world.spawn_gameobject(
+    world.gameobject_manager.spawn_gameobject(
         [DemonKing(), GameCharacter("Calvin", ""), Retired(), Age(22)]
     )
-    world.spawn_gameobject(
+    world.gameobject_manager.spawn_gameobject(
         [DemonKing(), GameCharacter("Palpatine", ""), Gender("NonBinary"), Age(128)]
     )
 

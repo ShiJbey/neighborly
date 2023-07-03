@@ -1,3 +1,7 @@
+"""Components for defining spawn tables for settlements.
+
+"""
+
 from __future__ import annotations
 
 import random

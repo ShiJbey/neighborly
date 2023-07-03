@@ -10,7 +10,7 @@
 - name: Bakery
   extends: TotT::business
   components:
-    Bakery: {}
+    Bakery: { }
     Business:
       owner_type: Baker
       employee_types:
@@ -25,7 +25,7 @@
 - name: Bank
   extends: TotT::business
   components:
-    Bank: {}
+    Bank: { }
     Business:
       owner_type: Banker
       employee_types:
@@ -45,7 +45,7 @@
 - name: Bar
   extends: TotT::business
   components:
-    Bar: {}
+    Bar: { }
     Business:
       owner_type: Owner
       employee_types:
@@ -53,24 +53,22 @@
         Manager: 1
     Name:
       value: Bar
-    Services:
-      services:
-        - errands
     Lifespan:
       value: 20
     Building:
       building_type: commercial
     OperatingHours:
       hours: evening
-    Activities:
-      activities:
+    Services:
+      services:
         - drinking
         - socializing
+        - errands
 
 - name: BarberShop
   extends: TotT::business
   components:
-    BarberShop: {}
+    BarberShop: { }
     Business:
       owner_type: Barber
       employees:
@@ -82,7 +80,7 @@
   extends: TotT::business
   max_instances: 1
   components:
-    BusDepot: {}
+    BusDepot: { }
     Business:
       owner_type: Owner
       employee_types:
@@ -95,7 +93,7 @@
   max_instances: 1
   min_population: 70
   components:
-    CarpentryCompany: {}
+    CarpentryCompany: { }
     Name:
       value: Carpentry Company
     Business:
@@ -108,7 +106,7 @@
   extends: TotT::business
   max_instance: 1
   components:
-    Cemetery: {}
+    Cemetery: { }
     Name:
       value: Cemetery
     Business:
@@ -119,11 +117,11 @@
 
 - name: CityHall
   extends: TotT::business
-  tags: [municipal]
+  tags: [ municipal ]
   max_instances: 1
   min_population: 100
   components:
-    CityHall: {}
+    CityHall: { }
     Business:
       owner_type: ""
       employee_types:
@@ -137,9 +135,9 @@
   extends: TotT::business
   max_instances: 2
   components:
-    ClothingStore: {}
+    ClothingStore: { }
     Services:
-      services: [shopping]
+      services: [ shopping ]
     Business:
       owner_type: "Clothier"
       employee_types:
@@ -154,7 +152,7 @@
   extends: TotT::business
   max_instances: 1
   components:
-    CoalMine: {}
+    CoalMine: { }
     Name:
       value: Coal Mine
     Business:
@@ -168,7 +166,7 @@
   max_instances: 2
   min_population: 80
   components:
-    ConstructionFirm: {}
+    ConstructionFirm: { }
     Name:
       value: Construction Firm
     Business:
@@ -183,7 +181,7 @@
   max_instances: 3
   min_population: 30
   components:
-    Dairy: {}
+    Dairy: { }
     Name:
       value: Dairy
     Business:
@@ -197,7 +195,7 @@
   max_instances: 3
   min_population: 200
   components:
-    DaycareCenter: {}
+    DaycareCenter: { }
     Name:
       value: Daycare Center
     Business:
@@ -210,7 +208,7 @@
   max_instances: 4
   min_population: 100
   components:
-    Deli: {}
+    Deli: { }
     Name:
       value: Deli
     Business:
@@ -218,13 +216,13 @@
       employee_types:
         Cashier: 1
     Services:
-      services: [meat]
+      services: [ meat ]
 
 - name: DentistOffice
   extends: TotT::business
   min_population: 75
   components:
-    DentistOffice: {}
+    DentistOffice: { }
     Name:
       value: Dentist Office
     Business:
@@ -241,7 +239,7 @@
     Name:
       value: Department Store
     Services:
-      services: [shopping]
+      services: [ shopping ]
     Business:
       owner_type: Owner
       employee_types:
@@ -253,7 +251,7 @@
   max_instances: 3
   min_population: 30
   components:
-    Diner: {}
+    Diner: { }
     Name:
       value: Diner
     Business:
@@ -264,13 +262,13 @@
         Manager: 1
         Busboy: 1
     Services:
-      services: ["food", "socializing"]
+      services: [ "food", "socializing" ]
 
 - name: Distillery
   extends: TotT::business
   max_instances: 1
   components:
-    Distillery: {}
+    Distillery: { }
     Name:
       value: Distillery
     Business:
@@ -279,7 +277,7 @@
         Bottler: 1
         Cooper: 1
     Services:
-      services: ["alcohol"]
+      services: [ "alcohol" ]
 
 - name: DrugStore
   extends: TotT::business
@@ -289,8 +287,8 @@
     Name:
       value: Drug Store
     Services:
-      services: ["drugs"]
-    DrugStore: {}
+      services: [ "drugs" ]
+    DrugStore: { }
     Business:
       owner_type: Druggist
       employee_types:
@@ -300,7 +298,7 @@
   extends: TotT::business
   max_instances: 99
   components:
-    Farm: {}
+    Farm: { }
     Name:
       value: Farm
     Business:
@@ -312,11 +310,11 @@
   extends: TotT::business
   max_instances: 1
   min_population: 100
-  tags: ["municipal"]
+  tags: [ "municipal" ]
   components:
     Name:
       value: Fire Station
-    FireStation: {}
+    FireStation: { }
     Business:
       owner_type: ""
       employee_types:
@@ -328,7 +326,7 @@
   min_population: 20
   max_instances: 1
   components:
-    Foundry: {}
+    Foundry: { }
     Name:
       value: Foundry
     Business:
@@ -344,13 +342,13 @@
   components:
     Name:
       value: Furniture Store
-    FurnitureStore: {}
+    FurnitureStore: { }
     Business:
       owner_type: Woodworker
       employee_types:
         Apprentice: 1
     Services:
-      services: ["furniture"]
+      services: [ "furniture" ]
 
 - name: GeneralStore
   extends: TotT::business
@@ -359,9 +357,9 @@
   components:
     Name:
       value: General Store
-    GeneralStore: {}
+    GeneralStore: { }
     Services:
-      services: ["shopping", "errands"]
+      services: [ "shopping", "errands" ]
     Business:
       owner_type: Grocer
       employee_types:
@@ -376,9 +374,9 @@
   components:
     Name:
       value: Grocery Store
-    GroceryStore: {}
+    GroceryStore: { }
     Services:
-      services: ["shopping", "errands"]
+      services: [ "shopping", "errands" ]
     Business:
       owner_type: Grocer
       employee_types:
@@ -393,9 +391,9 @@
   components:
     Name:
       value: Hardware Store
-    HardwareStore: {}
+    HardwareStore: { }
     Services:
-      services: ["shopping", "tools"]
+      services: [ "shopping", "tools" ]
     Business:
       owner_type: Owner
       employee_types:
@@ -406,11 +404,11 @@
 - name: hospital
   extends: TotT::business
   min_population: 100
-  tags: ["municipal"]
+  tags: [ "municipal" ]
   components:
     Name:
       value: Hospital
-    Hospital: {}
+    Hospital: { }
     Business:
       owner_type: Owner
       employee_types:
@@ -423,7 +421,7 @@
   components:
     Name:
       value: Hotel
-    Hotel: {}
+    Hotel: { }
     Business:
       owner_type: Owner
       employee_types:
@@ -436,7 +434,7 @@
   components:
     Name:
       value: Inn
-    Inn: {}
+    Inn: { }
     Business:
       owner_type: Innkeeper
       employee_types:
@@ -450,7 +448,7 @@
   components:
     Name:
       value: Insurance Company
-    InsuranceCompany: {}
+    InsuranceCompany: { }
     Business:
       owner_type: Insurance Agent
       employee_types:
@@ -464,21 +462,21 @@
   components:
     Name:
       value: Jewelry Shop
-    JewelryShop: {}
+    JewelryShop: { }
     Business:
       owner_type: Jeweler
       employee_types:
         Apprentice: 1
         Cashier: 1
     Services:
-      services: ["shopping", "jewelry"]
+      services: [ "shopping", "jewelry" ]
 
 - name: LawFirm
   extends: TotT::business
   max_instances: 2
   min_population: 150
   components:
-    LawFirm: {}
+    LawFirm: { }
     Name:
       value: Law Firm
     Business:
@@ -490,7 +488,7 @@
 - name: OptometryClinic
   extends: TotT::business
   components:
-    OptometryClinic: {}
+    OptometryClinic: { }
     Name:
       value: Optometry Clinic
     Business:
@@ -509,17 +507,17 @@
         Plasterer: 1
     Name:
       value: PaintingCompany
-    PaintingCompany: {}
+    PaintingCompany: { }
 
 - name: Park
   extends: TotT::business
-  tags: ["municipal"]
+  tags: [ "municipal" ]
   max_instances: 2
   min_population: 100
   components:
     Name:
       value: Park
-    Park: {}
+    Park: { }
     Business:
       owner_type: ""
       employee_types:
@@ -528,14 +526,14 @@
 - name: Pharmacy
   extends: TotT::business
   components:
-    Pharmacy: {}
+    Pharmacy: { }
     Business:
       owner_type: Pharmacist
       employee_types:
         Pharmacist: 1
         Cashier: 1
     Services:
-      services: ["drugs"]
+      services: [ "drugs" ]
 
 - name: PlasticSurgeryClinic
   extends: TotT::business
@@ -543,7 +541,7 @@
   max_instances: 1
   min_population: 200
   components:
-    PlasticSurgeryClinic: {}
+    PlasticSurgeryClinic: { }
     Name:
       value: Plastic Surgery Clinic
     Business:
@@ -557,7 +555,7 @@
   max_instances: 2
   min_population: 100
   components:
-    PlumbingCompany: {}
+    PlumbingCompany: { }
     Name:
       value: Plumbing Company
     Business:
@@ -567,11 +565,11 @@
 
 - name: PoliceStation
   extends: TotT::business
-  tags: [municipal]
+  tags: [ municipal ]
   max_instances: 1
   min_population: 100
   components:
-    PoliceStation: {}
+    PoliceStation: { }
     Name:
       value: Police Station
     Business:
@@ -584,7 +582,7 @@
   extends: TotT::business
   max_instances: 1
   components:
-    Quarry: {}
+    Quarry: { }
     Name:
       value: Quarry
     Business:
@@ -600,7 +598,7 @@
   min_population: 80
   max_instances: 2
   components:
-    RealtyFirm: {}
+    RealtyFirm: { }
     Name:
       value: Realty Form
     Business:
@@ -615,7 +613,7 @@
   components:
     Name:
       value: Restaurant
-    Restaurant: {}
+    Restaurant: { }
     Business:
       owner_type: Proprietor
       employee_types:
@@ -624,9 +622,7 @@
         Busboy: 1
         Manager: 1
     Services:
-      services: ["food"]
-    Activities:
-      activities: ["socializing"]
+      services: [ "food", "socializing" ]
 
 - name: School
   extends: TotT::business
@@ -641,9 +637,7 @@
         Teacher: 2
         Janitor: 1
     Services:
-      services: ["education"]
-    Activities:
-      activities: ["studying"]
+      services: [ "education", "studying" ]
     Lifespan:
       value: 50
 
@@ -657,9 +651,7 @@
       employee_types:
         Apprentice: 1
     Services:
-      services: ["shopping"]
-    Activities:
-      activities: ["shopping"]
+      services: [ "shopping" ]
 
 - name: Supermarket
   extends: TotT::business
@@ -675,9 +667,7 @@
         Stocker: 1
         Manager: 1
     Services:
-      services: ["shopping"]
-    Activities:
-      activities: ["shopping"]
+      services: [ "shopping" ]
 
 - name: TailorShop
   extends: TotT::business
@@ -710,7 +700,7 @@
   extends: TotT::business
   min_population: 20
   components:
-    Tavern: {}
+    Tavern: { }
     Business:
       owner_type: Owner
       employee_types:
@@ -718,7 +708,7 @@
         Bartender: 1
         Waiter: 1
     Services:
-      services: ["drinking", "socializing"]
+      services: [ "drinking", "socializing" ]
     OperatingHours:
       hours: evening
 
@@ -726,7 +716,7 @@
   extends: TotT::business
   max_instances: 1
   components:
-    TaxiDepot: {}
+    TaxiDepot: { }
     Business:
       owner_type: Proprietor
       employee_types:

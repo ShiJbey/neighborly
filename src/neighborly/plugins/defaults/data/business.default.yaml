@@ -6,7 +6,6 @@ components:
   Business: { }
   StatusManager: { }
   Location: { }
-  Activities: { }
   FrequentedBy: { }
   EventHistory: { }
   Building:

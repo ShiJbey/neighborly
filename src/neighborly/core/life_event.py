@@ -392,7 +392,7 @@ def event_role(
 ):
     """A decorator to indicate that a function is for casting a role"""
 
-    def event_role_decorator(fn: staticmethod):
+    def event_role_decorator(fn: EventRoleBindingGeneratorFn):
         return EventRoleInfo(
             name,
             fn,

@@ -14,7 +14,8 @@ from neighborly.components.business import (
     OccupationLibrary,
     WorkHistory,
 )
-from neighborly.components.character import Gender, GenderType, RoleTracker
+from neighborly.components.character import Gender, GenderType
+from neighborly.components.role import RoleTracker
 from neighborly.components.shared import Age
 from neighborly.core.ecs import GameObject
 from neighborly.core.time import DAYS_PER_YEAR, SimDateTime

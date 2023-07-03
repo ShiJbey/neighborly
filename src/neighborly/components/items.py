@@ -1,3 +1,7 @@
+"""Components for item GameObjects.
+
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict

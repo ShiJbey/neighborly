@@ -9,17 +9,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from neighborly import Component, GameObject, Neighborly
-from neighborly.components.activity import (
-    Activities,
-    ActivityLibrary,
-    register_activity_type,
-)
+from neighborly.components.business import Services, register_service_type
 from neighborly.components.shared import Location
 from neighborly.core.ecs import GameObjectPrefab, TagComponent
 from neighborly.decorators import component, location_bias_rule
 from neighborly.utils.common import (
     calculate_location_probabilities,
-    location_has_activities,
+    location_has_services,
 )
 
 sim = Neighborly()
@@ -61,7 +57,7 @@ class Shopaholic(TagComponent):
 
 @location_bias_rule(sim.world, "social-butterfly")
 def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[int]:
-    if character.has_component(SocialButterfly) and location_has_activities(
+    if character.has_component(SocialButterfly) and location_has_services(
         location, "Socializing"
     ):
         return 2
@@ -71,7 +67,7 @@ def social_butterfly_rule(character: GameObject, location: GameObject) -> Option
 def recovering_alcoholic_rule(
     character: GameObject, location: GameObject
 ) -> Optional[int]:
-    if character.has_component(RecoveringAlcoholic) and location_has_activities(
+    if character.has_component(RecoveringAlcoholic) and location_has_services(
         location, "Drinking"
     ):
         return -3
@@ -79,7 +75,7 @@ def recovering_alcoholic_rule(
 
 @location_bias_rule(sim.world, "shop-alcoholic")
 def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int]:
-    if character.has_component(Shopaholic) and location_has_activities(
+    if character.has_component(Shopaholic) and location_has_services(
         location, "Shopping"
     ):
         return 3
@@ -87,15 +83,13 @@ def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int
 
 @location_bias_rule(sim.world, "book-worm")
 def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]:
-    if character.has_component(BookWorm) and location_has_activities(
-        location, "Reading"
-    ):
+    if character.has_component(BookWorm) and location_has_services(location, "Reading"):
         return 2
 
 
 @location_bias_rule(sim.world, "health-nut")
 def rule(character: GameObject, location: GameObject) -> Optional[int]:
-    if character.has_component(HealthNut) and location_has_activities(
+    if character.has_component(HealthNut) and location_has_services(
         location, "Recreation"
     ):
         return 2
@@ -106,40 +100,35 @@ def main():
     # SPAWN NEW LOCATIONS
     ###############################
 
-    register_activity_type(
-        sim.world, GameObjectPrefab(name="Recreation", components={"ActivityType": {}})
+    register_service_type(
+        sim.world, GameObjectPrefab(name="Recreation", components={"ServiceType": {}})
     )
-    register_activity_type(
-        sim.world, GameObjectPrefab(name="Socializing", components={"ActivityType": {}})
+    register_service_type(
+        sim.world, GameObjectPrefab(name="Socializing", components={"ServiceType": {}})
     )
-    register_activity_type(
-        sim.world, GameObjectPrefab(name="Reading", components={"ActivityType": {}})
+    register_service_type(
+        sim.world, GameObjectPrefab(name="Reading", components={"ServiceType": {}})
     )
-    register_activity_type(
-        sim.world, GameObjectPrefab(name="Shopping", components={"ActivityType": {}})
+    register_service_type(
+        sim.world, GameObjectPrefab(name="Shopping", components={"ServiceType": {}})
     )
-    register_activity_type(
+    register_service_type(
         sim.world,
-        GameObjectPrefab(name="People Watching", components={"ActivityType": {}}),
+        GameObjectPrefab(name="People Watching", components={"ServiceType": {}}),
     )
-    register_activity_type(
-        sim.world, GameObjectPrefab(name="Drinking", components={"ActivityType": {}})
+    register_service_type(
+        sim.world, GameObjectPrefab(name="Drinking", components={"ServiceType": {}})
     )
 
-    # We need to step the simulation once to create all the activities
+    # We need to step the simulation once to create all the services
     sim.step()
-
-    activity_library = sim.world.resource_manager.get_resource(ActivityLibrary)
 
     locations = [
         sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
-                Activities(
-                    [
-                        activity_library.get("Recreation"),
-                        activity_library.get("Socializing"),
-                    ]
+                sim.world.gameobject_manager.create_component(
+                    Services, services=["Recreation", "Socializing"]
                 ),
             ],
             name="Gym",
@@ -147,10 +136,8 @@ def main():
         sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
-                Activities(
-                    [
-                        activity_library.get("Reading"),
-                    ]
+                sim.world.gameobject_manager.create_component(
+                    Services, services=["Reading"]
                 ),
             ],
             name="Library",
@@ -158,12 +145,8 @@ def main():
         sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
-                Activities(
-                    [
-                        activity_library.get("Shopping"),
-                        activity_library.get("Socializing"),
-                        activity_library.get("People Watching"),
-                    ]
+                sim.world.gameobject_manager.create_component(
+                    Services, services=["Shopping", "Socializing", "People Watching"]
                 ),
             ],
             name="Mall",
@@ -171,11 +154,8 @@ def main():
         sim.world.gameobject_manager.spawn_gameobject(
             [
                 Location(),
-                Activities(
-                    [
-                        activity_library.get("Drinking"),
-                        activity_library.get("Socializing"),
-                    ]
+                sim.world.gameobject_manager.create_component(
+                    Services, services=["Drinking", "Socializing"]
                 ),
             ],
             name="Bar",

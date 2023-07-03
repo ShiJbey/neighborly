@@ -12,12 +12,10 @@ from typing import Any, ClassVar, Dict, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
 from numpy import typing as npt
-from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
 from neighborly.core.relationship import RelationshipStatus
 from neighborly.core.status import StatusComponent
-from neighborly.core.time import SimDateTime
 
 
 class GameCharacter(Component, ISerializable):
@@ -293,34 +291,27 @@ class Virtues(Component, ISerializable):
 
 
 class Pregnant(StatusComponent):
-    """Tags a character as pregnant."""
+    """Tags a character as pregnant and tracks relevant information."""
 
-    __slots__ = "partner_id", "due_date"
+    __slots__ = "partner"
 
-    partner_id: int
+    partner: GameObject
     """The GameObject ID of the character that impregnated this character."""
 
-    due_date: SimDateTime
-    """The date the baby is expected to be born."""
-
-    def __init__(self, partner_id: int, due_date: SimDateTime) -> None:
+    def __init__(self, partner: GameObject) -> None:
         """
         Parameters
         ----------
-        partner_id
-            The GameObject ID of the character that got this one pregnant.
-        due_date
-            The date the baby is expected to be born.
+        partner
+            The character that got this one pregnant.
         """
         super().__init__()
-        self.partner_id = partner_id
-        self.due_date = due_date
+        self.partner = partner
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "partner_id": self.partner_id,
-            "due_date": self.due_date.to_iso_str(),
+            "partner": self.partner.uid,
         }
 
 
@@ -493,23 +484,3 @@ class LifeStage(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"life_stage": self.life_stage.name}
-
-
-class RoleTracker(Component, ISerializable):
-    """Tracks the roles currently held by this character."""
-
-    __slots__ = "_roles"
-
-    _roles: OrderedSet[GameObject]
-    """References to the role GameObjects."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._roles = OrderedSet([])
-
-    @property
-    def roles(self) -> OrderedSet[GameObject]:
-        return self._roles
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"roles": [role.uid for role in self.roles]}

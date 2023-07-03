@@ -7,6 +7,6 @@ components:
     owner_type: Librarian
     employee_types:
       Librarian: 2
-  Activities:
-    activities:
+  Services:
+    services:
       - reading

@@ -82,7 +82,7 @@ class QueryGameObjectsResource(Resource):
                     "guid": guid,
                     "name": self.world.gameobject_manager.get_gameobject(guid).name,
                 }
-                for guid, _ in self.world.get_components(component_types)
+                for guid, _ in self.world.get_components(component_types)  # type: ignore
             ]
         }
 

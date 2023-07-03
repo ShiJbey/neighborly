@@ -1,5 +1,4 @@
-"""
-location_frequency_rule.py
+"""Location preference rules.
 
 This module provides interface and classes that help characters determine
 where within a settlement they choose to frequent.
@@ -15,7 +14,7 @@ from ordered_set import OrderedSet
 from neighborly.core.ecs import GameObject
 
 
-class ILocationBiasRule(Protocol):
+class ILocationPreferenceRule(Protocol):
     """LocationBiasRules define what locations characters are likely to frequent"""
 
     def __call__(self, character: GameObject, location: GameObject) -> Optional[int]:
@@ -40,29 +39,29 @@ class ILocationBiasRule(Protocol):
 
 
 @dataclasses.dataclass(frozen=True)
-class LocationBiasRuleInfo:
+class LocationPreferenceRuleInfo:
     """Information about a location bias rule."""
 
-    rule: ILocationBiasRule
+    rule: ILocationPreferenceRule
     """The callable function that implements the rule"""
 
     description: str = ""
     """A text description of the rule"""
 
 
-class LocationBiasRuleLibrary:
+class LocationPreferenceRuleLibrary:
     """Repository of active rules that determine what location characters frequent."""
 
     __slots__ = "_rules"
 
-    _rules: OrderedSet[LocationBiasRuleInfo]
+    _rules: OrderedSet[LocationPreferenceRuleInfo]
     """All registered rules."""
 
     def __init__(self) -> None:
         self._rules = OrderedSet([])
 
-    def add(self, rule: ILocationBiasRule, description: str = "") -> None:
-        self._rules.append(LocationBiasRuleInfo(rule, description))
+    def add(self, rule: ILocationPreferenceRule, description: str = "") -> None:
+        self._rules.append(LocationPreferenceRuleInfo(rule, description))
 
-    def iter_rules(self) -> Iterator[LocationBiasRuleInfo]:
+    def iter_rules(self) -> Iterator[LocationPreferenceRuleInfo]:
         return self._rules.__iter__()

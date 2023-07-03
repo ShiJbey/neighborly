@@ -1,8 +1,7 @@
 import math
 import random
-from typing import Iterable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
-from neighborly.components.activity import Activities, ActivityLibrary
 from neighborly.components.business import (
     BossOf,
     Business,
@@ -24,6 +23,13 @@ from neighborly.components.character import (
     ReproductionConfig,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
+from neighborly.components.role import (
+    IsRole,
+    add_role,
+    get_roles_with_components,
+    remove_role,
+    RoleTracker,
+)
 from neighborly.components.shared import (
     CurrentLocation,
     CurrentLot,
@@ -32,6 +38,7 @@ from neighborly.components.shared import (
     FrequentedLocations,
     Location,
     Name,
+    OwnedBy,
     Position2D,
     PrefabName,
 )
@@ -47,7 +54,7 @@ from neighborly.core.relationship import (
 )
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, clear_statuses, has_status, remove_status
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
+from neighborly.core.time import SimDateTime
 from neighborly.events import (
     BusinessClosedEvent,
     DepartEvent,
@@ -444,8 +451,9 @@ def depart_settlement(
     )
 
     for character in departing_characters:
-        if character.has_component(Occupation):
-            end_job(character, reason=reason)
+        for role in character.get_component(RoleTracker).roles:
+            if occupation := role.try_component(Occupation):
+                end_job(character, occupation.business, reason=reason)
 
         if character.has_component(Resident):
             set_residence(character, None)
@@ -552,12 +560,12 @@ def shutdown_business(business: GameObject) -> None:
     add_status(business, ClosedForBusiness())
 
     # Remove all the employees
-    for employee in business_comp.get_employees():
-        end_job(employee, reason=event)
+    for employee, _ in business_comp.iter_employees():
+        end_job(employee, business, reason=event)
 
     # Remove the owner if applicable
     if business_comp.owner is not None:
-        end_job(business_comp.owner, reason=event)
+        end_job(business_comp.owner, business, reason=event)
 
     # Decrement the number of this type
     settlement.business_counts[prefab_ref.prefab] -= 1
@@ -579,31 +587,35 @@ def shutdown_business(business: GameObject) -> None:
 
 def end_job(
     character: GameObject,
+    business: GameObject,
     reason: Optional[LifeEvent] = None,
 ) -> None:
-    """End a characters current occupation
+    """End a characters current occupation.
 
     Parameters
     ----------
     character
-        The characters whose job to terminate
+        The character whose job to terminate.
+    business
+        The business where the character currently works.
     reason
-        The reason for them leaving their job (defaults to "")
+        The reason for them leaving their job (defaults to None).
     """
     world = character.world
-    occupation = character.get_component(Occupation)
-    business = occupation.business
+
+    occupation_role = business.get_component(Business).get_employee_role(character)
+
     business_comp = business.get_component(Business)
 
     character.get_component(FrequentedLocations).remove(business)
     business.get_component(FrequentedBy).remove(character)
 
-    if character.has_component(BusinessOwner):
-        remove_status(character, BusinessOwner)
+    if occupation_role.has_component(BusinessOwner):
+        remove_status(occupation_role, BusinessOwner)
         business_comp.set_owner(None)
 
         # Update relationships boss/employee relationships
-        for employee in business.get_component(Business).get_employees():
+        for employee, _ in business.get_component(Business).iter_employees():
             remove_relationship_status(character, employee, BossOf)
             remove_relationship_status(employee, character, EmployeeOf)
 
@@ -631,7 +643,7 @@ def end_job(
             ).increment(-1)
 
         # Update coworker relationships
-        for employee in business.get_component(Business).get_employees():
+        for employee, _ in business.get_component(Business).iter_employees():
             remove_relationship_status(character, employee, CoworkerOf)
             remove_relationship_status(employee, character, CoworkerOf)
 
@@ -642,21 +654,19 @@ def end_job(
                 InteractionScore
             ).increment(-1)
 
-    character.remove_component(Occupation)
+    remove_role(character, occupation_role)
 
     add_status(character, Unemployed())
-
-    # Update the former employee's work history
-    if not character.has_component(WorkHistory):
-        character.add_component(WorkHistory())
 
     current_date = character.world.resource_manager.get_resource(SimDateTime)
 
     character.get_component(WorkHistory).add_entry(
-        occupation_type=occupation.occupation_type,
+        occupation_type=occupation_role.get_component(Occupation).occupation_type,
         business=business,
-        years_held=float((current_date - occupation.start_date).total_days)
-        / DAYS_PER_YEAR,
+        years_held=(
+            current_date.year
+            - occupation_role.get_component(Occupation).start_date.year
+        ),
         reason_for_leaving=reason,
     )
 
@@ -665,11 +675,13 @@ def end_job(
         date=world.resource_manager.get_resource(SimDateTime),
         character=character,
         business=business,
-        occupation=occupation.occupation_type,
+        occupation=occupation_role.get_component(Occupation).occupation_type,
         reason=reason,
     )
 
     world.event_manager.dispatch_event(end_job_event)
+
+    occupation_role.destroy()
 
 
 def start_job(
@@ -695,15 +707,24 @@ def start_job(
     world = character.world
     business_comp = business.get_component(Business)
 
-    occupation = Occupation(
-        occupation_type, business, world.resource_manager.get_resource(SimDateTime)
+    occupation_role = world.gameobject_manager.spawn_gameobject(
+        components=[
+            Name(value=occupation_type.get_component(Name).value),
+            IsRole(),
+            Occupation(
+                occupation_type=occupation_type,
+                business=business,
+                start_date=world.resource_manager.get_resource(SimDateTime),
+            ),
+            OwnedBy(character),
+        ],
+        name="{} @ {}".format(
+            occupation_type.get_component(Name).value,
+            business.get_component(Name).value,
+        ),
     )
 
-    if character.has_component(Occupation):
-        # Character must quit the old job before taking a new one
-        raise RuntimeError("Cannot start a new job with existing Occupation component.")
-
-    character.add_component(occupation)
+    add_role(character, occupation_role)
 
     character.get_component(FrequentedLocations).add(business)
     business.get_component(FrequentedBy).add(character)
@@ -716,10 +737,10 @@ def start_job(
             # The old owner needs to be removed before setting a new one
             raise RuntimeError("Owner is already set. Please end job first.")
 
-        business_comp.set_owner(character)
-        add_status(character, BusinessOwner(business=business))
+        business_comp.set_owner((character, occupation_role))
+        add_status(occupation_role, BusinessOwner(business=business))
 
-        for employee in business.get_component(Business).get_employees():
+        for employee, _ in business.get_component(Business).iter_employees():
             add_relationship_status(character, employee, BossOf())
             add_relationship_status(employee, character, EmployeeOf())
 
@@ -744,7 +765,7 @@ def start_job(
             ).increment(1)
 
         # Update employee/employee relationships
-        for employee in business.get_component(Business).get_employees():
+        for employee, _ in business.get_component(Business).iter_employees():
             add_relationship_status(character, employee, CoworkerOf())
             add_relationship_status(employee, character, CoworkerOf())
 
@@ -755,7 +776,7 @@ def start_job(
                 InteractionScore
             ).increment(1)
 
-        business_comp.add_employee(character, occupation_type)
+        business_comp.add_employee(character, occupation_role)
 
     start_job_event = StartJobEvent(
         world=character.world,
@@ -769,8 +790,7 @@ def start_job(
 
 
 def get_places_with_services(world: World, *services: str) -> List[GameObject]:
-    """
-    Get all the active locations with the given services
+    """Get all the active locations with the given services.
 
     Parameters
     ----------
@@ -782,114 +802,61 @@ def get_places_with_services(world: World, *services: str) -> List[GameObject]:
 
     Returns
     -------
-    The IDs of the matching entities
+    List[GameObject]
+        Businesses with the services
     """
     matches: List[GameObject] = []
+
     service_library = world.resource_manager.get_resource(ServiceLibrary)
     service_objs = [service_library.get(s) for s in services]
+
     for gid, services_component in world.get_component(Services):
         if all([s in services_component for s in service_objs]):
             matches.append(world.gameobject_manager.get_gameobject(gid))
-    return matches
-
-
-#######################################
-# Activities and Location Frequenting
-#######################################
-
-
-def get_places_with_activities(
-    world: World, settlement: GameObject, *activities: str
-) -> List[GameObject]:
-    """
-    Find businesses within the given settlement with all the given activities
-
-    Parameters
-    ----------
-    world
-        The World instance of the simulation
-    settlement
-        The settlement to search within
-    *activities
-        The activities to search for
-
-    Returns
-    -------
-    List[GameObject]
-         Returns the identifiers of locations
-    """
-
-    matches: List[GameObject] = []
-
-    settlement_comp = settlement.get_component(Settlement)
-    activity_library = world.resource_manager.get_resource(ActivityLibrary)
-    activity_types = [activity_library.get(a) for a in activities]
-
-    for location in settlement_comp.locations:
-        location_activities = location.get_component(Activities)
-        if all([a in location_activities for a in activity_types]):
-            matches.append(location)
 
     return matches
 
 
-def get_places_with_any_activities(
-    settlement: GameObject, *activities: str
-) -> List[GameObject]:
-    """
-    Find businesses within the given settlement with any of the given activities
+def is_employed(gameobject: GameObject) -> bool:
+    """Check if a character has an occupation role.
 
     Parameters
     ----------
-    settlement
-        The settlement to search within
-    *activities
-        The activities to search for
+    gameobject
+        The GameObject to check
 
     Returns
     -------
-    List[GameObject]
-         Returns the identifiers of locations
+    bool
+        True if the GameObject has a role with an Occupation component. False otherwise.
     """
-
-    def score_loc(act_list: Iterable[str]) -> int:
-        location_score: int = 0
-        for activity in activities:
-            if activity in act_list:
-                location_score += 1
-        return location_score
-
-    matches: List[Tuple[int, GameObject]] = []
-
-    settlement_comp = settlement.get_component(Settlement)
-
-    for location in settlement_comp.locations:
-        score = score_loc(location.get_component(Activities))
-        if score > 0:
-            matches.append((score, location))
-
-    return [match[1] for match in sorted(matches, key=lambda m: m[0], reverse=True)]
+    return len(get_roles_with_components(gameobject, Occupation)) > 0
 
 
-def location_has_activities(location: GameObject, *activities: str) -> bool:
-    """Check if the location has the given activities
+#######################################
+# Services and Location Frequenting
+#######################################
+
+
+def location_has_services(location: GameObject, *services: str) -> bool:
+    """Check if the location has the given services
 
     Parameters
     ----------
     location
         The location to check.
-    *activities
-        Activity names.
+    *services
+        Service names.
 
     Returns
     -------
     bool
-        True if the activities are offered by the location, False otherwise.
+        True if all the services are offered by the location, False otherwise.
     """
-    activities_comp = location.get_component(Activities)
-    activity_library = location.world.resource_manager.get_resource(ActivityLibrary)
-    activity_types = [activity_library.get(a) for a in activities]
-    return all([a in activities_comp for a in activity_types])
+    services_comp = location.get_component(Services)
+    service_library = location.world.resource_manager.get_resource(ServiceLibrary)
+    service_types = [service_library.get(entry) for entry in services]
+    return all([entry in services_comp for entry in service_types])
 
 
 def _score_location(character: GameObject, location: GameObject) -> int:
@@ -949,7 +916,7 @@ def set_frequented_locations(
     locations = [
         character.world.gameobject_manager.get_gameobject(guid)
         for guid, (_, current_settlement, _, _) in character.world.get_components(
-            (Location, CurrentSettlement, Activities, Active)
+            (Location, CurrentSettlement, Services, Active)
         )
         if current_settlement.settlement == settlement
     ]

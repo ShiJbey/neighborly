@@ -1,3 +1,5 @@
+import logging
+
 from neighborly.components.business import InTheWorkforce, Occupation, Unemployed
 from neighborly.components.character import LifeStage, LifeStageType
 from neighborly.core.ecs import Active, Event
@@ -10,6 +12,8 @@ from neighborly.events import (
     DepartEvent,
     JoinSettlementEvent,
 )
+
+_logger = logging.getLogger(__name__)
 
 
 def add_event_to_personal_history(event: Event) -> None:
@@ -67,6 +71,6 @@ def deactivate_relationships_on_depart(event: DepartEvent) -> None:
                 relationship.remove_component(Active)
 
 
-def print_life_events(event: Event) -> None:
+def log_life_event(event: Event) -> None:
     if isinstance(event, LifeEvent):
-        print(str(event))
+        _logger.info(str(event))

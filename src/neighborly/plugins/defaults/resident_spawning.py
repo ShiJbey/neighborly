@@ -18,7 +18,7 @@ from neighborly.components.residence import Residence, Vacant
 from neighborly.components.shared import CurrentSettlement
 from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs import Active, GameObject, World
+from neighborly.core.ecs import Active, GameObject, ISystem, World
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -28,10 +28,9 @@ from neighborly.core.relationship import (
     get_relationship,
 )
 from neighborly.core.settlement import Settlement
-from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.core.time import SimDateTime
 from neighborly.events import MoveResidenceEvent
 from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.systems import System
 from neighborly.utils.common import (
     add_character_to_settlement,
     add_residence_to_settlement,
@@ -51,19 +50,14 @@ class _GeneratedFamily:
     children: List[GameObject] = dataclasses.field(default_factory=list)
 
 
-class SpawnFamilySystem(System):
-    """Spawns new families in settlements
-
-    This system runs every 6 months and spawns families into new or existing residences.
+class SpawnFamilySystem(ISystem):
+    """Spawns new families in settlements.
 
     Note
     ----
     This system depends on the "new_families_per_year" setting in the simulation
     config. You can see how this setting is accessed in the run method below.
     """
-
-    def __init__(self) -> None:
-        super().__init__(interval=TimeDelta(months=6))
 
     @staticmethod
     def _get_vacant_residences(world: World) -> List[GameObject]:
@@ -278,11 +272,9 @@ class SpawnFamilySystem(System):
         return generated_characters
 
     def on_update(self, world: World) -> None:
-
         families_per_year: int = world.resource_manager.get_resource(
             NeighborlyConfig
-        ).settings.get("new_families_per_year", 10)
-        families_to_spawn = families_per_year // 2
+        ).settings.get("new_families_per_year", 2)
 
         rng = world.resource_manager.get_resource(random.Random)
         date = world.resource_manager.get_resource(SimDateTime)
@@ -293,7 +285,7 @@ class SpawnFamilySystem(System):
         ):
             settlement_entity = world.gameobject_manager.get_gameobject(guid)
 
-            for _ in range(families_to_spawn):
+            for _ in range(families_per_year):
                 # Try to find a vacant residence
                 vacant_residences = self._get_vacant_residences(world)
                 if vacant_residences:

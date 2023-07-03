@@ -68,7 +68,7 @@ def test_land_grid_get_total_lots():
 def test_land_grid_get_set_item():
     sim = Neighborly()
 
-    building_0 = sim.world.spawn_gameobject(name="Building 0")
+    building_0 = sim.world.gameobject_manager.spawn_gameobject(name="Building 0")
 
     land_grid = GridSettlementMap((5, 3))
 
@@ -79,7 +79,9 @@ def test_land_grid_get_set_item():
     assert len(land_grid.get_vacant_lots()) == 14
 
     for lot in sorted(list(land_grid.get_vacant_lots())):
-        building = sim.world.spawn_gameobject(name=f"building_on_lot_{lot}")
+        building = sim.world.gameobject_manager.spawn_gameobject(
+            name=f"building_on_lot_{lot}"
+        )
         land_grid.reserve_lot(lot, building)
 
     assert len(land_grid.get_vacant_lots()) == 0
@@ -91,8 +93,8 @@ def test_land_grid_get_set_item():
 def test_land_grid_setitem_raises_runtime_error():
     sim = Neighborly()
 
-    building_0 = sim.world.spawn_gameobject(name="Building 0")
-    building_1 = sim.world.spawn_gameobject(name="Building 1")
+    building_0 = sim.world.gameobject_manager.spawn_gameobject(name="Building 0")
+    building_1 = sim.world.gameobject_manager.spawn_gameobject(name="Building 1")
 
     land_grid = GridSettlementMap((5, 3))
     land_grid.reserve_lot(2, building_0)

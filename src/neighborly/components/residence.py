@@ -1,3 +1,7 @@
+"""Components for residence GameObjects and tracking residential status.
+
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict

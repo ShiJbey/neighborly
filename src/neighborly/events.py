@@ -120,7 +120,7 @@ class BirthEvent(LifeEvent):
         return self["Character"]
 
 
-class GiveBirthEvent(LifeEvent):
+class HaveChildEvent(LifeEvent):
     def __init__(
         self,
         world: World,
@@ -287,6 +287,20 @@ class BreakUpEvent(LifeEvent):
         return self._roles.get_all("Character")
 
 
+class BecameAcquaintancesEvent(LifeEvent):
+    def __init__(
+        self,
+        world: World,
+        date: SimDateTime,
+        *characters: GameObject,
+    ) -> None:
+        super().__init__(world, date, [EventRole("Character", c) for c in characters])
+
+    @property
+    def characters(self):
+        return self._roles.get_all("Character")
+
+
 class StartBusinessEvent(LifeEvent):
     def __init__(
         self,
@@ -322,7 +336,7 @@ class StartBusinessEvent(LifeEvent):
 class BusinessOpenEvent(LifeEvent):
     def __init__(
         self,
-        world,
+        world: World,
         date: SimDateTime,
         business: GameObject,
     ) -> None:
@@ -590,3 +604,20 @@ class DeathEvent(LifeEvent):
     @property
     def character(self):
         return self["Character"]
+
+
+class GetPregnantEvent(LifeEvent):
+    """Defines an event where two characters stop dating"""
+
+    def __init__(
+        self,
+        world: World,
+        date: SimDateTime,
+        pregnant_one: GameObject,
+        other: GameObject,
+    ) -> None:
+        super().__init__(
+            world,
+            date,
+            [EventRole("PregnantOne", pregnant_one), EventRole("Other", other)],
+        )
