@@ -11,7 +11,7 @@ In this example, we show how a user could add a new initialization system that s
 multiple settlements into the simulation.
 """
 
-from neighborly import ISystem, Neighborly, NeighborlyConfig, World
+from neighborly import Neighborly, NeighborlyConfig, SystemBase, World
 from neighborly.command import SpawnSettlement
 from neighborly.components.shared import Name
 from neighborly.core.settlement import Settlement
@@ -24,7 +24,7 @@ sim = Neighborly(
 
 
 @system(sim.world, system_group=InitializationSystemGroup)
-class InitializeMajorSettlements(ISystem):
+class InitializeMajorSettlements(SystemBase):
     def on_update(self, world: World) -> None:
         print("Setting up settlements...")
         SpawnSettlement("settlement", name="Winterfell").execute(world)

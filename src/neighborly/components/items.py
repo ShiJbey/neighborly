@@ -10,8 +10,8 @@ from ordered_set import OrderedSet
 
 from neighborly.core.ecs import (
     Component,
-    GameObjectPrefab,
     GameObject,
+    GameObjectPrefab,
     ISerializable,
     TagComponent,
     World,

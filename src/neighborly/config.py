@@ -16,9 +16,6 @@ class PluginConfig(pydantic.BaseModel):
     path: str = pydantic.Field(default_factory=lambda: os.getcwd())
     """The path where the plugin is located."""
 
-    options: Dict[str, Any] = pydantic.Field(default_factory=dict)
-    """Parameters to pass to the plugin when constructing and loading it."""
-
 
 class LoggingConfig(pydantic.BaseModel):
     """Configuration settings for logging within a simulation."""

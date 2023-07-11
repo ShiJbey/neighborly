@@ -8,49 +8,49 @@ import random
 import re
 import sys
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Optional, Type
 
 import neighborly.core.relationship as relationship
 import neighborly.systems as systems
 from neighborly.__version__ import VERSION
 from neighborly.components.business import (
+    BossOf,
     Business,
     ClosedForBusiness,
+    CoworkerOf,
+    EmployeeOf,
     InTheWorkforce,
     JobRequirementLibrary,
-    JobRequirements,
     Occupation,
-    OccupationLibrary,
-    OccupationType,
     OpenForBusiness,
-    ServiceLibrary,
     Services,
-    SocialStatusLevel,
+    Unemployed,
     WorkHistory,
+    BusinessOwner,
 )
 from neighborly.components.character import (
     AgingConfig,
     CanAge,
+    CanGetOthersPregnant,
     CanGetPregnant,
     Deceased,
     Departed,
     GameCharacter,
     Gender,
+    Immortal,
     LifeStage,
     MarriageConfig,
-    Mortal,
     ReproductionConfig,
     Retired,
     Virtues,
 )
 from neighborly.components.items import Item, ItemLibrary, ItemType
 from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.role import RoleTracker, IsRole
+from neighborly.components.role import Roles
 from neighborly.components.shared import (
     Age,
     Building,
     CurrentSettlement,
-    Description,
     FrequentedBy,
     FrequentedLocations,
     Lifespan,
@@ -63,13 +63,14 @@ from neighborly.components.spawn_table import (
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
+from neighborly.components.trait import ITrait, TraitLibrary, Traits
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import Active, GameObjectPrefab, World
 from neighborly.core.life_event import EventHistory, EventLog, RandomLifeEventLibrary
 from neighborly.core.location_preference import LocationPreferenceRuleLibrary
 from neighborly.core.settlement import Settlement
-from neighborly.core.status import StatusManager
+from neighborly.core.status import Statuses
 from neighborly.core.time import SimDateTime
 from neighborly.core.tracery import Tracery
 from neighborly.data_collection import DataCollector
@@ -87,11 +88,7 @@ from neighborly.events import (
     DepartEvent,
     JoinSettlementEvent,
 )
-from neighborly.factories.business import (
-    BusinessFactory,
-    JobRequirementsFactory,
-    ServicesFactory,
-)
+from neighborly.factories.business import BusinessFactory, ServicesFactory
 from neighborly.factories.character import GameCharacterFactory, VirtuesFactory
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
@@ -100,6 +97,8 @@ from neighborly.factories.spawn_table import (
     CharacterSpawnTableFactory,
     ResidenceSpawnTableFactory,
 )
+
+from neighborly.factories.trait import TraitsFactory
 
 
 class PluginSetupError(Exception):
@@ -161,9 +160,7 @@ class Neighborly:
         self.world.resource_manager.add_resource(DataCollector())
         self.world.resource_manager.add_resource(RandomLifeEventLibrary())
         self.world.resource_manager.add_resource(ItemLibrary())
-        self.world.resource_manager.add_resource(OccupationLibrary())
         self.world.resource_manager.add_resource(JobRequirementLibrary())
-        self.world.resource_manager.add_resource(ServiceLibrary())
 
         # Set the relationship schema
         self.world.gameobject_manager.add_prefab(
@@ -194,16 +191,6 @@ class Neighborly:
 
         # Initialization systems
         self.world.system_manager.add_system(
-            systems.InitializeServicesSystem(),
-            priority=9999,
-            system_group=systems.InitializationSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.InitializeOccupationTypesSystem(),
-            priority=9999,
-            system_group=systems.InitializationSystemGroup,
-        )
-        self.world.system_manager.add_system(
             systems.InitializeItemTypeSystem(),
             priority=9999,
             system_group=systems.InitializationSystemGroup,
@@ -233,10 +220,12 @@ class Neighborly:
 
         # Add early-update systems (in execution order)
         self.world.system_manager.add_system(
-            systems.MeetNewPeopleSystem(), system_group=systems.EarlyUpdateSystemGroup
+            systems.MeetNewPeopleSystem(),
+            system_group=systems.EarlyUpdateSystemGroup,
         )
         self.world.system_manager.add_system(
-            systems.RandomLifeEventSystem(), system_group=systems.EarlyUpdateSystemGroup
+            systems.RandomLifeEventSystem(),
+            system_group=systems.EarlyUpdateSystemGroup,
         )
         self.world.system_manager.add_system(
             systems.UpdateFrequentedLocationSystem(),
@@ -244,7 +233,10 @@ class Neighborly:
         )
 
         # Add relationship-update systems (in execution order)
-        # self.world.systems.add_system(systems.EvaluateSocialRulesSystem())
+        self.world.system_manager.add_system(
+            systems.EvaluateSocialRulesSystem(),
+            system_group=systems.RelationshipUpdateSystemGroup,
+        )
         self.world.system_manager.add_system(
             systems.RelationshipUpdateSystem(),
             system_group=systems.RelationshipUpdateSystemGroup,
@@ -264,19 +256,23 @@ class Neighborly:
             system_group=systems.GoalSuggestionSystemGroup,
         )
         self.world.system_manager.add_system(
-            systems.EndMarriageSystem(), system_group=systems.GoalSuggestionSystemGroup
+            systems.EndMarriageSystem(),
+            system_group=systems.GoalSuggestionSystemGroup,
         )
         self.world.system_manager.add_system(
             systems.MarriageSystem(), system_group=systems.GoalSuggestionSystemGroup
         )
         self.world.system_manager.add_system(
-            systems.FindRomanceSystem(), system_group=systems.GoalSuggestionSystemGroup
+            systems.FindRomanceSystem(),
+            system_group=systems.GoalSuggestionSystemGroup,
         )
         self.world.system_manager.add_system(
-            systems.FindOwnPlaceSystem(), system_group=systems.GoalSuggestionSystemGroup
+            systems.FindOwnPlaceSystem(),
+            system_group=systems.GoalSuggestionSystemGroup,
         )
         self.world.system_manager.add_system(
-            systems.RetirementSystem(), system_group=systems.GoalSuggestionSystemGroup
+            systems.RetirementSystem(),
+            system_group=systems.GoalSuggestionSystemGroup,
         )
 
         # Add update systems (in execution order)
@@ -338,11 +334,18 @@ class Neighborly:
         self.world.gameobject_manager.register_component(
             Business, factory=BusinessFactory()
         )
+        self.world.gameobject_manager.register_component(BusinessOwner)
+        self.world.gameobject_manager.register_component(Unemployed)
         self.world.gameobject_manager.register_component(InTheWorkforce)
+        self.world.gameobject_manager.register_component(BossOf)
+        self.world.gameobject_manager.register_component(EmployeeOf)
+        self.world.gameobject_manager.register_component(CoworkerOf)
+
         self.world.gameobject_manager.register_component(Departed)
-        self.world.gameobject_manager.register_component(CanAge)
-        self.world.gameobject_manager.register_component(Mortal)
-        self.world.gameobject_manager.register_component(CanGetPregnant)
+        register_trait(self.world, CanAge)
+        register_trait(self.world, CanGetPregnant)
+        register_trait(self.world, CanGetOthersPregnant)
+        register_trait(self.world, Immortal)
         self.world.gameobject_manager.register_component(Deceased)
         self.world.gameobject_manager.register_component(Retired)
         self.world.gameobject_manager.register_component(Residence)
@@ -350,7 +353,10 @@ class Neighborly:
         self.world.gameobject_manager.register_component(Vacant)
         self.world.gameobject_manager.register_component(Building)
         self.world.gameobject_manager.register_component(Position2D)
-        self.world.gameobject_manager.register_component(StatusManager)
+        self.world.gameobject_manager.register_component(Statuses)
+        self.world.gameobject_manager.register_component(
+            Traits, factory=TraitsFactory()
+        )
         self.world.gameobject_manager.register_component(FrequentedLocations)
         self.world.gameobject_manager.register_component(
             Settlement, factory=SettlementFactory()
@@ -374,15 +380,8 @@ class Neighborly:
         self.world.gameobject_manager.register_component(Gender)
         self.world.gameobject_manager.register_component(LifeStage)
         self.world.gameobject_manager.register_component(ItemType)
-        self.world.gameobject_manager.register_component(Description)
         self.world.gameobject_manager.register_component(Item)
-        self.world.gameobject_manager.register_component(OccupationType)
-        self.world.gameobject_manager.register_component(SocialStatusLevel)
-        self.world.gameobject_manager.register_component(
-            JobRequirements, factory=JobRequirementsFactory()
-        )
-        self.world.gameobject_manager.register_component(RoleTracker)
-        self.world.gameobject_manager.register_component(IsRole)
+        self.world.gameobject_manager.register_component(Roles)
 
         # Event listeners
         self.world.event_manager.on_event(JoinSettlementEvent, on_adult_join_settlement)
@@ -511,3 +510,9 @@ class Neighborly:
     def step(self) -> None:
         """Advance the simulation a single timestep."""
         self.world.step()
+
+
+def register_trait(world: World, trait_type: Type[ITrait]) -> None:
+    """A utility method for registering trait types."""
+    world.gameobject_manager.register_component(trait_type)
+    world.resource_manager.get_resource(TraitLibrary).add_trait_type(trait_type)

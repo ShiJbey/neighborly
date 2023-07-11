@@ -1,12 +1,10 @@
 import os
 import pathlib
-from typing import Any
 
 from neighborly.loaders import load_names
 from neighborly.simulation import Neighborly, PluginInfo
 
 _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
-
 
 plugin_info = PluginInfo(
     name="default names plugin",
@@ -15,7 +13,7 @@ plugin_info = PluginInfo(
 )
 
 
-def setup(sim: Neighborly, **kwargs: Any):
+def setup(sim: Neighborly):
     load_names(
         sim.world,
         rule_name="character::default::last_name",

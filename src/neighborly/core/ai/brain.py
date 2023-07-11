@@ -140,7 +140,7 @@ class ConsiderationList(List[Consideration]):
         for c in self:
             consideration_score = c(gameobject)
             if consideration_score is not None:
-                assert 0.0 <= consideration_score <= 1.0
+                assert 0.0 <= consideration_score
                 cumulative_score *= consideration_score
                 consideration_count += 1
 

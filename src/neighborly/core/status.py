@@ -1,8 +1,8 @@
 """
-status.py
+trait.py
 
-Statuses represent temporary states of being for gameobjects. They are meant to
-be paired with systems and updated every timestep and may be used to represent
+Statuses represent temporary states of being for game objects. They are meant to
+be paired with systems and updated every time step and may be used to represent
 temporary states like mood, unemployment, pregnancies, etc.
 
 """
@@ -13,98 +13,89 @@ from typing import Any, ClassVar, Dict, Iterator, Type, TypeVar
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
-from neighborly.core.time import SimDateTime
 
 
-class StatusComponent(Component, ISerializable, ABC):
+class IStatus(Component, ISerializable, ABC):
     """A component that tracks a temporary state of being for a GameObject."""
 
+    __slots__ = "year_created"
+
+    year_created: int
+    """The year the status was created."""
+
     is_persistent: ClassVar[bool] = False
-    """Is this component removed when the gameobject becomes inactive"""
+    """If this status type persists even when a GameObject is no longer active."""
 
-    __slots__ = "created"
-
-    created: SimDateTime
-    """The date the status was created."""
-
-    def __init__(self) -> None:
+    def __init__(self, year_created: int) -> None:
         super().__init__()
-        self.created = SimDateTime(1, 1, 1)
-
-    def set_created(self, timestamp: SimDateTime) -> None:
-        """Set the creation timestamp.
-
-        Parameters
-        ----------
-        timestamp
-            The new timestamp.
-        """
-        self.created = timestamp.copy()
+        self.year_created = year_created
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"created": str(self.created)}
+        return {"year_created": str(self.year_created)}
 
     def __str__(self) -> str:
-        return f"Status::{self.__class__.__name__}"
+        return "{}(year_created={})".format(self.__class__.__name__, self.year_created)
 
     def __repr__(self) -> str:
-        return "{}(created={})".format(self.__class__.__name__, self.created)
+        return "{}(year_created={})".format(self.__class__.__name__, self.year_created)
 
 
-class StatusManager(Component, ISerializable):
+class Statuses(Component, ISerializable):
     """Manages the state of statuses attached to the GameObject."""
 
     __slots__ = "_statuses"
 
-    _statuses: OrderedSet[Type[StatusComponent]]
-    """A set of status types attached to the GameObject."""
+    _statuses: OrderedSet[IStatus]
+    """A set of statuses attached to the GameObject."""
 
     def __init__(self) -> None:
         super().__init__()
         self._statuses = OrderedSet([])
 
-    def add(self, status_type: Type[StatusComponent]) -> None:
-        """Add a status type to the tracker.
+    def add_status(self, status: IStatus) -> None:
+        """Add a status to the tracker.
 
         Parameters
         ----------
-        status_type
-            The status type added to the GameObject.
+        status
+            The status added to the GameObject.
         """
-        self._statuses.add(status_type)
+        self._statuses.add(status)
 
-    def remove(self, status_type: Type[StatusComponent]) -> None:
-        """Remove a status type from the tracker.
+    def remove_status(self, status: IStatus) -> None:
+        """Remove a status from the tracker.
 
         Parameters
         ----------
-        status_type
-            The status type to be removed from the GameObject.
+        status
+            The status to be removed from the GameObject.
         """
-        self._statuses.remove(status_type)
+        self._statuses.remove(status)
 
-    def __contains__(self, item: Type[StatusComponent]) -> bool:
-        """Check if a status type is attached to a GameObject"""
-        return item in self._statuses
+    def has_status(self, status: IStatus) -> bool:
+        """Check if a status is attached to a GameObject"""
+        return status in self._statuses
 
-    def __iter__(self) -> Iterator[Type[StatusComponent]]:
+    def iter_statuses(self) -> Iterator[IStatus]:
         """Return iterator to active status types"""
         return self._statuses.__iter__()
 
     def __str__(self) -> str:
-        return ", ".join([s.__name__ for s in self._statuses])
+        return ", ".join([type(s).__name__ for s in self._statuses])
 
     def __repr__(self) -> str:
-        return "{}({})".format(self.__class__.__name__, self._statuses)
+        return "{}({})".format(
+            self.__class__.__name__, [type(s).__name__ for s in self._statuses]
+        )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"statuses": [s.__name__ for s in self._statuses]}
+        return {"statuses": [type(s).__name__ for s in self._statuses]}
 
 
-_ST = TypeVar("_ST", bound=StatusComponent)
+_ST = TypeVar("_ST", bound=IStatus)
 
 
-def add_status(gameobject: GameObject, status: StatusComponent) -> None:
+def add_status(gameobject: GameObject, status: IStatus) -> None:
     """Add a status to the given GameObject.
 
     Parameters
@@ -114,8 +105,7 @@ def add_status(gameobject: GameObject, status: StatusComponent) -> None:
     status
         The status to add.
     """
-    gameobject.get_component(StatusManager).add(type(status))
-    status.set_created(gameobject.world.resource_manager.get_resource(SimDateTime))
+    gameobject.get_component(Statuses).add_status(status)
     gameobject.add_component(status)
 
 
@@ -137,7 +127,7 @@ def get_status(gameobject: GameObject, status_type: Type[_ST]) -> _ST:
     return gameobject.get_component(status_type)
 
 
-def remove_status(gameobject: GameObject, status_type: Type[StatusComponent]) -> None:
+def remove_status(gameobject: GameObject, status_type: Type[IStatus]) -> None:
     """Remove a status from the given GameObject.
 
     Parameters
@@ -147,12 +137,12 @@ def remove_status(gameobject: GameObject, status_type: Type[StatusComponent]) ->
     status_type
         The status type to remove.
     """
-    if has_status(gameobject, status_type):
+    if status := gameobject.try_component(status_type):
+        gameobject.get_component(Statuses).remove_status(status)
         gameobject.remove_component(status_type)
-        gameobject.get_component(StatusManager).remove(status_type)
 
 
-def has_status(gameobject: GameObject, status_type: Type[StatusComponent]) -> bool:
+def has_status(gameobject: GameObject, status_type: Type[IStatus]) -> bool:
     """Check for a status of a given type.
 
     Parameters
@@ -167,7 +157,7 @@ def has_status(gameobject: GameObject, status_type: Type[StatusComponent]) -> bo
     bool
         True if the GameObject has a status of the given type, False otherwise.
     """
-    return status_type in gameobject.get_component(StatusManager)
+    return gameobject.has_component(status_type)
 
 
 def clear_statuses(gameobject: GameObject) -> None:
@@ -178,9 +168,9 @@ def clear_statuses(gameobject: GameObject) -> None:
     gameobject: GameObject
         The GameObject to clear statuses from
     """
-    status_tracker = gameobject.get_component(StatusManager)
-    statuses_to_remove = list(status_tracker)
+    status_manager = gameobject.get_component(Statuses)
+    statuses_to_remove = list(status_manager.iter_statuses())
 
-    for status_type in statuses_to_remove:
-        if not status_type.is_persistent:
-            remove_status(gameobject, status_type)
+    for status in statuses_to_remove:
+        if not status.is_persistent:
+            remove_status(gameobject, type(status))

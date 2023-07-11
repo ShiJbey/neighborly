@@ -120,7 +120,7 @@ def clamp(value: float, minimum: float, maximum: float) -> float:
 
 
 class BigFivePersonalityFactory(IComponentFactory):
-    def create(self, world: World, **kwargs: Any) -> Component:
+    def create(self, world: World, **kwargs: Any) -> BigFivePersonality:
         rng = world.resource_manager.get_resource(random.Random)
 
         openness: float = clamp(

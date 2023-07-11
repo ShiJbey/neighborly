@@ -18,29 +18,28 @@ EXPORT_WORLD = False
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            # "seed": "Apples",
-            "time_increment": "1mo",
-            "relationship_schema": {
-                "components": {
-                    "Friendship": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "Romance": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "InteractionScore": {
-                        "min_value": -5,
-                        "max_value": 5,
-                    },
-                }
-            },
+            # "seed": 7167130,
             "plugins": [
                 "neighborly.plugins.defaults.all",
-                "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
             ],
+            "logging": {
+                "logging_enabled": True,
+                "log_level": "DEBUG",
+            },
+            "settings": {
+                "settlement_size": (5, 5),  # Width/length of the settlement grid
+                "zoning": (0.5, 0.5),  # Zoning is 50/50 residential vs. commercial
+                "character_spawn_table": [
+                    {"name": "character::default::male"},
+                    {"name": "character::default::female"},
+                    {"name": "character::default::non-binary"},
+                ],
+                "residence_spawn_table": [
+                    {"name": "residence::default::house"},
+                ],
+                "business_spawn_table": [],
+            },
         }
     )
 )

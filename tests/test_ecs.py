@@ -4,11 +4,13 @@ from typing import Any, Dict
 import pytest
 
 from neighborly.core.ecs import (
+    Active,
     Component,
     ComponentNotFoundError,
     GameObjectNotFoundError,
-    ISystem,
     ResourceNotFoundError,
+    SystemBase,
+    SystemNotFoundError,
     World,
 )
 
@@ -72,7 +74,7 @@ class AnotherFakeResource:
     config_value: int = 43
 
 
-class SalarySystem(ISystem):
+class SalarySystemBase(SystemBase):
     def on_update(self, world: World) -> None:
         for _, (job, money) in world.get_components((Job, Money)):
             money.amount += job.salary
@@ -164,9 +166,7 @@ def test_delete_gameobject():
     assert world.gameobject_manager.has_gameobject(g3) is True
     world.step()
     assert g3.has_component(ComponentA) is False
-    # When you remove the last component from an entity,
-    # it technically does not exist within esper anymore
-    assert world._ecs.entity_exists(g3) is False  # type: ignore
+
     g3.destroy()
     world.step()
     assert world.gameobject_manager.has_gameobject(g3) is False
@@ -215,24 +215,31 @@ def test_world_get_components():
 def test_world_add_get_system():
     world = World()
 
-    assert world.system_manager.get_system(SalarySystem) is None
-    world.system_manager.add_system(SalarySystem())
-    assert world.system_manager.get_system(SalarySystem) is not None
+    with pytest.raises(SystemNotFoundError):
+        assert world.system_manager.get_system(SalarySystemBase)
+
+    world.system_manager.add_system(SalarySystemBase())
+    assert world.system_manager.get_system(SalarySystemBase) is not None
 
 
 def test_world_remove_system():
     world = World()
 
-    assert world.system_manager.get_system(SalarySystem) is None
-    world.system_manager.add_system(SalarySystem())
-    assert world.system_manager.get_system(SalarySystem) is not None
-    world.system_manager.remove_system(SalarySystem)
-    assert world.system_manager.get_system(SalarySystem) is None
+    with pytest.raises(SystemNotFoundError):
+        assert world.system_manager.get_system(SalarySystemBase)
+
+    world.system_manager.add_system(SalarySystemBase())
+    assert world.system_manager.get_system(SalarySystemBase) is not None
+
+    world.system_manager.remove_system(SalarySystemBase)
+
+    with pytest.raises(SystemNotFoundError):
+        assert world.system_manager.get_system(SalarySystemBase)
 
 
 def test_world_step():
     world = World()
-    world.system_manager.add_system(SalarySystem())
+    world.system_manager.add_system(SalarySystemBase())
 
     adrian = world.gameobject_manager.spawn_gameobject(
         [Actor("Adrian"), Money(0), Job("Teacher", 24_000)]
@@ -360,7 +367,8 @@ def test_gameobject_get_component_types():
 
     component_types = set(adrian.get_component_types())
 
-    assert component_types == {Actor, Money}
+    # Active gets added automatically when spawning gameobjects
+    assert component_types == {Actor, Money, Active}
 
 
 def test_gameobject_add_component():

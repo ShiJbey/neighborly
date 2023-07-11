@@ -15,7 +15,7 @@ from neighborly.core.ecs import GameObject
 
 
 class ILocationPreferenceRule(Protocol):
-    """LocationBiasRules define what locations characters are likely to frequent"""
+    """LocationPreferenceRules define what locations characters are likely to frequent"""
 
     def __call__(self, character: GameObject, location: GameObject) -> Optional[int]:
         """
@@ -40,7 +40,7 @@ class ILocationPreferenceRule(Protocol):
 
 @dataclasses.dataclass(frozen=True)
 class LocationPreferenceRuleInfo:
-    """Information about a location bias rule."""
+    """Information about a location preference rule."""
 
     rule: ILocationPreferenceRule
     """The callable function that implements the rule"""

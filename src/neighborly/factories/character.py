@@ -5,7 +5,7 @@ import random
 from typing import Any, Dict, Optional
 
 from neighborly.components.character import GameCharacter, Virtue, Virtues
-from neighborly.core.ecs import Component, IComponentFactory, World
+from neighborly.core.ecs import IComponentFactory, World
 from neighborly.core.tracery import Tracery
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class GameCharacterFactory(IComponentFactory):
     """Constructs instances of GameCharacter components"""
 
-    def create(self, world: World, **kwargs: Any) -> Component:
+    def create(self, world: World, **kwargs: Any) -> GameCharacter:
         first_name_pattern: str = kwargs["first_name"]
         last_name_pattern: str = kwargs["last_name"]
         tracery = world.resource_manager.get_resource(Tracery)

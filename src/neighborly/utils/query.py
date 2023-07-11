@@ -4,11 +4,12 @@ from typing import List, Set, Tuple, Type, Union
 
 from neighborly.components.business import Occupation, WorkHistory
 from neighborly.components.character import Dating, Family, Married
+from neighborly.components.role import Roles
 from neighborly.core.ecs import Component, GameObject
 from neighborly.core.query import QueryClause, QueryContext, Relation, WithClause
 from neighborly.core.relationship import Relationship, RelationshipManager
-from neighborly.core.status import StatusComponent
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
+from neighborly.core.status import IStatus
+from neighborly.core.time import SimDateTime
 
 
 def with_components(
@@ -31,7 +32,7 @@ def with_relationship(
     owner_var: str,
     target_var: str,
     relationship_var: str,
-    *statuses: Type[StatusComponent],
+    *statuses: Type[IStatus],
 ) -> QueryClause:
     def clause(ctx: QueryContext) -> Relation:
         results: List[Tuple[int, int, int]] = []
@@ -47,7 +48,7 @@ def with_relationship(
     return clause
 
 
-def has_work_experience_as(occupation_type: str, years_experience: int = 0):
+def has_work_experience_as(occupation_type: Type[Occupation], years_experience: int = 0):
     """
     Returns Precondition function that returns true if the entity
     has experience as a given occupation type.
@@ -74,20 +75,16 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
             if entry.occupation_type == occupation_type:
                 total_experience += entry.years_held
 
-        if gameobject.has_component(Occupation):
-            occupation = gameobject.get_component(Occupation)
-            if occupation.occupation_type == occupation_type:
-                total_experience += (
-                    float((current_date - occupation.start_date).total_days)
-                    / DAYS_PER_YEAR
-                )
+        for occupation in gameobject.get_component(Roles).get_roles_of_type(Occupation):
+            if isinstance(occupation, occupation_type):
+                total_experience += current_date.year - occupation.start_year
 
         return total_experience >= years_experience
 
     return fn
 
 
-def get_work_experience_as(occupation_type: GameObject):
+def get_work_experience_as(occupation_type: Type[Occupation]):
     """
     Returns Precondition function that returns true if the entity
     has experience as a given occupation type.
@@ -112,13 +109,9 @@ def get_work_experience_as(occupation_type: GameObject):
             if entry.occupation_type == occupation_type:
                 total_experience += entry.years_held
 
-        if gameobject.has_component(Occupation):
-            occupation = gameobject.get_component(Occupation)
-            if occupation.occupation_type == occupation_type:
-                total_experience += (
-                    float((current_date - occupation.start_date).total_days)
-                    / DAYS_PER_YEAR
-                )
+        for occupation in gameobject.get_component(Roles).get_roles_of_type(Occupation):
+            if isinstance(occupation, occupation_type):
+                total_experience += current_date.year - occupation.start_year
 
         return total_experience
 
@@ -152,11 +145,8 @@ def has_any_work_experience(years_experience: int = 0):
             if total_experience >= years_experience:
                 return True
 
-        if gameobject.has_component(Occupation):
-            occupation = gameobject.get_component(Occupation)
-            total_experience += (
-                float((current_date - occupation.start_date).total_days) / DAYS_PER_YEAR
-            )
+        for occupation in gameobject.get_component(Roles).get_roles_of_type(Occupation):
+            total_experience += current_date.year - occupation.start_year
 
         return total_experience >= years_experience
 

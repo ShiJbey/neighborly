@@ -21,18 +21,17 @@ from typing import Any, Dict
 
 from neighborly import (
     Component,
-    ISystem,
     Neighborly,
     NeighborlyConfig,
     SimDateTime,
+    SystemBase,
     World,
-    TimeDelta,
 )
 from neighborly.data_collection import DataCollector
 from neighborly.decorators import component, system
 from neighborly.systems import DataCollectionSystemGroup, UpdateSystemGroup
 
-sim = Neighborly(NeighborlyConfig(seed=101, time_increment=TimeDelta(years=1)))
+sim = Neighborly(NeighborlyConfig(seed=101))
 
 
 @component(sim.world)
@@ -64,14 +63,14 @@ class Job(Component):
 
 
 @system(sim.world, system_group=UpdateSystemGroup)
-class SalarySystem(ISystem):
+class SalarySystemBase(SystemBase):
     def on_update(self, world: World) -> None:
         for _, (job, money) in world.get_components((Job, Money)):
             money.amount += job.salary // 12
 
 
 @system(sim.world, system_group=DataCollectionSystemGroup)
-class WealthReporter(ISystem):
+class WealthReporter(SystemBase):
     def on_create(self, world: World) -> None:
         world.resource_manager.get_resource(DataCollector).create_new_table(
             "wealth", ("uid", "name", "timestamp", "money")
@@ -93,7 +92,6 @@ class WealthReporter(ISystem):
 
 
 if __name__ == "__main__":
-
     sim.world.gameobject_manager.spawn_gameobject(
         [Actor("Alice"), Money(0), Job("WacArnold's", 20_000)]
     )

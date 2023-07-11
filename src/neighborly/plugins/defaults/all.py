@@ -1,10 +1,7 @@
-from typing import Any
-
 from neighborly.plugins.defaults import (
     businesses,
     characters,
-    job_requirement_rules,
-    location_bias_rules,
+    location_preference_rules,
     names,
     residences,
     resident_spawning,
@@ -20,13 +17,12 @@ plugin_info = PluginInfo(
 )
 
 
-def setup(sim: Neighborly, **kwargs: Any):
-    businesses.setup(sim, **kwargs)
-    characters.setup(sim, **kwargs)
-    settlement.setup(sim, **kwargs)
-    location_bias_rules.setup(sim, **kwargs)
-    names.setup(sim, **kwargs)
-    residences.setup(sim, **kwargs)
-    resident_spawning.setup(sim, **kwargs)
-    social_rules.setup(sim, **kwargs)
-    job_requirement_rules.setup(sim, **kwargs)
+def setup(sim: Neighborly):
+    businesses.setup(sim)
+    characters.setup(sim)
+    settlement.setup(sim)
+    location_preference_rules.setup(sim)
+    names.setup(sim)
+    residences.setup(sim)
+    resident_spawning.setup(sim)
+    social_rules.setup(sim)

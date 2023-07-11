@@ -9,7 +9,7 @@ from typing import Any, Dict
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
-from neighborly.core.status import StatusComponent
+from neighborly.core.status import IStatus
 
 
 class Residence(Component, ISerializable):
@@ -104,7 +104,7 @@ class Residence(Component, ISerializable):
         return f"Residence({self.to_dict()})"
 
 
-class Resident(StatusComponent):
+class Resident(IStatus):
     """A Component attached to characters that tracks where they live."""
 
     __slots__ = "residence"
@@ -112,18 +112,20 @@ class Resident(StatusComponent):
     residence: GameObject
     """The GameObject ID of their residence."""
 
-    def __init__(self, residence: GameObject) -> None:
+    def __init__(self, year_created: int, residence: GameObject) -> None:
         """
         Parameters
         ----------
+        year_created
+            The year the character became a resident.
         residence
             A GameObject reference to their residence.
         """
-        super().__init__()
+        super().__init__(year_created)
         self.residence = residence
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"residence": self.residence.uid}
+        return {**super().to_dict(), "residence": self.residence.uid}
 
     def __repr__(self) -> str:
         return f"Resident({self.to_dict()})"
@@ -132,7 +134,7 @@ class Resident(StatusComponent):
         return f"Resident({self.to_dict()})"
 
 
-class Vacant(StatusComponent):
+class Vacant(IStatus):
     """Tags a residence that does not currently have anyone living there."""
 
     pass

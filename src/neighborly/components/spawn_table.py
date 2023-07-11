@@ -7,7 +7,7 @@ from __future__ import annotations
 import random
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Iterator
+from typing import Any, Dict, Iterator, List, Optional
 
 from neighborly.core.ecs import Component, GameObject
 from neighborly.core.settlement import Settlement

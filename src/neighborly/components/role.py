@@ -3,67 +3,46 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Type, List
-
-from ordered_set import OrderedSet
+from typing import Any, Dict, Iterable, List, Type, TypeVar
 
 from neighborly import Component, GameObject
-from neighborly.core.ecs import ISerializable, TagComponent
+from neighborly.core.ecs import ISerializable
+from ordered_set import OrderedSet
+
+_RT = TypeVar("_RT", bound=Component)
 
 
-class RoleTracker(Component, ISerializable):
+class Roles(Component, ISerializable):
     """Tracks the roles currently held by this character."""
 
     __slots__ = "_roles"
 
-    _roles: OrderedSet[GameObject]
-    """References to the role GameObjects."""
+    _roles: OrderedSet[Component]
+    """References to the role components."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._roles = OrderedSet([])
 
     @property
-    def roles(self) -> OrderedSet[GameObject]:
+    def roles(self) -> Iterable[Component]:
         return self._roles
 
+    def add_role(self, role: Component) -> None:
+        self._roles.add(role)
+
+    def remove_role(self, role: Component) -> None:
+        self._roles.remove(role)
+
     def to_dict(self) -> Dict[str, Any]:
-        return {"roles": [role.uid for role in self.roles]}
+        return {"roles": [type(role).__name__ for role in self.roles]}
+
+    def get_roles_of_type(self, role_type: Type[_RT]) -> List[_RT]:
+        """Get all roles that are an instance or derived instance of the given type."""
+        return [role for role in self._roles if isinstance(role, role_type)]
 
 
-class IsRole(TagComponent):
-    """Tags a GameObject as tracking information about a role."""
-
-    pass
-
-
-def get_roles_with_components(
-    gameobject: GameObject, *component_types: Type[Component]
-) -> List[GameObject]:
-    """Get all role associated with a GameObject that have specific components.
-
-    Parameters
-    ----------
-    gameobject
-        The GameObject to search on
-    *component_types
-        The component classes to check for
-
-    Returns
-    -------
-    List[GameObject]
-        Matching role GameObjects
-    """
-    matches: List[GameObject] = []
-
-    for role in gameobject.get_component(RoleTracker).roles:
-        if role.has_components(*component_types):
-            matches.append(role)
-
-    return matches
-
-
-def add_role(gameobject: GameObject, role: GameObject) -> None:
+def add_role(gameobject: GameObject, role: Component) -> None:
     """Add a role to a GameObject.
 
     Parameters
@@ -73,19 +52,20 @@ def add_role(gameobject: GameObject, role: GameObject) -> None:
     role
         The role to add.
     """
-    gameobject.get_component(RoleTracker).roles.add(role)
-    gameobject.add_child(role)
+    gameobject.get_component(Roles).add_role(role)
+    gameobject.add_component(role)
 
 
-def remove_role(gameobject: GameObject, role: GameObject) -> None:
+def remove_role(gameobject: GameObject, role_type: Type[Component]) -> None:
     """Remove a role from a GameObject.
 
     Parameters
     ----------
     gameobject
         The GameObject to remove the role from.
-    role
-        The role to add.
+    role_type
+        The role to remove.
     """
-    gameobject.get_component(RoleTracker).roles.remove(role)
-    gameobject.remove_child(role)
+    if role := gameobject.try_component(role_type):
+        gameobject.get_component(Roles).remove_role(role)
+        gameobject.remove_component(role_type)

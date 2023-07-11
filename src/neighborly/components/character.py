@@ -8,14 +8,27 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from typing import Any, ClassVar, Dict, Iterator, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    FrozenSet,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import numpy as np
 from numpy import typing as npt
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
-from neighborly.core.relationship import RelationshipStatus
-from neighborly.core.status import StatusComponent
+from neighborly.core.relationship import IRelationshipStatus
+from neighborly.core.status import IStatus
+
+from neighborly.components.trait import IInheritable, ITrait
 
 
 class GameCharacter(Component, ISerializable):
@@ -67,51 +80,46 @@ class GameCharacter(Component, ISerializable):
         return self.full_name
 
 
-class Departed(StatusComponent):
+class Departed(IStatus):
     """Tags a character as departed from the simulation."""
 
     is_persistent = True
 
 
-class CanAge(Component, ISerializable):
+class CanAge(ITrait):
     """Tags a GameObject as being able to change life stages as time passes."""
 
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return self.__class__.__name__
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+    @classmethod
+    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
+        """Get component types that this component's type conflicts with."""
+        return frozenset({})
 
 
-class Mortal(StatusComponent):
-    """Tags a GameObject as being able to die from natural causes."""
+class CanGetPregnant(ITrait):
+    """Tags a character as capable of getting pregnant and giving birth."""
 
-    is_persistent = True
-
-
-class CanGetPregnant(Component, ISerializable):
-    """Tags a character as capable of giving birth."""
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return self.__class__.__name__
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {}
+    @classmethod
+    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
+        """Get component types that this component's type conflicts with."""
+        return frozenset({})
 
 
-class Deceased(StatusComponent):
+class CanGetOthersPregnant(ITrait):
+    """Tags a character as capable of getting other characters pregnant."""
+
+    @classmethod
+    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
+        """Get component types that this component's type conflicts with."""
+        return frozenset({})
+
+
+class Deceased(IStatus):
     """Tags a character as deceased."""
 
     is_persistent = True
 
 
-class Retired(StatusComponent):
+class Retired(IStatus):
     """Tags a character as retired."""
 
     is_persistent = True
@@ -217,6 +225,12 @@ class Virtues(Component, ISerializable):
         -------
         int
             Similarity score on the range [-100, 100]
+
+
+        Notes
+        -----
+        This method uses a combination of cosine similarity and similarity in magnitude to calculate the overall
+        similarity of two sets of virtues.
         """
         # Cosine similarity is a value between -1 and 1
         norm_product: float = float(
@@ -229,7 +243,7 @@ class Virtues(Component, ISerializable):
             cosine_similarity = float(np.dot(self._virtues, other._virtues) / norm_product)  # type: ignore
 
         # Distance similarity is a value between -1 and 1
-        max_distance = 509.9019513592785
+        max_distance = 509.9019513592785  # This the maximum difference in the magnitudes of the virtue vectors
         distance = float(np.linalg.norm(self._virtues - other._virtues))  # type: ignore
         distance_similarity = 2.0 * (1.0 - (distance / max_distance)) - 1.0
 
@@ -265,17 +279,23 @@ class Virtues(Component, ISerializable):
 
         return [value_names[i] for i in sorted_index_array]
 
-    def __getitem__(self, item: int) -> int:
+    def __getitem__(self, item: Virtue) -> int:
         return int(self._virtues[item])
 
-    def __setitem__(self, item: int, value: int) -> None:
+    def __setitem__(self, item: Virtue, value: int) -> None:
         self._virtues[item] = max(Virtues.VIRTUE_MIN, min(Virtues.VIRTUE_MAX, value))
 
     def __str__(self) -> str:
-        return str(self.to_dict())
+        return self.__repr__()
 
     def __repr__(self) -> str:
-        return "{}({})".format(self.__class__.__name__, self._virtues.__repr__())
+        return "{}({})".format(
+            self.__class__.__name__,
+            {
+                virtue.name: int(self._virtues[i])
+                for i, virtue in enumerate(list(Virtue))
+            },
+        )
 
     def __iter__(self) -> Iterator[Tuple[Virtue, int]]:
         virtue_dict = {
@@ -290,23 +310,33 @@ class Virtues(Component, ISerializable):
         }
 
 
-class Pregnant(StatusComponent):
+class Pregnant(IStatus):
     """Tags a character as pregnant and tracks relevant information."""
 
-    __slots__ = "partner"
+    __slots__ = "_partner"
 
-    partner: GameObject
+    _partner: GameObject
     """The GameObject ID of the character that impregnated this character."""
 
-    def __init__(self, partner: GameObject) -> None:
+    def __init__(self, year_created: int, partner: GameObject) -> None:
         """
         Parameters
         ----------
         partner
             The character that got this one pregnant.
         """
-        super().__init__()
-        self.partner = partner
+        super().__init__(year_created)
+        self._partner = partner
+
+    @property
+    def partner(self) -> GameObject:
+        return self._partner
+
+    def __str__(self) -> str:
+        return f"{type(self).__name__}(partner={self.partner.name})"
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(partner={self.partner.name})"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -315,37 +345,37 @@ class Pregnant(StatusComponent):
         }
 
 
-class Family(RelationshipStatus):
+class Family(IRelationshipStatus):
     """Tags the relationship owner as a member of the target's family."""
 
     pass
 
 
-class ParentOf(RelationshipStatus):
+class ParentOf(IRelationshipStatus):
     """Tags the relationship owner as the parent of the target."""
 
     pass
 
 
-class ChildOf(RelationshipStatus):
+class ChildOf(IRelationshipStatus):
     """Tags the relationship owner as the child of the target."""
 
     pass
 
 
-class SiblingOf(RelationshipStatus):
+class SiblingOf(IRelationshipStatus):
     """Tags the relationship owner as a sibling of the target."""
 
     pass
 
 
-class Married(RelationshipStatus):
+class Married(IRelationshipStatus):
     """Tags two characters as being married"""
 
     pass
 
 
-class Dating(RelationshipStatus):
+class Dating(IRelationshipStatus):
     """Tags two characters as dating"""
 
     pass
@@ -438,7 +468,10 @@ class Gender(Component, ISerializable):
         self.gender = gender if isinstance(gender, GenderType) else GenderType[gender]
 
     def __str__(self) -> str:
-        return self.gender.name
+        return f"{type(self).__name__}({self.gender.name})"
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.gender.name})"
 
     def to_dict(self) -> Dict[str, Any]:
         return {"gender": self.gender.name}
@@ -477,10 +510,21 @@ class LifeStage(Component, ISerializable):
         )
 
     def __str__(self) -> str:
-        return self.life_stage.name
+        return f"{type(self).__name__}({self.life_stage.name})"
 
-    def __int__(self) -> int:
-        return self.life_stage.value
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.life_stage.name})"
 
     def to_dict(self) -> Dict[str, Any]:
         return {"life_stage": self.life_stage.name}
+
+
+class Immortal(IInheritable, ITrait):
+    @classmethod
+    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
+        """Get component types that this component's type conflicts with."""
+        return frozenset({})
+
+    @classmethod
+    def inheritance_probability(cls) -> Tuple[float, float]:
+        return 0, 1.0

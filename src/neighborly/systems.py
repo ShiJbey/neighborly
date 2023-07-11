@@ -1,23 +1,25 @@
 import random
 from collections import defaultdict
-from typing import DefaultDict, List, Type
+from typing import DefaultDict, List, Tuple, Type
 
-from neighborly.command import SpawnCharacter
+from ordered_set import OrderedSet
+
 from neighborly.components.business import (
     Business,
     Occupation,
-    OccupationLibrary,
     OpenForBusiness,
-    ServiceLibrary,
     Unemployed,
 )
 from neighborly.components.character import (
     AgingConfig,
+    CanAge,
+    CanGetOthersPregnant,
     CanGetPregnant,
     ChildOf,
     Dating,
     Family,
     GameCharacter,
+    Immortal,
     LifeStage,
     LifeStageType,
     Married,
@@ -27,6 +29,7 @@ from neighborly.components.character import (
 )
 from neighborly.components.items import ItemLibrary
 from neighborly.components.residence import Residence, Resident
+from neighborly.components.role import Roles
 from neighborly.components.shared import (
     Age,
     CurrentSettlement,
@@ -41,9 +44,10 @@ from neighborly.components.spawn_table import (
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
+from neighborly.components.trait import IInheritable, Traits, add_trait
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import Active, GameObject, ISystem, SystemGroup, World
+from neighborly.core.ecs import Active, GameObject, SystemBase, SystemGroup, World
 from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
 from neighborly.core.relationship import (
     Friendship,
@@ -87,15 +91,16 @@ from neighborly.goals import (
     Retire,
 )
 from neighborly.utils.common import (
-    add_character_to_settlement,
+    add_frequented_location,
     get_child_prefab,
     is_employed,
-    set_frequented_locations,
+    score_frequentable_locations,
+    set_character_settlement,
     set_residence,
     shutdown_business,
+    spawn_character,
 )
 from neighborly.utils.query import is_single
-
 
 ############################################
 #              SYSTEM GROUPS               #
@@ -170,7 +175,7 @@ class DataCollectionSystemGroup(SystemGroup):
 ############################################
 
 
-class TimeSystem(ISystem):
+class TimeSystem(SystemBase):
     """Advances the current date of the simulation."""
 
     def on_update(self, world: World) -> None:
@@ -178,7 +183,7 @@ class TimeSystem(ISystem):
         current_date.increment(years=1)
 
 
-class RandomLifeEventSystem(ISystem):
+class RandomLifeEventSystem(SystemBase):
     """Attempts to execute non-optional life events
 
     Life events triggered by this system do not pass through the character AI. You can
@@ -208,7 +213,7 @@ class RandomLifeEventSystem(ISystem):
                     event.dispatch()
 
 
-class MeetNewPeopleSystem(ISystem):
+class MeetNewPeopleSystem(SystemBase):
     """Characters meet new people based on places they frequent"""
 
     def on_update(self, world: World) -> None:
@@ -255,7 +260,7 @@ class MeetNewPeopleSystem(ISystem):
                 event.dispatch()
 
 
-class IncrementAgeSystem(ISystem):
+class IncrementAgeSystem(SystemBase):
     """Increases the age of all active GameObjects with Age components."""
 
     def on_update(self, world: World) -> None:
@@ -263,14 +268,14 @@ class IncrementAgeSystem(ISystem):
             age.value += 1
 
 
-class UpdateLifeStageSystem(ISystem):
-    """Change the life stage of a character based on it's age an life stage config."""
+class UpdateLifeStageSystem(SystemBase):
+    """Change the life stage of a character based on it's age a life stage config."""
 
     def on_update(self, world: World) -> None:
         current_date = world.resource_manager.get_resource(SimDateTime)
 
-        for guid, (aging_config, age, _) in world.get_components(
-            (AgingConfig, Age, Active)
+        for guid, (aging_config, age, _, _) in world.get_components(
+            (AgingConfig, Age, CanAge, Active)
         ):
             character = world.gameobject_manager.get_gameobject(guid)
 
@@ -284,38 +289,33 @@ class UpdateLifeStageSystem(ISystem):
                 and life_stage.life_stage != LifeStageType.Senior
             ):
                 life_stage.life_stage = LifeStageType.Senior
-                event = BecomeSeniorEvent(world, current_date, character)
-                world.event_manager.dispatch_event(event)
+                BecomeSeniorEvent(world, current_date, character).dispatch()
 
             elif (
                 age.value >= aging_config.adult_age
                 and life_stage.life_stage != LifeStageType.Adult
             ):
                 life_stage.life_stage = LifeStageType.Adult
-                event = BecomeAdultEvent(world, current_date, character)
-                world.event_manager.dispatch_event(event)
+                BecomeAdultEvent(world, current_date, character).dispatch()
 
             elif (
                 age.value >= aging_config.young_adult_age
                 and life_stage.life_stage != LifeStageType.YoungAdult
             ):
                 life_stage.life_stage = LifeStageType.YoungAdult
-                event = BecomeYoungAdultEvent(world, current_date, character)
-                world.event_manager.dispatch_event(event)
+                BecomeYoungAdultEvent(world, current_date, character).dispatch()
 
             elif (
                 age.value >= aging_config.adolescent_age
                 and life_stage.life_stage != LifeStageType.Adolescent
             ):
-                event = BecomeAdolescentEvent(world, current_date, character)
-                world.event_manager.dispatch_event(event)
                 life_stage.life_stage = LifeStageType.Adolescent
-
+                BecomeAdolescentEvent(world, current_date, character).dispatch()
             else:
                 life_stage.life_stage = LifeStageType.Child
 
 
-class UnemployedStatusSystem(ISystem):
+class UnemployedStatusSystem(SystemBase):
     """Provides unemployed characters with a goal to find employment."""
 
     __slots__ = "years_to_find_a_job"
@@ -332,12 +332,12 @@ class UnemployedStatusSystem(ISystem):
         for guid, (unemployed, _) in world.get_components((Unemployed, Active)):
             character = world.gameobject_manager.get_gameobject(guid)
 
-            years_unemployed = current_year - unemployed.created.year
+            years_unemployed = current_year - unemployed.year_created
 
             # Keep trying to find a job
-            goal = FindEmployment(character)
-            priority = goal.get_utility()[character]
-            character.get_component(Goals).push_goal(priority, goal)
+            find_employment_goal = FindEmployment(character)
+            priority = find_employment_goal.get_utility()[character]
+            character.get_component(Goals).push_goal(priority, find_employment_goal)
 
             # Start thinking about leaving the settlement
             if years_unemployed > self.years_to_find_a_job:
@@ -347,32 +347,79 @@ class UnemployedStatusSystem(ISystem):
 
                 # They should depart if they have no spouse(s)
                 if len(spousal_relationships) == 0:
-                    goal = DepartSimulation(character)
-                    priority = goal.get_utility()[character]
-                    character.get_component(Goals).push_goal(priority, goal)
+                    depart_goal = DepartSimulation(character)
+                    priority = depart_goal.get_utility()[character]
+                    character.get_component(Goals).push_goal(priority, depart_goal)
 
-                # Depart if non of their spouses has a job either
+                # Depart if none of their spouses has a job either
                 if not any(
                     [
                         is_employed(rel.get_component(Relationship).target)
                         for rel in spousal_relationships
                     ]
                 ):
-                    goal = DepartSimulation(character)
-                    priority = goal.get_utility()[character]
-                    character.get_component(Goals).push_goal(priority, goal)
+                    depart_goal = DepartSimulation(character)
+                    priority = depart_goal.get_utility()[character]
+                    character.get_component(Goals).push_goal(priority, depart_goal)
 
 
-class ChildBirthSystem(ISystem):
-    """Handles child births for pregnant characters."""
+class ChildBirthSystem(SystemBase):
+    """Handles childbirths for pregnant characters."""
+
+    @staticmethod
+    def inherit_parental_traits(
+        baby: GameObject, parents: Tuple[GameObject, GameObject]
+    ) -> None:
+        """Add inheritable traits to the baby."""
+        rng = baby.world.resource_manager.get_resource(random.Random)
+
+        parent_a_traits = OrderedSet(
+            [
+                type(t)
+                for t in parents[0].get_component(Traits).iter_traits()
+                if isinstance(t, IInheritable)
+            ]
+        )
+
+        parent_b_traits = OrderedSet(
+            [
+                type(t)
+                for t in parents[1].get_component(Traits).iter_traits()
+                if isinstance(t, IInheritable)
+            ]
+        )
+
+        shared_traits = parent_a_traits.intersection(parent_b_traits)
+
+        single_traits = parent_a_traits.union(parent_b_traits).difference(shared_traits)
+
+        baby_traits = baby.get_component(Traits)
+
+        for trait_type in shared_traits:
+            if trait_type in baby_traits.prohibited_traits:
+                continue
+
+            if rng.random() < trait_type.inheritance_probability()[1]:
+                add_trait(
+                    baby, baby.world.gameobject_manager.create_component(trait_type)
+                )
+
+        for trait_type in single_traits:
+            if trait_type in baby_traits.prohibited_traits:
+                continue
+
+            if rng.random() < trait_type.inheritance_probability()[0]:
+                add_trait(
+                    baby, baby.world.gameobject_manager.create_component(trait_type)
+                )
 
     def on_update(self, world: World) -> None:
-        current_date = world.resource_manager.get_resource(SimDateTime)
+        date = world.resource_manager.get_resource(SimDateTime)
 
         for guid, pregnant in world.get_component(Pregnant):
             pregnant_character = world.gameobject_manager.get_gameobject(guid)
 
-            if current_date.year <= pregnant.created.year:
+            if date.year <= pregnant.year_created:
                 continue
 
             other_parent = pregnant.partner
@@ -381,17 +428,19 @@ class ChildBirthSystem(ISystem):
 
             assert child_prefab is not None
 
-            baby = (
-                SpawnCharacter(
-                    child_prefab,
-                    last_name=pregnant_character.get_component(GameCharacter).last_name,
-                )
-                .execute(world)
-                .get_result()
+            baby = spawn_character(
+                world,
+                child_prefab,
+                last_name=pregnant_character.get_component(GameCharacter).last_name,
+            )
+
+            # Handle trait inheritance
+            ChildBirthSystem.inherit_parental_traits(
+                baby=baby, parents=(pregnant_character, other_parent)
             )
 
             settlement = pregnant_character.get_component(CurrentSettlement).settlement
-            add_character_to_settlement(baby, settlement)
+            set_character_settlement(baby, settlement)
 
             set_residence(
                 baby,
@@ -400,23 +449,33 @@ class ChildBirthSystem(ISystem):
 
             # Birthing parent to child
             add_relationship(pregnant_character, baby)
-            add_relationship_status(pregnant_character, baby, ParentOf())
-            add_relationship_status(pregnant_character, baby, Family())
+            add_relationship_status(
+                pregnant_character, baby, ParentOf(year_created=date.year)
+            )
+            add_relationship_status(
+                pregnant_character, baby, Family(year_created=date.year)
+            )
 
             # Child to birthing parent
             add_relationship(baby, pregnant_character)
-            add_relationship_status(baby, pregnant_character, ChildOf())
-            add_relationship_status(baby, pregnant_character, Family())
+            add_relationship_status(
+                baby, pregnant_character, ChildOf(year_created=date.year)
+            )
+            add_relationship_status(
+                baby, pregnant_character, Family(year_created=date.year)
+            )
 
             # Other parent to child
             add_relationship(other_parent, baby)
-            add_relationship_status(other_parent, baby, ParentOf())
-            add_relationship_status(other_parent, baby, Family())
+            add_relationship_status(
+                other_parent, baby, ParentOf(year_created=date.year)
+            )
+            add_relationship_status(other_parent, baby, Family(year_created=date.year))
 
             # Child to other parent
             add_relationship(baby, other_parent)
-            add_relationship_status(baby, other_parent, ChildOf())
-            add_relationship_status(baby, other_parent, Family())
+            add_relationship_status(baby, other_parent, ChildOf(year_created=date.year))
+            add_relationship_status(baby, other_parent, Family(year_created=date.year))
 
             # Create relationships with children of birthing parent
             for relationship in get_relationships_with_statuses(
@@ -431,13 +490,17 @@ class ChildBirthSystem(ISystem):
 
                 # Baby to sibling
                 add_relationship(baby, sibling)
-                add_relationship_status(baby, sibling, SiblingOf())
-                add_relationship_status(baby, sibling, Family())
+                add_relationship_status(
+                    baby, sibling, SiblingOf(year_created=date.year)
+                )
+                add_relationship_status(baby, sibling, Family(year_created=date.year))
 
                 # Sibling to baby
                 add_relationship(sibling, baby)
-                add_relationship_status(sibling, baby, SiblingOf())
-                add_relationship_status(sibling, baby, Family())
+                add_relationship_status(
+                    sibling, baby, SiblingOf(year_created=date.year)
+                )
+                add_relationship_status(sibling, baby, Family(year_created=date.year))
 
             # Create relationships with children of other parent
             for relationship in get_relationships_with_statuses(other_parent, ParentOf):
@@ -449,28 +512,32 @@ class ChildBirthSystem(ISystem):
 
                 # Baby to sibling
                 add_relationship(baby, sibling)
-                add_relationship_status(baby, sibling, SiblingOf())
-                add_relationship_status(baby, sibling, Family())
+                add_relationship_status(
+                    baby, sibling, SiblingOf(year_created=date.year)
+                )
+                add_relationship_status(baby, sibling, Family(year_created=date.year))
 
                 # Sibling to baby
                 add_relationship(sibling, baby)
-                add_relationship_status(sibling, baby, SiblingOf())
-                add_relationship_status(sibling, baby, Family())
+                add_relationship_status(
+                    sibling, baby, SiblingOf(year_created=date.year)
+                )
+                add_relationship_status(sibling, baby, Family(year_created=date.year))
 
             remove_status(pregnant_character, Pregnant)
 
             # Pregnancy event dates are retro-fit to be the actual date that the
             # child was due.
             have_child_event = HaveChildEvent(
-                world, current_date, pregnant_character, other_parent, baby
+                world, date, pregnant_character, other_parent, baby
             )
-            birth_event = BirthEvent(world, current_date, baby)
+            birth_event = BirthEvent(world, date, baby)
 
             world.event_manager.dispatch_event(have_child_event)
             world.event_manager.dispatch_event(birth_event)
 
 
-class RelationshipUpdateSystem(ISystem):
+class RelationshipUpdateSystem(SystemBase):
     """Increases the elapsed time for all statuses by one month"""
 
     def on_update(self, world: World) -> None:
@@ -492,7 +559,7 @@ class RelationshipUpdateSystem(ISystem):
                     comp.set_modifier(modifier_acc[type(comp)])
 
 
-class FriendshipStatSystem(ISystem):
+class FriendshipStatSystem(SystemBase):
     """Updates the friendship score from one character to another."""
 
     def on_update(self, world: World) -> None:
@@ -512,7 +579,7 @@ class FriendshipStatSystem(ISystem):
             )
 
 
-class RomanceStatSystem(ISystem):
+class RomanceStatSystem(SystemBase):
     def on_update(self, world: World) -> None:
         k = world.resource_manager.get_resource(NeighborlyConfig).settings.get(
             "relationship_growth_constant", 2
@@ -528,7 +595,7 @@ class RomanceStatSystem(ISystem):
             )
 
 
-class EvaluateSocialRulesSystem(ISystem):
+class EvaluateSocialRulesSystem(SystemBase):
     """Evaluates social rules against existing relationships
 
     This system reevaluates social rules on characters' relationships and updates the
@@ -538,20 +605,16 @@ class EvaluateSocialRulesSystem(ISystem):
     """
 
     def on_update(self, world: World) -> None:
-        for guid, relationship_comp in world.get_component(Relationship):
+        for guid, (relationship_comp, _) in world.get_components(
+            (Relationship, Active)
+        ):
             relationship = world.gameobject_manager.get_gameobject(guid)
             subject = relationship_comp.owner
             target = relationship_comp.target
-
-            # Do not update relationships if any of the character involved are
-            # not active in the simulation
-            if not subject.has_component(Active) or not target.has_component(Active):
-                continue
-
             evaluate_social_rules(relationship, subject, target)
 
 
-class UpdateFrequentedLocationSystem(ISystem):
+class UpdateFrequentedLocationSystem(SystemBase):
     """Characters update the locations that they frequent
 
     This system runs on a regular interval to allow characters to update the locations
@@ -559,36 +622,58 @@ class UpdateFrequentedLocationSystem(ISystem):
     It allows characters to choose new places to frequent that maybe didn't exist prior.
     """
 
+    __slots__ = "ideal_location_count", "location_score_threshold"
+
+    ideal_location_count: int
+    """The ideal number of frequented locations that characters should have"""
+
+    location_score_threshold: float
+    """The probability score required for a character to consider frequenting a location."""
+
+    def __init__(
+        self, ideal_location_count: int = 4, location_score_threshold: float = 0.4
+    ) -> None:
+        super().__init__()
+        self.ideal_location_count = ideal_location_count
+        self.location_score_threshold = location_score_threshold
+
     def on_update(self, world: World) -> None:
         # Frequented locations are sampled from the current settlement
         # that the character belongs to
-        for guid, (_, current_settlement, _) in world.get_components(
-            (FrequentedLocations, CurrentSettlement, Active)
+        for guid, (
+            frequented_locations,
+            current_settlement,
+            life_stage,
+            _,
+        ) in world.get_components(
+            (FrequentedLocations, CurrentSettlement, LifeStage, Active)
         ):
+            if life_stage.life_stage < LifeStageType.YoungAdult:
+                continue
+
             character = world.gameobject_manager.get_gameobject(guid)
 
-            # Sample from available locations
-            set_frequented_locations(
-                character,
-                current_settlement.settlement,
-            )
+            if len(frequented_locations) < self.ideal_location_count:
+                # Try to find additional places to frequent
+                places_to_find = max(
+                    0, self.ideal_location_count - len(frequented_locations)
+                )
 
-            # Add residence
-            if resident := character.try_component(Resident):
-                residence = resident.residence
-                if frequented_by := residence.try_component(FrequentedBy):
-                    frequented_by.add(character)
-                    character.get_component(FrequentedLocations).add(residence)
+                for score, location in score_frequentable_locations(
+                    character, current_settlement.settlement
+                ):
+                    if (
+                        score > self.location_score_threshold
+                        and location not in frequented_locations
+                    ):
+                        add_frequented_location(character, location)
+                        places_to_find -= 1
 
-            # Add Job location
-            if occupation := character.try_component(Occupation):
-                business = occupation.business
-                if frequented_by := business.try_component(FrequentedBy):
-                    frequented_by.add(character)
-                    character.get_component(FrequentedLocations).add(business)
+                    if places_to_find == 0:
+                        break
 
 
-class AIActionSystem(ISystem):
+class AIActionSystem(SystemBase):
     """AIs execute actions.
 
     This system loops through all the AIComponents and has them attempt to execute
@@ -598,15 +683,22 @@ class AIActionSystem(ISystem):
     generated by actions.
     """
 
-    UTILITY_THRESHOLD: float = 0.3
+    __slots__ = "goal_utility_threshold"
+
+    goal_utility_threshold: float
+
+    def __init__(self, goal_utility_threshold: float = 0.3) -> None:
+        super().__init__()
+        self.goal_utility_threshold = goal_utility_threshold
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
-        for _, (_, goals, _) in world.get_components((AIBrain, Goals, Active)):
+        for guid, (_, goals, _) in world.get_components((AIBrain, Goals, Active)):
+            gameobject = world.gameobject_manager.get_gameobject(guid)
             # GameObjects may have become deactivated by the actions of
             # another that ran before them in this loop. We need to ensure
             # that inactive GameObjects are not pursuing goals
-            if goals.gameobject.has_component(Active) is False:
+            if gameobject.has_component(Active) is False:
                 continue
 
             if not goals.has_options():
@@ -617,20 +709,23 @@ class AIActionSystem(ISystem):
 
             if (
                 not goal.is_complete()
-                and goal.get_utility()[goals.gameobject] >= self.UTILITY_THRESHOLD
+                and goal.get_utility()[gameobject] >= self.goal_utility_threshold
             ):
                 goal.take_action()
 
             goals.clear_goals()
 
 
-class DieOfOldAgeSystem(ISystem):
+class DieOfOldAgeSystem(SystemBase):
     """Things probabilistically die when they get close to their lifespan."""
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
 
         for guid, (age, lifespan, _) in world.get_components((Age, Lifespan, Active)):
+            if world.gameobject_manager.get_gameobject(guid).has_component(Immortal):
+                continue
+
             probability_of_death = (
                 age.value / (lifespan.value + 10.0)
                 if age.value >= lifespan.value - 15
@@ -641,7 +736,7 @@ class DieOfOldAgeSystem(ISystem):
                 Die(world.gameobject_manager.get_gameobject(guid)).evaluate()
 
 
-class GoOutOfBusinessSystem(ISystem):
+class GoOutOfBusinessSystem(SystemBase):
     @staticmethod
     def calculate_probability_of_closing(business: GameObject) -> float:
         """Calculate the probability of a business randomly going out of business."""
@@ -649,7 +744,7 @@ class GoOutOfBusinessSystem(ISystem):
         current_date = business.world.resource_manager.get_resource(SimDateTime)
 
         years_in_business: int = (
-            current_date.year - business.get_component(OpenForBusiness).created.year
+            current_date.year - business.get_component(OpenForBusiness).year_created
         )
 
         return (years_in_business / (lifespan + 10)) ** 2
@@ -665,7 +760,7 @@ class GoOutOfBusinessSystem(ISystem):
                 shutdown_business(business)
 
 
-class PregnancySystem(ISystem):
+class PregnancySystem(SystemBase):
     """Some characters may get pregnant when in romantic relationships."""
 
     @staticmethod
@@ -676,7 +771,7 @@ class PregnancySystem(ISystem):
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
-        current_date = world.resource_manager.get_resource(SimDateTime)
+        date = world.resource_manager.get_resource(SimDateTime)
 
         for guid, _ in world.get_components((CanGetPregnant, Active)):
             character = world.gameobject_manager.get_gameobject(guid)
@@ -691,6 +786,9 @@ class PregnancySystem(ISystem):
                 RelationshipManager
             ).outgoing.items():
                 if not other_character.has_component(Active):
+                    continue
+
+                if not other_character.has_component(CanGetOthersPregnant):
                     continue
 
                 if not (
@@ -709,17 +807,15 @@ class PregnancySystem(ISystem):
                 ):
                     add_status(
                         character,
-                        Pregnant(partner=chosen_partner),
+                        Pregnant(partner=chosen_partner, year_created=date.year),
                     )
 
-                    event = GetPregnantEvent(
-                        world, current_date, character, chosen_partner
-                    )
+                    event = GetPregnantEvent(world, date, character, chosen_partner)
 
                     event.dispatch()
 
 
-class DatingBreakUpSystem(ISystem):
+class DatingBreakUpSystem(SystemBase):
     def on_update(self, world: World) -> None:
         for _, (relationship, _, _) in world.get_components(
             (Relationship, Dating, Active)
@@ -732,7 +828,7 @@ class DatingBreakUpSystem(ISystem):
                 owner.get_component(Goals).push_goal(utility, goal)
 
 
-class MarriageSystem(ISystem):
+class MarriageSystem(SystemBase):
     def on_update(self, world: World) -> None:
         for _, (relationship, _, _) in world.get_components(
             (Relationship, Dating, Active)
@@ -745,7 +841,7 @@ class MarriageSystem(ISystem):
                 owner.get_component(Goals).push_goal(utility, goal)
 
 
-class EndMarriageSystem(ISystem):
+class EndMarriageSystem(SystemBase):
     def on_update(self, world: World) -> None:
         for _, (relationship, _, _) in world.get_components(
             (Relationship, Married, Active)
@@ -758,7 +854,7 @@ class EndMarriageSystem(ISystem):
                 owner.get_component(Goals).push_goal(utility, goal)
 
 
-class FindRomanceSystem(ISystem):
+class FindRomanceSystem(SystemBase):
     """
     Handles the dating/breakup loop
 
@@ -781,7 +877,7 @@ class FindRomanceSystem(ISystem):
                     goals.push_goal(utility, goal)
 
 
-class FindOwnPlaceSystem(ISystem):
+class FindOwnPlaceSystem(SystemBase):
     """
     This system looks for young-adult to adult-aged characters who don't own their own
     residence and encourages them to find their own residence or leave the simulation
@@ -803,16 +899,16 @@ class FindOwnPlaceSystem(ISystem):
                     goals.push_goal(utility, goal)
 
 
-class RetirementSystem(ISystem):
-    """
-    Encourages senior residents to retire from their jobs
-    """
+class RetirementSystem(SystemBase):
+    """Encourages senior residents to retire from all their jobs."""
 
     def on_update(self, world: World) -> None:
-        for guid, (_, _, life_stage, _, goals) in world.get_components(
-            (GameCharacter, Active, LifeStage, Occupation, Goals)
+        for guid, (_, _, life_stage, roles, goals) in world.get_components(
+            (GameCharacter, Active, LifeStage, Roles, Goals)
         ):
-            if life_stage.life_stage == LifeStageType.Senior:
+            if life_stage.life_stage == LifeStageType.Senior and len(
+                roles.get_roles_of_type(Occupation)
+            ):
                 character = world.gameobject_manager.get_gameobject(guid)
                 goal = Retire(character)
                 utility = goal.get_utility()[character]
@@ -824,33 +920,7 @@ class RetirementSystem(ISystem):
 ############################################
 
 
-class InitializeServicesSystem(ISystem):
-    """Creates Service Type GameObjects and update the library with references."""
-
-    def on_update(self, world: World) -> None:
-        service_library = world.resource_manager.get_resource(ServiceLibrary)
-
-        for prefab_name in service_library.services_to_instantiate:
-            service_obj = world.gameobject_manager.instantiate_prefab(prefab_name)
-            service_obj.name = prefab_name
-            service_library.add(service_obj)
-
-
-class InitializeOccupationTypesSystem(ISystem):
-    """Creates Occupation Type GameObjects and updates the library with references."""
-
-    def on_update(self, world: World) -> None:
-        occupation_library = world.resource_manager.get_resource(OccupationLibrary)
-
-        for prefab_name in occupation_library.occupations_to_instantiate:
-            occupation_type_obj = world.gameobject_manager.instantiate_prefab(
-                prefab_name
-            )
-            occupation_type_obj.name = prefab_name
-            occupation_library.add(occupation_type_obj)
-
-
-class InitializeItemTypeSystem(ISystem):
+class InitializeItemTypeSystem(SystemBase):
     """Creates Item Type GameObjects and updates the library with references."""
 
     def on_update(self, world: World) -> None:
@@ -862,7 +932,7 @@ class InitializeItemTypeSystem(ISystem):
             item_library.add(item_type_obj)
 
 
-class InitializeSettlementSystem(ISystem):
+class InitializeSettlementSystem(SystemBase):
     """Initializes a single settlement in the world."""
 
     def on_update(self, world: World) -> None:

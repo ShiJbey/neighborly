@@ -5,8 +5,8 @@
 from typing import Any, Dict, List
 
 from neighborly.components.spawn_table import (
-    CharacterSpawnTable,
     BusinessSpawnTable,
+    CharacterSpawnTable,
     ResidenceSpawnTable,
 )
 from neighborly.core.ecs import IComponentFactory, World

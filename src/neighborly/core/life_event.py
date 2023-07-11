@@ -27,7 +27,7 @@ from neighborly.core.time import SimDateTime
 
 
 class EventRole:
-    """A role that a GameObject is bound to."""
+    """A role within a random life event that a GameObject is bound to."""
 
     __slots__ = "_name", "_gameobject"
 
@@ -63,14 +63,14 @@ class EventRole:
         return {"name": self.name, "gameobject": self.gameobject.uid}
 
     def __str__(self) -> str:
-        return f"({self.name}: {self.gameobject})"
+        return f"{type(self).__name__}({self.name}: {self.gameobject.name})"
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name={self.name}, gid={self.gameobject})"
+        return f"{type(self).__name__}({self.name}: {self.gameobject.name})"
 
 
 class EventRoleList:
-    """A collection of Roles."""
+    """A collection of event roles."""
 
     __slots__ = "_roles", "_sorted_roles"
 
@@ -186,7 +186,7 @@ class LifeEvent(Event, ABC):
         self,
         world: World,
         timestamp: SimDateTime,
-        roles: Iterable[EventRole],
+        roles: Optional[Iterable[EventRole]] = None,
     ) -> None:
         """
         Parameters
@@ -216,6 +216,7 @@ class LifeEvent(Event, ABC):
     def roles(self) -> EventRoleList:
         return self._roles
 
+    @abstractmethod
     def to_dict(self) -> Dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
         return {
@@ -223,6 +224,13 @@ class LifeEvent(Event, ABC):
             "timestamp": str(self._timestamp),
             "roles": [role.to_dict() for role in self._roles],
         }
+
+    @abstractmethod
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        """Get all gameobjects involved in this event"""
+        gameobjects_from_roles = [r.gameobject for r in self._roles]
+
+        return gameobjects_from_roles
 
     def __getitem__(self, role_name: str) -> GameObject:
         return self._roles.get_first(role_name)
@@ -532,11 +540,11 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         raise NotImplementedError
 
     @classmethod
-    def generate(
+    def generate_role_lists(
         cls,
         world: World,
         bindings: Optional[EventRoleList] = None,
-    ) -> Generator[RandomLifeEvent, None, None]:
+    ) -> Generator[EventRoleList, None, None]:
         """Attempts to generate multiple valid life event instances
 
         Parameters
@@ -554,11 +562,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
         # Check if there are any roles that need to be bound
         if len(cls.__event_roles__) == 0:
-            yield cls(
-                world,
-                world.resource_manager.get_resource(SimDateTime).copy(),
-                EventRoleList(),
-            )
+            yield EventRoleList()
             return
 
         # Stack of previous search states for when we fail to find a result
@@ -625,11 +629,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                         )
 
                         # yield an instance of the random event
-                        yield cls(
-                            world,
-                            world.resource_manager.get_resource(SimDateTime).copy(),
-                            new_bindings,
-                        )
+                        yield new_bindings
 
                     # Check if there is any history to backtrack through.
                     # Return if not
@@ -663,12 +663,17 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
         Returns
         -------
-        LifeEventInstance or None
+        RandomLifeEvent or None
             An instance of this life event if all roles are bound successfully
         """
 
         try:
-            return next(cls.generate(world, bindings))
+            roles = next(cls.generate_role_lists(world, bindings))
+            return cls(
+                world=world,
+                timestamp=world.resource_manager.get_resource(SimDateTime).copy(),
+                roles=roles,
+            )
         except StopIteration:
             return None
 

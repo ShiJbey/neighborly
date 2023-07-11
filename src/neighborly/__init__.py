@@ -12,11 +12,11 @@ from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import (
     Component,
-    GameObjectPrefab,
     Event,
     GameObject,
+    GameObjectPrefab,
     IComponentFactory,
-    ISystem,
+    SystemBase,
     SystemGroup,
     World,
 )
@@ -30,7 +30,7 @@ __all__ = [
     "Component",
     "GameObjectPrefab",
     "GameObject",
-    "ISystem",
+    "SystemBase",
     "SystemGroup",
     "World",
     "SimDateTime",

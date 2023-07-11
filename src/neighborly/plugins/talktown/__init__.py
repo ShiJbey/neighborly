@@ -3,8 +3,8 @@ from typing import Any, Dict, List
 
 import pandas as pd
 
-from neighborly.loaders import load_occupation_types, load_prefabs
-from neighborly.plugins.talktown import business_components
+from neighborly.loaders import load_prefabs
+from neighborly.plugins.talktown import business_components, occupations
 from neighborly.plugins.talktown.personality import (
     BigFivePersonality,
     BigFivePersonalityFactory,
@@ -41,7 +41,7 @@ def _load_business_spawn_table_info(sim: Neighborly, filepath: pathlib.Path) -> 
     sim.config.settings["business_spawn_table"] = business_spawn_table
 
 
-def setup(sim: Neighborly, **kwargs: Any) -> None:
+def setup(sim: Neighborly):
     sim.world.system_manager.add_system(
         SchoolSystemGroup(), system_group=EarlyUpdateSystemGroup
     )
@@ -128,8 +128,89 @@ def setup(sim: Neighborly, **kwargs: Any) -> None:
     sim.world.gameobject_manager.register_component(business_components.TaxiDepot)
     sim.world.gameobject_manager.register_component(business_components.University)
 
+    # Occupation types
+    sim.world.gameobject_manager.register_component(occupations.Apprentice)
+    sim.world.gameobject_manager.register_component(occupations.Architect)
+    sim.world.gameobject_manager.register_component(occupations.Bottler)
+    sim.world.gameobject_manager.register_component(occupations.Bricklayer)
+    sim.world.gameobject_manager.register_component(occupations.Builder)
+    sim.world.gameobject_manager.register_component(occupations.Cashier)
+    sim.world.gameobject_manager.register_component(occupations.Cook)
+    sim.world.gameobject_manager.register_component(occupations.Dishwasher)
+    sim.world.gameobject_manager.register_component(occupations.Groundskeeper)
+    sim.world.gameobject_manager.register_component(occupations.HotelMaid)
+    sim.world.gameobject_manager.register_component(occupations.Janitor)
+    sim.world.gameobject_manager.register_component(occupations.Laborer)
+    sim.world.gameobject_manager.register_component(occupations.Secretary)
+    sim.world.gameobject_manager.register_component(occupations.Waiter)
+    sim.world.gameobject_manager.register_component(occupations.WhiteWasher)
+    sim.world.gameobject_manager.register_component(occupations.Busboy)
+    sim.world.gameobject_manager.register_component(occupations.Stocker)
+    sim.world.gameobject_manager.register_component(occupations.Seamstress)
+    sim.world.gameobject_manager.register_component(occupations.Farmer)
+    sim.world.gameobject_manager.register_component(occupations.Farmhand)
+    sim.world.gameobject_manager.register_component(occupations.Miner)
+    sim.world.gameobject_manager.register_component(occupations.Painter)
+    sim.world.gameobject_manager.register_component(occupations.Banker)
+    sim.world.gameobject_manager.register_component(occupations.BankTeller)
+    sim.world.gameobject_manager.register_component(occupations.Grocer)
+    sim.world.gameobject_manager.register_component(occupations.Bartender)
+    sim.world.gameobject_manager.register_component(occupations.Concierge)
+    sim.world.gameobject_manager.register_component(occupations.DaycareProvider)
+    sim.world.gameobject_manager.register_component(occupations.Landlord)
+    sim.world.gameobject_manager.register_component(occupations.Baker)
+    sim.world.gameobject_manager.register_component(occupations.Cooper)
+    sim.world.gameobject_manager.register_component(occupations.Barkeeper)
+    sim.world.gameobject_manager.register_component(occupations.Milkman)
+    sim.world.gameobject_manager.register_component(occupations.Plasterer)
+    sim.world.gameobject_manager.register_component(occupations.Barber)
+    sim.world.gameobject_manager.register_component(occupations.Butcher)
+    sim.world.gameobject_manager.register_component(occupations.FireFighter)
+    sim.world.gameobject_manager.register_component(occupations.Carpenter)
+    sim.world.gameobject_manager.register_component(occupations.TaxiDriver)
+    sim.world.gameobject_manager.register_component(occupations.BusDriver)
+    sim.world.gameobject_manager.register_component(occupations.Blacksmith)
+    sim.world.gameobject_manager.register_component(occupations.Woodworker)
+    sim.world.gameobject_manager.register_component(occupations.StoneCutter)
+    sim.world.gameobject_manager.register_component(occupations.Dressmaker)
+    sim.world.gameobject_manager.register_component(occupations.Distiller)
+    sim.world.gameobject_manager.register_component(occupations.Plumber)
+    sim.world.gameobject_manager.register_component(occupations.Joiner)
+    sim.world.gameobject_manager.register_component(occupations.Innkeeper)
+    sim.world.gameobject_manager.register_component(occupations.Nurse)
+    sim.world.gameobject_manager.register_component(occupations.Shoemaker)
+    sim.world.gameobject_manager.register_component(occupations.Brewer)
+    sim.world.gameobject_manager.register_component(occupations.TattooArtist)
+    sim.world.gameobject_manager.register_component(occupations.Puddler)
+    sim.world.gameobject_manager.register_component(occupations.Clothier)
+    sim.world.gameobject_manager.register_component(occupations.Teacher)
+    sim.world.gameobject_manager.register_component(occupations.Principal)
+    sim.world.gameobject_manager.register_component(occupations.Tailor)
+    sim.world.gameobject_manager.register_component(occupations.Molder)
+    sim.world.gameobject_manager.register_component(occupations.Turner)
+    sim.world.gameobject_manager.register_component(occupations.QuarryMan)
+    sim.world.gameobject_manager.register_component(occupations.Proprietor)
+    sim.world.gameobject_manager.register_component(occupations.Dentist)
+    sim.world.gameobject_manager.register_component(occupations.Doctor)
+    sim.world.gameobject_manager.register_component(occupations.Druggist)
+    sim.world.gameobject_manager.register_component(occupations.Engineer)
+    sim.world.gameobject_manager.register_component(occupations.FireChief)
+    sim.world.gameobject_manager.register_component(occupations.InsuranceAgent)
+    sim.world.gameobject_manager.register_component(occupations.Jeweler)
+    sim.world.gameobject_manager.register_component(occupations.Lawyer)
+    sim.world.gameobject_manager.register_component(occupations.Manager)
+    sim.world.gameobject_manager.register_component(occupations.Mayor)
+    sim.world.gameobject_manager.register_component(occupations.Mortician)
+    sim.world.gameobject_manager.register_component(occupations.Owner)
+    sim.world.gameobject_manager.register_component(occupations.Professor)
+    sim.world.gameobject_manager.register_component(occupations.Optometrist)
+    sim.world.gameobject_manager.register_component(occupations.Pharmacist)
+    sim.world.gameobject_manager.register_component(occupations.PlasticSurgeon)
+    sim.world.gameobject_manager.register_component(occupations.PoliceChief)
+    sim.world.gameobject_manager.register_component(occupations.PoliceOfficer)
+    sim.world.gameobject_manager.register_component(occupations.Realtor)
+
     # Load remaining data from data files
-    load_occupation_types(sim.world, pathlib.Path(__file__).parent / "occupations.yaml")
     load_prefabs(sim.world, pathlib.Path(__file__).parent / "businesses.yaml")
     _load_business_spawn_table_info(
         sim, pathlib.Path(__file__).parent / "business_spawn_table.csv"

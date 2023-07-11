@@ -2,25 +2,28 @@
 Utility decorators that should assist with content authoring
 """
 
-from typing import Any, Type, TypeVar, Optional
+from typing import Any, Optional, Type, TypeVar
 
 from neighborly.core.ecs import (
     Component,
     Event,
     EventListener,
     IComponentFactory,
-    ISystem,
-    World,
+    SystemBase,
     SystemGroup,
+    World,
 )
 from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
-from neighborly.core.location_bias import ILocationBiasRule, LocationBiasRuleLibrary
+from neighborly.core.location_preference import (
+    ILocationPreferenceRule,
+    LocationPreferenceRuleLibrary,
+)
 from neighborly.core.relationship import ISocialRule, SocialRuleLibrary
 
 _CT = TypeVar("_CT", bound=Component)
 _CF = TypeVar("_CF", bound=IComponentFactory)
 _RT = TypeVar("_RT", bound=Any)
-_ST = TypeVar("_ST", bound=ISystem)
+_ST = TypeVar("_ST", bound=SystemBase)
 _LT = TypeVar("_LT", bound=RandomLifeEvent)
 _ET_contra = TypeVar("_ET_contra", bound=Event, contravariant=True)
 
@@ -93,7 +96,7 @@ def system(
     world: World,
     priority: int = 0,
     system_group: Optional[Type[SystemGroup]] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ):
     """Add a class as a simulation system.
 
@@ -131,7 +134,7 @@ def random_life_event(world: World):
 
 
 def social_rule(world: World, description: str):
-    """Decorator that marks a function as a location bias rule.
+    """Decorator that marks a function as a location preference rule.
 
     Parameters
     ----------
@@ -148,8 +151,8 @@ def social_rule(world: World, description: str):
     return decorator
 
 
-def location_bias_rule(world: World, description: str):
-    """Decorator that marks a function as a location bias rule.
+def location_preference_rule(world: World, description: str):
+    """Decorator that marks a function as a location preference rule.
 
     Parameters
     ----------
@@ -159,8 +162,8 @@ def location_bias_rule(world: World, description: str):
         Text description of the rule.
     """
 
-    def decorator(rule: ILocationBiasRule):
-        world.resource_manager.get_resource(LocationBiasRuleLibrary).add(
+    def decorator(rule: ILocationPreferenceRule):
+        world.resource_manager.get_resource(LocationPreferenceRuleLibrary).add(
             rule, description
         )
 

@@ -1,6 +1,6 @@
 import math
 import random
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from neighborly.components.business import (
     BossOf,
@@ -11,26 +11,26 @@ from neighborly.components.business import (
     EmployeeOf,
     Occupation,
     OpenForBusiness,
-    ServiceLibrary,
     Services,
     Unemployed,
     WorkHistory,
 )
 from neighborly.components.character import (
+    AgingConfig,
     Departed,
+    GameCharacter,
+    Gender,
+    GenderType,
+    LifeStage,
+    LifeStageType,
     Married,
     ParentOf,
     ReproductionConfig,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.role import (
-    IsRole,
-    add_role,
-    get_roles_with_components,
-    remove_role,
-    RoleTracker,
-)
+from neighborly.components.role import Roles, add_role, remove_role
 from neighborly.components.shared import (
+    Age,
     CurrentLocation,
     CurrentLot,
     CurrentSettlement,
@@ -38,13 +38,17 @@ from neighborly.components.shared import (
     FrequentedLocations,
     Location,
     Name,
-    OwnedBy,
     Position2D,
     PrefabName,
 )
+from neighborly.components.spawn_table import (
+    BusinessSpawnTable,
+    CharacterSpawnTable,
+    ResidenceSpawnTable,
+)
 from neighborly.core.ecs import Active, GameObject, World
 from neighborly.core.life_event import LifeEvent
-from neighborly.core.location_bias import LocationBiasRuleLibrary
+from neighborly.core.location_preference import LocationPreferenceRuleLibrary
 from neighborly.core.relationship import (
     InteractionScore,
     add_relationship_status,
@@ -57,13 +61,17 @@ from neighborly.core.status import add_status, clear_statuses, has_status, remov
 from neighborly.core.time import SimDateTime
 from neighborly.events import (
     BusinessClosedEvent,
+    CharacterCreatedEvent,
+    CharacterNameChangeEvent,
     DepartEvent,
     EndJobEvent,
     JoinSettlementEvent,
     LeaveSettlementEvent,
+    NewBusinessEvent,
+    ResidenceCreatedEvent,
+    SettlementCreatedEvent,
     StartJobEvent,
 )
-
 
 ########################################
 # LOCATION MANAGEMENT
@@ -85,6 +93,21 @@ def add_sub_location(parent_location: GameObject, sub_location: GameObject) -> N
     parent_location.add_child(sub_location)
 
 
+def remove_sub_location(parent_location: GameObject, sub_location: GameObject) -> None:
+    """Removes a location as a child of another location.
+
+    Parameters
+    ----------
+    parent_location
+        The location to add a child to.
+    sub_location
+        The new location to add.
+    """
+    parent_location.get_component(Location).children.remove(sub_location)
+    sub_location.get_component(Location).parent = None
+    parent_location.remove_child(sub_location)
+
+
 def set_location(gameobject: GameObject, location: Optional[GameObject]) -> None:
     """Move a GameObject to a location.
 
@@ -102,7 +125,7 @@ def set_location(gameobject: GameObject, location: Optional[GameObject]) -> None
         # in-case te previous location is a closed business or demolished
         # building
 
-        focus = current_location_comp.location
+        focus: Optional[GameObject] = current_location_comp.location
 
         while focus is not None:
             location_component = focus.get_component(Location)
@@ -154,6 +177,50 @@ def at_location(gameobject: GameObject, location: GameObject) -> bool:
 ########################################
 
 
+def spawn_settlement(
+    world: World,
+    name: str = "#settlement_name#",
+    settlement_size: Tuple[int, int] = (5, 5),
+    character_spawn_table: Optional[List[Dict[str, Any]]] = None,
+    business_spawn_table: Optional[List[Dict[str, Any]]] = None,
+    residence_spawn_table: Optional[List[Dict[str, Any]]] = None,
+) -> GameObject:
+    width, length = settlement_size
+    character_spawn_entries = character_spawn_table if character_spawn_table else []
+    residence_spawn_entries = residence_spawn_table if residence_spawn_table else []
+    business_spawn_entries = business_spawn_table if business_spawn_table else []
+
+    settlement = world.gameobject_manager.spawn_gameobject(
+        components=[
+            world.gameobject_manager.create_component(Name, value=name),
+            world.gameobject_manager.create_component(
+                Settlement, length=length, width=width
+            ),
+            world.gameobject_manager.create_component(Location),
+            world.gameobject_manager.create_component(Age),
+            world.gameobject_manager.create_component(
+                CharacterSpawnTable, entries=character_spawn_entries
+            ),
+            world.gameobject_manager.create_component(
+                ResidenceSpawnTable, entries=residence_spawn_entries
+            ),
+            world.gameobject_manager.create_component(
+                BusinessSpawnTable, entries=business_spawn_entries
+            ),
+        ]
+    )
+
+    settlement.name = settlement.get_component(Name).value
+
+    SettlementCreatedEvent(
+        world=world,
+        date=world.resource_manager.get_resource(SimDateTime).copy(),
+        settlement=settlement,
+    ).dispatch()
+
+    return settlement
+
+
 def add_location_to_settlement(
     location: GameObject,
     settlement: GameObject,
@@ -172,82 +239,70 @@ def add_location_to_settlement(
 
 
 def remove_location_from_settlement(
+    settlement: GameObject,
     location: GameObject,
 ) -> None:
-    """Remove a location from a settlement
+    """Remove a location from a settlement.
 
     Parameters
     ----------
+    settlement
+        The settlement to remove the location from.
     location
-        The location to remove
+        The location to remove.
     """
-
-    settlement: GameObject = location.get_component(CurrentSettlement).settlement
-
     location.remove_component(CurrentSettlement)
 
-    location.deactivate()
-
+    # Remove this location from peoples frequented locations
     if frequented_by := settlement.try_component(FrequentedBy):
-        for character in frequented_by:
-            if frequented_locations := character.try_component(FrequentedLocations):
-                frequented_locations.remove(location)
+        for character in [*frequented_by]:
+            remove_frequented_location(character, location)
 
-        frequented_by.clear()
+    # Remove all gameobject from this location
+    for gameobject in location.get_component(Location).gameobjects:
+        set_location(gameobject, None)
+
+    remove_sub_location(settlement, location)
 
 
-def add_character_to_settlement(character: GameObject, settlement: GameObject) -> None:
-    """Adds a character to a settlement
+def set_character_settlement(
+    character: GameObject, settlement: Optional[GameObject]
+) -> None:
+    """Set the current settlement for a character.
 
     Parameters
     ----------
     character
-        The character to add
+        The character to modify
     settlement
-        The settlement to add the character to
+        The settlement to assign them to. If None, the character is removed from their existing
+        settlement and not reassigned to a new one.
     """
 
-    character.add_component(CurrentSettlement(settlement))
+    if current_settlement := character.try_component(CurrentSettlement):
+        current_settlement.settlement.get_component(Settlement).population -= 1
 
-    character.add_component(Active())
+        event = LeaveSettlementEvent(
+            character.world,
+            character.world.resource_manager.get_resource(SimDateTime),
+            current_settlement.settlement,
+            character,
+        )
 
-    set_frequented_locations(character, settlement)
+        event.dispatch()
 
-    join_settlement_event = JoinSettlementEvent(
-        character.world,
-        character.world.resource_manager.get_resource(SimDateTime),
-        settlement,
-        character,
-    )
+        character.remove_component(CurrentSettlement)
 
-    character.world.event_manager.dispatch_event(join_settlement_event)
+    if settlement is not None:
+        settlement.get_component(Settlement).population += 1
+        character.add_component(CurrentSettlement(settlement))
 
-
-def remove_character_from_settlement(character: GameObject) -> None:
-    """Remove a character from their settlement
-
-    Parameters
-    ----------
-    character
-        The character to add
-    """
-
-    world = character.world
-
-    settlement = character.get_component(CurrentSettlement).settlement
-
-    clear_frequented_locations(character)
-
-    character.remove_component(Active)
-
-    leave_settlement_event = LeaveSettlementEvent(
-        character.world,
-        character.world.resource_manager.get_resource(SimDateTime),
-        settlement,
-        character,
-    )
-
-    world.event_manager.dispatch_event(leave_settlement_event)
+        JoinSettlementEvent(
+            character.world,
+            character.world.resource_manager.get_resource(SimDateTime),
+            settlement,
+            character,
+        ).dispatch()
 
 
 def add_residence_to_settlement(
@@ -281,7 +336,6 @@ def add_residence_to_settlement(
     residence.add_component(Position2D(position[0], position[1]))
 
     residence.add_component(CurrentLot(lot_id))
-    residence.add_component(Active())
 
     add_location_to_settlement(residence, settlement)
 
@@ -337,6 +391,7 @@ def set_residence(
     """
     Moves a character into a new permanent residence
     """
+    current_date = character.world.resource_manager.get_resource(SimDateTime)
 
     if resident := character.try_component(Resident):
         # This character is currently a resident at another location
@@ -356,7 +411,7 @@ def set_residence(
         former_settlement.population -= 1
 
         if len(former_residence_comp.residents) <= 0:
-            add_status(former_residence, Vacant())
+            add_status(former_residence, Vacant(year_created=current_date.year))
 
     if new_residence is None:
         return
@@ -371,7 +426,7 @@ def set_residence(
 
     add_status(
         character,
-        Resident(new_residence),
+        Resident(residence=new_residence, year_created=current_date.year),
     )
 
     if new_residence.has_component(Vacant):
@@ -423,6 +478,7 @@ def depart_settlement(
         An optional reason for departing from the settlement
     """
     world = character.world
+    current_date = world.resource_manager.get_resource(SimDateTime)
 
     departing_characters: List[GameObject] = [character]
 
@@ -448,29 +504,230 @@ def depart_settlement(
         date=world.resource_manager.get_resource(SimDateTime),
         characters=departing_characters,
         reason=reason,
+        settlement=character.get_component(CurrentSettlement).settlement,
     )
 
     for character in departing_characters:
-        for role in character.get_component(RoleTracker).roles:
-            if occupation := role.try_component(Occupation):
-                end_job(character, occupation.business, reason=reason)
+        for occupation in character.get_component(Roles).get_roles_of_type(Occupation):
+            if occupation.business.get_component(Business).owner == character:
+                shutdown_business(occupation.business)
+            else:
+                end_job(
+                    character=character,
+                    business=occupation.business,
+                    reason=depart_event,
+                )
 
         if character.has_component(Resident):
             set_residence(character, None)
 
-        remove_character_from_settlement(character)
+        set_character_settlement(character, None)
 
         clear_frequented_locations(character)
         clear_statuses(character)
+        character.deactivate()
 
-        add_status(character, Departed())
+        add_status(character, Departed(year_created=current_date.year))
 
         character.world.event_manager.dispatch_event(depart_event)
 
 
 #######################################
+# Character Management
+#######################################
+
+
+def spawn_character(
+    world: World,
+    prefab: str,
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    age: Optional[int] = None,
+    life_stage: Optional[LifeStageType] = None,
+    gender: Optional[GenderType] = None,
+) -> GameObject:
+    character = world.gameobject_manager.instantiate_prefab(prefab)
+
+    if first_name:
+        set_character_name(character, first_name=first_name)
+
+    if last_name:
+        set_character_name(character, last_name=last_name)
+
+    if life_stage is not None:
+        set_life_stage(character=character, life_stage_type=life_stage)
+
+    if age is not None:
+        set_character_age(character=character, new_age=age)
+
+    if gender is not None:
+        character.get_component(Gender).gender = gender
+
+    character.name = (
+        f"{character.get_component(GameCharacter).full_name}({character.uid})"
+    )
+
+    character.add_component(PrefabName(prefab))
+
+    CharacterCreatedEvent(
+        world=world,
+        date=world.resource_manager.get_resource(SimDateTime),
+        character=character,
+    ).dispatch()
+
+    return character
+
+
+def set_character_name(
+    character: GameObject, first_name: str = "", last_name: str = ""
+) -> None:
+    """Overwrite a characters first or last name.
+
+    Parameters
+    ----------
+    character
+        The character to modify
+    first_name
+        An optional override for the first name
+    last_name
+        An optional override for the last name
+    """
+    game_character = character.get_component(GameCharacter)
+
+    if first_name:
+        game_character.first_name = first_name
+
+    if last_name:
+        game_character.last_name = last_name
+
+    # self.character.get_component(Name).value = game_character.full_name
+
+    character.name = f"{game_character.full_name}({character.uid})"
+
+    CharacterNameChangeEvent(
+        character.world,
+        character.world.resource_manager.get_resource(SimDateTime).copy(),
+        character,
+        game_character.first_name,
+        game_character.last_name,
+    ).dispatch()
+
+
+def set_character_age(
+    character: GameObject,
+    new_age: int,
+) -> None:
+    age = character.get_component(Age)
+    age.value = new_age
+
+    if not character.has_component(AgingConfig):
+        raise Exception(
+            "Cannot set life stage for a character without an AgingConfig component"
+        )
+
+    aging_config = character.get_component(AgingConfig)
+
+    life_stage = character.get_component(LifeStage)
+
+    if age.value >= aging_config.senior_age:
+        life_stage.life_stage = LifeStageType.Senior
+
+    elif age.value >= aging_config.adult_age:
+        life_stage.life_stage = LifeStageType.Adult
+
+    elif age.value >= aging_config.young_adult_age:
+        life_stage.life_stage = LifeStageType.YoungAdult
+
+    elif age.value >= aging_config.adolescent_age:
+        life_stage.life_stage = LifeStageType.Adolescent
+
+    else:
+        life_stage.life_stage = LifeStageType.Child
+
+
+def set_life_stage(character: GameObject, life_stage_type: LifeStageType) -> None:
+    """Overwrites the current LifeStage and age of a character.
+
+    Parameters
+    ----------
+    character
+        The character to modify
+    life_stage_type
+        The life stage to update to
+    """
+    age = character.get_component(Age)
+
+    if not character.has_component(AgingConfig):
+        raise Exception(
+            "Cannot set life stage for a character without an AgingConfig component"
+        )
+
+    aging_config = character.get_component(AgingConfig)
+
+    character.get_component(LifeStage).life_stage = life_stage_type
+
+    if life_stage_type == LifeStageType.Senior:
+        age.value = aging_config.senior_age
+
+    elif life_stage_type == LifeStageType.Adult:
+        age.value = aging_config.adult_age
+
+    elif life_stage_type == LifeStageType.YoungAdult:
+        age.value = aging_config.young_adult_age
+
+    elif life_stage_type == LifeStageType.Adolescent:
+        age.value = aging_config.adolescent_age
+
+    elif life_stage_type == LifeStageType.Child:
+        age.value = 0
+
+
+def generate_age_from_life_stage(
+    rng: random.Random, aging_config: AgingConfig, life_stage_type: LifeStageType
+) -> int:
+    """Return an age for the character given their life_stage"""
+    if life_stage_type == LifeStageType.Child:
+        return rng.randint(0, aging_config.adolescent_age - 1)
+    elif life_stage_type == LifeStageType.Adolescent:
+        return rng.randint(
+            aging_config.adolescent_age,
+            aging_config.young_adult_age - 1,
+        )
+    elif life_stage_type == LifeStageType.YoungAdult:
+        return rng.randint(
+            aging_config.young_adult_age,
+            aging_config.adult_age - 1,
+        )
+    elif life_stage_type == LifeStageType.Adult:
+        return rng.randint(
+            aging_config.adult_age,
+            aging_config.senior_age - 1,
+        )
+    else:
+        return aging_config.senior_age + int(10 * rng.random())
+
+
+#######################################
 # Business Management
 #######################################
+
+
+def spawn_business(world: World, prefab_name: str, name: str = "") -> GameObject:
+    business = world.gameobject_manager.instantiate_prefab(prefab_name)
+
+    if name:
+        business.get_component(Name).value = name
+
+    business.name = f"{business.get_component(Name).value}({business.uid})"
+
+    business.add_component(PrefabName(prefab_name))
+
+    NewBusinessEvent(
+        world=world,
+        business=business,
+    ).dispatch()
+
+    return business
 
 
 def set_business_name(business: GameObject, name: str) -> None:
@@ -495,6 +752,7 @@ def add_business_to_settlement(
     lot_id
         The lot to place the business on (defaults to None)
     """
+    current_date = business.world.resource_manager.get_resource(SimDateTime)
 
     settlement_comp = settlement.get_component(Settlement)
 
@@ -522,7 +780,7 @@ def add_business_to_settlement(
 
     # Mark the business as an active GameObject
     business.add_component(Active())
-    add_status(business, OpenForBusiness())
+    add_status(business, OpenForBusiness(year_created=current_date.year))
 
     # Set the current settlement
     business.add_component(CurrentSettlement(settlement))
@@ -533,34 +791,32 @@ def add_business_to_settlement(
 
 
 def shutdown_business(business: GameObject) -> None:
-    """Close a business and remove all employees and the owner
-
-    This shuts down the business, but it does not remove it from the
-    town map. That has to be done with the 'remove_business' function
+    """Close a business and remove all employees and the owner.
 
     Parameters
     ----------
     business
-        Business to shut down in the town
+        Business to shut down.
     """
     world = business.world
-    date = world.resource_manager.get_resource(SimDateTime)
+    current_date = world.resource_manager.get_resource(SimDateTime)
     business_comp = business.get_component(Business)
     prefab_ref = business.get_component(PrefabName)
-    # building = business.get_component(Building)
     current_settlement = business.get_component(CurrentSettlement)
     current_lot = business.get_component(CurrentLot)
     settlement_obj = current_settlement.settlement
     settlement = settlement_obj.get_component(Settlement)
 
-    event = BusinessClosedEvent(world, date, business)
+    event = BusinessClosedEvent(world, current_date, business)
+
+    event.dispatch()
 
     # Update the business as no longer active
     remove_status(business, OpenForBusiness)
-    add_status(business, ClosedForBusiness())
+    add_status(business, ClosedForBusiness(year_created=current_date.year))
 
     # Remove all the employees
-    for employee, _ in business_comp.iter_employees():
+    for employee, _ in [*business_comp.iter_employees()]:
         end_job(employee, business, reason=event)
 
     # Remove the owner if applicable
@@ -571,7 +827,9 @@ def shutdown_business(business: GameObject) -> None:
     settlement.business_counts[prefab_ref.prefab] -= 1
     settlement.businesses.remove(business)
 
-    remove_location_from_settlement(business)
+    remove_location_from_settlement(
+        location=business, settlement=current_settlement.settlement
+    )
 
     # Demolish the building
     settlement.land_map.free_lot(current_lot.lot)
@@ -581,7 +839,7 @@ def shutdown_business(business: GameObject) -> None:
 
     # Un-mark the business as active so it doesn't appear in queries
     business.remove_component(Location)
-
+    business.deactivate()
     world.event_manager.dispatch_event(event)
 
 
@@ -602,16 +860,14 @@ def end_job(
         The reason for them leaving their job (defaults to None).
     """
     world = character.world
-
-    occupation_role = business.get_component(Business).get_employee_role(character)
-
+    current_date = world.resource_manager.get_resource(SimDateTime)
     business_comp = business.get_component(Business)
 
-    character.get_component(FrequentedLocations).remove(business)
-    business.get_component(FrequentedBy).remove(character)
+    remove_frequented_location(character, business)
 
-    if occupation_role.has_component(BusinessOwner):
-        remove_status(occupation_role, BusinessOwner)
+    if business_comp.owner and character == business_comp.owner:
+        occupation_type = business_comp.owner_type
+        remove_status(business_comp.owner, BusinessOwner)
         business_comp.set_owner(None)
 
         # Update relationships boss/employee relationships
@@ -627,6 +883,7 @@ def end_job(
             ).increment(-1)
 
     else:
+        occupation_type = business_comp.get_employee_role(character)
         business_comp.remove_employee(character)
 
         # Update boss/employee relationships if needed
@@ -654,19 +911,16 @@ def end_job(
                 InteractionScore
             ).increment(-1)
 
-    remove_role(character, occupation_role)
-
-    add_status(character, Unemployed())
+    add_status(character, Unemployed(year_created=current_date.year))
 
     current_date = character.world.resource_manager.get_resource(SimDateTime)
 
+    occupation = character.get_component(occupation_type)
+
     character.get_component(WorkHistory).add_entry(
-        occupation_type=occupation_role.get_component(Occupation).occupation_type,
+        occupation_type=occupation_type,
         business=business,
-        years_held=(
-            current_date.year
-            - occupation_role.get_component(Occupation).start_date.year
-        ),
+        years_held=(current_date.year - occupation.start_year),
         reason_for_leaving=reason,
     )
 
@@ -675,19 +929,19 @@ def end_job(
         date=world.resource_manager.get_resource(SimDateTime),
         character=character,
         business=business,
-        occupation=occupation_role.get_component(Occupation).occupation_type,
+        occupation=occupation_type,
         reason=reason,
     )
 
     world.event_manager.dispatch_event(end_job_event)
 
-    occupation_role.destroy()
+    remove_role(character, occupation_type)
 
 
 def start_job(
     character: GameObject,
     business: GameObject,
-    occupation_type: GameObject,
+    occupation_type: Type[Occupation],
     is_owner: bool = False,
 ) -> None:
     """Start the given character's job at the business.
@@ -706,28 +960,15 @@ def start_job(
     """
     world = character.world
     business_comp = business.get_component(Business)
+    current_date = world.resource_manager.get_resource(SimDateTime)
 
-    occupation_role = world.gameobject_manager.spawn_gameobject(
-        components=[
-            Name(value=occupation_type.get_component(Name).value),
-            IsRole(),
-            Occupation(
-                occupation_type=occupation_type,
-                business=business,
-                start_date=world.resource_manager.get_resource(SimDateTime),
-            ),
-            OwnedBy(character),
-        ],
-        name="{} @ {}".format(
-            occupation_type.get_component(Name).value,
-            business.get_component(Name).value,
-        ),
+    occupation = world.gameobject_manager.create_component(
+        occupation_type, business=business, start_year=current_date.year
     )
 
-    add_role(character, occupation_role)
+    add_role(character, occupation)
 
-    character.get_component(FrequentedLocations).add(business)
-    business.get_component(FrequentedBy).add(character)
+    add_frequented_location(character, business)
 
     if has_status(character, Unemployed):
         remove_status(character, Unemployed)
@@ -737,12 +978,18 @@ def start_job(
             # The old owner needs to be removed before setting a new one
             raise RuntimeError("Owner is already set. Please end job first.")
 
-        business_comp.set_owner((character, occupation_role))
-        add_status(occupation_role, BusinessOwner(business=business))
+        business_comp.set_owner(character)
+        add_status(
+            character, BusinessOwner(business=business, year_created=current_date.year)
+        )
 
         for employee, _ in business.get_component(Business).iter_employees():
-            add_relationship_status(character, employee, BossOf())
-            add_relationship_status(employee, character, EmployeeOf())
+            add_relationship_status(
+                character, employee, BossOf(year_created=current_date.year)
+            )
+            add_relationship_status(
+                employee, character, EmployeeOf(year_created=current_date.year)
+            )
 
             get_relationship(character, employee).get_component(
                 InteractionScore
@@ -754,20 +1001,30 @@ def start_job(
     else:
         # Update boss/employee relationships if needed
         if business_comp.owner is not None:
-            add_relationship_status(business_comp.owner, character, BossOf())
-            add_relationship_status(character, business_comp.owner, EmployeeOf())
+            owner = business_comp.owner
 
-            get_relationship(character, business_comp.owner).get_component(
+            add_relationship_status(
+                owner, character, BossOf(year_created=current_date.year)
+            )
+            add_relationship_status(
+                character, owner, EmployeeOf(year_created=current_date.year)
+            )
+
+            get_relationship(character, owner).get_component(
                 InteractionScore
             ).increment(1)
-            get_relationship(business_comp.owner, character).get_component(
+            get_relationship(owner, character).get_component(
                 InteractionScore
             ).increment(1)
 
         # Update employee/employee relationships
         for employee, _ in business.get_component(Business).iter_employees():
-            add_relationship_status(character, employee, CoworkerOf())
-            add_relationship_status(employee, character, CoworkerOf())
+            add_relationship_status(
+                character, employee, CoworkerOf(year_created=current_date.year)
+            )
+            add_relationship_status(
+                employee, character, CoworkerOf(year_created=current_date.year)
+            )
 
             get_relationship(character, employee).get_component(
                 InteractionScore
@@ -776,7 +1033,7 @@ def start_job(
                 InteractionScore
             ).increment(1)
 
-        business_comp.add_employee(character, occupation_role)
+        business_comp.add_employee(character, occupation_type)
 
     start_job_event = StartJobEvent(
         world=character.world,
@@ -807,11 +1064,8 @@ def get_places_with_services(world: World, *services: str) -> List[GameObject]:
     """
     matches: List[GameObject] = []
 
-    service_library = world.resource_manager.get_resource(ServiceLibrary)
-    service_objs = [service_library.get(s) for s in services]
-
     for gid, services_component in world.get_component(Services):
-        if all([s in services_component for s in service_objs]):
+        if all([s in services_component for s in services]):
             matches.append(world.gameobject_manager.get_gameobject(gid))
 
     return matches
@@ -830,7 +1084,30 @@ def is_employed(gameobject: GameObject) -> bool:
     bool
         True if the GameObject has a role with an Occupation component. False otherwise.
     """
-    return len(get_roles_with_components(gameobject, Occupation)) > 0
+    return len(gameobject.get_component(Roles).get_roles_of_type(Occupation)) > 0
+
+
+#######################################
+# Residence Management
+#######################################
+
+
+def spawn_residence(world: World, prefab_name: str) -> GameObject:
+    """Spawn a new residence into the world."""
+
+    residence = world.gameobject_manager.instantiate_prefab(prefab_name)
+
+    ResidenceCreatedEvent(
+        world=world,
+        timestamp=world.resource_manager.get_resource(SimDateTime),
+        residence=residence,
+    )
+
+    residence.add_component(PrefabName(prefab_name))
+
+    residence.name = f"{prefab_name}({residence.uid})"
+
+    return residence
 
 
 #######################################
@@ -854,21 +1131,57 @@ def location_has_services(location: GameObject, *services: str) -> bool:
         True if all the services are offered by the location, False otherwise.
     """
     services_comp = location.get_component(Services)
-    service_library = location.world.resource_manager.get_resource(ServiceLibrary)
-    service_types = [service_library.get(entry) for entry in services]
-    return all([entry in services_comp for entry in service_types])
+    return all([entry in services_comp for entry in services])
 
 
-def _score_location(character: GameObject, location: GameObject) -> int:
-    score: int = 0
+def score_location(character: GameObject, location: GameObject) -> float:
+    """Scores a location using location preference rules.
+
+    Parameters
+    ----------
+    character
+        The character to calculate scores for
+    location
+        The location to score
+
+    Returns
+    -------
+    float
+        The probability of wanting to frequent this location
+    """
+
+    cumulative_score: float = 1.0
+    consideration_count: int = 0
     rule_library = character.world.resource_manager.get_resource(
-        LocationBiasRuleLibrary
+        LocationPreferenceRuleLibrary
     )
-    for rule_info in rule_library.iter_rules():
-        if modifier := rule_info.rule(character, location):
-            score += modifier
 
-    return score
+    for rule_info in rule_library.iter_rules():
+        consideration_score = rule_info.rule(character, location)
+        if consideration_score is not None:
+            assert 0.0 <= consideration_score <= 1.0
+            cumulative_score *= consideration_score
+            consideration_count += 1
+
+        if cumulative_score == 0.0:
+            break
+
+    if consideration_count == 0:
+        consideration_count = 1
+        cumulative_score = 0.0
+
+    # Scores are averaged using the Geometric Mean instead of
+    # arithmetic mean. It calculates the mean of a product of
+    # n-numbers by finding the n-th root of the product
+    # Tried using the averaging scheme by Dave Mark, but it
+    # returned values that felt too small and were not easy
+    # to reason about.
+    # Using this method, a cumulative score of zero will still
+    # result in a final score of zero.
+
+    final_score = cumulative_score ** (1 / consideration_count)
+
+    return final_score
 
 
 def calculate_location_probabilities(
@@ -881,7 +1194,7 @@ def calculate_location_probabilities(
 
     # Score each location
     for loc in locations:
-        score = _score_location(character, loc)
+        score = score_location(character, loc)
         score_total += math.exp(score)
         scores.append((math.exp(score), loc))
 
@@ -894,25 +1207,42 @@ def calculate_location_probabilities(
     return probabilities
 
 
-def set_frequented_locations(
-    character: GameObject, settlement: GameObject, max_locations: int = 3
-) -> None:
-    """
-    Set what locations a character frequents based on the locations within
-    a given settlement
+def add_frequented_location(character: GameObject, location: GameObject) -> None:
+    """Add a location to a character's set of frequented locations."""
+    character.get_component(FrequentedLocations).add(location)
+    location.get_component(FrequentedBy).add(character)
+
+
+def remove_frequented_location(character: GameObject, location: GameObject) -> None:
+    """Remove a location from a character's set of frequented locations."""
+    frequented_locations = character.get_component(FrequentedLocations)
+    frequented_by = location.get_component(FrequentedBy)
+
+    if location in frequented_locations:
+        frequented_locations.remove(location)
+
+    if character in frequented_by:
+        frequented_by.remove(character)
+
+
+def score_frequentable_locations(
+    character: GameObject, settlement: GameObject
+) -> List[Tuple[float, GameObject]]:
+    """Score the frequentable locations in a settlement and return.
 
     Parameters
     ----------
     character
-        The character to set frequented locations for
+        The character to score the location in reference to
     settlement
-        The settlement to sample frequented locations from
-    max_locations
-        The max number of locations to sample
-    """
-    clear_frequented_locations(character)
+        The settlement to search within
 
-    # For all locations available in the settlement
+    Returns
+    -------
+    List[Tuple[float, GameObject]]
+        A list of tuples containing location scores and the location, sorted in descending order
+    """
+
     locations = [
         character.world.gameobject_manager.get_gameobject(guid)
         for guid, (_, current_settlement, _, _) in character.world.get_components(
@@ -921,17 +1251,9 @@ def set_frequented_locations(
         if current_settlement.settlement == settlement
     ]
 
-    scores = [_score_location(character, location) for location in locations]
+    scores = calculate_location_probabilities(character, locations)
 
-    pairs = list(zip(locations, scores))
-
-    pairs.sort(key=lambda pair: pair[1])
-
-    selected_locations = [loc for loc, _ in pairs[:max_locations]]
-
-    for loc in selected_locations:
-        character.get_component(FrequentedLocations).add(loc)
-        loc.get_component(FrequentedBy).add(character)
+    return scores
 
 
 def clear_frequented_locations(character: GameObject) -> None:
@@ -945,11 +1267,8 @@ def clear_frequented_locations(character: GameObject) -> None:
     """
     frequented_locations = character.get_component(FrequentedLocations)
 
-    for location in frequented_locations:
-        frequented_by_comp = location.get_component(FrequentedBy)
-        frequented_by_comp.remove(character)
-
-    frequented_locations.clear()
+    for location in [*frequented_locations]:
+        remove_frequented_location(character, location)
 
 
 #######################################

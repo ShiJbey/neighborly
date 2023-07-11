@@ -6,3 +6,6 @@ components:
     last_name: "#character::default::last_name#"
   Gender:
     gender: NonBinary
+# The line below is commented out because I do not yet know how to handle optional or rather probabilistic
+# components. This does not represent my views on gender expression and people's reproductive ability. Thanks.
+#  CanGetOthersPregnant: {}

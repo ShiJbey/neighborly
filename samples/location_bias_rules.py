@@ -1,18 +1,18 @@
 """
-samples/location_bias_rules.py
+samples/location_preference_rules.py
 
-This sample shows how location bias rules are used to create probability distribution
-of where a character may frequent within a town. LocationBiasRules are can be imported
+This sample shows how location preference rules are used to create probability distribution
+of where a character may frequent within a town. LocationPreferenceRules are can be imported
 from plugins and authored within the same script.
 """
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from neighborly import Component, GameObject, Neighborly
-from neighborly.components.business import Services, register_service_type
+from neighborly.components.business import Services
 from neighborly.components.shared import Location
-from neighborly.core.ecs import GameObjectPrefab, TagComponent
-from neighborly.decorators import component, location_bias_rule
+from neighborly.core.ecs import TagComponent
+from neighborly.decorators import component, location_preference_rule
 from neighborly.utils.common import (
     calculate_location_probabilities,
     location_has_services,
@@ -55,7 +55,7 @@ class Shopaholic(TagComponent):
     pass
 
 
-@location_bias_rule(sim.world, "social-butterfly")
+@location_preference_rule(sim.world, "social-butterfly")
 def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(SocialButterfly) and location_has_services(
         location, "Socializing"
@@ -63,7 +63,7 @@ def social_butterfly_rule(character: GameObject, location: GameObject) -> Option
         return 2
 
 
-@location_bias_rule(sim.world, "recovering-alcoholic")
+@location_preference_rule(sim.world, "recovering-alcoholic")
 def recovering_alcoholic_rule(
     character: GameObject, location: GameObject
 ) -> Optional[int]:
@@ -73,7 +73,7 @@ def recovering_alcoholic_rule(
         return -3
 
 
-@location_bias_rule(sim.world, "shop-alcoholic")
+@location_preference_rule(sim.world, "shop-alcoholic")
 def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(Shopaholic) and location_has_services(
         location, "Shopping"
@@ -81,13 +81,13 @@ def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int
         return 3
 
 
-@location_bias_rule(sim.world, "book-worm")
+@location_preference_rule(sim.world, "book-worm")
 def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(BookWorm) and location_has_services(location, "Reading"):
         return 2
 
 
-@location_bias_rule(sim.world, "health-nut")
+@location_preference_rule(sim.world, "health-nut")
 def rule(character: GameObject, location: GameObject) -> Optional[int]:
     if character.has_component(HealthNut) and location_has_services(
         location, "Recreation"
@@ -99,26 +99,6 @@ def main():
     ###############################
     # SPAWN NEW LOCATIONS
     ###############################
-
-    register_service_type(
-        sim.world, GameObjectPrefab(name="Recreation", components={"ServiceType": {}})
-    )
-    register_service_type(
-        sim.world, GameObjectPrefab(name="Socializing", components={"ServiceType": {}})
-    )
-    register_service_type(
-        sim.world, GameObjectPrefab(name="Reading", components={"ServiceType": {}})
-    )
-    register_service_type(
-        sim.world, GameObjectPrefab(name="Shopping", components={"ServiceType": {}})
-    )
-    register_service_type(
-        sim.world,
-        GameObjectPrefab(name="People Watching", components={"ServiceType": {}}),
-    )
-    register_service_type(
-        sim.world, GameObjectPrefab(name="Drinking", components={"ServiceType": {}})
-    )
 
     # We need to step the simulation once to create all the services
     sim.step()

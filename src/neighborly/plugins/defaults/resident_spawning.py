@@ -1,8 +1,7 @@
 import dataclasses
 import random
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from neighborly.command import SpawnCharacter, SpawnResidence
 from neighborly.components.character import (
     ChildOf,
     Family,
@@ -18,7 +17,7 @@ from neighborly.components.residence import Residence, Vacant
 from neighborly.components.shared import CurrentSettlement
 from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs import Active, GameObject, ISystem, World
+from neighborly.core.ecs import Active, GameObject, SystemBase, World
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
@@ -32,9 +31,11 @@ from neighborly.core.time import SimDateTime
 from neighborly.events import MoveResidenceEvent
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.common import (
-    add_character_to_settlement,
     add_residence_to_settlement,
+    set_character_settlement,
     set_residence,
+    spawn_character,
+    spawn_residence,
 )
 
 plugin_info = PluginInfo(
@@ -50,7 +51,7 @@ class _GeneratedFamily:
     children: List[GameObject] = dataclasses.field(default_factory=list)
 
 
-class SpawnFamilySystem(ISystem):
+class SpawnFamilySystemBase(SystemBase):
     """Spawns new families in settlements.
 
     Note
@@ -90,7 +91,7 @@ class SpawnFamilySystem(ISystem):
 
         prefab = spawn_table.choose_random(rng)
 
-        residence = SpawnResidence(prefab).execute(world).get_result()
+        residence = spawn_residence(world, prefab)
 
         add_residence_to_settlement(
             residence,
@@ -123,16 +124,13 @@ class SpawnFamilySystem(ISystem):
     ) -> _GeneratedFamily:
         rng = world.resource_manager.get_resource(random.Random)
         prefab = spawn_table.choose_random(rng)
+        date = world.resource_manager.get_resource(SimDateTime)
 
         # Track all the characters generated
         generated_characters = _GeneratedFamily()
 
         # Create a new entity using the archetype
-        character = (
-            SpawnCharacter(prefab, life_stage=LifeStageType.YoungAdult)
-            .execute(world)
-            .get_result()
-        )
+        character = spawn_character(world, prefab, life_stage=LifeStageType.YoungAdult)
 
         generated_characters.adults.append(character)
 
@@ -140,26 +138,23 @@ class SpawnFamilySystem(ISystem):
         spouse: Optional[GameObject] = None
 
         if marriage_config := character.try_component(MarriageConfig):
-            spouse_prefab = SpawnFamilySystem._try_get_spouse_prefab(
+            spouse_prefab = SpawnFamilySystemBase._try_get_spouse_prefab(
                 rng, marriage_config, spawn_table
             )
 
         if spouse_prefab:
-            spouse = (
-                SpawnCharacter(
-                    spouse_prefab,
-                    last_name=character.get_component(GameCharacter).last_name,
-                    life_stage=LifeStageType.Adult,
-                )
-                .execute(world)
-                .get_result()
+            spouse = spawn_character(
+                world=world,
+                prefab=spouse_prefab,
+                last_name=character.get_component(GameCharacter).last_name,
+                life_stage=LifeStageType.Adult,
             )
 
             generated_characters.adults.append(spouse)
 
             # Configure relationship from character to spouse
             add_relationship(character, spouse)
-            add_relationship_status(character, spouse, Married())
+            add_relationship_status(character, spouse, Married(year_created=date.year))
             get_relationship(character, spouse).get_component(Romance).increment(45)
             get_relationship(character, spouse).get_component(Friendship).increment(30)
             get_relationship(character, spouse).get_component(
@@ -168,7 +163,7 @@ class SpawnFamilySystem(ISystem):
 
             # Configure relationship from spouse to character
             add_relationship(spouse, character)
-            add_relationship_status(spouse, character, Married())
+            add_relationship_status(spouse, character, Married(year_created=date.year))
             get_relationship(spouse, character).get_component(Romance).increment(45)
             get_relationship(spouse, character).get_component(Friendship).increment(30)
             get_relationship(spouse, character).get_component(
@@ -190,22 +185,24 @@ class SpawnFamilySystem(ISystem):
             chosen_child_prefabs = rng.sample(potential_child_prefabs, num_kids)
 
             for child_prefab in chosen_child_prefabs:
-                child = (
-                    SpawnCharacter(
-                        child_prefab,
-                        last_name=character.get_component(GameCharacter).last_name,
-                        life_stage=LifeStageType.Child,
-                    )
-                    .execute(world)
-                    .get_result()
+                child = spawn_character(
+                    world,
+                    child_prefab,
+                    last_name=character.get_component(GameCharacter).last_name,
+                    life_stage=LifeStageType.Child,
                 )
+
                 generated_characters.children.append(child)
                 children.append(child)
 
                 # Relationship of child to character
                 add_relationship(child, character)
-                add_relationship_status(child, character, ChildOf())
-                add_relationship_status(child, character, Family())
+                add_relationship_status(
+                    child, character, ChildOf(year_created=date.year)
+                )
+                add_relationship_status(
+                    child, character, Family(year_created=date.year)
+                )
                 get_relationship(child, character).get_component(Friendship).increment(
                     20
                 )
@@ -215,8 +212,12 @@ class SpawnFamilySystem(ISystem):
 
                 # Relationship of character to child
                 add_relationship(character, child)
-                add_relationship_status(character, child, ParentOf())
-                add_relationship_status(character, child, Family())
+                add_relationship_status(
+                    character, child, ParentOf(year_created=date.year)
+                )
+                add_relationship_status(
+                    character, child, Family(year_created=date.year)
+                )
                 get_relationship(character, child).get_component(Friendship).increment(
                     20
                 )
@@ -227,7 +228,9 @@ class SpawnFamilySystem(ISystem):
                 if spouse:
                     # Relationship of child to spouse
                     add_relationship(child, spouse)
-                    add_relationship_status(child, spouse, ChildOf())
+                    add_relationship_status(
+                        child, spouse, ChildOf(year_created=date.year)
+                    )
                     get_relationship(child, spouse).get_component(Friendship).increment(
                         20
                     )
@@ -237,8 +240,12 @@ class SpawnFamilySystem(ISystem):
 
                     # Relationship of spouse to child
                     add_relationship(spouse, child)
-                    add_relationship_status(spouse, child, ParentOf())
-                    add_relationship_status(spouse, child, Family())
+                    add_relationship_status(
+                        spouse, child, ParentOf(year_created=date.year)
+                    )
+                    add_relationship_status(
+                        spouse, child, Family(year_created=date.year)
+                    )
                     get_relationship(spouse, child).get_component(Friendship).increment(
                         20
                     )
@@ -249,8 +256,12 @@ class SpawnFamilySystem(ISystem):
                 for sibling in children:
                     # Relationship of child to sibling
                     add_relationship(child, sibling)
-                    add_relationship_status(child, sibling, SiblingOf())
-                    add_relationship_status(child, sibling, Family())
+                    add_relationship_status(
+                        child, sibling, SiblingOf(year_created=date.year)
+                    )
+                    add_relationship_status(
+                        child, sibling, Family(year_created=date.year)
+                    )
                     get_relationship(child, sibling).get_component(
                         Friendship
                     ).increment(20)
@@ -260,8 +271,12 @@ class SpawnFamilySystem(ISystem):
 
                     # Relationship of sibling to child
                     add_relationship(sibling, child)
-                    add_relationship_status(sibling, child, SiblingOf())
-                    add_relationship_status(sibling, child, Family())
+                    add_relationship_status(
+                        sibling, child, SiblingOf(year_created=date.year)
+                    )
+                    add_relationship_status(
+                        sibling, child, Family(year_created=date.year)
+                    )
                     get_relationship(sibling, child).get_component(
                         Friendship
                     ).increment(20)
@@ -303,15 +318,15 @@ class SpawnFamilySystem(ISystem):
                 )
 
                 for adult in family.adults:
-                    add_character_to_settlement(adult, settlement.gameobject)
+                    set_character_settlement(adult, settlement_entity)
                     set_residence(adult, residence, True)
-                    adult.world.event_manager.dispatch_event(event)
 
                 for child in family.children:
-                    add_character_to_settlement(child, settlement.gameobject)
+                    set_character_settlement(child, settlement_entity)
                     set_residence(child, residence, False)
-                    child.world.event_manager.dispatch_event(event)
+
+                event.dispatch()
 
 
-def setup(sim: Neighborly, **kwargs: Any):
-    sim.world.system_manager.add_system(SpawnFamilySystem())
+def setup(sim: Neighborly):
+    sim.world.system_manager.add_system(SpawnFamilySystemBase())

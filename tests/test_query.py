@@ -110,10 +110,10 @@ def sample_world() -> World:
         [Hero(), GameCharacter("Shi", ""), Age(28)]
     )
     world.gameobject_manager.spawn_gameobject(
-        [Hero(), GameCharacter("Astrid", ""), Gender("Female"), Retired(), Age(24)]
+        [Hero(), GameCharacter("Astrid", ""), Gender("Female"), Retired(year_created=0), Age(24)]
     )
     world.gameobject_manager.spawn_gameobject(
-        [DemonKing(), GameCharacter("Calvin", ""), Retired(), Age(22)]
+        [DemonKing(), GameCharacter("Calvin", ""), Retired(year_created=10), Age(22)]
     )
     world.gameobject_manager.spawn_gameobject(
         [DemonKing(), GameCharacter("Palpatine", ""), Gender("NonBinary"), Age(128)]
@@ -165,8 +165,9 @@ def test_query_bindings(sample_world: World):
         ("_",),
         QB.with_(GameCharacter, "_"),
         QB.filter_(
-            lambda gameobject: gameobject.get_component(Gender).gender
-            == GenderType.NonBinary,
+            lambda gameobject: (
+                gameobject.get_component(Gender).gender == GenderType.NonBinary
+            ),
             "_",
         ),
     )
@@ -187,8 +188,9 @@ def test_query_bindings(sample_world: World):
         "_",
         QB.with_(GameCharacter, "_"),
         QB.filter_(
-            lambda gameobject: gameobject.get_component(Gender).gender
-            == GenderType.NonBinary,
+            lambda gameobject: (
+                gameobject.get_component(Gender).gender == GenderType.NonBinary
+            ),
             "_",
         ),
     )
@@ -214,8 +216,9 @@ def test_filter(sample_world: World):
         "_",
         QB.with_((GameCharacter, Gender), "_"),
         QB.filter_(
-            lambda gameobject: gameobject.get_component(Gender).gender
-            == GenderType.NonBinary,
+            lambda gameobject: (
+                gameobject.get_component(Gender).gender == GenderType.NonBinary
+            ),
             "_",
         ),
     )

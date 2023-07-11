@@ -35,22 +35,23 @@ from neighborly import (
     Component,
     GameObject,
     IComponentFactory,
-    ISystem,
     Neighborly,
     NeighborlyConfig,
     SimDateTime,
+    SystemBase,
     World,
 )
-from neighborly.command import SpawnCharacter
 from neighborly.components.character import (
     CanAge,
+    CanGetOthersPregnant,
     CanGetPregnant,
     GameCharacter,
+    Immortal,
     LifeStage,
     LifeStageType,
 )
 from neighborly.components.shared import FrequentedLocations
-from neighborly.core.ecs import Active, ISerializable
+from neighborly.core.ecs import Active, Component, ISerializable, World
 from neighborly.core.life_event import (
     EventRole,
     EventRoleBindingContext,
@@ -58,7 +59,6 @@ from neighborly.core.life_event import (
     RandomLifeEvent,
     event_role,
 )
-from neighborly.core.settlement import Settlement
 from neighborly.decorators import (
     component,
     component_factory,
@@ -70,13 +70,15 @@ from neighborly.decorators import (
 from neighborly.events import DeathEvent
 from neighborly.exporter import export_to_json
 from neighborly.goals import Die
-from neighborly.systems import EarlyUpdateSystemGroup
-from neighborly.utils.common import add_character_to_settlement
+from neighborly.systems import EarlyUpdateSystemGroup, InitializationSystemGroup
+
+from neighborly.components.trait import add_trait
+
+from neighborly.components.business import Occupation
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
                     "Friendship": {
@@ -153,6 +155,14 @@ class PowerLevel(Component, ISerializable):
         return {"level": self.level}
 
 
+@component_factory(sim.world, PowerLevel)
+class PowerLevelFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> PowerLevel:
+        rng = world.resource_manager.get_resource(random.Random)
+        power_level = kwargs.get("power_level", rng.randint(0, 230))
+        return PowerLevel(level=power_level)
+
+
 @component(sim.world)
 class ConfirmedKills(Component, ISerializable):
     """The number of enemies a character has defeated."""
@@ -170,10 +180,10 @@ class ConfirmedKills(Component, ISerializable):
 
 
 @component(sim.world)
-class DemonSlayer(Component):
+class DemonSlayer(Occupation):
     """A DemonSlayer is a character who fights demons and grows in rank."""
 
-    __slots__ = "rank", "breathing_style"
+    __slots__ = "rank", "breathing_style", "demons_kills", "upper_moon_demon_kills"
 
     rank: DemonSlayerRank
     """The slayer's current rank."""
@@ -181,13 +191,28 @@ class DemonSlayer(Component):
     breathing_style: BreathingStyle
     """The style of breathing this slayer uses."""
 
-    def __init__(self, breathing_style: BreathingStyle) -> None:
-        super().__init__()
+    demons_kills: int
+    """The total number of demons this character has killed."""
+
+    upper_moon_demon_kills: int
+    """The number of upper moon-ranking demons killed by this character."""
+
+    def __init__(
+        self, business: GameObject, start_year: int, breathing_style: BreathingStyle
+    ) -> None:
+        super().__init__(business=business, start_year=start_year)
         self.rank = DemonSlayerRank.Mizunoto
         self.breathing_style = breathing_style
+        self.demons_kills = 0
+        self.upper_moon_demon_kills = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"rank": self.rank.name, "breathing-style": self.breathing_style.name}
+        return {
+            "rank": self.rank.name,
+            "breathing-style": self.breathing_style.name,
+            "demon_kills": self.demons_kills,
+            "upper_demon_kills": self.upper_moon_demon_kills,
+        }
 
 
 @component_factory(sim.world, DemonSlayer)
@@ -197,14 +222,18 @@ class DemonSlayerFactory(IComponentFactory):
     def create(self, world: World, **kwargs: Any) -> DemonSlayer:
         rng = world.resource_manager.get_resource(random.Random)
         breathing_style = rng.choice(list(BreathingStyle))
-        return DemonSlayer(breathing_style=breathing_style)
+        business: GameObject = kwargs["business"]
+        year_started = world.resource_manager.get_resource(SimDateTime).year
+        return DemonSlayer(
+            breathing_style=breathing_style,
+            business=business,
+            start_year=year_started,
+        )
 
 
 @resource(sim.world)
 class DemonSlayerCorps:
-    """
-    Shared resource that tracks information about
-    current and former DemonSlayers
+    """A business owned by the simulation that is responsible for employing demon slayers
 
     Attributes
     ----------
@@ -297,33 +326,39 @@ class DemonRank(IntEnum):
 
 @component(sim.world)
 class Demon(Component):
-    """
-    Demons eat people and battle each other and demon slayers
+    """Demons eat people and battle each other and demon slayers."""
 
-    Attributes
-    ----------
+    __slots__ = "rank", "turned_by", "humans_devoured", "hashira_kills"
+
     rank: DemonRank
-        This demon's rank among other demons
-    turned_by: Optional[int]
-        GameObject ID of the demon that gave this demon
-        their power
-    """
+    """The general rank of the demon compared to other demons."""
 
-    __slots__ = "rank", "turned_by"
+    turned_by: Optional[GameObject]
+    """The Demon that turned this character into a demon."""
+
+    humans_devoured: int
+    """The number of humans this demon has devoured."""
+
+    hashira_kills: int
+    """The number of hashira this demon has killed."""
 
     def __init__(
         self,
         rank: DemonRank = DemonRank.LowerDemon,
-        turned_by: Optional[int] = None,
+        turned_by: Optional[GameObject] = None,
     ) -> None:
         super().__init__()
-        self.rank: DemonRank = rank
-        self.turned_by: Optional[int] = turned_by
+        self.rank = rank
+        self.turned_by = turned_by
+        self.humans_devoured = 0
+        self.hashira_kills = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "rank": str(self.rank.name),
             "turned_by": self.turned_by if self.turned_by else -1,
+            "humans_devoured": self.humans_devoured,
+            "hashira_kills": self.hashira_kills,
         }
 
 
@@ -1263,37 +1298,63 @@ def handle_demon_death(event: DeathEvent) -> None:
             ).retire_upper_moon(event.character.uid)
 
 
+@system(sim.world, system_group=InitializationSystemGroup)
+class InitializeDemonSlayerCorps(SystemBase):
+    def on_update(self, world: World) -> None:
+        # Create an instance of thr world and pass
+        pass
+
+
 @system(sim.world, system_group=EarlyUpdateSystemGroup)
-class SpawnFirstDemon(ISystem):
+class SpawnFirstDemonSystem(SystemBase):
+    """Picks an existing character at random and turns them into a demon."""
+
+    YEAR_TO_SPAWN_DEMON = 10
+
     def on_update(self, world: World) -> None:
         date = world.resource_manager.get_resource(SimDateTime)
+        rng = world.resource_manager.get_resource(random.Random)
 
-        if date.year < 10:
+        if date.year < self.YEAR_TO_SPAWN_DEMON:
             return
 
-        for guid, _ in world.get_component(Settlement):
-            settlement = world.gameobject_manager.get_gameobject(guid)
-
-            new_demon = (
-                SpawnCharacter("character::default::female").execute(world).get_result()
+        # Find active young adult or adult characters to choose from
+        candidates = [
+            world.gameobject_manager.get_gameobject(guid)
+            for guid, (_, _, life_stage) in world.get_components(
+                (GameCharacter, Active, LifeStage)
             )
+            if life_stage.life_stage == LifeStageType.YoungAdult
+            or life_stage.life_stage == LifeStageType.Adult
+        ]
 
-            new_demon.add_component(Demon())
-            new_demon.remove_component(CanAge)
-            new_demon.add_component(ConfirmedKills())
-            new_demon.add_component(
-                PowerLevel(
-                    world.resource_manager.get_resource(random.Random).randint(
-                        0, HIGHER_DEMON_PL
-                    )
+        new_demon = rng.choice(candidates)
+
+        new_demon.add_component(
+            world.gameobject_manager.create_component(Demon),
+        )
+
+        new_demon.add_component(ConfirmedKills())
+        new_demon.add_component(
+            PowerLevel(
+                world.resource_manager.get_resource(random.Random).randint(
+                    0, HIGHER_DEMON_PL
                 )
             )
-            if new_demon.has_component(CanGetPregnant):
-                new_demon.remove_component(CanGetPregnant)
+        )
 
-            add_character_to_settlement(new_demon, settlement)
+        # Demons stop changing life stages and do not die of old age.
+        new_demon.remove_component(CanAge)
+        add_trait(new_demon, Immortal())
 
-        world.system_manager.get_system(type(self)).set_active(False)
+        # Demons cannot have children.
+        if new_demon.has_component(CanGetPregnant):
+            new_demon.remove_component(CanGetPregnant)
+        if new_demon.has_component(CanGetOthersPregnant):
+            new_demon.remove_component(CanGetOthersPregnant)
+
+        # Deactivate this system so that it only runs once.
+        self.set_active(False)
 
 
 ########################################
@@ -1306,10 +1367,10 @@ EXPORT_WORLD = False
 
 def main():
     st = time.time()
-    sim.run_for(75)
+    sim.run_for(100)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {sim.world.resource_manager.get_resource(SimDateTime)}")
+    print(f"World Year: {sim.world.resource_manager.get_resource(SimDateTime).year}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_WORLD:

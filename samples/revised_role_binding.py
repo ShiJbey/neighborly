@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generator, Optional, Tuple
+from typing import Any, Dict, Generator, Iterable, Optional, Tuple
 
 from neighborly.core.ecs import Component, GameObject
 from neighborly.core.life_event import (
@@ -19,6 +19,16 @@ def sample_consideration(
 
 class StartHeroStory(RandomLifeEvent):
     """Begins a story of a hero versus a villain."""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "hero": self.roles.get_first("hero"),
+            "villain": self.roles.get_first("villain"),
+        }
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.roles.get_first("hero"), self.roles.get_first("villain")]
 
     def execute(self) -> None:
         pass

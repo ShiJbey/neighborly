@@ -2,8 +2,6 @@
   is_template: true
   extends: business::default
   components:
-    OperatingHours:
-      hours: day
     Lifespan:
       value: 10
 
@@ -29,7 +27,7 @@
     Business:
       owner_type: Banker
       employee_types:
-        Bank Teller: 3
+        BankTeller: 3
         Janitor: 1
         Manager: 1
     Name:
@@ -57,8 +55,6 @@
       value: 20
     Building:
       building_type: commercial
-    OperatingHours:
-      hours: evening
     Services:
       services:
         - drinking
@@ -84,9 +80,7 @@
     Business:
       owner_type: Owner
       employee_types:
-        Bus Driver: 2
-    OperatingHours:
-      hours: day
+        BusDriver: 2
 
 - name: CarpentryCompany
   extends: TotT::business
@@ -139,7 +133,7 @@
     Services:
       services: [ shopping ]
     Business:
-      owner_type: "Clothier"
+      owner_type: Clothier
       employee_types:
         Cashier: 1
         Seamstress: 1
@@ -199,9 +193,9 @@
     Name:
       value: Daycare Center
     Business:
-      owner_type: Daycare Provider
+      owner_type: DaycareProvider
       employee_types:
-        Daycare Provider: 2
+        DaycareProvider: 2
 
 - name: Deli
   extends: TotT::business
@@ -318,8 +312,8 @@
     Business:
       owner_type: ""
       employee_types:
-        Fire Chief: 1
-        Fire Fighter: 2
+        FireChief: 1
+        FireFighter: 2
 
 - name: Foundry
   extends: TotT::business
@@ -425,7 +419,7 @@
     Business:
       owner_type: Owner
       employee_types:
-        Hotel Maid: 2
+        HotelMaid: 2
         Concierge: 1
         Manager: 1
 
@@ -438,7 +432,7 @@
     Business:
       owner_type: Innkeeper
       employee_types:
-        Hotel Maid: 2
+        HotelMaid: 2
         Concierge: 1
         Manager: 1
 
@@ -450,9 +444,9 @@
       value: Insurance Company
     InsuranceCompany: { }
     Business:
-      owner_type: Insurance Agent
+      owner_type: InsuranceAgent
       employee_types:
-        Insurance Agent: 1
+        InsuranceAgent: 1
         Secretary: 1
 
 - name: JewelryShop
@@ -545,7 +539,7 @@
     Name:
       value: Plastic Surgery Clinic
     Business:
-      owner_type: Plastic Surgeon
+      owner_type: PlasticSurgeon
       employee_types:
         Nurse: 1
         Secretary: 1
@@ -575,8 +569,8 @@
     Business:
       owner_type: ""
       employee_types:
-        Police Chief: 1
-        Police Officer: 2
+        PoliceChief: 1
+        PoliceOfficer: 2
 
 - name: Quarry
   extends: TotT::business
@@ -588,8 +582,8 @@
     Business:
       owner_type: Owner
       employee_types:
-        Quarryman: 1
-        Stone Cutter: 1
+        QuarryMan: 1
+        StoneCutter: 1
         Laborer: 1
         Engineer: 1
 
@@ -636,6 +630,7 @@
         Principal: 1
         Teacher: 2
         Janitor: 1
+    School: { }
     Services:
       services: [ "education", "studying" ]
     Lifespan:
@@ -689,12 +684,10 @@
   components:
     Name:
       value: Tattoo Parlor
-    OperatingHours:
-      hours: afternoon
     Business:
-      owner_type: Tattoo Artist
+      owner_type: TattooArtist
       employee_types:
-        Tattoo Artist: 1
+        TattooArtist: 1
 
 - name: Tavern
   extends: TotT::business
@@ -709,8 +702,6 @@
         Waiter: 1
     Services:
       services: [ "drinking", "socializing" ]
-    OperatingHours:
-      hours: evening
 
 - name: TaxiDepot
   extends: TotT::business
@@ -720,6 +711,4 @@
     Business:
       owner_type: Proprietor
       employee_types:
-        Taxi Driver: 2
-    OperatingHours:
-      hours: day
+        TaxiDriver: 2

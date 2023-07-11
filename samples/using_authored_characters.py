@@ -9,23 +9,23 @@ Normally characters are spawned into the settlement based on the spawn table.
 import time
 from typing import Any, Dict
 
-from neighborly import ISystem, Neighborly, NeighborlyConfig, SimDateTime
-from neighborly.command import SpawnSettlement, SpawnCharacter, SpawnResidence
+from neighborly import Neighborly, NeighborlyConfig, SimDateTime, SystemBase
+from neighborly.command import SpawnCharacter, SpawnResidence, SpawnSettlement
 from neighborly.components.character import GameCharacter
-from neighborly.core.ecs import World, TagComponent, GameObjectPrefab
+from neighborly.core.ecs import GameObjectPrefab, TagComponent, World
 from neighborly.core.relationship import (
     Friendship,
     InteractionScore,
     RelationshipManager,
     Romance,
 )
-from neighborly.core.status import StatusComponent, StatusManager
+from neighborly.core.status import IStatus, Statuses
 from neighborly.data_collection import DataCollector
 from neighborly.decorators import component, system
 from neighborly.exporter import export_to_json
 from neighborly.utils.common import (
-    add_character_to_settlement,
     add_residence_to_settlement,
+    set_character_settlement,
     set_residence,
 )
 
@@ -67,11 +67,11 @@ class Robot(TagComponent):
 
 
 @component(sim.world)
-class OwesDebt(StatusComponent):
+class OwesDebt(IStatus):
     """Marks a character as owing money to another character"""
 
-    def __init__(self, amount: int) -> None:
-        super().__init__()
+    def __init__(self, year_created: int, amount: int) -> None:
+        super().__init__(year_created)
         self.amount: int = amount
 
     def to_dict(self) -> Dict[str, Any]:
@@ -79,7 +79,7 @@ class OwesDebt(StatusComponent):
 
 
 @system(sim.world)
-class RelationshipReporter(ISystem):
+class RelationshipReporter(SystemBase):
     def on_create(self, world: World) -> None:
         world.resource_manager.get_resource(DataCollector).create_new_table(
             "relationships",
@@ -118,7 +118,7 @@ class RelationshipReporter(ISystem):
                             "interaction_score": relationship.get_component(
                                 InteractionScore
                             ).get_value(),
-                            "statuses": str(relationship.get_component(StatusManager)),
+                            "statuses": str(relationship.get_component(Statuses)),
                         },
                     )
 
@@ -151,7 +151,7 @@ def main():
         .get_result()
     )
 
-    add_character_to_settlement(dolores, west_world)
+    set_character_settlement(dolores, west_world)
 
     house = SpawnResidence("residence::default::house").execute(sim.world).get_result()
 

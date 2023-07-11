@@ -164,7 +164,7 @@ class ComponentNotFoundError(Exception):
         """
         super().__init__()
         self.component_type = component_type
-        self.message = "Could not find Component with type {}.".format(
+        self.message = "Could not find Component with type: '{}'.".format(
             component_type.__name__
         )
 
@@ -175,6 +175,40 @@ class ComponentNotFoundError(Exception):
         return "{}(component_type={})".format(
             self.__class__.__name__,
             self.component_type.__name__,
+        )
+
+
+class MissingPrefabError(Exception):
+    """Exception raised when attempting to access a prefab that does not exist."""
+
+    __slots__ = "prefab_name", "message"
+
+    prefab_name: str
+    """The type of component not found."""
+
+    message: str
+    """An error message."""
+
+    def __init__(self, prefab_name: str) -> None:
+        """
+        Parameters
+        ----------
+        prefab_name
+            The name of a prefab definition
+        """
+        super().__init__()
+        self.prefab_name = prefab_name
+        self.message = "Could not find GameObjectPrefab with name: '{}'.".format(
+            prefab_name
+        )
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __repr__(self) -> str:
+        return "{}(prefab_name={})".format(
+            self.__class__.__name__,
+            self.prefab_name,
         )
 
 
@@ -344,9 +378,6 @@ class GameObject:
         Adding components is an immediate operation and triggers a ComponentAddedEvent.
         """
         self.world.gameobject_manager.add_component(self, component)
-        self.world.event_manager.dispatch_event(
-            ComponentAddedEvent(world=self.world, gameobject=self, component=component)
-        )
 
     def remove_component(self, component_type: Type[Component]) -> None:
         """Remove a component from the GameObject.
@@ -361,9 +392,6 @@ class GameObject:
         Removing components is an immediate operation and triggers a
         ComponentRemovedEvent.
         """
-        self.world.event_manager.dispatch_event(
-            ComponentRemovedEvent(self.world, self, self.get_component(component_type))
-        )
         self.world.gameobject_manager.remove_component(self, component_type)
 
     def get_component(self, component_type: Type[_CT]) -> _CT:
@@ -534,9 +562,6 @@ class GameObject:
 
     def destroy(self) -> None:
         """Remove a GameObject from the world."""
-        self.world.event_manager.dispatch_event(
-            GameObjectDestroyedEvent(self.world, self)
-        )
         self.world.gameobject_manager.destroy_gameobject(self)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -588,32 +613,28 @@ class GameObject:
 class Component(ABC):
     """A collection of data attributes associated with a GameObject."""
 
-    __slots__ = "_gameobject"
-
-    _gameobject: Optional[GameObject]
-    """The GameObject a component belongs to."""
-
     def __init__(self, **kwargs: Any) -> None:
         super().__init__()
-        self._gameobject = None
 
-    @property
-    def gameobject(self) -> GameObject:
-        """The GameObject a component belongs to."""
-        if self._gameobject is None:
-            raise TypeError("Component's GameObject is None")
-        return self._gameobject
-
-    def set_gameobject(self, gameobject: Optional[GameObject]) -> None:
-        """
-        Set the gameobject instance for this component.
+    def on_add(self, gameobject: GameObject) -> None:
+        """Lifecycle method called when a status is added to a GameObject.
 
         Parameters
         ----------
         gameobject
-            The GameObject instance or None if being removed from a GameObject.
+            The GameObject the status is attached to.
         """
-        self._gameobject = gameobject
+        return
+
+    def on_remove(self, gameobject: GameObject) -> None:
+        """Lifecycle method called when a status is removed from a GameObject.
+
+        Parameters
+        ----------
+        gameobject
+            The GameObject the status going to be removed from.
+        """
+        return
 
 
 class TagComponent(Component, ISerializable):
@@ -636,7 +657,82 @@ class Active(TagComponent):
 
 
 class ISystem(ABC):
-    """Abstract base class implementation for ECS systems."""
+    """Abstract Interface for ECS systems."""
+
+    @abstractmethod
+    def set_active(self, value: bool) -> None:
+        """Toggle if this system is active and will update.
+
+        Parameters
+        ----------
+        value
+            The new active status.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_create(self, world: World) -> None:
+        """Lifecycle method called when the system is added to the world.
+
+        Parameters
+        ----------
+        world
+            The world instance the system is mounted to.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_start_running(self, world: World) -> None:
+        """Lifecycle method called before checking if a system will update.
+
+        Parameters
+        ----------
+        world
+            The world instance the system is mounted to.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_destroy(self, world: World) -> None:
+        """Lifecycle method called when a system is removed from the world.
+
+        Parameters
+        ----------
+        world
+            The world instance the system was removed from.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_update(self, world: World) -> None:
+        """Lifecycle method called each when stepping the simulation.
+
+        Parameters
+        ----------
+        world
+            The world instance the system is updating
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_stop_running(self, world: World) -> None:
+        """Lifecycle method called after a system will updates.
+
+        Parameters
+        ----------
+        world
+            The world instance the system is mounted to.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def should_run_system(self, world: World) -> bool:
+        """Checks if this system should run this simulation step."""
+        raise NotImplementedError
+
+
+class SystemBase(ISystem, ABC):
+    """Abstract base class for ECS systems that provides default implementation for most lifecycle methods."""
 
     _active: bool
     """Will this system update during the next simulation step."""
@@ -685,16 +781,6 @@ class ISystem(ABC):
         """
         return
 
-    def on_update(self, world: World) -> None:
-        """Lifecycle method called each when stepping the simulation.
-
-        Parameters
-        ----------
-        world
-            The world instance the system is updating
-        """
-        return
-
     def on_stop_running(self, world: World) -> None:
         """Lifecycle method called after a system will updates.
 
@@ -710,7 +796,7 @@ class ISystem(ABC):
         return self._active
 
 
-class SystemGroup(ISystem, ABC):
+class SystemGroup(SystemBase, ABC):
     """A group of ECS systems that run as a unit.
 
     SystemGroups allow users to better structure the execution order of their systems.
@@ -718,24 +804,24 @@ class SystemGroup(ISystem, ABC):
 
     __slots__ = "_children"
 
-    _children: List[Tuple[int, ISystem]]
+    _children: List[Tuple[int, SystemBase]]
     """The systems that belong to this group"""
 
     def __init__(self) -> None:
         super().__init__()
         self._children = []
 
-    def iter_children(self) -> Iterator[Tuple[int, ISystem]]:
+    def iter_children(self) -> Iterator[Tuple[int, SystemBase]]:
         """Get an iterator for the group's children.
 
         Returns
         -------
-        Iterator[Tuple[ISystem]]
+        Iterator[Tuple[SystemBase]]
             An iterator for the child system collection.
         """
         return self._children.__iter__()
 
-    def add_child(self, system: ISystem, priority: int = 0) -> None:
+    def add_child(self, system: SystemBase, priority: int = 0) -> None:
         """Add a new system as a sub_system of this group.
 
         Parameters
@@ -748,7 +834,7 @@ class SystemGroup(ISystem, ABC):
         self._children.append((priority, system))
         self._children.sort(key=lambda pair: pair[0], reverse=True)
 
-    def remove_child(self, system_type: Type[ISystem]) -> None:
+    def remove_child(self, system_type: Type[SystemBase]) -> None:
         """Remove a child system.
 
         If for some reason there are more than one instance of the given system type,
@@ -795,7 +881,7 @@ class SystemManager(SystemGroup):
 
     def add_system(
         self,
-        system: ISystem,
+        system: SystemBase,
         priority: int = 0,
         system_group: Optional[Type[SystemGroup]] = None,
     ) -> None:
@@ -820,9 +906,7 @@ class SystemManager(SystemGroup):
         while stack:
             current_sys = stack.pop()
 
-            if type(current_sys) == system_group and isinstance(
-                current_sys, SystemGroup
-            ):
+            if isinstance(current_sys, system_group):
                 current_sys.add_child(system)
                 system.on_create(self.world)
                 return
@@ -846,7 +930,7 @@ class SystemManager(SystemGroup):
         _ST or None
             The system instance if one is found.
         """
-        stack: List[Tuple[SystemGroup, ISystem]] = [
+        stack: List[Tuple[SystemGroup, SystemBase]] = [
             (self, child) for _, child in self._children
         ]
 
@@ -863,7 +947,7 @@ class SystemManager(SystemGroup):
 
         raise SystemNotFoundError(system_type)
 
-    def remove_system(self, system_type: Type[ISystem]) -> None:
+    def remove_system(self, system_type: Type[SystemBase]) -> None:
         """Remove all instances of a system type.
 
         Parameters
@@ -881,7 +965,7 @@ class SystemManager(SystemGroup):
         system.
         """
 
-        stack: List[Tuple[SystemGroup, ISystem]] = [
+        stack: List[Tuple[SystemGroup, SystemBase]] = [
             (self, c) for _, c in self.iter_children()
         ]
 
@@ -970,57 +1054,6 @@ class DefaultComponentFactory(IComponentFactory):
     def create(self, world: World, **kwargs: Any) -> Component:
         """Create a new instance of the component_type using keyword arguments."""
         return self.component_type(**kwargs)
-
-
-class ComponentAddedEvent(Event):
-    """An event dispatched when a component is added to a GameObject."""
-
-    __slots__ = "gameobject", "component"
-
-    gameobject: GameObject
-    """The gameobject that had a the component added."""
-
-    component: Component
-    """A reference to the added component."""
-
-    def __init__(
-        self, world: World, gameobject: GameObject, component: Component
-    ) -> None:
-        super().__init__(world)
-        self.gameobject = gameobject
-        self.component = component
-
-
-class ComponentRemovedEvent(Event):
-    """An event dispatched when a component is removed from a GameObject."""
-
-    __slots__ = "gameobject", "component"
-
-    gameobject: GameObject
-    """The gameobject that had a the component added."""
-
-    component: Component
-    """A reference to the added component."""
-
-    def __init__(
-        self, world: World, gameobject: GameObject, component: Component
-    ) -> None:
-        super().__init__(world)
-        self.gameobject = gameobject
-        self.component = component
-
-
-class GameObjectDestroyedEvent(Event):
-    """An event fired when a GameObject is destroyed."""
-
-    __slots__ = "gameobject"
-
-    gameobject: GameObject
-    """The gameobject that had a the component added."""
-
-    def __init__(self, world: World, gameobject: GameObject) -> None:
-        super().__init__(world)
-        self.gameobject = gameobject
 
 
 class ResourceManager:
@@ -1273,7 +1306,6 @@ class GameObjectManager:
         self.world = world
         self._prefabs = {}
         self._component_metadata = {}
-        self._component_metadata = {}
         self._gameobjects = {}
         self._component_data = esper.World()
         self._dead_gameobjects = OrderedSet([])
@@ -1315,7 +1347,11 @@ class GameObjectManager:
 
         # Add components
         for c in components_to_add:
-            gameobject.add_component(c)
+            self.component_data.add_component(gameobject.uid, c)
+
+        # Call component on add methods
+        for c in components_to_add:
+            c.on_add(gameobject)
 
         gameobject.activate()
 
@@ -1348,7 +1384,8 @@ class GameObjectManager:
                 raise Exception(
                     f"Cannot find component, {component_name}. "
                     "Please ensure that this component has "
-                    "been registered with the simulation's world instance."
+                    "been registered with the simulation's world instance "
+                    f"using, 'sim.world.gameobject_manager.register_component({component_name})'."
                 )
 
             gameobject.add_component(
@@ -1370,7 +1407,9 @@ class GameObjectManager:
         prefab_name
             The name of the prefab
         """
-        return self._prefabs[prefab_name]
+        if prefab_name in self._prefabs:
+            return self._prefabs[prefab_name]
+        raise MissingPrefabError(prefab_name)
 
     def get_matching_prefabs(self, *patterns: str) -> List[GameObjectPrefab]:
         """
@@ -1460,7 +1499,7 @@ class GameObjectManager:
         components: Dict[str, Dict[str, Any]] = {}
 
         base_components = [
-            self._resolve_components(self._prefabs[base]) for base in prefab.extends
+            self._resolve_components(self.get_prefab(base)) for base in prefab.extends
         ]
 
         for entry in base_components:
@@ -1483,10 +1522,10 @@ class GameObjectManager:
         GameObject
             The GameObject with the given ID.
         """
-        try:
+        if gameobject_id in self._gameobjects:
             return self._gameobjects[gameobject_id]
-        except KeyError:
-            raise GameObjectNotFoundError(gameobject_id)
+
+        raise GameObjectNotFoundError(gameobject_id)
 
     def get_gameobjects(self) -> List[GameObject]:
         """Get all gameobjects.
@@ -1520,14 +1559,27 @@ class GameObjectManager:
         ----------
         gameobject
             The GameObject to remove.
+
+        Note
+        ----
+        This component also removes all the components from the gameobject before destruction.
         """
         gameobject = self._gameobjects[gameobject.uid]
 
         self._dead_gameobjects.append(gameobject.uid)
 
-        # Recursively remove all children
+        # Destroy all children first
         for child in gameobject.children:
             self.destroy_gameobject(child)
+
+        # Destroy attached components
+        attached_components = gameobject.get_components()
+
+        for component in attached_components:
+            component.on_remove(gameobject)
+
+        for component in attached_components:
+            self.component_data.remove_component(gameobject.uid, type(component))
 
     def add_component(self, gameobject: GameObject, component: Component) -> None:
         """Add a component to a GameObject.
@@ -1539,8 +1591,8 @@ class GameObjectManager:
         component
             The component instance to add.
         """
-        component.set_gameobject(gameobject)
         self.component_data.add_component(gameobject.uid, component)
+        component.on_add(gameobject)
 
     def remove_component(
         self, gameobject: GameObject, component_type: Type[Component]
@@ -1559,6 +1611,10 @@ class GameObjectManager:
             if not self.has_component(gameobject, component_type):
                 return
 
+            component = self.component_data.component_for_entity(
+                gameobject.uid, component_type
+            )
+            component.on_remove(gameobject)
             self.component_data.remove_component(gameobject.uid, component_type)
 
         except KeyError:

@@ -1,14 +1,23 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type
 
+from neighborly.components.business import Occupation
 from neighborly.components.character import LifeStageType
 from neighborly.core.ecs import Event, GameObject, World
-from neighborly.core.life_event import EventRole, LifeEvent
+from neighborly.core.life_event import LifeEvent
 from neighborly.core.time import SimDateTime
 
 
 class JoinSettlementEvent(LifeEvent):
+    __slots__ = "settlement", "character"
+
+    settlement: GameObject
+    """The settlement joined."""
+
+    character: GameObject
+    """The character that joined the settlement."""
+
     def __init__(
         self,
         world: World,
@@ -19,19 +28,35 @@ class JoinSettlementEvent(LifeEvent):
         super().__init__(
             world,
             date,
-            [EventRole("Settlement", settlement), EventRole("Character", character)],
+        )
+        self.settlement = settlement
+        self.character = character
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "settlement": self.settlement.uid,
+            "character": self.character.uid,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] '{}' joined the '{}' settlement".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.settlement.name,
         )
 
-    @property
-    def settlement(self):
-        return self["Settlement"]
-
-    @property
-    def character(self):
-        return self["Character"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.settlement, self.character]
 
 
 class LeaveSettlementEvent(LifeEvent):
+    __slots__ = "settlement", "character"
+
+    settlement: GameObject
+    character: GameObject
+
     def __init__(
         self,
         world: World,
@@ -42,41 +67,83 @@ class LeaveSettlementEvent(LifeEvent):
         super().__init__(
             world,
             date,
-            [EventRole("Settlement", settlement), EventRole("Character", character)],
+        )
+        self.settlement = settlement
+        self.character = character
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "settlement": self.settlement,
+            "character": self.character,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] '{}' left the '{}' settlement.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.settlement.name,
         )
 
-    @property
-    def settlement(self):
-        return self["Settlement"]
-
-    @property
-    def character(self):
-        return self["Character"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.settlement, self.character]
 
 
 class DepartEvent(LifeEvent):
+    __slots__ = "characters", "reason", "settlement"
+
+    characters: Tuple[GameObject, ...]
+    reason: Optional[LifeEvent]
+    settlement: GameObject
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         characters: List[GameObject],
+        settlement: GameObject,
         reason: Optional[LifeEvent] = None,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date)
+        self.characters = tuple(characters)
         self.reason = reason
-
-    @property
-    def characters(self):
-        return self._roles.get_all("Character")
+        self.settlement = settlement
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "reason": self.reason if self.reason else -1}
+        return {
+            **super().to_dict(),
+            "characters": [c.uid for c in self.characters],
+            "reason": self.reason.event_id if self.reason else -1,
+        }
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return list(self.characters)
 
     def __str__(self) -> str:
-        return f"{super().__str__()}, reason={self.reason}"
+        if self.reason:
+            return "{} [@ {}] '{}' departed from '{}' because of '{}'".format(
+                type(self).__name__,
+                str(self.timestamp),
+                " and ".join([c.name for c in self.characters]),
+                self.settlement.name,
+                type(self.reason).__name__,
+            )
+        else:
+            return "{} [@ {}] '{}' departed from '{}'".format(
+                type(self).__name__,
+                str(self.timestamp),
+                " and ".join([c.name for c in self.characters]),
+                self.settlement.name,
+            )
 
 
 class MoveResidenceEvent(LifeEvent):
+    __slots__ = "residence", "characters"
+
+    residence: GameObject
+    characters: Tuple[GameObject, ...]
+
     def __init__(
         self,
         world: World,
@@ -87,40 +154,75 @@ class MoveResidenceEvent(LifeEvent):
         super().__init__(
             world,
             date,
-            [
-                EventRole("Residence", residence),
-                *[EventRole("Character", c) for c in characters],
-            ],
         )
+        self.residence = residence
+        self.characters = characters
 
-    @property
-    def residence(self):
-        return self["Residence"]
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "residence": self.residence.uid,
+            "characters": [c.uid for c in self.characters],
+        }
 
-    @property
-    def characters(self):
-        return self._roles.get_all("Character")
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return list(self.characters)
+
+    def __str__(self) -> str:
+        return "{} [@ {}] '{}' moved into a new residence ({}).".format(
+            type(self).__name__,
+            str(self.timestamp),
+            " and ".join([c.name for c in self.characters]),
+            self.residence.name,
+        )
 
 
 class BusinessClosedEvent(LifeEvent):
-    def __init__(self, world: World, date: SimDateTime, business: GameObject) -> None:
-        super().__init__(world, date, [EventRole("Business", business)])
+    __slots__ = "business"
 
-    @property
-    def business(self):
-        return self["Business"]
+    business: GameObject
+
+    def __init__(self, world: World, date: SimDateTime, business: GameObject) -> None:
+        super().__init__(world, date)
+        self.business = business
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.business]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "business": self.business}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} closed for business".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.business.name,
+        )
 
 
 class BirthEvent(LifeEvent):
-    def __init__(self, world: World, date: SimDateTime, character: GameObject) -> None:
-        super().__init__(world, date, [EventRole("Character", character)])
+    __slots__ = "character"
 
-    @property
-    def character(self):
-        return self["Character"]
+    character: GameObject
+
+    def __init__(self, world: World, date: SimDateTime, character: GameObject) -> None:
+        super().__init__(world, date)
+        self.character = character
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "character": self.character}
 
 
 class HaveChildEvent(LifeEvent):
+    __slots__ = "birthing_parent", "other_parent", "baby"
+
+    birthing_parent: GameObject
+    other_parent: GameObject
+    baby: GameObject
+
     def __init__(
         self,
         world: World,
@@ -132,90 +234,92 @@ class HaveChildEvent(LifeEvent):
         super().__init__(
             world,
             date,
-            [
-                EventRole("BirthingParent", birthing_parent),
-                EventRole("OtherParent", other_parent),
-                EventRole("Baby", baby),
-            ],
         )
+        self.birthing_parent = birthing_parent
+        self.other_parent = other_parent
+        self.baby = baby
 
-    @property
-    def birthing_parent(self):
-        return self["BirthingParent"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.birthing_parent, self.other_parent, self.baby]
 
-    @property
-    def other_parent(self):
-        return self["OtherParent"]
-
-    @property
-    def baby(self):
-        return self["Baby"]
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "birthing_parent": self.birthing_parent,
+            "other_parent": self.other_parent,
+            "baby": self.baby,
+        }
 
 
 class StartJobEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation"
+
+    character: GameObject
+    business: business
+    occupation: Type[Occupation]
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: GameObject,
+        occupation: Type[Occupation],
     ) -> None:
-        super().__init__(
-            world,
-            date,
-            [
-                EventRole("Character", character),
-                EventRole("Business", business),
-                EventRole("Occupation", occupation),
-            ],
+        super().__init__(world, date)
+        self.character = character
+        self.business = business
+        self.occupation = occupation
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.business, self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "occupation": self.occupation.__name__,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] '{}' started a new job at '{}' as a '{}'.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.business.name,
+            self.occupation.__name__,
         )
-
-    @property
-    def character(self):
-        return self["Character"]
-
-    @property
-    def business(self):
-        return self["Business"]
-
-    @property
-    def occupation(self):
-        return self["occupation"]
 
 
 class EndJobEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation", "reason"
+
+    character: GameObject
+    business: GameObject
+    occupation: Type[Occupation]
+    reason: Optional[LifeEvent]
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: GameObject,
+        occupation: Type[Occupation],
         reason: Optional[LifeEvent] = None,
     ) -> None:
         super().__init__(
             world,
             date,
-            [
-                EventRole("Character", character),
-                EventRole("Business", business),
-                EventRole("Occupation", occupation),
-            ],
         )
+        self.character = character
+        self.business = business
+        self.occupation = occupation
         self.reason: Optional[LifeEvent] = reason
 
-    @property
-    def character(self):
-        return self["Character"]
-
-    @property
-    def business(self):
-        return self["Business"]
-
-    @property
-    def occupation(self):
-        return self["Occupation"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -224,127 +328,189 @@ class EndJobEvent(LifeEvent):
         }
 
     def __str__(self) -> str:
-        return (
-            f"{super().__str__()}, "
-            f"occupation={str(self.occupation)}, "
-            f"reason={str(self.reason)}"
+        return "{} [@ {}] {} ended their job at '{}' as a '{}'.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.business.name,
+            self.occupation.__name__,
         )
 
 
 class MarriageEvent(LifeEvent):
+    __slots__ = "characters"
+
+    characters: Tuple[GameObject, ...]
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date)
+        self.characters = characters
 
-    @property
-    def characters(self):
-        return self._roles.get_all("Character")
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return list(self.characters)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} got married.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            " and ".join([c.name for c in self.characters]),
+        )
 
 
 class DivorceEvent(LifeEvent):
+    __slots__ = "characters"
+
+    characters: Tuple[GameObject, ...]
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date)
+        self.characters = characters
 
-    @property
-    def characters(self):
-        return self._roles.get_all("Character")
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return list(self.characters)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} got divorced.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            " and ".join([c.name for c in self.characters]),
+        )
 
 
 class StartDatingEvent(LifeEvent):
+    __slots__ = "characters"
+
+    characters: Tuple[GameObject, ...]
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date)
+        self.characters = characters
 
-    @property
-    def characters(self):
-        return self._roles.get_all("Character")
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return list(self.characters)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} started dating.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            " and ".join([c.name for c in self.characters]),
+        )
 
 
 class BreakUpEvent(LifeEvent):
+    __slots__ = "characters"
+
+    characters: Tuple[GameObject, ...]
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date)
+        self.characters = characters
 
-    @property
-    def characters(self):
-        return self._roles.get_all("Character")
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return list(self.characters)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} broke up.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            " and ".join([c.name for c in self.characters]),
+        )
 
 
 class BecameAcquaintancesEvent(LifeEvent):
+    __slots__ = "characters"
+
+    characters: Tuple[GameObject, ...]
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         *characters: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", c) for c in characters])
+        super().__init__(world, date)
+        self.characters = characters
 
-    @property
-    def characters(self):
-        return self._roles.get_all("Character")
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return list(self.characters)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} became a acquaintances.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            " and ".join([c.name for c in self.characters]),
+        )
 
 
 class StartBusinessEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation"
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: GameObject,
+        occupation: Type[Occupation],
     ) -> None:
-        super().__init__(
-            world,
-            date,
-            [
-                EventRole("Character", character),
-                EventRole("Business", business),
-                EventRole("Occupation", occupation),
-            ],
+        super().__init__(world, date)
+        self.character = character
+        self.business = business
+        self.occupation = occupation
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.business, self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "occupation": self.occupation.__name__,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} started a business '{}'.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.business.name,
         )
-
-    @property
-    def character(self):
-        return self["Character"]
-
-    @property
-    def business(self):
-        return self["Business"]
-
-    @property
-    def occupation(self):
-        return self["occupation"]
-
-
-class BusinessOpenEvent(LifeEvent):
-    def __init__(
-        self,
-        world: World,
-        date: SimDateTime,
-        business: GameObject,
-    ) -> None:
-        super().__init__(world, date, [EventRole("Business", business)])
-
-    @property
-    def business(self):
-        return self["Business"]
 
 
 class SettlementCreatedEvent(Event):
@@ -462,18 +628,18 @@ class CharacterAgeChangeEvent(Event):
         return self._life_stage
 
 
-class NewBusinessEvent(LifeEvent):
+class NewBusinessEvent(Event):
+    __slots__ = "business"
+
+    business: GameObject
+
     def __init__(
         self,
         world: World,
-        date: SimDateTime,
         business: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Business", business)])
-
-    @property
-    def business(self):
-        return self["Business"]
+        super().__init__(world)
+        self.business = business
 
 
 class ResidenceCreatedEvent(Event):
@@ -505,119 +671,219 @@ class ResidenceCreatedEvent(Event):
 
 
 class BecomeAdolescentEvent(LifeEvent):
+    __slots__ = "character"
+
+    character: GameObject
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", character)])
+        super().__init__(world, date)
+        self.character = character
 
-    @property
-    def character(self):
-        return self["Character"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "character": self.character}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} became a adolescent.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+        )
 
 
 class BecomeYoungAdultEvent(LifeEvent):
+    __slots__ = "character"
+
+    character: GameObject
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", character)])
+        super().__init__(world, date)
+        self.character = character
 
-    @property
-    def character(self):
-        return self["Character"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "character": self.character}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} became a young adult.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+        )
 
 
 class BecomeAdultEvent(LifeEvent):
+    __slots__ = "character"
+
+    character: GameObject
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", character)])
+        super().__init__(world, date)
+        self.character = character
 
-    @property
-    def character(self):
-        return self["Character"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "character": self.character}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} became an adult.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+        )
 
 
 class BecomeSeniorEvent(LifeEvent):
+    __slots__ = "character"
+
+    character: GameObject
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", character)])
+        super().__init__(world, date)
+        self.character = character
 
-    @property
-    def character(self):
-        return self["Character"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "character": self.character}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} became a senior.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+        )
 
 
 class RetirementEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation"
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
         business: GameObject,
-        occupation: GameObject,
+        occupation: Type[Occupation],
     ) -> None:
-        super().__init__(
-            world,
-            date,
-            [
-                EventRole("Character", character),
-                EventRole("Business", business),
-                EventRole("Occupation", occupation),
-            ],
+        super().__init__(world, date)
+        self.character = character
+        self.business = business
+        self.occupation = occupation
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "occupation": self.occupation.__name__,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} retired from their position as '{}' at {}".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.occupation.__name__,
+            self.business.name,
         )
-
-    @property
-    def character(self):
-        return self["Character"]
-
-    @property
-    def business(self):
-        return self["Business"]
-
-    @property
-    def occupation(self):
-        return self["Occupation"]
 
 
 class DeathEvent(LifeEvent):
+    __slots__ = "character"
+
+    character: GameObject
+
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         character: GameObject,
     ) -> None:
-        super().__init__(world, date, [EventRole("Character", character)])
+        super().__init__(world, date)
+        self.character = character
 
-    @property
-    def character(self):
-        return self["Character"]
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "character": self.character}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} died.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+        )
 
 
 class GetPregnantEvent(LifeEvent):
-    """Defines an event where two characters stop dating"""
+    __slots__ = "pregnant_one", "partner"
+
+    pregnant_one: GameObject
+    """The character that got pregnant."""
+
+    partner: GameObject
+    """The character that impregnated the other."""
 
     def __init__(
         self,
         world: World,
         date: SimDateTime,
         pregnant_one: GameObject,
-        other: GameObject,
+        partner: GameObject,
     ) -> None:
         super().__init__(
             world,
             date,
-            [EventRole("PregnantOne", pregnant_one), EventRole("Other", other)],
+        )
+        self.pregnant_one = pregnant_one
+        self.partner = partner
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.pregnant_one]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "pregnant_one": self.pregnant_one.uid,
+            "partner": self.partner.uid,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} got pregnant by {}.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.pregnant_one.name,
+            self.partner.name,
         )

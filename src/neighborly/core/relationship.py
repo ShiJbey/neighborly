@@ -8,20 +8,14 @@ from typing import Any, Dict, Iterator, List, Optional, Protocol, Tuple, Type, T
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import (
-    Active,
-    Component,
-    GameObject,
-    ISerializable,
-)
+from neighborly.core.ecs import Active, Component, GameObject, ISerializable
 from neighborly.core.status import (
-    StatusComponent,
-    StatusManager,
+    IStatus,
+    Statuses,
     add_status,
     has_status,
     remove_status,
 )
-from neighborly.core.time import SimDateTime
 
 
 def lerp(a: float, b: float, f: float) -> float:
@@ -185,7 +179,7 @@ class InteractionScore(RelationshipFacet):
     pass
 
 
-class RelationshipStatus(StatusComponent, ABC):
+class IRelationshipStatus(IStatus, ABC):
     pass
 
 
@@ -383,7 +377,7 @@ class SocialRuleLibrary:
         return self._rules.__iter__()
 
 
-_RST = TypeVar("_RST", bound=RelationshipStatus)
+_RST = TypeVar("_RST", bound=IRelationshipStatus)
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
@@ -410,7 +404,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
 
     relationship = world.gameobject_manager.instantiate_prefab("relationship")
     relationship.add_component(Relationship(owner, target))
-    relationship.add_component(StatusManager())
+    relationship.add_component(Statuses())
     relationship.add_component(Active())
 
     relationship.name = f"Rel({owner} -> {target})"
@@ -472,7 +466,7 @@ def has_relationship(subject: GameObject, target: GameObject) -> bool:
 
 
 def add_relationship_status(
-    subject: GameObject, target: GameObject, status: RelationshipStatus
+    subject: GameObject, target: GameObject, status: IRelationshipStatus
 ) -> None:
     """
     Add a relationship status to the given character
@@ -487,7 +481,6 @@ def add_relationship_status(
         The core component of the status
     """
     relationship = get_relationship(subject, target)
-    status.set_created(subject.world.resource_manager.get_resource(SimDateTime))
     add_status(relationship, status)
 
 
@@ -517,7 +510,7 @@ def get_relationship_status(
 def remove_relationship_status(
     subject: GameObject,
     target: GameObject,
-    status_type: Type[RelationshipStatus],
+    status_type: Type[IRelationshipStatus],
 ) -> None:
     """
     Remove a relationship status to the given character
@@ -539,7 +532,7 @@ def remove_relationship_status(
 def has_relationship_status(
     subject: GameObject,
     target: GameObject,
-    *status_type: Type[RelationshipStatus],
+    *status_type: Type[IRelationshipStatus],
 ) -> bool:
     """
     Check if a relationship between characters has a certain status type
@@ -564,7 +557,7 @@ def has_relationship_status(
 
 
 def get_relationships_with_statuses(
-    subject: GameObject, *status_types: Type[RelationshipStatus]
+    subject: GameObject, *status_types: Type[IRelationshipStatus]
 ) -> List[GameObject]:
     """Get all the relationships with the given status types
 

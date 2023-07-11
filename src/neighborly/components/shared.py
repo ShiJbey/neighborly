@@ -10,7 +10,7 @@ from typing import Any, Dict, Iterable, Iterator, Optional
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
-from neighborly.core.status import StatusComponent
+from neighborly.core.status import IStatus
 
 
 @dataclass
@@ -158,7 +158,7 @@ class MaxCapacity(Component, ISerializable):
         return {"capacity": self.value}
 
 
-class OpenToPublic(StatusComponent, ISerializable):
+class OpenToPublic(IStatus, ISerializable):
     """Tags a location as being eligible to travel to."""
 
     pass
@@ -245,6 +245,9 @@ class FrequentedLocations(Component, ISerializable):
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def __len__(self) -> int:
+        return len(self._locations)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self._locations.__repr__()})"
@@ -380,31 +383,6 @@ class PrefabName(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"prefab": self.prefab}
-
-
-class Description(Component, ISerializable):
-    """A text description for a GameObject"""
-
-    __slots__ = "_description"
-
-    _description: str
-
-    def __init__(self, value: str) -> None:
-        super().__init__()
-        self._description = value
-
-    @property
-    def value(self) -> str:
-        return self._description
-
-    def __str__(self) -> str:
-        return self.value
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.value})"
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"value": self.value}
 
 
 class OwnedBy(Component, ISerializable):

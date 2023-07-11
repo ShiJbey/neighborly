@@ -1,4 +1,4 @@
-from typing import Any, Dict, Type
+from typing import Dict, Type
 
 from neighborly.components.character import GameCharacter, Virtue, Virtues
 from neighborly.components.shared import Age
@@ -14,8 +14,8 @@ from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.utils.query import are_related, is_single
 
 plugin_info = PluginInfo(
-    name="default location bias rules plugin",
-    plugin_id="default.location_bias_rules",
+    name="default location preference rules plugin",
+    plugin_id="default.location_preference_rules",
     version="0.1.0",
 )
 
@@ -139,7 +139,7 @@ def romance_decrease_for_relationship(
     return {}
 
 
-def setup(sim: Neighborly, **kwargs: Any):
+def setup(sim: Neighborly):
     social_rule_library = sim.world.resource_manager.get_resource(SocialRuleLibrary)
 
     social_rule_library.add(
