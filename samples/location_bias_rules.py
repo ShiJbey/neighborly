@@ -56,43 +56,43 @@ class Shopaholic(TagComponent):
 
 
 @location_preference_rule(sim.world, "social-butterfly")
-def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[int]:
+def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[float]:
     if character.has_component(SocialButterfly) and location_has_services(
         location, "Socializing"
     ):
-        return 2
+        return 1.0
 
 
 @location_preference_rule(sim.world, "recovering-alcoholic")
 def recovering_alcoholic_rule(
     character: GameObject, location: GameObject
-) -> Optional[int]:
+) -> Optional[float]:
     if character.has_component(RecoveringAlcoholic) and location_has_services(
         location, "Drinking"
     ):
-        return -3
+        return 0.1
 
 
 @location_preference_rule(sim.world, "shop-alcoholic")
-def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[int]:
+def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[float]:
     if character.has_component(Shopaholic) and location_has_services(
         location, "Shopping"
     ):
-        return 3
+        return 0.8
 
 
 @location_preference_rule(sim.world, "book-worm")
-def book_worm_rule(character: GameObject, location: GameObject) -> Optional[int]:
+def book_worm_rule(character: GameObject, location: GameObject) -> Optional[float]:
     if character.has_component(BookWorm) and location_has_services(location, "Reading"):
-        return 2
+        return 0.8
 
 
 @location_preference_rule(sim.world, "health-nut")
-def rule(character: GameObject, location: GameObject) -> Optional[int]:
+def rule(character: GameObject, location: GameObject) -> Optional[float]:
     if character.has_component(HealthNut) and location_has_services(
         location, "Recreation"
     ):
-        return 2
+        return 0.8
 
 
 def main():

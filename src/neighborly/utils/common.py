@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import random
 from typing import Any, Dict, List, Optional, Tuple, Type
@@ -31,7 +33,6 @@ from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.role import Roles, add_role, remove_role
 from neighborly.components.shared import (
     Age,
-    CurrentLocation,
     CurrentLot,
     CurrentSettlement,
     FrequentedBy,
@@ -72,105 +73,12 @@ from neighborly.events import (
     SettlementCreatedEvent,
     StartJobEvent,
 )
-
-########################################
-# LOCATION MANAGEMENT
-########################################
-
-
-def add_sub_location(parent_location: GameObject, sub_location: GameObject) -> None:
-    """Adds a location as a child of another location.
-
-    Parameters
-    ----------
-    parent_location
-        The location to add a child to.
-    sub_location
-        The new location to add.
-    """
-    parent_location.get_component(Location).children.add(sub_location)
-    sub_location.get_component(Location).parent = parent_location
-    parent_location.add_child(sub_location)
-
-
-def remove_sub_location(parent_location: GameObject, sub_location: GameObject) -> None:
-    """Removes a location as a child of another location.
-
-    Parameters
-    ----------
-    parent_location
-        The location to add a child to.
-    sub_location
-        The new location to add.
-    """
-    parent_location.get_component(Location).children.remove(sub_location)
-    sub_location.get_component(Location).parent = None
-    parent_location.remove_child(sub_location)
-
-
-def set_location(gameobject: GameObject, location: Optional[GameObject]) -> None:
-    """Move a GameObject to a location.
-
-    Parameters
-    ----------
-    gameobject
-        The object to move.
-    location
-        The location to move the object to.
-    """
-
-    # Update old location if needed
-    if current_location_comp := gameobject.try_component(CurrentLocation):
-        # Have to check if the location still has a location component
-        # in-case te previous location is a closed business or demolished
-        # building
-
-        focus: Optional[GameObject] = current_location_comp.location
-
-        while focus is not None:
-            location_component = focus.get_component(Location)
-            location_component.remove_gameobject(gameobject)
-
-            if location_component.parent:
-                focus = location_component.parent
-            else:
-                focus = None
-
-        gameobject.remove_component(CurrentLocation)
-
-    # Move to new location if needed
-    if location is not None:
-        gameobject.add_component(CurrentLocation(location))
-
-        focus = location
-
-        while focus is not None:
-            location_component = focus.get_component(Location)
-            location_component.add_gameobject(gameobject)
-
-            if location_component.parent:
-                focus = location_component.parent
-            else:
-                focus = None
-
-
-def at_location(gameobject: GameObject, location: GameObject) -> bool:
-    """Check if a GameObject is at a location.
-
-    Parameters
-    ----------
-    gameobject
-        The object to check.
-    location
-        The location to check for the GameObject.
-
-    Returns
-    -------
-    bool
-        True if the object is at the location, False otherwise.
-    """
-    return location.get_component(Location).has_gameobject(gameobject)
-
+from neighborly.utils.location import (
+    add_frequented_location,
+    add_sub_location,
+    remove_frequented_location,
+    remove_sub_location,
+)
 
 ########################################
 # SETTLEMENT MANAGEMENT
@@ -257,10 +165,6 @@ def remove_location_from_settlement(
     if frequented_by := settlement.try_component(FrequentedBy):
         for character in [*frequented_by]:
             remove_frequented_location(character, location)
-
-    # Remove all gameobject from this location
-    for gameobject in location.get_component(Location).gameobjects:
-        set_location(gameobject, None)
 
     remove_sub_location(settlement, location)
 
@@ -877,10 +781,10 @@ def end_job(
 
             get_relationship(character, employee).get_component(
                 InteractionScore
-            ).increment(-1)
+            ).base_value += -1
             get_relationship(employee, character).get_component(
                 InteractionScore
-            ).increment(-1)
+            ).base_value += -1
 
     else:
         occupation_type = business_comp.get_employee_role(character)
@@ -894,10 +798,10 @@ def end_job(
 
             get_relationship(character, owner).get_component(
                 InteractionScore
-            ).increment(-1)
+            ).base_value += -1
             get_relationship(owner, character).get_component(
                 InteractionScore
-            ).increment(-1)
+            ).base_value += -1
 
         # Update coworker relationships
         for employee, _ in business.get_component(Business).iter_employees():
@@ -906,10 +810,10 @@ def end_job(
 
             get_relationship(character, employee).get_component(
                 InteractionScore
-            ).increment(-1)
+            ).base_value += -1
             get_relationship(employee, character).get_component(
                 InteractionScore
-            ).increment(-1)
+            ).base_value += -1
 
     add_status(character, Unemployed(year_created=current_date.year))
 
@@ -993,10 +897,10 @@ def start_job(
 
             get_relationship(character, employee).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
             get_relationship(employee, character).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
 
     else:
         # Update boss/employee relationships if needed
@@ -1012,10 +916,10 @@ def start_job(
 
             get_relationship(character, owner).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
             get_relationship(owner, character).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
 
         # Update employee/employee relationships
         for employee, _ in business.get_component(Business).iter_employees():
@@ -1028,10 +932,10 @@ def start_job(
 
             get_relationship(character, employee).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
             get_relationship(employee, character).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
 
         business_comp.add_employee(character, occupation_type)
 
@@ -1159,7 +1063,7 @@ def score_location(character: GameObject, location: GameObject) -> float:
     for rule_info in rule_library.iter_rules():
         consideration_score = rule_info.rule(character, location)
         if consideration_score is not None:
-            assert 0.0 <= consideration_score <= 1.0
+            assert 0.0 <= consideration_score
             cumulative_score *= consideration_score
             consideration_count += 1
 
@@ -1205,24 +1109,6 @@ def calculate_location_probabilities(
     probabilities.sort(key=lambda pair: pair[0], reverse=True)
 
     return probabilities
-
-
-def add_frequented_location(character: GameObject, location: GameObject) -> None:
-    """Add a location to a character's set of frequented locations."""
-    character.get_component(FrequentedLocations).add(location)
-    location.get_component(FrequentedBy).add(character)
-
-
-def remove_frequented_location(character: GameObject, location: GameObject) -> None:
-    """Remove a location from a character's set of frequented locations."""
-    frequented_locations = character.get_component(FrequentedLocations)
-    frequented_by = location.get_component(FrequentedBy)
-
-    if location in frequented_locations:
-        frequented_locations.remove(location)
-
-    if character in frequented_by:
-        frequented_by.remove(character)
 
 
 def score_frequentable_locations(
@@ -1290,3 +1176,23 @@ def debug_print_gameobject(gameobject: GameObject) -> None:
     )
 
     print(debug_str)
+
+
+def lerp(start: float, end: float, f: float) -> float:
+    """Linearly interpolate between start and end values.
+
+    Parameters
+    ----------
+    start
+        The starting value.
+    end
+        The ending value.
+    f
+        A fractional amount on the interval [0, 1.0].
+
+    Returns
+    -------
+    float
+        A value between start and end that is a fractional amount between the two points.
+    """
+    return (start * (1.0 - f)) + (end * f)

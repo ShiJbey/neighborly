@@ -133,19 +133,17 @@ def random_life_event(world: World):
     return decorator
 
 
-def social_rule(world: World, description: str):
+def social_rule(world: World):
     """Decorator that marks a function as a location preference rule.
 
     Parameters
     ----------
     world
         A world instance.
-    description
-        Text description of the rule.
     """
 
-    def decorator(rule: ISocialRule):
-        world.resource_manager.get_resource(SocialRuleLibrary).add(rule, description)
+    def decorator(rule: Type[ISocialRule]):
+        world.resource_manager.get_resource(SocialRuleLibrary).add_rule(rule())
         return rule
 
     return decorator

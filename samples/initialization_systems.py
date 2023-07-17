@@ -12,11 +12,11 @@ multiple settlements into the simulation.
 """
 
 from neighborly import Neighborly, NeighborlyConfig, SystemBase, World
-from neighborly.command import SpawnSettlement
 from neighborly.components.shared import Name
 from neighborly.core.settlement import Settlement
 from neighborly.decorators import system
-from neighborly.systems import InitializationSystemGroup
+from neighborly.systems import InitializationSystemGroup, InitializeSettlementSystem
+from neighborly.utils.common import spawn_settlement
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj({"plugins": ["neighborly.plugins.defaults.settlement"]})
@@ -27,16 +27,18 @@ sim = Neighborly(
 class InitializeMajorSettlements(SystemBase):
     def on_update(self, world: World) -> None:
         print("Setting up settlements...")
-        SpawnSettlement("settlement", name="Winterfell").execute(world)
-        SpawnSettlement("settlement", name="The Vale of Arryn").execute(world)
-        SpawnSettlement("settlement", name="Casterly Rock").execute(world)
-        SpawnSettlement("settlement", name="King's Landing").execute(world)
-        SpawnSettlement("settlement", name="Highgarden").execute(world)
-        SpawnSettlement("settlement", name="Braavos").execute(world)
-        SpawnSettlement("settlement", name="Pentos").execute(world)
+        spawn_settlement(world, name="Winterfell")
+        spawn_settlement(world, name="The Vale of Arryn")
+        spawn_settlement(world, name="Casterly Rock")
+        spawn_settlement(world, name="King's Landing")
+        spawn_settlement(world, name="Highgarden")
+        spawn_settlement(world, name="Braavos")
+        spawn_settlement(world, name="Pentos")
 
 
 def main():
+    sim.world.system_manager.get_system(InitializeSettlementSystem).set_active(False)
+
     # We run the simulation for 10 timesteps, but the initialization
     # system group only runs once on the first timestep.
     for _ in range(10):

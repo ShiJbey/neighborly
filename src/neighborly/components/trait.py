@@ -10,20 +10,20 @@ from typing import (
     FrozenSet,
     Iterable,
     Iterator,
+    Optional,
     Set,
     Tuple,
     Type,
     TypeVar,
-    Optional,
 )
 
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import (
     Component,
-    TagComponent,
     GameObject,
     ISerializable,
+    TagComponent,
     World,
 )
 
@@ -215,6 +215,9 @@ class TraitLibrary:
     def get_trait_type(self, trait_name: str) -> Type[ITrait]:
         """Get a trait type by name."""
         return self._trait_types[trait_name]
+
+    def __len__(self) -> int:
+        return len(self._trait_types)
 
 
 _TT = TypeVar("_TT", bound=ITrait)

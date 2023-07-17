@@ -2,10 +2,58 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres mostly to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-There may be minor-version updates that contain breaking changes, but do not warrant
-incrementing to a completely new version number.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres mostly to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
+between minor-version updates.
+
+## [12.0.0]
+
+Version 0.12.0 is departs significantly from previous Neighborly releases. This version emphasizes simplicity, focusing
+more on Neighborly's use as a data science and prototyping tool. This change reflects my evolving understanding of my
+research and its place in the academic universe. To match this, most samples have been converted to encourage
+experimentation and showcase data visualizations.
+
+The passage of time has been greatly simplified to only simulate one year at a time. Since we no longer model more
+granular time steps such as hours, there is no need for character routines or operating hours. We also do not need
+to track the maximum capacity of a location or mark locations as eligible for travel.
+
+### Added
+
+- Trait System so characters can spawn with additional components that affect their behavior.
+- Traits can be inherited by children from their parents
+- `@event_role` decorator that reduces boiler code when required to define new random life events.
+- Added a role system to handle things like narrative-specific roles and occupations.
+- `JobRequirementsLibrary` resource that manages all job requirements for occupations.
+- Item system that tracks character inventory and item types.
+- Additional API routes to the server
+- Systems now have lifecycle methods for `on_create()`, `on_start_running()`, `on_destroy()`, `on_update()`,
+  `on_stop_running()`, and `should_system_run()`.
+-
+
+### Changed
+
+- Converted samples from python scripts to interactive python notebooks.
+- Time moves at single year time steps
+- Built-in systems now inherit from `SystemBase` instead of `ISystem`
+- Death from old age is now a `DieOfOldAgeSystem` instead of a random life event
+- Most events and character behavior are now triggered by specialized systems.
+- Most built-in LifeEvents no longer use role lists to track associated GameObjects and data.
+- Event listeners now only accept the dispatched event instance.
+- An instance of the world state has been added to the attributes of `Event` instances.
+- World methods have been divided among four classes `SystemManager`, `GameObjectManager`, `EventManager`,
+  and `ResourceManager`.
+- Revised relationship system and class interfaces for social rules, relationship stats, and relationship modifiers.
+- Renamed `RelationshipFacet` to `RelationshipStat`.
+
+### Removed
+
+- The `OccupationType` class. Occupations are now defined as components that inherit from the `Occupation` class.
+- Plugin configuration settings are no longer accepted in the `NeighborlyConfig`. Please use the `settings` section of
+  `NeighborlyConfig` to pass configuration settings to loaded plugins.
+- The `Routine` component class has been removed.
+- The `OperatingHours` component class has been removed.
+- Locations no longer track what GameObjects are present at the location since we do not model character movement.
+- `RelationshipUpdateSystem`, `FriendshipStatSystem`, and `RomanceStatSystem`
 
 ## [0.11.3]
 
@@ -49,7 +97,7 @@ incrementing to a completely new version number.
 
 ### Updated
 
-- Type hints have been reformated to prevent duplicate description warnings from sphinx. Class
+- Type hints have been reformatted to prevent duplicate description warnings from sphinx. Class
   attribute type definitions have been moved out of `__init__` and the doc strings for attributes
   are placed below their type hints.
 - Updated to newer build of Tracery (`tracery3`)

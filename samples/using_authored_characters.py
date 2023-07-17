@@ -10,7 +10,6 @@ import time
 from typing import Any, Dict
 
 from neighborly import Neighborly, NeighborlyConfig, SimDateTime, SystemBase
-from neighborly.command import SpawnCharacter, SpawnResidence, SpawnSettlement
 from neighborly.components.character import GameCharacter
 from neighborly.core.ecs import GameObjectPrefab, TagComponent, World
 from neighborly.core.relationship import (
@@ -19,6 +18,7 @@ from neighborly.core.relationship import (
     RelationshipManager,
     Romance,
 )
+from neighborly.core.settlement import Settlement
 from neighborly.core.status import IStatus, Statuses
 from neighborly.data_collection import DataCollector
 from neighborly.decorators import component, system
@@ -27,12 +27,13 @@ from neighborly.utils.common import (
     add_residence_to_settlement,
     set_character_settlement,
     set_residence,
+    spawn_character,
+    spawn_residence,
 )
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "time_increment": "1mo",
             "relationship_schema": {
                 "components": {
                     "Friendship": {
@@ -43,17 +44,26 @@ sim = Neighborly(
                         "min_value": -100,
                         "max_value": 100,
                     },
-                    "InteractionScore": {
-                        "min_value": -5,
-                        "max_value": 5,
-                    },
                 }
             },
             "plugins": [
                 "neighborly.plugins.defaults.all",
-                "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
             ],
+            "settings": {
+                "settlement_name": "Westworld",
+                "settlement_size": (5, 5),  # Width/length of the settlement grid
+                "zoning": (0.5, 0.5),  # Zoning is 50/50 residential vs. commercial
+                "character_spawn_table": [
+                    {"name": "character::default::male"},
+                    {"name": "character::default::female"},
+                    {"name": "character::default::non-binary"},
+                ],
+                "residence_spawn_table": [
+                    {"name": "residence::default::house"},
+                ],
+                "business_spawn_table": [],
+            },
         }
     )
 )
@@ -113,11 +123,11 @@ class RelationshipReporter(SystemBase):
                             "target": target.uid,
                             "friendship": relationship.get_component(
                                 Friendship
-                            ).get_value(),
-                            "romance": relationship.get_component(Romance).get_value(),
+                            ).value,
+                            "romance": relationship.get_component(Romance).value,
                             "interaction_score": relationship.get_component(
                                 InteractionScore
-                            ).get_value(),
+                            ).value,
                             "statuses": str(relationship.get_component(Statuses)),
                         },
                     )
@@ -129,9 +139,6 @@ YEARS_TO_SIMULATE = 50
 
 def main():
     """Main entry point for this module"""
-
-    west_world = SpawnSettlement(name="West World").execute(sim.world).get_result()
-
     sim.world.gameobject_manager.add_prefab(
         GameObjectPrefab(
             name="westworld::host",
@@ -140,20 +147,23 @@ def main():
         )
     )
 
-    dolores = (
-        SpawnCharacter(
-            "westworld::host",
-            first_name="Dolores",
-            last_name="Abernathy",
-            age=32,
-        )
-        .execute(sim.world)
-        .get_result()
+    sim.step()
+
+    west_world = sim.world.gameobject_manager.get_gameobject(
+        sim.world.get_component(Settlement)[0][0]
+    )
+
+    dolores = spawn_character(
+        sim.world,
+        "westworld::host",
+        first_name="Dolores",
+        last_name="Abernathy",
+        age=32,
     )
 
     set_character_settlement(dolores, west_world)
 
-    house = SpawnResidence("residence::default::house").execute(sim.world).get_result()
+    house = spawn_residence(sim.world, "residence::default::house")
 
     add_residence_to_settlement(house, west_world)
 

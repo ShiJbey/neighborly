@@ -40,11 +40,13 @@ dependencies = [
     "ordered-set",
     "numpy",
     "pyYAML",
-    "pydantic",
+    "pydantic==1.*",
     "tracery3",
     "pandas",
     "flask",
-    "flask_restful"
+    "flask_restful",
+    "flask_cors",
+    "marshmallow"
 ]
 
 [project.optional-dependencies]

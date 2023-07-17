@@ -1,11 +1,21 @@
+"""Neighborly Relationship Module.
+
+Relationships between agents are at the core of social simulation. Neighborly represents relationships as independent
+GameObjects that collectively form a directed graph. This means that each relationship has an owner and a target, and
+characters can have asymmetrical feeling toward each other. All relationship GameObjects have a Relationship component
+that tracks the owner and target of the relationships. They also have one or more RelationshipStat components that
+track things like feelings of friendship, romance, trust, and reputation.
+
+"""
+
 from __future__ import annotations
 
-import dataclasses
 import math
-from abc import ABC
-from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional, Protocol, Tuple, Type, TypeVar
+from abc import ABC, abstractmethod
+from enum import IntEnum
+from typing import Any, Dict, Iterator, List, Optional, Protocol, Type, TypeVar
 
+import attrs
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Active, Component, GameObject, ISerializable
@@ -18,188 +28,227 @@ from neighborly.core.status import (
 )
 
 
-def lerp(a: float, b: float, f: float) -> float:
-    return (a * (1.0 - f)) + (b * f)
-
-
-class IncrementCounter:
-    def __init__(self, value: Tuple[int, int] = (0, 0)) -> None:
-        self._value: Tuple[int, int] = value
-
-        if self._value[0] < 0 or self._value[1] < 0:
-            raise ValueError("Values of an IncrementTuple may not be less than zero.")
-
-    @property
-    def increments(self) -> int:
-        """Return the number of increments"""
-        return self._value[0]
-
-    @property
-    def decrements(self) -> int:
-        """Return the number of decrements"""
-        return self._value[1]
-
-    def __iadd__(self, value: int) -> IncrementCounter:
-        """Overrides += operator for relationship stats"""
-        if value > 0:
-            self._value = (self._value[0] + value, self._value[1])
-        if value < 0:
-            self._value = (self._value[0], self._value[1] + abs(value))
-        return self
-
-    def __add__(self, other: IncrementCounter) -> IncrementCounter:
-        return IncrementCounter(
-            (self.increments + other.increments, self.decrements + other.decrements)
-        )
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        return "({}, {})".format(self.increments, self.decrements * -1)
-
-
-class RelationshipFacet(Component, ISerializable, ABC):
-    """
-    A scalar value quantifying a relationship facet from one entity to another
-    """
+class RelationshipStat(Component, ISerializable, ABC):
+    """A scalar value representing a facet of a relationship such as reputation, trust, or attraction."""
 
     __slots__ = (
         "_min_value",
         "_max_value",
-        "_raw_value",
-        "_clamped_value",
-        "_normalized_value",
-        "_base",
-        "_from_modifiers",
+        "_base_value",
+        "_value",
+        "_modifiers",
         "_is_dirty",
     )
 
-    def __init__(self, min_value: int = -100, max_value: int = 100) -> None:
+    _min_value: int
+    """The minimum score the overall stat is clamped to."""
+
+    _max_value: int
+    """The maximum score the overall stat is clamped to."""
+
+    _base_value: int
+    """The base score for this stat used by modifiers."""
+
+    _raw_Value: int
+    """The non-clamped score of this stat with all modifiers applied."""
+
+    _value: int
+    """The final score of the stat clamped between the min and max values."""
+
+    _modifiers: List[IRelationshipModifier]
+    """Active stat modifiers."""
+
+    def __init__(self, base_value: int = 0, min_value: int = -100, max_value: int = 100) -> None:
         super().__init__()
-        self._min_value: int = min_value
-        self._max_value: int = max_value
-        self._raw_value: int = 0
-        self._clamped_value: int = 0
-        self._normalized_value: float = 0.5
-        self._base: IncrementCounter = IncrementCounter()
-        self._from_modifiers: IncrementCounter = IncrementCounter()
-        self._is_dirty: bool = False
+        self._min_value = min_value
+        self._max_value = max_value
+        self._base_value = base_value
+        self._raw_value = 0
+        self._value = 0
+        self._modifiers = []
+        self._is_dirty: bool = True
 
-    def get_base(self) -> IncrementCounter:
-        """Return the base value for increments on this relationship stat"""
-        return self._base
+    @property
+    def base_value(self) -> int:
+        """Get the base value of the relationship stat."""
+        return self._base_value
 
-    def set_base(self, value: Tuple[int, int]) -> None:
-        """Set the base value for decrements on this relationship stat"""
-        self._base = IncrementCounter(value)
-
-    def set_modifier(self, modifier: Optional[IncrementCounter]) -> None:
-        if modifier is None:
-            self._from_modifiers = IncrementCounter()
-        else:
-            self._from_modifiers = modifier
+    @base_value.setter
+    def base_value(self, value: int) -> None:
+        """Set the base value of the relationship stat."""
+        self._base_value = value
         self._is_dirty = True
 
-    def get_raw_value(self) -> int:
-        """Return the raw value of this relationship stat"""
+    @property
+    def value(self) -> int:
         if self._is_dirty:
-            self._recalculate_values()
-        return self._raw_value
+            self._recalculate_value()
+        return self._value
 
-    def get_value(self) -> int:
-        """Return the scaled value of this relationship stat between the max and min values"""
-        if self._is_dirty:
-            self._recalculate_values()
-        return self._clamped_value
+    def add_modifier(self, modifier: IRelationshipModifier) -> None:
+        """Add a modifier to the stat."""
+        self._modifiers.append(modifier)
+        self._modifiers.sort(key=lambda m: m.order)
 
-    def get_normalized_value(self) -> float:
-        """Return the normalized value of this relationship stat on the interval [0.0, 1.0]"""
-        if self._is_dirty:
-            self._recalculate_values()
-        return self._normalized_value
+    def remove_modifier(self, modifier: IRelationshipModifier) -> None:
+        """Remove a modifier from the stat."""
+        self._modifiers.remove(modifier)
+
+    def remove_modifiers_from_source(self, source: object) -> None:
+        """Remove all modifiers applied from the given source."""
+        self._modifiers = [
+            modifier for modifier in self._modifiers if modifier.source != source
+        ]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "raw": self.get_raw_value(),
-            "scaled": self.get_value(),
-            "normalized": self.get_normalized_value(),
+            "value": self.value,
         }
 
-    def _recalculate_values(self) -> None:
+    def _recalculate_value(self) -> None:
         """Recalculate the various values since the last change"""
-        combined_increments = self._base + self._from_modifiers
 
-        self._raw_value = (
-            combined_increments.increments - combined_increments.decrements
-        )
+        self._raw_value: int = self.base_value
 
-        total_changes = combined_increments.increments + combined_increments.decrements
+        for modifier in self._modifiers:
+            if modifier.modifier_type == ModifierType.Flat:
+                self._raw_value += modifier.value
+            elif modifier.modifier_type == ModifierType.Percent:
+                self._raw_value = round(self._raw_value * (1 + modifier.value))
 
-        if total_changes == 0:
-            self._normalized_value = 0.5
-        else:
-            self._normalized_value = (
-                float(combined_increments.increments) / total_changes
-            )
-
-        self._clamped_value = math.ceil(
+        self._raw_value = math.ceil(
             max(self._min_value, min(self._max_value, self._raw_value))
         )
 
         self._is_dirty = False
 
-    def increment(self, value: int) -> None:
-        self._base += value
-        self._is_dirty = True
-
     def __str__(self) -> str:
         return self.__repr__()
 
     def __repr__(self) -> str:
-        return "{}(value={}, norm={}, raw={},  max={}, min={})".format(
+        return "{}(value={}, base={}, max={}, min={})".format(
             self.__class__.__name__,
-            self.get_value(),
-            self.get_normalized_value(),
-            self.get_raw_value(),
+            self.value,
+            self.base_value,
             self._max_value,
             self._min_value,
         )
 
 
-class Friendship(RelationshipFacet):
+class Friendship(RelationshipStat):
     pass
 
 
-class Romance(RelationshipFacet):
+class Romance(RelationshipStat):
     pass
 
 
-class InteractionScore(RelationshipFacet):
-    pass
+class InteractionScore(RelationshipStat):
+    def __init__(self):
+        super().__init__(max_value=100, min_value=0)
 
 
 class IRelationshipStatus(IStatus, ABC):
     pass
 
 
-@dataclass
-class RelationshipModifier:
-    description: str
-    values: Dict[Type[RelationshipFacet], int]
+class ModifierType(IntEnum):
+    Flat = 0
+    Percent = 1
+
+
+class IRelationshipModifier(Protocol):
+
+    @property
+    @abstractmethod
+    def value(self) -> int:
+        """Get the value of this modifier."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def modifier_type(self) -> ModifierType:
+        """Get how the modifier value is applied."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def order(self) -> int:
+        """Get the priority of the modifier when calculating final stat values."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def source(self) -> Optional[object]:
+        """Get source of the modifier."""
+        raise NotImplementedError
+
+
+@attrs.define(frozen=True, slots=True)
+class RelationshipModifier(IRelationshipModifier):
+    """Stat modifiers applied to relationship stat components."""
+
+    _value: int
+    """The amount to modify the stat."""
+
+    _modifier_type: ModifierType
+    """How the modifier value is applied."""
+
+    _order: int
+    """The priority of this modifier when calculating final stat values."""
+
+    _source: Optional[object]
+    """The source of the modifier (for debugging purposes)."""
+
+    @property
+    def value(self) -> int:
+        """Get the value of this modifier."""
+        return self._value
+
+    @property
+    def modifier_type(self) -> ModifierType:
+        """Get how the modifier value is applied."""
+        return self._modifier_type
+
+    @property
+    def order(self) -> int:
+        """Get the priority of the modifier when calculating final stat values."""
+        return self._order
+
+    @property
+    def source(self) -> Optional[object]:
+        """Get source of the modifier."""
+        return self._source
+
+    @classmethod
+    def create(
+        cls,
+        value: int,
+        modifier_type: ModifierType,
+        order: Optional[int] = None,
+        source: Optional[object] = None
+    ) -> RelationshipModifier:
+        return cls(
+            value=value,
+            modifier_type=modifier_type,
+            order=order if order is not None else int(modifier_type),
+            source=source
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "description": self.description,
-            "values": {rs_type.__name__: val for rs_type, val in self.values.items()},
+            "value": self.value,
+            "modifier_type": self.modifier_type.name,
+            "order": self.order,
+            "source": str(self.source) if self.source is not None else ""
         }
 
 
 class Relationship(Component, ISerializable):
     __slots__ = (
-        "_modifiers",
         "_target",
         "_owner",
+        "_active_rules"
     )
 
     _owner: GameObject
@@ -208,14 +257,14 @@ class Relationship(Component, ISerializable):
     _target: GameObject
     """Who is the relationship directed toward."""
 
-    _modifiers: List[RelationshipModifier]
-    """Modifiers to the relationship"""
+    _active_rules: List[ISocialRule]
+    """Social rules currently applied to this relationship."""
 
     def __init__(self, owner: GameObject, target: GameObject) -> None:
         super().__init__()
         self._owner = owner
         self._target = target
-        self._modifiers = []
+        self._active_rules = []
 
     @property
     def owner(self) -> GameObject:
@@ -225,20 +274,27 @@ class Relationship(Component, ISerializable):
     def target(self) -> GameObject:
         return self._target
 
-    def add_modifier(self, modifier: RelationshipModifier) -> None:
-        self._modifiers.append(modifier)
+    def add_rule(self, rule: ISocialRule) -> None:
+        """Apply a social rule to the relationship."""
+        self._active_rules.append(rule)
 
-    def iter_modifiers(self) -> Iterator[RelationshipModifier]:
-        return self._modifiers.__iter__()
+    def remove_rule(self, rule: ISocialRule) -> None:
+        """Remove a social rule from the relationship."""
+        self._active_rules.remove(rule)
 
-    def clear_modifiers(self) -> None:
-        self._modifiers.clear()
+    def iter_active_rules(self) -> Iterator[ISocialRule]:
+        """Return iterator to active rules."""
+        return self._active_rules.__iter__()
+
+    def clear_active_rules(self) -> None:
+        """Clear all active rules."""
+        self._active_rules.clear()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "owner": self.owner.uid,
             "target": self.target.uid,
-            "modifiers": [m.to_dict() for m in self._modifiers],
+            "rules": [str(rule) for rule in self._active_rules],
         }
 
     def __str__(self) -> str:
@@ -249,7 +305,7 @@ class Relationship(Component, ISerializable):
             self.__class__.__name__,
             self.owner,
             self.target,
-            self._modifiers,
+            self._active_rules,
         )
 
 
@@ -313,39 +369,80 @@ class RelationshipManager(Component, ISerializable):
 
 
 class ISocialRule(Protocol):
-    """SocialRules define how characters should treat each other"""
+    """An interface for rules that define how characters feel about each other using status effects and modifiers."""
 
-    def __call__(
-        self, subject: GameObject, target: GameObject
-    ) -> Optional[Dict[Type[RelationshipFacet], int]]:
-        """
-        Calculate relationship modifiers of a subject toward a target
+    @property
+    @abstractmethod
+    def is_active(self) -> bool:
+        """Return True if this rule is active."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def check_preconditions(self, owner: GameObject, target: GameObject, relationship: GameObject) -> bool:
+        """Check if a relationship passes the preconditions for this rule to apply.
 
         Parameters
         ----------
-        subject
-            The owner of the relationship
+        owner
+            The relationship's owner
         target
-            The GameObject that we are evaluating the subjects feelings toward
+            The relationship's target
+        relationship
+            A relationship from one gameobject to another.
 
         Returns
         -------
-        Dict[Type[RelationshipFacet], int] or None
-            Optionally returns a dict mapping relationship facet types to int modifiers
-            that should be applied to those facets based on some precondition(s)
+        bool
+            True if the relationship passes, False otherwise.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
+
+    @abstractmethod
+    def apply(self, owner: GameObject, target: GameObject, relationship: GameObject) -> None:
+        """Apply the effects of this rule.
+
+        Parameters
+        ----------
+        owner
+            The relationship's owner
+        target
+            The relationship's target
+        relationship
+            A relationship from one gameobject to another.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove(self, owner: GameObject, target: GameObject, relationship: GameObject) -> None:
+        """Remove the effects of this rule.
+
+        Parameters
+        ----------
+        owner
+            The relationship's owner
+        target
+            The relationship's target
+        relationship
+            A relationship from one gameobject to another.
+        """
+        raise NotImplementedError
 
 
-@dataclasses.dataclass(frozen=True)
-class SocialRuleInfo:
-    """Information about a social rule."""
+class SocialRule(ISocialRule, ABC):
+    """An abstract base class for social rules to inherit from."""
 
-    rule: ISocialRule
-    """The callable function that implements the rule."""
+    __slots__ = "_active"
 
-    description: str = ""
-    """A text description of the rule."""
+    _active: bool
+    """Is this rule active."""
+
+    @property
+    def is_active(self) -> bool:
+        return self._active
+
+    @is_active.setter
+    def is_active(self, value: bool) -> None:
+        self._active = value
 
 
 class SocialRuleLibrary:
@@ -353,13 +450,13 @@ class SocialRuleLibrary:
 
     __slots__ = "_rules"
 
-    _rules: OrderedSet[SocialRuleInfo]
-    """Collection of all registered rules"""
+    _rules: OrderedSet[ISocialRule]
+    """Collection of all registered rule instances"""
 
     def __init__(self) -> None:
         self._rules = OrderedSet([])
 
-    def add(self, rule: ISocialRule, description: str) -> None:
+    def add_rule(self, rule: ISocialRule) -> None:
         """
         Register a social rule
 
@@ -367,12 +464,10 @@ class SocialRuleLibrary:
         ----------
         rule
             The rule to register
-        description
-            A text description of the rule
         """
-        self._rules.append(SocialRuleInfo(rule, description))
+        self._rules.append(rule)
 
-    def iter_rules(self) -> Iterator[SocialRuleInfo]:
+    def iter_rules(self) -> Iterator[ISocialRule]:
         """Return an iterator to the registered social rules"""
         return self._rules.__iter__()
 
@@ -397,12 +492,12 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
         The new relationship instance
     """
     relationship_manager = owner.get_component(RelationshipManager)
-    world = owner.world
+    rule_library = owner.world.resource_manager.get_resource(SocialRuleLibrary)
 
     if target in relationship_manager.outgoing:
         return relationship_manager.outgoing[target]
 
-    relationship = world.gameobject_manager.instantiate_prefab("relationship")
+    relationship = owner.world.gameobject_manager.instantiate_prefab("relationship")
     relationship.add_component(Relationship(owner, target))
     relationship.add_component(Statuses())
     relationship.add_component(Active())
@@ -415,7 +510,10 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
 
     owner.add_child(relationship)
 
-    evaluate_social_rules(relationship, owner, target)
+    # Test all the rules in the library and apply those with passing preconditions
+    for rule in rule_library.iter_rules():
+        if rule.check_preconditions(owner, target, relationship):
+            rule.apply(owner, target, relationship)
 
     return relationship
 
@@ -579,29 +677,3 @@ def get_relationships_with_statuses(
         if all([relationship.has_component(st) for st in status_types]):
             matches.append(relationship)
     return matches
-
-
-def evaluate_social_rules(
-    relationship: GameObject, owner: GameObject, target: GameObject
-) -> None:
-    """
-    Modify the relationship to reflect active social rules
-
-    Parameters
-    ----------
-    relationship
-        The relationship to modify
-    owner
-        The owner of the relationship
-    target
-        The target of the relationship
-    """
-    rule_library = relationship.world.resource_manager.get_resource(SocialRuleLibrary)
-    relationship.get_component(Relationship).clear_modifiers()
-
-    for rule_info in rule_library.iter_rules():
-        modifier = rule_info.rule(owner, target)
-        if modifier:
-            relationship.get_component(Relationship).add_modifier(
-                RelationshipModifier(description=rule_info.description, values=modifier)
-            )

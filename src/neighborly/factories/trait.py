@@ -1,9 +1,10 @@
-from typing import Any, List, Set, Type
 import random
+from typing import Any, List, Set, Type
+
 from ordered_set import OrderedSet
 
+from neighborly.components.trait import ITrait, TraitLibrary, Traits
 from neighborly.core.ecs import IComponentFactory, World
-from neighborly.components.trait import Traits, ITrait, TraitLibrary
 
 
 class TraitsFactory(IComponentFactory):
@@ -33,16 +34,18 @@ class TraitsFactory(IComponentFactory):
                 prohibited_traits.union(chosen_trait.get_conflicts())
 
         # Process incidental traits
-        incidental_traits_sample = rng.sample(
-            [*trait_library.incidental_traits], k=max_incidental
-        )
+        incidental_traits = [*trait_library.incidental_traits]
+        if len(incidental_traits):
+            incidental_traits_sample = rng.sample(
+                incidental_traits, k=min(len(incidental_traits), max_incidental)
+            )
 
-        for trait_type in incidental_traits_sample:
-            if trait_type in prohibited_traits:
-                continue
+            for trait_type in incidental_traits_sample:
+                if trait_type in prohibited_traits:
+                    continue
 
-            if rng.random() < trait_type.incidence_probability():
-                trait_types.add(trait_type)
-                prohibited_traits.union(trait_type.get_conflicts())
+                if rng.random() < trait_type.incidence_probability():
+                    trait_types.add(trait_type)
+                    prohibited_traits.union(trait_type.get_conflicts())
 
         return Traits(trait_types)

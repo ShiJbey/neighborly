@@ -18,7 +18,10 @@ from neighborly.core.settlement import Settlement
 from neighborly.core.status import IStatus
 from neighborly.core.time import SimDateTime
 from neighborly.plugins.talktown.business_components import School
-from neighborly.utils.common import add_frequented_location, remove_frequented_location
+from neighborly.utils.location import (
+    add_frequented_location,
+    remove_frequented_location,
+)
 
 
 class Student(Component, ISerializable):

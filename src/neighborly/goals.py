@@ -657,14 +657,14 @@ class GetMarried(GoalNode):
             self.character.get_component(RelationshipManager)
             .outgoing[self.partner]
             .get_component(Romance)
-            .get_value()
+            .value
         )
 
         target_to_initiator_romance = float(
             self.partner.get_component(RelationshipManager)
             .outgoing[self.character]
             .get_component(Romance)
-            .get_value()
+            .value
         )
 
         return ConsiderationDict(
@@ -702,7 +702,7 @@ class GetMarried(GoalNode):
 
         romance = rel_to_initiator.get_component(Romance)
 
-        if rng.random() > ((romance.get_value() + 100.0) / 200.0) ** 2:
+        if rng.random() > ((romance.value + 100.0) / 200.0) ** 2:
             return NodeState.FAILURE
 
         remove_relationship_status(self.character, self.partner, Dating)
@@ -779,12 +779,12 @@ class BreakUp(GoalNode):
         character_to_partner = (
             get_relationship(self.character, self.partner)
             .get_component(Romance)
-            .get_value()
+            .value
         )
         partner_to_character = (
             get_relationship(self.partner, self.character)
             .get_component(Romance)
-            .get_value()
+            .value
         )
 
         return ConsiderationDict(
@@ -818,19 +818,15 @@ class BreakUp(GoalNode):
         remove_relationship_status(self.character, self.partner, Dating)
         remove_relationship_status(self.partner, self.character, Dating)
 
-        get_relationship(self.character, self.partner).get_component(Romance).increment(
-            -6
-        )
-        get_relationship(self.partner, self.character).get_component(Romance).increment(
-            -6
-        )
+        get_relationship(self.character, self.partner).get_component(Romance).base_value += -6
+        get_relationship(self.partner, self.character).get_component(Romance).base_value += -6
 
         get_relationship(self.character, self.partner).get_component(
             Friendship
-        ).increment(-6)
+        ).base_value += -6
         get_relationship(self.partner, self.character).get_component(
             Friendship
-        ).increment(-6)
+        ).base_value += -6
 
         event = BreakUpEvent(
             self.character.world,
@@ -874,12 +870,12 @@ class GetDivorced(GoalNode):
         character_to_partner = (
             get_relationship(self.character, self.partner)
             .get_component(Romance)
-            .get_value()
+            .value
         )
         partner_to_character = (
             get_relationship(self.partner, self.character)
             .get_component(Romance)
-            .get_value()
+            .value
         )
 
         return ConsiderationDict(
@@ -916,19 +912,15 @@ class GetDivorced(GoalNode):
         remove_relationship_status(self.character, self.partner, Married)
         remove_relationship_status(self.partner, self.character, Married)
 
-        get_relationship(self.character, self.partner).get_component(Romance).increment(
-            -10
-        )
-        get_relationship(self.partner, self.character).get_component(Romance).increment(
-            -10
-        )
+        get_relationship(self.character, self.partner).get_component(Romance).base_value += -10
+        get_relationship(self.partner, self.character).get_component(Romance).base_value += -10
 
         get_relationship(self.character, self.partner).get_component(
             Friendship
-        ).increment(-10)
+        ).base_value += -10
         get_relationship(self.partner, self.character).get_component(
             Friendship
-        ).increment(-10)
+        ).base_value += -10
 
         event = DivorceEvent(
             self.character.world,
@@ -1036,7 +1028,7 @@ class AskOut(GoalNode):
 
         romance = rel_to_initiator.get_component(Romance)
 
-        if rng.random() > ((romance.get_value() + 100.0) / 200.0) ** 2:
+        if rng.random() > ((romance.value + 100.0) / 200.0) ** 2:
             return NodeState.FAILURE
 
         add_relationship_status(
@@ -1062,14 +1054,14 @@ class AskOut(GoalNode):
             self.initiator.get_component(RelationshipManager)
             .outgoing[self.target]
             .get_component(Romance)
-            .get_value()
+            .value
         )
 
         target_to_initiator_romance = float(
             self.target.get_component(RelationshipManager)
             .outgoing[self.initiator]
             .get_component(Romance)
-            .get_value()
+            .value
         )
 
         return ConsiderationDict(
@@ -1177,7 +1169,7 @@ class FindRomance(GoalNode):
             if not is_single(other):
                 continue
 
-            if outgoing_romance.get_value() < romance_threshold:
+            if outgoing_romance.value < romance_threshold:
                 continue
 
             if are_related(self.character, other):
@@ -1186,7 +1178,7 @@ class FindRomance(GoalNode):
             if other == self.character:
                 continue
 
-            actions.append(outgoing_romance.get_value(), AskOut(self.character, other))
+            actions.append(outgoing_romance.value, AskOut(self.character, other))
 
         if actions:
             chosen = actions.pick_one(

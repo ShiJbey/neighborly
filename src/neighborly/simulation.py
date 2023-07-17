@@ -8,7 +8,7 @@ import random
 import re
 import sys
 from dataclasses import dataclass
-from typing import Callable, Optional, Type
+from typing import Callable, Optional
 
 import neighborly.core.relationship as relationship
 import neighborly.systems as systems
@@ -16,6 +16,7 @@ from neighborly.__version__ import VERSION
 from neighborly.components.business import (
     BossOf,
     Business,
+    BusinessOwner,
     ClosedForBusiness,
     CoworkerOf,
     EmployeeOf,
@@ -26,7 +27,6 @@ from neighborly.components.business import (
     Services,
     Unemployed,
     WorkHistory,
-    BusinessOwner,
 )
 from neighborly.components.character import (
     AgingConfig,
@@ -63,7 +63,7 @@ from neighborly.components.spawn_table import (
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
-from neighborly.components.trait import ITrait, TraitLibrary, Traits
+from neighborly.components.trait import TraitLibrary, Traits, register_trait
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import Active, GameObjectPrefab, World
@@ -97,7 +97,6 @@ from neighborly.factories.spawn_table import (
     CharacterSpawnTableFactory,
     ResidenceSpawnTableFactory,
 )
-
 from neighborly.factories.trait import TraitsFactory
 
 
@@ -161,6 +160,7 @@ class Neighborly:
         self.world.resource_manager.add_resource(RandomLifeEventLibrary())
         self.world.resource_manager.add_resource(ItemLibrary())
         self.world.resource_manager.add_resource(JobRequirementLibrary())
+        self.world.resource_manager.add_resource(TraitLibrary())
 
         # Set the relationship schema
         self.world.gameobject_manager.add_prefab(
@@ -175,10 +175,7 @@ class Neighborly:
                         "min_value": -100,
                         "max_value": 100,
                     },
-                    "InteractionScore": {
-                        "min_value": -5,
-                        "max_value": 5,
-                    },
+                    "InteractionScore": {},
                 },
             )
         )
@@ -237,18 +234,6 @@ class Neighborly:
             systems.EvaluateSocialRulesSystem(),
             system_group=systems.RelationshipUpdateSystemGroup,
         )
-        self.world.system_manager.add_system(
-            systems.RelationshipUpdateSystem(),
-            system_group=systems.RelationshipUpdateSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.FriendshipStatSystem(),
-            system_group=systems.RelationshipUpdateSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.RomanceStatSystem(),
-            system_group=systems.RelationshipUpdateSystemGroup,
-        )
 
         # Goal suggestion systems
         self.world.system_manager.add_system(
@@ -278,6 +263,9 @@ class Neighborly:
         # Add update systems (in execution order)
         self.world.system_manager.add_system(
             systems.IncrementAgeSystem(), system_group=systems.UpdateSystemGroup
+        )
+        self.world.system_manager.add_system(
+            systems.UpdateLifeStageSystem(), system_group=systems.UpdateSystemGroup
         )
         self.world.system_manager.add_system(
             systems.AIActionSystem(), system_group=systems.UpdateSystemGroup
@@ -510,9 +498,3 @@ class Neighborly:
     def step(self) -> None:
         """Advance the simulation a single timestep."""
         self.world.step()
-
-
-def register_trait(world: World, trait_type: Type[ITrait]) -> None:
-    """A utility method for registering trait types."""
-    world.gameobject_manager.register_component(trait_type)
-    world.resource_manager.get_resource(TraitLibrary).add_trait_type(trait_type)

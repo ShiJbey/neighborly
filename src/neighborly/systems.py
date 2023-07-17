@@ -50,20 +50,15 @@ from neighborly.core.ai.brain import AIBrain, Goals
 from neighborly.core.ecs import Active, GameObject, SystemBase, SystemGroup, World
 from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
 from neighborly.core.relationship import (
-    Friendship,
-    IncrementCounter,
     InteractionScore,
     Relationship,
-    RelationshipFacet,
     RelationshipManager,
-    Romance,
+    SocialRuleLibrary,
     add_relationship,
     add_relationship_status,
-    evaluate_social_rules,
     get_relationship,
     get_relationships_with_statuses,
     has_relationship,
-    lerp,
 )
 from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, has_status, remove_status
@@ -91,7 +86,6 @@ from neighborly.goals import (
     Retire,
 )
 from neighborly.utils.common import (
-    add_frequented_location,
     get_child_prefab,
     is_employed,
     score_frequentable_locations,
@@ -100,6 +94,7 @@ from neighborly.utils.common import (
     shutdown_business,
     spawn_character,
 )
+from neighborly.utils.location import add_frequented_location
 from neighborly.utils.query import is_single
 
 ############################################
@@ -244,11 +239,11 @@ class MeetNewPeopleSystem(SystemBase):
                 # Calculate interaction scores
                 get_relationship(character, acquaintance).get_component(
                     InteractionScore
-                ).increment(candidate_scores[acquaintance])
+                ).base_value += candidate_scores[acquaintance]
 
                 get_relationship(acquaintance, character).get_component(
                     InteractionScore
-                ).increment(candidate_scores[acquaintance])
+                ).base_value += candidate_scores[acquaintance]
 
                 event = BecameAcquaintancesEvent(
                     world,
@@ -284,33 +279,26 @@ class UpdateLifeStageSystem(SystemBase):
 
             life_stage = character.get_component(LifeStage)
 
-            if (
-                age.value >= aging_config.senior_age
-                and life_stage.life_stage != LifeStageType.Senior
-            ):
-                life_stage.life_stage = LifeStageType.Senior
-                BecomeSeniorEvent(world, current_date, character).dispatch()
+            if age.value >= aging_config.senior_age:
+                if life_stage.life_stage != LifeStageType.Senior:
+                    life_stage.life_stage = LifeStageType.Senior
+                    BecomeSeniorEvent(world, current_date, character).dispatch()
 
-            elif (
-                age.value >= aging_config.adult_age
-                and life_stage.life_stage != LifeStageType.Adult
-            ):
-                life_stage.life_stage = LifeStageType.Adult
-                BecomeAdultEvent(world, current_date, character).dispatch()
+            elif age.value >= aging_config.adult_age:
+                if life_stage.life_stage != LifeStageType.Adult:
+                    life_stage.life_stage = LifeStageType.Adult
+                    BecomeAdultEvent(world, current_date, character).dispatch()
 
-            elif (
-                age.value >= aging_config.young_adult_age
-                and life_stage.life_stage != LifeStageType.YoungAdult
-            ):
-                life_stage.life_stage = LifeStageType.YoungAdult
-                BecomeYoungAdultEvent(world, current_date, character).dispatch()
+            elif age.value >= aging_config.young_adult_age:
+                if life_stage.life_stage != LifeStageType.YoungAdult:
+                    life_stage.life_stage = LifeStageType.YoungAdult
+                    BecomeYoungAdultEvent(world, current_date, character).dispatch()
 
-            elif (
-                age.value >= aging_config.adolescent_age
-                and life_stage.life_stage != LifeStageType.Adolescent
-            ):
-                life_stage.life_stage = LifeStageType.Adolescent
-                BecomeAdolescentEvent(world, current_date, character).dispatch()
+            elif age.value >= aging_config.adolescent_age:
+                if life_stage.life_stage != LifeStageType.Adolescent:
+                    life_stage.life_stage = LifeStageType.Adolescent
+                    BecomeAdolescentEvent(world, current_date, character).dispatch()
+
             else:
                 life_stage.life_stage = LifeStageType.Child
 
@@ -537,64 +525,6 @@ class ChildBirthSystem(SystemBase):
             world.event_manager.dispatch_event(birth_event)
 
 
-class RelationshipUpdateSystem(SystemBase):
-    """Increases the elapsed time for all statuses by one month"""
-
-    def on_update(self, world: World) -> None:
-        for rel_id, (relationship, _) in world.get_components((Relationship, Active)):
-            rel_entity = world.gameobject_manager.get_gameobject(rel_id)
-
-            # Accumulate modifiers
-            modifier_acc: DefaultDict[
-                Type[RelationshipFacet], IncrementCounter
-            ] = defaultdict(IncrementCounter)
-
-            for modifier in relationship.iter_modifiers():
-                for stat_type, value in modifier.values.items():
-                    modifier_acc[stat_type] += value
-
-            # Apply modifiers
-            for comp in rel_entity.get_components():
-                if isinstance(comp, RelationshipFacet):
-                    comp.set_modifier(modifier_acc[type(comp)])
-
-
-class FriendshipStatSystem(SystemBase):
-    """Updates the friendship score from one character to another."""
-
-    def on_update(self, world: World) -> None:
-        k = world.resource_manager.get_resource(NeighborlyConfig).settings.get(
-            "relationship_growth_constant", 2
-        )
-        for _, (friendship, interaction_score, _) in world.get_components(
-            (Friendship, InteractionScore, Active)
-        ):
-            # We increment as a function of their current interaction score
-            #
-            friendship.increment(
-                round(
-                    max(0, interaction_score.get_value())
-                    * lerp(-k, k, friendship.get_normalized_value())
-                )
-            )
-
-
-class RomanceStatSystem(SystemBase):
-    def on_update(self, world: World) -> None:
-        k = world.resource_manager.get_resource(NeighborlyConfig).settings.get(
-            "relationship_growth_constant", 2
-        )
-        for _, (romance, interaction_score, _) in world.get_components(
-            (Romance, InteractionScore, Active)
-        ):
-            romance.increment(
-                round(
-                    max(0, interaction_score.get_value())
-                    * lerp(-k, k, romance.get_normalized_value())
-                )
-            )
-
-
 class EvaluateSocialRulesSystem(SystemBase):
     """Evaluates social rules against existing relationships
 
@@ -605,13 +535,22 @@ class EvaluateSocialRulesSystem(SystemBase):
     """
 
     def on_update(self, world: World) -> None:
-        for guid, (relationship_comp, _) in world.get_components(
+        rule_library = world.resource_manager.get_resource(SocialRuleLibrary)
+
+        for guid, (relationship, _) in world.get_components(
             (Relationship, Active)
         ):
-            relationship = world.gameobject_manager.get_gameobject(guid)
-            subject = relationship_comp.owner
-            target = relationship_comp.target
-            evaluate_social_rules(relationship, subject, target)
+            relationship_obj = world.gameobject_manager.get_gameobject(guid)
+
+            # Remove the affects of existing rules
+            for rule in relationship.iter_active_rules():
+                rule.remove(relationship.owner, relationship.target, relationship_obj)
+            relationship.clear_active_rules()
+
+            # Test all the rules in the library and apply those with passing preconditions
+            for rule in rule_library.iter_rules():
+                if rule.check_preconditions(relationship.owner, relationship.target, relationship_obj):
+                    rule.apply(relationship.owner, relationship.target, relationship_obj)
 
 
 class UpdateFrequentedLocationSystem(SystemBase):

@@ -2,19 +2,37 @@
 Tests for the Neighborly's Business and Occupation logic
 """
 
-from typing import Any
+import pytest
 
-from neighborly.components.business import Business, Services
-from neighborly.components.character import GameCharacter, Gender, GenderType
-from neighborly.components.shared import Age
-from neighborly.core.ecs import Component, GameObject, GameObjectPrefab
+from neighborly.components.business import (
+    Business,
+    Occupation,
+    Services,
+    register_occupation_type,
+)
+from neighborly.core.ecs import GameObjectPrefab
 from neighborly.factories.business import ServicesFactory
 from neighborly.simulation import Neighborly
 
 
-def test_construct_business():
-    """Constructing business components using BusinessArchetypes"""
+class Cook(Occupation):
+    pass
 
+
+class Restaurateur(Occupation):
+    pass
+
+
+class Server(Occupation):
+    pass
+
+
+class Host(Occupation):
+    pass
+
+
+@pytest.fixture
+def test_sim():
     sim = Neighborly()
 
     sim.world.gameobject_manager.add_prefab(
@@ -23,7 +41,7 @@ def test_construct_business():
             components={
                 "Name": {"value": "Restaurant"},
                 "Business": {
-                    "owner_type": "Proprietor",
+                    "owner_type": "Restaurateur",
                     "employee_types": {
                         "Cook": 1,
                         "Server": 2,
@@ -34,70 +52,21 @@ def test_construct_business():
         )
     )
 
-    restaurant = sim.world.gameobject_manager.instantiate_prefab("Restaurant")
+    register_occupation_type(sim.world, Restaurateur)
+    register_occupation_type(sim.world, Cook)
+    register_occupation_type(sim.world, Server)
+    register_occupation_type(sim.world, Host)
+
+    return sim
+
+
+def test_construct_business(test_sim: Neighborly):
+    """Constructing business components using BusinessArchetypes"""
+    restaurant = test_sim.world.gameobject_manager.instantiate_prefab("Restaurant")
     restaurant_business = restaurant.get_component(Business)
 
-    assert restaurant_business.owner_type == "Proprietor"
+    assert restaurant_business.owner_type == Restaurateur
     assert restaurant_business.owner is None
-
-
-def has_last_name(gameobject: GameObject, *args: Any):
-    last_name: str
-    (last_name,) = args
-
-    if game_character := gameobject.try_component(GameCharacter):
-        return game_character.last_name == last_name
-    return False
-
-
-def has_component(gameobject: GameObject, *args: Any) -> bool:
-    component_name: str
-    (component_name,) = args
-    return gameobject.has_component(
-        gameobject.world.gameobject_manager.get_component_info(
-            component_name
-        ).component_type
-    )
-
-
-def has_gender(gameobject: GameObject, *args: Any) -> bool:
-    gender_name: str
-    (gender_name,) = args
-    if gender := gameobject.try_component(Gender):
-        return gender.gender == GenderType[gender_name]
-    return False
-
-
-def over_age(gameobject: GameObject, *args: Any) -> bool:
-    years: float
-    (years,) = args
-    if age := gameobject.try_component(Age):
-        return age.value > years
-    return False
-
-
-class Cyborg(Component):
-    pass
-
-
-# Create prefabs for service  types
-RUNNING = GameObjectPrefab(
-    name="Running", components={"ServiceType": {}, "Name": {"value": "Running"}}
-)
-EATING = GameObjectPrefab(
-    name="Eating", components={"ServiceType": {}, "Name": {"value": "Eating"}}
-)
-DRINKING = GameObjectPrefab(
-    name="Drinking", components={"ServiceType": {}, "Name": {"value": "Drinking"}}
-)
-SOCIALIZING = GameObjectPrefab(
-    name="Socializing",
-    components={"ServiceType": {}, "Name": {"value": "Socializing"}},
-)
-SHOPPING = GameObjectPrefab(
-    name="Shopping",
-    components={"ServiceType": {}, "Name": {"value": "Shopping"}},
-)
 
 
 def test_services_factory() -> None:

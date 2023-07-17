@@ -10,12 +10,11 @@ from typing import Any, Dict, Iterable, Iterator, Optional
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Component, GameObject, ISerializable
-from neighborly.core.status import IStatus
 
 
 @dataclass
 class Name(Component, ISerializable):
-    """The name of the GameObject."""
+    """The name of a GameObject."""
 
     value: str
     """The GameObject's name."""
@@ -32,7 +31,7 @@ class Name(Component, ISerializable):
 
 @dataclass
 class Age(Component, ISerializable):
-    """Tracks the number of years old that an GameObject is."""
+    """Tracks the number of years old that a GameObject is."""
 
     value: float = 0.0
     """The number of years old."""
@@ -55,7 +54,7 @@ class Age(Component, ISerializable):
 
 @dataclass
 class Lifespan(Component, ISerializable):
-    """Defines how long a GameObject lives on average."""
+    """How long a GameObject lives on average."""
 
     value: float
     """The number of years."""
@@ -77,12 +76,12 @@ class Lifespan(Component, ISerializable):
 
 
 class Location(Component, ISerializable):
-    """Anywhere where GameObjects may be."""
+    """Anywhere GameObjects may be.
 
-    __slots__ = "gameobjects", "parent", "children"
+    Locations track what larger location they belong and any sub locations they are comprised of.
+    """
 
-    gameobjects: OrderedSet[GameObject]
-    """All the GameObjects currently at this location or any sub-locations."""
+    __slots__ = "parent", "children"
 
     children: OrderedSet[GameObject]
     """All the sub-locations at this location."""
@@ -93,89 +92,20 @@ class Location(Component, ISerializable):
     def __init__(self) -> None:
         super().__init__()
         self.parent = None
-        self.gameobjects = OrderedSet([])
         self.children = OrderedSet([])
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "gameobjects": [entry.uid for entry in self.gameobjects],
             "parent": self.parent.uid if self.parent is not None else -1,
             "children": [entry.uid for entry in self.children],
         }
 
-    def add_gameobject(self, gameobject: GameObject) -> None:
-        """Add a GameObject to the location.
-
-        Parameters
-        ----------
-        gameobject
-            An GameObject to add.
-        """
-        self.gameobjects.append(gameobject)
-
-    def remove_gameobject(self, gameobject: GameObject) -> None:
-        """Remove a GameObject from the location.
-
-        Parameters
-        ----------
-        gameobject
-            An GameObject to remove.
-        """
-        self.gameobjects.remove(gameobject)
-
-    def has_gameobject(self, gameobject: GameObject) -> bool:
-        """Check if a GameObject is at the location.
-
-        Parameters
-        ----------
-        gameobject
-            An GameObject to check for.
-
-        Returns
-        -------
-        bool
-            True if the GameObject is present, False otherwise.
-        """
-        return gameobject in self.gameobjects
-
     def __repr__(self) -> str:
-        return "{}(gameobjects={}, parent={}, children={})".format(
+        return "{}(parent={}, children={})".format(
             self.__class__.__name__,
-            self.gameobjects,
             self.parent.name if self.parent else "",
             [child.name for child in self.children],
         )
-
-
-@dataclass
-class MaxCapacity(Component, ISerializable):
-    """Limits the number of characters that may be present at a location."""
-
-    value: int
-    """The number of characters."""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"capacity": self.value}
-
-
-class OpenToPublic(IStatus, ISerializable):
-    """Tags a location as being eligible to travel to."""
-
-    pass
-
-
-@dataclass
-class CurrentLocation(Component, ISerializable):
-    """Tracks the current location of a GameObject."""
-
-    location: GameObject
-    """The GameObjectID of the location."""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"location": self.location.uid}
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.location})"
 
 
 @dataclass
@@ -353,7 +283,7 @@ class FrequentedBy(Component, ISerializable):
 
 @dataclass
 class CurrentSettlement(Component, ISerializable):
-    """Tracks the ID of the settlement that a GameObject is currently in."""
+    """Tracks the settlement that a GameObject belongs to."""
 
     settlement: GameObject
     """The GameObject ID of a settlement."""

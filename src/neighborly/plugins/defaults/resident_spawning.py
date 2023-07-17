@@ -155,20 +155,20 @@ class SpawnFamilySystemBase(SystemBase):
             # Configure relationship from character to spouse
             add_relationship(character, spouse)
             add_relationship_status(character, spouse, Married(year_created=date.year))
-            get_relationship(character, spouse).get_component(Romance).increment(45)
-            get_relationship(character, spouse).get_component(Friendship).increment(30)
+            get_relationship(character, spouse).get_component(Romance).base_value += 45
+            get_relationship(character, spouse).get_component(Friendship).base_value += 30
             get_relationship(character, spouse).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
 
             # Configure relationship from spouse to character
             add_relationship(spouse, character)
             add_relationship_status(spouse, character, Married(year_created=date.year))
-            get_relationship(spouse, character).get_component(Romance).increment(45)
-            get_relationship(spouse, character).get_component(Friendship).increment(30)
+            get_relationship(spouse, character).get_component(Romance).base_value += 45
+            get_relationship(spouse, character).get_component(Friendship).base_value += 30
             get_relationship(spouse, character).get_component(
                 InteractionScore
-            ).increment(1)
+            ).base_value += 1
 
         num_kids: int = 0
         children: List[GameObject] = []
@@ -203,12 +203,8 @@ class SpawnFamilySystemBase(SystemBase):
                 add_relationship_status(
                     child, character, Family(year_created=date.year)
                 )
-                get_relationship(child, character).get_component(Friendship).increment(
-                    20
-                )
-                get_relationship(child, character).get_component(
-                    InteractionScore
-                ).increment(1)
+                get_relationship(child, character).get_component(Friendship).base_value += 20
+                get_relationship(child, character).get_component(InteractionScore).base_value += 1
 
                 # Relationship of character to child
                 add_relationship(character, child)
@@ -218,12 +214,10 @@ class SpawnFamilySystemBase(SystemBase):
                 add_relationship_status(
                     character, child, Family(year_created=date.year)
                 )
-                get_relationship(character, child).get_component(Friendship).increment(
-                    20
-                )
+                get_relationship(character, child).get_component(Friendship).base_value += 20
                 get_relationship(character, child).get_component(
                     InteractionScore
-                ).increment(1)
+                ).base_value += 1
 
                 if spouse:
                     # Relationship of child to spouse
@@ -231,12 +225,10 @@ class SpawnFamilySystemBase(SystemBase):
                     add_relationship_status(
                         child, spouse, ChildOf(year_created=date.year)
                     )
-                    get_relationship(child, spouse).get_component(Friendship).increment(
-                        20
-                    )
+                    get_relationship(child, spouse).get_component(Friendship).base_value += 20
                     get_relationship(child, spouse).get_component(
                         InteractionScore
-                    ).increment(1)
+                    ).base_value += 1
 
                     # Relationship of spouse to child
                     add_relationship(spouse, child)
@@ -246,12 +238,11 @@ class SpawnFamilySystemBase(SystemBase):
                     add_relationship_status(
                         spouse, child, Family(year_created=date.year)
                     )
-                    get_relationship(spouse, child).get_component(Friendship).increment(
-                        20
-                    )
+                    get_relationship(spouse, child).get_component(Friendship).base_value += 20
+
                     get_relationship(spouse, child).get_component(
                         InteractionScore
-                    ).increment(1)
+                    ).base_value += 1
 
                 for sibling in children:
                     # Relationship of child to sibling
@@ -264,10 +255,10 @@ class SpawnFamilySystemBase(SystemBase):
                     )
                     get_relationship(child, sibling).get_component(
                         Friendship
-                    ).increment(20)
+                    ).base_value += 20
                     get_relationship(child, sibling).get_component(
                         InteractionScore
-                    ).increment(1)
+                    ).base_value += 1
 
                     # Relationship of sibling to child
                     add_relationship(sibling, child)
@@ -279,10 +270,10 @@ class SpawnFamilySystemBase(SystemBase):
                     )
                     get_relationship(sibling, child).get_component(
                         Friendship
-                    ).increment(20)
+                    ).base_value += 20
                     get_relationship(sibling, child).get_component(
                         InteractionScore
-                    ).increment(1)
+                    ).base_value += 1
 
         return generated_characters
 

@@ -545,7 +545,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         world: World,
         bindings: Optional[EventRoleList] = None,
     ) -> Generator[EventRoleList, None, None]:
-        """Attempts to generate multiple valid life event instances
+        """Attempts to generate multiple valid Event role lists for this event
 
         Parameters
         ----------
@@ -556,7 +556,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
         Returns
         -------
-        Generator[RandomLifeEvent, None, None]
+        Generator[EventRoleList, None, None]
             An generator function that produces instance of this life event
         """
 
@@ -676,6 +676,33 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
             )
         except StopIteration:
             return None
+
+    @classmethod
+    def generate(
+        cls,
+        world: World,
+        bindings: Optional[EventRoleList] = None,
+    ) -> Generator[RandomLifeEvent, None, None]:
+        """Attempts to generate multiple valid instances of the life event class
+
+        Parameters
+        ----------
+        world
+            Neighborly world instance
+        bindings
+            Suggested bindings of role names mapped to GameObjects
+
+        Returns
+        -------
+        Generator[RandomLifeEvent, None, None]
+            An generator function that produces instance of this life event
+        """
+        for roles in cls.generate_role_lists(world, bindings):
+            yield cls(
+                world=world,
+                timestamp=world.resource_manager.get_resource(SimDateTime).copy(),
+                roles=roles,
+            )
 
 
 class RandomLifeEventLibrary:

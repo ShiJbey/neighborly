@@ -21,7 +21,7 @@ from typing import (
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, GameObject, ISerializable
+from neighborly.core.ecs import Component, GameObject, ISerializable, World
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.relationship import IRelationshipStatus
 from neighborly.core.status import IStatus
@@ -551,3 +551,16 @@ class JobRequirementLibrary:
         if occupation_type in self._rules:
             return self._rules[occupation_type]
         return JobRequirements()
+
+
+def register_occupation_type(world: World, occupation_type: Type[Occupation]) -> None:
+    """Register an occupation component with the ECS.
+
+    Parameters
+    ---------
+    world
+        A world instance.
+    occupation_type
+        The class of the component
+    """
+    world.gameobject_manager.register_component(occupation_type)

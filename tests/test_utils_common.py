@@ -3,7 +3,6 @@
 """
 from neighborly.components.character import GameCharacter
 from neighborly.components.shared import (
-    CurrentLocation,
     CurrentSettlement,
     FrequentedBy,
     FrequentedLocations,
@@ -13,13 +12,10 @@ from neighborly.core.settlement import Settlement
 from neighborly.simulation import Neighborly
 from neighborly.utils.common import (
     add_location_to_settlement,
-    add_sub_location,
-    at_location,
     clear_frequented_locations,
     remove_location_from_settlement,
-    remove_sub_location,
-    set_location,
 )
+from neighborly.utils.location import add_sub_location, remove_sub_location
 
 
 def test_add_sub_location() -> None:
@@ -73,151 +69,6 @@ def test_remove_sub_location() -> None:
 
     assert city_hall not in city.get_component(Location).children
     assert city_hall.get_component(Location).parent is None
-
-
-def test_set_location() -> None:
-    sim = Neighborly()
-
-    toph = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(
-                GameCharacter, first_name="Toph", last_name="Beiphong"
-            ),
-        ],
-        name="Toph",
-    )
-
-    swamp = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(Location),
-        ],
-        name="Swamp",
-    )
-
-    city = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(Location),
-        ],
-        name="City",
-    )
-
-    city_hall = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(Location),
-        ],
-        name="City Hall",
-    )
-
-    add_sub_location(parent_location=city, sub_location=city_hall)
-
-    # Test 0: Check baseline that the character is not anywhere
-
-    assert toph.try_component(CurrentLocation) is None
-    assert toph not in swamp.get_component(Location).gameobjects
-    assert toph not in city.get_component(Location).gameobjects
-
-    # Test 1: The function should properly set the current location of the GameObject
-    # and update the location's Location component
-
-    set_location(toph, swamp)
-
-    assert toph.has_component(CurrentLocation) is True
-    assert toph.get_component(CurrentLocation).location == swamp
-    assert toph in swamp.get_component(Location).gameobjects
-    assert toph not in city.get_component(Location).gameobjects
-
-    # Test 1: Setting the location of GameObject with a location should remove the object
-    # from their current location and move them to the new location
-
-    set_location(toph, city_hall)
-
-    assert toph.has_component(CurrentLocation) is True
-    assert toph.get_component(CurrentLocation).location == city_hall
-    assert toph not in swamp.get_component(Location).gameobjects
-    assert toph in city.get_component(Location).gameobjects
-    assert toph in city_hall.get_component(Location).gameobjects
-
-    # Test 2: Setting the location of an object to None should remove them from any current locations
-
-    set_location(toph, None)
-
-    assert toph.has_component(CurrentLocation) is False
-    assert toph not in swamp.get_component(Location).gameobjects
-    assert toph not in city_hall.get_component(Location).gameobjects
-
-
-def test_at_location() -> None:
-    sim = Neighborly()
-
-    toph = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(
-                GameCharacter, first_name="Toph", last_name="Beiphong"
-            ),
-        ],
-        name="Toph",
-    )
-
-    swamp = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(Location),
-        ],
-        name="Swamp",
-    )
-
-    city = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(Location),
-        ],
-        name="City",
-    )
-
-    city_hall = sim.world.gameobject_manager.spawn_gameobject(
-        components=[
-            sim.world.gameobject_manager.create_component(Location),
-        ],
-        name="City Hall",
-    )
-
-    add_sub_location(parent_location=city, sub_location=city_hall)
-
-    # Test 0: Check baseline that the character is not anywhere
-
-    assert at_location(toph, swamp) is False
-    assert at_location(toph, city_hall) is False
-    assert at_location(toph, city) is False
-
-    # Test 1: The function should properly set the current location of the GameObject
-    # and update the location's Location component
-
-    set_location(toph, swamp)
-
-    assert at_location(toph, swamp) is True
-    assert at_location(toph, city_hall) is False
-    assert at_location(toph, city) is False
-
-    # Test 1: Setting the location of GameObject with a location should remove the object
-    # from their current location and move them to the new location
-
-    set_location(toph, city_hall)
-
-    assert at_location(toph, swamp) is False
-    assert at_location(toph, city_hall) is True
-    assert at_location(toph, city) is True
-
-    set_location(toph, city)
-
-    assert at_location(toph, swamp) is False
-    assert at_location(toph, city_hall) is False
-    assert at_location(toph, city) is True
-
-    # Test 2: Setting the location of an object to None should remove them from any current locations
-
-    set_location(toph, None)
-
-    assert at_location(toph, swamp) is False
-    assert at_location(toph, city_hall) is False
-    assert at_location(toph, city) is False
 
 
 def test_add_location_to_settlement() -> None:
