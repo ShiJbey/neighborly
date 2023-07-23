@@ -5,9 +5,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Type, TypeVar
 
+from ordered_set import OrderedSet
+
 from neighborly import Component, GameObject
 from neighborly.core.ecs import ISerializable
-from ordered_set import OrderedSet
 
 _RT = TypeVar("_RT", bound=Component)
 
@@ -40,6 +41,12 @@ class Roles(Component, ISerializable):
     def get_roles_of_type(self, role_type: Type[_RT]) -> List[_RT]:
         """Get all roles that are an instance or derived instance of the given type."""
         return [role for role in self._roles if isinstance(role, role_type)]
+
+    def __repr__(self) -> str:
+        return "{}({})".format(
+            type(self).__name__,
+            [type(r).__name__ for r in self._roles]
+        )
 
 
 def add_role(gameobject: GameObject, role: Component) -> None:

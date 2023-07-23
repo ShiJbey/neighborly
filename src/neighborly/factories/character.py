@@ -4,7 +4,7 @@ import logging
 import random
 from typing import Any, Dict, Optional
 
-from neighborly.components.character import GameCharacter, Virtue, Virtues
+from neighborly.components.character import GameCharacter, Gender, Virtue, Virtues
 from neighborly.core.ecs import IComponentFactory, World
 from neighborly.core.tracery import Tracery
 
@@ -70,3 +70,11 @@ class VirtuesFactory(IComponentFactory):
             values_overrides = {**values_overrides, **overrides}
 
         return Virtues(values_overrides)
+
+
+class GenderFactory(IComponentFactory):
+    def create(self, world: World, **kwargs: Any) -> Gender:
+        gender_type: str = kwargs.get("gender_type")
+        return Gender(
+            gender_type=world.gameobject_manager.create_component(gender_type)
+        )

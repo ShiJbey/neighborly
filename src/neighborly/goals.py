@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type, cast
 
 from neighborly.components.business import (
     Business,
     BusinessOwner,
-    JobRequirementLibrary,
     Occupation,
     OpenForBusiness,
     Unemployed,
@@ -27,7 +26,6 @@ from neighborly.components.character import (
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.role import Roles
 from neighborly.components.shared import CurrentSettlement
-from neighborly.components.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.behavior_tree import (
     AbstractBTNode,
@@ -67,6 +65,7 @@ from neighborly.events import (
     StartBusinessEvent,
     StartDatingEvent,
 )
+from neighborly.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
 from neighborly.utils.common import (
     add_business_to_settlement,
     add_residence_to_settlement,
@@ -324,21 +323,25 @@ class StartBusiness(GoalNode):
         world = character.world
         current_settlement = character.get_component(CurrentSettlement)
         settlement = current_settlement.settlement
-        business_spawn_table = settlement.get_component(BusinessSpawnTable)
+        business_spawn_table = world.resource_manager.get_resource(BusinessSpawnTable)
         rng = world.resource_manager.get_resource(random.Random)
-        job_requirement_lib = world.resource_manager.get_resource(JobRequirementLibrary)
 
         choices: List[GameObjectPrefab] = []
         weights: List[int] = []
 
         for prefab_name in business_spawn_table.get_eligible(settlement):
             prefab = world.gameobject_manager.get_prefab(prefab_name)
-            owner_type: str = prefab.components["Business"]["owner_type"]
-            if owner_type:
-                job_requirements = job_requirement_lib.get_requirements(owner_type)
-                if job_requirements.passes_requirements(character):
-                    choices.append(prefab)
-                    weights.append(business_spawn_table.get_frequency(prefab_name))
+
+            owner_type: Type[Occupation] = cast(
+                Type[Occupation],
+                world.gameobject_manager.get_component_info(
+                    prefab.components["Business"]["owner_type"]
+                ).component_type
+            )
+
+            if owner_type.job_requirements.passes_requirements(character):
+                choices.append(prefab)
+                weights.append(business_spawn_table.get_frequency(prefab_name))
 
         if choices:
             # Choose an archetype at random
@@ -397,21 +400,13 @@ class GetJob(GoalNode):
         return False
 
     def evaluate(self) -> NodeState:
-        job_requirement_library = self.world.resource_manager.get_resource(
-            JobRequirementLibrary
-        )
-
         for guid, (business, _, _) in self.world.get_components(
             (Business, OpenForBusiness, Active)
         ):
             open_positions = business.get_open_positions()
 
             for occupation_type in open_positions:
-                job_requirements = job_requirement_library.get_requirements(
-                    occupation_type.__name__
-                )
-
-                if job_requirements.passes_requirements(self.character):
+                if occupation_type.job_requirements.passes_requirements(self.character):
                     start_job(
                         self.character,
                         self.world.gameobject_manager.get_gameobject(guid),
@@ -507,7 +502,7 @@ class BuildNewHouse(AbstractBTNode):
         settlement = self.character.get_component(CurrentSettlement).settlement
         land_map = settlement.get_component(Settlement).land_map
         vacancies = land_map.get_vacant_lots()
-        spawn_table = settlement.get_component(ResidenceSpawnTable)
+        spawn_table = world.resource_manager.get_resource(ResidenceSpawnTable)
         rng = world.resource_manager.get_resource(random.Random)
 
         # Return early if there is nowhere to build

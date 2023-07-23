@@ -1,0 +1,11 @@
+Residences:
+
+  - name: "residence::default::house"
+    components:
+      Residence: { }
+      Location: { }
+      Position2D: { }
+      Statuses: { }
+      EventHistory: { }
+      Building:
+        building_type: residential

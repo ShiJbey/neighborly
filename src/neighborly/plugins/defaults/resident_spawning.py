@@ -7,15 +7,13 @@ from neighborly.components.character import (
     Family,
     GameCharacter,
     LifeStageType,
-    MarriageConfig,
     Married,
     ParentOf,
-    ReproductionConfig,
     SiblingOf,
 )
+from neighborly.components.culture import Culture, MarriageConfig
 from neighborly.components.residence import Residence, Vacant
-from neighborly.components.shared import CurrentSettlement
-from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
+from neighborly.components.species import Species
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ecs import Active, GameObject, SystemBase, World
 from neighborly.core.relationship import (
@@ -30,6 +28,7 @@ from neighborly.core.settlement import Settlement
 from neighborly.core.time import SimDateTime
 from neighborly.events import MoveResidenceEvent
 from neighborly.simulation import Neighborly, PluginInfo
+from neighborly.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.utils.common import (
     add_residence_to_settlement,
     set_character_settlement,
@@ -62,10 +61,11 @@ class SpawnFamilySystemBase(SystemBase):
 
     @staticmethod
     def _get_vacant_residences(world: World) -> List[GameObject]:
+        """Get all active vacant residences."""
         return [
             world.gameobject_manager.get_gameobject(gid)
             for gid, _ in world.get_components(
-                (Residence, Active, Vacant, CurrentSettlement)
+                (Residence, Active, Vacant)
             )
         ]
 
@@ -75,7 +75,7 @@ class SpawnFamilySystemBase(SystemBase):
     ) -> Optional[GameObject]:
         land_map = settlement.get_component(Settlement).land_map
         vacancies = land_map.get_vacant_lots()
-        spawn_table = settlement.get_component(ResidenceSpawnTable)
+        spawn_table = world.resource_manager.get_resource(ResidenceSpawnTable)
         rng = world.resource_manager.get_resource(random.Random)
 
         # Return early if there is nowhere to build
@@ -137,7 +137,7 @@ class SpawnFamilySystemBase(SystemBase):
         spouse_prefab: Optional[str] = None
         spouse: Optional[GameObject] = None
 
-        if marriage_config := character.try_component(MarriageConfig):
+        if marriage_config := character.get_component(Culture).culture_type.marriage_config:
             spouse_prefab = SpawnFamilySystemBase._try_get_spouse_prefab(
                 rng, marriage_config, spawn_table
             )
@@ -174,7 +174,7 @@ class SpawnFamilySystemBase(SystemBase):
         children: List[GameObject] = []
         potential_child_prefabs: List[str] = []
 
-        if reproduction_config := character.get_component(ReproductionConfig):
+        if reproduction_config := character.get_component(Species).species_type.reproduction_config:
             num_kids = rng.randint(0, reproduction_config.max_children_at_spawn)
 
             potential_child_prefabs = spawn_table.get_matching_prefabs(
@@ -286,8 +286,8 @@ class SpawnFamilySystemBase(SystemBase):
         date = world.resource_manager.get_resource(SimDateTime)
 
         # Spawn families in each settlement
-        for guid, (settlement, character_spawn_table) in world.get_components(
-            (Settlement, CharacterSpawnTable)
+        for guid, _ in world.get_components(
+            (Settlement,)
         ):
             settlement_entity = world.gameobject_manager.get_gameobject(guid)
 
@@ -302,7 +302,7 @@ class SpawnFamilySystemBase(SystemBase):
                     if residence is None:
                         break
 
-                family = self._spawn_family(world, character_spawn_table)
+                family = self._spawn_family(world, world.resource_manager.get_resource(CharacterSpawnTable))
 
                 event = MoveResidenceEvent(
                     world, date, residence, *[*family.adults, *family.children]

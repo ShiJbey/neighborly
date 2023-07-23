@@ -1,6 +1,6 @@
 import pytest
 
-from neighborly.components.character import GameCharacter, Gender, GenderType, Retired
+from neighborly.components.character import GameCharacter, Gender, NonBinary, Retired
 from neighborly.components.shared import Age
 from neighborly.core.ecs import Component, World
 from neighborly.core.query import QB, Relation
@@ -166,7 +166,7 @@ def test_query_bindings(sample_world: World):
         QB.with_(GameCharacter, "_"),
         QB.filter_(
             lambda gameobject: (
-                gameobject.get_component(Gender).gender == GenderType.NonBinary
+                gameobject.has_component(NonBinary)
             ),
             "_",
         ),
@@ -189,7 +189,7 @@ def test_query_bindings(sample_world: World):
         QB.with_(GameCharacter, "_"),
         QB.filter_(
             lambda gameobject: (
-                gameobject.get_component(Gender).gender == GenderType.NonBinary
+                gameobject.has_component(NonBinary)
             ),
             "_",
         ),
@@ -217,7 +217,7 @@ def test_filter(sample_world: World):
         QB.with_((GameCharacter, Gender), "_"),
         QB.filter_(
             lambda gameobject: (
-                gameobject.get_component(Gender).gender == GenderType.NonBinary
+                gameobject.has_component(NonBinary)
             ),
             "_",
         ),

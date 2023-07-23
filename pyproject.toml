@@ -55,7 +55,10 @@ testing = [
     "pytest-cov"
 ]
 samples = [
-    "notebook"
+    "notebook",
+    "jupyterlab",
+    "matplotlib",
+    "tqdm"
 ]
 development = [
     "isort",

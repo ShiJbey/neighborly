@@ -23,15 +23,21 @@ class TraitsFactory(IComponentFactory):
 
         # Process specified traits first
         for entry in trait_spec:
-            trait_choices = [
-                trait_library.get_trait_type(option.strip())
-                for option in entry.split("|")
-            ]
-            filtered_choices = [t for t in trait_choices if t not in prohibited_traits]
-            if filtered_choices:
-                chosen_trait = rng.choice(filtered_choices)
-                trait_types.add(chosen_trait)
-                prohibited_traits.union(chosen_trait.get_conflicts())
+            if entry[0] == "?":
+                trait_type = trait_library.get_trait_type(entry[1:])
+                if trait_type not in prohibited_traits and rng.random() < 0.5:
+                    trait_types.add(trait_type)
+                    prohibited_traits.union(trait_type.get_conflicts())
+            else:
+                trait_choices = [
+                    trait_library.get_trait_type(option.strip())
+                    for option in entry.split("|")
+                ]
+                filtered_choices = [t for t in trait_choices if t not in prohibited_traits]
+                if filtered_choices:
+                    chosen_trait = rng.choice(filtered_choices)
+                    trait_types.add(chosen_trait)
+                    prohibited_traits.union(chosen_trait.get_conflicts())
 
         # Process incidental traits
         incidental_traits = [*trait_library.incidental_traits]

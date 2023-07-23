@@ -44,6 +44,7 @@ from typing import (
 import esper
 import pydantic
 from ordered_set import OrderedSet
+from pydantic import ValidationError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -617,7 +618,7 @@ class Component(ABC):
         super().__init__()
 
     def on_add(self, gameobject: GameObject) -> None:
-        """Lifecycle method called when a status is added to a GameObject.
+        """Lifecycle method called when a component is added to a GameObject.
 
         Parameters
         ----------
@@ -627,7 +628,7 @@ class Component(ABC):
         return
 
     def on_remove(self, gameobject: GameObject) -> None:
-        """Lifecycle method called when a status is removed from a GameObject.
+        """Lifecycle method called when a component is removed from a GameObject.
 
         Parameters
         ----------
@@ -635,6 +636,11 @@ class Component(ABC):
             The GameObject the status going to be removed from.
         """
         return
+
+    @classmethod
+    def on_register(cls, world: World) -> None:
+        """Lifecycle method called when a component class is registered."""
+        pass
 
 
 class TagComponent(Component, ISerializable):
@@ -1245,6 +1251,9 @@ class GameObjectPrefab(pydantic.BaseModel):
     tags: Set[str] = pydantic.Field(default_factory=set)
     """String tags for filtering."""
 
+    metadata: Dict[str, Any] = pydantic.Field(default_factory=dict)
+    """Additional information about this prefab."""
+
     # noinspection PyNestedDecorators
     @pydantic.validator("extends", pre=True)  # type: ignore
     @classmethod
@@ -1270,6 +1279,15 @@ class GameObjectPrefab(pydantic.BaseModel):
             return value  # type: ignore
         else:
             raise TypeError(f"Expected list str or list of str, but was {type(value)}")
+
+    @classmethod
+    def from_raw(cls, data: Dict[str, Any]) -> GameObjectPrefab:
+        try:
+            return cls.parse_obj(data)
+        except ValidationError as ex:
+            error_msg = f"Encountered error parsing prefab: {data['name']}"
+            _LOGGER.error(error_msg)
+            _LOGGER.error(str(ex))
 
 
 class GameObjectManager:
@@ -1468,6 +1486,7 @@ class GameObjectManager:
                 components=combined_components,
                 children=children,
                 tags=existing_prefab.tags.union(prefab.tags),
+                metadata={**existing_prefab.metadata, **prefab.metadata}
             )
 
             self._prefabs[prefab.name] = combined_prefab
@@ -1784,6 +1803,8 @@ class GameObjectManager:
                 else DefaultComponentFactory(component_type)
             ),
         )
+
+        component_type.on_register(self.world)
 
     def create_component(
         self, component_type: Union[str, Type[_CT]], **kwargs: Any

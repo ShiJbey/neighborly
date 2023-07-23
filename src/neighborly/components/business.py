@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from abc import ABC
-from dataclasses import dataclass
 from typing import (
     Any,
     ClassVar,
@@ -19,12 +18,101 @@ from typing import (
     Type,
 )
 
+import attrs
 from ordered_set import OrderedSet
+from typing_extensions import TypedDict
 
-from neighborly.core.ecs import Component, GameObject, ISerializable, World
+from neighborly.core.ecs import (
+    Component,
+    GameObject,
+    GameObjectPrefab,
+    ISerializable,
+    World,
+)
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.relationship import IRelationshipStatus
 from neighborly.core.status import IStatus
+from neighborly.spawn_table import BusinessSpawnTable
+
+
+class JobRequirementFn(Protocol):
+    """A function that returns a precondition rule for characters holding jobs."""
+
+    def __call__(self, gameobject: GameObject, *args: Any) -> bool:
+        raise NotImplementedError
+
+
+class JobRequirementRule:
+    __slots__ = "_job_requirement_fn", "_args"
+
+    _job_requirement_fn: JobRequirementFn
+    """A function that evaluates is the gameobject passes a precondition."""
+
+    _args: Tuple[Any, ...]
+    """Positional arguments passed to the job requirement function."""
+
+    def __init__(self, fn: JobRequirementFn, *args: Any) -> None:
+        self._job_requirement_fn = fn
+        self._args = args
+
+    def __call__(self, gameobject: GameObject) -> bool:
+        return self._job_requirement_fn(gameobject, *self._args)
+
+
+class Precondition(Protocol):
+    """A callable that checks if a GameObjects meets some criteria."""
+
+    def __call__(self, gameobject: GameObject) -> bool:
+        """
+        Parameters
+        ----------
+        gameobject
+            The gameobject to check the precondition for.
+
+        Returns
+        -------
+        bool
+            True if the GameObject meets the conditions, False otherwise.
+        """
+        raise NotImplementedError
+
+
+class JobRequirements:
+    """Specifies precondition rules for an occupation type."""
+
+    __slots__ = "_rules"
+
+    _rules: List[Precondition]
+    """A collection of preconditions."""
+
+    def __init__(self, rules: Optional[Iterable[Precondition]] = None) -> None:
+        super().__init__()
+        self._rules = [*rules] if rules else []
+
+    def add_rule(self, rule: Precondition) -> None:
+        """Add a new rule to the job requirements"""
+        self._rules.append(rule)
+
+    def passes_requirements(self, gameobject: GameObject) -> bool:
+        """Check if a GameObject passes any of the requirement rules.
+
+        Parameters
+        ----------
+        gameobject
+            The GameObject to evaluate.
+
+        Returns
+        -------
+        bool
+            True if the gameobject passes at least one precondition.
+        """
+        if self._rules:
+            for rule in self._rules:
+                if rule(gameobject):
+                    return True
+            return False
+        else:
+            return True
 
 
 class Occupation(Component, ISerializable, ABC):
@@ -40,6 +128,9 @@ class Occupation(Component, ISerializable, ABC):
 
     social_status: ClassVar[int] = 1
     """The socioeconomic status associated with this occupation."""
+
+    job_requirements: ClassVar[JobRequirements] = JobRequirements()
+    """Requirements that characters need to meet to hold this occupation."""
 
     def __init__(self, business: GameObject, start_year: int) -> None:
         """
@@ -82,7 +173,7 @@ class Occupation(Component, ISerializable, ABC):
         )
 
 
-@dataclass(frozen=True)
+@attrs.define(frozen=True)
 class WorkHistoryEntry:
     """A record of a previous occupation."""
 
@@ -216,7 +307,7 @@ class Services(Component, ISerializable):
         return service.lower() in self._services
 
     def __str__(self) -> str:
-        return ", ".join(self._services)
+        return "{}({})".format(self.__class__.__name__, self._services)
 
     def __repr__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self._services)
@@ -431,126 +522,29 @@ class CoworkerOf(IRelationshipStatus):
     pass
 
 
-class JobRequirementFn(Protocol):
-    """A function that returns a precondition rule for characters holding jobs."""
+class BusinessConfig(TypedDict, total=False):
+    spawn_frequency: int
+    max_instances: int
+    min_population: int
+    year_available: int
+    year_obsolete: int
+    owner_type: int
+    employee_types: Dict[str, int]
+    lifespan: int
+    services: Tuple[str]
 
-    def __call__(self, gameobject: GameObject, *args: Any) -> bool:
+
+class BusinessType(Component, ABC):
+    """Defines configuration information for GameObject instances of a business Type.
+
+
+
+    """
+    config = BusinessConfig()
+
+    @classmethod
+    def instantiate(cls) -> GameObject:
         raise NotImplementedError
-
-
-class JobRequirementRule:
-    __slots__ = "_job_requirement_fn", "_args"
-
-    _job_requirement_fn: JobRequirementFn
-    """A function that evaluates is the gameobject passes a precondition."""
-
-    _args: Tuple[Any, ...]
-    """Positional arguments passed to the job requirement function."""
-
-    def __init__(self, fn: JobRequirementFn, *args: Any) -> None:
-        self._job_requirement_fn = fn
-        self._args = args
-
-    def __call__(self, gameobject: GameObject) -> bool:
-        return self._job_requirement_fn(gameobject, *self._args)
-
-
-class Precondition(Protocol):
-    """A callable that checks if a GameObjects meets some criteria."""
-
-    def __call__(self, gameobject: GameObject) -> bool:
-        """
-        Parameters
-        ----------
-        gameobject
-            The gameobject to check the precondition for.
-
-        Returns
-        -------
-        bool
-            True if the GameObject meets the conditions, False otherwise.
-        """
-        raise NotImplementedError
-
-
-class JobRequirements:
-    """Specifies precondition rules for an occupation type."""
-
-    __slots__ = "_rules"
-
-    _rules: List[Precondition]
-    """A collection of preconditions."""
-
-    def __init__(self, rules: Optional[Iterable[Precondition]] = None) -> None:
-        super().__init__()
-        self._rules = [*rules] if rules else []
-
-    def add_rule(self, rule: Precondition) -> None:
-        """Add a new rule to the job requirements"""
-        self._rules.append(rule)
-
-    def passes_requirements(self, gameobject: GameObject) -> bool:
-        """Check if a GameObject passes any of the requirement rules.
-
-        Parameters
-        ----------
-        gameobject
-            The GameObject to evaluate.
-
-        Returns
-        -------
-        bool
-            True if the gameobject passes at least one precondition.
-        """
-        if self._rules:
-            for rule in self._rules:
-                if rule(gameobject):
-                    return True
-            return False
-        else:
-            return True
-
-
-class JobRequirementLibrary:
-    """A shared collection of job requirement rule used by occupation type requirement prefabs."""
-
-    __slots__ = "_rules"
-
-    _rules: dict[str, JobRequirements]
-    """String identifiers mapped to precondition functions."""
-
-    def __init__(self) -> None:
-        self._rules = {}
-
-    def add_requirement(self, occupation_type: str, job_req: Precondition) -> None:
-        """Add a new job requirement rule.
-
-        Parameters
-        ----------
-        occupation_type
-            The occupation type to add a requirement to.
-        job_req
-            The function to add.
-        """
-        if occupation_type not in self._rules:
-            self._rules[occupation_type] = JobRequirements()
-        self._rules[occupation_type].add_rule(job_req)
-
-    def get_requirements(self, occupation_type: str) -> JobRequirements:
-        """Retrieve a job requirement rule by name.
-
-        Parameters
-        ----------
-        occupation_type
-            The name of a rule.
-
-        Returns
-        -------
-        JobRequirements
-        """
-        if occupation_type in self._rules:
-            return self._rules[occupation_type]
-        return JobRequirements()
 
 
 def register_occupation_type(world: World, occupation_type: Type[Occupation]) -> None:
@@ -564,3 +558,20 @@ def register_occupation_type(world: World, occupation_type: Type[Occupation]) ->
         The class of the component
     """
     world.gameobject_manager.register_component(occupation_type)
+
+
+def register_business_prefab(world: World, prefab: GameObjectPrefab) -> None:
+    """Registers a business prefab with the ECS and spawn tables."""
+
+    # Add the prefab to the GameObject manager
+    world.gameobject_manager.add_prefab(prefab)
+
+    # Add an entry to the character spawn table
+    world.resource_manager.get_resource(BusinessSpawnTable).update(
+        name=prefab.name,
+        frequency=prefab.metadata.get("spawn_frequency", 0),
+        max_instances=prefab.metadata.get("max_instances", 9999),
+        min_population=prefab.metadata.get("min_population", 0),
+        year_available=prefab.metadata.get("year_available", 0),
+        year_obsolete=prefab.metadata.get("year_obsolete", 9999),
+    )

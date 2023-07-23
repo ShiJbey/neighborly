@@ -34,16 +34,31 @@ If you use Neighborly in a project, please [cite this repository](./CITATION.bib
 # Core Features
 
 - 🚀 Utilizes a low-fidelity social simulation allowing it to simulate hundreds of years of world history within minutes.
-- 👔 Characters can start businesses and hold jobs
-- 📦 Users can create and share custom content plugins to extend Neighborly's capabilities
-- 🤖 Characters follow goal-driven behaviors defined using behavior trees and utility AI
-- ️🧬 Traits and statuses modify character behavior
-- ❤️💔 Models facets of relationships such as romance, friendship, trust, and respect
-- 💥 Random Life Events spice up characters' lives
-- ⚖️ Social Rules define how characters should feel about each other
-- 🏬 Location Preference Rules define rules for what locations characters should frequent
-- 📈 Collect and analyze simulation data using DataFrames
-- 📜 Export simulation data to JSON
+- 👔 Characters can start businesses and hold jobs.
+- 📦 Users can create and share custom content plugins to extend Neighborly's capabilities.
+- 🤖 Characters follow goal-driven behaviors defined using behavior trees and utility AI.
+- ️🧬 Traits and statuses modify character behavior.
+- ❤️💔 Models facets of relationships such as romance, friendship, trust, and respect.
+- 💥 Random Life Events spice up characters' lives.
+- ⚖️ Social Rules define how characters should feel about each other.
+- 🏬 Location Preference Rules define rules for what locations characters should frequent.
+- 📈 Collect and analyze simulation data using DataFrames.
+- 🗓️ Event system to update components in response to life events.
+- 📜 Export simulation data to JSON.
+
+# System caveats
+
+- Simulates a single settlement
+- Buildings hold either one business or residence. No mixed-use or multifamily housing.
+- The internal architecture does not follow "Pure" ECS practices. It does what looks and feels nice API-wise.
+- Characters only hold one occupation at a time.
+- Characters withing newly-spawned families will all have the same species and culture.
+- Some species can only mate with each other and children will be either the mother's or father's species.
+
+# Future work
+
+- A skill system allowing characters gain and level skills based on their occupation/events.
+- Mixed-use buildings and multifamily housing.
 
 # Installation
 
@@ -97,6 +112,19 @@ dependencies are installed for the samples. Make sure that you've activated your
 python -m pip install -e ".[samples]"
 ```
 
+Then, run use the following commands to run either the sample scripts or notebooks.
+
+```bash
+# To run sample scripts use:
+python ./samples/<name_of_sample>.py
+
+# To run IPython notebooks using Jupyter Lab use:
+jupyter-lab
+
+# To run IPython notebooks using classic notebooks use:
+jupyter notebook
+```
+
 ## Writing plugins
 
 Users can extend Neighborly's default content/behavior using plugins. A few default plugins come prepackaged with
@@ -109,7 +137,7 @@ information about authoring plugins.
 ## Command line interface
 
 Neighborly's command line interface (CLI) generates a world for a specified amount of virtual
-time and exports the generated data to JSON. By default, Neighborly runs a built-in version of **Talk of the Town**.
+time and exports the generated data to JSON. By default, Neighborly runs a built-in version of _Talk of the Town_.
 Users can configure the simulation settings by creating a `neighborlyconfig.yaml` file.
 
 Neighborly can be run as a module `$ python -m neighborly` or command line `$ neighborly` script. If you require

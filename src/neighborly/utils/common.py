@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import List, Optional, Tuple, Type
 
 from neighborly.components.business import (
     BossOf,
@@ -18,16 +18,13 @@ from neighborly.components.business import (
     WorkHistory,
 )
 from neighborly.components.character import (
-    AgingConfig,
     Departed,
     GameCharacter,
     Gender,
-    GenderType,
     LifeStage,
     LifeStageType,
     Married,
     ParentOf,
-    ReproductionConfig,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.role import Roles, add_role, remove_role
@@ -42,11 +39,7 @@ from neighborly.components.shared import (
     Position2D,
     PrefabName,
 )
-from neighborly.components.spawn_table import (
-    BusinessSpawnTable,
-    CharacterSpawnTable,
-    ResidenceSpawnTable,
-)
+from neighborly.components.species import AgingConfig, Species
 from neighborly.core.ecs import Active, GameObject, World
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.location_preference import LocationPreferenceRuleLibrary
@@ -89,14 +82,8 @@ def spawn_settlement(
     world: World,
     name: str = "#settlement_name#",
     settlement_size: Tuple[int, int] = (5, 5),
-    character_spawn_table: Optional[List[Dict[str, Any]]] = None,
-    business_spawn_table: Optional[List[Dict[str, Any]]] = None,
-    residence_spawn_table: Optional[List[Dict[str, Any]]] = None,
 ) -> GameObject:
     width, length = settlement_size
-    character_spawn_entries = character_spawn_table if character_spawn_table else []
-    residence_spawn_entries = residence_spawn_table if residence_spawn_table else []
-    business_spawn_entries = business_spawn_table if business_spawn_table else []
 
     settlement = world.gameobject_manager.spawn_gameobject(
         components=[
@@ -106,15 +93,6 @@ def spawn_settlement(
             ),
             world.gameobject_manager.create_component(Location),
             world.gameobject_manager.create_component(Age),
-            world.gameobject_manager.create_component(
-                CharacterSpawnTable, entries=character_spawn_entries
-            ),
-            world.gameobject_manager.create_component(
-                ResidenceSpawnTable, entries=residence_spawn_entries
-            ),
-            world.gameobject_manager.create_component(
-                BusinessSpawnTable, entries=business_spawn_entries
-            ),
         ]
     )
 
@@ -448,7 +426,7 @@ def spawn_character(
     last_name: Optional[str] = None,
     age: Optional[int] = None,
     life_stage: Optional[LifeStageType] = None,
-    gender: Optional[GenderType] = None,
+    gender: Optional[str] = None,
 ) -> GameObject:
     character = world.gameobject_manager.instantiate_prefab(prefab)
 
@@ -524,25 +502,26 @@ def set_character_age(
     age = character.get_component(Age)
     age.value = new_age
 
-    if not character.has_component(AgingConfig):
-        raise Exception(
-            "Cannot set life stage for a character without an AgingConfig component"
-        )
+    species_type = character.get_component(Species).species_type
 
-    aging_config = character.get_component(AgingConfig)
+    if species_type.aging_config is None:
+        return
+
+    if character.has_component(LifeStage) is False:
+        character.add_component(LifeStage("Adult"))
 
     life_stage = character.get_component(LifeStage)
 
-    if age.value >= aging_config.senior_age:
+    if age.value >= species_type.aging_config.senior_age:
         life_stage.life_stage = LifeStageType.Senior
 
-    elif age.value >= aging_config.adult_age:
+    elif age.value >= species_type.aging_config.adult_age:
         life_stage.life_stage = LifeStageType.Adult
 
-    elif age.value >= aging_config.young_adult_age:
+    elif age.value >= species_type.aging_config.young_adult_age:
         life_stage.life_stage = LifeStageType.YoungAdult
 
-    elif age.value >= aging_config.adolescent_age:
+    elif age.value >= species_type.aging_config.adolescent_age:
         life_stage.life_stage = LifeStageType.Adolescent
 
     else:
@@ -561,26 +540,26 @@ def set_life_stage(character: GameObject, life_stage_type: LifeStageType) -> Non
     """
     age = character.get_component(Age)
 
-    if not character.has_component(AgingConfig):
-        raise Exception(
-            "Cannot set life stage for a character without an AgingConfig component"
-        )
+    species_type = character.get_component(Species).species_type
 
-    aging_config = character.get_component(AgingConfig)
+    if species_type.aging_config is None:
+        raise Exception(
+            "Cannot set life stage for a species without an aging config"
+        )
 
     character.get_component(LifeStage).life_stage = life_stage_type
 
     if life_stage_type == LifeStageType.Senior:
-        age.value = aging_config.senior_age
+        age.value = species_type.aging_config.senior_age
 
     elif life_stage_type == LifeStageType.Adult:
-        age.value = aging_config.adult_age
+        age.value = species_type.aging_config.adult_age
 
     elif life_stage_type == LifeStageType.YoungAdult:
-        age.value = aging_config.young_adult_age
+        age.value = species_type.aging_config.young_adult_age
 
     elif life_stage_type == LifeStageType.Adolescent:
-        age.value = aging_config.adolescent_age
+        age.value = species_type.aging_config.adolescent_age
 
     elif life_stage_type == LifeStageType.Child:
         age.value = 0

@@ -560,6 +560,33 @@ class CharacterCreatedEvent(Event):
         return self._timestamp
 
 
+class RelationshipCreatedEvent(Event):
+    __slots__ = "_relationship", "_owner", "_target"
+
+    def __init__(
+        self,
+        relationship: GameObject,
+        owner: GameObject,
+        target: GameObject
+    ) -> None:
+        super().__init__(world=relationship.world)
+        self._relationship = relationship
+        self._owner = owner
+        self._target = target
+
+    @property
+    def relationship(self) -> GameObject:
+        return self._relationship
+
+    @property
+    def owner(self) -> GameObject:
+        return self._owner
+
+    @property
+    def target(self) -> GameObject:
+        return self._target
+
+
 class CharacterNameChangeEvent(Event):
     __slots__ = "_character", "_timestamp", "_first_name", "_last_name"
 

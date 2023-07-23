@@ -1,7 +1,7 @@
 import os
 import pathlib
 
-from neighborly.loaders import load_prefabs
+from neighborly.loaders import NeighborlyDataLoader
 from neighborly.simulation import Neighborly, PluginInfo
 
 plugin_info = PluginInfo(
@@ -14,4 +14,4 @@ _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
 
 
 def setup(sim: Neighborly):
-    load_prefabs(sim.world, _RESOURCES_DIR / "town.default.yaml")
+    NeighborlyDataLoader.load_file(sim.world, _RESOURCES_DIR / "settlement.default.yaml")

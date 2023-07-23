@@ -9,7 +9,9 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional
 
-from neighborly.core.ecs import Component, GameObject
+import pandas as pd
+
+from neighborly.core.ecs import GameObject
 from neighborly.core.settlement import Settlement
 from neighborly.core.time import SimDateTime
 
@@ -43,10 +45,13 @@ class CharacterSpawnTableIterator:
             raise StopIteration
 
 
-class CharacterSpawnTable(Component):
+class CharacterSpawnTable:
     """Manages the frequency that character prefabs are spawned."""
 
-    __slots__ = "_names", "_frequencies", "_size", "_index_map"
+    __slots__ = "_names", "_frequencies", "_size", "_index_map", "_table"
+
+    _table: pd.DataFrame
+    """Contains spawn table data."""
 
     def __init__(self, entries: Optional[List[Dict[str, Any]]] = None) -> None:
         """
@@ -56,7 +61,6 @@ class CharacterSpawnTable(Component):
             Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
-        super().__init__()
         # Names and frequencies are separate buffers to optimize random selection.
         # If we stored them as a list of dicts, we would have to iterate the list to
         # get all the spawn frequencies before selecting an entry
@@ -64,10 +68,13 @@ class CharacterSpawnTable(Component):
         self._frequencies: List[int] = []
         self._index_map: Dict[str, int] = {}
         self._size = 0
+        self._table = pd.DataFrame(columns=["name", "spawn_frequency", "species", "culture"])
 
         if entries:
-            for entry in entries:
-                self.update(**entry)
+            self._table = pd.DataFrame.from_records(
+                entries,
+                columns=["name", "spawn_frequency", "species", "culture"]
+            )
 
     def update(self, name: str, frequency: int = 1) -> None:
         """Add an entry to the spawn table or overwrite an existing entry.
@@ -211,7 +218,7 @@ class BusinessSpawnTableIterator:
             raise StopIteration
 
 
-class BusinessSpawnTable(Component):
+class BusinessSpawnTable:
     """Manages the frequency that business prefabs are spawned"""
 
     __slots__ = (
@@ -233,7 +240,6 @@ class BusinessSpawnTable(Component):
             Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
-        super().__init__()
         # Names and frequencies are separate buffers to optimize random selection.
         # If we stored them as a list of dicts, we would have to iterate the list to
         # get all the spawn frequencies before selecting an entry
@@ -459,7 +465,7 @@ class ResidenceSpawnTableIterator:
             raise StopIteration
 
 
-class ResidenceSpawnTable(Component):
+class ResidenceSpawnTable:
     """Manages the frequency that residence prefabs are spawned"""
 
     __slots__ = "_names", "_frequencies", "_size", "_index_map"
@@ -472,7 +478,6 @@ class ResidenceSpawnTable(Component):
             Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
-        super().__init__()
         # Names and frequencies are separate buffers to optimize random selection.
         # If we stored them as a list of dicts, we would have to iterate the list to
         # get all the spawn frequencies before selecting an entry

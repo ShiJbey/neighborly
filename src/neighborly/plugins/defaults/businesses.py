@@ -1,7 +1,8 @@
 import os
 import pathlib
 
-from neighborly.loaders import load_prefabs
+from neighborly.components.business import register_occupation_type
+from neighborly.loaders import NeighborlyDataLoader
 from neighborly.plugins.defaults.occupations import Barista, Librarian, Owner
 from neighborly.simulation import Neighborly, PluginInfo
 
@@ -15,10 +16,8 @@ plugin_info = PluginInfo(
 
 
 def setup(sim: Neighborly):
-    sim.world.gameobject_manager.register_component(Librarian)
-    sim.world.gameobject_manager.register_component(Owner)
-    sim.world.gameobject_manager.register_component(Barista)
-    
-    load_prefabs(sim.world, _RESOURCES_DIR / "business.default.yaml")
-    load_prefabs(sim.world, _RESOURCES_DIR / "business.default.library.yaml")
-    load_prefabs(sim.world, _RESOURCES_DIR / "business.default.cafe.yaml")
+    register_occupation_type(sim.world, Librarian)
+    register_occupation_type(sim.world, Owner)
+    register_occupation_type(sim.world, Barista)
+
+    NeighborlyDataLoader.load_file(sim.world, _RESOURCES_DIR / "businesses.default.yaml")

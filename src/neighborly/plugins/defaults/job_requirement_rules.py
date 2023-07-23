@@ -9,7 +9,7 @@ occupation.
 from typing import Any
 
 from neighborly.components.business import Occupation, WorkHistory
-from neighborly.components.character import Gender, GenderType
+from neighborly.components.character import Gender
 from neighborly.components.role import Roles
 from neighborly.components.shared import Age
 from neighborly.core.ecs import GameObject
@@ -30,7 +30,7 @@ def has_gender(gameobject: GameObject, *args: Any) -> bool:
     gender_name: str
     (gender_name,) = args
     if gender := gameobject.try_component(Gender):
-        return gender.gender == GenderType[gender_name]
+        return type(gender.gender_type).__name__ == gender_name
     return False
 
 

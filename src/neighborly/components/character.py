@@ -6,7 +6,6 @@ It also contains definitions for common statuses and relationship statuses.
 """
 from __future__ import annotations
 
-import dataclasses
 import enum
 from typing import (
     Any,
@@ -24,11 +23,18 @@ from typing import (
 import numpy as np
 from numpy import typing as npt
 
-from neighborly.core.ecs import Component, GameObject, ISerializable
+from neighborly.components.trait import IInheritable, ITrait
+from neighborly.core.ecs import (
+    Component,
+    GameObject,
+    GameObjectPrefab,
+    ISerializable,
+    TagComponent,
+    World,
+)
 from neighborly.core.relationship import IRelationshipStatus
 from neighborly.core.status import IStatus
-
-from neighborly.components.trait import IInheritable, ITrait
+from neighborly.spawn_table import CharacterSpawnTable
 
 
 class GameCharacter(Component, ISerializable):
@@ -381,100 +387,54 @@ class Dating(IRelationshipStatus):
     pass
 
 
-@dataclasses.dataclass()
-class MarriageConfig(Component):
-    """A component that tracks configuration settings for marriage."""
-
-    spouse_prefabs: List[str] = dataclasses.field(default_factory=list)
-    """The names the prefabs of potential spouses when spawning a character."""
-
-    chance_spawn_with_spouse: float = 0.5
-    """The probability of this character spawning with a spouse."""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "chance_spawn_with_spouse": self.chance_spawn_with_spouse,
-            "spouse_prefabs": self.spouse_prefabs,
-        }
+class Male(TagComponent):
+    pass
 
 
-@dataclasses.dataclass()
-class AgingConfig(Component):
-    """A component that tracks configuration settings for aging."""
-
-    adolescent_age: int
-    """The age the character is considered an adolescent."""
-
-    young_adult_age: int
-    """The age the character is considered a young-adult."""
-
-    adult_age: int
-    """The age the character is considered an adult."""
-
-    senior_age: int
-    """The age the character is considered to be a senior."""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "adolescent_age": self.adolescent_age,
-            "young_adult_age": self.young_adult_age,
-            "adult_age": self.adult_age,
-            "senior_age": self.senior_age,
-        }
+class Female(TagComponent):
+    pass
 
 
-@dataclasses.dataclass()
-class ReproductionConfig(Component):
-    """A component that track configuration settings about reproduction."""
-
-    max_children_at_spawn: int = 3
-    """The maximum number of children this character can spawn with."""
-
-    child_prefabs: List[str] = dataclasses.field(default_factory=list)
-    """The names of prefabs that can spawn as children."""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "max_children_at_spawn": self.max_children_at_spawn,
-            "child_prefabs": self.child_prefabs,
-        }
-
-
-class GenderType(enum.Enum):
-    """An enumeration tracking gender expression."""
-
-    Male = enum.auto()
-    Female = enum.auto()
-    NonBinary = enum.auto()
-    NotSpecified = enum.auto()
+class NonBinary(TagComponent):
+    pass
 
 
 class Gender(Component, ISerializable):
     """A component that tracks a character's gender expression."""
 
-    __slots__ = "gender"
+    __slots__ = "_gender_type"
 
-    gender: GenderType
+    _gender_type: Component
     """The character's current gender."""
 
-    def __init__(self, gender: Union[str, GenderType] = "NotSpecified") -> None:
+    def __init__(self, gender_type: Component) -> None:
         """
         Parameters
         ----------
-        gender
+        gender_type
             The character's current gender.
         """
         super().__init__()
-        self.gender = gender if isinstance(gender, GenderType) else GenderType[gender]
+        self._gender_type = gender_type
+
+    @property
+    def gender_type(self) -> Component:
+        return self._gender_type
+
+    def on_add(self, gameobject: GameObject) -> None:
+        gameobject.add_component(self._gender_type)
+
+    def on_remove(self, gameobject: GameObject) -> None:
+        gameobject.remove_component(type(self.gender_type))
 
     def __str__(self) -> str:
-        return f"{type(self).__name__}({self.gender.name})"
+        return f"{type(self).__name__}({type(self.gender_type).__name__})"
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.gender.name})"
+        return f"{type(self).__name__}({type(self.gender_type).__name__})"
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"gender": self.gender.name}
+        return {"gender": {type(self.gender_type).__name__}}
 
 
 class LifeStageType(enum.IntEnum):
@@ -487,6 +447,26 @@ class LifeStageType(enum.IntEnum):
     Senior = enum.auto()
 
 
+class Child(TagComponent):
+    pass
+
+
+class Adolescent(TagComponent):
+    pass
+
+
+class YoungAdult(TagComponent):
+    pass
+
+
+class Adult(TagComponent):
+    pass
+
+
+class Senior(TagComponent):
+    pass
+
+
 class LifeStage(Component, ISerializable):
     """A component that tracks the current life stage of a character."""
 
@@ -495,7 +475,7 @@ class LifeStage(Component, ISerializable):
     life_stage: LifeStageType
     """The character's current life stage."""
 
-    def __init__(self, life_stage: Union[str, LifeStageType] = "YoungAdult") -> None:
+    def __init__(self, life_stage: Union[str, LifeStageType] = "Child") -> None:
         """
         Parameters
         ----------
@@ -528,3 +508,28 @@ class Immortal(IInheritable, ITrait):
     @classmethod
     def inheritance_probability(cls) -> Tuple[float, float]:
         return 0, 1.0
+
+
+def register_character_prefab(world: World, prefab: GameObjectPrefab) -> None:
+    """Registers a character prefab with the ECS and spawn tables."""
+
+    # Add the prefab to the GameObject manager
+    world.gameobject_manager.add_prefab(prefab)
+
+    if "species" not in prefab.metadata:
+        raise TypeError(
+            f"Missing field 'species' in metadata of '{prefab.name}' character prefab."
+        )
+
+    if "culture" not in prefab.metadata:
+        raise TypeError(
+            f"Missing field 'culture' in metadata of '{prefab.name}' character prefab."
+        )
+
+    # Add an entry to the character spawn table
+    world.resource_manager.get_resource(CharacterSpawnTable).update(
+        name=prefab.name,
+        frequency=prefab.metadata.get("spawn_frequency", 0),
+        frequency=prefab.metadata["species"],
+        culture=prefab.metadata["culture"]
+    )

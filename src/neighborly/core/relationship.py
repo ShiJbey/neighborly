@@ -10,15 +10,13 @@ track things like feelings of friendship, romance, trust, and reputation.
 
 from __future__ import annotations
 
-import math
 from abc import ABC, abstractmethod
-from enum import IntEnum
-from typing import Any, Dict, Iterator, List, Optional, Protocol, Type, TypeVar
+from typing import Any, Dict, Iterator, List, Protocol, Type, TypeVar
 
-import attrs
 from ordered_set import OrderedSet
 
 from neighborly.core.ecs import Active, Component, GameObject, ISerializable
+from neighborly.core.stats import StatComponent
 from neighborly.core.status import (
     IStatus,
     Statuses,
@@ -28,220 +26,23 @@ from neighborly.core.status import (
 )
 
 
-class RelationshipStat(Component, ISerializable, ABC):
-    """A scalar value representing a facet of a relationship such as reputation, trust, or attraction."""
-
-    __slots__ = (
-        "_min_value",
-        "_max_value",
-        "_base_value",
-        "_value",
-        "_modifiers",
-        "_is_dirty",
-    )
-
-    _min_value: int
-    """The minimum score the overall stat is clamped to."""
-
-    _max_value: int
-    """The maximum score the overall stat is clamped to."""
-
-    _base_value: int
-    """The base score for this stat used by modifiers."""
-
-    _raw_Value: int
-    """The non-clamped score of this stat with all modifiers applied."""
-
-    _value: int
-    """The final score of the stat clamped between the min and max values."""
-
-    _modifiers: List[IRelationshipModifier]
-    """Active stat modifiers."""
-
-    def __init__(self, base_value: int = 0, min_value: int = -100, max_value: int = 100) -> None:
-        super().__init__()
-        self._min_value = min_value
-        self._max_value = max_value
-        self._base_value = base_value
-        self._raw_value = 0
-        self._value = 0
-        self._modifiers = []
-        self._is_dirty: bool = True
-
-    @property
-    def base_value(self) -> int:
-        """Get the base value of the relationship stat."""
-        return self._base_value
-
-    @base_value.setter
-    def base_value(self, value: int) -> None:
-        """Set the base value of the relationship stat."""
-        self._base_value = value
-        self._is_dirty = True
-
-    @property
-    def value(self) -> int:
-        if self._is_dirty:
-            self._recalculate_value()
-        return self._value
-
-    def add_modifier(self, modifier: IRelationshipModifier) -> None:
-        """Add a modifier to the stat."""
-        self._modifiers.append(modifier)
-        self._modifiers.sort(key=lambda m: m.order)
-
-    def remove_modifier(self, modifier: IRelationshipModifier) -> None:
-        """Remove a modifier from the stat."""
-        self._modifiers.remove(modifier)
-
-    def remove_modifiers_from_source(self, source: object) -> None:
-        """Remove all modifiers applied from the given source."""
-        self._modifiers = [
-            modifier for modifier in self._modifiers if modifier.source != source
-        ]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "value": self.value,
-        }
-
-    def _recalculate_value(self) -> None:
-        """Recalculate the various values since the last change"""
-
-        self._raw_value: int = self.base_value
-
-        for modifier in self._modifiers:
-            if modifier.modifier_type == ModifierType.Flat:
-                self._raw_value += modifier.value
-            elif modifier.modifier_type == ModifierType.Percent:
-                self._raw_value = round(self._raw_value * (1 + modifier.value))
-
-        self._raw_value = math.ceil(
-            max(self._min_value, min(self._max_value, self._raw_value))
-        )
-
-        self._is_dirty = False
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        return "{}(value={}, base={}, max={}, min={})".format(
-            self.__class__.__name__,
-            self.value,
-            self.base_value,
-            self._max_value,
-            self._min_value,
-        )
-
-
-class Friendship(RelationshipStat):
-    pass
-
-
-class Romance(RelationshipStat):
-    pass
-
-
-class InteractionScore(RelationshipStat):
+class Friendship(StatComponent):
     def __init__(self):
-        super().__init__(max_value=100, min_value=0)
+        super().__init__(base_value=0, max_value=100, min_value=-100)
+
+
+class Romance(StatComponent):
+    def __init__(self):
+        super().__init__(base_value=0, max_value=100, min_value=-100)
+
+
+class InteractionScore(StatComponent):
+    def __init__(self):
+        super().__init__(base_value=0, max_value=100, min_value=0)
 
 
 class IRelationshipStatus(IStatus, ABC):
     pass
-
-
-class ModifierType(IntEnum):
-    Flat = 0
-    Percent = 1
-
-
-class IRelationshipModifier(Protocol):
-
-    @property
-    @abstractmethod
-    def value(self) -> int:
-        """Get the value of this modifier."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def modifier_type(self) -> ModifierType:
-        """Get how the modifier value is applied."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def order(self) -> int:
-        """Get the priority of the modifier when calculating final stat values."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def source(self) -> Optional[object]:
-        """Get source of the modifier."""
-        raise NotImplementedError
-
-
-@attrs.define(frozen=True, slots=True)
-class RelationshipModifier(IRelationshipModifier):
-    """Stat modifiers applied to relationship stat components."""
-
-    _value: int
-    """The amount to modify the stat."""
-
-    _modifier_type: ModifierType
-    """How the modifier value is applied."""
-
-    _order: int
-    """The priority of this modifier when calculating final stat values."""
-
-    _source: Optional[object]
-    """The source of the modifier (for debugging purposes)."""
-
-    @property
-    def value(self) -> int:
-        """Get the value of this modifier."""
-        return self._value
-
-    @property
-    def modifier_type(self) -> ModifierType:
-        """Get how the modifier value is applied."""
-        return self._modifier_type
-
-    @property
-    def order(self) -> int:
-        """Get the priority of the modifier when calculating final stat values."""
-        return self._order
-
-    @property
-    def source(self) -> Optional[object]:
-        """Get source of the modifier."""
-        return self._source
-
-    @classmethod
-    def create(
-        cls,
-        value: int,
-        modifier_type: ModifierType,
-        order: Optional[int] = None,
-        source: Optional[object] = None
-    ) -> RelationshipModifier:
-        return cls(
-            value=value,
-            modifier_type=modifier_type,
-            order=order if order is not None else int(modifier_type),
-            source=source
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "value": self.value,
-            "modifier_type": self.modifier_type.name,
-            "order": self.order,
-            "source": str(self.source) if self.source is not None else ""
-        }
 
 
 class Relationship(Component, ISerializable):
@@ -378,7 +179,8 @@ class ISocialRule(Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def check_preconditions(self, owner: GameObject, target: GameObject, relationship: GameObject) -> bool:
+    def check_preconditions(self, owner: GameObject, target: GameObject,
+                            relationship: GameObject) -> bool:
         """Check if a relationship passes the preconditions for this rule to apply.
 
         Parameters
@@ -398,7 +200,8 @@ class ISocialRule(Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def apply(self, owner: GameObject, target: GameObject, relationship: GameObject) -> None:
+    def apply(self, owner: GameObject, target: GameObject,
+              relationship: GameObject) -> None:
         """Apply the effects of this rule.
 
         Parameters
@@ -413,7 +216,8 @@ class ISocialRule(Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def remove(self, owner: GameObject, target: GameObject, relationship: GameObject) -> None:
+    def remove(self, owner: GameObject, target: GameObject,
+               relationship: GameObject) -> None:
         """Remove the effects of this rule.
 
         Parameters

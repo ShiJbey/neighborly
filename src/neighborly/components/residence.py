@@ -8,8 +8,15 @@ from typing import Any, Dict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, GameObject, ISerializable
+from neighborly.core.ecs import (
+    Component,
+    GameObject,
+    GameObjectPrefab,
+    ISerializable,
+    World,
+)
 from neighborly.core.status import IStatus
+from neighborly.spawn_table import ResidenceSpawnTable
 
 
 class Residence(Component, ISerializable):
@@ -138,3 +145,16 @@ class Vacant(IStatus):
     """Tags a residence that does not currently have anyone living there."""
 
     pass
+
+
+def register_residence_prefab(world: World, prefab: GameObjectPrefab) -> None:
+    """Registers a character prefab with the ECS and spawn tables."""
+
+    # Add the prefab to the GameObject manager
+    world.gameobject_manager.add_prefab(prefab)
+
+    # Add an entry to the character spawn table
+    world.resource_manager.get_resource(ResidenceSpawnTable).update(
+        name=prefab.name,
+        frequency=prefab.metadata.get("spawn_frequency", 0)
+    )

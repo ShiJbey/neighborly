@@ -11,7 +11,6 @@ from neighborly.components.business import (
     Unemployed,
 )
 from neighborly.components.character import (
-    AgingConfig,
     CanAge,
     CanGetOthersPregnant,
     CanGetPregnant,
@@ -36,13 +35,7 @@ from neighborly.components.shared import (
     FrequentedBy,
     FrequentedLocations,
     Lifespan,
-    Location,
     Name,
-)
-from neighborly.components.spawn_table import (
-    BusinessSpawnTable,
-    CharacterSpawnTable,
-    ResidenceSpawnTable,
 )
 from neighborly.components.trait import IInheritable, Traits, add_trait
 from neighborly.config import NeighborlyConfig
@@ -60,7 +53,6 @@ from neighborly.core.relationship import (
     get_relationships_with_statuses,
     has_relationship,
 )
-from neighborly.core.settlement import Settlement
 from neighborly.core.status import add_status, has_status, remove_status
 from neighborly.core.time import SimDateTime
 from neighborly.events import (
@@ -876,31 +868,10 @@ class InitializeSettlementSystem(SystemBase):
 
     def on_update(self, world: World) -> None:
         sim_config = world.resource_manager.get_resource(NeighborlyConfig)
-        name_pattern = sim_config.settings.get("settlement_name", "#settlement_name#")
-        width, length = sim_config.settings.get("settlement_size", (5, 5))
-        character_spawn_entries = sim_config.settings.get("character_spawn_table", [])
-        residence_spawn_entries = sim_config.settings.get("residence_spawn_table", [])
-        business_spawn_entries = sim_config.settings.get("business_spawn_table", [])
 
-        settlement = world.gameobject_manager.spawn_gameobject(
-            components=[
-                world.gameobject_manager.create_component(Name, value=name_pattern),
-                world.gameobject_manager.create_component(
-                    Settlement, length=length, width=width
-                ),
-                world.gameobject_manager.create_component(Location),
-                world.gameobject_manager.create_component(Age),
-                world.gameobject_manager.create_component(
-                    CharacterSpawnTable, entries=character_spawn_entries
-                ),
-                world.gameobject_manager.create_component(
-                    ResidenceSpawnTable, entries=residence_spawn_entries
-                ),
-                world.gameobject_manager.create_component(
-                    BusinessSpawnTable, entries=business_spawn_entries
-                ),
-            ]
-        )
+        settlement_prefab_name = sim_config.settings.get("settlement_prefab", "settlement")
+
+        settlement = world.gameobject_manager.instantiate_prefab(settlement_prefab_name)
 
         settlement.name = settlement.get_component(Name).value
 

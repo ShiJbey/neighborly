@@ -16,7 +16,7 @@ from abc import abstractmethod
 from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar, final
 
 from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree
-from neighborly.core.ecs import Component, GameObject
+from neighborly.core.ecs import Component, GameObject, TagComponent
 
 _T = TypeVar("_T")
 
@@ -289,8 +289,7 @@ class Goals(Component):
         return bool(self._goals)
 
 
-class AIBrain(Component):
+class AIBrain(TagComponent):
     """Marks a GameObject as being AI-controlled."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    pass

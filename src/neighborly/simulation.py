@@ -21,7 +21,6 @@ from neighborly.components.business import (
     CoworkerOf,
     EmployeeOf,
     InTheWorkforce,
-    JobRequirementLibrary,
     Occupation,
     OpenForBusiness,
     Services,
@@ -29,21 +28,22 @@ from neighborly.components.business import (
     WorkHistory,
 )
 from neighborly.components.character import (
-    AgingConfig,
     CanAge,
     CanGetOthersPregnant,
     CanGetPregnant,
     Deceased,
     Departed,
+    Female,
     GameCharacter,
     Gender,
     Immortal,
     LifeStage,
-    MarriageConfig,
-    ReproductionConfig,
+    Male,
+    NonBinary,
     Retired,
     Virtues,
 )
+from neighborly.components.culture import Culture
 from neighborly.components.items import Item, ItemLibrary, ItemType
 from neighborly.components.residence import Residence, Resident, Vacant
 from neighborly.components.role import Roles
@@ -58,11 +58,7 @@ from neighborly.components.shared import (
     Name,
     Position2D,
 )
-from neighborly.components.spawn_table import (
-    BusinessSpawnTable,
-    CharacterSpawnTable,
-    ResidenceSpawnTable,
-)
+from neighborly.components.species import Species
 from neighborly.components.trait import TraitLibrary, Traits, register_trait
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
@@ -89,15 +85,21 @@ from neighborly.events import (
     JoinSettlementEvent,
 )
 from neighborly.factories.business import BusinessFactory, ServicesFactory
-from neighborly.factories.character import GameCharacterFactory, VirtuesFactory
+from neighborly.factories.character import (
+    GameCharacterFactory,
+    GenderFactory,
+    VirtuesFactory,
+)
+from neighborly.factories.culture import CultureFactory
 from neighborly.factories.settlement import SettlementFactory
 from neighborly.factories.shared import NameFactory
-from neighborly.factories.spawn_table import (
-    BusinessSpawnTableFactory,
-    CharacterSpawnTableFactory,
-    ResidenceSpawnTableFactory,
-)
+from neighborly.factories.species import SpeciesFactory
 from neighborly.factories.trait import TraitsFactory
+from neighborly.spawn_table import (
+    BusinessSpawnTable,
+    CharacterSpawnTable,
+    ResidenceSpawnTable,
+)
 
 
 class PluginSetupError(Exception):
@@ -159,10 +161,12 @@ class Neighborly:
         self.world.resource_manager.add_resource(DataCollector())
         self.world.resource_manager.add_resource(RandomLifeEventLibrary())
         self.world.resource_manager.add_resource(ItemLibrary())
-        self.world.resource_manager.add_resource(JobRequirementLibrary())
         self.world.resource_manager.add_resource(TraitLibrary())
+        self.world.resource_manager.add_resource(CharacterSpawnTable())
+        self.world.resource_manager.add_resource(BusinessSpawnTable())
+        self.world.resource_manager.add_resource(ResidenceSpawnTable())
 
-        # Set the relationship schema
+        # Set the default relationship prefab
         self.world.gameobject_manager.add_prefab(
             GameObjectPrefab(
                 name="relationship",
@@ -176,6 +180,24 @@ class Neighborly:
                         "max_value": 100,
                     },
                     "InteractionScore": {},
+                },
+            )
+        )
+
+        # Set the default settlement prefab
+        self.world.gameobject_manager.add_prefab(
+            GameObjectPrefab(
+                name="settlement",
+                components={
+                    "Name": {
+                        "value": self.config.settings.get("settlement_name", "#settlement_name#")
+                    },
+                    "Settlement": {
+                        "width": self.config.settings.get("map_width", 5),
+                        "length": self.config.settings.get("map_length", 5),
+                    },
+                    "Age": {},
+                    "Location": {}
                 },
             )
         )
@@ -293,6 +315,11 @@ class Neighborly:
         self.world.system_manager.add_system(systems.TimeSystem(), priority=-9999)
 
         # Register components
+        self.world.gameobject_manager.register_component(Male)
+        self.world.gameobject_manager.register_component(Female)
+        self.world.gameobject_manager.register_component(NonBinary)
+        self.world.gameobject_manager.register_component(Species, factory=SpeciesFactory())
+        self.world.gameobject_manager.register_component(Culture, factory=CultureFactory())
         self.world.gameobject_manager.register_component(Active)
         self.world.gameobject_manager.register_component(AIBrain)
         self.world.gameobject_manager.register_component(Goals)
@@ -350,22 +377,10 @@ class Neighborly:
             Settlement, factory=SettlementFactory()
         )
         self.world.gameobject_manager.register_component(EventHistory)
-        self.world.gameobject_manager.register_component(MarriageConfig)
-        self.world.gameobject_manager.register_component(AgingConfig)
-        self.world.gameobject_manager.register_component(ReproductionConfig)
         self.world.gameobject_manager.register_component(Name, factory=NameFactory())
         self.world.gameobject_manager.register_component(Lifespan)
         self.world.gameobject_manager.register_component(Age)
-        self.world.gameobject_manager.register_component(
-            CharacterSpawnTable, factory=CharacterSpawnTableFactory()
-        )
-        self.world.gameobject_manager.register_component(
-            BusinessSpawnTable, factory=BusinessSpawnTableFactory()
-        )
-        self.world.gameobject_manager.register_component(
-            ResidenceSpawnTable, factory=ResidenceSpawnTableFactory()
-        )
-        self.world.gameobject_manager.register_component(Gender)
+        self.world.gameobject_manager.register_component(Gender, factory=GenderFactory())
         self.world.gameobject_manager.register_component(LifeStage)
         self.world.gameobject_manager.register_component(ItemType)
         self.world.gameobject_manager.register_component(Item)

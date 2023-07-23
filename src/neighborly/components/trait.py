@@ -92,15 +92,16 @@ class Traits(Component):
         trait
             A trait to add.
         """
-        if type(trait) not in self._prohibited_traits:
-            self._traits.add(trait)
-            self._prohibited_traits = self._prohibited_traits.union(
-                trait.get_conflicts()
+        if type(trait) in self._prohibited_traits:
+            raise Exception(
+                "Cannot add trait '{}' as it conflicts with existing traits.".format(
+                    type(trait).__name__
+                )
             )
-        raise Exception(
-            "Cannot add trait '{}' as it conflicts with existing traits.".format(
-                type(trait).__name__
-            )
+
+        self._traits.add(trait)
+        self._prohibited_traits = self._prohibited_traits.union(
+            trait.get_conflicts()
         )
 
     def remove_trait(self, trait: ITrait) -> None:

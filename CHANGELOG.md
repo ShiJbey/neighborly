@@ -55,6 +55,10 @@ to track the maximum capacity of a location or mark locations as eligible for tr
 - Locations no longer track what GameObjects are present at the location since we do not model character movement.
 - `RelationshipUpdateSystem`, `FriendshipStatSystem`, and `RomanceStatSystem`
 
+### Fixed
+
+- Added missing dependencies to `pyproject.toml`
+
 ## [0.11.3]
 
 - [Added] Added functions to `GameObject` and `AllEvents` classes to clear event listeners.
