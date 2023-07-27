@@ -34,7 +34,7 @@ to track the maximum capacity of a location or mark locations as eligible for tr
 
 - Converted samples from python scripts to interactive python notebooks.
 - Time moves at single year time steps
-- Built-in systems now inherit from `SystemBase` instead of `ISystem`
+- Built-in systems now inherit from `System` instead of `ISystem`
 - Death from old age is now a `DieOfOldAgeSystem` instead of a random life event
 - Most events and character behavior are now triggered by specialized systems.
 - Most built-in LifeEvents no longer use role lists to track associated GameObjects and data.

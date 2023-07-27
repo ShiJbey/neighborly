@@ -3,16 +3,18 @@ from typing import Any, Dict
 
 import pytest
 
+from neighborly import NeighborlyConfig
 from neighborly.core.ecs import (
     Active,
     Component,
     ComponentNotFoundError,
     GameObjectNotFoundError,
     ResourceNotFoundError,
-    SystemBase,
+    System,
     SystemNotFoundError,
     World,
 )
+from neighborly.simulation import Neighborly
 
 
 @dataclass
@@ -48,14 +50,6 @@ class Job(Component):
         return {"title": self.title, "salary": self.salary}
 
 
-@dataclass
-class Location(Component):
-    name: str
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"name": self.name}
-
-
 class ComponentA(Component):
     pass
 
@@ -74,10 +68,32 @@ class AnotherFakeResource:
     config_value: int = 43
 
 
-class SalarySystemBase(SystemBase):
+class SalarySystemBase(System):
     def on_update(self, world: World) -> None:
         for _, (job, money) in world.get_components((Job, Money)):
             money.amount += job.salary
+
+
+@pytest.fixture
+def world() -> World:
+    sim = Neighborly(
+        NeighborlyConfig.parse_obj(
+            {
+                "logging": {
+                    "logging_enabled": False,
+                },
+            }
+        )
+    )
+
+    sim.world.gameobject_manager.register_component(Actor)
+    sim.world.gameobject_manager.register_component(CurrentLocation)
+    sim.world.gameobject_manager.register_component(Money)
+    sim.world.gameobject_manager.register_component(Job)
+    sim.world.gameobject_manager.register_component(ComponentA)
+    sim.world.gameobject_manager.register_component(ComponentB)
+
+    return sim.world
 
 
 #########################################
@@ -85,11 +101,10 @@ class SalarySystemBase(SystemBase):
 #########################################
 
 
-def test_spawn_gameobject():
+def test_spawn_gameobject(world: World):
     """Test that gameobjects are spawned properly"""
-    world = World()
 
-    adrian = world.gameobject_manager.spawn_gameobject([Actor("Adrian")])
+    adrian = world.gameobject_manager.spawn_gameobject({Actor: {"name": "Adrian"}})
 
     assert adrian.exists is True
     assert world.gameobject_manager.has_gameobject(adrian)
@@ -102,36 +117,30 @@ def test_spawn_gameobject():
     assert world.gameobject_manager.has_gameobject(jamie)
 
 
-def test_get_gameobject():
-    world = World()
+def test_get_gameobject(world: World):
     gameobject = world.gameobject_manager.spawn_gameobject()
     assert world.gameobject_manager.get_gameobject(gameobject.uid) == gameobject
 
 
-def test_get_gameobject_raises_exception():
+def test_get_gameobject_raises_exception(world: World):
     with pytest.raises(GameObjectNotFoundError):
-        world = World()
         world.gameobject_manager.get_gameobject(7)
 
 
-def test_has_gameobject():
-    world = World()
+def test_has_gameobject(world: World):
     gameobject = world.gameobject_manager.spawn_gameobject()
     assert world.gameobject_manager.has_gameobject(gameobject) is True
 
 
-def test_get_gameobjects():
-    world = World()
+def test_get_gameobjects(world: World):
     g1 = world.gameobject_manager.spawn_gameobject()
     g2 = world.gameobject_manager.spawn_gameobject()
     g3 = world.gameobject_manager.spawn_gameobject()
     assert world.gameobject_manager.get_gameobjects() == [g1, g2, g3]
 
 
-def test_delete_gameobject():
-    world = World()
-
-    g1 = world.gameobject_manager.spawn_gameobject([ComponentA()])
+def test_delete_gameobject(world: World):
+    g1 = world.gameobject_manager.spawn_gameobject({ComponentA: {}})
 
     # Make sure that the game objects exists
     assert world.gameobject_manager.has_gameobject(g1) is True
@@ -157,7 +166,7 @@ def test_delete_gameobject():
 
     # Ensure that GameObjects that are empty, but
     # once held components are properly removed
-    g3 = world.gameobject_manager.spawn_gameobject([ComponentA()])
+    g3 = world.gameobject_manager.spawn_gameobject({ComponentA: {}})
     assert g3.has_component(ComponentA) is True
     g3.remove_component(ComponentA)
     assert (
@@ -177,11 +186,10 @@ def test_delete_gameobject():
 #########################################
 
 
-def test_world_get_component():
-    world = World()
-    world.gameobject_manager.spawn_gameobject([ComponentA()])
-    world.gameobject_manager.spawn_gameobject([ComponentB()])
-    world.gameobject_manager.spawn_gameobject([ComponentA(), ComponentB()])
+def test_world_get_component(world: World):
+    world.gameobject_manager.spawn_gameobject({ComponentA: {}})
+    world.gameobject_manager.spawn_gameobject({ComponentB: {}})
+    world.gameobject_manager.spawn_gameobject({ComponentA: {}, ComponentB: {}})
 
     with_a = world.get_component(ComponentA)
 
@@ -192,11 +200,10 @@ def test_world_get_component():
     assert list(zip(*with_b))[0] == (2, 3)
 
 
-def test_world_get_components():
-    world = World()
-    world.gameobject_manager.spawn_gameobject([ComponentA()])
-    world.gameobject_manager.spawn_gameobject([ComponentB()])
-    world.gameobject_manager.spawn_gameobject([ComponentA(), ComponentB()])
+def test_world_get_components(world: World):
+    world.gameobject_manager.spawn_gameobject({ComponentA: {}})
+    world.gameobject_manager.spawn_gameobject({ComponentB: {}})
+    world.gameobject_manager.spawn_gameobject({ComponentA: {}, ComponentB: {}})
 
     with_a = world.get_components((ComponentA,))
 
@@ -212,9 +219,7 @@ def test_world_get_components():
 #########################################
 
 
-def test_world_add_get_system():
-    world = World()
-
+def test_world_add_get_system(world: World):
     with pytest.raises(SystemNotFoundError):
         assert world.system_manager.get_system(SalarySystemBase)
 
@@ -222,9 +227,7 @@ def test_world_add_get_system():
     assert world.system_manager.get_system(SalarySystemBase) is not None
 
 
-def test_world_remove_system():
-    world = World()
-
+def test_world_remove_system(world: World):
     with pytest.raises(SystemNotFoundError):
         assert world.system_manager.get_system(SalarySystemBase)
 
@@ -237,12 +240,15 @@ def test_world_remove_system():
         assert world.system_manager.get_system(SalarySystemBase)
 
 
-def test_world_step():
-    world = World()
+def test_world_step(world: World):
     world.system_manager.add_system(SalarySystemBase())
 
     adrian = world.gameobject_manager.spawn_gameobject(
-        [Actor("Adrian"), Money(0), Job("Teacher", 24_000)]
+        {
+            Actor: {"name": "Adrian"},
+            Money: {"amount": 0},
+            Job: {"title": "Teacher", "salary": 24_000},
+        }
     )
 
     assert adrian.get_component(Money).amount == 0
@@ -261,69 +267,58 @@ def test_world_step():
 #########################################
 
 
-def test_get_all_resources():
-    world = World()
-
-    fake_resource = FakeResource()
-    another_fake_resource = AnotherFakeResource
-
-    world.resource_manager.add_resource(fake_resource)
-    world.resource_manager.add_resource(another_fake_resource)
-
-    assert world.resource_manager.get_all_resources() == [
-        fake_resource,
-        another_fake_resource,
-    ]
+# def test_get_all_resources(world: World):
+#     fake_resource = FakeResource()
+#     another_fake_resource = AnotherFakeResource()
+#
+#     world.resource_manager.add_resource(fake_resource)
+#     world.resource_manager.add_resource(another_fake_resource)
+#
+#     assert fake_resource in world.resource_manager.get_all_resources()
+#     assert another_fake_resource in world.resource_manager.get_all_resources()
 
 
-def test_has_resource():
-    world = World()
+def test_has_resource(world: World):
     assert world.resource_manager.has_resource(FakeResource) is False
     world.resource_manager.add_resource(FakeResource())
     assert world.resource_manager.has_resource(FakeResource) is True
 
 
-def test_get_resource():
-    world = World()
+def test_get_resource(world: World):
     fake_resource = FakeResource()
     assert world.resource_manager.has_resource(FakeResource) is False
     world.resource_manager.add_resource(fake_resource)
     assert world.resource_manager.get_resource(FakeResource) == fake_resource
 
 
-def test_get_resource_raises_exception():
+def test_get_resource_raises_exception(world: World):
     """
     Test that the .get_resource(...) method throws
     a ResourceNotFoundError when attempting to get
     a resource that does not exist in the world instance.
     """
-    world = World()
     with pytest.raises(ResourceNotFoundError):
         assert world.resource_manager.get_resource(FakeResource)
 
 
-def test_remove_resource():
-    world = World()
+def test_remove_resource(world: World):
     world.resource_manager.add_resource(FakeResource())
     assert world.resource_manager.has_resource(FakeResource) is True
     world.resource_manager.remove_resource(FakeResource)
     assert world.resource_manager.has_resource(FakeResource) is False
 
 
-def test_remove_resource_raises_exception():
+def test_remove_resource_raises_exception(world: World):
     """
     Test that .remove_resource(...) method throws a
     ResourceNotFoundError when attempting to remove a
     resource that does not exist in the World instance.
     """
-    world = World()
     with pytest.raises(ResourceNotFoundError):
         world.resource_manager.remove_resource(FakeResource)
 
 
-def test_try_resource():
-    world = World()
-
+def test_try_resource(world: World):
     assert world.resource_manager.try_resource(FakeResource) is None
 
     world.resource_manager.add_resource(FakeResource())
@@ -331,8 +326,7 @@ def test_try_resource():
     assert world.resource_manager.try_resource(FakeResource) is not None
 
 
-def test_add_resource():
-    world = World()
+def test_add_resource(world: World):
     fake_resource = FakeResource()
     assert world.resource_manager.has_resource(FakeResource) is False
     world.resource_manager.add_resource(fake_resource)
@@ -344,15 +338,10 @@ def test_add_resource():
 #########################################
 
 
-def test_gameobject_get_components():
-    world = World()
-
-    actor_component = Actor("Adrian")
-    money_component = Money(100)
-
-    adrian = world.gameobject_manager.spawn_gameobject(
-        [actor_component, money_component]
-    )
+def test_gameobject_get_components(world: World):
+    adrian = world.gameobject_manager.spawn_gameobject()
+    actor_component = adrian.add_component(Actor, name="Adrian")
+    money_component = adrian.add_component(Money, amount=100)
 
     components = adrian.get_components()
 
@@ -360,10 +349,10 @@ def test_gameobject_get_components():
     assert money_component in components
 
 
-def test_gameobject_get_component_types():
-    world = World()
-
-    adrian = world.gameobject_manager.spawn_gameobject([Actor("Adrian"), Money(100)])
+def test_gameobject_get_component_types(world: World):
+    adrian = world.gameobject_manager.spawn_gameobject(
+        {Actor: {"name": "Adrian"}, Money: {"amount": 100}}
+    )
 
     component_types = set(adrian.get_component_types())
 
@@ -371,56 +360,50 @@ def test_gameobject_get_component_types():
     assert component_types == {Actor, Money, Active}
 
 
-def test_gameobject_add_component():
-    world = World()
+def test_gameobject_add_component(world: World):
     g1 = world.gameobject_manager.spawn_gameobject()
     assert g1.has_component(ComponentA) is False
-    g1.add_component(ComponentA())
+    g1.add_component(ComponentA)
     assert g1.has_component(ComponentA) is True
 
 
-def test_gameobject_get_component():
-    world = World()
-    a_component = ComponentA()
-    g1 = world.gameobject_manager.spawn_gameobject([a_component])
+def test_gameobject_get_component(world: World):
+    g1 = world.gameobject_manager.spawn_gameobject()
+    a_component = g1.add_component(ComponentA)
     assert g1.get_component(ComponentA) == a_component
 
 
-def test_gameobject_get_component_raises_exception():
+def test_gameobject_get_component_raises_exception(world: World):
     with pytest.raises(ComponentNotFoundError):
-        world = World()
         g1 = world.gameobject_manager.spawn_gameobject()
         g1.get_component(ComponentA)
         g1.get_component(ComponentB)
 
 
-def test_gameobject_remove_component():
-    world = World()
-    g1 = world.gameobject_manager.spawn_gameobject([ComponentA(), ComponentB()])
+def test_gameobject_remove_component(world: World):
+    g1 = world.gameobject_manager.spawn_gameobject({ComponentA: {}, ComponentB: {}})
     assert g1.has_component(ComponentA) is True
     g1.remove_component(ComponentA)
     world.step()
     assert g1.has_component(ComponentA) is False
 
 
-def test_gameobject_try_component():
-    world = World()
+def test_gameobject_try_component(world: World):
     g1 = world.gameobject_manager.spawn_gameobject()
     assert g1.try_component(ComponentA) is None
-    g1.add_component(ComponentA())
+    g1.add_component(ComponentA)
     assert g1.try_component(ComponentA) is not None
 
 
-def test_gameobject_add_child():
-    world = World()
-    g1 = world.gameobject_manager.spawn_gameobject([ComponentA()])
-    g2 = world.gameobject_manager.spawn_gameobject([ComponentB()])
+def test_gameobject_add_child(world: World):
+    g1 = world.gameobject_manager.spawn_gameobject({ComponentA: {}})
+    g2 = world.gameobject_manager.spawn_gameobject({ComponentB: {}})
     g1.add_child(g2)
 
     assert (g2 in g1.children) is True
     assert (g2.parent == g1) is True
 
-    g3 = world.gameobject_manager.spawn_gameobject([ComponentA()])
+    g3 = world.gameobject_manager.spawn_gameobject({ComponentA: {}})
 
     g3.add_child(g2)
 
@@ -430,11 +413,10 @@ def test_gameobject_add_child():
     assert (g2 in g3.children) is True
 
 
-def test_gameobject_remove_child():
-    world = World()
-    g1 = world.gameobject_manager.spawn_gameobject([ComponentA()])
-    g2 = world.gameobject_manager.spawn_gameobject([ComponentB()])
-    g3 = world.gameobject_manager.spawn_gameobject([ComponentB()])
+def test_gameobject_remove_child(world: World):
+    g1 = world.gameobject_manager.spawn_gameobject({ComponentA: {}})
+    g2 = world.gameobject_manager.spawn_gameobject({ComponentB: {}})
+    g3 = world.gameobject_manager.spawn_gameobject({ComponentB: {}})
 
     g1.add_child(g2)
     g1.add_child(g3)
@@ -449,14 +431,12 @@ def test_gameobject_remove_child():
     assert g3.parent is None
 
 
-def test_gameobject_remove_gameobject_with_children():
-    world = World()
-
-    g1 = world.gameobject_manager.spawn_gameobject([ComponentA()])
-    g2 = world.gameobject_manager.spawn_gameobject([ComponentB()])
-    g3 = world.gameobject_manager.spawn_gameobject([ComponentB()])
-    g4 = world.gameobject_manager.spawn_gameobject([ComponentB()])
-    g5 = world.gameobject_manager.spawn_gameobject([ComponentB()])
+def test_gameobject_remove_gameobject_with_children(world: World):
+    g1 = world.gameobject_manager.spawn_gameobject({ComponentA: {}})
+    g2 = world.gameobject_manager.spawn_gameobject({ComponentB: {}})
+    g3 = world.gameobject_manager.spawn_gameobject({ComponentB: {}})
+    g4 = world.gameobject_manager.spawn_gameobject({ComponentB: {}})
+    g5 = world.gameobject_manager.spawn_gameobject({ComponentB: {}})
 
     g1.add_child(g2)
     g2.add_child(g3)

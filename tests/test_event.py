@@ -5,6 +5,7 @@ import pytest
 from neighborly.core.ecs import GameObject, World
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.time import SimDateTime
+from neighborly.simulation import Neighborly
 
 
 class PriceDisputeEvent(LifeEvent):
@@ -25,15 +26,13 @@ class PriceDisputeEvent(LifeEvent):
         self.customer = customer
 
     def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [
-            self.merchant, self.customer
-        ]
+        return [self.merchant, self.customer]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
             "merchant": self.merchant.uid,
-            "customer": self.customer.uid
+            "customer": self.customer.uid,
         }
 
 
@@ -52,28 +51,27 @@ class DeclareRivalryEvent(LifeEvent):
         return list(self.characters)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "characters": [c.uid for c in self.characters]
-        }
+        return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
 
 
 @pytest.fixture
 def sample_event():
-    world = World()
-    merchant = world.gameobject_manager.spawn_gameobject(name="Merchant")
-    customer = world.gameobject_manager.spawn_gameobject(name="customer")
+    sim = Neighborly()
+    merchant = sim.world.gameobject_manager.spawn_gameobject(name="Merchant")
+    customer = sim.world.gameobject_manager.spawn_gameobject(name="customer")
 
-    return PriceDisputeEvent(world, SimDateTime(1, 1, 1), merchant, customer)
+    return PriceDisputeEvent(sim.world, SimDateTime(1, 1, 1), merchant, customer)
 
 
 @pytest.fixture
 def shared_role_event():
-    world = World()
-    character_a = world.gameobject_manager.spawn_gameobject(name="A")
-    character_b = world.gameobject_manager.spawn_gameobject(name="B")
+    sim = Neighborly()
+    character_a = sim.world.gameobject_manager.spawn_gameobject(name="A")
+    character_b = sim.world.gameobject_manager.spawn_gameobject(name="B")
 
-    return DeclareRivalryEvent(world, SimDateTime(1, 1, 1), character_a, character_b)
+    return DeclareRivalryEvent(
+        sim.world, SimDateTime(1, 1, 1), character_a, character_b
+    )
 
 
 def test_life_event_to_dict(sample_event: LifeEvent):

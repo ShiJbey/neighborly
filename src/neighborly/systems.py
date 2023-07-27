@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from typing import DefaultDict, List, Tuple, Type
+from typing import ClassVar, DefaultDict, List, Tuple, Type
 
 from ordered_set import OrderedSet
 
@@ -25,35 +25,32 @@ from neighborly.components.character import (
     ParentOf,
     Pregnant,
     SiblingOf,
+    create_character,
 )
-from neighborly.components.items import ItemLibrary
 from neighborly.components.residence import Residence, Resident
-from neighborly.components.role import Roles
 from neighborly.components.shared import (
     Age,
-    CurrentSettlement,
     FrequentedBy,
     FrequentedLocations,
     Lifespan,
-    Name,
 )
-from neighborly.components.trait import IInheritable, Traits, add_trait
-from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import Active, GameObject, SystemBase, SystemGroup, World
+from neighborly.core.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
 from neighborly.core.relationship import (
+    Friendship,
     InteractionScore,
+    PlatonicCompatibility,
     Relationship,
-    RelationshipManager,
+    Relationships,
+    Romance,
+    RomanticCompatibility,
     SocialRuleLibrary,
     add_relationship,
-    add_relationship_status,
     get_relationship,
-    get_relationships_with_statuses,
+    get_relationships_with_components,
     has_relationship,
 )
-from neighborly.core.status import add_status, has_status, remove_status
 from neighborly.core.time import SimDateTime
 from neighborly.events import (
     BecameAcquaintancesEvent,
@@ -64,7 +61,6 @@ from neighborly.events import (
     BirthEvent,
     GetPregnantEvent,
     HaveChildEvent,
-    SettlementCreatedEvent,
 )
 from neighborly.goals import (
     BreakUp,
@@ -77,14 +73,14 @@ from neighborly.goals import (
     GetMarried,
     Retire,
 )
+from neighborly.role_system import Roles
+from neighborly.trait_system import Traits
 from neighborly.utils.common import (
     get_child_prefab,
     is_employed,
-    score_frequentable_locations,
-    set_character_settlement,
+    score_locations_to_frequent,
     set_residence,
     shutdown_business,
-    spawn_character,
 )
 from neighborly.utils.location import add_frequented_location
 from neighborly.utils.query import is_single
@@ -162,7 +158,7 @@ class DataCollectionSystemGroup(SystemGroup):
 ############################################
 
 
-class TimeSystem(SystemBase):
+class TimeSystem(System):
     """Advances the current date of the simulation."""
 
     def on_update(self, world: World) -> None:
@@ -170,7 +166,7 @@ class TimeSystem(SystemBase):
         current_date.increment(years=1)
 
 
-class RandomLifeEventSystem(SystemBase):
+class RandomLifeEventSystem(System):
     """Attempts to execute non-optional life events
 
     Life events triggered by this system do not pass through the character AI. You can
@@ -200,7 +196,7 @@ class RandomLifeEventSystem(SystemBase):
                     event.dispatch()
 
 
-class MeetNewPeopleSystem(SystemBase):
+class MeetNewPeopleSystem(System):
     """Characters meet new people based on places they frequent"""
 
     def on_update(self, world: World) -> None:
@@ -237,17 +233,15 @@ class MeetNewPeopleSystem(SystemBase):
                     InteractionScore
                 ).base_value += candidate_scores[acquaintance]
 
-                event = BecameAcquaintancesEvent(
+                BecameAcquaintancesEvent(
                     world,
                     world.resource_manager.get_resource(SimDateTime).copy(),
                     character,
                     acquaintance,
-                )
-
-                event.dispatch()
+                ).dispatch()
 
 
-class IncrementAgeSystem(SystemBase):
+class IncrementAgeSystem(System):
     """Increases the age of all active GameObjects with Age components."""
 
     def on_update(self, world: World) -> None:
@@ -255,21 +249,25 @@ class IncrementAgeSystem(SystemBase):
             age.value += 1
 
 
-class UpdateLifeStageSystem(SystemBase):
+class UpdateLifeStageSystem(System):
     """Change the life stage of a character based on it's age a life stage config."""
 
     def on_update(self, world: World) -> None:
         current_date = world.resource_manager.get_resource(SimDateTime)
 
-        for guid, (aging_config, age, _, _) in world.get_components(
-            (AgingConfig, Age, CanAge, Active)
-        ):
+        for guid, (
+            game_character,
+            age,
+            life_stage,
+            _,
+            _,
+        ) in world.get_components((GameCharacter, Age, LifeStage, CanAge, Active)):
             character = world.gameobject_manager.get_gameobject(guid)
 
-            if not character.has_component(LifeStage):
-                character.add_component(LifeStage())
+            aging_config = game_character.character_type.config.aging
 
-            life_stage = character.get_component(LifeStage)
+            if aging_config is None:
+                continue
 
             if age.value >= aging_config.senior_age:
                 if life_stage.life_stage != LifeStageType.Senior:
@@ -292,10 +290,11 @@ class UpdateLifeStageSystem(SystemBase):
                     BecomeAdolescentEvent(world, current_date, character).dispatch()
 
             else:
-                life_stage.life_stage = LifeStageType.Child
+                if life_stage.life_stage != LifeStageType.Child:
+                    life_stage.life_stage = LifeStageType.Child
 
 
-class UnemployedStatusSystem(SystemBase):
+class UnemployedStatusSystem(System):
     """Provides unemployed characters with a goal to find employment."""
 
     __slots__ = "years_to_find_a_job"
@@ -312,7 +311,7 @@ class UnemployedStatusSystem(SystemBase):
         for guid, (unemployed, _) in world.get_components((Unemployed, Active)):
             character = world.gameobject_manager.get_gameobject(guid)
 
-            years_unemployed = current_year - unemployed.year_created
+            years_unemployed = current_year - unemployed.timestamp
 
             # Keep trying to find a job
             find_employment_goal = FindEmployment(character)
@@ -321,7 +320,7 @@ class UnemployedStatusSystem(SystemBase):
 
             # Start thinking about leaving the settlement
             if years_unemployed > self.years_to_find_a_job:
-                spousal_relationships = get_relationships_with_statuses(
+                spousal_relationships = get_relationships_with_components(
                     character, Married
                 )
 
@@ -343,7 +342,7 @@ class UnemployedStatusSystem(SystemBase):
                     character.get_component(Goals).push_goal(priority, depart_goal)
 
 
-class ChildBirthSystem(SystemBase):
+class ChildBirthSystem(System):
     """Handles childbirths for pregnant characters."""
 
     @staticmethod
@@ -354,19 +353,11 @@ class ChildBirthSystem(SystemBase):
         rng = baby.world.resource_manager.get_resource(random.Random)
 
         parent_a_traits = OrderedSet(
-            [
-                type(t)
-                for t in parents[0].get_component(Traits).iter_traits()
-                if isinstance(t, IInheritable)
-            ]
+            [type(t) for t in parents[0].get_component(Traits).iter_traits()]
         )
 
         parent_b_traits = OrderedSet(
-            [
-                type(t)
-                for t in parents[1].get_component(Traits).iter_traits()
-                if isinstance(t, IInheritable)
-            ]
+            [type(t) for t in parents[1].get_component(Traits).iter_traits()]
         )
 
         shared_traits = parent_a_traits.intersection(parent_b_traits)
@@ -380,18 +371,14 @@ class ChildBirthSystem(SystemBase):
                 continue
 
             if rng.random() < trait_type.inheritance_probability()[1]:
-                add_trait(
-                    baby, baby.world.gameobject_manager.create_component(trait_type)
-                )
+                baby.add_component(trait_type)
 
         for trait_type in single_traits:
             if trait_type in baby_traits.prohibited_traits:
                 continue
 
             if rng.random() < trait_type.inheritance_probability()[0]:
-                add_trait(
-                    baby, baby.world.gameobject_manager.create_component(trait_type)
-                )
+                baby.add_component(trait_type)
 
     def on_update(self, world: World) -> None:
         date = world.resource_manager.get_resource(SimDateTime)
@@ -399,18 +386,16 @@ class ChildBirthSystem(SystemBase):
         for guid, pregnant in world.get_component(Pregnant):
             pregnant_character = world.gameobject_manager.get_gameobject(guid)
 
-            if date.year <= pregnant.year_created:
+            if date.year <= pregnant.timestamp:
                 continue
 
             other_parent = pregnant.partner
 
-            child_prefab = get_child_prefab(pregnant_character, other_parent)
+            child_character_type = get_child_prefab(pregnant_character, other_parent)
 
-            assert child_prefab is not None
-
-            baby = spawn_character(
-                world,
-                child_prefab,
+            baby = create_character(
+                world=world,
+                character_type=child_character_type,
                 last_name=pregnant_character.get_component(GameCharacter).last_name,
             )
 
@@ -419,9 +404,6 @@ class ChildBirthSystem(SystemBase):
                 baby=baby, parents=(pregnant_character, other_parent)
             )
 
-            settlement = pregnant_character.get_component(CurrentSettlement).settlement
-            set_character_settlement(baby, settlement)
-
             set_residence(
                 baby,
                 pregnant_character.get_component(Resident).residence,
@@ -429,36 +411,43 @@ class ChildBirthSystem(SystemBase):
 
             # Birthing parent to child
             add_relationship(pregnant_character, baby)
-            add_relationship_status(
-                pregnant_character, baby, ParentOf(year_created=date.year)
+            get_relationship(pregnant_character, baby).add_component(
+                ParentOf, timestamp=date.year
             )
-            add_relationship_status(
-                pregnant_character, baby, Family(year_created=date.year)
+
+            get_relationship(pregnant_character, baby).add_component(
+                Family, timestamp=date.year
             )
 
             # Child to birthing parent
             add_relationship(baby, pregnant_character)
-            add_relationship_status(
-                baby, pregnant_character, ChildOf(year_created=date.year)
+            get_relationship(baby, pregnant_character).add_component(
+                ChildOf, timestamp=date.year
             )
-            add_relationship_status(
-                baby, pregnant_character, Family(year_created=date.year)
+            get_relationship(baby, pregnant_character).add_component(
+                Family, timestamp=date.year
             )
 
             # Other parent to child
             add_relationship(other_parent, baby)
-            add_relationship_status(
-                other_parent, baby, ParentOf(year_created=date.year)
+            get_relationship(other_parent, baby).add_component(
+                ParentOf, timestamp=date.year
             )
-            add_relationship_status(other_parent, baby, Family(year_created=date.year))
+            get_relationship(other_parent, baby).add_component(
+                Family, timestamp=date.year
+            )
 
             # Child to other parent
             add_relationship(baby, other_parent)
-            add_relationship_status(baby, other_parent, ChildOf(year_created=date.year))
-            add_relationship_status(baby, other_parent, Family(year_created=date.year))
+            get_relationship(baby, other_parent).add_component(
+                ChildOf, timestamp=date.year
+            )
+            get_relationship(baby, other_parent).add_component(
+                Family, timestamp=date.year
+            )
 
             # Create relationships with children of birthing parent
-            for relationship in get_relationships_with_statuses(
+            for relationship in get_relationships_with_components(
                 pregnant_character, ParentOf
             ):
                 rel = relationship.get_component(Relationship)
@@ -470,20 +459,26 @@ class ChildBirthSystem(SystemBase):
 
                 # Baby to sibling
                 add_relationship(baby, sibling)
-                add_relationship_status(
-                    baby, sibling, SiblingOf(year_created=date.year)
+                get_relationship(baby, sibling).add_component(
+                    SiblingOf, timestamp=date.year
                 )
-                add_relationship_status(baby, sibling, Family(year_created=date.year))
+                get_relationship(baby, sibling).add_component(
+                    Family, timestamp=date.year
+                )
 
                 # Sibling to baby
                 add_relationship(sibling, baby)
-                add_relationship_status(
-                    sibling, baby, SiblingOf(year_created=date.year)
+                get_relationship(sibling, baby).add_component(
+                    SiblingOf, timestamp=date.year
                 )
-                add_relationship_status(sibling, baby, Family(year_created=date.year))
+                get_relationship(sibling, baby).add_component(
+                    Family, timestamp=date.year
+                )
 
             # Create relationships with children of other parent
-            for relationship in get_relationships_with_statuses(other_parent, ParentOf):
+            for relationship in get_relationships_with_components(
+                other_parent, ParentOf
+            ):
                 rel = relationship.get_component(Relationship)
                 if rel.target == baby:
                     continue
@@ -492,19 +487,23 @@ class ChildBirthSystem(SystemBase):
 
                 # Baby to sibling
                 add_relationship(baby, sibling)
-                add_relationship_status(
-                    baby, sibling, SiblingOf(year_created=date.year)
+                get_relationship(baby, sibling).add_component(
+                    SiblingOf, timestamp=date.year
                 )
-                add_relationship_status(baby, sibling, Family(year_created=date.year))
+                get_relationship(baby, sibling).add_component(
+                    Family, timestamp=date.year
+                )
 
                 # Sibling to baby
                 add_relationship(sibling, baby)
-                add_relationship_status(
-                    sibling, baby, SiblingOf(year_created=date.year)
+                get_relationship(sibling, baby).add_component(
+                    SiblingOf, timestamp=date.year
                 )
-                add_relationship_status(sibling, baby, Family(year_created=date.year))
+                get_relationship(sibling, baby).add_component(
+                    Family, timestamp=date.year
+                )
 
-            remove_status(pregnant_character, Pregnant)
+            pregnant_character.remove_component(Pregnant)
 
             # Pregnancy event dates are retro-fit to be the actual date that the
             # child was due.
@@ -517,7 +516,7 @@ class ChildBirthSystem(SystemBase):
             world.event_manager.dispatch_event(birth_event)
 
 
-class EvaluateSocialRulesSystem(SystemBase):
+class EvaluateSocialRulesSystem(System):
     """Evaluates social rules against existing relationships
 
     This system reevaluates social rules on characters' relationships and updates the
@@ -529,9 +528,7 @@ class EvaluateSocialRulesSystem(SystemBase):
     def on_update(self, world: World) -> None:
         rule_library = world.resource_manager.get_resource(SocialRuleLibrary)
 
-        for guid, (relationship, _) in world.get_components(
-            (Relationship, Active)
-        ):
+        for guid, (relationship, _) in world.get_components((Relationship, Active)):
             relationship_obj = world.gameobject_manager.get_gameobject(guid)
 
             # Remove the affects of existing rules
@@ -539,13 +536,69 @@ class EvaluateSocialRulesSystem(SystemBase):
                 rule.remove(relationship.owner, relationship.target, relationship_obj)
             relationship.clear_active_rules()
 
-            # Test all the rules in the library and apply those with passing preconditions
+            # Test all the rules in the library and apply those with passing
+            # preconditions
             for rule in rule_library.iter_rules():
-                if rule.check_preconditions(relationship.owner, relationship.target, relationship_obj):
-                    rule.apply(relationship.owner, relationship.target, relationship_obj)
+                if rule.check_preconditions(
+                    relationship.owner, relationship.target, relationship_obj
+                ):
+                    rule.apply(
+                        relationship.owner, relationship.target, relationship_obj
+                    )
+                    relationship.add_rule(rule)
 
 
-class UpdateFrequentedLocationSystem(SystemBase):
+class PassiveFriendshipChange(System):
+    """Friendship stats have a probability of changing each time step."""
+
+    CHANCE_OF_CHANGE: ClassVar[float] = 0.20
+
+    def on_update(self, world: World) -> None:
+        rng = world.resource_manager.get_resource(random.Random)
+
+        for _, (
+            _,
+            friendship,
+            compatibility,
+            interaction_score,
+            _,
+        ) in world.get_components(
+            (Relationship, Friendship, PlatonicCompatibility, InteractionScore, Active)
+        ):
+            final_chance = (
+                PassiveFriendshipChange.CHANCE_OF_CHANGE * interaction_score.value
+            )
+
+            if rng.random() < final_chance:
+                friendship.base_value = friendship.base_value + compatibility.value
+
+
+class PassiveRomanceChange(System):
+    """Romance stats have a probability of changing each time step."""
+
+    CHANCE_OF_CHANGE: ClassVar[float] = 0.20
+
+    def on_update(self, world: World) -> None:
+        rng = world.resource_manager.get_resource(random.Random)
+
+        for _, (
+            _,
+            romance,
+            compatibility,
+            interaction_score,
+            _,
+        ) in world.get_components(
+            (Relationship, Romance, RomanticCompatibility, InteractionScore, Active)
+        ):
+            final_chance = (
+                PassiveRomanceChange.CHANCE_OF_CHANGE * interaction_score.value
+            )
+
+            if rng.random() < final_chance:
+                romance.base_value = romance.base_value + compatibility.value
+
+
+class UpdateFrequentedLocationSystem(System):
     """Characters update the locations that they frequent
 
     This system runs on a regular interval to allow characters to update the locations
@@ -559,7 +612,7 @@ class UpdateFrequentedLocationSystem(SystemBase):
     """The ideal number of frequented locations that characters should have"""
 
     location_score_threshold: float
-    """The probability score required for a character to consider frequenting a location."""
+    """The probability score required for to consider frequenting a location."""
 
     def __init__(
         self, ideal_location_count: int = 4, location_score_threshold: float = 0.4
@@ -573,12 +626,9 @@ class UpdateFrequentedLocationSystem(SystemBase):
         # that the character belongs to
         for guid, (
             frequented_locations,
-            current_settlement,
             life_stage,
             _,
-        ) in world.get_components(
-            (FrequentedLocations, CurrentSettlement, LifeStage, Active)
-        ):
+        ) in world.get_components((FrequentedLocations, LifeStage, Active)):
             if life_stage.life_stage < LifeStageType.YoungAdult:
                 continue
 
@@ -590,9 +640,7 @@ class UpdateFrequentedLocationSystem(SystemBase):
                     0, self.ideal_location_count - len(frequented_locations)
                 )
 
-                for score, location in score_frequentable_locations(
-                    character, current_settlement.settlement
-                ):
+                for score, location in score_locations_to_frequent(character):
                     if (
                         score > self.location_score_threshold
                         and location not in frequented_locations
@@ -604,7 +652,7 @@ class UpdateFrequentedLocationSystem(SystemBase):
                         break
 
 
-class AIActionSystem(SystemBase):
+class AIActionSystem(System):
     """AIs execute actions.
 
     This system loops through all the AIComponents and has them attempt to execute
@@ -647,7 +695,7 @@ class AIActionSystem(SystemBase):
             goals.clear_goals()
 
 
-class DieOfOldAgeSystem(SystemBase):
+class DieOfOldAgeSystem(System):
     """Things probabilistically die when they get close to their lifespan."""
 
     def on_update(self, world: World) -> None:
@@ -667,7 +715,7 @@ class DieOfOldAgeSystem(SystemBase):
                 Die(world.gameobject_manager.get_gameobject(guid)).evaluate()
 
 
-class GoOutOfBusinessSystem(SystemBase):
+class GoOutOfBusinessSystem(System):
     @staticmethod
     def calculate_probability_of_closing(business: GameObject) -> float:
         """Calculate the probability of a business randomly going out of business."""
@@ -675,7 +723,7 @@ class GoOutOfBusinessSystem(SystemBase):
         current_date = business.world.resource_manager.get_resource(SimDateTime)
 
         years_in_business: int = (
-            current_date.year - business.get_component(OpenForBusiness).year_created
+            current_date.year - business.get_component(OpenForBusiness).timestamp
         )
 
         return (years_in_business / (lifespan + 10)) ** 2
@@ -691,13 +739,13 @@ class GoOutOfBusinessSystem(SystemBase):
                 shutdown_business(business)
 
 
-class PregnancySystem(SystemBase):
+class PregnancySystem(System):
     """Some characters may get pregnant when in romantic relationships."""
 
     @staticmethod
     def get_probability_of_pregnancy(character: GameObject) -> float:
         """Calculate probability of a character getting pregnant."""
-        num_children = len(get_relationships_with_statuses(character, ParentOf))
+        num_children = len(get_relationships_with_components(character, ParentOf))
         return 1.0 - (num_children / 5.0)
 
     def on_update(self, world: World) -> None:
@@ -714,7 +762,7 @@ class PregnancySystem(SystemBase):
 
             # Try to find a romantic partner
             for other_character, relationship in character.get_component(
-                RelationshipManager
+                Relationships
             ).outgoing.items():
                 if not other_character.has_component(Active):
                     continue
@@ -723,8 +771,8 @@ class PregnancySystem(SystemBase):
                     continue
 
                 if not (
-                    has_status(relationship, Dating)
-                    or has_status(relationship, Married)
+                    relationship.has_component(Dating)
+                    or relationship.has_component(Married)
                 ):
                     continue
 
@@ -736,9 +784,10 @@ class PregnancySystem(SystemBase):
                 if rng.random() < PregnancySystem.get_probability_of_pregnancy(
                     character
                 ):
-                    add_status(
-                        character,
-                        Pregnant(partner=chosen_partner, year_created=date.year),
+                    character.add_component(
+                        Pregnant,
+                        partner=chosen_partner,
+                        year_created=date.year,
                     )
 
                     event = GetPregnantEvent(world, date, character, chosen_partner)
@@ -746,7 +795,7 @@ class PregnancySystem(SystemBase):
                     event.dispatch()
 
 
-class DatingBreakUpSystem(SystemBase):
+class DatingBreakUpSystem(System):
     def on_update(self, world: World) -> None:
         for _, (relationship, _, _) in world.get_components(
             (Relationship, Dating, Active)
@@ -759,7 +808,7 @@ class DatingBreakUpSystem(SystemBase):
                 owner.get_component(Goals).push_goal(utility, goal)
 
 
-class MarriageSystem(SystemBase):
+class MarriageSystem(System):
     def on_update(self, world: World) -> None:
         for _, (relationship, _, _) in world.get_components(
             (Relationship, Dating, Active)
@@ -772,7 +821,7 @@ class MarriageSystem(SystemBase):
                 owner.get_component(Goals).push_goal(utility, goal)
 
 
-class EndMarriageSystem(SystemBase):
+class EndMarriageSystem(System):
     def on_update(self, world: World) -> None:
         for _, (relationship, _, _) in world.get_components(
             (Relationship, Married, Active)
@@ -785,7 +834,7 @@ class EndMarriageSystem(SystemBase):
                 owner.get_component(Goals).push_goal(utility, goal)
 
 
-class FindRomanceSystem(SystemBase):
+class FindRomanceSystem(System):
     """
     Handles the dating/breakup loop
 
@@ -808,7 +857,7 @@ class FindRomanceSystem(SystemBase):
                     goals.push_goal(utility, goal)
 
 
-class FindOwnPlaceSystem(SystemBase):
+class FindOwnPlaceSystem(System):
     """
     This system looks for young-adult to adult-aged characters who don't own their own
     residence and encourages them to find their own residence or leave the simulation
@@ -830,7 +879,7 @@ class FindOwnPlaceSystem(SystemBase):
                     goals.push_goal(utility, goal)
 
 
-class RetirementSystem(SystemBase):
+class RetirementSystem(System):
     """Encourages senior residents to retire from all their jobs."""
 
     def on_update(self, world: World) -> None:
@@ -844,41 +893,3 @@ class RetirementSystem(SystemBase):
                 goal = Retire(character)
                 utility = goal.get_utility()[character]
                 goals.push_goal(utility, goal)
-
-
-############################################
-#          INITIALIZATION SYSTEMS          #
-############################################
-
-
-class InitializeItemTypeSystem(SystemBase):
-    """Creates Item Type GameObjects and updates the library with references."""
-
-    def on_update(self, world: World) -> None:
-        item_library = world.resource_manager.get_resource(ItemLibrary)
-
-        for prefab_name in item_library.items_to_instantiate:
-            item_type_obj = world.gameobject_manager.instantiate_prefab(prefab_name)
-            item_type_obj.name = prefab_name
-            item_library.add(item_type_obj)
-
-
-class InitializeSettlementSystem(SystemBase):
-    """Initializes a single settlement in the world."""
-
-    def on_update(self, world: World) -> None:
-        sim_config = world.resource_manager.get_resource(NeighborlyConfig)
-
-        settlement_prefab_name = sim_config.settings.get("settlement_prefab", "settlement")
-
-        settlement = world.gameobject_manager.instantiate_prefab(settlement_prefab_name)
-
-        settlement.name = settlement.get_component(Name).value
-
-        event = SettlementCreatedEvent(
-            world=world,
-            date=world.resource_manager.get_resource(SimDateTime).copy(),
-            settlement=settlement,
-        )
-
-        world.event_manager.dispatch_event(event)

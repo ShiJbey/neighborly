@@ -56,7 +56,9 @@ class Shopaholic(TagComponent):
 
 
 @location_preference_rule(sim.world, "social-butterfly")
-def social_butterfly_rule(character: GameObject, location: GameObject) -> Optional[float]:
+def social_butterfly_rule(
+    character: GameObject, location: GameObject
+) -> Optional[float]:
     if character.has_component(SocialButterfly) and location_has_services(
         location, "Socializing"
     ):
@@ -105,52 +107,49 @@ def main():
 
     locations = [
         sim.world.gameobject_manager.spawn_gameobject(
-            [
-                Location(),
-                sim.world.gameobject_manager.create_component(
-                    Services, services=["Recreation", "Socializing"]
-                ),
-            ],
+            {
+                Location: {},
+                Services: {"services": ["Recreation", "Socializing"]},
+            },
             name="Gym",
         ),
         sim.world.gameobject_manager.spawn_gameobject(
-            [
-                Location(),
-                sim.world.gameobject_manager.create_component(
-                    Services, services=["Reading"]
-                ),
-            ],
+            {
+                Location: {},
+                Services: {"services": ["Reading"]},
+            },
             name="Library",
         ),
         sim.world.gameobject_manager.spawn_gameobject(
-            [
-                Location(),
-                sim.world.gameobject_manager.create_component(
-                    Services, services=["Shopping", "Socializing", "People Watching"]
-                ),
-            ],
+            {
+                Location: {},
+                Services: {"services": ["Shopping", "Socializing", "People Watching"]},
+            },
             name="Mall",
         ),
         sim.world.gameobject_manager.spawn_gameobject(
-            [
-                Location(),
-                sim.world.gameobject_manager.create_component(
-                    Services, services=["Drinking", "Socializing"]
-                ),
-            ],
+            {
+                Location: {},
+                Services: {"services": ["Drinking", "Socializing"]},
+            },
             name="Bar",
         ),
     ]
 
     characters = [
         sim.world.gameobject_manager.spawn_gameobject(
-            [Actor("Alice"), HealthNut(), SocialButterfly()]
+            {Actor: {"name": "Alice"}, HealthNut: {}, SocialButterfly: {}}
         ),
         sim.world.gameobject_manager.spawn_gameobject(
-            [Actor("James"), Shopaholic(), BookWorm(), HealthNut()]
+            {Actor: {"name": "James"}, Shopaholic: {}, BookWorm: {}, HealthNut: {}}
         ),
         sim.world.gameobject_manager.spawn_gameobject(
-            [Actor("Raven"), RecoveringAlcoholic(), HealthNut(), SocialButterfly()]
+            {
+                Actor: {"name": "Raven"},
+                HealthNut: {},
+                SocialButterfly: {},
+                RecoveringAlcoholic: {},
+            }
         ),
     ]
 

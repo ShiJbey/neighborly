@@ -4,11 +4,13 @@ Neighborly uses Kate Compton's Tracery to generate names for characters, items,
 businesses and other named objects.
 
 """
-
+import pathlib
 from typing import Dict, List, Optional, Union
 
 import tracery
 import tracery.modifiers as tracery_modifiers
+
+from neighborly.core.ecs import World
 
 
 class Tracery:
@@ -59,3 +61,25 @@ class Tracery:
             The final string.
         """
         return self._grammar.flatten(start_string)  # type: ignore
+
+
+def load_names(
+    world: World, rule_name: str, file_path: Union[str, pathlib.Path]
+) -> None:
+    """Load names a list of names from a file and register them in Tracery.
+
+    This function assumes that names are organized one-per-line in a text file.
+
+    Parameters
+    ----------
+    world
+        The world instance.
+    rule_name
+        The name of the rule to register the names under in Tracery.
+    file_path
+        The path of the data file to load.
+    """
+    with open(file_path, "r") as f:
+        world.resource_manager.get_resource(Tracery).add_rules(
+            {rule_name: f.read().splitlines()}
+        )

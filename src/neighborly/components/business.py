@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import (
     Any,
     ClassVar,
@@ -20,19 +20,23 @@ from typing import (
 
 import attrs
 from ordered_set import OrderedSet
-from typing_extensions import TypedDict
 
-from neighborly.core.ecs import (
-    Component,
-    GameObject,
-    GameObjectPrefab,
-    ISerializable,
-    World,
+from neighborly import Event, SimDateTime
+from neighborly.components.shared import (
+    Building,
+    FrequentedBy,
+    Lifespan,
+    Location,
+    Name,
+    Position2D,
 )
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.relationship import IRelationshipStatus
-from neighborly.core.status import IStatus
-from neighborly.spawn_table import BusinessSpawnTable
+from neighborly.core.ecs import Component, GameObject, ISerializable, World
+from neighborly.core.life_event import EventHistory, LifeEvent
+from neighborly.core.relationship import Relationships
+from neighborly.role_system import IRole
+from neighborly.spawn_table import BusinessSpawnTable, BusinessSpawnTableEntry
+from neighborly.status_system import IStatus, Statuses
+from neighborly.world_map import BuildingMap
 
 
 class JobRequirementFn(Protocol):
@@ -115,7 +119,7 @@ class JobRequirements:
             return True
 
 
-class Occupation(Component, ISerializable, ABC):
+class Occupation(IRole, ABC):
     """Information about a character's employment status."""
 
     __slots__ = "start_year", "business"
@@ -331,7 +335,13 @@ class OpenForBusiness(IStatus):
 class Business(Component, ISerializable):
     """Businesses are places where characters are employed."""
 
-    __slots__ = ("_owner_position", "_employees", "_employee_positions", "_owner")
+    __slots__ = (
+        "_owner_position",
+        "_employees",
+        "_employee_positions",
+        "_owner",
+        "_business_type",
+    )
 
     _owner_position: Type[Occupation]
     """The job position information for the business owner."""
@@ -345,10 +355,14 @@ class Business(Component, ISerializable):
     _owner: Optional[GameObject]
     """The owner of the business."""
 
+    _business_type: BusinessType
+    """A reference to the businesses' BusinessType component"""
+
     def __init__(
         self,
         owner_type: Type[Occupation],
         employee_types: Dict[Type[Occupation], int],
+        business_type: BusinessType,
     ) -> None:
         """
         Parameters
@@ -356,7 +370,8 @@ class Business(Component, ISerializable):
         owner_type
             The OccupationType for the owner of the business.
         employee_types
-            OccupationTypes mapped to the total number of that occupation that can work at an instance of this
+            OccupationTypes mapped to the total number of that occupation that can work
+            at an instance of this
             business.
         """
         super().__init__()
@@ -364,6 +379,7 @@ class Business(Component, ISerializable):
         self._employee_positions = employee_types
         self._employees = {}
         self._owner = None
+        self._business_type = business_type
 
     @property
     def owner_type(self) -> Type[Occupation]:
@@ -373,6 +389,10 @@ class Business(Component, ISerializable):
     @property
     def owner(self) -> Optional[GameObject]:
         return self._owner
+
+    @property
+    def business_type(self) -> BusinessType:
+        return self._business_type
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -504,74 +524,341 @@ class InTheWorkforce(IStatus):
     pass
 
 
-class BossOf(IRelationshipStatus):
+class BossOf(IStatus):
     """Tags the owner of a relationship as being the employer of the target."""
 
     pass
 
 
-class EmployeeOf(IRelationshipStatus):
+class EmployeeOf(IStatus):
     """Tags the owner of a relationship as being the employee of the target."""
 
     pass
 
 
-class CoworkerOf(IRelationshipStatus):
+class CoworkerOf(IStatus):
     """Tags the owner of a relationship as being a coworker of the target."""
 
     pass
 
 
-class BusinessConfig(TypedDict, total=False):
-    spawn_frequency: int
-    max_instances: int
-    min_population: int
-    year_available: int
-    year_obsolete: int
-    owner_type: int
-    employee_types: Dict[str, int]
-    lifespan: int
-    services: Tuple[str]
+@attrs.define
+class BusinessConfig:
+    owner_type: Type[Occupation]
+    employee_types: Dict[Type[Occupation], int] = attrs.field(factory=dict)
+    spawn_frequency: int = 1
+    max_instances: int = 9999
+    min_population: int = 0
+    year_available: int = 0
+    year_obsolete: int = 9999
+    lifespan: int = 15
+    services: Tuple[str, ...] = attrs.field(factory=tuple)
 
 
 class BusinessType(Component, ABC):
-    """Defines configuration information for GameObject instances of a business Type.
+    """Defines configuration information for GameObject instances of a business Type."""
 
-
-
-    """
-    config = BusinessConfig()
+    config: ClassVar[BusinessConfig]
 
     @classmethod
-    def instantiate(cls) -> GameObject:
+    def on_register(cls, world: World) -> None:
+        world.resource_manager.get_resource(BusinessSpawnTable).update(
+            BusinessSpawnTableEntry(
+                name=cls.__name__,
+                spawn_frequency=cls.config.spawn_frequency,
+                max_instances=cls.config.max_instances,
+                min_population=cls.config.min_population,
+                year_available=cls.config.year_available,
+                year_obsolete=cls.config.year_obsolete,
+            )
+        )
+
+    @classmethod
+    @abstractmethod
+    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
         raise NotImplementedError
 
 
-def register_occupation_type(world: World, occupation_type: Type[Occupation]) -> None:
-    """Register an occupation component with the ECS.
+class BaseBusiness(BusinessType):
+    @classmethod
+    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        business = world.gameobject_manager.spawn_gameobject(
+            components={
+                Name: {"value": cls.__name__},
+                Statuses: {},
+                Relationships: {},
+                Location: {},
+                FrequentedBy: {},
+                EventHistory: {},
+                Building: {"building_type": "commercial"},
+                Services: {"services": cls.config.services},
+                cls: {},
+            }
+        )
+
+        if lifespan := cls.config.lifespan:
+            business.add_component(Lifespan, value=lifespan)
+
+        business.add_component(
+            Business,
+            owner_type=cls.config.owner_type,
+            employee_types=cls.config.employee_types,
+            business_type=business.get_component(cls),
+        )
+
+        business.prefab = cls.__name__
+        business.name = f"{cls.__name__}({business.uid})"
+
+        current_date = business.world.resource_manager.get_resource(SimDateTime)
+        building_map = business.world.resource_manager.get_resource(BuildingMap)
+        business_spawn_table = business.world.resource_manager.get_resource(
+            BusinessSpawnTable
+        )
+
+        lot: Tuple[int, int] = kwargs.get("lot")
+        if lot is None:
+            raise TypeError(
+                "{}.instantiate is missing required keyword argument: 'lot'.".format(
+                    cls.__name__
+                )
+            )
+
+        # Increase the count of this business type in the settlement
+        business_spawn_table.increment_count(
+            type(business.get_component(Business).business_type).__name__
+        )
+
+        # Reserve the space
+        building_map.add_building(lot, business)
+
+        # Set the position of the building
+        business.add_component(Position2D, x=lot[0], y=lot[1])
+
+        # Mark the business open and active
+        business.add_component(OpenForBusiness, timestamp=current_date.year)
+
+        return business
+
+
+def create_business(
+    world: World, business_type: Type[BusinessType], **kwargs: Any
+) -> GameObject:
+    """Create a new GameObject instance of the given business type.
 
     Parameters
-    ---------
+    ----------
     world
-        A world instance.
-    occupation_type
-        The class of the component
+        The world to spawn the character into
+    business_type
+        The business type to construct
+    **kwargs
+        Keyword arguments to pass to the BusinessType's factory
+
+    Returns
+    -------
+    GameObject
+        the instantiated character
     """
-    world.gameobject_manager.register_component(occupation_type)
+    business = business_type.instantiate(world, **kwargs)
+
+    BusinessCreatedEvent(world, business).dispatch()
+
+    return business
 
 
-def register_business_prefab(world: World, prefab: GameObjectPrefab) -> None:
-    """Registers a business prefab with the ECS and spawn tables."""
+class BusinessCreatedEvent(Event):
+    __slots__ = "_business"
 
-    # Add the prefab to the GameObject manager
-    world.gameobject_manager.add_prefab(prefab)
+    def __init__(
+        self,
+        world: World,
+        business: GameObject,
+    ) -> None:
+        super().__init__(world)
+        self._business = business
 
-    # Add an entry to the character spawn table
-    world.resource_manager.get_resource(BusinessSpawnTable).update(
-        name=prefab.name,
-        frequency=prefab.metadata.get("spawn_frequency", 0),
-        max_instances=prefab.metadata.get("max_instances", 9999),
-        min_population=prefab.metadata.get("min_population", 0),
-        year_available=prefab.metadata.get("year_available", 0),
-        year_obsolete=prefab.metadata.get("year_obsolete", 9999),
-    )
+    @property
+    def business(self) -> GameObject:
+        return self._business
+
+
+class BusinessClosedEvent(LifeEvent):
+    __slots__ = "business"
+
+    business: GameObject
+
+    def __init__(self, world: World, date: SimDateTime, business: GameObject) -> None:
+        super().__init__(world, date)
+        self.business = business
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.business]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), "business": self.business}
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} closed for business".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.business.name,
+        )
+
+
+class StartJobEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation"
+
+    character: GameObject
+    business: GameObject
+    occupation: Type[Occupation]
+
+    def __init__(
+        self,
+        world: World,
+        date: SimDateTime,
+        character: GameObject,
+        business: GameObject,
+        occupation: Type[Occupation],
+    ) -> None:
+        super().__init__(world, date)
+        self.character = character
+        self.business = business
+        self.occupation = occupation
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.business, self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "occupation": self.occupation.__name__,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] '{}' started a new job at '{}' as a '{}'.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.business.name,
+            self.occupation.__name__,
+        )
+
+
+class EndJobEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation", "reason"
+
+    character: GameObject
+    business: GameObject
+    occupation: Type[Occupation]
+    reason: Optional[LifeEvent]
+
+    def __init__(
+        self,
+        world: World,
+        date: SimDateTime,
+        character: GameObject,
+        business: GameObject,
+        occupation: Type[Occupation],
+        reason: Optional[LifeEvent] = None,
+    ) -> None:
+        super().__init__(
+            world,
+            date,
+        )
+        self.character = character
+        self.business = business
+        self.occupation = occupation
+        self.reason: Optional[LifeEvent] = reason
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "reason": self.reason.event_id if self.reason else -1,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} ended their job at '{}' as a '{}'.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.business.name,
+            self.occupation.__name__,
+        )
+
+
+class StartBusinessEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation"
+
+    def __init__(
+        self,
+        world: World,
+        date: SimDateTime,
+        character: GameObject,
+        business: GameObject,
+        occupation: Type[Occupation],
+    ) -> None:
+        super().__init__(world, date)
+        self.character = character
+        self.business = business
+        self.occupation = occupation
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.business, self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "occupation": self.occupation.__name__,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} started a business '{}'.".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.business.name,
+        )
+
+
+class RetirementEvent(LifeEvent):
+    __slots__ = "character", "business", "occupation"
+
+    def __init__(
+        self,
+        world: World,
+        date: SimDateTime,
+        character: GameObject,
+        business: GameObject,
+        occupation: Type[Occupation],
+    ) -> None:
+        super().__init__(world, date)
+        self.character = character
+        self.business = business
+        self.occupation = occupation
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.character]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "occupation": self.occupation.__name__,
+        }
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {} retired from their position as '{}' at {}".format(
+            type(self).__name__,
+            str(self.timestamp),
+            self.character.name,
+            self.occupation.__name__,
+            self.business.name,
+        )

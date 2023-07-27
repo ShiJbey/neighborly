@@ -31,6 +31,8 @@ from neighborly.components.character import (
     CanAge,
     CanGetOthersPregnant,
     CanGetPregnant,
+    CharacterCreatedEvent,
+    Dating,
     Deceased,
     Departed,
     Female,
@@ -39,18 +41,16 @@ from neighborly.components.character import (
     Immortal,
     LifeStage,
     Male,
+    Married,
     NonBinary,
+    Pregnant,
     Retired,
     Virtues,
 )
-from neighborly.components.culture import Culture
-from neighborly.components.items import Item, ItemLibrary, ItemType
 from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.role import Roles
 from neighborly.components.shared import (
     Age,
     Building,
-    CurrentSettlement,
     FrequentedBy,
     FrequentedLocations,
     Lifespan,
@@ -58,15 +58,11 @@ from neighborly.components.shared import (
     Name,
     Position2D,
 )
-from neighborly.components.species import Species
-from neighborly.components.trait import TraitLibrary, Traits, register_trait
 from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import Active, GameObjectPrefab, World
+from neighborly.core.ecs import Active, World
 from neighborly.core.life_event import EventHistory, EventLog, RandomLifeEventLibrary
 from neighborly.core.location_preference import LocationPreferenceRuleLibrary
-from neighborly.core.settlement import Settlement
-from neighborly.core.status import Statuses
 from neighborly.core.time import SimDateTime
 from neighborly.core.tracery import Tracery
 from neighborly.data_collection import DataCollector
@@ -78,28 +74,18 @@ from neighborly.event_listeners import (
     log_life_event,
     on_adult_join_settlement,
 )
-from neighborly.events import (
-    BecomeYoungAdultEvent,
-    DeathEvent,
-    DepartEvent,
-    JoinSettlementEvent,
-)
-from neighborly.factories.business import BusinessFactory, ServicesFactory
-from neighborly.factories.character import (
-    GameCharacterFactory,
-    GenderFactory,
-    VirtuesFactory,
-)
-from neighborly.factories.culture import CultureFactory
-from neighborly.factories.settlement import SettlementFactory
-from neighborly.factories.shared import NameFactory
-from neighborly.factories.species import SpeciesFactory
-from neighborly.factories.trait import TraitsFactory
+from neighborly.events import BecomeYoungAdultEvent, DeathEvent, DepartEvent
+from neighborly.inventory_system import Item
+from neighborly.role_system import Roles
+from neighborly.settlement import Settlement
 from neighborly.spawn_table import (
     BusinessSpawnTable,
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
+from neighborly.status_system import Statuses
+from neighborly.trait_system import TraitLibrary, Traits
+from neighborly.world_map import BuildingMap
 
 
 class PluginSetupError(Exception):
@@ -160,45 +146,16 @@ class Neighborly:
         self.world.resource_manager.add_resource(LocationPreferenceRuleLibrary())
         self.world.resource_manager.add_resource(DataCollector())
         self.world.resource_manager.add_resource(RandomLifeEventLibrary())
-        self.world.resource_manager.add_resource(ItemLibrary())
         self.world.resource_manager.add_resource(TraitLibrary())
         self.world.resource_manager.add_resource(CharacterSpawnTable())
         self.world.resource_manager.add_resource(BusinessSpawnTable())
         self.world.resource_manager.add_resource(ResidenceSpawnTable())
-
-        # Set the default relationship prefab
-        self.world.gameobject_manager.add_prefab(
-            GameObjectPrefab(
-                name="relationship",
-                components={
-                    "Friendship": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "Romance": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "InteractionScore": {},
-                },
-            )
-        )
-
-        # Set the default settlement prefab
-        self.world.gameobject_manager.add_prefab(
-            GameObjectPrefab(
-                name="settlement",
-                components={
-                    "Name": {
-                        "value": self.config.settings.get("settlement_name", "#settlement_name#")
-                    },
-                    "Settlement": {
-                        "width": self.config.settings.get("map_width", 5),
-                        "length": self.config.settings.get("map_length", 5),
-                    },
-                    "Age": {},
-                    "Location": {}
-                },
+        self.world.resource_manager.add_resource(BuildingMap(self.config.world_size))
+        self.world.resource_manager.add_resource(
+            Settlement(
+                self.world.resource_manager.get_resource(Tracery).generate(
+                    self.config.settlement_name
+                )
             )
         )
 
@@ -207,17 +164,6 @@ class Neighborly:
         self.world.system_manager.add_system(systems.EarlyUpdateSystemGroup())
         self.world.system_manager.add_system(systems.UpdateSystemGroup())
         self.world.system_manager.add_system(systems.LateUpdateSystemGroup())
-
-        # Initialization systems
-        self.world.system_manager.add_system(
-            systems.InitializeItemTypeSystem(),
-            priority=9999,
-            system_group=systems.InitializationSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.InitializeSettlementSystem(),
-            system_group=systems.InitializationSystemGroup,
-        )
 
         # Add default early-update subgroups (in execution order)
         self.world.system_manager.add_system(
@@ -254,6 +200,14 @@ class Neighborly:
         # Add relationship-update systems (in execution order)
         self.world.system_manager.add_system(
             systems.EvaluateSocialRulesSystem(),
+            system_group=systems.RelationshipUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.PassiveFriendshipChange(),
+            system_group=systems.RelationshipUpdateSystemGroup,
+        )
+        self.world.system_manager.add_system(
+            systems.PassiveRomanceChange(),
             system_group=systems.RelationshipUpdateSystemGroup,
         )
 
@@ -318,49 +272,44 @@ class Neighborly:
         self.world.gameobject_manager.register_component(Male)
         self.world.gameobject_manager.register_component(Female)
         self.world.gameobject_manager.register_component(NonBinary)
-        self.world.gameobject_manager.register_component(Species, factory=SpeciesFactory())
-        self.world.gameobject_manager.register_component(Culture, factory=CultureFactory())
         self.world.gameobject_manager.register_component(Active)
         self.world.gameobject_manager.register_component(AIBrain)
         self.world.gameobject_manager.register_component(Goals)
-        self.world.gameobject_manager.register_component(
-            GameCharacter, factory=GameCharacterFactory()
-        )
-        self.world.gameobject_manager.register_component(
-            relationship.RelationshipManager
-        )
+        self.world.gameobject_manager.register_component(GameCharacter)
+        self.world.gameobject_manager.register_component(relationship.Relationships)
         self.world.gameobject_manager.register_component(relationship.Relationship)
         self.world.gameobject_manager.register_component(relationship.Friendship)
         self.world.gameobject_manager.register_component(relationship.Romance)
         self.world.gameobject_manager.register_component(relationship.InteractionScore)
+        self.world.gameobject_manager.register_component(
+            relationship.PlatonicCompatibility
+        )
+        self.world.gameobject_manager.register_component(
+            relationship.RomanticCompatibility
+        )
+        self.world.gameobject_manager.register_component(relationship.BaseRelationship)
         self.world.gameobject_manager.register_component(Location)
         self.world.gameobject_manager.register_component(FrequentedBy)
-        self.world.gameobject_manager.register_component(CurrentSettlement)
         self.world.gameobject_manager.register_component(
-            Virtues, factory=VirtuesFactory()
+            Virtues, factory=Virtues.factory
         )
         self.world.gameobject_manager.register_component(Occupation)
         self.world.gameobject_manager.register_component(WorkHistory)
-        self.world.gameobject_manager.register_component(
-            Services, factory=ServicesFactory()
-        )
+        self.world.gameobject_manager.register_component(Services)
         self.world.gameobject_manager.register_component(ClosedForBusiness)
         self.world.gameobject_manager.register_component(OpenForBusiness)
-        self.world.gameobject_manager.register_component(
-            Business, factory=BusinessFactory()
-        )
+        self.world.gameobject_manager.register_component(Business)
         self.world.gameobject_manager.register_component(BusinessOwner)
         self.world.gameobject_manager.register_component(Unemployed)
         self.world.gameobject_manager.register_component(InTheWorkforce)
         self.world.gameobject_manager.register_component(BossOf)
         self.world.gameobject_manager.register_component(EmployeeOf)
         self.world.gameobject_manager.register_component(CoworkerOf)
-
         self.world.gameobject_manager.register_component(Departed)
-        register_trait(self.world, CanAge)
-        register_trait(self.world, CanGetPregnant)
-        register_trait(self.world, CanGetOthersPregnant)
-        register_trait(self.world, Immortal)
+        self.world.gameobject_manager.register_component(CanAge)
+        self.world.gameobject_manager.register_component(CanGetPregnant)
+        self.world.gameobject_manager.register_component(CanGetOthersPregnant)
+        self.world.gameobject_manager.register_component(Immortal)
         self.world.gameobject_manager.register_component(Deceased)
         self.world.gameobject_manager.register_component(Retired)
         self.world.gameobject_manager.register_component(Residence)
@@ -369,25 +318,24 @@ class Neighborly:
         self.world.gameobject_manager.register_component(Building)
         self.world.gameobject_manager.register_component(Position2D)
         self.world.gameobject_manager.register_component(Statuses)
-        self.world.gameobject_manager.register_component(
-            Traits, factory=TraitsFactory()
-        )
+        self.world.gameobject_manager.register_component(Traits)
         self.world.gameobject_manager.register_component(FrequentedLocations)
-        self.world.gameobject_manager.register_component(
-            Settlement, factory=SettlementFactory()
-        )
         self.world.gameobject_manager.register_component(EventHistory)
-        self.world.gameobject_manager.register_component(Name, factory=NameFactory())
+        self.world.gameobject_manager.register_component(Name, factory=Name.factory)
         self.world.gameobject_manager.register_component(Lifespan)
         self.world.gameobject_manager.register_component(Age)
-        self.world.gameobject_manager.register_component(Gender, factory=GenderFactory())
+        self.world.gameobject_manager.register_component(Gender)
+        self.world.gameobject_manager.register_component(Dating)
+        self.world.gameobject_manager.register_component(Married)
+        self.world.gameobject_manager.register_component(Pregnant)
         self.world.gameobject_manager.register_component(LifeStage)
-        self.world.gameobject_manager.register_component(ItemType)
         self.world.gameobject_manager.register_component(Item)
         self.world.gameobject_manager.register_component(Roles)
 
         # Event listeners
-        self.world.event_manager.on_event(JoinSettlementEvent, on_adult_join_settlement)
+        self.world.event_manager.on_event(
+            CharacterCreatedEvent, on_adult_join_settlement
+        )
         self.world.event_manager.on_event(
             BecomeYoungAdultEvent, join_workforce_when_young_adult
         )

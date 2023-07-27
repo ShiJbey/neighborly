@@ -1,12 +1,5 @@
-import os
-import pathlib
-
-from neighborly.components.business import register_occupation_type
-from neighborly.loaders import NeighborlyDataLoader
-from neighborly.plugins.defaults.occupations import Barista, Librarian, Owner
+from neighborly.components.business import BaseBusiness, BusinessConfig, Occupation
 from neighborly.simulation import Neighborly, PluginInfo
-
-_RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
 
 plugin_info = PluginInfo(
     name="default businesses plugin",
@@ -15,9 +8,35 @@ plugin_info = PluginInfo(
 )
 
 
-def setup(sim: Neighborly):
-    register_occupation_type(sim.world, Librarian)
-    register_occupation_type(sim.world, Owner)
-    register_occupation_type(sim.world, Barista)
+class Restaurateur(Occupation):
+    social_status = 3
 
-    NeighborlyDataLoader.load_file(sim.world, _RESOURCES_DIR / "businesses.default.yaml")
+
+class Librarian(Occupation):
+    social_status = 2
+
+
+class Barista(Occupation):
+    social_status = 2
+
+
+class Cafe(BaseBusiness):
+    config = BusinessConfig(
+        owner_type=Restaurateur,
+        employee_types={Barista: 2},
+        services=("reading", "socializing"),
+    )
+
+
+class Library(BaseBusiness):
+    config = BusinessConfig(
+        owner_type=Librarian, employee_types={Librarian: 2}, services=("reading",)
+    )
+
+
+def setup(sim: Neighborly):
+    sim.world.gameobject_manager.register_component(Librarian)
+    sim.world.gameobject_manager.register_component(Restaurateur)
+    sim.world.gameobject_manager.register_component(Barista)
+    sim.world.gameobject_manager.register_component(Cafe)
+    sim.world.gameobject_manager.register_component(Library)

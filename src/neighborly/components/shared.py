@@ -5,11 +5,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Iterator, Optional
+from typing import Any, Dict, Iterable, Iterator, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, GameObject, ISerializable
+from neighborly.core.ecs import (
+    Component,
+    GameObject,
+    ISerializable,
+    TagComponent,
+    World,
+)
+from neighborly.core.tracery import Tracery
 
 
 @dataclass
@@ -27,6 +34,11 @@ class Name(Component, ISerializable):
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
+
+    @staticmethod
+    def factory(world: World, **kwargs: Any) -> Name:
+        value: str = kwargs.get("value", "")
+        return Name(world.resource_manager.get_resource(Tracery).generate(value))
 
 
 @dataclass
@@ -75,48 +87,24 @@ class Lifespan(Component, ISerializable):
         return f"{self.__class__.__name__}({self.value})"
 
 
-class Location(Component, ISerializable):
-    """Anywhere GameObjects may be.
+class Location(TagComponent, ISerializable):
+    """Anywhere GameObjects may be."""
 
-    Locations track what larger location they belong and any sub locations they are comprised of.
-    """
-
-    __slots__ = "parent", "children"
-
-    children: OrderedSet[GameObject]
-    """All the sub-locations at this location."""
-
-    parent: Optional[GameObject]
-    """The parent location of this location."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.parent = None
-        self.children = OrderedSet([])
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "parent": self.parent.uid if self.parent is not None else -1,
-            "children": [entry.uid for entry in self.children],
-        }
-
-    def __repr__(self) -> str:
-        return "{}(parent={}, children={})".format(
-            self.__class__.__name__,
-            self.parent.name if self.parent else "",
-            [child.name for child in self.children],
-        )
+    pass
 
 
 @dataclass
 class Position2D(Component, ISerializable):
     """The 2-dimensional position of a GameObject."""
 
-    x: float = 0.0
+    x: int = 0
     """The x-position of the GameObject."""
 
-    y: float = 0.0
+    y: int = 0
     """The y-position of the GameObject."""
+
+    def as_tuple(self) -> Tuple[int, int]:
+        return self.x, self.y
 
     def to_dict(self) -> Dict[str, Any]:
         return {"x": self.x, "y": self.y}
@@ -213,17 +201,6 @@ class Building(Component, ISerializable):
         )
 
 
-@dataclass
-class CurrentLot(Component, ISerializable):
-    """Tracks the lot that a building belongs to."""
-
-    lot: int
-    """The ID of a lot within a SettlementMap."""
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"lot": self.lot}
-
-
 class FrequentedBy(Component, ISerializable):
     """Tracks the characters that frequent a location."""
 
@@ -281,41 +258,7 @@ class FrequentedBy(Component, ISerializable):
         )
 
 
-@dataclass
-class CurrentSettlement(Component, ISerializable):
-    """Tracks the settlement that a GameObject belongs to."""
-
-    settlement: GameObject
-    """The GameObject ID of a settlement."""
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.settlement})"
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"settlement": self.settlement.uid}
-
-
-@dataclass
-class PrefabName(Component, ISerializable):
-    """Tracks the name of the prefab used to instantiate a GameObject."""
-
-    prefab: str
-    """The name of a prefab."""
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.prefab})"
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"prefab": self.prefab}
-
-
-class OwnedBy(Component, ISerializable):
+class Owner(Component, ISerializable):
     """Tags a GameObject as being owned by another."""
 
     __slots__ = "owner"

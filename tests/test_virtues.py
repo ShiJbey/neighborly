@@ -2,7 +2,6 @@ import random
 
 from neighborly.components.character import Virtue, Virtues
 from neighborly.core.ecs import World
-from neighborly.factories.character import VirtuesFactory
 
 
 def test_construct_virtue_vect() -> None:
@@ -73,7 +72,6 @@ def test_virtue_vect_to_dict() -> None:
 def test_virtue_vect_factory() -> None:
     world = World()
     world.resource_manager.add_resource(random.Random(1234))
-    factory = VirtuesFactory()
-    vector: Virtues = factory.create(world, overrides={"ADVENTURE": 10, "POWER": 20})
+    vector: Virtues = Virtues.factory(world, overrides={"ADVENTURE": 10, "POWER": 20})
     assert vector[Virtue.ADVENTURE] == 10
     assert vector[Virtue.POWER] == 20

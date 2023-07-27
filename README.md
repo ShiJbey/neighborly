@@ -53,7 +53,6 @@ If you use Neighborly in a project, please [cite this repository](./CITATION.bib
 - The internal architecture does not follow "Pure" ECS practices. It does what looks and feels nice API-wise.
 - Characters only hold one occupation at a time.
 - Characters withing newly-spawned families will all have the same species and culture.
-- Some species can only mate with each other and children will be either the mother's or father's species.
 
 # Future work
 

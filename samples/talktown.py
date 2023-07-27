@@ -18,27 +18,15 @@ EXPORT_WORLD = False
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            # "seed": 7167130,
+            "seed": "Apples",
+            "settlement_name": "Townsville",
             "plugins": [
                 "neighborly.plugins.defaults.all",
-                "neighborly.plugins.talktown",
+                # "neighborly.plugins.talktown",
             ],
             "logging": {
                 "logging_enabled": True,
                 "log_level": "DEBUG",
-            },
-            "settings": {
-                "settlement_size": (5, 5),  # Width/length of the settlement grid
-                "zoning": (0.5, 0.5),  # Zoning is 50/50 residential vs. commercial
-                "character_spawn_table": [
-                    {"name": "character::default::male"},
-                    {"name": "character::default::female"},
-                    {"name": "character::default::non-binary"},
-                ],
-                "residence_spawn_table": [
-                    {"name": "residence::default::house"},
-                ],
-                "business_spawn_table": [],
             },
         }
     )

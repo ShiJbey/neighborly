@@ -42,11 +42,11 @@ dependencies = [
     "pyYAML",
     "pydantic==1.*",
     "tracery3",
-    "pandas",
     "flask",
     "flask_restful",
     "flask_cors",
-    "marshmallow"
+    "marshmallow",
+    "pandas"
 ]
 
 [project.optional-dependencies]
@@ -64,6 +64,7 @@ development = [
     "isort",
     "black",
     "black[d]",
+    "black[jupyter]",
     "build"
 ]
 docs = [

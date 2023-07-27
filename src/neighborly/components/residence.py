@@ -4,28 +4,21 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from abc import ABC, abstractmethod
+from typing import Any, ClassVar, Dict, Type, TypedDict
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import (
-    Component,
-    GameObject,
-    GameObjectPrefab,
-    ISerializable,
-    World,
-)
-from neighborly.core.status import IStatus
-from neighborly.spawn_table import ResidenceSpawnTable
+from neighborly import Event
+from neighborly.core.ecs import Component, GameObject, ISerializable, World
+from neighborly.spawn_table import ResidenceSpawnTable, ResidenceSpawnTableEntry
+from neighborly.status_system import IStatus
 
 
 class Residence(Component, ISerializable):
     """A Residence is a place where characters live."""
 
-    __slots__ = (
-        "owners",
-        "residents",
-    )
+    __slots__ = ("owners", "residents", "residence_type")
 
     owners: OrderedSet[GameObject]
     """Characters that currently own the residence."""
@@ -33,10 +26,14 @@ class Residence(Component, ISerializable):
     residents: OrderedSet[GameObject]
     """All the characters who live at the residence (including non-owners)."""
 
-    def __init__(self) -> None:
+    residence_type: ResidenceType
+    """Reference to the ResidenceType component."""
+
+    def __init__(self, residence_type: ResidenceType) -> None:
         super().__init__()
         self.owners = OrderedSet([])
         self.residents = OrderedSet([])
+        self.residence_type = residence_type
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -147,14 +144,95 @@ class Vacant(IStatus):
     pass
 
 
-def register_residence_prefab(world: World, prefab: GameObjectPrefab) -> None:
-    """Registers a character prefab with the ECS and spawn tables."""
+class ResidenceConfig(TypedDict):
+    spawn_frequency: int
 
-    # Add the prefab to the GameObject manager
-    world.gameobject_manager.add_prefab(prefab)
 
-    # Add an entry to the character spawn table
-    world.resource_manager.get_resource(ResidenceSpawnTable).update(
-        name=prefab.name,
-        frequency=prefab.metadata.get("spawn_frequency", 0)
-    )
+class ResidenceType(Component, ABC):
+    config: ClassVar[ResidenceConfig] = {"spawn_frequency": 1}
+
+    @classmethod
+    def on_register(cls, world: World) -> None:
+        world.resource_manager.get_resource(ResidenceSpawnTable).update(
+            ResidenceSpawnTableEntry(
+                name=cls.__name__, spawn_frequency=cls.config["spawn_frequency"]
+            )
+        )
+
+    @classmethod
+    @abstractmethod
+    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        """Create new residence instance.
+
+        Parameters
+        ----------
+        world
+            The world instance to spawn into.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        GameObject
+            The residence instance.
+        """
+        return world.gameobject_manager.spawn_gameobject()
+
+
+class BaseResidence(ResidenceType, ABC):
+    @classmethod
+    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        residence = world.gameobject_manager.spawn_gameobject()
+
+        residence.name = f"{cls.__name__}({residence.uid})"
+
+        residence_type = residence.add_component(cls)
+
+        residence.add_component(Residence, residence_type=residence_type)
+
+        return residence
+
+
+def create_residence(
+    world: World, residence_type: Type[ResidenceType], **kwargs: Any
+) -> GameObject:
+    """Create a new GameObject instance of the given business type.
+
+    Parameters
+    ----------
+    world
+        The world to spawn the character into
+    residence_type
+        The business type to construct
+    **kwargs
+        Keyword arguments to pass to the BusinessType's factory
+
+    Returns
+    -------
+    GameObject
+        the instantiated character
+    """
+    residence = residence_type.instantiate(world, **kwargs)
+
+    ResidenceCreatedEvent(world, residence).dispatch()
+
+    return residence
+
+
+class ResidenceCreatedEvent(Event):
+    __slots__ = "_residence"
+
+    _residence: GameObject
+    """Reference to the created residence."""
+
+    def __init__(
+        self,
+        world: World,
+        residence: GameObject,
+    ) -> None:
+        super().__init__(world)
+        self._residence = residence
+
+    @property
+    def residence(self) -> GameObject:
+        return self._residence

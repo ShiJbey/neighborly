@@ -16,7 +16,7 @@ from neighborly.core.ecs import (
     GameObject,
     GameObjectPrefab,
     IComponentFactory,
-    SystemBase,
+    System,
     SystemGroup,
     World,
 )
@@ -30,7 +30,7 @@ __all__ = [
     "Component",
     "GameObjectPrefab",
     "GameObject",
-    "SystemBase",
+    "System",
     "SystemGroup",
     "World",
     "SimDateTime",

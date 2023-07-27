@@ -63,14 +63,25 @@ class Villain(Component):
 def main() -> None:
     sim = Neighborly()
 
-    sim.world.gameobject_manager.spawn_gameobject([Hero()], name="Miles")
-    sim.world.gameobject_manager.spawn_gameobject([Hero()], name="Peter")
-    sim.world.gameobject_manager.spawn_gameobject([Hero()], name="Gwen")
+    sim.world.gameobject_manager.register_component(Hero)
+    sim.world.gameobject_manager.register_component(Villain)
 
-    sim.world.gameobject_manager.spawn_gameobject([Villain()], name="KingPin")
-    sim.world.gameobject_manager.spawn_gameobject([Villain()], name="Green Goblin")
-    sim.world.gameobject_manager.spawn_gameobject([Villain()], name="The Prowler")
-    sim.world.gameobject_manager.spawn_gameobject([Villain()], name="Doc. Oc")
+    sim.world.gameobject_manager.spawn_gameobject(components={Hero: {}}, name="Miles")
+    sim.world.gameobject_manager.spawn_gameobject(components={Hero: {}}, name="Peter")
+    sim.world.gameobject_manager.spawn_gameobject(components={Hero: {}}, name="Gwen")
+
+    sim.world.gameobject_manager.spawn_gameobject(
+        components={Villain: {}}, name="KingPin"
+    )
+    sim.world.gameobject_manager.spawn_gameobject(
+        components={Villain: {}}, name="Green Goblin"
+    )
+    sim.world.gameobject_manager.spawn_gameobject(
+        components={Villain: {}}, name="The Prowler"
+    )
+    sim.world.gameobject_manager.spawn_gameobject(
+        components={Villain: {}}, name="Doc. Oc"
+    )
 
     for result in StartHeroStory.generate(sim.world):
         print(result.__repr__())

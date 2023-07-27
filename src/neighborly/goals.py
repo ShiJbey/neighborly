@@ -6,9 +6,13 @@ from typing import Any, Dict, List, Optional, Type, cast
 from neighborly.components.business import (
     Business,
     BusinessOwner,
+    BusinessType,
     Occupation,
     OpenForBusiness,
+    RetirementEvent,
+    StartBusinessEvent,
     Unemployed,
+    create_business,
 )
 from neighborly.components.character import (
     Dating,
@@ -23,9 +27,13 @@ from neighborly.components.character import (
     Virtue,
     Virtues,
 )
-from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.role import Roles
-from neighborly.components.shared import CurrentSettlement
+from neighborly.components.residence import (
+    Residence,
+    ResidenceType,
+    Resident,
+    Vacant,
+    create_residence,
+)
 from neighborly.config import NeighborlyConfig
 from neighborly.core.ai.behavior_tree import (
     AbstractBTNode,
@@ -40,46 +48,37 @@ from neighborly.core.ai.brain import (
     GoalNode,
     WeightedList,
 )
-from neighborly.core.ecs import Active, GameObject, GameObjectPrefab, World
+from neighborly.core.ecs import Active, GameObject, World
 from neighborly.core.life_event import EventRole, EventRoleList
 from neighborly.core.relationship import (
     Friendship,
-    RelationshipManager,
+    Relationships,
     Romance,
-    add_relationship_status,
     get_relationship,
-    get_relationships_with_statuses,
+    get_relationships_with_components,
     has_relationship,
-    has_relationship_status,
-    remove_relationship_status,
 )
-from neighborly.core.settlement import Settlement
-from neighborly.core.status import add_status, clear_statuses
 from neighborly.core.time import SimDateTime
 from neighborly.events import (
     BreakUpEvent,
     DeathEvent,
     DivorceEvent,
     MarriageEvent,
-    RetirementEvent,
-    StartBusinessEvent,
     StartDatingEvent,
 )
+from neighborly.role_system import Roles
 from neighborly.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
+from neighborly.status_system import clear_statuses
 from neighborly.utils.common import (
-    add_business_to_settlement,
-    add_residence_to_settlement,
     clear_frequented_locations,
     depart_settlement,
     end_job,
-    set_character_settlement,
     set_residence,
     shutdown_business,
-    spawn_business,
-    spawn_residence,
     start_job,
 )
 from neighborly.utils.query import are_related, is_single
+from neighborly.world_map import BuildingMap
 
 ####################################
 # CONSIDERATIONS
@@ -87,12 +86,12 @@ from neighborly.utils.query import are_related, is_single
 
 
 def employment_spouse_consideration(gameobject: GameObject) -> Optional[float]:
-    if len(get_relationships_with_statuses(gameobject, Married)) > 0:
+    if len(get_relationships_with_components(gameobject, Married)) > 0:
         return 0.7
 
 
 def employment_children_consideration(gameobject: GameObject) -> Optional[float]:
-    child_count = float(len(get_relationships_with_statuses(gameobject, ParentOf)))
+    child_count = float(len(get_relationships_with_components(gameobject, ParentOf)))
     if child_count:
         return min(1.0, child_count / 5.0)
 
@@ -129,7 +128,7 @@ def independence_consideration(gameobject: GameObject) -> Optional[float]:
 def time_unemployed_consideration(gameobject: GameObject) -> Optional[float]:
     if unemployed := gameobject.get_component(Unemployed):
         current_year = gameobject.world.resource_manager.get_resource(SimDateTime).year
-        years_unemployed = current_year - unemployed.year_created
+        years_unemployed = current_year - unemployed.timestamp
         return min(1.0, float(years_unemployed) / 6.0)
 
 
@@ -264,19 +263,17 @@ class StartBusiness(GoalNode):
 
     def evaluate(self) -> NodeState:
         world = self.character.world
-        current_settlement = self.character.get_component(CurrentSettlement)
-        settlement = current_settlement.settlement
-        settlement_comp = settlement.get_component(Settlement)
+        building_map = world.resource_manager.get_resource(BuildingMap)
         rng = world.resource_manager.get_resource(random.Random)
 
         # Get all the eligible business prefabs that are eligible for building
         # and the character meets the requirements for the owner occupation
-        business_prefab = self._get_business_character_can_own(self.character)
+        business_type = StartBusiness._get_business_character_can_own(self.character)
 
-        if business_prefab is None:
+        if business_type is None:
             return NodeState.FAILURE
 
-        vacancies = settlement_comp.land_map.get_vacant_lots()
+        vacancies = building_map.get_vacant_lots()
 
         # Return early if there is nowhere to build
         if len(vacancies) == 0:
@@ -285,27 +282,18 @@ class StartBusiness(GoalNode):
         # Pick a random lot from those available
         lot = rng.choice(vacancies)
 
-        owner_type = business_prefab.components["Business"]["owner_type"]
+        # Instantiate the new business
+        business = create_business(world, business_type, lot=lot)
 
-        assert owner_type
-
-        business = spawn_business(world, business_prefab.name)
-
-        add_business_to_settlement(
-            business,
-            world.gameobject_manager.get_gameobject(settlement.uid),
-            lot_id=lot,
-        )
-
-        start_business_event = StartBusinessEvent(
+        # Emit the event first before emitting the event from
+        # starting the new job
+        StartBusinessEvent(
             world,
             world.resource_manager.get_resource(SimDateTime),
             self.character,
             business,
             business.get_component(Business).owner_type,
-        )
-
-        start_business_event.dispatch()
+        ).dispatch()
 
         start_job(
             self.character,
@@ -319,29 +307,26 @@ class StartBusiness(GoalNode):
     @staticmethod
     def _get_business_character_can_own(
         character: GameObject,
-    ) -> Optional[GameObjectPrefab]:
+    ) -> Optional[Type[BusinessType]]:
+        """Search the BusinessLibrary for BusinessTypes the character is can own."""
+
         world = character.world
-        current_settlement = character.get_component(CurrentSettlement)
-        settlement = current_settlement.settlement
         business_spawn_table = world.resource_manager.get_resource(BusinessSpawnTable)
         rng = world.resource_manager.get_resource(random.Random)
 
-        choices: List[GameObjectPrefab] = []
+        choices: List[Type[BusinessType]] = []
         weights: List[int] = []
 
-        for prefab_name in business_spawn_table.get_eligible(settlement):
-            prefab = world.gameobject_manager.get_prefab(prefab_name)
-
-            owner_type: Type[Occupation] = cast(
-                Type[Occupation],
-                world.gameobject_manager.get_component_info(
-                    prefab.components["Business"]["owner_type"]
-                ).component_type
+        for business_type_name in business_spawn_table.get_eligible(world):
+            business_type = cast(
+                Type[BusinessType], world.resolve_component_type(business_type_name)
             )
 
+            owner_type: Type[Occupation] = business_type.config.owner_type
+
             if owner_type.job_requirements.passes_requirements(character):
-                choices.append(prefab)
-                weights.append(business_spawn_table.get_frequency(prefab_name))
+                choices.append(business_type)
+                weights.append(business_spawn_table.get_frequency(business_type_name))
 
         if choices:
             # Choose an archetype at random
@@ -499,9 +484,8 @@ class BuildNewHouse(AbstractBTNode):
     def evaluate(self) -> NodeState:
         world = self.character.world
 
-        settlement = self.character.get_component(CurrentSettlement).settlement
-        land_map = settlement.get_component(Settlement).land_map
-        vacancies = land_map.get_vacant_lots()
+        building_map = world.resource_manager.get_resource(BuildingMap)
+        vacancies = building_map.get_vacant_lots()
         spawn_table = world.resource_manager.get_resource(ResidenceSpawnTable)
         rng = world.resource_manager.get_resource(random.Random)
 
@@ -511,22 +495,20 @@ class BuildNewHouse(AbstractBTNode):
             return NodeState.FAILURE
 
         # Don't build more housing if 60% of the land is used for residential buildings
-        if len(vacancies) / float(land_map.get_total_lots()) < 0.4:
+        if len(vacancies) / float(building_map.get_total_lots()) < 0.4:
             # self.blackboard["reason_to_depart"] = "No housing"
             return NodeState.FAILURE
 
         # Pick a random lot from those available
         lot = rng.choice(vacancies)
 
-        prefab = spawn_table.choose_random(rng)
+        residence_type_name: str = spawn_table.choose_random(rng)
 
-        residence = spawn_residence(world, prefab)
-
-        add_residence_to_settlement(
-            residence,
-            settlement=world.gameobject_manager.get_gameobject(settlement.uid),
-            lot_id=lot,
+        residence_type = cast(
+            Type[ResidenceType], world.resolve_component_type(residence_type_name)
         )
+
+        residence = create_residence(world, residence_type, lot=lot)
 
         set_residence(self.character, residence, True)
 
@@ -649,14 +631,14 @@ class GetMarried(GoalNode):
 
     def get_utility(self) -> Dict[GameObject, float]:
         initiator_to_target_romance = float(
-            self.character.get_component(RelationshipManager)
+            self.character.get_component(Relationships)
             .outgoing[self.partner]
             .get_component(Romance)
             .value
         )
 
         target_to_initiator_romance = float(
-            self.partner.get_component(RelationshipManager)
+            self.partner.get_component(Relationships)
             .outgoing[self.character]
             .get_component(Romance)
             .value
@@ -700,13 +682,13 @@ class GetMarried(GoalNode):
         if rng.random() > ((romance.value + 100.0) / 200.0) ** 2:
             return NodeState.FAILURE
 
-        remove_relationship_status(self.character, self.partner, Dating)
-        remove_relationship_status(self.partner, self.character, Dating)
-        add_relationship_status(
-            self.character, self.partner, Married(year_created=current_date.year)
+        get_relationship(self.character, self.partner).remove_component(Dating)
+        get_relationship(self.partner, self.character).remove_component(Dating)
+        get_relationship(self.character, self.partner).add_component(
+            Married, timestamp=current_date.year
         )
-        add_relationship_status(
-            self.partner, self.character, Married(year_created=current_date.year)
+        get_relationship(self.partner, self.character).add_component(
+            Married, timestamp=current_date.year
         )
 
         event = MarriageEvent(
@@ -728,7 +710,7 @@ class GetMarried(GoalNode):
         ]
 
     def is_complete(self) -> bool:
-        return has_relationship_status(self.character, self.partner, Married)
+        return get_relationship(self.character, self.partner).has_component(Married)
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, GetMarried):
@@ -745,7 +727,7 @@ class BreakUp(GoalNode):
         self.partner: GameObject = partner
 
     def is_complete(self) -> bool:
-        return not has_relationship_status(self.character, self.partner, Dating)
+        return not get_relationship(self.character, self.partner).has_component(Dating)
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, BreakUp):
@@ -763,7 +745,7 @@ class BreakUp(GoalNode):
                 current_date = world.resource_manager.get_resource(SimDateTime)
                 rel = get_relationship(gameobject, partner)
                 dating_status = rel.get_component(Dating)
-                years_together = current_date.year - dating_status.year_created
+                years_together = current_date.year - dating_status.timestamp
                 return min(1.0, years_together / 5.0)
 
             return 0.0
@@ -772,14 +754,10 @@ class BreakUp(GoalNode):
 
     def get_utility(self) -> Dict[GameObject, float]:
         character_to_partner = (
-            get_relationship(self.character, self.partner)
-            .get_component(Romance)
-            .value
+            get_relationship(self.character, self.partner).get_component(Romance).value
         )
         partner_to_character = (
-            get_relationship(self.partner, self.character)
-            .get_component(Romance)
-            .value
+            get_relationship(self.partner, self.character).get_component(Romance).value
         )
 
         return ConsiderationDict(
@@ -810,11 +788,15 @@ class BreakUp(GoalNode):
         ).calculate_scores()
 
     def evaluate(self) -> NodeState:
-        remove_relationship_status(self.character, self.partner, Dating)
-        remove_relationship_status(self.partner, self.character, Dating)
+        get_relationship(self.character, self.partner).remove_component(Dating)
+        get_relationship(self.partner, self.character).remove_component(Dating)
 
-        get_relationship(self.character, self.partner).get_component(Romance).base_value += -6
-        get_relationship(self.partner, self.character).get_component(Romance).base_value += -6
+        get_relationship(self.character, self.partner).get_component(
+            Romance
+        ).base_value += -6
+        get_relationship(self.partner, self.character).get_component(
+            Romance
+        ).base_value += -6
 
         get_relationship(self.character, self.partner).get_component(
             Friendship
@@ -844,7 +826,7 @@ class GetDivorced(GoalNode):
         self.partner: GameObject = partner
 
     def is_complete(self) -> bool:
-        return not has_relationship_status(self.character, self.partner, Married)
+        return not get_relationship(self.character, self.partner).has_component(Married)
 
     @staticmethod
     def time_together_consideration(partner: GameObject):
@@ -854,7 +836,7 @@ class GetDivorced(GoalNode):
                 current_date = world.resource_manager.get_resource(SimDateTime)
                 rel = get_relationship(gameobject, partner)
                 married_status = rel.get_component(Married)
-                year_together = current_date.year - married_status.year_created
+                year_together = current_date.year - married_status.timestamp
                 return max(0.3, year_together / 10.0)
 
             return 0.0
@@ -863,14 +845,10 @@ class GetDivorced(GoalNode):
 
     def get_utility(self) -> Dict[GameObject, float]:
         character_to_partner = (
-            get_relationship(self.character, self.partner)
-            .get_component(Romance)
-            .value
+            get_relationship(self.character, self.partner).get_component(Romance).value
         )
         partner_to_character = (
-            get_relationship(self.partner, self.character)
-            .get_component(Romance)
-            .value
+            get_relationship(self.partner, self.character).get_component(Romance).value
         )
 
         return ConsiderationDict(
@@ -904,11 +882,15 @@ class GetDivorced(GoalNode):
         return [GetDivorced(self.partner, self.character)]
 
     def evaluate(self) -> NodeState:
-        remove_relationship_status(self.character, self.partner, Married)
-        remove_relationship_status(self.partner, self.character, Married)
+        get_relationship(self.character, self.partner).remove_component(Married)
+        get_relationship(self.partner, self.character).remove_component(Married)
 
-        get_relationship(self.character, self.partner).get_component(Romance).base_value += -10
-        get_relationship(self.partner, self.character).get_component(Romance).base_value += -10
+        get_relationship(self.character, self.partner).get_component(
+            Romance
+        ).base_value += -10
+        get_relationship(self.partner, self.character).get_component(
+            Romance
+        ).base_value += -10
 
         get_relationship(self.character, self.partner).get_component(
             Friendship
@@ -960,7 +942,7 @@ class Retire(GoalNode):
     def evaluate(self) -> NodeState:
         world = self.character.world
         current_date = world.resource_manager.get_resource(SimDateTime)
-        add_status(self.character, Retired(year_created=current_date.year))
+        self.character.add_component(Retired, timestamp=current_date.year)
 
         for occupation in self.character.get_component(Roles).get_roles_of_type(
             Occupation
@@ -1026,11 +1008,11 @@ class AskOut(GoalNode):
         if rng.random() > ((romance.value + 100.0) / 200.0) ** 2:
             return NodeState.FAILURE
 
-        add_relationship_status(
-            self.initiator, self.target, Dating(year_created=current_date.year)
+        get_relationship(self.initiator, self.target).add_component(
+            Dating, timestamp=current_date.year
         )
-        add_relationship_status(
-            self.target, self.initiator, Dating(year_created=current_date.year)
+        get_relationship(self.target, self.initiator).add_component(
+            Dating, timestamp=current_date.year
         )
 
         event = StartDatingEvent(
@@ -1046,14 +1028,14 @@ class AskOut(GoalNode):
 
     def get_utility(self) -> Dict[GameObject, float]:
         initiator_to_target_romance = float(
-            self.initiator.get_component(RelationshipManager)
+            self.initiator.get_component(Relationships)
             .outgoing[self.target]
             .get_component(Romance)
             .value
         )
 
         target_to_initiator_romance = float(
-            self.target.get_component(RelationshipManager)
+            self.target.get_component(Relationships)
             .outgoing[self.initiator]
             .get_component(Romance)
             .value
@@ -1096,8 +1078,8 @@ class FindRomance(GoalNode):
         self.character = character
 
     def is_complete(self) -> bool:
-        is_dating = len(get_relationships_with_statuses(self.character, Dating)) > 0
-        is_married = len(get_relationships_with_statuses(self.character, Married)) > 0
+        is_dating = len(get_relationships_with_components(self.character, Dating)) > 0
+        is_married = len(get_relationships_with_components(self.character, Married)) > 0
         return is_married or is_dating
 
     def get_utility(self) -> Dict[GameObject, float]:
@@ -1142,9 +1124,7 @@ class FindRomance(GoalNode):
         ).settings.get("dating_romance_threshold", 25)
 
         # This character should try asking out another character
-        candidates = [
-            c for c in self.character.get_component(RelationshipManager).outgoing
-        ]
+        candidates = [c for c in self.character.get_component(Relationships).outgoing]
 
         actions: WeightedList[GoalNode] = WeightedList()
 
@@ -1225,11 +1205,10 @@ class Die(BehaviorTree):
         if self.character.has_component(Resident):
             set_residence(self.character, None)
 
-        add_status(self.character, Deceased(year_created=current_date.year))
+        self.character.add_component(Deceased, timestamp=current_date.year)
         clear_frequented_locations(self.character)
         clear_statuses(self.character)
 
-        set_character_settlement(self.character, None)
         self.character.deactivate()
 
         return NodeState.SUCCESS

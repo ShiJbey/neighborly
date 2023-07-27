@@ -1,7 +1,7 @@
 import os
 import pathlib
 
-from neighborly.loaders import load_names
+from neighborly.core.tracery import load_names
 from neighborly.simulation import Neighborly, PluginInfo
 
 _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
@@ -16,25 +16,25 @@ plugin_info = PluginInfo(
 def setup(sim: Neighborly):
     load_names(
         sim.world,
-        rule_name="character::default::last_name",
+        rule_name="character::last_name",
         file_path=_RESOURCES_DIR / "names" / "surnames.txt",
     )
 
     load_names(
         sim.world,
-        rule_name="character::default::first_name::gender-neutral",
+        rule_name="character::first_name::NonBinary",
         file_path=_RESOURCES_DIR / "names" / "neutral_names.txt",
     )
 
     load_names(
         sim.world,
-        rule_name="character::default::first_name::feminine",
+        rule_name="character::first_name::Female",
         file_path=_RESOURCES_DIR / "names" / "feminine_names.txt",
     )
 
     load_names(
         sim.world,
-        rule_name="character::default::first_name::masculine",
+        rule_name="character::first_name::Male",
         file_path=_RESOURCES_DIR / "names" / "masculine_names.txt",
     )
 

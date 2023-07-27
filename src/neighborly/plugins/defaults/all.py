@@ -5,7 +5,6 @@ from neighborly.plugins.defaults import (
     names,
     residences,
     resident_spawning,
-    settlement,
     social_rules,
 )
 from neighborly.simulation import Neighborly, PluginInfo
@@ -20,7 +19,6 @@ plugin_info = PluginInfo(
 def setup(sim: Neighborly):
     businesses.setup(sim)
     characters.setup(sim)
-    settlement.setup(sim)
     location_preference_rules.setup(sim)
     names.setup(sim)
     residences.setup(sim)

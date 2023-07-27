@@ -1,9 +1,11 @@
 import pytest
 
-from neighborly.components.character import GameCharacter, Gender, NonBinary, Retired
-from neighborly.components.shared import Age
-from neighborly.core.ecs import Component, World
+from neighborly.components.character import Female, Gender, Male, NonBinary, Retired
+from neighborly.components.shared import Age, Name
+from neighborly.core.ecs import Active, Component, World
 from neighborly.core.query import QB, Relation
+from neighborly.simulation import Neighborly
+from neighborly.status_system import Statuses
 
 
 def test_relation_create_empty():
@@ -104,22 +106,50 @@ class DemonKing(Component):
 
 @pytest.fixture()
 def sample_world() -> World:
-    world = World()
+    sim = Neighborly()
 
-    world.gameobject_manager.spawn_gameobject(
-        [Hero(), GameCharacter("Shi", ""), Age(28)]
+    sim.world.gameobject_manager.register_component(Hero)
+    sim.world.gameobject_manager.register_component(DemonKing)
+
+    sim.world.gameobject_manager.spawn_gameobject(
+        {
+            Hero: {},
+            Name: {"value": "Shi"},
+            Age: {"value": 28},
+            Male: {},
+            Statuses: {},
+        }
     )
-    world.gameobject_manager.spawn_gameobject(
-        [Hero(), GameCharacter("Astrid", ""), Gender("Female"), Retired(year_created=0), Age(24)]
+    sim.world.gameobject_manager.spawn_gameobject(
+        {
+            Hero: {},
+            Name: {"value": "Astrid"},
+            Female: {},
+            Statuses: {},
+            Retired: {"timestamp": 0},
+            Age: {"value": 24},
+        }
     )
-    world.gameobject_manager.spawn_gameobject(
-        [DemonKing(), GameCharacter("Calvin", ""), Retired(year_created=10), Age(22)]
+    sim.world.gameobject_manager.spawn_gameobject(
+        {
+            Statuses: {},
+            DemonKing: {},
+            Name: {"value": "Calvin"},
+            Retired: {"timestamp": 10},
+            Age: {"value": 22},
+        }
     )
-    world.gameobject_manager.spawn_gameobject(
-        [DemonKing(), GameCharacter("Palpatine", ""), Gender("NonBinary"), Age(128)]
+    sim.world.gameobject_manager.spawn_gameobject(
+        {
+            DemonKing: {},
+            Name: {"value": "Palpatine"},
+            NonBinary: {},
+            Statuses: {},
+            Age: {"value": 128},
+        }
     )
 
-    return world
+    return sim.world
 
 
 def test_with(sample_world: World):
@@ -135,7 +165,7 @@ def test_with(sample_world: World):
 
     query = QB.query(
         ("HERO", "VILLAIN"),
-        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.with_((Hero,), "HERO"),
         QB.with_((DemonKing, Retired), "VILLAIN"),
     )
     result = set(query.execute(sample_world))
@@ -146,7 +176,7 @@ def test_with(sample_world: World):
 def test_query_not(sample_world: World):
     query = QB.query(
         ("HERO", "VILLAIN"),
-        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.with_((Hero,), "HERO"),
         QB.not_(QB.with_((Retired,), "HERO")),
         QB.with_((DemonKing, Retired), "VILLAIN"),
     )
@@ -163,11 +193,9 @@ def test_query_bindings(sample_world: World):
 
     query = QB.query(
         ("_",),
-        QB.with_(GameCharacter, "_"),
+        QB.with_(Active, "_"),
         QB.filter_(
-            lambda gameobject: (
-                gameobject.has_component(NonBinary)
-            ),
+            lambda gameobject: (gameobject.has_component(NonBinary)),
             "_",
         ),
     )
@@ -177,7 +205,7 @@ def test_query_bindings(sample_world: World):
 
     query = QB.query(
         ("HERO", "VILLAIN"),
-        QB.with_((GameCharacter, Hero), "HERO"),
+        QB.with_((Active, Hero), "HERO"),
         QB.with_((DemonKing, Retired), "VILLAIN"),
     )
     result = set(query.execute(sample_world, {"HERO": 2}))
@@ -186,11 +214,9 @@ def test_query_bindings(sample_world: World):
 
     query = QB.query(
         "_",
-        QB.with_(GameCharacter, "_"),
+        QB.with_(Active, "_"),
         QB.filter_(
-            lambda gameobject: (
-                gameobject.has_component(NonBinary)
-            ),
+            lambda gameobject: (gameobject.has_component(NonBinary)),
             "_",
         ),
     )
@@ -202,7 +228,7 @@ def test_query_bindings(sample_world: World):
 def test_filter(sample_world: World):
     query = QB.query(
         "_",
-        QB.with_(GameCharacter, "_"),
+        QB.with_(Active, "_"),
         QB.filter_(
             lambda gameobject: gameobject.get_component(Age).value > 25,
             "_",
@@ -214,11 +240,9 @@ def test_filter(sample_world: World):
 
     query = QB.query(
         "_",
-        QB.with_((GameCharacter, Gender), "_"),
+        QB.with_((Active, Gender), "_"),
         QB.filter_(
-            lambda gameobject: (
-                gameobject.has_component(NonBinary)
-            ),
+            lambda gameobject: (gameobject.has_component(NonBinary)),
             "_",
         ),
     )

@@ -1,25 +1,21 @@
-from neighborly.spawn_table import CharacterSpawnTable
+from neighborly.spawn_table import CharacterSpawnTable, CharacterSpawnTableEntry
 
 
 def test_character_library_get_matching_entries():
     table = CharacterSpawnTable()
 
-    table.update("human:male", 1)
-    table.update("human:female", 1)
-    table.update("orc:male", 1)
-    table.update("orc:female", 1)
-    table.update("android", 1)
-    table.update("elf:dark:male", 1)
-    table.update("elf:woodland:female", 1)
+    table.update(CharacterSpawnTableEntry(name="human:male", spawn_frequency=1))
+    table.update(CharacterSpawnTableEntry(name="human:female", spawn_frequency=1))
+    table.update(CharacterSpawnTableEntry(name="orc:male", spawn_frequency=1))
+    table.update(CharacterSpawnTableEntry(name="orc:female", spawn_frequency=1))
+    table.update(CharacterSpawnTableEntry(name="android", spawn_frequency=1))
+    table.update(CharacterSpawnTableEntry(name="elf:dark:male", spawn_frequency=1))
+    table.update(
+        CharacterSpawnTableEntry(name="elf:woodland:female", spawn_frequency=1)
+    )
 
-    assert table.get_matching_prefabs("human:*") == [
-        "human:male", "human:female"
-    ]
+    assert table.get_matching_names("human:*") == ["human:male", "human:female"]
 
-    assert table.get_matching_prefabs("orc:*") == [
-        "orc:male", "orc:female"
-    ]
+    assert table.get_matching_names("orc:*") == ["orc:male", "orc:female"]
 
-    assert table.get_matching_prefabs("elf:dark:*") == [
-        "elf:dark:male"
-    ]
+    assert table.get_matching_names("elf:dark:*") == ["elf:dark:male"]

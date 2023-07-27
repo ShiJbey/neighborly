@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import random
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pydantic
 
@@ -40,6 +40,12 @@ class NeighborlyConfig(pydantic.BaseModel):
         default_factory=lambda: random.randint(0, 9999999)
     )
     """A value used to seed the random number generator."""
+
+    settlement_name: str = "#settlement_name#"
+    """The name of the simulated settlement."""
+
+    world_size: Tuple[int, int] = (5, 5)
+    """The X/Y dimensions of the world in."""
 
     plugins: List[PluginConfig] = pydantic.Field(default_factory=list)
     """Plugins to import before running the simulation."""

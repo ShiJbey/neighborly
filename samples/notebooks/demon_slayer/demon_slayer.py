@@ -27,20 +27,18 @@ import math
 import random
 import time
 from enum import IntEnum
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
 from neighborly import (
-    Component,
-    GameObject,
     IComponentFactory,
     Neighborly,
     NeighborlyConfig,
     SimDateTime,
-    SystemBase,
-    World,
+    System,
 )
+from neighborly.components.business import Occupation
 from neighborly.components.character import (
     CanAge,
     CanGetOthersPregnant,
@@ -51,7 +49,7 @@ from neighborly.components.character import (
     LifeStageType,
 )
 from neighborly.components.shared import FrequentedLocations
-from neighborly.core.ecs import Active, Component, ISerializable, World
+from neighborly.core.ecs import Active, Component, GameObject, ISerializable, World
 from neighborly.core.life_event import (
     EventRole,
     EventRoleBindingContext,
@@ -71,10 +69,6 @@ from neighborly.events import DeathEvent
 from neighborly.exporter import export_to_json
 from neighborly.goals import Die
 from neighborly.systems import EarlyUpdateSystemGroup, InitializationSystemGroup
-
-from neighborly.components.trait import add_trait
-
-from neighborly.components.business import Occupation
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -157,7 +151,7 @@ class PowerLevel(Component, ISerializable):
 
 @component_factory(sim.world, PowerLevel)
 class PowerLevelFactory(IComponentFactory):
-    def create(self, world: World, **kwargs: Any) -> PowerLevel:
+    def __call__(self, world: World, **kwargs: Any) -> PowerLevel:
         rng = world.resource_manager.get_resource(random.Random)
         power_level = kwargs.get("power_level", rng.randint(0, 230))
         return PowerLevel(level=power_level)
@@ -219,7 +213,7 @@ class DemonSlayer(Occupation):
 class DemonSlayerFactory(IComponentFactory):
     """Creates instances of DemonSlayer Components."""
 
-    def create(self, world: World, **kwargs: Any) -> DemonSlayer:
+    def __call__(self, world: World, **kwargs: Any) -> DemonSlayer:
         rng = world.resource_manager.get_resource(random.Random)
         breathing_style = rng.choice(list(BreathingStyle))
         business: GameObject = kwargs["business"]
@@ -233,7 +227,7 @@ class DemonSlayerFactory(IComponentFactory):
 
 @resource(sim.world)
 class DemonSlayerCorps:
-    """A business owned by the simulation that is responsible for employing demon slayers
+    """A business owned by the simulation, responsible for employing demon slayers
 
     Attributes
     ----------
@@ -630,13 +624,14 @@ class BecomeDemonSlayer(RandomLifeEvent):
     def execute(self) -> None:
         character = self["Character"]
         world = character.world
-        character.add_component(world.gameobject_manager.create_component(DemonSlayer))
+        character.add_component(DemonSlayer)
         character.add_component(
-            PowerLevel(
-                world.resource_manager.get_resource(random.Random).randint(0, HINOTO_PL)
-            )
+            PowerLevel,
+            power_level=world.resource_manager.get_resource(random.Random).randint(
+                0, HINOTO_PL
+            ),
         )
-        character.add_component(ConfirmedKills())
+        character.add_component(ConfirmedKills)
 
 
 @random_life_event(sim.world)
@@ -722,14 +717,12 @@ class DemonChallengeForPower(RandomLifeEvent):
         opponent = self["Opponent"]
         world = challenger.world
 
-        battle_event = Battle(
+        Battle(
             world,
             world.resource_manager.get_resource(SimDateTime),
             challenger,
             opponent,
-        )
-
-        battle_event.dispatch()
+        ).dispatch()
 
     @classmethod
     def instantiate(
@@ -835,8 +828,7 @@ class DevourHuman(RandomLifeEvent):
         date = self.world.resource_manager.get_resource(SimDateTime)
 
         if victim.has_component(DemonSlayer):
-            battle_event = Battle(self.world, date, demon, victim)
-            battle_event.dispatch()
+            Battle(self.world, date, demon, victim).dispatch()
 
         else:
             demon.get_component(PowerLevel).level += 1
@@ -944,6 +936,22 @@ class Battle(RandomLifeEvent):
             date,
             [EventRole("Challenger", challenger), EventRole("Opponent", opponent)],
         )
+
+    @property
+    def challenger(self) -> GameObject:
+        return self._roles.get_first("Challenger")
+
+    @property
+    def opponent(self) -> GameObject:
+        return self._roles.get_first("Opponent")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            **super().to_dict(),
+        }
+
+    def get_affected_gameobjects(self) -> Iterable[GameObject]:
+        return [self.challenger, self.opponent]
 
     def get_probability(self) -> float:
         return 0.8
@@ -1154,12 +1162,14 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
         demon = self["Demon"]
         new_demon = self["NewDemon"]
 
-        new_demon.add_component(Demon(turned_by=demon.uid))
+        new_demon.add_component(Demon, turned_by=demon.uid)
         new_demon.remove_component(CanAge)
         if new_demon.has_component(CanGetPregnant):
             new_demon.remove_component(CanGetPregnant)
-        new_demon.add_component(PowerLevel(demon.get_component(PowerLevel).level // 2))
-        new_demon.add_component(ConfirmedKills())
+        new_demon.add_component(
+            PowerLevel, power_level=demon.get_component(PowerLevel).level // 2
+        )
+        new_demon.add_component(ConfirmedKills)
 
 
 @random_life_event(sim.world)
@@ -1299,14 +1309,14 @@ def handle_demon_death(event: DeathEvent) -> None:
 
 
 @system(sim.world, system_group=InitializationSystemGroup)
-class InitializeDemonSlayerCorps(SystemBase):
+class InitializeDemonSlayerCorps(System):
     def on_update(self, world: World) -> None:
         # Create an instance of thr world and pass
         pass
 
 
 @system(sim.world, system_group=EarlyUpdateSystemGroup)
-class SpawnFirstDemonSystem(SystemBase):
+class SpawnFirstDemonSystem(System):
     """Picks an existing character at random and turns them into a demon."""
 
     YEAR_TO_SPAWN_DEMON = 10
@@ -1330,22 +1340,19 @@ class SpawnFirstDemonSystem(SystemBase):
 
         new_demon = rng.choice(candidates)
 
-        new_demon.add_component(
-            world.gameobject_manager.create_component(Demon),
-        )
+        new_demon.add_component(Demon)
 
-        new_demon.add_component(ConfirmedKills())
+        new_demon.add_component(ConfirmedKills)
         new_demon.add_component(
-            PowerLevel(
-                world.resource_manager.get_resource(random.Random).randint(
-                    0, HIGHER_DEMON_PL
-                )
-            )
+            PowerLevel,
+            power_level=world.resource_manager.get_resource(random.Random).randint(
+                0, HIGHER_DEMON_PL
+            ),
         )
 
         # Demons stop changing life stages and do not die of old age.
         new_demon.remove_component(CanAge)
-        add_trait(new_demon, Immortal())
+        new_demon.add_component(Immortal)
 
         # Demons cannot have children.
         if new_demon.has_component(CanGetPregnant):

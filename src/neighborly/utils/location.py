@@ -2,37 +2,7 @@
 
 """
 from neighborly import GameObject
-from neighborly.components.shared import FrequentedBy, FrequentedLocations, Location
-
-
-def add_sub_location(parent_location: GameObject, sub_location: GameObject) -> None:
-    """Adds a location as a child of another location.
-
-    Parameters
-    ----------
-    parent_location
-        The location to add a child to.
-    sub_location
-        The new location to add.
-    """
-    parent_location.get_component(Location).children.add(sub_location)
-    sub_location.get_component(Location).parent = parent_location
-    parent_location.add_child(sub_location)
-
-
-def remove_sub_location(parent_location: GameObject, sub_location: GameObject) -> None:
-    """Removes a location as a child of another location.
-
-    Parameters
-    ----------
-    parent_location
-        The location to add a child to.
-    sub_location
-        The new location to add.
-    """
-    parent_location.get_component(Location).children.remove(sub_location)
-    sub_location.get_component(Location).parent = None
-    parent_location.remove_child(sub_location)
+from neighborly.components.shared import FrequentedBy, FrequentedLocations
 
 
 def add_frequented_location(character: GameObject, location: GameObject) -> None:

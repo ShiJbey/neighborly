@@ -14,8 +14,9 @@ from typing import Any, Dict
 
 from neighborly import Component, Neighborly
 from neighborly.core.ecs import GameObject
-from neighborly.core.status import Statuses
 from neighborly.decorators import component
+from neighborly.stat_system import StatComponent, StatModifier, StatModifierType
+from neighborly.status_system import Statuses
 
 sim = Neighborly()
 
@@ -30,13 +31,8 @@ class Actor(Component):
 
 
 @component(sim.world)
-@dataclass
-class AdventurerStats(Component):
-    attack: int
-    defense: int
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"attack": self.attack, "defense": self.defense}
+class Attack(StatComponent):
+    pass
 
 
 @component(sim.world)
@@ -48,28 +44,30 @@ class AttackBuff(Component):
         return {"amount": self.amount}
 
     def on_add(self, gameobject: GameObject) -> None:
-        stats = gameobject.get_component(AdventurerStats)
-        stats.attack += self.amount
+        gameobject.get_component(Attack).add_modifier(
+            StatModifier(
+                modifier_type=StatModifierType.Flat, value=self.amount, source=self
+            )
+        )
 
     def on_remove(self, gameobject: GameObject) -> None:
-        stats = gameobject.get_component(AdventurerStats)
-        stats.attack -= self.amount
+        gameobject.get_component(Attack).remove_modifiers_from_source(self)
 
 
 def main():
     alice = sim.world.gameobject_manager.spawn_gameobject(
-        [Actor("Alice"), Statuses(), AdventurerStats(5, 7)]
+        components={Actor: {"name": "Alice"}, Statuses: {}, Attack: {}}
     )
 
-    print(alice.get_component(AdventurerStats))
+    print(alice.get_component(Attack))
 
-    alice.add_component(AttackBuff(10))
+    alice.add_component(AttackBuff, amount=10)
 
-    print(alice.get_component(AdventurerStats))
+    print(alice.get_component(Attack))
 
     alice.remove_component(AttackBuff)
 
-    print(alice.get_component(AdventurerStats))
+    print(alice.get_component(Attack))
 
 
 if __name__ == "__main__":

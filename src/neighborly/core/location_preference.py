@@ -17,7 +17,7 @@ from neighborly.core.ecs import GameObject
 class ILocationPreferenceRule(Protocol):
     """LocationPreferenceRules define what locations characters are likely to frequent"""
 
-    def __call__(self, character: GameObject, location: GameObject) -> Optional[int]:
+    def __call__(self, character: GameObject, location: GameObject) -> Optional[float]:
         """
         Calculate a weight modifier for a character frequenting a location
 
@@ -30,8 +30,8 @@ class ILocationPreferenceRule(Protocol):
 
         Returns
         -------
-        int or None
-            Optionally returns an integer value representing a weight modifier for
+        float or None
+            Optionally returns a float value representing a weight modifier for
             how likely the given character would be to frequent the given location
             based on some precondition(s)
         """

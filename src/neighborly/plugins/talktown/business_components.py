@@ -336,7 +336,7 @@ class TattooParlor(Component):
 
 
 class Tavern(Component):
-    """A place where alcohol is served in the 19th century, maintained by a barkeeper."""
+    """A place where alcohol is served in the 19th century."""
 
     pass
 

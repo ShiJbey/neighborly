@@ -10,10 +10,10 @@ from typing import Any
 
 from neighborly.components.business import Occupation, WorkHistory
 from neighborly.components.character import Gender
-from neighborly.components.role import Roles
 from neighborly.components.shared import Age
 from neighborly.core.ecs import GameObject
 from neighborly.core.time import SimDateTime
+from neighborly.role_system import Roles
 
 
 def has_component(gameobject: GameObject, *args: Any) -> bool:

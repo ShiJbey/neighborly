@@ -1,4 +1,7 @@
-"""Components for defining spawn tables for settlements.
+"""Spawn Tables.
+
+Spawn tables are used to manage the relative frequency of certain content appearing in 
+the simulation.
 
 """
 
@@ -6,97 +9,70 @@ from __future__ import annotations
 
 import random
 import re
-from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional
+from typing import ClassVar, List, Optional, TypedDict
 
 import pandas as pd
 
-from neighborly.core.ecs import GameObject
-from neighborly.core.settlement import Settlement
+from neighborly.core.ecs import World
 from neighborly.core.time import SimDateTime
+from neighborly.settlement import Settlement
 
 
-@dataclass
-class CharacterSpawnTableEntry:
+class CharacterSpawnTableEntry(TypedDict):
     """Data for a single row in a CharacterSpawnTable."""
 
     name: str
-    frequency: int
+    """The name of an entry."""
 
-
-class CharacterSpawnTableIterator:
-    """Custom iterator for character spawn tables."""
-
-    __slots__ = "_table", "_index"
-
-    def __init__(self, table: CharacterSpawnTable) -> None:
-        self._table = table
-        self._index = 0
-
-    def __iter__(self) -> Iterator[CharacterSpawnTableEntry]:
-        return self
-
-    def __next__(self) -> CharacterSpawnTableEntry:
-        if self._index < len(self._table):
-            item = self._table[self._index]
-            self._index += 0
-            return item
-        else:
-            raise StopIteration
+    spawn_frequency: int
+    """The relative frequency that this entry should spawn relative to others."""
 
 
 class CharacterSpawnTable:
-    """Manages the frequency that character prefabs are spawned."""
+    """Manages the frequency that character types are spawned."""
 
-    __slots__ = "_names", "_frequencies", "_size", "_index_map", "_table"
+    __slots__ = "_table"
 
     _table: pd.DataFrame
     """Contains spawn table data."""
 
-    def __init__(self, entries: Optional[List[Dict[str, Any]]] = None) -> None:
+    _TABLE_SCHEMA: ClassVar[List[str]] = ["name", "spawn_frequency"]
+
+    def __init__(
+        self, entries: Optional[List[CharacterSpawnTableEntry]] = None
+    ) -> None:
         """
         Parameters
         ----------
         entries
-            Starting entries in the form [{"name": ..., "frequency": ...}, ...],
-            by default None
+            Starting entries.
         """
-        # Names and frequencies are separate buffers to optimize random selection.
-        # If we stored them as a list of dicts, we would have to iterate the list to
-        # get all the spawn frequencies before selecting an entry
-        self._names: List[str] = []
-        self._frequencies: List[int] = []
-        self._index_map: Dict[str, int] = {}
-        self._size = 0
-        self._table = pd.DataFrame(columns=["name", "spawn_frequency", "species", "culture"])
+        self._table = pd.DataFrame(columns=CharacterSpawnTable._TABLE_SCHEMA)
 
         if entries:
             self._table = pd.DataFrame.from_records(
-                entries,
-                columns=["name", "spawn_frequency", "species", "culture"]
+                entries, columns=CharacterSpawnTable._TABLE_SCHEMA
             )
 
-    def update(self, name: str, frequency: int = 1) -> None:
+    def update(self, entry: CharacterSpawnTableEntry) -> None:
         """Add an entry to the spawn table or overwrite an existing entry.
 
         Parameters
         ----------
-        name
-            The name of a prefab.
-        frequency
-            The relative frequency that this prefab should spawn relative to others.
+        entry
+            Row data.
         """
+        new_data = pd.DataFrame.from_records(
+            [entry], columns=CharacterSpawnTable._TABLE_SCHEMA
+        )
 
-        if entry_index := self._index_map.get(name, None):
-            self._frequencies[entry_index] = frequency
+        if entry["name"] in self._table["name"]:
+            self._table.update(new_data)
         else:
-            self._names.append(name)
-            self._frequencies.append(frequency)
-            self._index_map[name] = self._size
-            self._size += 1
+            self._table = pd.concat([self._table, new_data])
 
     def choose_random(self, rng: random.Random) -> str:
-        """Performs a weighted random selection across all prefab names.
+        """Performs a weighted random selection across all entries.
 
         Parameters
         ----------
@@ -106,16 +82,20 @@ class CharacterSpawnTable:
         Returns
         -------
         str
-            The name of a prefab.
+            The name of a entry.
         """
 
-        if self._size == 0:
+        if len(self._table) == 0:
             raise IndexError("Character spawn table is empty")
 
-        return rng.choices(population=self._names, weights=self._frequencies, k=1)[0]
+        return rng.choices(
+            population=self._table["name"].to_list(),
+            weights=self._table["spawn_frequency"].to_list(),
+            k=1,
+        )[0]
 
-    def get_matching_prefabs(self, *patterns: str) -> List[str]:
-        """Get all prefabs with names that match the given regex strings.
+    def get_matching_names(self, *patterns: str) -> List[str]:
+        """Get all entries with names that match the given regex strings.
 
         Parameters
         ----------
@@ -125,114 +105,63 @@ class CharacterSpawnTable:
         Returns
         -------
         List[str]
-            The names of prefabs in the table that match the pattern.
+            The names of entries in the table that match the pattern.
         """
 
         matches: List[str] = []
 
-        for name in self._names:
+        name: str  # Type hint the loop variable
+        for name in self._table["name"]:
             if any([re.match(p, name) for p in patterns]):
                 matches.append(name)
 
         return matches
 
     def __len__(self) -> int:
-        return self._size
-
-    def __bool__(self) -> bool:
-        return bool(self._size)
-
-    def __getitem__(self, item: int) -> CharacterSpawnTableEntry:
-        return CharacterSpawnTableEntry(
-            name=self._names[item], frequency=self._frequencies[item]
-        )
-
-    def __iter__(self) -> Iterator[CharacterSpawnTableEntry]:
-        return CharacterSpawnTableIterator(self)
-
-    def extend(self, other: CharacterSpawnTable) -> None:
-        """Add entries from another table to this table.
-
-        Parameters
-        ----------
-        other
-            The table with new entries
-        """
-
-        for entry in other:
-            self.update(name=entry.name, frequency=entry.frequency)
-
-    @staticmethod
-    def combine(*tables: CharacterSpawnTable) -> CharacterSpawnTable:
-        """Create a new table that is a combination of the given tables.
-
-        Parameters
-        ----------
-        *tables
-            The spawn tables to combine.
-
-        Returns
-        -------
-        CharacterSpawnTable
-            A new spawn table.
-        """
-
-        combined_table = CharacterSpawnTable()
-
-        for table in tables:
-            combined_table.extend(table)
-
-        return combined_table
+        return self._table.__len__()
 
 
-@dataclass
-class BusinessSpawnTableEntry:
+class BusinessSpawnTableEntry(TypedDict):
     """A single row of data from a BusinessSpawnTable."""
 
     name: str
-    frequency: int
+    """The name of an entry."""
+
+    spawn_frequency: int
+    """The relative frequency that this entry should spawn relative to others."""
+
     max_instances: int
+    """Max number of instances of the business that may exist."""
+
     min_population: int
+    """The minimum settlement population required to spawn."""
+
     year_available: int
+    """The minimum year that this business can spawn."""
+
     year_obsolete: int
-
-
-class BusinessSpawnTableIterator:
-    """Custom iterator for character spawn tables."""
-
-    __slots__ = "_table", "_index"
-
-    def __init__(self, table: BusinessSpawnTable) -> None:
-        self._table = table
-        self._index = 0
-
-    def __iter__(self) -> Iterator[BusinessSpawnTableEntry]:
-        return self
-
-    def __next__(self) -> BusinessSpawnTableEntry:
-        if self._index < len(self._table):
-            item = self._table[self._index]
-            self._index += 0
-            return item
-        else:
-            raise StopIteration
+    """The maximum year that this business can spawn."""
 
 
 class BusinessSpawnTable:
-    """Manages the frequency that business prefabs are spawned"""
+    """Manages the frequency that business types are spawned"""
 
-    __slots__ = (
-        "_names",
-        "_frequencies",
-        "_max_instances",
-        "_min_population",
-        "_year_available",
-        "_year_obsolete",
-        "_size",
-        "_index_map",
-    )
+    __slots__ = "_table"
 
-    def __init__(self, entries: Optional[List[Dict[str, Any]]] = None) -> None:
+    _TABLE_SCHEMA: ClassVar[List[str]] = [
+        "name",
+        "spawn_frequency",
+        "max_instances",
+        "min_population",
+        "year_available",
+        "year_obsolete",
+        "instances",
+    ]
+
+    _table: pd.DataFrame
+    """Table data with entries."""
+
+    def __init__(self, entries: Optional[List[BusinessSpawnTableEntry]] = None) -> None:
         """
         Parameters
         ----------
@@ -240,361 +169,228 @@ class BusinessSpawnTable:
             Starting entries in the form [{"name": ..., "frequency": ...}, ...],
             by default None
         """
-        # Names and frequencies are separate buffers to optimize random selection.
-        # If we stored them as a list of dicts, we would have to iterate the list to
-        # get all the spawn frequencies before selecting an entry
-        self._names: List[str] = []
-        self._frequencies: List[int] = []
-        self._max_instances: List[int] = []
-        self._min_population: List[int] = []
-        self._year_available: List[int] = []
-        self._year_obsolete: List[int] = []
-        self._size = 0
-        self._index_map: Dict[str, int] = {}
+        self._table = pd.DataFrame(columns=BusinessSpawnTable._TABLE_SCHEMA)
 
         if entries:
             for entry in entries:
-                self.update(**entry)
+                self.update(entry)
 
-    def update(
-        self,
-        name: str,
-        frequency: int = 1,
-        max_instances: int = 9999,
-        min_population: int = 0,
-        year_available: int = 0,
-        year_obsolete: int = 9999,
-    ) -> None:
+    def update(self, entry: BusinessSpawnTableEntry) -> None:
         """Add an entry to the spawn table or overwrite an existing entry.
 
         Parameters
         ----------
-        name
-            The name of a prefab.
-        frequency
-            The relative frequency that this prefab should spawn relative to others.
-            defaults to 1
-        max_instances
-            Max number of instances of the business that may exist, defaults to 9999.
-        min_population
-            The minimum settlement population required to spawn, defaults to 0.
-        year_available
-            The minimum year that this business can spawn, defaults to 0.
-        year_obsolete
-            The maximum year that this business can spawn, defaults to 9999.
+        entry
+            Row data
         """
-        if entry_index := self._index_map.get(name, None):
-            self._frequencies[entry_index] = frequency
-            self._max_instances[entry_index] = max_instances
-            self._min_population[entry_index] = min_population
-            self._year_available[entry_index] = year_available
-            self._year_obsolete[entry_index] = year_obsolete
+        new_data = pd.DataFrame.from_records(
+            [{**entry, "instances": 0}],
+            columns=BusinessSpawnTable._TABLE_SCHEMA,
+        )
+
+        if entry["name"] in self._table["name"]:
+            self._table.update(new_data)
         else:
-            self._names.append(name)
-            self._frequencies.append(frequency)
-            self._max_instances.append(max_instances)
-            self._min_population.append(min_population)
-            self._year_available.append(year_available)
-            self._year_obsolete.append(year_obsolete)
-            self._index_map[name] = self._size
-            self._size += 1
+            self._table = pd.concat([self._table, new_data])
+
+    def increment_count(self, name: str) -> None:
+        """Increment the instance count for an entry.
+
+        Parameters
+        ----------
+        name
+            The name of entry to update
+        """
+        self._table.loc[self._table["name"] == name, "instances"] += 1
+
+    def decrement_count(self, name: str) -> None:
+        """Increment the instance count for an entry.
+
+        Parameters
+        ----------
+        name
+            The name of entry to update
+        """
+        self._table.loc[self._table["name"] == name, "instances"] -= 1
 
     def get_frequency(self, name: str) -> int:
-        return self._frequencies[self._index_map[name]]
+        return self._table.loc[self._table["name"] == name, "spawn_frequency"].item()
 
-    def choose_random(self, settlement: GameObject) -> Optional[str]:
-        """
-        Return all business archetypes that may be built
-        given the state of the simulation
+    def choose_random(self, world: World) -> Optional[str]:
+        """Randomly choose entry that may be built in the given settlement.
+
+        Parameters
+        ----------
+        world
+            The World instance
+
+        Returns
+        -------
+        str or None
+            Returns the name of an entry or None if no eligible entries
+            were found.
         """
 
-        if self._size == 0:
+        if len(self) == 0:
             raise IndexError("Business spawn table is empty")
 
-        world = settlement.world
-        settlement_comp = settlement.get_component(Settlement)
+        settlement = world.resource_manager.get_resource(Settlement)
         date = world.resource_manager.get_resource(SimDateTime)
         rng = world.resource_manager.get_resource(random.Random)
 
-        choices: List[str] = []
-        weights: List[int] = []
+        eligible_entries = self._table[
+            (self._table["max_instances"] > self._table["instances"])
+            & (self._table["min_population"] <= settlement.population)
+            & (self._table["year_available"] <= date.year)
+            & (self._table["year_obsolete"] > date.year)
+        ]
 
-        for i in range(self._size):
-            if (
-                settlement_comp.business_counts[self._names[i]] < self._max_instances[i]
-                and settlement_comp.population >= self._min_population[i]
-                and (self._year_available[i] <= date.year < self._year_obsolete[i])
-            ):
-                choices.append(self._names[i])
-                weights.append(self._frequencies[i])
-
-        if choices:
-            # Choose an archetype at random
-            return rng.choices(population=choices, weights=weights, k=1)[0]
+        if len(eligible_entries) > 0:
+            return rng.choices(
+                population=self._table["name"].to_list(),
+                weights=self._table["spawn_frequency"].to_list(),
+                k=1,
+            )[0]
 
         return None
 
-    def get_eligible(self, settlement: GameObject) -> List[str]:
-        """Get all business prefabs that can be built in the given settlement"""
-        world = settlement.world
-        settlement_comp = settlement.get_component(Settlement)
+    def get_eligible(self, world: World) -> List[str]:
+        """Get all business entries that can be built in the given settlement"""
+        settlement = world.resource_manager.get_resource(Settlement)
         date = world.resource_manager.get_resource(SimDateTime)
 
-        matches: List[str] = []
+        eligible_entries = self._table[
+            (self._table["max_instances"] > self._table["instances"])
+            & (self._table["min_population"] <= settlement.population)
+            & (self._table["year_available"] <= date.year)
+            & (self._table["year_obsolete"] > date.year)
+        ]
 
-        for i in range(self._size):
-            if (
-                settlement_comp.business_counts[self._names[i]] < self._max_instances[i]
-                and settlement_comp.population >= self._min_population[i]
-                and (self._year_available[i] <= date.year < self._year_obsolete[i])
-            ):
-                matches.append(self._names[i])
+        return eligible_entries["name"].to_list()
 
-        return matches
-
-    def get_matching_prefabs(self, *patterns: str) -> List[str]:
-        """
-        Get all prefabs with names that match the given regex strings
+    def get_matching_names(self, *patterns: str) -> List[str]:
+        """Get all entries with names that match the given regex strings.
 
         Parameters
         ----------
         *patterns: Tuple[str, ...]
-            Glob-patterns of names to check for
+            Glob-patterns of names to check for.
 
         Returns
         -------
         List[str]
-            The names of prefabs in the table that match the pattern
+            The names of entries in the table that match the pattern.
         """
 
         matches: List[str] = []
 
-        for name in self._names:
+        for name in self._table["name"]:
             if any([re.match(p, name) for p in patterns]):
                 matches.append(name)
 
         return matches
 
     def __len__(self) -> int:
-        return self._size
-
-    def __bool__(self) -> bool:
-        return bool(self._size)
-
-    def __getitem__(self, item: int) -> BusinessSpawnTableEntry:
-        return BusinessSpawnTableEntry(
-            name=self._names[item],
-            frequency=self._frequencies[item],
-            max_instances=self._max_instances[item],
-            min_population=self._min_population[item],
-            year_available=self._year_available[item],
-            year_obsolete=self._year_obsolete[item],
-        )
-
-    def __iter__(self) -> Iterator[BusinessSpawnTableEntry]:
-        return BusinessSpawnTableIterator(self)
-
-    def extend(self, other: BusinessSpawnTable) -> None:
-        """Add entries from another table to this table.
-
-        Parameters
-        ----------
-        other
-            The table with new entries
-        """
-
-        for entry in other:
-            self.update(
-                name=entry.name,
-                frequency=entry.frequency,
-                max_instances=entry.max_instances,
-                min_population=entry.min_population,
-                year_available=entry.year_available,
-                year_obsolete=entry.year_obsolete,
-            )
-
-    @staticmethod
-    def combine(*tables: BusinessSpawnTable) -> BusinessSpawnTable:
-        """Create a new table that is a combination of the given tables.
-
-        Parameters
-        ----------
-        *tables
-            The spawn tables to combine.
-
-        Returns
-        -------
-        CharacterSpawnTable
-            A new spawn table.
-        """
-
-        combined_table = BusinessSpawnTable()
-
-        for table in tables:
-            combined_table.extend(table)
-
-        return combined_table
+        return self._table.__len__()
 
 
-@dataclass
-class ResidenceSpawnTableEntry:
+class ResidenceSpawnTableEntry(TypedDict):
     """Data for a single row in a ResidenceSpawnTable."""
 
     name: str
-    frequency: int
+    """The name of an entry."""
 
-
-class ResidenceSpawnTableIterator:
-    """Custom iterator for character spawn tables."""
-
-    __slots__ = "_table", "_index"
-
-    def __init__(self, table: ResidenceSpawnTable) -> None:
-        self._table = table
-        self._index = 0
-
-    def __iter__(self) -> Iterator[ResidenceSpawnTableEntry]:
-        return self
-
-    def __next__(self) -> ResidenceSpawnTableEntry:
-        if self._index < len(self._table):
-            item = self._table[self._index]
-            self._index += 0
-            return item
-        else:
-            raise StopIteration
+    spawn_frequency: int
+    """The relative frequency that this entry should spawn relative to others."""
 
 
 class ResidenceSpawnTable:
-    """Manages the frequency that residence prefabs are spawned"""
+    """Manages the frequency that residence types are spawned"""
 
-    __slots__ = "_names", "_frequencies", "_size", "_index_map"
+    __slots__ = "_table"
 
-    def __init__(self, entries: Optional[List[Dict[str, Any]]] = None) -> None:
+    _TABLE_SCHEMA: ClassVar[List[str]] = ["name", "spawn_frequency"]
+
+    _table: pd.DataFrame
+    """Contains spawn table data."""
+
+    def __init__(
+        self, entries: Optional[List[ResidenceSpawnTableEntry]] = None
+    ) -> None:
         """
         Parameters
         ----------
-        entries : Optional[List[Dict[str, Any]]], optional
-            Starting entries in the form [{"name": ..., "frequency": ...}, ...],
-            by default None
+        entries
+            Starting entries.
         """
-        # Names and frequencies are separate buffers to optimize random selection.
-        # If we stored them as a list of dicts, we would have to iterate the list to
-        # get all the spawn frequencies before selecting an entry
-        self._names: List[str] = []
-        self._frequencies: List[int] = []
-        self._index_map: Dict[str, int] = {}
-        self._size = 0
+        self._table = pd.DataFrame(columns=ResidenceSpawnTable._TABLE_SCHEMA)
 
         if entries:
             for entry in entries:
-                self.update(**entry)
+                self.update(entry)
 
-    def update(self, name: str, frequency: int = 1) -> None:
-        """Add an entry to the spawn table or overwrite an existing one.
+    def update(self, entry: ResidenceSpawnTableEntry) -> None:
+        """Add an entry to the spawn table or overwrite an existing entry.
 
         Parameters
         ----------
-        name: str
-            The name of a prefab.
-        frequency: int
-            The relative frequency that this prefab should spawn relative to others.
+        entry
+            Row data.
         """
-        if entry_index := self._index_map.get(name, None):
-            self._frequencies[entry_index] = frequency
+        new_data = pd.DataFrame.from_records(
+            [entry], columns=ResidenceSpawnTable._TABLE_SCHEMA
+        )
+
+        if entry["name"] in self._table["name"]:
+            self._table.update(new_data)
         else:
-            self._names.append(name)
-            self._frequencies.append(frequency)
-            self._index_map[name] = self._size
-            self._size += 1
+            self._table = pd.concat([self._table, new_data])
 
     def choose_random(self, rng: random.Random) -> str:
-        """
-        Performs a weighted random selection across all prefab names
+        """Performs a weighted random selection across all entries.
 
         Parameters
         ----------
-        rng: random.Random
-            A Random rng instance
+        rng
+            A Random instance.
 
         Returns
         -------
         str
-            The name of a prefab
+            The name of a entry.
         """
 
-        if self._size == 0:
+        if len(self._table) == 0:
             raise IndexError("Residence spawn table is empty")
 
-        return rng.choices(population=self._names, weights=self._frequencies, k=1)[0]
+        return rng.choices(
+            population=self._table["name"].to_list(),
+            weights=self._table["spawn_frequency"].to_list(),
+            k=1,
+        )[0]
 
-    def get_matching_prefabs(self, *patterns: str) -> List[str]:
-        """
-        Get all prefabs with names that match the given regex strings
+    def get_matching_names(self, *patterns: str) -> List[str]:
+        """Get all entries with names that match the given regex strings.
 
         Parameters
         ----------
-        *patterns: Tuple[str, ...]
-            Glob-patterns of names to check for
+        *patterns
+            Glob-patterns of names to check for.
 
         Returns
         -------
         List[str]
-            The names of prefabs in the table that match the pattern
+            The names of entries in the table that match the pattern.
         """
 
         matches: List[str] = []
 
-        for name in self._names:
+        name: str  # Type hint the loop variable
+        for name in self._table["name"]:
             if any([re.match(p, name) for p in patterns]):
                 matches.append(name)
 
         return matches
 
     def __len__(self) -> int:
-        return self._size
-
-    def __bool__(self) -> bool:
-        return bool(self._size)
-
-    def __getitem__(self, item: int) -> ResidenceSpawnTableEntry:
-        return ResidenceSpawnTableEntry(
-            name=self._names[item], frequency=self._frequencies[item]
-        )
-
-    def __iter__(self) -> Iterator[ResidenceSpawnTableEntry]:
-        return ResidenceSpawnTableIterator(self)
-
-    def extend(self, other: ResidenceSpawnTable) -> None:
-        """Add entries from another table to this table.
-
-        Parameters
-        ----------
-        other
-            The table with new entries
-        """
-
-        for entry in other:
-            self.update(name=entry.name, frequency=entry.frequency)
-
-    @staticmethod
-    def combine(*tables: ResidenceSpawnTable) -> ResidenceSpawnTable:
-        """Create a new table that is a combination of the given tables.
-
-        Parameters
-        ----------
-        *tables
-            The spawn tables to combine.
-
-        Returns
-        -------
-        CharacterSpawnTable
-            A new spawn table.
-        """
-
-        combined_table = ResidenceSpawnTable()
-
-        for table in tables:
-            combined_table.extend(table)
-
-        return combined_table
+        return self._table.__len__()

@@ -9,7 +9,7 @@ from neighborly.core.ecs import (
     Event,
     EventListener,
     IComponentFactory,
-    SystemBase,
+    System,
     SystemGroup,
     World,
 )
@@ -23,7 +23,7 @@ from neighborly.core.relationship import ISocialRule, SocialRuleLibrary
 _CT = TypeVar("_CT", bound=Component)
 _CF = TypeVar("_CF", bound=IComponentFactory)
 _RT = TypeVar("_RT", bound=Any)
-_ST = TypeVar("_ST", bound=SystemBase)
+_ST = TypeVar("_ST", bound=System)
 _LT = TypeVar("_LT", bound=RandomLifeEvent)
 _ET_contra = TypeVar("_ET_contra", bound=Event, contravariant=True)
 
