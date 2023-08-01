@@ -14,12 +14,12 @@ from __future__ import annotations
 import enum
 import math
 from abc import ABC
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type, Iterator
 
 import attrs
 
 from neighborly import Component
-from neighborly.core.ecs import ISerializable
+from neighborly.core.ecs import ISerializable, GameObject
 
 
 class StatComponent(Component, ISerializable, ABC):
@@ -148,6 +148,12 @@ class StatComponent(Component, ISerializable, ABC):
 
         self._is_dirty = False
 
+    def on_add(self, gameobject: GameObject) -> None:
+        gameobject.get_component(Stats).add_stat(self)
+
+    def on_remove(self, gameobject: GameObject) -> None:
+        gameobject.get_component(Stats).remove_stat(self)
+
     def __str__(self) -> str:
         return self.__repr__()
 
@@ -247,4 +253,51 @@ class StatModifier:
             "modifier_type": self.modifier_type.name,
             "order": self.order,
             "source": str(self.source) if self.source is not None else "",
+        }
+
+
+class Stats(Component, ISerializable):
+    """Tracks the current stat components attached to a GameObject.
+
+    Notes
+    -----
+    The entries in this component are updated automatically when stat components
+    are added/removed form a GameObject
+    """
+
+    __slots__ = "_stats"
+
+    _stats: Dict[Type[StatComponent], StatComponent]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._stats = {}
+
+    def iter_stats(self) -> Iterator[StatComponent]:
+        """Get an iterator to the collection of stat components."""
+        return self._stats.values().__iter__()
+
+    def add_stat(self, stat: StatComponent) -> None:
+        """Add a new stat to the Stats component.
+
+        Parameters
+        ----------
+        stat
+            The stat component that was added to the GameObject
+        """
+        self._stats[type(stat)] = stat
+
+    def remove_stat(self, stat: StatComponent) -> None:
+        """Remove stat from the Stats component.
+
+        Parameters
+        ----------
+        stat
+            The component to remove
+        """
+        del self._stats[type(stat)]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "stats": [s.__name__ for s in self._stats.keys()]
         }

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import enum
 from abc import ABC, abstractmethod
 from typing import (
     Any,
@@ -19,7 +20,6 @@ from typing import (
 )
 
 import attrs
-from ordered_set import OrderedSet
 
 from neighborly import Event, SimDateTime
 from neighborly.components.shared import (
@@ -262,53 +262,72 @@ class WorkHistory(Component, ISerializable):
         return "WorkHistory({})".format([e.__repr__() for e in self._history])
 
 
+class ServiceType(enum.IntFlag):
+    """Services offered by businesses.
+
+    Notes
+    -----
+    These categories were sourced from the following:
+    - https://incorporated.zone/type-of-industries
+    - https://www.indeed.com/career-advice/career-development/business-services-types
+    """
+
+    Agricultural = enum.auto()
+    Alcohol = enum.auto()
+    Automotive = enum.auto()
+    ChildCare = enum.auto()
+    Computer = enum.auto()
+    Consulting = enum.auto()
+    Construction = enum.auto()
+    Creative = enum.auto()
+    Cultural = enum.auto()
+    Education = enum.auto()
+    Entertainment = enum.auto()
+    Fashion = enum.auto()
+    Financial = enum.auto()
+    Food = enum.auto()
+    Gambling = enum.auto()
+    HealthCare = enum.auto()
+    Hospitality = enum.auto()
+    Insurance = enum.auto()
+    Legal = enum.auto()
+    Leisure = enum.auto()
+    Lodging = enum.auto()
+    Manufacturing = enum.auto()
+    Media = enum.auto()
+    Mining = enum.auto()
+    Pharmaceutical = enum.auto()
+    PublicService = enum.auto()
+    RealEstate = enum.auto()
+    Recreation = enum.auto()
+    Research = enum.auto()
+    Retail = enum.auto()
+    Security = enum.auto()
+    Socializing = enum.auto()
+    Software = enum.auto()
+    Transport = enum.auto()
+
+
 class Services(Component, ISerializable):
     """Tracks a set of services offered by a business."""
 
     __slots__ = "_services"
 
-    _services: OrderedSet[str]
+    _services: ServiceType
     """Service names."""
 
-    def __init__(self, services: Optional[Iterable[str]] = None) -> None:
+    def __init__(self, services: ServiceType = ServiceType(0)) -> None:
         """
         Parameters
         ----------
         services
-            A starting set of service names.
+            A starting set of service types.
         """
         super().__init__()
-        self._services = OrderedSet([])
+        self._services = services
 
-        if services:
-            for name in services:
-                self.add_service(name)
-
-    def add_service(self, service: str) -> None:
-        """Add a service.
-
-        Parameters
-        ----------
-        service
-            The name of a service.
-        """
-        self._services.add(service.lower())
-
-    def remove_service(self, service: str) -> None:
-        """Remove a service.
-
-        Parameters
-        ----------
-        service:
-            The name of a service.
-        """
-        self._services.remove(service.lower())
-
-    def __iter__(self) -> Iterator[str]:
-        return self._services.__iter__()
-
-    def __contains__(self, service: str) -> bool:
-        return service.lower() in self._services
+    def __contains__(self, services: ServiceType) -> bool:
+        return services in self._services
 
     def __str__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self._services)
@@ -318,6 +337,17 @@ class Services(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"services": list(self._services)}
+
+    @staticmethod
+    def factory(world: World, **kwargs: Any) -> Services:
+        service_names: List[str] = kwargs.get("services", [])
+
+        services = ServiceType(0)
+
+        for name in service_names:
+            services |= ServiceType[name]
+
+        return Services(services)
 
 
 class ClosedForBusiness(IStatus):

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from neighborly import Component, GameObject, Neighborly
-from neighborly.components.business import Services
+from neighborly.components.business import Services, ServiceType
 from neighborly.components.shared import Location
 from neighborly.core.ecs import TagComponent
 from neighborly.decorators import component, location_preference_rule
@@ -60,7 +60,7 @@ def social_butterfly_rule(
     character: GameObject, location: GameObject
 ) -> Optional[float]:
     if character.has_component(SocialButterfly) and location_has_services(
-        location, "Socializing"
+        location, ServiceType.Socializing
     ):
         return 1.0
 
@@ -70,7 +70,7 @@ def recovering_alcoholic_rule(
     character: GameObject, location: GameObject
 ) -> Optional[float]:
     if character.has_component(RecoveringAlcoholic) and location_has_services(
-        location, "Drinking"
+        location, ServiceType.Alcohol
     ):
         return 0.1
 
@@ -78,21 +78,23 @@ def recovering_alcoholic_rule(
 @location_preference_rule(sim.world, "shop-alcoholic")
 def shopaholic_rule(character: GameObject, location: GameObject) -> Optional[float]:
     if character.has_component(Shopaholic) and location_has_services(
-        location, "Shopping"
+        location, ServiceType.Retail
     ):
         return 0.8
 
 
 @location_preference_rule(sim.world, "book-worm")
 def book_worm_rule(character: GameObject, location: GameObject) -> Optional[float]:
-    if character.has_component(BookWorm) and location_has_services(location, "Reading"):
+    if character.has_component(BookWorm) and location_has_services(
+        location, ServiceType.Education
+    ):
         return 0.8
 
 
 @location_preference_rule(sim.world, "health-nut")
 def rule(character: GameObject, location: GameObject) -> Optional[float]:
     if character.has_component(HealthNut) and location_has_services(
-        location, "Recreation"
+        location, ServiceType.Recreation
     ):
         return 0.8
 
@@ -109,28 +111,28 @@ def main():
         sim.world.gameobject_manager.spawn_gameobject(
             {
                 Location: {},
-                Services: {"services": ["Recreation", "Socializing"]},
+                Services: {"services": ["Recreation"]},
             },
             name="Gym",
         ),
         sim.world.gameobject_manager.spawn_gameobject(
             {
                 Location: {},
-                Services: {"services": ["Reading"]},
+                Services: {"services": ["Education", "PublicService", "Leisure"]},
             },
             name="Library",
         ),
         sim.world.gameobject_manager.spawn_gameobject(
             {
                 Location: {},
-                Services: {"services": ["Shopping", "Socializing", "People Watching"]},
+                Services: {"services": ["Retail", "Socializing", "Food"]},
             },
             name="Mall",
         ),
         sim.world.gameobject_manager.spawn_gameobject(
             {
                 Location: {},
-                Services: {"services": ["Drinking", "Socializing"]},
+                Services: {"services": ["Food", "Entertainment", "Socializing"]},
             },
             name="Bar",
         ),

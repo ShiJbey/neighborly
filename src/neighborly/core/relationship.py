@@ -1,10 +1,12 @@
 """Neighborly Relationship Module.
 
-Relationships between agents are at the core of social simulation. Neighborly represents relationships as independent
-GameObjects that collectively form a directed graph. This means that each relationship has an owner and a target, and
-characters can have asymmetrical feeling toward each other. All relationship GameObjects have a Relationship component
-that tracks the owner and target of the relationships. They also have one or more RelationshipStat components that
-track things like feelings of friendship, romance, trust, and reputation.
+Relationships between agents are at the core of social simulation. Neighborly represents
+relationships as independent GameObjects that collectively form a directed graph. This
+means that each relationship has an owner and a target, and characters can have
+asymmetrical feeling toward each other. All relationship GameObjects have a Relationship
+component that tracks the owner and target of the relationships. They also have one or
+more RelationshipStat components that track things like feelings of friendship, romance,
+trust, and reputation.
 
 """
 
@@ -17,7 +19,7 @@ from ordered_set import OrderedSet
 
 from neighborly import Event
 from neighborly.core.ecs import Component, GameObject, ISerializable, World
-from neighborly.stat_system import ClampedStatComponent, StatComponent
+from neighborly.stat_system import ClampedStatComponent, StatComponent, Stats
 from neighborly.status_system import Statuses
 
 
@@ -55,7 +57,7 @@ class PlatonicCompatibility(StatComponent):
 class Relationship(Component, ISerializable):
     """Tags a GameObject as a relationship and tracks the owner and target."""
 
-    __slots__ = ("_target", "_owner", "_active_rules")
+    __slots__ = ("_target", "_owner", "_active_rules", "_relationship_type")
 
     _owner: GameObject
     """Who owns this relationship."""
@@ -66,11 +68,20 @@ class Relationship(Component, ISerializable):
     _active_rules: List[ISocialRule]
     """Social rules currently applied to this relationship."""
 
-    def __init__(self, owner: GameObject, target: GameObject) -> None:
+    _relationship_type: RelationshipType
+    """Reference to the relationship type component"""
+
+    def __init__(
+        self,
+        owner: GameObject,
+        target: GameObject,
+        relationship_type: RelationshipType
+    ) -> None:
         super().__init__()
         self._owner = owner
         self._target = target
         self._active_rules = []
+        self._relationship_type = relationship_type
 
     @property
     def owner(self) -> GameObject:
@@ -79,6 +90,10 @@ class Relationship(Component, ISerializable):
     @property
     def target(self) -> GameObject:
         return self._target
+
+    @property
+    def relationship_type(self):
+        return self._relationship_type
 
     def on_add(self, gameobject: GameObject) -> None:
         self.owner.get_component(Relationships).outgoing[self.target] = gameobject
@@ -188,7 +203,11 @@ class Relationships(Component, ISerializable):
 
 
 class ISocialRule(Protocol):
-    """An interface for rules that define how characters feel about each other using status effects and modifiers."""
+    """An interface for rules that define how characters feel about each other.
+
+    Social rules check if characters and their relationship meet certain conditions.
+    Then they apply stat modifiers and statuses to the relationship GameObject.
+    """
 
     @property
     @abstractmethod
@@ -338,12 +357,20 @@ class BaseRelationship(RelationshipType):
     ) -> GameObject:
         relationship = world.gameobject_manager.spawn_gameobject(
             components={
-                Relationship: {"owner": owner, "target": target},
-                **BaseRelationship.base_components,
+                Stats: {},
                 Statuses: {},
-                cls: {},
+                **BaseRelationship.base_components,
             },
             name=f"Rel({owner.name} -> {target.name})",
+        )
+
+        relationship_type = relationship.add_component(cls)
+
+        relationship.add_component(
+            Relationship,
+            owner=owner,
+            target=target,
+            relationship_type=relationship_type
         )
 
         return relationship

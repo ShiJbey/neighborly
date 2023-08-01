@@ -5,7 +5,7 @@ from neighborly.components.character import GameCharacter, LifeStage, LifeStageT
 from neighborly.core.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.core.life_event import LifeEvent
 from neighborly.core.time import SimDateTime
-from neighborly.plugins.talktown.business_components import School
+from neighborly.plugins.talktown.businesses import School
 from neighborly.role_system import IRole, Roles
 from neighborly.status_system import IStatus
 from neighborly.utils.location import (

@@ -10,6 +10,7 @@ from neighborly.components.business import (
     BusinessConfig,
     Occupation,
     Services,
+    ServiceType,
 )
 from neighborly.simulation import Neighborly
 
@@ -59,15 +60,9 @@ def test_construct_business(test_sim: Neighborly):
 
 
 def test_services_contains() -> None:
-    services_component = Services(
-        [
-            "drinking",
-            "eating",
-            "running",
-        ]
-    )
+    services_component = Services(ServiceType.Food | ServiceType.Retail)
 
-    assert "drinking" in services_component
-    assert "eating" in services_component
-    assert "shopping" not in services_component
-    assert "socializing" not in services_component
+    assert ServiceType.Food in services_component
+    assert ServiceType.Retail in services_component
+    assert ServiceType.Aerospace not in services_component
+    assert ServiceType.ChildCare not in services_component

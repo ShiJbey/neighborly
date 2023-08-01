@@ -16,6 +16,7 @@ from neighborly.components.business import (
     Occupation,
     OpenForBusiness,
     Services,
+    ServiceType,
     StartJobEvent,
     Unemployed,
     WorkHistory,
@@ -481,7 +482,7 @@ def start_job(
     world.event_manager.dispatch_event(start_job_event)
 
 
-def get_places_with_services(world: World, *services: str) -> List[GameObject]:
+def get_places_with_services(world: World, services: ServiceType) -> List[GameObject]:
     """Get all the active locations with the given services.
 
     Parameters
@@ -500,7 +501,7 @@ def get_places_with_services(world: World, *services: str) -> List[GameObject]:
     matches: List[GameObject] = []
 
     for gid, services_component in world.get_component(Services):
-        if all([s in services_component for s in services]):
+        if services in services_component:
             matches.append(world.gameobject_manager.get_gameobject(gid))
 
     return matches
@@ -527,15 +528,15 @@ def is_employed(gameobject: GameObject) -> bool:
 #######################################
 
 
-def location_has_services(location: GameObject, *services: str) -> bool:
+def location_has_services(location: GameObject, services: ServiceType) -> bool:
     """Check if the location has the given services
 
     Parameters
     ----------
     location
         The location to check.
-    *services
-        Service names.
+    services
+        Service types.
 
     Returns
     -------
@@ -543,7 +544,7 @@ def location_has_services(location: GameObject, *services: str) -> bool:
         True if all the services are offered by the location, False otherwise.
     """
     services_comp = location.get_component(Services)
-    return all([entry in services_comp for entry in services])
+    return services in services_comp
 
 
 def score_location(character: GameObject, location: GameObject) -> float:

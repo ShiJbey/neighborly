@@ -83,6 +83,7 @@ from neighborly.spawn_table import (
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
+from neighborly.stat_system import Stats
 from neighborly.status_system import Statuses
 from neighborly.trait_system import TraitLibrary, Traits
 from neighborly.world_map import BuildingMap
@@ -295,7 +296,9 @@ class Neighborly:
         )
         self.world.gameobject_manager.register_component(Occupation)
         self.world.gameobject_manager.register_component(WorkHistory)
-        self.world.gameobject_manager.register_component(Services)
+        self.world.gameobject_manager.register_component(
+            Services, factory=Services.factory
+        )
         self.world.gameobject_manager.register_component(ClosedForBusiness)
         self.world.gameobject_manager.register_component(OpenForBusiness)
         self.world.gameobject_manager.register_component(Business)
@@ -319,6 +322,7 @@ class Neighborly:
         self.world.gameobject_manager.register_component(Position2D)
         self.world.gameobject_manager.register_component(Statuses)
         self.world.gameobject_manager.register_component(Traits)
+        self.world.gameobject_manager.register_component(Stats)
         self.world.gameobject_manager.register_component(FrequentedLocations)
         self.world.gameobject_manager.register_component(EventHistory)
         self.world.gameobject_manager.register_component(Name, factory=Name.factory)

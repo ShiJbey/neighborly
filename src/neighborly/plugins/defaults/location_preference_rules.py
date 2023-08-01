@@ -1,5 +1,6 @@
 from typing import Optional
 
+from neighborly.components.business import ServiceType
 from neighborly.components.character import Virtue, Virtues
 from neighborly.core.ecs import GameObject
 from neighborly.core.location_preference import LocationPreferenceRuleLibrary
@@ -13,10 +14,10 @@ plugin_info = PluginInfo(
 )
 
 
-def virtue_to_service_preference(virtue: Virtue, service: str):
+def virtue_to_service_preference(virtue: Virtue, services: ServiceType):
     def rule(character: GameObject, location: GameObject) -> Optional[float]:
         if virtues := character.try_component(Virtues):
-            if location_has_services(location, service):
+            if location_has_services(location, services):
                 return float(virtues[virtue] - Virtues.VIRTUE_MIN) / (
                     Virtues.VIRTUE_MAX - Virtues.VIRTUE_MIN
                 )
@@ -29,33 +30,72 @@ def setup(sim: Neighborly):
     rule_library = sim.world.resource_manager.get_resource(
         LocationPreferenceRuleLibrary
     )
-    rule_library.add(virtue_to_service_preference(Virtue.LEISURE_TIME, "relaxing"))
-    rule_library.add(virtue_to_service_preference(Virtue.WEALTH, "gambling"))
-    rule_library.add(virtue_to_service_preference(Virtue.EXCITEMENT, "gambling"))
-    rule_library.add(virtue_to_service_preference(Virtue.ADVENTURE, "gambling"))
-    rule_library.add(virtue_to_service_preference(Virtue.LUST, "gambling"))
-    rule_library.add(virtue_to_service_preference(Virtue.MATERIAL_THINGS, "shopping"))
-    rule_library.add(virtue_to_service_preference(Virtue.EXCITEMENT, "shopping"))
-    rule_library.add(virtue_to_service_preference(Virtue.LEISURE_TIME, "shopping"))
-    rule_library.add(virtue_to_service_preference(Virtue.HEALTH, "recreation"))
-    rule_library.add(virtue_to_service_preference(Virtue.EXCITEMENT, "recreation"))
-    rule_library.add(virtue_to_service_preference(Virtue.KNOWLEDGE, "studying"))
-    rule_library.add(virtue_to_service_preference(Virtue.POWER, "studying"))
-    rule_library.add(virtue_to_service_preference(Virtue.AMBITION, "studying"))
-    rule_library.add(virtue_to_service_preference(Virtue.KNOWLEDGE, "reading"))
-    rule_library.add(virtue_to_service_preference(Virtue.POWER, "reading"))
-    rule_library.add(virtue_to_service_preference(Virtue.LEISURE_TIME, "reading"))
-    rule_library.add(virtue_to_service_preference(Virtue.RELIABILITY, "errands"))
-    rule_library.add(virtue_to_service_preference(Virtue.HEALTH, "errands"))
-    rule_library.add(virtue_to_service_preference(Virtue.FAMILY, "errands"))
-    rule_library.add(virtue_to_service_preference(Virtue.SOCIALIZING, "eating"))
-    rule_library.add(virtue_to_service_preference(Virtue.HEALTH, "eating"))
-    rule_library.add(virtue_to_service_preference(Virtue.FAMILY, "eating"))
-    rule_library.add(virtue_to_service_preference(Virtue.SOCIALIZING, "socializing"))
-    rule_library.add(virtue_to_service_preference(Virtue.EXCITEMENT, "socializing"))
-    rule_library.add(virtue_to_service_preference(Virtue.FRIENDSHIP, "socializing"))
-    rule_library.add(virtue_to_service_preference(Virtue.SOCIALIZING, "drinking"))
-    rule_library.add(virtue_to_service_preference(Virtue.FRIENDSHIP, "drinking"))
-    rule_library.add(virtue_to_service_preference(Virtue.HEALTH, "relaxing"))
-    rule_library.add(virtue_to_service_preference(Virtue.TRANQUILITY, "relaxing"))
-    rule_library.add(virtue_to_service_preference(Virtue.LEISURE_TIME, "relaxing"))
+    rule_library.add(
+        virtue_to_service_preference(Virtue.LEISURE_TIME, ServiceType.Leisure)
+    )
+    rule_library.add(virtue_to_service_preference(Virtue.WEALTH, ServiceType.Gambling))
+    rule_library.add(
+        virtue_to_service_preference(Virtue.EXCITEMENT, ServiceType.Gambling)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.ADVENTURE, ServiceType.Gambling)
+    )
+    rule_library.add(virtue_to_service_preference(Virtue.LUST, ServiceType.Gambling))
+    rule_library.add(
+        virtue_to_service_preference(Virtue.MATERIAL_THINGS, ServiceType.Retail)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.EXCITEMENT, ServiceType.Retail)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.LEISURE_TIME, ServiceType.Retail)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.HEALTH, ServiceType.Recreation)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.EXCITEMENT, ServiceType.Recreation)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.KNOWLEDGE, ServiceType.Education)
+    )
+    rule_library.add(virtue_to_service_preference(Virtue.POWER, ServiceType.Education))
+    rule_library.add(
+        virtue_to_service_preference(Virtue.AMBITION, ServiceType.Education)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.KNOWLEDGE, ServiceType.Education)
+    )
+    rule_library.add(virtue_to_service_preference(Virtue.POWER, ServiceType.Education))
+    rule_library.add(
+        virtue_to_service_preference(Virtue.LEISURE_TIME, ServiceType.Education)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.RELIABILITY, ServiceType.Retail)
+    )
+    rule_library.add(virtue_to_service_preference(Virtue.HEALTH, ServiceType.Retail))
+    rule_library.add(virtue_to_service_preference(Virtue.FAMILY, ServiceType.Retail))
+    rule_library.add(virtue_to_service_preference(Virtue.SOCIALIZING, ServiceType.Food))
+    rule_library.add(virtue_to_service_preference(Virtue.HEALTH, ServiceType.Food))
+    rule_library.add(virtue_to_service_preference(Virtue.FAMILY, ServiceType.Food))
+    rule_library.add(
+        virtue_to_service_preference(Virtue.SOCIALIZING, ServiceType.Socializing)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.EXCITEMENT, ServiceType.Socializing)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.FRIENDSHIP, ServiceType.Socializing)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.SOCIALIZING, ServiceType.Socializing)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.FRIENDSHIP, ServiceType.Socializing)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.HEALTH, ServiceType.HealthCare)
+    )
+    rule_library.add(
+        virtue_to_service_preference(Virtue.TRANQUILITY, ServiceType.Leisure)
+    )

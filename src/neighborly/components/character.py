@@ -44,7 +44,7 @@ from neighborly.core.relationship import Relationships
 from neighborly.core.tracery import Tracery
 from neighborly.role_system import Roles
 from neighborly.spawn_table import CharacterSpawnTable, CharacterSpawnTableEntry
-from neighborly.stat_system import StatComponent
+from neighborly.stat_system import StatComponent, Stats
 from neighborly.status_system import IStatus, Statuses
 from neighborly.trait_system import ITrait, Traits
 
@@ -834,6 +834,7 @@ class BaseCharacter(CharacterType):
             components={
                 Traits: {},
                 Statuses: {},
+                Stats: {},
                 Roles: {},
                 Relationships: {},
                 Virtues: {},
