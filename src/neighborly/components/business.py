@@ -17,11 +17,11 @@ from typing import (
     Protocol,
     Tuple,
     Type,
+    final,
 )
 
 import attrs
 
-from neighborly import Event, SimDateTime
 from neighborly.components.shared import (
     Building,
     FrequentedBy,
@@ -30,12 +30,13 @@ from neighborly.components.shared import (
     Name,
     Position2D,
 )
-from neighborly.core.ecs import Component, GameObject, ISerializable, World
-from neighborly.core.life_event import EventHistory, LifeEvent
-from neighborly.core.relationship import Relationships
-from neighborly.role_system import IRole
+from neighborly.ecs import Component, Event, GameObject, ISerializable, World
+from neighborly.life_event import EventHistory, EventLog, LifeEvent
+from neighborly.relationship import Relationships
+from neighborly.roles import IRole
 from neighborly.spawn_table import BusinessSpawnTable, BusinessSpawnTableEntry
-from neighborly.status_system import IStatus, Statuses
+from neighborly.statuses import IStatus, Statuses
+from neighborly.time import SimDateTime
 from neighborly.world_map import BuildingMap
 
 
@@ -338,8 +339,8 @@ class Services(Component, ISerializable):
     def to_dict(self) -> Dict[str, Any]:
         return {"services": list(self._services)}
 
-    @staticmethod
-    def factory(world: World, **kwargs: Any) -> Services:
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any) -> Services:
         service_names: List[str] = kwargs.get("services", [])
 
         services = ServiceType(0)
@@ -529,12 +530,6 @@ class BusinessOwner(IStatus):
     """The business owned."""
 
     def __init__(self, year_created: int, business: GameObject) -> None:
-        """
-        Parameters
-        ----------
-        business
-            The business owned.
-        """
         super().__init__(year_created)
         self.business: GameObject = business
 
@@ -605,13 +600,36 @@ class BusinessType(Component, ABC):
 
     @classmethod
     @abstractmethod
-    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+    def _instantiate(cls, world: World, **kwargs: Any) -> GameObject:
         raise NotImplementedError
+
+    @classmethod
+    @final
+    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        """Create a new GameObject instance of the given business type.
+
+        Parameters
+        ----------
+        world
+            The world to spawn the business into
+        **kwargs
+            Keyword arguments to pass to the BusinessType's factory
+
+        Returns
+        -------
+        GameObject
+            the instantiated business
+        """
+        business = cls._instantiate(world, **kwargs)
+
+        BusinessCreatedEvent(world, business).dispatch()
+
+        return business
 
 
 class BaseBusiness(BusinessType):
     @classmethod
-    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+    def _instantiate(cls, world: World, **kwargs: Any) -> GameObject:
         business = world.gameobject_manager.spawn_gameobject(
             components={
                 Name: {"value": cls.__name__},
@@ -670,32 +688,6 @@ class BaseBusiness(BusinessType):
         return business
 
 
-def create_business(
-    world: World, business_type: Type[BusinessType], **kwargs: Any
-) -> GameObject:
-    """Create a new GameObject instance of the given business type.
-
-    Parameters
-    ----------
-    world
-        The world to spawn the character into
-    business_type
-        The business type to construct
-    **kwargs
-        Keyword arguments to pass to the BusinessType's factory
-
-    Returns
-    -------
-    GameObject
-        the instantiated character
-    """
-    business = business_type.instantiate(world, **kwargs)
-
-    BusinessCreatedEvent(world, business).dispatch()
-
-    return business
-
-
 class BusinessCreatedEvent(Event):
     __slots__ = "_business"
 
@@ -721,8 +713,9 @@ class BusinessClosedEvent(LifeEvent):
         super().__init__(world, date)
         self.business = business
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.business]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.business.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "business": self.business}
@@ -755,8 +748,9 @@ class StartJobEvent(LifeEvent):
         self.business = business
         self.occupation = occupation
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.business, self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -802,8 +796,9 @@ class EndJobEvent(LifeEvent):
         self.occupation = occupation
         self.reason: Optional[LifeEvent] = reason
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -837,8 +832,10 @@ class StartBusinessEvent(LifeEvent):
         self.business = business
         self.occupation = occupation
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.business, self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.business.get_component(EventHistory).append(self)
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -873,8 +870,9 @@ class RetirementEvent(LifeEvent):
         self.business = business
         self.occupation = occupation
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -892,3 +890,22 @@ class RetirementEvent(LifeEvent):
             self.occupation.__name__,
             self.business.name,
         )
+
+
+def location_has_services(location: GameObject, services: ServiceType) -> bool:
+    """Check if the location has the given services
+
+    Parameters
+    ----------
+    location
+        The location to check.
+    services
+        Service types.
+
+    Returns
+    -------
+    bool
+        True if all the services are offered by the location, False otherwise.
+    """
+    services_comp = location.get_component(Services)
+    return services in services_comp

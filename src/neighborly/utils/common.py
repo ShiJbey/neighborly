@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import math
 import random
-from typing import List, Optional, Tuple, Type
+from typing import List, Optional, Type
 
 from neighborly.components.business import (
     BossOf,
@@ -23,40 +22,34 @@ from neighborly.components.business import (
 )
 from neighborly.components.character import (
     CharacterType,
+    Deceased,
     Departed,
     GameCharacter,
     Married,
     ParentOf,
 )
-from neighborly.components.residence import Residence, Resident, Vacant
+from neighborly.components.residence import Residence, Resident
 from neighborly.components.shared import (
     FrequentedBy,
     FrequentedLocations,
     Location,
     Position2D,
 )
-from neighborly.core.ecs import Active, GameObject, World
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.location_preference import LocationPreferenceRuleLibrary
-from neighborly.core.relationship import InteractionScore, get_relationship
-from neighborly.core.time import SimDateTime
-from neighborly.events import ChangeResidenceEvent, DepartEvent
-from neighborly.role_system import Roles
-from neighborly.settlement import Settlement
+from neighborly.ecs import Active, GameObject, World
+from neighborly.events import DeathEvent, DepartEvent
+from neighborly.life_event import LifeEvent
+from neighborly.relationship import InteractionScore, Relationships
+from neighborly.roles import Roles
 from neighborly.spawn_table import BusinessSpawnTable
-from neighborly.status_system import clear_statuses
-from neighborly.utils.location import (
-    add_frequented_location,
-    remove_frequented_location,
-)
+from neighborly.time import SimDateTime
 from neighborly.world_map import BuildingMap
 
 ########################################
-# SETTLEMENT MANAGEMENT
+# CHARACTER MANAGEMENT
 ########################################
 
 
-def get_child_prefab(
+def get_random_child_character_type(
     parent_a: GameObject, parent_b: Optional[GameObject] = None
 ) -> Type[CharacterType]:
     """Returns a random prefab for a potential child
@@ -92,71 +85,6 @@ def get_child_prefab(
     return rng.choice(eligible_child_prefabs)
 
 
-def set_residence(
-    character: GameObject,
-    new_residence: Optional[GameObject],
-    is_owner: bool = False,
-) -> None:
-    """Sets the characters current residence.
-
-    Parameters
-    ----------
-    character
-        The character to move
-    new_residence
-        An optional residence to move them to. If None is given and the character
-        has a current residence, they are removed from their current residence
-    is_owner
-        Should the character be listed one of the owners of the new residence
-    """
-    current_date = character.world.resource_manager.get_resource(SimDateTime)
-    settlement = character.world.resource_manager.get_resource(Settlement)
-    former_residence: Optional[GameObject] = None
-
-    if resident := character.try_component(Resident):
-        # This character is currently a resident at another location
-        former_residence = resident.residence
-        former_residence_comp = former_residence.get_component(Residence)
-
-        if former_residence_comp.is_owner(character):
-            former_residence_comp.remove_owner(character)
-
-        former_residence_comp.remove_resident(character)
-        character.remove_component(Resident)
-
-        settlement.population -= 1
-
-        if len(former_residence_comp.residents) <= 0:
-            former_residence.add_component(Vacant, timestamp=current_date.year)
-
-    # Don't add them to a new residence if none is given
-    if new_residence is None:
-        return
-
-    # Move into new residence
-    new_residence.get_component(Residence).add_resident(character)
-
-    if is_owner:
-        new_residence.get_component(Residence).add_owner(character)
-
-    character.add_component(
-        Resident, residence=new_residence, year_created=current_date.year
-    )
-
-    if new_residence.has_component(Vacant):
-        new_residence.remove_component(Vacant)
-
-    settlement.population += 1
-
-    ChangeResidenceEvent(
-        world=character.world,
-        old_residence=former_residence,
-        new_residence=new_residence,
-        character=character,
-        date=current_date.copy(),
-    ).dispatch()
-
-
 def depart_settlement(
     character: GameObject, reason: Optional[LifeEvent] = None
 ) -> None:
@@ -190,10 +118,18 @@ def depart_settlement(
             if resident == character:
                 continue
 
-            if get_relationship(character, resident).has_component(Married):
+            if (
+                character.get_component(Relationships)
+                .get_relationship(resident)
+                .has_component(Married)
+            ):
                 departing_characters.append(resident)
 
-            elif get_relationship(character, resident).has_component(ParentOf):
+            elif (
+                character.get_component(Relationships)
+                .get_relationship(resident)
+                .has_component(ParentOf)
+            ):
                 departing_characters.append(resident)
 
     depart_event = DepartEvent(
@@ -214,20 +150,43 @@ def depart_settlement(
                     reason=depart_event,
                 )
 
-        if character.has_component(Resident):
-            set_residence(character, None)
-
-        clear_frequented_locations(character)
-        clear_statuses(character)
         character.deactivate()
 
         character.add_component(Departed, timestamp=current_date.year)
 
-        character.world.event_manager.dispatch_event(depart_event)
+    depart_event.dispatch()
+
+
+def die(character: GameObject) -> None:
+    """Run death procedures for a character."""
+
+    current_date = character.world.resource_manager.get_resource(SimDateTime)
+
+    event = DeathEvent(
+        character.world,
+        current_date,
+        character,
+    )
+
+    for occupation in character.get_component(Roles).get_roles_of_type(Occupation):
+        if occupation.business.get_component(Business).owner == character:
+            shutdown_business(occupation.business)
+        else:
+            end_job(
+                character=character,
+                business=occupation.business,
+                reason=event,
+            )
+
+    character.deactivate()
+
+    character.add_component(Deceased, timestamp=current_date.year)
+
+    event.dispatch()
 
 
 #######################################
-# Business Management
+# BUSINESS MANAGEMENT
 #######################################
 
 
@@ -237,7 +196,7 @@ def shutdown_business(business: GameObject) -> None:
     Parameters
     ----------
     business
-        Business to shut down.
+        The business to shut down.
     """
     world = business.world
     current_date = world.resource_manager.get_resource(SimDateTime)
@@ -267,8 +226,7 @@ def shutdown_business(business: GameObject) -> None:
 
     # Remove any other characters that frequent the location
     if frequented_by := business.try_component(FrequentedBy):
-        for character in [*frequented_by]:
-            remove_frequented_location(character, business)
+        frequented_by.clear()
 
     # Demolish the building
     building_map.remove_building_from_lot(building_position.as_tuple())
@@ -299,7 +257,7 @@ def end_job(
     current_date = world.resource_manager.get_resource(SimDateTime)
     business_comp = business.get_component(Business)
 
-    remove_frequented_location(character, business)
+    character.get_component(FrequentedLocations).remove_location(business)
 
     if business_comp.owner and character == business_comp.owner:
         occupation_type = business_comp.owner_type
@@ -308,44 +266,56 @@ def end_job(
 
         # Update relationships boss/employee relationships
         for employee, _ in business.get_component(Business).iter_employees():
-            get_relationship(character, employee).remove_component(BossOf)
-            get_relationship(employee, character).remove_component(EmployeeOf)
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).remove_component(BossOf)
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).remove_component(EmployeeOf)
 
-            get_relationship(character, employee).get_component(
-                InteractionScore
-            ).base_value += -1
-            get_relationship(employee, character).get_component(
-                InteractionScore
-            ).base_value += -1
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).get_component(InteractionScore).base_value += -1
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).get_component(InteractionScore).base_value += -1
 
     else:
         occupation_type = business_comp.get_employee_role(character)
         business_comp.remove_employee(character)
 
         # Update boss/employee relationships if needed
-        if business_comp.owner is not None:
-            owner = business_comp.owner
-            get_relationship(owner, character).remove_component(BossOf)
-            get_relationship(character, owner).remove_component(EmployeeOf)
+        owner = business_comp.owner
+        if owner is not None:
+            owner.get_component(Relationships).get_relationship(
+                character
+            ).remove_component(BossOf)
+            character.get_component(Relationships).get_relationship(
+                owner
+            ).remove_component(EmployeeOf)
 
-            get_relationship(character, owner).get_component(
-                InteractionScore
-            ).base_value += -1
-            get_relationship(owner, character).get_component(
-                InteractionScore
-            ).base_value += -1
+            owner.get_component(Relationships).get_relationship(
+                character
+            ).get_component(InteractionScore).base_value += -1
+            character.get_component(Relationships).get_relationship(
+                owner
+            ).get_component(InteractionScore).base_value += -1
 
         # Update coworker relationships
         for employee, _ in business.get_component(Business).iter_employees():
-            get_relationship(character, employee).remove_component(CoworkerOf)
-            get_relationship(employee, character).remove_component(CoworkerOf)
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).remove_component(CoworkerOf)
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).remove_component(CoworkerOf)
 
-            get_relationship(character, employee).get_component(
-                InteractionScore
-            ).base_value += -1
-            get_relationship(employee, character).get_component(
-                InteractionScore
-            ).base_value += -1
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).get_component(InteractionScore).base_value += -1
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).get_component(InteractionScore).base_value += -1
 
     character.add_component(Unemployed, timestamp=current_date.year)
 
@@ -402,7 +372,7 @@ def start_job(
         occupation_type, business=business, start_year=current_date.year
     )
 
-    add_frequented_location(character, business)
+    character.get_component(FrequentedLocations).add_location(business)
 
     if character.has_component(Unemployed):
         character.remove_component(Unemployed)
@@ -418,56 +388,60 @@ def start_job(
         )
 
         for employee, _ in business.get_component(Business).iter_employees():
-            get_relationship(character, employee).add_component(
-                BossOf, timestamp=current_date.year
-            )
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).add_component(BossOf, timestamp=current_date.year)
 
-            get_relationship(employee, character).add_component(
-                EmployeeOf, timestamp=current_date.year
-            )
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).add_component(EmployeeOf, timestamp=current_date.year)
 
-            get_relationship(character, employee).get_component(
-                InteractionScore
-            ).base_value += 1
-            get_relationship(employee, character).get_component(
-                InteractionScore
-            ).base_value += 1
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).get_component(InteractionScore).base_value += 1
+
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).get_component(InteractionScore).base_value += 1
 
     else:
         # Update boss/employee relationships if needed
         if business_comp.owner is not None:
             owner = business_comp.owner
 
-            get_relationship(owner, character).add_component(
-                BossOf, timestamp=current_date.year
-            )
+            owner.get_component(Relationships).get_relationship(
+                character
+            ).add_component(BossOf, timestamp=current_date.year)
 
-            get_relationship(character, owner).add_component(
-                EmployeeOf, timestamp=current_date.year
-            )
+            character.get_component(Relationships).get_relationship(
+                owner
+            ).add_component(EmployeeOf, timestamp=current_date.year)
 
-            get_relationship(character, owner).get_component(
-                InteractionScore
-            ).base_value += 1
-            get_relationship(owner, character).get_component(
-                InteractionScore
-            ).base_value += 1
+            owner.get_component(Relationships).get_relationship(
+                character
+            ).get_component(InteractionScore).base_value += 1
+
+            character.get_component(Relationships).get_relationship(
+                owner
+            ).get_component(InteractionScore).base_value += 1
 
         # Update employee/employee relationships
         for employee, _ in business.get_component(Business).iter_employees():
-            get_relationship(character, employee).add_component(
-                CoworkerOf, timestamp=current_date.year
-            )
-            get_relationship(employee, character).add_component(
-                CoworkerOf, timestamp=current_date.year
-            )
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).add_component(CoworkerOf, timestamp=current_date.year)
 
-            get_relationship(character, employee).get_component(
-                InteractionScore
-            ).base_value += 1
-            get_relationship(employee, character).get_component(
-                InteractionScore
-            ).base_value += 1
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).add_component(CoworkerOf, timestamp=current_date.year)
+
+            character.get_component(Relationships).get_relationship(
+                employee
+            ).get_component(InteractionScore).base_value += 1
+
+            employee.get_component(Relationships).get_relationship(
+                character
+            ).get_component(InteractionScore).base_value += 1
 
         business_comp.add_employee(character, occupation_type)
 
@@ -500,7 +474,7 @@ def get_places_with_services(world: World, services: ServiceType) -> List[GameOb
     """
     matches: List[GameObject] = []
 
-    for gid, services_component in world.get_component(Services):
+    for gid, services_component, _ in world.get_components((Services, Active)):
         if services in services_component:
             matches.append(world.gameobject_manager.get_gameobject(gid))
 
@@ -524,148 +498,7 @@ def is_employed(gameobject: GameObject) -> bool:
 
 
 #######################################
-# Services and Location Frequenting
-#######################################
-
-
-def location_has_services(location: GameObject, services: ServiceType) -> bool:
-    """Check if the location has the given services
-
-    Parameters
-    ----------
-    location
-        The location to check.
-    services
-        Service types.
-
-    Returns
-    -------
-    bool
-        True if all the services are offered by the location, False otherwise.
-    """
-    services_comp = location.get_component(Services)
-    return services in services_comp
-
-
-def score_location(character: GameObject, location: GameObject) -> float:
-    """Scores a location using location preference rules.
-
-    Parameters
-    ----------
-    character
-        The character to calculate scores for
-    location
-        The location to score
-
-    Returns
-    -------
-    float
-        The probability of wanting to frequent this location
-    """
-
-    cumulative_score: float = 1.0
-    consideration_count: int = 0
-    rule_library = character.world.resource_manager.get_resource(
-        LocationPreferenceRuleLibrary
-    )
-
-    for rule_info in rule_library.iter_rules():
-        consideration_score = rule_info.rule(character, location)
-        if consideration_score is not None:
-            assert 0.0 <= consideration_score
-            cumulative_score *= consideration_score
-            consideration_count += 1
-
-        if cumulative_score == 0.0:
-            break
-
-    if consideration_count == 0:
-        consideration_count = 1
-        cumulative_score = 0.0
-
-    # Scores are averaged using the Geometric Mean instead of
-    # arithmetic mean. It calculates the mean of a product of
-    # n-numbers by finding the n-th root of the product
-    # Tried using the averaging scheme by Dave Mark, but it
-    # returned values that felt too small and were not easy
-    # to reason about.
-    # Using this method, a cumulative score of zero will still
-    # result in a final score of zero.
-
-    final_score = cumulative_score ** (1 / consideration_count)
-
-    return final_score
-
-
-def calculate_location_probabilities(
-    character: GameObject, locations: List[GameObject]
-) -> List[Tuple[float, GameObject]]:
-    """Calculate the probability distribution for a character and set of locations"""
-
-    score_total: float = 0
-    scores: List[Tuple[float, GameObject]] = []
-
-    # Score each location
-    for loc in locations:
-        score = score_location(character, loc)
-        score_total += math.exp(score)
-        scores.append((math.exp(score), loc))
-
-    # Perform softmax
-    probabilities = [(score / score_total, loc) for score, loc in scores]
-
-    # Sort
-    probabilities.sort(key=lambda pair: pair[0], reverse=True)
-
-    return probabilities
-
-
-def score_locations_to_frequent(
-    character: GameObject,
-) -> List[Tuple[float, GameObject]]:
-    """Score potential locations for the character to frequent.
-
-    Parameters
-    ----------
-    character
-        The character to score the location in reference to
-
-    Returns
-    -------
-    List[Tuple[float, GameObject]]
-        A list of tuples containing location scores and the location, sorted in
-        descending order
-    """
-
-    locations = [
-        character.world.gameobject_manager.get_gameobject(guid)
-        for guid, (_, _, _) in character.world.get_components(
-            (Location, Services, Active)
-        )
-    ]
-
-    scores = calculate_location_probabilities(character, locations)
-
-    return scores
-
-
-def clear_frequented_locations(character: GameObject) -> None:
-    """
-    Un-mark any locations as frequented by the given character
-
-    Parameters
-    ----------
-    character
-        The GameObject to remove as a frequenter
-    """
-    frequented_locations = character.get_component(FrequentedLocations)
-
-    for location in [*frequented_locations]:
-        remove_frequented_location(character, location)
-
-
-#######################################
-# General Utility Functions
+# GENERAL UTILITY
 #######################################
 
 

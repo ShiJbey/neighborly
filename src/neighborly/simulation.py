@@ -10,9 +10,10 @@ import sys
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-import neighborly.core.relationship as relationship
+import neighborly.relationship as relationship
 import neighborly.systems as systems
 from neighborly.__version__ import VERSION
+from neighborly.ai.brain import AIBrain, Goals
 from neighborly.components.business import (
     BossOf,
     Business,
@@ -28,16 +29,25 @@ from neighborly.components.business import (
     WorkHistory,
 )
 from neighborly.components.character import (
-    CanAge,
+    Asexual,
+    Attractiveness,
+    Boldness,
     CanGetOthersPregnant,
     CanGetPregnant,
-    CharacterCreatedEvent,
+    Compassion,
     Dating,
     Deceased,
     Departed,
     Female,
     GameCharacter,
     Gender,
+    Greed,
+    Health,
+    HealthDecay,
+    HealthDecayChance,
+    Heterosexual,
+    Homosexual,
+    Honor,
     Immortal,
     LifeStage,
     Male,
@@ -45,6 +55,8 @@ from neighborly.components.character import (
     NonBinary,
     Pregnant,
     Retired,
+    Sociability,
+    Vengefulness,
     Virtues,
 )
 from neighborly.components.residence import Residence, Resident, Vacant
@@ -59,34 +71,27 @@ from neighborly.components.shared import (
     Position2D,
 )
 from neighborly.config import NeighborlyConfig, PluginConfig
-from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import Active, World
-from neighborly.core.life_event import EventHistory, EventLog, RandomLifeEventLibrary
-from neighborly.core.location_preference import LocationPreferenceRuleLibrary
-from neighborly.core.time import SimDateTime
-from neighborly.core.tracery import Tracery
 from neighborly.data_collection import DataCollector
-from neighborly.event_listeners import (
-    add_event_to_personal_history,
-    deactivate_relationships_on_death,
-    deactivate_relationships_on_depart,
-    join_workforce_when_young_adult,
-    log_life_event,
-    on_adult_join_settlement,
-)
-from neighborly.events import BecomeYoungAdultEvent, DeathEvent, DepartEvent
-from neighborly.inventory_system import Item
-from neighborly.role_system import Roles
+from neighborly.ecs import Active, Event, World
+from neighborly.inventory import Item
+from neighborly.life_event import EventHistory, EventLog, RandomLifeEventLibrary, \
+    LifeEvent
+from neighborly.location_preference import LocationPreferenceRuleLibrary
+from neighborly.roles import Roles
 from neighborly.settlement import Settlement
 from neighborly.spawn_table import (
     BusinessSpawnTable,
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
-from neighborly.stat_system import Stats
-from neighborly.status_system import Statuses
-from neighborly.trait_system import TraitLibrary, Traits
+from neighborly.stats import Stats
+from neighborly.statuses import Statuses
+from neighborly.time import SimDateTime
+from neighborly.tracery import Tracery
+from neighborly.traits import TraitLibrary, Traits
 from neighborly.world_map import BuildingMap
+
+_logger = logging.getLogger(__name__)
 
 
 class PluginSetupError(Exception):
@@ -245,10 +250,13 @@ class Neighborly:
             systems.UpdateLifeStageSystem(), system_group=systems.UpdateSystemGroup
         )
         self.world.system_manager.add_system(
-            systems.AIActionSystem(), system_group=systems.UpdateSystemGroup
+            systems.HealthDecaySystem(), system_group=systems.UpdateSystemGroup
         )
         self.world.system_manager.add_system(
-            systems.DieOfOldAgeSystem(), system_group=systems.UpdateSystemGroup
+            systems.DeathSystem(), system_group=systems.UpdateSystemGroup
+        )
+        self.world.system_manager.add_system(
+            systems.AIActionSystem(), system_group=systems.UpdateSystemGroup
         )
         self.world.system_manager.add_system(
             systems.GoOutOfBusinessSystem(), system_group=systems.UpdateSystemGroup
@@ -262,7 +270,7 @@ class Neighborly:
             systems.ChildBirthSystem(), system_group=systems.StatusUpdateSystemGroup
         )
         self.world.system_manager.add_system(
-            systems.UnemployedStatusSystem(),
+            systems.EmploymentSystem(),
             system_group=systems.StatusUpdateSystemGroup,
         )
 
@@ -291,14 +299,10 @@ class Neighborly:
         self.world.gameobject_manager.register_component(relationship.BaseRelationship)
         self.world.gameobject_manager.register_component(Location)
         self.world.gameobject_manager.register_component(FrequentedBy)
-        self.world.gameobject_manager.register_component(
-            Virtues, factory=Virtues.factory
-        )
+        self.world.gameobject_manager.register_component(Virtues)
         self.world.gameobject_manager.register_component(Occupation)
         self.world.gameobject_manager.register_component(WorkHistory)
-        self.world.gameobject_manager.register_component(
-            Services, factory=Services.factory
-        )
+        self.world.gameobject_manager.register_component(Services)
         self.world.gameobject_manager.register_component(ClosedForBusiness)
         self.world.gameobject_manager.register_component(OpenForBusiness)
         self.world.gameobject_manager.register_component(Business)
@@ -309,7 +313,19 @@ class Neighborly:
         self.world.gameobject_manager.register_component(EmployeeOf)
         self.world.gameobject_manager.register_component(CoworkerOf)
         self.world.gameobject_manager.register_component(Departed)
-        self.world.gameobject_manager.register_component(CanAge)
+        self.world.gameobject_manager.register_component(Health)
+        self.world.gameobject_manager.register_component(HealthDecay)
+        self.world.gameobject_manager.register_component(HealthDecayChance)
+        self.world.gameobject_manager.register_component(Homosexual)
+        self.world.gameobject_manager.register_component(Heterosexual)
+        self.world.gameobject_manager.register_component(Asexual)
+        self.world.gameobject_manager.register_component(Boldness)
+        self.world.gameobject_manager.register_component(Compassion)
+        self.world.gameobject_manager.register_component(Greed)
+        self.world.gameobject_manager.register_component(Honor)
+        self.world.gameobject_manager.register_component(Sociability)
+        self.world.gameobject_manager.register_component(Vengefulness)
+        self.world.gameobject_manager.register_component(Attractiveness)
         self.world.gameobject_manager.register_component(CanGetPregnant)
         self.world.gameobject_manager.register_component(CanGetOthersPregnant)
         self.world.gameobject_manager.register_component(Immortal)
@@ -325,7 +341,7 @@ class Neighborly:
         self.world.gameobject_manager.register_component(Stats)
         self.world.gameobject_manager.register_component(FrequentedLocations)
         self.world.gameobject_manager.register_component(EventHistory)
-        self.world.gameobject_manager.register_component(Name, factory=Name.factory)
+        self.world.gameobject_manager.register_component(Name)
         self.world.gameobject_manager.register_component(Lifespan)
         self.world.gameobject_manager.register_component(Age)
         self.world.gameobject_manager.register_component(Gender)
@@ -335,19 +351,6 @@ class Neighborly:
         self.world.gameobject_manager.register_component(LifeStage)
         self.world.gameobject_manager.register_component(Item)
         self.world.gameobject_manager.register_component(Roles)
-
-        # Event listeners
-        self.world.event_manager.on_event(
-            CharacterCreatedEvent, on_adult_join_settlement
-        )
-        self.world.event_manager.on_event(
-            BecomeYoungAdultEvent, join_workforce_when_young_adult
-        )
-        self.world.event_manager.on_event(DeathEvent, deactivate_relationships_on_death)
-        self.world.event_manager.on_event(
-            DepartEvent, deactivate_relationships_on_depart
-        )
-        self.world.event_manager.on_any_event(add_event_to_personal_history)
 
         if self.config.logging.logging_enabled:
             if self.config.logging.log_file_name is not None:
@@ -367,7 +370,7 @@ class Neighborly:
                     level=self.config.logging.log_level,
                 )
 
-            self.world.event_manager.on_any_event(log_life_event)
+            self.world.event_manager.on_any_event(Neighborly.log_life_event)
 
         # Load plugins from the config
         for entry in self.config.plugins:
@@ -415,31 +418,41 @@ class Neighborly:
             if re.fullmatch(r"^<=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
                 if VERSION > plugin_info.required_version:
                     raise PluginSetupError(
-                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                        "Plugin {} requires {}".format(
+                            plugin_info.name, plugin_info.required_version
+                        )
                     )
             elif re.fullmatch(
                 r"^>=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version
             ):
                 if VERSION < plugin_info.required_version:
                     raise PluginSetupError(
-                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                        "Plugin {} requires {}".format(
+                            plugin_info.name, plugin_info.required_version
+                        )
                     )
             elif re.fullmatch(r"^>[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
                 if VERSION <= plugin_info.required_version:
                     raise PluginSetupError(
-                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                        "Plugin {} requires {}".format(
+                            plugin_info.name, plugin_info.required_version
+                        )
                     )
             elif re.fullmatch(r"^<[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
                 if VERSION > plugin_info.required_version:
                     raise PluginSetupError(
-                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                        "Plugin {} requires {}".format(
+                            plugin_info.name, plugin_info.required_version
+                        )
                     )
             elif re.fullmatch(
                 r"^==[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version
             ):
                 if VERSION != plugin_info.required_version:
                     raise PluginSetupError(
-                        f"Plugin {plugin_info.name} requires {plugin_info.required_version}"
+                        "Plugin {} requires {}".format(
+                            plugin_info.name, plugin_info.required_version
+                        )
                     )
 
         plugin_setup_fn(self)
@@ -465,3 +478,8 @@ class Neighborly:
     def step(self) -> None:
         """Advance the simulation a single timestep."""
         self.world.step()
+
+    @staticmethod
+    def log_life_event(event: Event) -> None:
+        if isinstance(event, LifeEvent):
+            _logger.info(str(event))

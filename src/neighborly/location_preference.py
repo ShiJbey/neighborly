@@ -11,11 +11,11 @@ from typing import Iterator, Optional, Protocol
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import GameObject
+from neighborly.ecs import GameObject
 
 
 class ILocationPreferenceRule(Protocol):
-    """LocationPreferenceRules define what locations characters are likely to frequent"""
+    """Define what locations characters are likely to frequent."""
 
     def __call__(self, character: GameObject, location: GameObject) -> Optional[float]:
         """

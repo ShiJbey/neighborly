@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.time import SimDateTime
+from neighborly.ecs import GameObject, World
+from neighborly.life_event import EventHistory, EventLog, LifeEvent
 from neighborly.settlement import Settlement
+from neighborly.time import SimDateTime
 
 
 class DepartEvent(LifeEvent):
-    __slots__ = "characters", "reason", "settlement"
+    __slots__ = "characters", "reason"
 
     characters: Tuple[GameObject, ...]
     reason: Optional[LifeEvent]
-    settlement: GameObject
 
     def __init__(
         self,
@@ -33,8 +32,10 @@ class DepartEvent(LifeEvent):
             "reason": self.reason.event_id if self.reason else -1,
         }
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return list(self.characters)
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        for character in self.characters:
+            character.get_component(EventHistory).append(self)
 
     def __str__(self) -> str:
         if self.reason:
@@ -87,8 +88,9 @@ class ChangeResidenceEvent(LifeEvent):
             "character": self.character.uid,
         }
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.character.get_component(EventHistory).append(self)
 
     def __str__(self) -> str:
         if self.new_residence:
@@ -116,8 +118,9 @@ class BirthEvent(LifeEvent):
         super().__init__(world, date)
         self.character = character
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "character": self.character}
@@ -146,8 +149,11 @@ class HaveChildEvent(LifeEvent):
         self.other_parent = other_parent
         self.baby = baby
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.birthing_parent, self.other_parent, self.baby]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.birthing_parent.get_component(EventHistory).append(self)
+        self.other_parent.get_component(EventHistory).append(self)
+        self.baby.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -172,8 +178,10 @@ class MarriageEvent(LifeEvent):
         super().__init__(world, date)
         self.characters = characters
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return list(self.characters)
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        for character in self.characters:
+            character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
@@ -200,8 +208,10 @@ class DivorceEvent(LifeEvent):
         super().__init__(world, date)
         self.characters = characters
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return list(self.characters)
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        for character in self.characters:
+            character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
@@ -228,8 +238,10 @@ class StartDatingEvent(LifeEvent):
         super().__init__(world, date)
         self.characters = characters
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return list(self.characters)
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        for character in self.characters:
+            character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
@@ -256,8 +268,11 @@ class BreakUpEvent(LifeEvent):
         super().__init__(world, date)
         self.characters = characters
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return list(self.characters)
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        for character in self.characters:
+            character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
@@ -284,8 +299,11 @@ class BecameAcquaintancesEvent(LifeEvent):
         super().__init__(world, date)
         self.characters = characters
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return list(self.characters)
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        for character in self.characters:
+            character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "characters": [c.uid for c in self.characters]}
@@ -312,8 +330,10 @@ class BecomeAdolescentEvent(LifeEvent):
         super().__init__(world, date)
         self.character = character
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "character": self.character}
@@ -340,8 +360,10 @@ class BecomeYoungAdultEvent(LifeEvent):
         super().__init__(world, date)
         self.character = character
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "character": self.character}
@@ -368,8 +390,10 @@ class BecomeAdultEvent(LifeEvent):
         super().__init__(world, date)
         self.character = character
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "character": self.character}
@@ -396,8 +420,10 @@ class BecomeSeniorEvent(LifeEvent):
         super().__init__(world, date)
         self.character = character
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "character": self.character}
@@ -424,8 +450,9 @@ class DeathEvent(LifeEvent):
         super().__init__(world, date)
         self.character = character
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "character": self.character}
@@ -461,8 +488,10 @@ class GetPregnantEvent(LifeEvent):
         self.pregnant_one = pregnant_one
         self.partner = partner
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.pregnant_one]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        self.pregnant_one.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

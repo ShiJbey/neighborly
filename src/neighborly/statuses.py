@@ -1,7 +1,7 @@
 """Neighborly's Status System
 
 Statuses are components added GameObjects and represent temporary states like mood, 
-unemployment, pregnancies, etc. Since, statuses are components so they can be queried in
+unemployment, pregnancies, etc. Statuses are components. So, they can be queried in
 system operations using world.get_components(...)'. We keep track of all the statuses
 currently applied to a character using the 'Statuses' component.
 
@@ -14,7 +14,7 @@ from typing import Any, ClassVar, Dict, Iterator
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, GameObject, ISerializable
+from neighborly.ecs import Component, ISerializable
 
 
 class IStatus(Component, ISerializable, ABC):
@@ -32,11 +32,11 @@ class IStatus(Component, ISerializable, ABC):
         super().__init__()
         self.timestamp = timestamp
 
-    def on_add(self, gameobject: GameObject) -> None:
-        gameobject.get_component(Statuses).add_status(self)
+    def on_add(self) -> None:
+        self.gameobject.get_component(Statuses).add_status(self)
 
-    def on_remove(self, gameobject: GameObject) -> None:
-        gameobject.get_component(Statuses).remove_status(self)
+    def on_remove(self) -> None:
+        self.gameobject.get_component(Statuses).remove_status(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {"timestamp": str(self.timestamp)}
@@ -93,6 +93,13 @@ class Statuses(Component, ISerializable):
         """Return iterator to active status types"""
         return self._statuses.__iter__()
 
+    def clear(self) -> None:
+        """Remove all non persistent statuses."""
+        for status in reversed(self._statuses):
+            if status.is_persistent is False:
+                self.gameobject.remove_component(type(status))
+                self.remove_status(status)
+
     def __str__(self) -> str:
         return ", ".join([type(s).__name__ for s in self._statuses])
 
@@ -103,26 +110,3 @@ class Statuses(Component, ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         return {"statuses": [type(s).__name__ for s in self._statuses]}
-
-
-def clear_statuses(gameobject: GameObject, clear_persistent: bool = False) -> bool:
-    """Remove all statuses from a GameObject.
-
-    Parameters
-    ----------
-    gameobject
-        The GameObject to clear statuses from
-    clear_persistent
-        Should persistent statuses be cleared too (defaults to False)
-
-    Returns
-    -------
-    bool
-        Returns True if all statuses were removed successfully, False otherwise
-    """
-    statuses = gameobject.get_component(Statuses)
-    successful = True
-    for status in list(statuses.iter_statuses()):
-        if clear_persistent or status.is_persistent is False:
-            successful = gameobject.remove_component(type(status))
-    return successful

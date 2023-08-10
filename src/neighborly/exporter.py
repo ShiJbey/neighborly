@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 
-from neighborly.core.ecs import ISerializable
+from neighborly.ecs import ISerializable
 from neighborly.simulation import Neighborly
 
 
@@ -11,7 +11,7 @@ def export_to_json(sim: Neighborly, indent: Optional[int] = None) -> str:
             "seed": sim.config.seed,
             "gameobjects": {
                 str(g.uid): g.to_dict()
-                for g in sim.world.gameobject_manager.get_gameobjects()
+                for g in sim.world.gameobject_manager.iter_gameobjects()
             },
             "resources": {
                 r.__class__.__name__: r.to_dict()

@@ -24,13 +24,13 @@ class Cafe(BaseBusiness):
     config = BusinessConfig(
         owner_type=Restaurateur,
         employee_types={Barista: 2},
-        services=("reading", "socializing"),
+        services=("Food", "Socializing"),
     )
 
 
 class Library(BaseBusiness):
     config = BusinessConfig(
-        owner_type=Librarian, employee_types={Librarian: 2}, services=("reading",)
+        owner_type=Librarian, employee_types={Librarian: 2}, services=("Education",)
     )
 
 

@@ -2,7 +2,7 @@ from ordered_set import OrderedSet
 
 from neighborly import GameObject
 from neighborly.components.business import BaseBusiness, BusinessConfig
-import occupations
+from neighborly.plugins.talktown import occupations
 
 
 class Bakery(BaseBusiness):
@@ -14,15 +14,15 @@ class Bakery(BaseBusiness):
             occupations.Apprentice: 1,
         },
         services=(
-            'shopping',
-            'errands',
+            "Food",
+            "Retail",
         ),
         lifespan=10,
         spawn_frequency=1,
         max_instances=9999,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -36,15 +36,13 @@ class Bank(BaseBusiness):
             occupations.Janitor: 1,
             occupations.Manager: 1,
         },
-        services=(
-            'errands',
-        ),
+        services=("Financial",),
         lifespan=20,
         spawn_frequency=1,
         max_instances=9999,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -58,16 +56,16 @@ class Bar(BaseBusiness):
             occupations.Manager: 1,
         },
         services=(
-            'drinking',
-            'socializing',
-            'errands',
+            "Food",
+            "Socializing",
+            "Alcohol",
         ),
         lifespan=20,
         spawn_frequency=1,
         max_instances=9999,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -79,14 +77,13 @@ class BarberShop(BaseBusiness):
         employee_types={
             occupations.Barber: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=9999,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -98,14 +95,13 @@ class BlacksmithShop(BaseBusiness):
         employee_types={
             occupations.Apprentice: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -119,14 +115,13 @@ class Brewery(BaseBusiness):
             occupations.Bottler: 2,
             occupations.Cooper: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -138,14 +133,13 @@ class BusDepot(BaseBusiness):
         employee_types={
             occupations.BusDriver: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -157,14 +151,13 @@ class ButcherShop(BaseBusiness):
         employee_types={
             occupations.Apprentice: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=9999,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -176,14 +169,13 @@ class CandyStore(BaseBusiness):
         employee_types={
             occupations.Cashier: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -196,14 +188,13 @@ class CarpentryCompany(BaseBusiness):
             occupations.Apprentice: 1,
             occupations.Builder: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=70,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -216,14 +207,13 @@ class Cemetery(BaseBusiness):
             occupations.Apprentice: 1,
             occupations.Groundskeeper: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -237,14 +227,13 @@ class CityHall(BaseBusiness):
             occupations.Secretary: 1,
             occupations.Janitor: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -259,15 +248,13 @@ class ClothingStore(BaseBusiness):
             occupations.Dressmaker: 1,
             occupations.Tailor: 1,
         },
-        services=(
-            'shopping',
-        ),
+        services=("Retail", "Fashion"),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -280,14 +267,13 @@ class CoalMine(BaseBusiness):
             occupations.Miner: 2,
             occupations.Manager: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -301,14 +287,13 @@ class ConstructionFirm(BaseBusiness):
             occupations.Builder: 2,
             occupations.Bricklayer: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=80,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -321,14 +306,13 @@ class Dairy(BaseBusiness):
             occupations.Apprentice: 1,
             occupations.Bottler: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=30,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -340,14 +324,13 @@ class DaycareCenter(BaseBusiness):
         employee_types={
             occupations.DaycareProvider: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=200,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -359,15 +342,13 @@ class Deli(BaseBusiness):
         employee_types={
             occupations.Cashier: 1,
         },
-        services=(
-            'meat',
-        ),
+        services=("Food", "Retail"),
         lifespan=10,
         spawn_frequency=1,
         max_instances=4,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -380,14 +361,13 @@ class DentistOffice(BaseBusiness):
             occupations.Nurse: 2,
             occupations.Secretary: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=9999,
         min_population=75,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -400,15 +380,13 @@ class DepartmentStore(BaseBusiness):
             occupations.Cashier: 2,
             occupations.Manager: 1,
         },
-        services=(
-            'shopping',
-        ),
+        services=("Retail",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=9999,
         min_population=200,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -424,15 +402,15 @@ class Diner(BaseBusiness):
             occupations.Busboy: 1,
         },
         services=(
-            'food',
-            'socializing',
+            "Food",
+            "Socializing",
         ),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=30,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -445,15 +423,13 @@ class Distillery(BaseBusiness):
             occupations.Bottler: 1,
             occupations.Cooper: 1,
         },
-        services=(
-            'alcohol',
-        ),
+        services=("Alcohol",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -465,15 +441,13 @@ class DrugStore(BaseBusiness):
         employee_types={
             occupations.Cashier: 1,
         },
-        services=(
-            'drugs',
-        ),
+        services=("Pharmaceutical",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=30,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -485,14 +459,13 @@ class Farm(BaseBusiness):
         employee_types={
             occupations.Farmhand: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=99,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -505,14 +478,13 @@ class FireStation(BaseBusiness):
             occupations.FireChief: 1,
             occupations.FireFighter: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -525,14 +497,13 @@ class Foundry(BaseBusiness):
             occupations.Molder: 1,
             occupations.Puddler: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=20,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -544,15 +515,13 @@ class FurnitureStore(BaseBusiness):
         employee_types={
             occupations.Apprentice: 1,
         },
-        services=(
-            'furniture',
-        ),
+        services=("Creative", "Retail"),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=20,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -567,15 +536,15 @@ class GeneralStore(BaseBusiness):
             occupations.Cashier: 1,
         },
         services=(
-            'shopping',
-            'errands',
+            "Retail",
+            "Food",
         ),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=20,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -590,15 +559,15 @@ class GroceryStore(BaseBusiness):
             occupations.Cashier: 1,
         },
         services=(
-            'shopping',
-            'errands',
+            "Retail",
+            "Food",
         ),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=20,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -612,16 +581,13 @@ class HardwareStore(BaseBusiness):
             occupations.Stocker: 1,
             occupations.Cashier: 1,
         },
-        services=(
-            'shopping',
-            'tools',
-        ),
+        services=("Retail",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=20,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -635,14 +601,13 @@ class Hospital(BaseBusiness):
             occupations.Nurse: 2,
             occupations.Secretary: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -656,14 +621,13 @@ class Hotel(BaseBusiness):
             occupations.Concierge: 1,
             occupations.Manager: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -677,14 +641,13 @@ class Inn(BaseBusiness):
             occupations.Concierge: 1,
             occupations.Manager: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -697,14 +660,13 @@ class InsuranceCompany(BaseBusiness):
             occupations.InsuranceAgent: 1,
             occupations.Secretary: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -717,16 +679,13 @@ class JewelryShop(BaseBusiness):
             occupations.Apprentice: 1,
             occupations.Cashier: 1,
         },
-        services=(
-            'shopping',
-            'jewelry',
-        ),
+        services=("Retail",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -739,14 +698,13 @@ class LawFirm(BaseBusiness):
             occupations.Lawyer: 1,
             occupations.Secretary: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=150,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -759,14 +717,13 @@ class OptometryClinic(BaseBusiness):
             occupations.Nurse: 1,
             occupations.Secretary: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -779,14 +736,13 @@ class PaintingCompany(BaseBusiness):
             occupations.Painter: 1,
             occupations.Plasterer: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -798,14 +754,13 @@ class Park(BaseBusiness):
         employee_types={
             occupations.Groundskeeper: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -818,15 +773,13 @@ class Pharmacy(BaseBusiness):
             occupations.Pharmacist: 1,
             occupations.Cashier: 1,
         },
-        services=(
-            'drugs',
-        ),
+        services=("Pharmaceutical",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=4,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -839,14 +792,13 @@ class PlasticSurgeryClinic(BaseBusiness):
             occupations.Nurse: 1,
             occupations.Secretary: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=200,
         year_available=1970,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -858,14 +810,13 @@ class PlumbingCompany(BaseBusiness):
         employee_types={
             occupations.Apprentice: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -878,14 +829,13 @@ class PoliceStation(BaseBusiness):
             occupations.PoliceChief: 1,
             occupations.PoliceOfficer: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=100,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -900,14 +850,13 @@ class Quarry(BaseBusiness):
             occupations.Laborer: 1,
             occupations.Engineer: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -920,14 +869,13 @@ class RealtyFirm(BaseBusiness):
             occupations.Realtor: 1,
             occupations.Secretary: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=80,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -943,15 +891,15 @@ class Restaurant(BaseBusiness):
             occupations.Manager: 1,
         },
         services=(
-            'food',
-            'socializing',
+            "Food",
+            "Socializing",
         ),
         lifespan=10,
         spawn_frequency=1,
         max_instances=4,
         min_population=40,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -965,16 +913,13 @@ class School(BaseBusiness):
             occupations.Teacher: 2,
             occupations.Janitor: 1,
         },
-        services=(
-            'education',
-            'studying',
-        ),
+        services=("Education",),
         lifespan=50,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
     __slots__ = "students"
@@ -1003,15 +948,13 @@ class ShoemakerShop(BaseBusiness):
         employee_types={
             occupations.Apprentice: 1,
         },
-        services=(
-            'shopping',
-        ),
+        services=("Retail",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=2,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -1025,15 +968,13 @@ class Supermarket(BaseBusiness):
             occupations.Stocker: 1,
             occupations.Manager: 1,
         },
-        services=(
-            'shopping',
-        ),
+        services=("Retail",),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=200,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -1045,14 +986,13 @@ class TailorShop(BaseBusiness):
         employee_types={
             occupations.Apprentice: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=40,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -1064,14 +1004,13 @@ class TattooParlor(BaseBusiness):
         employee_types={
             occupations.TattooArtist: 1,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=300,
         year_available=1970,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -1086,15 +1025,15 @@ class Tavern(BaseBusiness):
             occupations.Waiter: 1,
         },
         services=(
-            'drinking',
-            'socializing',
+            "Alcohol",
+            "Socializing",
         ),
         lifespan=10,
         spawn_frequency=1,
         max_instances=3,
         min_population=20,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -1106,14 +1045,13 @@ class TaxiDepot(BaseBusiness):
         employee_types={
             occupations.TaxiDriver: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=1,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )
 
 
@@ -1125,12 +1063,11 @@ class University(BaseBusiness):
         employee_types={
             occupations.Professor: 2,
         },
-        services=(
-        ),
+        services=(),
         lifespan=10,
         spawn_frequency=1,
         max_instances=9999,
         min_population=0,
         year_available=0,
-        year_obsolete=9999
+        year_obsolete=9999,
     )

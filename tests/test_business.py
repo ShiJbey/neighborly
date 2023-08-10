@@ -52,7 +52,7 @@ def test_sim():
 
 def test_construct_business(test_sim: Neighborly):
     """Constructing business components using BusinessArchetypes"""
-    restaurant = Restaurant.instantiate(test_sim.world, lot=(0, 0))
+    restaurant = Restaurant._instantiate(test_sim.world, lot=(0, 0))
     restaurant_business = restaurant.get_component(Business)
 
     assert restaurant_business.owner_type == Restaurateur
@@ -60,9 +60,12 @@ def test_construct_business(test_sim: Neighborly):
 
 
 def test_services_contains() -> None:
-    services_component = Services(ServiceType.Food | ServiceType.Retail)
+    sim = Neighborly()
+
+    gameobject = sim.world.gameobject_manager.spawn_gameobject()
+
+    services_component = gameobject.add_component(Services, services=["Food", "Retail"])
 
     assert ServiceType.Food in services_component
     assert ServiceType.Retail in services_component
-    assert ServiceType.Aerospace not in services_component
     assert ServiceType.ChildCare not in services_component

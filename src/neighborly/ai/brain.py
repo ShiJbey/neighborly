@@ -15,8 +15,8 @@ import random
 from abc import abstractmethod
 from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar, final
 
-from neighborly.core.ai.behavior_tree import AbstractBTNode, BehaviorTree
-from neighborly.core.ecs import Component, GameObject, TagComponent
+from neighborly.ai.behavior_tree import AbstractBTNode, BehaviorTree
+from neighborly.ecs import Component, GameObject, TagComponent
 
 _T = TypeVar("_T")
 

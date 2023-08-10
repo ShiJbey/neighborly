@@ -2,8 +2,8 @@ from typing import Dict, Tuple, Type
 
 from neighborly.components.character import GameCharacter, Virtue, Virtues
 from neighborly.components.shared import Age
-from neighborly.core.ecs import GameObject
-from neighborly.core.relationship import (
+from neighborly.ecs import GameObject
+from neighborly.relationship import (
     PlatonicCompatibility,
     Romance,
     RomanticCompatibility,
@@ -11,7 +11,7 @@ from neighborly.core.relationship import (
     SocialRuleLibrary,
 )
 from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.stat_system import StatComponent, StatModifier, StatModifierType
+from neighborly.stats import StatComponent, StatModifier, StatModifierType
 from neighborly.utils.common import lerp
 from neighborly.utils.query import are_related, is_single
 

@@ -3,8 +3,7 @@ from typing import Any, Dict
 
 import pytest
 
-from neighborly import NeighborlyConfig
-from neighborly.core.ecs import (
+from neighborly.ecs import (
     Active,
     Component,
     ComponentNotFoundError,
@@ -14,37 +13,53 @@ from neighborly.core.ecs import (
     SystemNotFoundError,
     World,
 )
-from neighborly.simulation import Neighborly
 
 
-@dataclass
+@dataclass(init=False)
 class Actor(Component):
     name: str
+
+    def __init__(self, name: str) -> None:
+        super().__init__()
+        self.name = name
 
     def to_dict(self) -> Dict[str, Any]:
         return {"name": self.name}
 
 
-@dataclass
+@dataclass(init=False)
 class CurrentLocation(Component):
     location: int
+
+    def __init__(self, location: int) -> None:
+        super().__init__()
+        self.location = location
 
     def to_dict(self) -> Dict[str, Any]:
         return {"location": self.location}
 
 
-@dataclass
+@dataclass(init=False)
 class Money(Component):
     amount: int
+
+    def __init__(self, amount: int) -> None:
+        super().__init__()
+        self.amount = amount
 
     def to_dict(self) -> Dict[str, Any]:
         return {"money": self.amount}
 
 
-@dataclass
+@dataclass(init=False)
 class Job(Component):
     title: str
     salary: int
+
+    def __init__(self, title: str, salary: int) -> None:
+        super().__init__()
+        self.title = title
+        self.salary = salary
 
     def to_dict(self) -> Dict[str, Any]:
         return {"title": self.title, "salary": self.salary}
@@ -76,24 +91,16 @@ class SalarySystemBase(System):
 
 @pytest.fixture
 def world() -> World:
-    sim = Neighborly(
-        NeighborlyConfig.parse_obj(
-            {
-                "logging": {
-                    "logging_enabled": False,
-                },
-            }
-        )
-    )
+    world = World()
 
-    sim.world.gameobject_manager.register_component(Actor)
-    sim.world.gameobject_manager.register_component(CurrentLocation)
-    sim.world.gameobject_manager.register_component(Money)
-    sim.world.gameobject_manager.register_component(Job)
-    sim.world.gameobject_manager.register_component(ComponentA)
-    sim.world.gameobject_manager.register_component(ComponentB)
+    world.gameobject_manager.register_component(Actor)
+    world.gameobject_manager.register_component(CurrentLocation)
+    world.gameobject_manager.register_component(Money)
+    world.gameobject_manager.register_component(Job)
+    world.gameobject_manager.register_component(ComponentA)
+    world.gameobject_manager.register_component(ComponentB)
 
-    return sim.world
+    return world
 
 
 #########################################
@@ -136,7 +143,7 @@ def test_get_gameobjects(world: World):
     g1 = world.gameobject_manager.spawn_gameobject()
     g2 = world.gameobject_manager.spawn_gameobject()
     g3 = world.gameobject_manager.spawn_gameobject()
-    assert world.gameobject_manager.get_gameobjects() == [g1, g2, g3]
+    assert list(world.gameobject_manager.iter_gameobjects()) == [g1, g2, g3]
 
 
 def test_delete_gameobject(world: World):

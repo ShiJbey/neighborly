@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import random
 from abc import ABC, ABCMeta, abstractmethod
 from typing import (
@@ -9,7 +8,6 @@ from typing import (
     ClassVar,
     Dict,
     Generator,
-    Generic,
     Iterable,
     Iterator,
     List,
@@ -20,10 +18,12 @@ from typing import (
     TypeVar,
 )
 
+import attrs
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, Event, GameObject, ISerializable, World
-from neighborly.core.time import SimDateTime
+from neighborly.ecs import Component, Event, GameObject, ISerializable, World
+from neighborly.stats import Stat, StatModifier
+from neighborly.time import SimDateTime
 
 
 class EventRole:
@@ -85,7 +85,7 @@ class EventRoleList:
         Parameters
         ----------
         roles
-            Roles to instantiate the list with, by default None
+            The roles to instantiate the list with, by default None
         """
         self._roles = []
         self._sorted_roles = {}
@@ -176,17 +176,15 @@ class EventRoleList:
 class LifeEvent(Event, ABC):
     """An event of significant importance in a GameObject's life"""
 
-    # WARNING:: Since this is a class variable, you may have some event
-    # ID interference if running multiple simulations simultaneously
-    _next_event_id: ClassVar[int] = 0
+    __slots__ = "_timestamp"
 
-    __slots__ = "_roles", "_timestamp", "_uid"
+    _timestamp: SimDateTime
+    """The date when this event occurred."""
 
     def __init__(
         self,
         world: World,
         timestamp: SimDateTime,
-        roles: Optional[Iterable[EventRole]] = None,
     ) -> None:
         """
         Parameters
@@ -195,177 +193,70 @@ class LifeEvent(Event, ABC):
             The world instance
         timestamp
             The timestamp for when this event
-        roles
-            The names of roles mapped to GameObjects
         """
         super().__init__(world)
-        self._uid: int = LifeEvent._next_event_id
-        LifeEvent._next_event_id += 1
-        self._timestamp: SimDateTime = timestamp.copy()
-        self._roles: EventRoleList = EventRoleList(roles)
-
-    @property
-    def event_id(self) -> int:
-        return self._uid
+        self._timestamp = timestamp.copy()
 
     @property
     def timestamp(self) -> SimDateTime:
         return self._timestamp
 
-    @property
-    def roles(self) -> EventRoleList:
-        return self._roles
-
-    @abstractmethod
     def to_dict(self) -> Dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
         return {
-            "type": type(self).__name__,
+            **super().to_dict(),
             "timestamp": str(self._timestamp),
-            "roles": [role.to_dict() for role in self._roles],
         }
 
-    @abstractmethod
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        """Get all gameobjects involved in this event"""
-        gameobjects_from_roles = [r.gameobject for r in self._roles]
-
-        return gameobjects_from_roles
-
-    def __getitem__(self, role_name: str) -> GameObject:
-        return self._roles.get_first(role_name)
-
     def __repr__(self) -> str:
-        return "{}(timestamp={}, roles=[{}])".format(
-            type(self).__name__, str(self.timestamp), self._roles
+        return "{}(id={}, timestamp={})".format(
+            type(self).__name__, self.event_id, str(self.timestamp)
         )
 
     def __str__(self) -> str:
-        return "{} [@ {}] {}".format(
+        return "{} [@ {}]".format(
             type(self).__name__,
             str(self.timestamp),
-            ", ".join([str(role) for role in self._roles]),
         )
 
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, LifeEvent):
-            return self._uid == __o._uid
-        raise TypeError(f"Expected type Event, but was {type(__o)}")
 
-    def __le__(self, other: LifeEvent) -> bool:
-        return self._uid <= other._uid
-
-    def __lt__(self, other: LifeEvent) -> bool:
-        return self._uid < other._uid
-
-    def __ge__(self, other: LifeEvent) -> bool:
-        return self._uid >= other._uid
-
-    def __gt__(self, other: LifeEvent) -> bool:
-        return self._uid > other._uid
-
-
-@dataclasses.dataclass()
-class EventRoleBindingContext:
+@attrs.define()
+class EventBindingContext:
     """Manages information related to the current state of cast roles."""
 
     world: World
     """The world instance that the GameObjects in the role list belong to."""
 
-    bindings: EventRoleList = dataclasses.field(default_factory=EventRoleList)
+    bindings: EventRoleList = attrs.field(factory=EventRoleList)
     """The current set of casted roles."""
+
+    data: Dict[str, Any] = attrs.field(factory=dict)
+    """Additional event data that are not GameObject roles."""
 
 
 EventRoleBindingGeneratorFn = Callable[
-    [EventRoleBindingContext], Generator[Tuple[GameObject, ...], None, None]
+    [EventBindingContext], Generator[Tuple[GameObject, ...], None, None]
 ]
 """Role casting functions yield GameObjects to bind to a role."""
 
-_T = TypeVar("_T", bound=LifeEvent, contravariant=True)
+_T = TypeVar("_T", bound="RandomLifeEvent", contravariant=True)
 
 
-class EventRoleConsideration(Protocol[_T]):
-    """A consideration function for evaluating the probability of a GameObject taking on a role in a life event."""
+class EventConsideration(Protocol[_T]):
+    """Probability modifier for random life events."""
 
-    def __call__(self, gameobject: GameObject, event: _T) -> Optional[float]:
+    def __call__(self, event: _T) -> Optional[StatModifier]:
         raise NotImplementedError()
 
 
-class EventRoleConsiderationList(Generic[_T]):
-    """A collection of considerations associated with an event role."""
-
-    __slots__ = "_considerations"
-
-    _considerations: List[EventRoleConsideration[_T]]
-    """Internal list of considerations"""
-
-    def __init__(
-        self, considerations: Optional[Iterable[EventRoleConsideration[_T]]] = None
-    ) -> None:
-        self._considerations = list(considerations if considerations else [])
-
-    def calculate_score(self, gameobject: GameObject, event: _T) -> float:
-        """Scores each consideration for a GameObject and returns the aggregate score.
-
-        Parameters
-        ----------
-        gameobject
-            A GameObject.
-        event
-            The event to consider.
-
-        Returns
-        -------
-        float
-            The aggregate consideration score.
-        """
-
-        cumulative_score: float = 1.0
-        consideration_count: int = 0
-
-        for c in self:
-            consideration_score = c(gameobject, event)
-            if consideration_score is not None:
-                assert 0.0 <= consideration_score <= 1.0
-                cumulative_score *= consideration_score
-                consideration_count += 1
-
-            if cumulative_score == 0.0:
-                break
-
-        if consideration_count == 0:
-            consideration_count = 1
-            cumulative_score = 0.0
-
-        # Scores are averaged using the Geometric Mean instead of
-        # arithmetic mean. It calculates the mean of a product of
-        # n-numbers by finding the n-th root of the product
-        # Tried using the averaging scheme by Dave Mark, but it
-        # returned values that felt too small and were not easy
-        # to reason about.
-        # Using this method, a cumulative score of zero will still
-        # result in a final score of zero.
-
-        final_score = cumulative_score ** (1 / consideration_count)
-
-        return final_score
-
-    def __len__(self) -> int:
-        return len(self._considerations)
-
-    def __iter__(self) -> Iterator[EventRoleConsideration[_T]]:
-        return self._considerations.__iter__()
-
-
-class EventRoleInfo:
+@attrs.define
+class _EventRoleWrapper:
     """Information about an event role.
 
-    These are created when the @event_role decorator is used within a random life event class definition.
-    It defines the name of the role, a generator that produces potential bindings, and considerations for
-    GameObjects that are bound to the role.
+    These are created when the @event_role decorator is used within a random life event
+    class definition. It defines the name of the role, a generator that produces
+    potential bindings, and considerations for GameObjects that are bound to the role.
     """
-
-    __slots__ = "name", "binding_fn", "considerations"
 
     name: str
     """The name of the role."""
@@ -373,43 +264,38 @@ class EventRoleInfo:
     binding_fn: EventRoleBindingGeneratorFn
     """The function used to bind GameObject instances to the role."""
 
-    considerations: EventRoleConsiderationList[Any]
-    """A list of considerations for GameObjects bound to this role."""
-
-    def __init__(
-        self,
-        name: str,
-        binding_fn: EventRoleBindingGeneratorFn,
-        considerations: EventRoleConsiderationList[Any],
-    ) -> None:
-        self.name = name
-        self.binding_fn = binding_fn
-        self.considerations = considerations
-
     def __call__(
-        self, ctx: EventRoleBindingContext
+        self, ctx: EventBindingContext
     ) -> Generator[Tuple[GameObject, ...], None, None]:
         return self.binding_fn(ctx)
 
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.name})"
+
+@attrs.define
+class _EventConsiderationWrapper(EventConsideration[_T]):
+    """Wraps an event consideration function for use in metaclass construction."""
+
+    fn: EventConsideration[_T]
+
+    def __call__(self, event: _T) -> Optional[StatModifier]:
+        return self.fn(event)
 
 
-def event_role(
-    name: str, considerations: Optional[List[EventRoleConsideration[_T]]] = None
-):
-    """A decorator to indicate that a function is for casting a role"""
+def event_role(name: str):
+    """A decorator to indicate that a function is for casting a role."""
 
     def event_role_decorator(fn: EventRoleBindingGeneratorFn):
-        return EventRoleInfo(
-            name,
-            fn,
-            EventRoleConsiderationList[_T](
-                considerations if considerations is not None else []
-            ),
-        )
+        return _EventRoleWrapper(name, fn)
 
     return event_role_decorator
+
+
+def event_consideration():
+    """A decorator to indicate that a static method is an event consideration."""
+
+    def decorator(fn: EventConsideration):
+        return _EventConsiderationWrapper(fn)
+
+    return decorator
 
 
 class RandomLifeEventMeta(ABCMeta):
@@ -424,57 +310,79 @@ class RandomLifeEventMeta(ABCMeta):
         **kwargs: Any,
     ):
         cls = super().__new__(mcls, name, bases, namespace, **kwargs)
-        _update_roles(cls)
+        RandomLifeEventMeta._detect_roles(cls)
+        RandomLifeEventMeta._detect_considerations(cls)
         return cls
 
+    @staticmethod
+    def _detect_roles(cls: type) -> None:
+        """Detect static methods that use the event_role decorator
 
-def _update_roles(cls: type) -> None:
-    """
-    Updates the internal records of event roles for classes that derive from the
-    RandomEventMeta metaclass.
+        Parameters
+        ----------
+        cls
+            The class to process
+        """
+        event_roles: List[_EventRoleWrapper] = []
 
-    Parameters
-    ----------
-    cls
-        The class type to process
+        # Check the existing event role methods of the parents
+        for base_class in cls.__bases__:
+            for entry in getattr(base_class, "__event_roles__", ()):
+                if isinstance(entry, _EventRoleWrapper):
+                    event_roles.append(entry)
 
-    Notes
-    -----
-    This function is modeled after the update_abstractmethods function in abc.py
-    """
-    event_roles: List[EventRoleInfo] = []
+        # Check the declared event role methods
+        for attr_name, attr_value in cls.__dict__.items():
+            if type(attr_value) == staticmethod:
+                attr = getattr(cls, attr_name)
+                if isinstance(attr, _EventRoleWrapper):
+                    event_roles.append(attr)
 
-    # Check the existing event role methods of the parents
-    for base_class in cls.__bases__:
-        for entry in getattr(base_class, "__event_roles__", ()):
-            if isinstance(entry, EventRoleInfo):
-                event_roles.append(entry)
+        # Set combined collection of event roles for the given type
+        setattr(cls, "__event_roles__", tuple(event_roles))
 
-    # Check the declared event role methods
-    for attr_name, attr_value in cls.__dict__.items():
-        if type(attr_value) == staticmethod:
-            attr = getattr(cls, attr_name)
-            if isinstance(attr, EventRoleInfo):
-                event_roles.append(attr)
+    @staticmethod
+    def _detect_considerations(cls: type) -> None:
+        """Detect static methods that use the event_consideration decorator.
 
-    # Set combined collection of event roles for the given type
-    setattr(cls, "__event_roles__", tuple(event_roles))
+        Parameters
+        ----------
+        cls
+            The class to process
+        """
+        probability_modifiers: List[_EventConsiderationWrapper] = []
+
+        # Check the existing probability modifiers in base classes
+        for base_class in cls.__bases__:
+            for entry in getattr(base_class, "probability_modifiers", []):
+                if isinstance(entry, _EventConsiderationWrapper):
+                    probability_modifiers.append(entry)
+
+        # Check the declared probability modifiers
+        for attr_name, attr_value in cls.__dict__.items():
+            if type(attr_value) == staticmethod:
+                attr = getattr(cls, attr_name)
+                if isinstance(attr, _EventConsiderationWrapper):
+                    probability_modifiers.append(attr)
+
+        # Set combined collection of event roles for the given type
+        setattr(cls, "probability_modifiers", tuple(probability_modifiers))
 
 
-@dataclasses.dataclass
+@attrs.define
 class EventRoleSearchState:
     """A saved state for backtracking when searching for roles to bind."""
 
-    ctx: EventRoleBindingContext
+    ctx: EventBindingContext
     """The current context to pass to the binding function."""
 
-    role_to_cast: EventRoleInfo
+    role_to_cast: _EventRoleWrapper
     """The current role being bound during this state."""
 
     binding_generator: Generator[Tuple[GameObject, ...], None, None]
     """The generator function providing the next set of results."""
 
-    pending: Tuple[EventRoleInfo, ...]
+    pending: Tuple[_EventRoleWrapper, ...]
     """A queue of remaining event roles to bind."""
 
 
@@ -487,24 +395,63 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
     https://github.com/ianhorswill/CitySimulator/blob/master/Assets/Codes/Action/Actions/ActionType.cs
     """
 
-    __event_roles__: ClassVar[Tuple[EventRoleInfo, ...]] = ()
+    __event_roles__: ClassVar[Tuple[_EventRoleWrapper, ...]] = ()
     """Information about this events used for binding GameObjects."""
+
+    base_probability: ClassVar[float] = 0.5
+    """The base probability that this event will occur."""
+
+    probability_modifiers: ClassVar[List[EventConsideration]] = []
+    """Functions that return modifiers for the base probability."""
+
+    __slots__ = "_roles"
+
+    _roles: EventRoleList
+    """The bound roles of this life event."""
 
     def __init__(
         self,
         world: World,
         timestamp: SimDateTime,
         roles: Iterable[EventRole],
+        **kwargs: Any,
     ) -> None:
         """
         Parameters
         ----------
         timestamp
-            Timestamp for when this event
+            The timestamp for when this event occurred
         roles
             The names of roles mapped to GameObjects
         """
-        super().__init__(world, timestamp, roles)
+        super().__init__(world, timestamp)
+        self._roles: EventRoleList = EventRoleList(roles)
+
+    @property
+    def roles(self) -> EventRoleList:
+        return self._roles
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize this LifeEvent to a dictionary"""
+        return {
+            **super().to_dict(),
+            "roles": [role.to_dict() for role in self._roles],
+        }
+
+    def __getitem__(self, role_name: str) -> GameObject:
+        return self._roles.get_first(role_name)
+
+    def __repr__(self) -> str:
+        return "{}(id={}, timestamp={}, roles=[{}])".format(
+            type(self).__name__, self.event_id, str(self.timestamp), self._roles
+        )
+
+    def __str__(self) -> str:
+        return "{} [@ {}] {}".format(
+            type(self).__name__,
+            str(self.timestamp),
+            ", ".join([str(role) for role in self._roles]),
+        )
 
     def get_probability(self) -> float:
         """Get the probability of an instance of this event happening
@@ -515,24 +462,20 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
             The probability of the event given the GameObjects bound
             to the roles in the LifeEventInstance
         """
-        probability = 1.0
-        contributor_count = 0
+        incidence_probability = Stat(base_value=type(self).base_probability)
 
-        for role in self.__event_roles__:
-            if role.considerations:
-                for gameobject in self.roles.get_all(role.name):
-                    probability *= role.considerations.calculate_score(gameobject, self)
-                    contributor_count += 1
+        for modifier_fn in type(self).probability_modifiers:
+            if modifier := modifier_fn(self):
+                incidence_probability.add_modifier(modifier)
 
-        if contributor_count > 0:
-            # Take the arithmetic mean of the contributing probability scores
-            return probability ** (1 / contributor_count)
-        else:
-            return 0.5
+        return incidence_probability.value
 
     def dispatch(self) -> None:
         self.execute()
         super().dispatch()
+
+    def on_dispatch(self) -> None:
+        self.execute()
 
     @abstractmethod
     def execute(self) -> None:
@@ -540,11 +483,11 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         raise NotImplementedError
 
     @classmethod
-    def generate_role_lists(
+    def _generate_role_bindings(
         cls,
         world: World,
         bindings: Optional[EventRoleList] = None,
-    ) -> Generator[EventRoleList, None, None]:
+    ) -> Generator[EventBindingContext, None, None]:
         """Attempts to generate multiple valid Event role lists for this event
 
         Parameters
@@ -556,20 +499,20 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
         Returns
         -------
-        Generator[EventRoleList, None, None]
+        Generator[EventBindingContext, None, None]
             An generator function that produces instance of this life event
         """
 
         # Check if there are any roles that need to be bound
         if len(cls.__event_roles__) == 0:
-            yield EventRoleList()
+            yield EventBindingContext(world=world)
             return
 
         # Stack of previous search states for when we fail to find a result
         history: list[EventRoleSearchState] = []
 
         # Starting context uses the given bindings
-        ctx = EventRoleBindingContext(
+        ctx = EventBindingContext(
             world=world, bindings=bindings if bindings else EventRoleList()
         )
 
@@ -601,7 +544,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                     history.append(current_state)
 
                     # Create a new context and state with the new bindings
-                    new_ctx = EventRoleBindingContext(
+                    new_ctx = EventBindingContext(
                         world=world,
                         bindings=new_bindings,
                     )
@@ -629,7 +572,11 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                         )
 
                         # yield an instance of the random event
-                        yield new_bindings
+                        yield EventBindingContext(
+                            world=world,
+                            bindings=new_bindings,
+                            data=current_state.ctx.data.copy(),
+                        )
 
                     # Check if there is any history to backtrack through.
                     # Return if not
@@ -668,11 +615,12 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         """
 
         try:
-            roles = next(cls.generate_role_lists(world, bindings))
+            bindings = next(cls._generate_role_bindings(world, bindings))
             return cls(
                 world=world,
                 timestamp=world.resource_manager.get_resource(SimDateTime).copy(),
-                roles=roles,
+                roles=bindings.bindings,
+                **bindings.data,
             )
         except StopIteration:
             return None
@@ -697,11 +645,12 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         Generator[RandomLifeEvent, None, None]
             An generator function that produces instance of this life event
         """
-        for roles in cls.generate_role_lists(world, bindings):
+        for bindings in cls._generate_role_bindings(world, bindings):
             yield cls(
                 world=world,
                 timestamp=world.resource_manager.get_resource(SimDateTime).copy(),
-                roles=roles,
+                roles=bindings.bindings,
+                **bindings.data,
             )
 
 
@@ -746,7 +695,7 @@ class EventHistory(Component, ISerializable):
 
     __slots__ = "_history"
 
-    _history: List[LifeEvent]
+    _history: List[Event]
     """A list of events in chronological-order."""
 
     def __init__(self) -> None:
@@ -763,7 +712,7 @@ class EventHistory(Component, ISerializable):
         """
         self._history.append(event)
 
-    def __iter__(self) -> Iterator[LifeEvent]:
+    def __iter__(self) -> Iterator[Event]:
         return self._history.__iter__()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -784,7 +733,7 @@ class EventLog(ISerializable):
 
     __slots__ = "_history"
 
-    _history: Dict[int, LifeEvent]
+    _history: Dict[int, Event]
     """All recorded life events mapped to their event ID."""
 
     def __init__(self) -> None:
@@ -804,8 +753,8 @@ class EventLog(ISerializable):
     def to_dict(self) -> Dict[str, Any]:
         return {str(key): entry.to_dict() for key, entry in self._history.items()}
 
-    def __iter__(self) -> Iterator[LifeEvent]:
+    def __iter__(self) -> Iterator[Event]:
         return self._history.values().__iter__()
 
-    def __getitem__(self, key: int) -> LifeEvent:
+    def __getitem__(self, key: int) -> Event:
         return self._history[key]

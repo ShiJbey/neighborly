@@ -1,7 +1,8 @@
 """Settlement.
 
-The module contains Neighborly's settlement implementation. Settlements can represent towns, cities, villages, etc.
-There is only one settlement per simulation, and it is stored as a shared resource in the ECS resource manager.
+The module contains Neighborly's settlement implementation. Settlements can represent
+towns, cities, villages, etc. There is only one settlement per simulation, and it is
+stored as a shared resource in the ECS resource manager.
 
 """
 
@@ -9,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from neighborly.core.ecs import ISerializable
+from neighborly.ecs import ISerializable
 
 
 class Settlement(ISerializable):

@@ -1,11 +1,10 @@
 from typing import Optional
 
-from neighborly.components.business import ServiceType
+from neighborly.components.business import ServiceType, location_has_services
 from neighborly.components.character import Virtue, Virtues
-from neighborly.core.ecs import GameObject
-from neighborly.core.location_preference import LocationPreferenceRuleLibrary
+from neighborly.ecs import GameObject
+from neighborly.location_preference import LocationPreferenceRuleLibrary
 from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.utils.common import location_has_services
 
 plugin_info = PluginInfo(
     name="default location preference rules plugin",

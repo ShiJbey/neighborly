@@ -7,11 +7,11 @@ from flask_restful import Api, Resource  # type: ignore
 from marshmallow import Schema, fields
 
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs import ISerializable, World
-from neighborly.core.life_event import EventLog
-from neighborly.core.time import SimDateTime
 from neighborly.data_collection import DataCollector
+from neighborly.ecs import ISerializable, World
+from neighborly.life_event import EventLog
 from neighborly.simulation import Neighborly
+from neighborly.time import SimDateTime
 
 
 class GameObjectResource(Resource):
@@ -43,7 +43,7 @@ class AllGameObjectsResource(Resource):
     def get(self):
         return {
             "gameobjects": [
-                g.uid for g in self.world.gameobject_manager.get_gameobjects()
+                g.uid for g in self.world.gameobject_manager.iter_gameobjects()
             ]
         }
 

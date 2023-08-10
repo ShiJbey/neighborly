@@ -146,6 +146,7 @@ class Relation:
 
         # Map tuples of the values of the given symbols in one
         # relation to a list of row indexes
+        s: Tuple[int, ...]
         for i, s in enumerate(other.get_tuples(*symbols)):
             h[s].append(i)
 
@@ -209,6 +210,7 @@ class Relation:
         # relation to a list of row indexes
         # Any rows in the first relation that match keys in this
         # dict are excluded (i.e. left-join)
+        s: Tuple[int, ...]
         for i, s in enumerate(b.get_tuples(*symbols_to_join)):
             h[s].append(i)
 

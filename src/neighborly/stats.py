@@ -14,12 +14,149 @@ from __future__ import annotations
 import enum
 import math
 from abc import ABC
-from typing import Any, Dict, List, Optional, Type, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Type
 
 import attrs
 
 from neighborly import Component
-from neighborly.core.ecs import ISerializable, GameObject
+from neighborly.ecs import ISerializable
+
+
+class Stat:
+    """A stat such as strength, reputation, or attraction."""
+
+    __slots__ = (
+        "_base_value",
+        "_value",
+        "_modifiers",
+        "_is_dirty",
+    )
+
+    _base_value: float
+    """The base score for this stat used by modifiers."""
+
+    _value: float
+    """The final score of the stat clamped between the min and max values."""
+
+    _modifiers: List[StatModifier]
+    """Active stat modifiers."""
+
+    def __init__(self, base_value: float = 0.0) -> None:
+        self._base_value = base_value
+        self._value = base_value
+        self._modifiers = []
+        self._is_dirty: bool = False
+
+    @property
+    def base_value(self) -> float:
+        """Get the base value of the relationship stat."""
+        return self._base_value
+
+    @base_value.setter
+    def base_value(self, value: float) -> None:
+        """Set the base value of the relationship stat."""
+        self._base_value = value
+        self._is_dirty = True
+
+    @property
+    def value(self) -> float:
+        """Get the final calculated value of the stat."""
+        if self._is_dirty:
+            self._recalculate_value()
+        return self._value
+
+    def add_modifier(self, modifier: StatModifier) -> None:
+        """Add a modifier to the stat."""
+        self._modifiers.append(modifier)
+        self._modifiers.sort(key=lambda m: m.order)
+        self._is_dirty = True
+
+    def remove_modifier(self, modifier: StatModifier) -> bool:
+        """Remove a modifier from the stat.
+
+        Parameters
+        ----------
+        modifier
+            The modifier to remove.
+
+        Returns
+        -------
+        bool
+            True if the modifier was removed, False otherwise.
+        """
+        try:
+            self._modifiers.remove(modifier)
+            self._is_dirty = True
+            return True
+        except ValueError:
+            return False
+
+    def remove_modifiers_from_source(self, source: object) -> bool:
+        """Remove all modifiers applied from the given source.
+
+        Parameters
+        ----------
+        source
+            A source to check for.
+
+        Returns
+        -------
+        bool
+            True if any modifiers were removed, False otherwise.
+        """
+        did_remove: bool = False
+
+        for modifier in [*self._modifiers]:
+            if modifier.source == source:
+                self._is_dirty = True
+                did_remove = True
+                self._modifiers.remove(modifier)
+
+        return did_remove
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "value": self.value,
+        }
+
+    def _recalculate_value(self) -> None:
+        """Recalculate the stat's value due to a previous change."""
+
+        final_value: float = self.base_value
+        sum_percent_add: float = 0.0
+
+        for i, modifier in enumerate(self._modifiers):
+            if modifier.modifier_type == StatModifierType.Flat:
+                final_value += modifier.value
+
+            elif modifier.modifier_type == StatModifierType.PercentAdd:
+                sum_percent_add += modifier.value
+
+                if (
+                    i + 1 >= len(self._modifiers)
+                    or self._modifiers[i + 1].modifier_type
+                    != StatModifierType.PercentAdd
+                ):
+                    final_value *= 1 + sum_percent_add
+                    sum_percent_add = 0
+
+            elif modifier.modifier_type == StatModifierType.PercentMult:
+                final_value *= 1 + modifier.value
+
+        self._value = final_value
+
+        self._is_dirty = False
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return "{}(value={}, base={}, modifiers={})".format(
+            self.__class__.__name__,
+            self.value,
+            self.base_value,
+            [m.__repr__() for m in self._modifiers],
+        )
 
 
 class StatComponent(Component, ISerializable, ABC):
@@ -148,11 +285,11 @@ class StatComponent(Component, ISerializable, ABC):
 
         self._is_dirty = False
 
-    def on_add(self, gameobject: GameObject) -> None:
-        gameobject.get_component(Stats).add_stat(self)
+    def on_add(self) -> None:
+        self.gameobject.get_component(Stats).add_stat(self)
 
-    def on_remove(self, gameobject: GameObject) -> None:
-        gameobject.get_component(Stats).remove_stat(self)
+    def on_remove(self) -> None:
+        self.gameobject.get_component(Stats).remove_stat(self)
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -180,7 +317,12 @@ class ClampedStatComponent(StatComponent, ABC):
     _max_value: float
     """The maximum score the overall stat is clamped to."""
 
-    def __init__(self, base_value: float, min_value: float, max_value: float) -> None:
+    def __init__(
+        self,
+        base_value: float,
+        min_value: float,
+        max_value: float,
+    ) -> None:
         super().__init__(base_value=base_value)
         self._min_value = min_value
         self._max_value = max_value
@@ -298,6 +440,4 @@ class Stats(Component, ISerializable):
         del self._stats[type(stat)]
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "stats": [s.__name__ for s in self._stats.keys()]
-        }
+        return {"stats": [s.__name__ for s in self._stats.keys()]}

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
-from neighborly.core.ecs import GameObject, ISerializable
+from neighborly.ecs import GameObject, ISerializable
 
 _GT = TypeVar("_GT")
 

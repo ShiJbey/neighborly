@@ -2,10 +2,10 @@ from typing import Any, Tuple
 
 from neighborly.components.residence import BaseResidence
 from neighborly.components.shared import Building, Location, Position2D
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.life_event import EventHistory
+from neighborly.ecs import GameObject, World
+from neighborly.life_event import EventHistory
 from neighborly.simulation import Neighborly, PluginInfo
-from neighborly.status_system import Statuses
+from neighborly.statuses import Statuses
 from neighborly.world_map import BuildingMap
 
 plugin_info = PluginInfo(
@@ -17,8 +17,8 @@ plugin_info = PluginInfo(
 
 class House(BaseResidence):
     @classmethod
-    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
-        residence = super().instantiate(world, **kwargs)
+    def _instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        residence = super()._instantiate(world, **kwargs)
         residence.add_component(Location)
         residence.add_component(Statuses)
         residence.add_component(EventHistory)

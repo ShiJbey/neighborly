@@ -13,9 +13,9 @@ from typing import ClassVar, List, Optional, TypedDict
 
 import pandas as pd
 
-from neighborly.core.ecs import World
-from neighborly.core.time import SimDateTime
+from neighborly.ecs import World
 from neighborly.settlement import Settlement
+from neighborly.time import SimDateTime
 
 
 class CharacterSpawnTableEntry(TypedDict):
@@ -82,7 +82,7 @@ class CharacterSpawnTable:
         Returns
         -------
         str
-            The name of a entry.
+            The name of an entry.
         """
 
         if len(self._table) == 0:
@@ -357,7 +357,7 @@ class ResidenceSpawnTable:
         Returns
         -------
         str
-            The name of a entry.
+            The name of an entry.
         """
 
         if len(self._table) == 0:

@@ -1,17 +1,14 @@
 import random
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, List
 
 from neighborly.components.character import GameCharacter, LifeStage, LifeStageType
-from neighborly.core.ecs import Active, GameObject, System, SystemGroup, World
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.time import SimDateTime
+from neighborly.components.shared import FrequentedLocations
+from neighborly.ecs import Active, GameObject, System, SystemGroup, World
+from neighborly.life_event import EventHistory, EventLog, LifeEvent
 from neighborly.plugins.talktown.businesses import School
-from neighborly.role_system import IRole, Roles
-from neighborly.status_system import IStatus
-from neighborly.utils.location import (
-    add_frequented_location,
-    remove_frequented_location,
-)
+from neighborly.roles import IRole, Roles
+from neighborly.statuses import IStatus
+from neighborly.time import SimDateTime
 
 
 class Student(IRole):
@@ -58,8 +55,10 @@ class EnrolledInSchoolEvent(LifeEvent):
         self.character = character
         self.school = school
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -95,8 +94,10 @@ class GraduatedFromSchoolEvent(LifeEvent):
         self.character = character
         self.school = school
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.character]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+
+        self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -143,7 +144,7 @@ class EnrollInSchoolSystem(System):
         schools = EnrollInSchoolSystem.get_schools(world)
 
         # Return early if no schools are available
-        if len(schools) > 0:
+        if len(schools) == 0:
             return
 
         rng = world.resource_manager.get_resource(random.Random)
@@ -170,7 +171,7 @@ class EnrollInSchoolSystem(System):
 
             new_student.add_component(Student, school=chosen_school)
 
-            add_frequented_location(new_student, chosen_school)
+            new_student.get_component(FrequentedLocations).add_location(chosen_school)
 
             EnrolledInSchoolEvent(
                 world, current_date, new_student, chosen_school
@@ -190,8 +191,9 @@ class GraduateAdultStudentsSystem(System):
 
                 school_component.remove_student(character)
                 character.remove_component(type(student))
-
-                remove_frequented_location(character, student.school)
+                character.get_component(FrequentedLocations).remove_location(
+                    student.school
+                )
 
                 GraduatedFromSchoolEvent(
                     world, current_date, character, student.school

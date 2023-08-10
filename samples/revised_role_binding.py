@@ -1,24 +1,36 @@
+#!/usr/bin/python3
+
+"""
+Updated Event Role Authoring
+============================
+
+This sample shows how to author life events using the new @event_role decorator for
+role binding functions. This new authoring workflow is intended to remove the need for
+boilerplate code. And it allows us to repeatedly generate new valid castings for
+life event types.
+
+"""
+
+
 from __future__ import annotations
 
-from typing import Any, Dict, Generator, Iterable, Optional, Tuple
+from typing import Any, Dict, Generator, Tuple
 
-from neighborly.core.ecs import Component, GameObject
-from neighborly.core.life_event import (
-    EventRoleBindingContext,
+from neighborly.ecs import Component, GameObject
+from neighborly.life_event import (
+    EventBindingContext,
     RandomLifeEvent,
+    event_consideration,
     event_role,
 )
 from neighborly.simulation import Neighborly
+from neighborly.stats import StatModifier, StatModifierType
 
 
-def sample_consideration(
-    gameobject: GameObject, event: StartHeroStory
-) -> Optional[float]:
-    return 0.1
-
-
-class StartHeroStory(RandomLifeEvent):
+class SpiderManBossFight(RandomLifeEvent):
     """Begins a story of a hero versus a villain."""
+
+    base_probability = 0.5
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -27,29 +39,43 @@ class StartHeroStory(RandomLifeEvent):
             "villain": self.roles.get_first("villain"),
         }
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.roles.get_first("hero"), self.roles.get_first("villain")]
-
     def execute(self) -> None:
         pass
 
     @staticmethod
-    @event_role("hero", considerations=[lambda gameobject, event: 0.8])
+    @event_role("hero")
     def hero(
-        ctx: EventRoleBindingContext,
+        ctx: EventBindingContext,
     ) -> Generator[Tuple[GameObject, ...], None, None]:
         """Bind a hero."""
         for guid, _ in ctx.world.get_component(Hero):
             yield (ctx.world.gameobject_manager.get_gameobject(guid),)
 
     @staticmethod
-    @event_role("villain", considerations=[sample_consideration])
+    @event_role("villain")
     def villain(
-        ctx: EventRoleBindingContext,
+        ctx: EventBindingContext,
     ) -> Generator[Tuple[GameObject, ...], None, None]:
         """Bind a villain."""
         for guid, _ in ctx.world.get_component(Villain):
             yield (ctx.world.gameobject_manager.get_gameobject(guid),)
+
+    @staticmethod
+    @event_consideration()
+    def universe_match_consideration(event: SpiderManBossFight) -> StatModifier:
+        """Modify the probability based on the match-up."""
+
+        if event["hero"].name == "Miles" and event["villain"].name == "The Prowler":
+            return StatModifier(0.1, StatModifierType.Flat)
+
+        elif event["hero"].name == "Peter" and event["villain"].name == "Green Goblin":
+            return StatModifier(0.1, StatModifierType.Flat)
+
+        elif event["hero"].name == "Gwen" and event["villain"].name == "Daredevil":
+            return StatModifier(0.1, StatModifierType.Flat)
+
+        else:
+            return StatModifier(-0.5, StatModifierType.PercentAdd)
 
 
 class Hero(Component):
@@ -71,19 +97,16 @@ def main() -> None:
     sim.world.gameobject_manager.spawn_gameobject(components={Hero: {}}, name="Gwen")
 
     sim.world.gameobject_manager.spawn_gameobject(
-        components={Villain: {}}, name="KingPin"
-    )
-    sim.world.gameobject_manager.spawn_gameobject(
         components={Villain: {}}, name="Green Goblin"
     )
     sim.world.gameobject_manager.spawn_gameobject(
         components={Villain: {}}, name="The Prowler"
     )
     sim.world.gameobject_manager.spawn_gameobject(
-        components={Villain: {}}, name="Doc. Oc"
+        components={Villain: {}}, name="Daredevil"
     )
 
-    for result in StartHeroStory.generate(sim.world):
+    for result in SpiderManBossFight.generate(sim.world):
         print(result.__repr__())
         print(f"Probability: {result.get_probability()}")
         print("===")

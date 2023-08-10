@@ -1,8 +1,8 @@
 import os
 import pathlib
 
-from neighborly.core.tracery import load_names
 from neighborly.simulation import Neighborly, PluginInfo
+from neighborly.tracery import load_names
 
 _RESOURCES_DIR = pathlib.Path(os.path.abspath(__file__)).parent / "data"
 

@@ -1,35 +1,28 @@
 #!/usr/bin/env python3
+
 """
 Using Authored Characters Sample
---------------------------------
+================================
 
 This samples shows how users may inject user-specified characters into the simulation.
 Normally characters are spawned into the settlement based on the spawn table.
+
 """
+
 import time
 from typing import Any
 
 from neighborly import Neighborly, NeighborlyConfig, SimDateTime, System
-from neighborly.components.character import (
-    BaseCharacter,
-    Female,
-    GameCharacter,
-    create_character,
-)
-from neighborly.components.residence import create_residence
-from neighborly.core.ecs import GameObject, TagComponent, World
-from neighborly.core.relationship import (
-    Friendship,
-    InteractionScore,
-    Relationships,
-    Romance,
-)
+from neighborly.components.character import BaseCharacter, Female, GameCharacter, \
+    CharacterConfig
+from neighborly.components.residence import set_residence
 from neighborly.data_collection import DataCollector
 from neighborly.decorators import component, system
+from neighborly.ecs import GameObject, TagComponent, World
 from neighborly.exporter import export_to_json
 from neighborly.plugins.defaults.residences import House
-from neighborly.status_system import Statuses
-from neighborly.utils.common import set_residence
+from neighborly.relationship import Friendship, InteractionScore, Relationships, Romance
+from neighborly.statuses import Statuses
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
@@ -37,7 +30,7 @@ sim = Neighborly(
             "settlement_name": "Westworld",
             "plugins": [
                 "neighborly.plugins.defaults.all",
-                # "neighborly.plugins.talktown",
+                "neighborly.plugins.talktown",
             ],
         }
     )
@@ -95,18 +88,20 @@ class RelationshipReporter(System):
 
 
 EXPORT_SIM = False
-YEARS_TO_SIMULATE = 50
+YEARS_TO_SIMULATE = 500
 
 
 @component(sim.world)
 class Android(BaseCharacter):
+    config = CharacterConfig(base_health_decay=0)
+
     @classmethod
-    def instantiate(
+    def _instantiate(
         cls,
         world: World,
         **kwargs: Any,
     ) -> GameObject:
-        character = super().instantiate(world, **kwargs)
+        character = super()._instantiate(world, **kwargs)
 
         character.add_component(Robot)
 
@@ -116,16 +111,15 @@ class Android(BaseCharacter):
 def main():
     """Main entry point for this module"""
 
-    dolores = create_character(
+    dolores = Android.instantiate(
         sim.world,
-        Android,
         first_name="Dolores",
         last_name="Abernathy",
         age=32,
         gender=Female,
     )
 
-    house = create_residence(sim.world, House, lot=(1, 1))
+    house = House.instantiate(sim.world, lot=(1, 1))
 
     set_residence(dolores, house)
 

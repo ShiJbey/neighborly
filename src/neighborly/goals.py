@@ -3,6 +3,19 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Optional, Type, cast
 
+from neighborly.ai.behavior_tree import (
+    AbstractBTNode,
+    BehaviorTree,
+    NodeState,
+    SelectorBTNode,
+)
+from neighborly.ai.brain import (
+    Consideration,
+    ConsiderationDict,
+    ConsiderationList,
+    GoalNode,
+    WeightedList,
+)
 from neighborly.components.business import (
     Business,
     BusinessOwner,
@@ -12,11 +25,9 @@ from neighborly.components.business import (
     RetirementEvent,
     StartBusinessEvent,
     Unemployed,
-    create_business,
 )
 from neighborly.components.character import (
     Dating,
-    Deceased,
     Departed,
     GameCharacter,
     LifeStage,
@@ -32,25 +43,18 @@ from neighborly.components.residence import (
     ResidenceType,
     Resident,
     Vacant,
-    create_residence,
+    set_residence,
 )
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ai.behavior_tree import (
-    AbstractBTNode,
-    BehaviorTree,
-    NodeState,
-    SelectorBTNode,
+from neighborly.ecs import Active, GameObject, World
+from neighborly.events import (
+    BreakUpEvent,
+    DivorceEvent,
+    MarriageEvent,
+    StartDatingEvent,
 )
-from neighborly.core.ai.brain import (
-    Consideration,
-    ConsiderationDict,
-    ConsiderationList,
-    GoalNode,
-    WeightedList,
-)
-from neighborly.core.ecs import Active, GameObject, World
-from neighborly.core.life_event import EventRole, EventRoleList
-from neighborly.core.relationship import (
+from neighborly.life_event import EventRole, EventRoleList
+from neighborly.relationship import (
     Friendship,
     Relationships,
     Romance,
@@ -58,22 +62,13 @@ from neighborly.core.relationship import (
     get_relationships_with_components,
     has_relationship,
 )
-from neighborly.core.time import SimDateTime
-from neighborly.events import (
-    BreakUpEvent,
-    DeathEvent,
-    DivorceEvent,
-    MarriageEvent,
-    StartDatingEvent,
-)
-from neighborly.role_system import Roles
+from neighborly.roles import Roles
 from neighborly.spawn_table import BusinessSpawnTable, ResidenceSpawnTable
-from neighborly.status_system import clear_statuses
+from neighborly.time import SimDateTime
 from neighborly.utils.common import (
-    clear_frequented_locations,
     depart_settlement,
+    die,
     end_job,
-    set_residence,
     shutdown_business,
     start_job,
 )
@@ -86,12 +81,25 @@ from neighborly.world_map import BuildingMap
 
 
 def employment_spouse_consideration(gameobject: GameObject) -> Optional[float]:
-    if len(get_relationships_with_components(gameobject, Married)) > 0:
+    if (
+        len(
+            gameobject.get_component(Relationships).get_relationships_with_components(
+                Married
+            )
+        )
+        > 0
+    ):
         return 0.7
 
 
 def employment_children_consideration(gameobject: GameObject) -> Optional[float]:
-    child_count = float(len(get_relationships_with_components(gameobject, ParentOf)))
+    child_count = float(
+        len(
+            gameobject.get_component(Relationships).get_relationships_with_components(
+                ParentOf
+            )
+        )
+    )
     if child_count:
         return min(1.0, child_count / 5.0)
 
@@ -283,7 +291,7 @@ class StartBusiness(GoalNode):
         lot = rng.choice(vacancies)
 
         # Instantiate the new business
-        business = create_business(world, business_type, lot=lot)
+        business = business_type.instantiate(world=world, lot=lot)
 
         # Emit the event first before emitting the event from
         # starting the new job
@@ -508,7 +516,7 @@ class BuildNewHouse(AbstractBTNode):
             Type[ResidenceType], world.resolve_component_type(residence_type_name)
         )
 
-        residence = create_residence(world, residence_type, lot=lot)
+        residence = residence_type.instantiate(world, lot=lot)
 
         set_residence(self.character, residence, True)
 
@@ -1181,34 +1189,5 @@ class Die(BehaviorTree):
         self.character: GameObject = character
 
     def evaluate(self) -> NodeState:
-        current_date = self.character.world.resource_manager.get_resource(SimDateTime)
-
-        event = DeathEvent(
-            self.character.world,
-            current_date,
-            self.character,
-        )
-        self.character.world.event_manager.dispatch_event(event)
-
-        for occupation in self.character.get_component(Roles).get_roles_of_type(
-            Occupation
-        ):
-            if occupation.business.get_component(Business).owner == self.character:
-                shutdown_business(occupation.business)
-            else:
-                end_job(
-                    character=self.character,
-                    business=occupation.business,
-                    reason=event,
-                )
-
-        if self.character.has_component(Resident):
-            set_residence(self.character, None)
-
-        self.character.add_component(Deceased, timestamp=current_date.year)
-        clear_frequented_locations(self.character)
-        clear_statuses(self.character)
-
-        self.character.deactivate()
-
+        die(self.character)
         return NodeState.SUCCESS

@@ -11,13 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from neighborly.core.ecs import (
-    Component,
-    GameObject,
-    ISerializable,
-    TagComponent,
-    World,
-)
+from neighborly.ecs import Component, GameObject, ISerializable, TagComponent, World
 
 
 class ItemType(TagComponent, ABC):

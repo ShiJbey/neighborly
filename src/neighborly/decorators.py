@@ -4,7 +4,7 @@ Utility decorators that should assist with content authoring
 
 from typing import Any, Optional, Type, TypeVar
 
-from neighborly.core.ecs import (
+from neighborly.ecs import (
     Component,
     Event,
     EventListener,
@@ -13,12 +13,12 @@ from neighborly.core.ecs import (
     SystemGroup,
     World,
 )
-from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
-from neighborly.core.location_preference import (
+from neighborly.life_event import RandomLifeEvent, RandomLifeEventLibrary
+from neighborly.location_preference import (
     ILocationPreferenceRule,
     LocationPreferenceRuleLibrary,
 )
-from neighborly.core.relationship import ISocialRule, SocialRuleLibrary
+from neighborly.relationship import ISocialRule, SocialRuleLibrary
 
 _CT = TypeVar("_CT", bound=Component)
 _CF = TypeVar("_CF", bound=IComponentFactory)
@@ -48,7 +48,7 @@ def component(world: World):
     return decorator
 
 
-def component_factory(world: World, component_type: Type[Component], **kwargs: Any):
+def component_factory(world: World, component_type: Type[Component]):
     """Register a component type with the  simulation.
 
     Registers a component class type with the simulation's World instance.
@@ -63,11 +63,11 @@ def component_factory(world: World, component_type: Type[Component], **kwargs: A
         The component type the factory instantiates.
     """
 
-    def decorator(cls: Type[_CF]) -> Type[_CF]:
+    def decorator(factory_type: Type[_CF]) -> Type[_CF]:
         world.gameobject_manager.get_component_info(
             component_type.__name__
-        ).factory = cls(**kwargs)
-        return cls
+        ).factory = factory_type
+        return factory_type
 
     return decorator
 

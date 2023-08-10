@@ -5,14 +5,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Type, TypedDict
+from typing import Any, ClassVar, Dict, Optional, Type, TypedDict, final
 
 from ordered_set import OrderedSet
 
-from neighborly import Event
-from neighborly.core.ecs import Component, GameObject, ISerializable, World
+from neighborly.time import SimDateTime
+from neighborly.ecs import Component, GameObject, ISerializable, World, Event
+from neighborly.events import ChangeResidenceEvent
+from neighborly.settlement import Settlement
 from neighborly.spawn_table import ResidenceSpawnTable, ResidenceSpawnTableEntry
-from neighborly.status_system import IStatus
+from neighborly.statuses import IStatus
 
 
 class Residence(Component, ISerializable):
@@ -128,6 +130,9 @@ class Resident(IStatus):
         super().__init__(year_created)
         self.residence = residence
 
+    def on_deactivate(self) -> None:
+        set_residence(self.gameobject, None)
+
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "residence": self.residence.uid}
 
@@ -161,7 +166,7 @@ class ResidenceType(Component, ABC):
 
     @classmethod
     @abstractmethod
-    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+    def _instantiate(cls, world: World, **kwargs: Any) -> GameObject:
         """Create new residence instance.
 
         Parameters
@@ -178,10 +183,33 @@ class ResidenceType(Component, ABC):
         """
         return world.gameobject_manager.spawn_gameobject()
 
+    @classmethod
+    @final
+    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        """Create a new GameObject instance of the given residence type.
+
+        Parameters
+        ----------
+        world
+            The world to spawn the residence into
+        **kwargs
+            Keyword arguments to pass to the ResidenceType's factory
+
+        Returns
+        -------
+        GameObject
+            the instantiated character
+        """
+        residence = cls._instantiate(world, **kwargs)
+
+        ResidenceCreatedEvent(world, residence).dispatch()
+
+        return residence
+
 
 class BaseResidence(ResidenceType, ABC):
     @classmethod
-    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+    def _instantiate(cls, world: World, **kwargs: Any) -> GameObject:
         residence = world.gameobject_manager.spawn_gameobject()
 
         residence.name = f"{cls.__name__}({residence.uid})"
@@ -191,32 +219,6 @@ class BaseResidence(ResidenceType, ABC):
         residence.add_component(Residence, residence_type=residence_type)
 
         return residence
-
-
-def create_residence(
-    world: World, residence_type: Type[ResidenceType], **kwargs: Any
-) -> GameObject:
-    """Create a new GameObject instance of the given business type.
-
-    Parameters
-    ----------
-    world
-        The world to spawn the character into
-    residence_type
-        The business type to construct
-    **kwargs
-        Keyword arguments to pass to the BusinessType's factory
-
-    Returns
-    -------
-    GameObject
-        the instantiated character
-    """
-    residence = residence_type.instantiate(world, **kwargs)
-
-    ResidenceCreatedEvent(world, residence).dispatch()
-
-    return residence
 
 
 class ResidenceCreatedEvent(Event):
@@ -236,3 +238,68 @@ class ResidenceCreatedEvent(Event):
     @property
     def residence(self) -> GameObject:
         return self._residence
+
+
+def set_residence(
+    character: GameObject,
+    new_residence: Optional[GameObject],
+    is_owner: bool = False,
+) -> None:
+    """Sets the characters current residence.
+
+    Parameters
+    ----------
+    character
+        The character to move
+    new_residence
+        An optional residence to move them to. If None is given and the character
+        has a current residence, they are removed from their current residence
+    is_owner
+        Should the character be listed one of the owners of the new residence
+    """
+    current_date = character.world.resource_manager.get_resource(SimDateTime)
+    settlement = character.world.resource_manager.get_resource(Settlement)
+    former_residence: Optional[GameObject] = None
+
+    if resident := character.try_component(Resident):
+        # This character is currently a resident at another location
+        former_residence = resident.residence
+        former_residence_comp = former_residence.get_component(Residence)
+
+        if former_residence_comp.is_owner(character):
+            former_residence_comp.remove_owner(character)
+
+        former_residence_comp.remove_resident(character)
+        character.remove_component(Resident)
+
+        settlement.population -= 1
+
+        if len(former_residence_comp.residents) <= 0:
+            former_residence.add_component(Vacant, timestamp=current_date.year)
+
+    # Don't add them to a new residence if none is given
+    if new_residence is None:
+        return
+
+    # Move into new residence
+    new_residence.get_component(Residence).add_resident(character)
+
+    if is_owner:
+        new_residence.get_component(Residence).add_owner(character)
+
+    character.add_component(
+        Resident, residence=new_residence, year_created=current_date.year
+    )
+
+    if new_residence.has_component(Vacant):
+        new_residence.remove_component(Vacant)
+
+    settlement.population += 1
+
+    ChangeResidenceEvent(
+        world=character.world,
+        old_residence=former_residence,
+        new_residence=new_residence,
+        character=character,
+        date=current_date.copy(),
+    ).dispatch()

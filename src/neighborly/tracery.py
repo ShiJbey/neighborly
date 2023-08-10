@@ -9,8 +9,7 @@ from typing import Dict, List, Optional, Union
 
 import tracery
 import tracery.modifiers as tracery_modifiers
-
-from neighborly.core.ecs import World
+from neighborly.ecs import World
 
 
 class Tracery:

@@ -1,13 +1,14 @@
-"""
-This sample creates a DemonSlayer-style
-town and simulates demons eating people,
-demon slayers hunting demons, and regular
-people going about their business.
+#!/usr/bin/python3
 
-Demon Slayer takes place during the Taisho
-period in Japan (1912-1926). However, this
-simulation layers Demon-slayer style elements
-on top of a Talk of the Town-style town.
+"""
+Neighborly Demon Slayer Sample
+==============================
+
+This sample creates a DemonSlayer-style town and simulates demons eating people, demon
+slayers hunting demons, and regular people going about their business.
+
+Demon Slayer takes place during the Taisho period in Japan (1912-1926). However, this
+simulation layers Demon-slayer style elements on top of a Talk of the Town-style town.
 
 Key Features
 ------------
@@ -20,14 +21,16 @@ Key Features
 - The DemonSlayerCorp tracks the current highest
   ranking slayers
 - The DemonKingdom tracks the top-12 ranked demons
+
 """
+
 from __future__ import annotations
 
 import math
 import random
 import time
 from enum import IntEnum
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
@@ -49,14 +52,6 @@ from neighborly.components.character import (
     LifeStageType,
 )
 from neighborly.components.shared import FrequentedLocations
-from neighborly.core.ecs import Active, Component, GameObject, ISerializable, World
-from neighborly.core.life_event import (
-    EventRole,
-    EventRoleBindingContext,
-    EventRoleList,
-    RandomLifeEvent,
-    event_role,
-)
 from neighborly.decorators import (
     component,
     component_factory,
@@ -65,30 +60,24 @@ from neighborly.decorators import (
     resource,
     system,
 )
+from neighborly.ecs import Active, Component, GameObject, ISerializable, World
 from neighborly.events import DeathEvent
 from neighborly.exporter import export_to_json
 from neighborly.goals import Die
+from neighborly.life_event import (
+    EventBindingContext,
+    EventHistory,
+    EventRole,
+    EventRoleList,
+    RandomLifeEvent,
+    event_role,
+)
+from neighborly.settlement import Settlement
 from neighborly.systems import EarlyUpdateSystemGroup, InitializationSystemGroup
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
-            "relationship_schema": {
-                "components": {
-                    "Friendship": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "Romance": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "InteractionScore": {
-                        "min_value": -5,
-                        "max_value": 5,
-                    },
-                }
-            },
             "plugins": [
                 "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown",
@@ -595,7 +584,7 @@ class BecomeDemonSlayer(RandomLifeEvent):
     @staticmethod
     @event_role("Character", considerations=[lambda gameobject, event: 0.8])
     def character(
-        ctx: EventRoleBindingContext,
+        ctx: EventBindingContext,
     ) -> Generator[Tuple[GameObject, ...], None, None]:
         """Bind a character."""
 
@@ -950,9 +939,6 @@ class Battle(RandomLifeEvent):
             **super().to_dict(),
         }
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.challenger, self.opponent]
-
     def get_probability(self) -> float:
         return 0.8
 
@@ -960,6 +946,10 @@ class Battle(RandomLifeEvent):
         """Choose a winner based on their expected success"""
         challenger = self["Challenger"]
         opponent = self["Opponent"]
+
+        challenger.get_component(EventHistory).append(self)
+        opponent.get_component(EventHistory).append(self)
+
         world = challenger.world
         rng = world.resource_manager.get_resource(random.Random)
         challenger_pl = challenger.get_component(PowerLevel)
@@ -1370,22 +1360,26 @@ class SpawnFirstDemonSystem(System):
 
 
 EXPORT_WORLD = False
+YEARS_TO_SIMULATE = 100
 
 
 def main():
     st = time.time()
-    sim.run_for(100)
+    sim.run_for(YEARS_TO_SIMULATE)
     elapsed_time = time.time() - st
 
     print(f"World Year: {sim.world.resource_manager.get_resource(SimDateTime).year}")
+    print(f"Settlement: {sim.world.resource_manager.get_resource(Settlement).name}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_WORLD:
-        output_path = f"world_{sim.config.seed}.json"
+        output_path = "demon_slayer_{}_{}.json".format(
+            sim.world.resource_manager.get_resource(Settlement).name,
+            sim.config.seed
+        )
 
         with open(output_path, "w") as f:
-            data = export_to_json(sim)
-            f.write(data)
+            f.write(export_to_json(sim))
             print(f"Simulation data written to: '{output_path}'")
 
 

@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-from neighborly.core.ai.brain import GoalNode
-from neighborly.core.ecs import GameObject
+from neighborly.ai.brain import GoalNode
+from neighborly.ecs import GameObject
 
 
 class _GoToWork(GoalNode):

@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
-## [12.0.0]
+## [1.0.0]
 
-Version 0.12.0 is departs significantly from previous Neighborly releases. This version emphasizes simplicity, focusing
+Version 1.0.0 departs significantly from previous Neighborly releases. This version emphasizes simplicity, focusing
 more on Neighborly's use as a data science and prototyping tool. This change reflects my evolving understanding of my
 research and its place in the academic universe. To match this, most samples have been converted to encourage
 experimentation and showcase data visualizations.
@@ -17,10 +17,23 @@ The passage of time has been greatly simplified to only simulate one year at a t
 granular time steps such as hours, there is no need for character routines or operating hours. We also do not need
 to track the maximum capacity of a location or mark locations as eligible for travel.
 
+Neighborly moved away from the data-driven approach of loading prefab definitions from 
+external files. Creating characters or businesses this way required duplicate
+definitions and made it harder to share and modify existing prefabs. The new 
+`CharacterType` and `BusinessType` classes are a return to using factory objects to
+instantiate GameObjects. The best part is that the factory is also a component that is
+associate with the GameObject it instantiates. So, now users can easily query by
+character or business type.
+
+Below is a non-exhaustive list of changes.
+
 ### Added
 
-- Trait System so characters can spawn with additional components that affect their behavior.
-- Traits can be inherited by children from their parents
+- New Trait System so characters can spawn with additional components that affect their behavior.
+- New Stats System to track stats and stat modifiers
+- New Role system to manage things like occupations
+- Experimental Inventory System to track items
+- New `CharacterType`, `BusinessType` and `ResidenceType` factory classes for content authoring
 - `@event_role` decorator that reduces boiler code when required to define new random life events.
 - Added a role system to handle things like narrative-specific roles and occupations.
 - `JobRequirementsLibrary` resource that manages all job requirements for occupations.
@@ -28,10 +41,16 @@ to track the maximum capacity of a location or mark locations as eligible for tr
 - Additional API routes to the server
 - Systems now have lifecycle methods for `on_create()`, `on_start_running()`, `on_destroy()`, `on_update()`,
   `on_stop_running()`, and `should_system_run()`.
--
+- Added additional config parameters for logging to `NeighborlyConfig`
+- Added `settlement_name` and `world_size` parameters to `NeighborlyConfig`
 
 ### Changed
 
+- Converted `RelationshipFacet`s to use the new stat system
+- `BuildingMap` resource to replace the `ISettlementMap` associated with the settlement instance.
+- `Settlment` is now a resource instead of a component
+- Spawn tables have been changed from components to resources
+- Removed map and business/location tracking from the `Settlement` class
 - Converted samples from python scripts to interactive python notebooks.
 - Time moves at single year time steps
 - Built-in systems now inherit from `System` instead of `ISystem`
@@ -44,6 +63,8 @@ to track the maximum capacity of a location or mark locations as eligible for tr
   and `ResourceManager`.
 - Revised relationship system and class interfaces for social rules, relationship stats, and relationship modifiers.
 - Renamed `RelationshipFacet` to `RelationshipStat`.
+- Renamed `--no-emit` CLI argument to `--no-output`.
+
 
 ### Removed
 
@@ -54,6 +75,7 @@ to track the maximum capacity of a location or mark locations as eligible for tr
 - The `OperatingHours` component class has been removed.
 - Locations no longer track what GameObjects are present at the location since we do not model character movement.
 - `RelationshipUpdateSystem`, `FriendshipStatSystem`, and `RomanceStatSystem`
+- Removed all CLI args not including `--config, --output, --no-output`.
 
 ### Fixed
 

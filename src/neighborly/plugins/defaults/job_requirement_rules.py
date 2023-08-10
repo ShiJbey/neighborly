@@ -11,9 +11,9 @@ from typing import Any
 from neighborly.components.business import Occupation, WorkHistory
 from neighborly.components.character import Gender
 from neighborly.components.shared import Age
-from neighborly.core.ecs import GameObject
-from neighborly.core.time import SimDateTime
-from neighborly.role_system import Roles
+from neighborly.ecs import GameObject
+from neighborly.roles import Roles
+from neighborly.time import SimDateTime
 
 
 def has_component(gameobject: GameObject, *args: Any) -> bool:

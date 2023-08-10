@@ -1,11 +1,11 @@
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Tuple
 
 import pytest
 
-from neighborly.core.ecs import GameObject, World
-from neighborly.core.life_event import LifeEvent
-from neighborly.core.time import SimDateTime
+from neighborly.ecs import GameObject, World
+from neighborly.life_event import EventHistory, EventLog, LifeEvent
 from neighborly.simulation import Neighborly
+from neighborly.time import SimDateTime
 
 
 class PriceDisputeEvent(LifeEvent):
@@ -25,8 +25,10 @@ class PriceDisputeEvent(LifeEvent):
         self.merchant = merchant
         self.customer = customer
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return [self.merchant, self.customer]
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        self.merchant.get_component(EventHistory).append(self)
+        self.customer.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -47,8 +49,10 @@ class DeclareRivalryEvent(LifeEvent):
         super().__init__(world, date)
         self.characters = characters
 
-    def get_affected_gameobjects(self) -> Iterable[GameObject]:
-        return list(self.characters)
+    def on_dispatch(self) -> None:
+        self.world.resource_manager.get_resource(EventLog).append(self)
+        for character in self.characters:
+            character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), "characters": [c.uid for c in self.characters]}

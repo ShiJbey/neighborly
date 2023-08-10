@@ -1,10 +1,12 @@
+#!/usr/bin/python3
+
 """
 Talk of the Town Sample
-------------------------
+=======================
 
-This samples shows Neighborly simulating a Talk of the Town-style
-town. It uses the talktown plugin included with Neighborly
-and simulates 140 years of town history.
+This samples shows Neighborly simulating a Talk of the Town-style town. It uses the
+talktown plugin included with Neighborly and simulates 140 years of town history.
+
 """
 
 import time
@@ -19,10 +21,9 @@ sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
             "seed": "Apples",
-            "settlement_name": "Townsville",
             "plugins": [
                 "neighborly.plugins.defaults.all",
-                # "neighborly.plugins.talktown",
+                "neighborly.plugins.talktown",
             ],
             "logging": {
                 "logging_enabled": True,

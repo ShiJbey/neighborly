@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.time import SimDateTime, TimeDelta
 
 
 def test_get_time_of_day():

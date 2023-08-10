@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neighborly"
-description = "An agent-based modeling framework for simulating towns of characters in games"
+description = "A narrative-focused agent-based settlement simulation framework."
 authors = [
     { name = "Shi Johnson-Bey", email = "shijbey@gmail.com" },
 ]
@@ -18,7 +18,10 @@ keywords = [
     "artificial intelligence",
     "agent-based modeling",
     "multiagent systems",
-    "emergent narrative"
+    "emergent narrative",
+    "narrative generation",
+    "interactive storytelling",
+    "settlement simulation"
 ]
 license = { file = "LICENSE.md" }
 classifiers = [
@@ -27,12 +30,17 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Games/Entertainment :: Simulation",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Artificial Life",
     "Topic :: Sociology",
     "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Typing :: Typed"
 ]
 dependencies = [
@@ -55,7 +63,6 @@ testing = [
     "pytest-cov"
 ]
 samples = [
-    "notebook",
     "jupyterlab",
     "matplotlib",
     "tqdm"

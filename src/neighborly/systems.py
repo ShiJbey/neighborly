@@ -1,57 +1,46 @@
+import math
 import random
 from collections import defaultdict
-from typing import ClassVar, DefaultDict, List, Tuple, Type
+from typing import ClassVar, DefaultDict, List, Tuple
 
-from ordered_set import OrderedSet
-
+from neighborly.ai.brain import AIBrain, Goals
 from neighborly.components.business import (
     Business,
+    InTheWorkforce,
     Occupation,
     OpenForBusiness,
+    Services,
     Unemployed,
 )
 from neighborly.components.character import (
     CanAge,
     CanGetOthersPregnant,
     CanGetPregnant,
+    CharacterCreatedEvent,
     ChildOf,
     Dating,
     Family,
     GameCharacter,
-    Immortal,
+    Health,
+    HealthDecay,
+    HealthDecayChance,
     LifeStage,
     LifeStageType,
     Married,
     ParentOf,
     Pregnant,
     SiblingOf,
-    create_character,
+    Sociability,
 )
-from neighborly.components.residence import Residence, Resident
+from neighborly.components.residence import Residence, Resident, set_residence
 from neighborly.components.shared import (
     Age,
     FrequentedBy,
     FrequentedLocations,
     Lifespan,
+    Location,
 )
-from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import Active, GameObject, System, SystemGroup, World
-from neighborly.core.life_event import RandomLifeEvent, RandomLifeEventLibrary
-from neighborly.core.relationship import (
-    Friendship,
-    InteractionScore,
-    PlatonicCompatibility,
-    Relationship,
-    Relationships,
-    Romance,
-    RomanticCompatibility,
-    SocialRuleLibrary,
-    add_relationship,
-    get_relationship,
-    get_relationships_with_components,
-    has_relationship,
-)
-from neighborly.core.time import SimDateTime
+from neighborly.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.events import (
     BecameAcquaintancesEvent,
     BecomeAdolescentEvent,
@@ -65,7 +54,6 @@ from neighborly.events import (
 from neighborly.goals import (
     BreakUp,
     DepartSimulation,
-    Die,
     FindEmployment,
     FindOwnPlace,
     FindRomance,
@@ -73,16 +61,31 @@ from neighborly.goals import (
     GetMarried,
     Retire,
 )
-from neighborly.role_system import Roles
-from neighborly.trait_system import Traits
+from neighborly.life_event import RandomLifeEventLibrary
+from neighborly.location_preference import LocationPreferenceRuleLibrary
+from neighborly.relationship import (
+    Friendship,
+    InteractionScore,
+    PlatonicCompatibility,
+    Relationship,
+    Relationships,
+    Romance,
+    RomanticCompatibility,
+    SocialRuleLibrary,
+    add_relationship,
+    get_relationship,
+    get_relationships_with_components,
+    has_relationship,
+)
+from neighborly.roles import Roles
+from neighborly.stats import StatModifier, StatModifierType
+from neighborly.time import SimDateTime
 from neighborly.utils.common import (
-    get_child_prefab,
+    die,
+    get_random_child_character_type,
     is_employed,
-    score_locations_to_frequent,
-    set_residence,
     shutdown_business,
 )
-from neighborly.utils.location import add_frequented_location
 from neighborly.utils.query import is_single
 
 ############################################
@@ -188,7 +191,6 @@ class RandomLifeEventSystem(System):
         if len(event_library) == 0:
             return
 
-        event_type: Type[RandomLifeEvent]
         for _ in range(total_population // 2):
             event_type = event_library.pick_one(rng)
             if event := event_type.instantiate(world):
@@ -200,10 +202,18 @@ class MeetNewPeopleSystem(System):
     """Characters meet new people based on places they frequent"""
 
     def on_update(self, world: World) -> None:
-        for gid, (_, _, frequented_locations) in world.get_components(
-            (GameCharacter, Active, FrequentedLocations)
+        rng = world.resource_manager.get_resource(random.Random)
+
+        for gid, (_, _, frequented_locations, sociability) in world.get_components(
+            (GameCharacter, Active, FrequentedLocations, Sociability)
         ):
             character = world.gameobject_manager.get_gameobject(gid)
+
+            probability_meet_someone = float(sociability.value / 255)
+
+            if rng.random() > probability_meet_someone:
+                # Do not meet someone if the probability score does not pass
+                continue
 
             candidate_scores: DefaultDict[GameObject, int] = defaultdict(int)
 
@@ -247,6 +257,107 @@ class IncrementAgeSystem(System):
     def on_update(self, world: World) -> None:
         for _, (age, _) in world.get_components((Age, Active)):
             age.value += 1
+
+
+class HealthDecaySystem(System):
+    """Decay the health points of characters as they get older."""
+
+    DECAY_CHANCE_INCREASE: ClassVar[float] = 0.02
+    STARTING_DECAY_CHANCE: ClassVar[float] = 0.07
+
+    def on_create(self, world: World) -> None:
+        world.event_manager.on_event(
+            CharacterCreatedEvent, HealthDecaySystem.add_health_decay_to_character
+        )
+
+        world.event_manager.on_event(
+            BecomeYoungAdultEvent, HealthDecaySystem.add_health_decay_to_new_adult
+        )
+
+    @staticmethod
+    def add_health_decay_to_character(event: CharacterCreatedEvent) -> None:
+        life_stage = event.character.get_component(LifeStage).life_stage
+
+        if life_stage <= LifeStageType.Adolescent:
+            return
+
+        character_config = event.character.get_component(
+            GameCharacter
+        ).character_type.config
+
+        event.character.get_component(HealthDecay).add_modifier(
+            StatModifier(
+                character_config.base_health_decay, modifier_type=StatModifierType.Flat
+            )
+        )
+
+        aging_config = character_config.aging
+
+        if aging_config is None:
+            return
+
+        character_age = event.character.get_component(Age)
+
+        if life_stage == LifeStageType.YoungAdult:
+            event.character.get_component(
+                HealthDecayChance
+            ).base_value = HealthDecaySystem.STARTING_DECAY_CHANCE + (
+                HealthDecaySystem.DECAY_CHANCE_INCREASE
+                * (character_age.value - aging_config.young_adult_age)
+            )
+
+        elif life_stage == LifeStageType.Adult:
+            event.character.get_component(
+                HealthDecayChance
+            ).base_value = HealthDecaySystem.STARTING_DECAY_CHANCE + (
+                HealthDecaySystem.DECAY_CHANCE_INCREASE
+                * (character_age.value - aging_config.adult_age)
+            )
+
+        elif life_stage == LifeStageType.Senior:
+            event.character.get_component(
+                HealthDecayChance
+            ).base_value = HealthDecaySystem.STARTING_DECAY_CHANCE + (
+                HealthDecaySystem.DECAY_CHANCE_INCREASE
+                * (character_age.value - aging_config.senior_age)
+            )
+
+    @staticmethod
+    def add_health_decay_to_new_adult(event: BecomeYoungAdultEvent) -> None:
+        character_config = event.character.get_component(
+            GameCharacter
+        ).character_type.config
+
+        event.character.get_component(HealthDecay).add_modifier(
+            StatModifier(
+                character_config.base_health_decay, modifier_type=StatModifierType.Flat
+            )
+        )
+
+        aging_config = character_config.aging
+
+        if aging_config is None:
+            return
+
+        event.character.get_component(
+            HealthDecayChance
+        ).base_value = HealthDecaySystem.STARTING_DECAY_CHANCE
+
+    def on_update(self, world: World) -> None:
+        for _, (
+            _,
+            health,
+            health_decay,
+            decay_chance,
+            life_stage,
+        ) in world.get_components(
+            (Active, Health, HealthDecay, HealthDecayChance, LifeStage)
+        ):
+            if life_stage.life_stage >= LifeStageType.YoungAdult:
+                decay_chance.base_value += HealthDecaySystem.DECAY_CHANCE_INCREASE
+
+            if random.random() <= decay_chance.value:
+                health.base_value += health_decay.value
 
 
 class UpdateLifeStageSystem(System):
@@ -294,7 +405,7 @@ class UpdateLifeStageSystem(System):
                     life_stage.life_stage = LifeStageType.Child
 
 
-class UnemployedStatusSystem(System):
+class EmploymentSystem(System):
     """Provides unemployed characters with a goal to find employment."""
 
     __slots__ = "years_to_find_a_job"
@@ -305,6 +416,38 @@ class UnemployedStatusSystem(System):
     def __init__(self, years_to_find_a_job: int = 5) -> None:
         super().__init__()
         self.years_to_find_a_job = years_to_find_a_job
+
+    @staticmethod
+    def on_adult_join_settlement(event: CharacterCreatedEvent) -> None:
+        if (
+            event.character.has_component(Active)
+            and event.character.get_component(LifeStage).life_stage
+            >= LifeStageType.YoungAdult
+        ):
+            date = event.world.resource_manager.get_resource(SimDateTime)
+            event.character.add_component(InTheWorkforce, timestamp=date.year)
+
+            if roles := event.character.try_component(Roles):
+                if len(roles.get_roles_of_type(Occupation)) == 0:
+                    event.character.add_component(Unemployed, timestamp=date.year)
+
+    @staticmethod
+    def join_workforce_when_young_adult(event: BecomeYoungAdultEvent) -> None:
+        date = event.world.resource_manager.get_resource(SimDateTime)
+        event.character.add_component(InTheWorkforce, timestamp=date.year)
+
+        if roles := event.character.try_component(Roles):
+            if len(roles.get_roles_of_type(Occupation)) == 0:
+                event.character.add_component(Unemployed, timestamp=date.year)
+
+    def on_create(self, world: World) -> None:
+        world.event_manager.on_event(
+            CharacterCreatedEvent, EmploymentSystem.on_adult_join_settlement
+        )
+
+        world.event_manager.on_event(
+            BecomeYoungAdultEvent, EmploymentSystem.join_workforce_when_young_adult
+        )
 
     def on_update(self, world: World) -> None:
         current_year: int = world.resource_manager.get_resource(SimDateTime).year
@@ -345,41 +488,6 @@ class UnemployedStatusSystem(System):
 class ChildBirthSystem(System):
     """Handles childbirths for pregnant characters."""
 
-    @staticmethod
-    def inherit_parental_traits(
-        baby: GameObject, parents: Tuple[GameObject, GameObject]
-    ) -> None:
-        """Add inheritable traits to the baby."""
-        rng = baby.world.resource_manager.get_resource(random.Random)
-
-        parent_a_traits = OrderedSet(
-            [type(t) for t in parents[0].get_component(Traits).iter_traits()]
-        )
-
-        parent_b_traits = OrderedSet(
-            [type(t) for t in parents[1].get_component(Traits).iter_traits()]
-        )
-
-        shared_traits = parent_a_traits.intersection(parent_b_traits)
-
-        single_traits = parent_a_traits.union(parent_b_traits).difference(shared_traits)
-
-        baby_traits = baby.get_component(Traits)
-
-        for trait_type in shared_traits:
-            if trait_type in baby_traits.prohibited_traits:
-                continue
-
-            if rng.random() < trait_type.inheritance_probability()[1]:
-                baby.add_component(trait_type)
-
-        for trait_type in single_traits:
-            if trait_type in baby_traits.prohibited_traits:
-                continue
-
-            if rng.random() < trait_type.inheritance_probability()[0]:
-                baby.add_component(trait_type)
-
     def on_update(self, world: World) -> None:
         date = world.resource_manager.get_resource(SimDateTime)
 
@@ -391,17 +499,13 @@ class ChildBirthSystem(System):
 
             other_parent = pregnant.partner
 
-            child_character_type = get_child_prefab(pregnant_character, other_parent)
-
-            baby = create_character(
-                world=world,
-                character_type=child_character_type,
-                last_name=pregnant_character.get_component(GameCharacter).last_name,
+            child_character_type = get_random_child_character_type(
+                pregnant_character, other_parent
             )
 
-            # Handle trait inheritance
-            ChildBirthSystem.inherit_parental_traits(
-                baby=baby, parents=(pregnant_character, other_parent)
+            baby = child_character_type.instantiate(
+                world=world,
+                last_name=pregnant_character.get_component(GameCharacter).last_name,
             )
 
             set_residence(
@@ -621,6 +725,110 @@ class UpdateFrequentedLocationSystem(System):
         self.ideal_location_count = ideal_location_count
         self.location_score_threshold = location_score_threshold
 
+    @staticmethod
+    def score_location(character: GameObject, location: GameObject) -> float:
+        """Scores a location using location preference rules.
+
+        Parameters
+        ----------
+        character
+            The character to calculate scores for
+        location
+            The location to score
+
+        Returns
+        -------
+        float
+            The probability of wanting to frequent this location
+        """
+
+        cumulative_score: float = 1.0
+        consideration_count: int = 0
+        rule_library = character.world.resource_manager.get_resource(
+            LocationPreferenceRuleLibrary
+        )
+
+        for rule_info in rule_library.iter_rules():
+            consideration_score = rule_info.rule(character, location)
+            if consideration_score is not None:
+                assert 0.0 <= consideration_score
+                cumulative_score *= consideration_score
+                consideration_count += 1
+
+            if cumulative_score == 0.0:
+                break
+
+        if consideration_count == 0:
+            consideration_count = 1
+            cumulative_score = 0.0
+
+        # Scores are averaged using the Geometric Mean instead of
+        # arithmetic mean. It calculates the mean of a product of
+        # n-numbers by finding the n-th root of the product
+        # Tried using the averaging scheme by Dave Mark, but it
+        # returned values that felt too small and were not easy
+        # to reason about.
+        # Using this method, a cumulative score of zero will still
+        # result in a final score of zero.
+
+        final_score = cumulative_score ** (1 / consideration_count)
+
+        return final_score
+
+    @staticmethod
+    def calculate_location_probabilities(
+        character: GameObject, locations: List[GameObject]
+    ) -> List[Tuple[float, GameObject]]:
+        """Calculate probability distribution for a character and set of locations."""
+
+        score_total: float = 0
+        scores: List[Tuple[float, GameObject]] = []
+
+        # Score each location
+        for loc in locations:
+            score = UpdateFrequentedLocationSystem.score_location(character, loc)
+            score_total += math.exp(score)
+            scores.append((math.exp(score), loc))
+
+        # Perform softmax
+        probabilities = [(score / score_total, loc) for score, loc in scores]
+
+        # Sort
+        probabilities.sort(key=lambda pair: pair[0], reverse=True)
+
+        return probabilities
+
+    @staticmethod
+    def score_locations(
+        character: GameObject,
+    ) -> List[Tuple[float, GameObject]]:
+        """Score potential locations for the character to frequent.
+
+        Parameters
+        ----------
+        character
+            The character to score the location in reference to
+
+        Returns
+        -------
+        List[Tuple[float, GameObject]]
+            A list of tuples containing location scores and the location, sorted in
+            descending order
+        """
+
+        locations = [
+            character.world.gameobject_manager.get_gameobject(guid)
+            for guid, (_, _, _) in character.world.get_components(
+                (Location, Services, Active)
+            )
+        ]
+
+        scores = UpdateFrequentedLocationSystem.calculate_location_probabilities(
+            character, locations
+        )
+
+        return scores
+
     def on_update(self, world: World) -> None:
         # Frequented locations are sampled from the current settlement
         # that the character belongs to
@@ -640,12 +848,18 @@ class UpdateFrequentedLocationSystem(System):
                     0, self.ideal_location_count - len(frequented_locations)
                 )
 
-                for score, location in score_locations_to_frequent(character):
+                location_scores = UpdateFrequentedLocationSystem.score_locations(
+                    character
+                )
+
+                for score, location in location_scores:
                     if (
                         score > self.location_score_threshold
                         and location not in frequented_locations
                     ):
-                        add_frequented_location(character, location)
+                        character.get_component(FrequentedLocations).add_location(
+                            location
+                        )
                         places_to_find -= 1
 
                     if places_to_find == 0:
@@ -695,24 +909,13 @@ class AIActionSystem(System):
             goals.clear_goals()
 
 
-class DieOfOldAgeSystem(System):
-    """Things probabilistically die when they get close to their lifespan."""
+class DeathSystem(System):
+    """Characters die when their health hits zero."""
 
     def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for guid, (age, lifespan, _) in world.get_components((Age, Lifespan, Active)):
-            if world.gameobject_manager.get_gameobject(guid).has_component(Immortal):
-                continue
-
-            probability_of_death = (
-                age.value / (lifespan.value + 10.0)
-                if age.value >= lifespan.value - 15
-                else 0
-            )
-
-            if rng.random() < probability_of_death:
-                Die(world.gameobject_manager.get_gameobject(guid)).evaluate()
+        for _, (_, _, health) in world.get_components((Active, GameCharacter, Health)):
+            if health.value <= 0:
+                die(health.gameobject)
 
 
 class GoOutOfBusinessSystem(System):

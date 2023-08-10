@@ -41,16 +41,12 @@ def setup(sim: Neighborly):
     sim.world.gameobject_manager.register_component(businesses.BusDepot)
     sim.world.gameobject_manager.register_component(businesses.ButcherShop)
     sim.world.gameobject_manager.register_component(businesses.CandyStore)
-    sim.world.gameobject_manager.register_component(
-        businesses.CarpentryCompany
-    )
+    sim.world.gameobject_manager.register_component(businesses.CarpentryCompany)
     sim.world.gameobject_manager.register_component(businesses.Cemetery)
     sim.world.gameobject_manager.register_component(businesses.CityHall)
     sim.world.gameobject_manager.register_component(businesses.ClothingStore)
     sim.world.gameobject_manager.register_component(businesses.CoalMine)
-    sim.world.gameobject_manager.register_component(
-        businesses.ConstructionFirm
-    )
+    sim.world.gameobject_manager.register_component(businesses.ConstructionFirm)
     sim.world.gameobject_manager.register_component(businesses.Dairy)
     sim.world.gameobject_manager.register_component(businesses.DaycareCenter)
     sim.world.gameobject_manager.register_component(businesses.Deli)
@@ -69,18 +65,14 @@ def setup(sim: Neighborly):
     sim.world.gameobject_manager.register_component(businesses.Hospital)
     sim.world.gameobject_manager.register_component(businesses.Hotel)
     sim.world.gameobject_manager.register_component(businesses.Inn)
-    sim.world.gameobject_manager.register_component(
-        businesses.InsuranceCompany
-    )
+    sim.world.gameobject_manager.register_component(businesses.InsuranceCompany)
     sim.world.gameobject_manager.register_component(businesses.JewelryShop)
     sim.world.gameobject_manager.register_component(businesses.LawFirm)
     sim.world.gameobject_manager.register_component(businesses.OptometryClinic)
     sim.world.gameobject_manager.register_component(businesses.PaintingCompany)
     sim.world.gameobject_manager.register_component(businesses.Park)
     sim.world.gameobject_manager.register_component(businesses.Pharmacy)
-    sim.world.gameobject_manager.register_component(
-        businesses.PlasticSurgeryClinic
-    )
+    sim.world.gameobject_manager.register_component(businesses.PlasticSurgeryClinic)
     sim.world.gameobject_manager.register_component(businesses.PlumbingCompany)
     sim.world.gameobject_manager.register_component(businesses.PoliceStation)
     sim.world.gameobject_manager.register_component(businesses.Quarry)

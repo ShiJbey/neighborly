@@ -2,10 +2,10 @@ import pytest
 
 from neighborly.components.character import Female, Gender, Male, NonBinary, Retired
 from neighborly.components.shared import Age, Name
-from neighborly.core.ecs import Active, Component, World
-from neighborly.core.query import QB, Relation
+from neighborly.ecs import Active, Component, World
+from neighborly.query import QB, Relation
 from neighborly.simulation import Neighborly
-from neighborly.status_system import Statuses
+from neighborly.statuses import Statuses
 
 
 def test_relation_create_empty():

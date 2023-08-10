@@ -11,27 +11,26 @@ from neighborly.components.character import (
     Married,
     ParentOf,
     SiblingOf,
-    create_character,
 )
 from neighborly.components.residence import (
     Residence,
     ResidenceType,
     Vacant,
-    create_residence,
+    set_residence,
 )
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs import Active, GameObject, System, World
-from neighborly.core.relationship import (
+from neighborly.ecs import Active, GameObject, System, World
+from neighborly.relationship import (
     Friendship,
     InteractionScore,
     Romance,
     add_relationship,
     get_relationship,
 )
-from neighborly.core.time import SimDateTime
 from neighborly.simulation import Neighborly, PluginInfo
 from neighborly.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
-from neighborly.utils.common import get_child_prefab, set_residence
+from neighborly.time import SimDateTime
+from neighborly.utils.common import get_random_child_character_type
 from neighborly.world_map import BuildingMap
 
 plugin_info = PluginInfo(
@@ -87,7 +86,7 @@ class SpawnFamilySystemBase(System):
             world.resolve_component_type(spawn_table.choose_random(rng)),
         )
 
-        residence = create_residence(world, residence_type, lot=lot_position)
+        residence = residence_type.instantiate(world, lot=lot_position)
 
         return residence
 
@@ -106,8 +105,8 @@ class SpawnFamilySystemBase(System):
         generated_characters = _GeneratedFamily()
 
         # Create a new entity using the archetype
-        character = create_character(
-            world, character_type, life_stage=LifeStageType.YoungAdult
+        character = character_type.instantiate(
+            world, life_stage=LifeStageType.YoungAdult
         )
 
         generated_characters.adults.append(character)
@@ -115,9 +114,8 @@ class SpawnFamilySystemBase(System):
         spouse: Optional[GameObject] = None
 
         if rng.random() < character_type.config.chance_spawn_with_spouse:
-            spouse = create_character(
+            spouse = character_type.instantiate(
                 world,
-                character_type,
                 last_name=character.get_component(GameCharacter).last_name,
                 life_stage=LifeStageType.Adult,
             )
@@ -154,11 +152,10 @@ class SpawnFamilySystemBase(System):
         children: List[GameObject] = []
 
         for _ in range(num_kids):
-            child_character_type = get_child_prefab(character, spouse)
+            child_character_type = get_random_child_character_type(character, spouse)
 
-            child = create_character(
+            child = child_character_type.instantiate(
                 world,
-                child_character_type,
                 last_name=character.get_component(GameCharacter).last_name,
                 life_stage=LifeStageType.Child,
             )

@@ -10,7 +10,7 @@ such as Caves of Qud and Dwarf Fortress.
 
 from neighborly.__version__ import VERSION
 from neighborly.config import NeighborlyConfig
-from neighborly.core.ecs import (
+from neighborly.ecs import (
     Component,
     Event,
     GameObject,
@@ -20,8 +20,8 @@ from neighborly.core.ecs import (
     SystemGroup,
     World,
 )
-from neighborly.core.time import SimDateTime, TimeDelta
 from neighborly.simulation import Neighborly, PluginInfo
+from neighborly.time import SimDateTime
 
 __all__ = [
     "NeighborlyConfig",
@@ -34,7 +34,6 @@ __all__ = [
     "SystemGroup",
     "World",
     "SimDateTime",
-    "TimeDelta",
     "IComponentFactory",
     "Event",
     "VERSION",

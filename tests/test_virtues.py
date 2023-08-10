@@ -1,7 +1,7 @@
 import random
 
 from neighborly.components.character import Virtue, Virtues
-from neighborly.core.ecs import World
+from neighborly.ecs import World
 
 
 def test_construct_virtue_vect() -> None:

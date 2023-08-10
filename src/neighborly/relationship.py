@@ -18,9 +18,9 @@ from typing import Any, ClassVar, Dict, Iterator, List, Protocol, Type, Union
 from ordered_set import OrderedSet
 
 from neighborly import Event
-from neighborly.core.ecs import Component, GameObject, ISerializable, World
-from neighborly.stat_system import ClampedStatComponent, StatComponent, Stats
-from neighborly.status_system import Statuses
+from neighborly.ecs import Component, GameObject, ISerializable, World
+from neighborly.stats import ClampedStatComponent, StatComponent, Stats
+from neighborly.statuses import Statuses
 
 
 class Friendship(ClampedStatComponent):
@@ -75,7 +75,7 @@ class Relationship(Component, ISerializable):
         self,
         owner: GameObject,
         target: GameObject,
-        relationship_type: RelationshipType
+        relationship_type: RelationshipType,
     ) -> None:
         super().__init__()
         self._owner = owner
@@ -95,11 +95,11 @@ class Relationship(Component, ISerializable):
     def relationship_type(self):
         return self._relationship_type
 
-    def on_add(self, gameobject: GameObject) -> None:
-        self.owner.get_component(Relationships).outgoing[self.target] = gameobject
-        self.target.get_component(Relationships).incoming[self.owner] = gameobject
+    def on_add(self) -> None:
+        self.owner.get_component(Relationships).outgoing[self.target] = self.gameobject
+        self.target.get_component(Relationships).incoming[self.owner] = self.gameobject
 
-    def on_remove(self, gameobject: GameObject) -> None:
+    def on_remove(self) -> None:
         del self.owner.get_component(Relationships).outgoing[self.target]
         del self.target.get_component(Relationships).incoming[self.owner]
 
@@ -167,6 +167,26 @@ class Relationships(Component, ISerializable):
         """
         self.incoming[owner] = relationship
 
+    def remove_incoming(self, owner: GameObject) -> bool:
+        """Remove an incoming relationship
+
+        Parameters
+        ----------
+        owner
+            The owner of the relationship
+
+        Returns
+        -------
+        bool
+            True if a relationship was removed. False otherwise
+        """
+        if owner in self.incoming:
+            relationship = self.incoming[owner]
+            relationship.destroy()
+            del self.incoming[owner]
+            return True
+        return False
+
     def add_outgoing(self, target: GameObject, relationship: GameObject) -> None:
         """Add a new outgoing relationship.
 
@@ -179,13 +199,165 @@ class Relationships(Component, ISerializable):
         """
         self.outgoing[target] = relationship
 
-    def deactivate_relationships(self) -> None:
-        """Deactivate all associated relationships."""
+    def remove_outgoing(self, target: GameObject) -> bool:
+        """Remove an outgoing relationship.
+
+        Parameters
+        ----------
+        target
+            The target of the outgoing relationship
+
+        Returns
+        -------
+        bool
+            True if a relationship was removed. False otherwise.
+        """
+        if target in self.outgoing:
+            relationship = self.outgoing[target]
+            relationship.destroy()
+            del self.outgoing[target]
+            return True
+        return False
+
+    def on_deactivate(self) -> None:
+        # When this component's GameObject becomes inactive, deactivate all the incoming
+        # and outgoing relationship GameObjects too.
+
         for _, relationship in self.outgoing.items():
             relationship.deactivate()
 
         for _, relationship in self.incoming.items():
             relationship.deactivate()
+
+    def on_remove(self) -> None:
+        # We need to destroy all incoming and outgoing relationships
+        # and update the Relationship components on the owner/target
+        # GameObjects.
+        for target in self.outgoing.keys():
+            self.remove_relationship(target)
+
+        for owner in self.incoming.keys():
+            owner.get_component(Relationships).remove_relationship(self.gameobject)
+
+    def add_relationship(self, target: GameObject) -> GameObject:
+        """
+        Creates a new relationship from the subject to the target
+
+        Parameters
+        ----------
+        target
+            The GameObject that the Relationship is directed toward
+
+        Returns
+        -------
+        GameObject
+            The new relationship instance
+        """
+        if target in self.outgoing:
+            return self.outgoing[target]
+
+        world = self.gameobject.world
+
+        relationship = BaseRelationship.instantiate(world, self.gameobject, target)
+
+        RelationshipCreatedEvent(
+            relationship=relationship, owner=self.gameobject, target=target
+        ).dispatch()
+
+        # Test all the rules in the library and apply those with passing preconditions
+        social_rules = world.resource_manager.get_resource(SocialRuleLibrary)
+
+        for rule in social_rules.iter_rules():
+            if rule.check_preconditions(self.gameobject, target, relationship):
+                rule.apply(self.gameobject, target, relationship)
+
+        return relationship
+
+    def remove_relationship(self, target: GameObject) -> bool:
+        """Destroy the relationship GameObject to the target.
+
+        Parameters
+        ----------
+        target
+            The target of the relationship
+
+        Returns
+        -------
+        bool
+            Returns True if a relationship was removed. False otherwise.
+        """
+        if target in self.outgoing:
+            relationship = self.outgoing[target]
+            relationship.destroy()
+            del self.outgoing[target]
+            return True
+
+        return False
+
+    def get_relationship(
+        self,
+        target: GameObject,
+    ) -> GameObject:
+        """Get a relationship from one GameObject to another.
+
+        This function will create a new relationship instance if one does not exist.
+
+        Parameters
+        ----------
+        target
+            The target of the relationship.
+
+        Returns
+        -------
+        GameObject
+            A relationship instance.
+        """
+        if target not in self.outgoing:
+            return self.add_relationship(target)
+
+        return self.outgoing[target]
+
+    def has_relationship(self, target: GameObject) -> bool:
+        """Check if there is an existing relationship from the owner to the target.
+
+        Parameters
+        ----------
+        target
+            The target of the relationship.
+
+        Returns
+        -------
+        bool
+            True if there is an existing Relationship between the GameObjects,
+            False otherwise.
+        """
+        return target in self.outgoing
+
+    def get_relationships_with_components(
+        self, *component_types: Type[Component]
+    ) -> List[GameObject]:
+        """Get all the relationships with the given component types.
+
+        Parameters
+        ----------
+        *component_types
+            Component types to check for on relationship instances.
+
+        Returns
+        -------
+        List[GameObject]
+            Relationships with the given component types.
+        """
+        if len(component_types) == 0:
+            return []
+
+        matches: List[GameObject] = []
+
+        for _, relationship in self.outgoing.items():
+            if all([relationship.has_component(st) for st in component_types]):
+                matches.append(relationship)
+
+        return matches
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -370,122 +542,10 @@ class BaseRelationship(RelationshipType):
             Relationship,
             owner=owner,
             target=target,
-            relationship_type=relationship_type
+            relationship_type=relationship_type,
         )
 
         return relationship
-
-
-def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
-    """
-    Creates a new relationship from the subject to the target
-
-    Parameters
-    ----------
-    owner
-        The GameObject that owns the relationship
-    target
-        The GameObject that the Relationship is directed toward
-
-    Returns
-    -------
-    GameObject
-        The new relationship instance
-    """
-    relationships = owner.get_component(Relationships)
-
-    if target in relationships.outgoing:
-        return relationships.outgoing[target]
-
-    relationship = BaseRelationship.instantiate(owner.world, owner, target)
-
-    RelationshipCreatedEvent(
-        relationship=relationship, owner=owner, target=target
-    ).dispatch()
-
-    # Test all the rules in the library and apply those with passing preconditions
-    social_rules = owner.world.resource_manager.get_resource(SocialRuleLibrary)
-
-    for rule in social_rules.iter_rules():
-        if rule.check_preconditions(owner, target, relationship):
-            rule.apply(owner, target, relationship)
-
-    return relationship
-
-
-def get_relationship(
-    subject: GameObject,
-    target: GameObject,
-) -> GameObject:
-    """Get a relationship from one GameObject to another.
-
-    This function will create a new instance of a relationship if one does not exist.
-
-    Parameters
-    ----------
-    subject
-        The owner of the relationship.
-    target
-        The target of the relationship.
-
-    Returns
-    -------
-    GameObject
-        A relationship instance.
-    """
-    if target not in subject.get_component(Relationships).outgoing:
-        return add_relationship(subject, target)
-
-    return subject.get_component(Relationships).outgoing[target]
-
-
-def has_relationship(owner: GameObject, target: GameObject) -> bool:
-    """Check if there is an existing relationship from the owner to the target.
-
-    Parameters
-    ----------
-    owner
-        The owner of the relationship.
-    target
-        The target of the relationship.
-
-    Returns
-    -------
-    bool
-        True if there is an existing Relationship between the GameObjects,
-        False otherwise.
-    """
-    return target in owner.get_component(Relationships).outgoing
-
-
-def get_relationships_with_components(
-    gameobject: GameObject, *component_types: Type[Component]
-) -> List[GameObject]:
-    """Get all the relationships with the given component types.
-
-    Parameters
-    ----------
-    gameobject
-        The character to check for relationships on.
-    *component_types
-        Component types to check for on relationship instances.
-
-    Returns
-    -------
-    List[GameObject]
-        Relationships with the given component types.
-    """
-    if len(component_types) == 0:
-        return []
-
-    relationship_manager = gameobject.get_component(Relationships)
-    matches: List[GameObject] = []
-
-    for _, relationship in relationship_manager.outgoing.items():
-        if all([relationship.has_component(st) for st in component_types]):
-            matches.append(relationship)
-
-    return matches
 
 
 class RelationshipCreatedEvent(Event):
@@ -510,3 +570,86 @@ class RelationshipCreatedEvent(Event):
     @property
     def target(self) -> GameObject:
         return self._target
+
+
+def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
+    """
+    Creates a new relationship from the subject to the target
+
+    Parameters
+    ----------
+    owner
+        The GameObject that owns the relationship
+    target
+        The GameObject that the Relationship is directed toward
+
+    Returns
+    -------
+    GameObject
+        The new relationship instance
+    """
+    return owner.get_component(Relationships).add_relationship(target)
+
+
+def get_relationship(
+    owner: GameObject,
+    target: GameObject,
+) -> GameObject:
+    """Get a relationship from one GameObject to another.
+
+    This function will create a new instance of a relationship if one does not exist.
+
+    Parameters
+    ----------
+    owner
+        The owner of the relationship.
+    target
+        The target of the relationship.
+
+    Returns
+    -------
+    GameObject
+        A relationship instance.
+    """
+    return owner.get_component(Relationships).get_relationship(target)
+
+
+def has_relationship(owner: GameObject, target: GameObject) -> bool:
+    """Check if there is an existing relationship from the owner to the target.
+
+    Parameters
+    ----------
+    owner
+        The owner of the relationship.
+    target
+        The target of the relationship.
+
+    Returns
+    -------
+    bool
+        True if there is an existing Relationship between the GameObjects,
+        False otherwise.
+    """
+    return owner.get_component(Relationships).has_relationship(target)
+
+
+def get_relationships_with_components(
+    gameobject: GameObject, *component_types: Type[Component]
+) -> List[GameObject]:
+    """Get all the relationships with the given component types.
+
+    Parameters
+    ----------
+    gameobject
+        The character to check for relationships on.
+    *component_types
+        Component types to check for on relationship instances.
+
+    Returns
+    -------
+    List[GameObject]
+        Relationships with the given component types.
+    """
+    return gameobject.get_component(Relationships).get_relationships_with_components(
+        *component_types
+    )

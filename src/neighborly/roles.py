@@ -1,8 +1,8 @@
 """Neighborly's Role System.
 
 Roles describe positions that characters hold in the simulation. Occupations are the 
-most common type of role. Other roles might be things like being being Spider-Man or
-being the Avatar.  
+most common type of role. Other roles might be things like being Spider-Man or
+the Avatar.
 
 """
 
@@ -13,17 +13,17 @@ from typing import Any, Dict, Iterable, List, Type, TypeVar
 
 from ordered_set import OrderedSet
 
-from neighborly.core.ecs import Component, GameObject, ISerializable
+from neighborly.ecs import Component, ISerializable
 
 
 class IRole(Component, ABC):
     """An abstract base class for components representing character roles."""
 
-    def on_add(self, gameobject: GameObject) -> None:
-        gameobject.get_component(Roles).add_role(self)
+    def on_add(self) -> None:
+        self.gameobject.get_component(Roles).add_role(self)
 
-    def on_remove(self, gameobject: GameObject) -> None:
-        gameobject.get_component(Roles).remove_role(self)
+    def on_remove(self) -> None:
+        self.gameobject.get_component(Roles).remove_role(self)
 
 
 _RT = TypeVar("_RT", bound=IRole)
@@ -37,8 +37,8 @@ class Roles(Component, ISerializable):
     _roles: OrderedSet[IRole]
     """References to the role components."""
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    def __init__(self) -> None:
+        super().__init__()
         self._roles = OrderedSet([])
 
     @property

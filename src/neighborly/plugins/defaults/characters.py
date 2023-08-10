@@ -2,12 +2,10 @@ from typing import Any
 
 from neighborly.components.character import (
     BaseCharacter,
-    CanAge,
     CharacterConfig,
-    Health,
     LifeStageConfig,
 )
-from neighborly.core.ecs import GameObject, World
+from neighborly.ecs import GameObject, World
 from neighborly.simulation import Neighborly, PluginInfo
 
 plugin_info = PluginInfo(
@@ -24,17 +22,15 @@ class Human(BaseCharacter):
             adolescent_age=13, young_adult_age=18, adult_age=30, senior_age=65
         ),
         avg_lifespan=80,
+        base_health_decay=-2.2
     )
 
     @classmethod
-    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
-        character = super().instantiate(world, **kwargs)
-
-        character.add_component(CanAge)
+    def _instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        character = super()._instantiate(world, **kwargs)
 
         return character
 
 
 def setup(sim: Neighborly):
-    sim.world.gameobject_manager.register_component(Health)
     sim.world.gameobject_manager.register_component(Human)

@@ -4,12 +4,12 @@ from typing import List, Set, Tuple, Type, Union
 
 from neighborly.components.business import Occupation, WorkHistory
 from neighborly.components.character import Dating, Family, Married
-from neighborly.core.ecs import Component, GameObject
-from neighborly.core.query import QueryClause, QueryContext, Relation, WithClause
-from neighborly.core.relationship import Relationship, Relationships
-from neighborly.core.time import SimDateTime
-from neighborly.role_system import Roles
-from neighborly.status_system import IStatus
+from neighborly.ecs import Component, GameObject
+from neighborly.query import QueryClause, QueryContext, Relation, WithClause
+from neighborly.relationship import Relationship, Relationships
+from neighborly.roles import Roles
+from neighborly.statuses import IStatus
+from neighborly.time import SimDateTime
 
 
 def with_components(

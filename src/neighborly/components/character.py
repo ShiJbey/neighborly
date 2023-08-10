@@ -14,14 +14,13 @@ from typing import (
     Any,
     ClassVar,
     Dict,
-    FrozenSet,
     Iterator,
     List,
     Optional,
     Tuple,
     Type,
     Union,
-    cast,
+    final,
 )
 
 import attrs
@@ -29,30 +28,38 @@ import numpy as np
 from numpy import typing as npt
 
 from neighborly import Event
+from neighborly.ai.brain import AIBrain, Goals
 from neighborly.components.business import WorkHistory
 from neighborly.components.shared import Age, FrequentedLocations, Lifespan
-from neighborly.core.ai.brain import AIBrain, Goals
-from neighborly.core.ecs import (
-    Component,
-    GameObject,
-    ISerializable,
-    TagComponent,
-    World,
+from neighborly.ecs import Component, GameObject, ISerializable, TagComponent, World
+from neighborly.life_event import EventHistory
+from neighborly.relationship import (
+    Relationship,
+    RelationshipCreatedEvent,
+    Relationships,
+    RomanticCompatibility,
 )
-from neighborly.core.life_event import EventHistory
-from neighborly.core.relationship import Relationships
-from neighborly.core.tracery import Tracery
-from neighborly.role_system import Roles
+from neighborly.roles import Roles
 from neighborly.spawn_table import CharacterSpawnTable, CharacterSpawnTableEntry
-from neighborly.stat_system import StatComponent, Stats
-from neighborly.status_system import IStatus, Statuses
-from neighborly.trait_system import ITrait, Traits
+from neighborly.stats import ClampedStatComponent, StatModifier, StatModifierType, \
+    Stats, StatComponent
+from neighborly.statuses import IStatus, Statuses
+from neighborly.tracery import Tracery
+from neighborly.traits import ITrait, TraitLibrary, Traits
 
 _logger = logging.getLogger(__name__)
 
 
 class GameCharacter(Component, ISerializable):
-    """Tags a GameObject as a character and tracks their name."""
+    """Tags a GameObject as a character and tracks their name.
+
+    Parameters
+    ----------
+    first_name
+        The character's first name.
+    last_name
+        The character's last name or family name.
+    """
 
     __slots__ = "first_name", "last_name", "_character_type"
 
@@ -66,16 +73,11 @@ class GameCharacter(Component, ISerializable):
     """Reference to a component with character configuration data."""
 
     def __init__(
-        self, first_name: str, last_name: str, character_type: CharacterType
+        self,
+        first_name: str,
+        last_name: str,
+        character_type: CharacterType,
     ) -> None:
-        """
-        Parameters
-        ----------
-        first_name
-            The character's first name.
-        last_name
-            The character's last name or family name.
-        """
         super().__init__()
         self.first_name = first_name
         self.last_name = last_name
@@ -130,11 +132,9 @@ class CharacterConfig:
     spawn_frequency: int = 1
     max_children_at_spawn: int = 0
     """The maximum number of children this character can spawn with."""
-    incidental_traits: Dict[str, Tuple[float, Dict[str, Any]]] = attrs.field(
-        factory=dict
-    )
     avg_lifespan: Optional[int] = None
     max_health: int = 100
+    base_health_decay: float = -2.5
     aging: Optional[LifeStageConfig] = None
     chance_spawn_with_spouse: float = 0
     """The probability of this character spawning with a spouse."""
@@ -155,7 +155,7 @@ class CharacterType(TagComponent, ABC):
 
     @classmethod
     @abstractmethod
-    def instantiate(
+    def _instantiate(
         cls,
         world: World,
         first_name: str = "",
@@ -186,6 +186,50 @@ class CharacterType(TagComponent, ABC):
         """
         raise NotImplementedError
 
+    @classmethod
+    @final
+    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+        """Create a new GameObject instance of the given character type.
+
+        Parameters
+        ----------
+        world
+            The world to spawn the character into
+        **kwargs
+            Keyword arguments to pass to the CharacterType's factory
+
+        Returns
+        -------
+        GameObject
+            the instantiated character
+        """
+        character = cls._instantiate(world, **kwargs)
+
+        CharacterCreatedEvent(world, character).dispatch()
+
+        return character
+
+
+class Health(ClampedStatComponent):
+    """The amount of health a character has. characters die when this reaches zero."""
+
+    def __init__(self, max_value: int) -> None:
+        super().__init__(base_value=max_value, max_value=max_value, min_value=0)
+
+
+class HealthDecay(StatComponent):
+    """A potential amount of life lost by in adulthood characters after adolescence."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value)
+
+
+class HealthDecayChance(ClampedStatComponent):
+    """A potential amount of life lost by in adulthood characters after adolescence."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=1, min_value=0)
+
 
 class Departed(IStatus):
     """Tags a character as departed from the simulation."""
@@ -193,31 +237,52 @@ class Departed(IStatus):
     is_persistent = True
 
 
-class CanAge(ITrait):
-    """Tags a GameObject as being able to change life stages as time passes."""
-
-    @classmethod
-    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
-        """Get component types that this component's type conflicts with."""
-        return frozenset({})
-
-
 class CanGetPregnant(ITrait):
     """Tags a character as capable of getting pregnant and giving birth."""
 
+    base_incidence = 0.5
+
     @classmethod
-    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
-        """Get component types that this component's type conflicts with."""
-        return frozenset({})
+    def on_register(cls, world: World) -> None:
+        super().on_register(world)
+        cls.incidence_modifiers.append(
+            lambda gameobject: (
+                StatModifier(-5000.0, StatModifierType.PercentAdd)
+                if gameobject.has_component(CanGetOthersPregnant)
+                else None
+            )
+        )
+
+        cls.incidence_modifiers.append(
+            lambda gameobject: (
+                StatModifier(-500.0, StatModifierType.PercentAdd)
+                if gameobject.has_component(Male)
+                else None
+            )
+        )
 
 
 class CanGetOthersPregnant(ITrait):
     """Tags a character as capable of getting other characters pregnant."""
 
     @classmethod
-    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
-        """Get component types that this component's type conflicts with."""
-        return frozenset({})
+    def on_register(cls, world: World) -> None:
+        super().on_register(world)
+        cls.incidence_modifiers.append(
+            lambda gameobject: (
+                StatModifier(-5000.0, StatModifierType.PercentAdd)
+                if gameobject.has_component(CanGetPregnant)
+                else None
+            )
+        )
+
+        cls.incidence_modifiers.append(
+            lambda gameobject: (
+                StatModifier(-500.0, StatModifierType.PercentAdd)
+                if gameobject.has_component(Female)
+                else None
+            )
+        )
 
 
 class Deceased(IStatus):
@@ -477,12 +542,6 @@ class Pregnant(IStatus):
     """The GameObject ID of the character that impregnated this character."""
 
     def __init__(self, year_created: int, partner: GameObject) -> None:
-        """
-        Parameters
-        ----------
-        partner
-            The character that got this one pregnant.
-        """
         super().__init__(year_created)
         self._partner = partner
 
@@ -572,11 +631,11 @@ class Gender(Component, ISerializable):
 
 
 class GenderType(TagComponent, ABC):
-    def on_add(self, gameobject: GameObject) -> None:
-        if gender := gameobject.try_component(Gender):
-            gameobject.remove_component(type(gender.gender_type))
-            gameobject.remove_component(Gender)
-        gameobject.add_component(Gender, gender_type=self)
+    def on_add(self) -> None:
+        if gender := self.gameobject.try_component(Gender):
+            self.gameobject.remove_component(type(gender.gender_type))
+            self.gameobject.remove_component(Gender)
+        self.gameobject.add_component(Gender, gender_type=self)
 
 
 class Male(GenderType):
@@ -589,6 +648,209 @@ class Female(GenderType):
 
 class NonBinary(GenderType):
     pass
+
+
+class SexualOrientation(ITrait, ABC):
+    base_incidence = 0.5
+
+    @classmethod
+    def on_register(cls, world: World) -> None:
+        super().on_register(world)
+        cls.incidence_modifiers.append(
+            lambda gameobject: (
+                StatModifier(-5000, StatModifierType.PercentAdd)
+                if SexualOrientation.has_sexual_orientation(gameobject)
+                else None
+            )
+        )
+
+    @staticmethod
+    def has_sexual_orientation(gameobject: GameObject) -> bool:
+        return (
+            len(
+                [
+                    c_type
+                    for c_type in gameobject.get_component_types()
+                    if issubclass(c_type, SexualOrientation)
+                ]
+            )
+            > 0
+        )
+
+
+class Homosexual(ITrait):
+    @classmethod
+    def on_register(cls, world: World) -> None:
+        super().on_register(world)
+        world.event_manager.on_event(
+            RelationshipCreatedEvent, Homosexual.add_attraction_buff
+        )
+
+    @staticmethod
+    def add_attraction_buff(event: RelationshipCreatedEvent) -> None:
+        if event.owner.has_component(Homosexual):
+            if isinstance(
+                event.owner.get_component(Gender).gender_type,
+                type(event.target.get_component(Gender).gender_type),
+            ):
+                event.relationship.get_component(RomanticCompatibility).add_modifier(
+                    StatModifier(4, StatModifierType.Flat)
+                )
+
+            if not isinstance(
+                event.owner.get_component(Gender).gender_type,
+                type(event.target.get_component(Gender).gender_type),
+            ):
+                event.relationship.get_component(RomanticCompatibility).add_modifier(
+                    StatModifier(-4, StatModifierType.Flat)
+                )
+
+
+class Heterosexual(ITrait):
+    @classmethod
+    def on_register(cls, world: World) -> None:
+        super().on_register(world)
+        world.event_manager.on_event(
+            RelationshipCreatedEvent, Heterosexual.add_attraction_buff
+        )
+
+    @staticmethod
+    def add_attraction_buff(event: RelationshipCreatedEvent) -> None:
+        if event.owner.has_component(Heterosexual):
+            if isinstance(
+                event.owner.get_component(Gender).gender_type,
+                type(event.target.get_component(Gender).gender_type),
+            ):
+                event.relationship.get_component(RomanticCompatibility).add_modifier(
+                    StatModifier(-4, StatModifierType.Flat)
+                )
+
+            if not isinstance(
+                event.owner.get_component(Gender).gender_type,
+                type(event.target.get_component(Gender).gender_type),
+            ):
+                event.relationship.get_component(RomanticCompatibility).add_modifier(
+                    StatModifier(4, StatModifierType.Flat)
+                )
+
+
+class Asexual(ITrait):
+    @classmethod
+    def on_register(cls, world: World) -> None:
+        super().on_register(world)
+        world.event_manager.on_event(
+            RelationshipCreatedEvent, Asexual.add_attraction_buff
+        )
+
+    @staticmethod
+    def add_attraction_buff(event: RelationshipCreatedEvent) -> None:
+        if event.owner.has_component(Asexual):
+            event.relationship.get_component(RomanticCompatibility).add_modifier(
+                StatModifier(-10, StatModifierType.Flat)
+            )
+
+
+class Boldness(ClampedStatComponent):
+    """A measure of a character's ambitiousness."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=255, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
+        return cls(base_value=base_value)
+
+
+class Compassion(ClampedStatComponent):
+    """A measure of how compassionate character is."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=255, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
+        return cls(base_value=base_value)
+
+
+class Greed(ClampedStatComponent):
+    """A measure of how greedy a character is."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=255, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
+        return cls(base_value=base_value)
+
+
+class Honor(ClampedStatComponent):
+    """A measure of how honorable a character is."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=255, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
+        return cls(base_value=base_value)
+
+
+class Sociability(ClampedStatComponent):
+    """A measure of how socially-inclined or extroverted a character is."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=255, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
+        return cls(base_value=base_value)
+
+
+class Vengefulness(ClampedStatComponent):
+    """A measure of how much a character holds grudges."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=255, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
+        return cls(base_value=base_value)
+
+
+class Attractiveness(ClampedStatComponent):
+    """Tracks how visually attractive a character is."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=255, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
+        return cls(base_value=base_value)
+
+
+class SocialInfluence(ClampedStatComponent):
+    """A measure of how honorable a character is."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value, max_value=10, min_value=0)
+
+    @classmethod
+    def create(cls, gameobject: GameObject, **kwargs: Any):
+        base_value = kwargs.get("base_value", 0)
+        return cls(base_value=base_value)
 
 
 class LifeStageType(enum.IntEnum):
@@ -633,68 +895,57 @@ class LifeStage(Component, ISerializable):
         return {"life_stage": self.life_stage.name}
 
 
-class Immortal(ITrait):
-    @classmethod
-    def get_conflicts(cls) -> FrozenSet[Type[ITrait]]:
-        """Get component types that this component's type conflicts with."""
-        return frozenset({})
+class CanAge(ITrait):
+    """Tags a GameObject as being able to change life stages as time passes."""
 
-    @classmethod
-    def inheritance_probability(cls) -> Tuple[float, float]:
-        return 0, 1.0
-
-
-def create_character(
-    world: World, character_type: Type[CharacterType], **kwargs: Any
-) -> GameObject:
-    """Create a new GameObject instance of the given character type.
-
-    Parameters
-    ----------
-    world
-        The world to spawn the character into
-    character_type
-        The character type to construct
-    **kwargs
-        Keyword arguments to pass to the CharacterType's factory
-
-    Returns
-    -------
-    GameObject
-        the instantiated character
-    """
-    character = character_type.instantiate(world, **kwargs)
-
-    CharacterCreatedEvent(world, character).dispatch()
-
-    return character
-
-
-class Health(StatComponent):
     pass
+
+
+class Immortal(ITrait):
+    base_incidence = 0.0
+
+    def on_add(self) -> None:
+        self.gameobject.get_component(HealthDecay).add_modifier(
+            StatModifier(-5000.0, StatModifierType.PercentAdd, source=self)
+        )
+
+    def on_remove(self) -> None:
+        self.gameobject.get_component(HealthDecay).remove_modifiers_from_source(self)
+
+    @classmethod
+    def on_register(cls, world: World) -> None:
+        super().on_register(world)
+        cls.incidence_modifiers.append(Immortal.both_parents_have_trait)
+
+    @staticmethod
+    def both_parents_have_trait(gameobject: GameObject) -> StatModifier:
+        parents = [
+            relationship.get_component(Relationship).target
+            for relationship in gameobject.get_component(
+                Relationships
+            ).get_relationships_with_components(ChildOf)
+        ]
+
+        parents_with_trait = [
+            parent for parent in parents if parent.has_component(Immortal)
+        ]
+
+        if len(parents_with_trait) >= 2:
+            return StatModifier(50, StatModifierType.PercentAdd)
 
 
 class BaseCharacter(CharacterType):
     base_components: ClassVar[Dict[Union[str, Type[Component]], Dict[str, Any]]] = {}
 
     @classmethod
-    def handle_incidental_traits(cls, gameobject: GameObject) -> None:
+    def add_traits(cls, gameobject: GameObject) -> None:
         """Adds incidental traits to the character GameObject."""
         rng = gameobject.world.resource_manager.get_resource(random.Random)
-        traits = gameobject.get_component(Traits)
+        trait_library = gameobject.world.resource_manager.get_resource(TraitLibrary)
 
-        for trait_name, (
-            probability,
-            trait_args,
-        ) in cls.config.incidental_traits.items():
-            trait_type = cast(
-                Type[ITrait], gameobject.world.resolve_component_type(trait_name)
-            )
-            if trait_type in traits.prohibited_traits:
-                continue
-
-            if rng.random() < probability:
-                gameobject.add_component(trait_type, **trait_args)
+        for trait_type in trait_library:
+            if rng.random() <= trait_type.get_incidence(gameobject):
+                gameobject.add_component(trait_type)
 
     @classmethod
     def generate_character_name(
@@ -823,12 +1074,13 @@ class BaseCharacter(CharacterType):
             return aging_config.senior_age + int(10 * rng.random())
 
     @classmethod
-    def instantiate(cls, world: World, **kwargs: Any) -> GameObject:
+    def _instantiate(cls, world: World, **kwargs: Any) -> GameObject:
         first_name: str = kwargs.get("first_name", "")
         last_name: str = kwargs.get("last_name", "")
         age: Optional[int] = kwargs.get("age")
         life_stage: Optional[LifeStageType] = kwargs.get("life_stage")
         gender: Optional[Type[GenderType]] = kwargs.get("gender")
+        rng = world.resource_manager.get_resource(random.Random)
 
         character = world.gameobject_manager.spawn_gameobject(
             components={
@@ -842,10 +1094,19 @@ class BaseCharacter(CharacterType):
                 AIBrain: {},
                 Goals: {},
                 EventHistory: {},
-                Age: {},
+                Age: {"value": 0},
                 LifeStage: {},
                 WorkHistory: {},
-                Health: {"base_value": cls.config.max_health},
+                Health: {"max_value": cls.config.max_health},
+                HealthDecay: {"base_value": 0.0},
+                HealthDecayChance: {"base_value": 0.0},
+                Boldness: {"base_value": rng.randint(0, 255)},
+                Compassion: {"base_value": rng.randint(0, 255)},
+                Greed: {"base_value": rng.randint(0, 255)},
+                Honor: {"base_value": rng.randint(0, 255)},
+                Sociability: {"base_value": rng.randint(0, 255)},
+                Vengefulness: {"base_value": rng.randint(0, 255)},
+                Attractiveness: {},
                 **BaseCharacter.base_components,
                 cls: {},
             }
@@ -868,7 +1129,7 @@ class BaseCharacter(CharacterType):
             gender = rng.choice((Male, Female, NonBinary))
             character.add_component(gender)
 
-        cls.handle_incidental_traits(character)
+        cls.add_traits(character)
 
         first_name, last_name = cls.generate_character_name(
             character, first_name=first_name, last_name=last_name
