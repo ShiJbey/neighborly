@@ -22,7 +22,7 @@ class Human(BaseCharacter):
             adolescent_age=13, young_adult_age=18, adult_age=30, senior_age=65
         ),
         avg_lifespan=80,
-        base_health_decay=-2.2
+        base_health_decay=-2.2,
     )
 
     @classmethod

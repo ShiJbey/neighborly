@@ -39,6 +39,8 @@ from neighborly.components.character import (
     Deceased,
     Departed,
     Female,
+    Fertility,
+    FertilityDecay,
     GameCharacter,
     Gender,
     Greed,
@@ -74,8 +76,12 @@ from neighborly.config import NeighborlyConfig, PluginConfig
 from neighborly.data_collection import DataCollector
 from neighborly.ecs import Active, Event, World
 from neighborly.inventory import Item
-from neighborly.life_event import EventHistory, EventLog, RandomLifeEventLibrary, \
-    LifeEvent
+from neighborly.life_event import (
+    EventHistory,
+    EventLog,
+    LifeEvent,
+    RandomLifeEventLibrary,
+)
 from neighborly.location_preference import LocationPreferenceRuleLibrary
 from neighborly.roles import Roles
 from neighborly.settlement import Settlement
@@ -157,13 +163,6 @@ class Neighborly:
         self.world.resource_manager.add_resource(BusinessSpawnTable())
         self.world.resource_manager.add_resource(ResidenceSpawnTable())
         self.world.resource_manager.add_resource(BuildingMap(self.config.world_size))
-        self.world.resource_manager.add_resource(
-            Settlement(
-                self.world.resource_manager.get_resource(Tracery).generate(
-                    self.config.settlement_name
-                )
-            )
-        )
 
         # Add default top-level system groups (in execution order)
         self.world.system_manager.add_system(systems.InitializationSystemGroup())
@@ -253,6 +252,9 @@ class Neighborly:
             systems.HealthDecaySystem(), system_group=systems.UpdateSystemGroup
         )
         self.world.system_manager.add_system(
+            systems.FertilityDecaySystem(), system_group=systems.UpdateSystemGroup
+        )
+        self.world.system_manager.add_system(
             systems.DeathSystem(), system_group=systems.UpdateSystemGroup
         )
         self.world.system_manager.add_system(
@@ -316,6 +318,8 @@ class Neighborly:
         self.world.gameobject_manager.register_component(Health)
         self.world.gameobject_manager.register_component(HealthDecay)
         self.world.gameobject_manager.register_component(HealthDecayChance)
+        self.world.gameobject_manager.register_component(Fertility)
+        self.world.gameobject_manager.register_component(FertilityDecay)
         self.world.gameobject_manager.register_component(Homosexual)
         self.world.gameobject_manager.register_component(Heterosexual)
         self.world.gameobject_manager.register_component(Asexual)
@@ -375,6 +379,15 @@ class Neighborly:
         # Load plugins from the config
         for entry in self.config.plugins:
             self.load_plugin(entry)
+
+        # Generate the settlement last
+        self.world.resource_manager.add_resource(
+            Settlement(
+                self.world.resource_manager.get_resource(Tracery).generate(
+                    self.config.settlement_name
+                )
+            )
+        )
 
     @property
     def date(self) -> SimDateTime:

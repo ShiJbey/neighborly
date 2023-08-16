@@ -41,8 +41,13 @@ from neighborly.relationship import (
 )
 from neighborly.roles import Roles
 from neighborly.spawn_table import CharacterSpawnTable, CharacterSpawnTableEntry
-from neighborly.stats import ClampedStatComponent, StatModifier, StatModifierType, \
-    Stats, StatComponent
+from neighborly.stats import (
+    ClampedStatComponent,
+    StatComponent,
+    StatModifier,
+    StatModifierType,
+    Stats,
+)
 from neighborly.statuses import IStatus, Statuses
 from neighborly.tracery import Tracery
 from neighborly.traits import ITrait, TraitLibrary, Traits
@@ -135,6 +140,7 @@ class CharacterConfig:
     avg_lifespan: Optional[int] = None
     max_health: int = 100
     base_health_decay: float = -2.5
+
     aging: Optional[LifeStageConfig] = None
     chance_spawn_with_spouse: float = 0
     """The probability of this character spawning with a spouse."""
@@ -210,21 +216,21 @@ class CharacterType(TagComponent, ABC):
         return character
 
 
-class Health(ClampedStatComponent):
+class Health(ClampedStatComponent[int]):
     """The amount of health a character has. characters die when this reaches zero."""
 
     def __init__(self, max_value: int) -> None:
         super().__init__(base_value=max_value, max_value=max_value, min_value=0)
 
 
-class HealthDecay(StatComponent):
+class HealthDecay(StatComponent[int]):
     """A potential amount of life lost by in adulthood characters after adolescence."""
 
     def __init__(self, base_value: float = 0) -> None:
         super().__init__(base_value=base_value)
 
 
-class HealthDecayChance(ClampedStatComponent):
+class HealthDecayChance(ClampedStatComponent[float]):
     """A potential amount of life lost by in adulthood characters after adolescence."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -283,6 +289,20 @@ class CanGetOthersPregnant(ITrait):
                 else None
             )
         )
+
+
+class Fertility(ClampedStatComponent[float]):
+    """Probability of this character having a child."""
+
+    def __init__(self, base_value: float) -> None:
+        super().__init__(base_value=base_value, max_value=1.0, min_value=0)
+
+
+class FertilityDecay(StatComponent[float]):
+    """Reduction in fertility each year."""
+
+    def __init__(self, base_value: float = 0) -> None:
+        super().__init__(base_value=base_value)
 
 
 class Deceased(IStatus):
@@ -750,7 +770,7 @@ class Asexual(ITrait):
             )
 
 
-class Boldness(ClampedStatComponent):
+class Boldness(ClampedStatComponent[int]):
     """A measure of a character's ambitiousness."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -763,7 +783,7 @@ class Boldness(ClampedStatComponent):
         return cls(base_value=base_value)
 
 
-class Compassion(ClampedStatComponent):
+class Compassion(ClampedStatComponent[int]):
     """A measure of how compassionate character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -776,7 +796,7 @@ class Compassion(ClampedStatComponent):
         return cls(base_value=base_value)
 
 
-class Greed(ClampedStatComponent):
+class Greed(ClampedStatComponent[int]):
     """A measure of how greedy a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -789,7 +809,7 @@ class Greed(ClampedStatComponent):
         return cls(base_value=base_value)
 
 
-class Honor(ClampedStatComponent):
+class Honor(ClampedStatComponent[int]):
     """A measure of how honorable a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -802,7 +822,7 @@ class Honor(ClampedStatComponent):
         return cls(base_value=base_value)
 
 
-class Sociability(ClampedStatComponent):
+class Sociability(ClampedStatComponent[int]):
     """A measure of how socially-inclined or extroverted a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -815,7 +835,7 @@ class Sociability(ClampedStatComponent):
         return cls(base_value=base_value)
 
 
-class Vengefulness(ClampedStatComponent):
+class Vengefulness(ClampedStatComponent[int]):
     """A measure of how much a character holds grudges."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -828,7 +848,7 @@ class Vengefulness(ClampedStatComponent):
         return cls(base_value=base_value)
 
 
-class Attractiveness(ClampedStatComponent):
+class Attractiveness(ClampedStatComponent[int]):
     """Tracks how visually attractive a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -841,7 +861,7 @@ class Attractiveness(ClampedStatComponent):
         return cls(base_value=base_value)
 
 
-class SocialInfluence(ClampedStatComponent):
+class SocialInfluence(ClampedStatComponent[int]):
     """A measure of how honorable a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -938,7 +958,20 @@ class BaseCharacter(CharacterType):
     base_components: ClassVar[Dict[Union[str, Type[Component]], Dict[str, Any]]] = {}
 
     @classmethod
-    def add_traits(cls, gameobject: GameObject) -> None:
+    def add_default_component(cls, component_type: Type[Component], **kwargs) -> None:
+        """Add a new component to the default set of component all characters have.
+
+        Parameters
+        ----------
+        component_type
+            The class of the component
+        **kwargs
+            Keyword arguments to pass to the component's factory
+        """
+        cls.base_components[component_type] = {**kwargs}
+
+    @classmethod
+    def _add_traits(cls, gameobject: GameObject) -> None:
         """Adds incidental traits to the character GameObject."""
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         trait_library = gameobject.world.resource_manager.get_resource(TraitLibrary)
@@ -948,7 +981,7 @@ class BaseCharacter(CharacterType):
                 gameobject.add_component(trait_type)
 
     @classmethod
-    def generate_character_name(
+    def _generate_character_name(
         cls, character: GameObject, first_name: str = "", last_name: str = ""
     ) -> Tuple[str, str]:
         """Overwrite a characters first or last name.
@@ -978,7 +1011,7 @@ class BaseCharacter(CharacterType):
         return generated_first_name, generated_last_name
 
     @classmethod
-    def set_character_age(
+    def _set_character_age(
         cls,
         character: GameObject,
         new_age: int,
@@ -1009,7 +1042,7 @@ class BaseCharacter(CharacterType):
             life_stage.life_stage = LifeStageType.Child
 
     @classmethod
-    def set_life_stage(
+    def _set_life_stage(
         cls, character: GameObject, life_stage_type: LifeStageType
     ) -> None:
         """Overwrites the current LifeStage and age of a character.
@@ -1046,7 +1079,7 @@ class BaseCharacter(CharacterType):
             age.value = 0
 
     @classmethod
-    def generate_age_from_life_stage(
+    def _generate_age_from_life_stage(
         cls,
         rng: random.Random,
         aging_config: LifeStageConfig,
@@ -1106,7 +1139,9 @@ class BaseCharacter(CharacterType):
                 Honor: {"base_value": rng.randint(0, 255)},
                 Sociability: {"base_value": rng.randint(0, 255)},
                 Vengefulness: {"base_value": rng.randint(0, 255)},
-                Attractiveness: {},
+                Attractiveness: {"base_value": rng.randint(0, 255)},
+                Fertility: {"base_value": 0},
+                FertilityDecay: {"base_value": 0},
                 **BaseCharacter.base_components,
                 cls: {},
             }
@@ -1117,10 +1152,10 @@ class BaseCharacter(CharacterType):
 
         # Fix inconsistencies and override values
         if life_stage is not None:
-            cls.set_life_stage(character=character, life_stage_type=life_stage)
+            cls._set_life_stage(character=character, life_stage_type=life_stage)
 
         if age is not None:
-            cls.set_character_age(character=character, new_age=age)
+            cls._set_character_age(character=character, new_age=age)
 
         if gender is not None:
             character.add_component(gender)
@@ -1129,9 +1164,9 @@ class BaseCharacter(CharacterType):
             gender = rng.choice((Male, Female, NonBinary))
             character.add_component(gender)
 
-        cls.add_traits(character)
+        cls._add_traits(character)
 
-        first_name, last_name = cls.generate_character_name(
+        first_name, last_name = cls._generate_character_name(
             character, first_name=first_name, last_name=last_name
         )
 

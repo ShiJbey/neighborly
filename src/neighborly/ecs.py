@@ -819,7 +819,7 @@ class ISystem(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def on_create(self, world: World) -> None:
+    def on_add(self, world: World) -> None:
         """Lifecycle method called when the system is added to the world.
 
         Parameters
@@ -901,7 +901,7 @@ class System(ISystem, ABC):
         """
         self._active = value
 
-    def on_create(self, world: World) -> None:
+    def on_add(self, world: World) -> None:
         """Lifecycle method called when the system is added to the world.
 
         Parameters
@@ -1063,7 +1063,7 @@ class SystemManager(SystemGroup):
 
             if isinstance(current_sys, system_group):
                 current_sys.add_child(system)
-                system.on_create(self._world)
+                system.on_add(self._world)
                 return
 
             elif isinstance(current_sys, SystemGroup):

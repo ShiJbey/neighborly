@@ -9,12 +9,12 @@ from typing import Any, ClassVar, Dict, Optional, Type, TypedDict, final
 
 from ordered_set import OrderedSet
 
-from neighborly.time import SimDateTime
-from neighborly.ecs import Component, GameObject, ISerializable, World, Event
+from neighborly.ecs import Component, Event, GameObject, ISerializable, World
 from neighborly.events import ChangeResidenceEvent
 from neighborly.settlement import Settlement
 from neighborly.spawn_table import ResidenceSpawnTable, ResidenceSpawnTableEntry
 from neighborly.statuses import IStatus
+from neighborly.time import SimDateTime
 
 
 class Residence(Component, ISerializable):

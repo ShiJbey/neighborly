@@ -530,13 +530,36 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                     # Find a single solution add this state to the stack and change the
                     # current state
 
+                    new_bound_roles: List[EventRole] = []
+
+                    result = next(current_state.binding_generator)
+
+                    if isinstance(result, tuple):
+                        for gameobject in result:
+                            new_bound_roles.append(
+                                EventRole(
+                                    current_state.role_to_cast.name, gameobject
+                                )
+                            )
+
+                    elif isinstance(result, GameObject):
+                        new_bound_roles.append(
+                            EventRole(
+                                current_state.role_to_cast.name, result
+                            )
+                        )
+
+                    else:
+                        raise TypeError(
+                            "Expected GameObject or tuple but was: {}".format(
+                                type(result)
+                            )
+                        )
+
                     new_bindings = EventRoleList(
                         [
                             *current_state.ctx.bindings,
-                            *[
-                                EventRole(current_state.role_to_cast.name, r)
-                                for r in next(current_state.binding_generator)
-                            ],
+                            *new_bound_roles,
                         ]
                     )
 
@@ -559,15 +582,35 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                     # This is the last role we need to bind.
                     # Exhaust all the solutions and return them as instances of the
                     # event
-                    for results in current_state.binding_generator:
-                        # Create combined list of bindings
+                    for result in current_state.binding_generator:
+                        new_bound_roles: List[EventRole] = []
+
+                        if isinstance(result, tuple):
+                            for gameobject in result:
+                                new_bound_roles.append(
+                                    EventRole(
+                                        current_state.role_to_cast.name, gameobject
+                                    )
+                                )
+
+                        elif isinstance(result, GameObject):
+                            new_bound_roles.append(
+                                EventRole(
+                                    current_state.role_to_cast.name, result
+                                )
+                            )
+
+                        else:
+                            raise TypeError(
+                                "Expected GameObject or tuple but was: {}".format(
+                                    type(result)
+                                )
+                            )
+
                         new_bindings = EventRoleList(
                             [
                                 *current_state.ctx.bindings,
-                                *[
-                                    EventRole(current_state.role_to_cast.name, r)
-                                    for r in results
-                                ],
+                                *new_bound_roles,
                             ]
                         )
 

@@ -13,8 +13,12 @@ import time
 from typing import Any
 
 from neighborly import Neighborly, NeighborlyConfig, SimDateTime, System
-from neighborly.components.character import BaseCharacter, Female, GameCharacter, \
-    CharacterConfig
+from neighborly.components.character import (
+    BaseCharacter,
+    CharacterConfig,
+    Female,
+    GameCharacter,
+)
 from neighborly.components.residence import set_residence
 from neighborly.data_collection import DataCollector
 from neighborly.decorators import component, system
@@ -46,7 +50,7 @@ class Robot(TagComponent):
 
 @system(sim.world)
 class RelationshipReporter(System):
-    def on_create(self, world: World) -> None:
+    def on_add(self, world: World) -> None:
         world.resource_manager.get_resource(DataCollector).create_new_table(
             "relationships",
             (

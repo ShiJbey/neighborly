@@ -11,8 +11,9 @@ talktown plugin included with Neighborly and simulates 140 years of town history
 
 import time
 
-from neighborly import NeighborlyConfig
+from neighborly import NeighborlyConfig, SimDateTime
 from neighborly.exporter import export_to_json
+from neighborly.settlement import Settlement
 from neighborly.simulation import Neighborly
 
 EXPORT_WORLD = False
@@ -38,7 +39,8 @@ if __name__ == "__main__":
     sim.run_for(140)
     elapsed_time = time.time() - st
 
-    print(f"World Date: {sim.date.to_iso_str()}")
+    print(f"World Year: {sim.world.resource_manager.get_resource(SimDateTime).year}")
+    print(f"Settlement: {sim.world.resource_manager.get_resource(Settlement).name}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_WORLD:

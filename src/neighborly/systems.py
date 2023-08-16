@@ -20,6 +20,8 @@ from neighborly.components.character import (
     ChildOf,
     Dating,
     Family,
+    Fertility,
+    FertilityDecay,
     GameCharacter,
     Health,
     HealthDecay,
@@ -265,7 +267,7 @@ class HealthDecaySystem(System):
     DECAY_CHANCE_INCREASE: ClassVar[float] = 0.02
     STARTING_DECAY_CHANCE: ClassVar[float] = 0.07
 
-    def on_create(self, world: World) -> None:
+    def on_add(self, world: World) -> None:
         world.event_manager.on_event(
             CharacterCreatedEvent, HealthDecaySystem.add_health_decay_to_character
         )
@@ -405,6 +407,47 @@ class UpdateLifeStageSystem(System):
                     life_stage.life_stage = LifeStageType.Child
 
 
+class FertilityDecaySystem(System):
+    @staticmethod
+    def update_young_adult_fertility(event: BecomeYoungAdultEvent) -> None:
+        if event.character.has_component(CanGetPregnant):
+            event.character.get_component(Fertility).base_value = 1.0
+        elif event.character.has_component(CanGetOthersPregnant):
+            event.character.get_component(Fertility).base_value = 1.0
+
+    @staticmethod
+    def update_adult_fertility(event: BecomeAdultEvent) -> None:
+        if event.character.has_component(CanGetPregnant):
+            event.character.get_component(Fertility).base_value = 0.7
+        elif event.character.has_component(CanGetOthersPregnant):
+            event.character.get_component(Fertility).base_value = 0.9
+
+    @staticmethod
+    def update_senior_fertility(event: BecomeSeniorEvent) -> None:
+        if event.character.has_component(CanGetPregnant):
+            event.character.get_component(Fertility).base_value = 0
+        elif event.character.has_component(CanGetOthersPregnant):
+            event.character.get_component(Fertility).base_value = 0.5
+
+    def on_add(self, world: World) -> None:
+        world.event_manager.on_event(
+            BecomeYoungAdultEvent, FertilityDecaySystem.update_young_adult_fertility
+        )
+        world.event_manager.on_event(
+            BecomeAdultEvent, FertilityDecaySystem.update_adult_fertility
+        )
+        world.event_manager.on_event(
+            BecomeSeniorEvent, FertilityDecaySystem.update_senior_fertility
+        )
+
+    def on_update(self, world: World) -> None:
+        for _, (_, fertility, fertility_decay, life_stage) in world.get_components(
+            (Active, Fertility, FertilityDecay, LifeStage)
+        ):
+            if life_stage.life_stage >= LifeStageType.Adult:
+                fertility.base_value -= fertility_decay.value
+
+
 class EmploymentSystem(System):
     """Provides unemployed characters with a goal to find employment."""
 
@@ -440,7 +483,7 @@ class EmploymentSystem(System):
             if len(roles.get_roles_of_type(Occupation)) == 0:
                 event.character.add_component(Unemployed, timestamp=date.year)
 
-    def on_create(self, world: World) -> None:
+    def on_add(self, world: World) -> None:
         world.event_manager.on_event(
             CharacterCreatedEvent, EmploymentSystem.on_adult_join_settlement
         )
@@ -487,6 +530,8 @@ class EmploymentSystem(System):
 
 class ChildBirthSystem(System):
     """Handles childbirths for pregnant characters."""
+
+    FERTILITY_LOSS_AFTER_BIRTH = 0.7
 
     def on_update(self, world: World) -> None:
         date = world.resource_manager.get_resource(SimDateTime)
@@ -608,6 +653,9 @@ class ChildBirthSystem(System):
                 )
 
             pregnant_character.remove_component(Pregnant)
+            pregnant_character.get_component(
+                Fertility
+            ).base_value -= ChildBirthSystem.FERTILITY_LOSS_AFTER_BIRTH
 
             # Pregnancy event dates are retro-fit to be the actual date that the
             # child was due.
@@ -946,10 +994,17 @@ class PregnancySystem(System):
     """Some characters may get pregnant when in romantic relationships."""
 
     @staticmethod
-    def get_probability_of_pregnancy(character: GameObject) -> float:
+    def get_probability_of_pregnancy(
+        parent_a: GameObject, parent_b: GameObject
+    ) -> float:
         """Calculate probability of a character getting pregnant."""
-        num_children = len(get_relationships_with_components(character, ParentOf))
-        return 1.0 - (num_children / 5.0)
+        parent_a_fertility = parent_a.get_component(Fertility).value
+        parent_b_fertility = parent_b.get_component(Fertility).value
+
+        if parent_a_fertility == 0.0 or parent_b_fertility == 0.0:
+            return 0.0
+
+        return (parent_a_fertility + parent_b_fertility) / 2.0
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
@@ -985,7 +1040,7 @@ class PregnancySystem(System):
                 chosen_partner = rng.choice(potential_partners)
 
                 if rng.random() < PregnancySystem.get_probability_of_pregnancy(
-                    character
+                    character, chosen_partner
                 ):
                     character.add_component(
                         Pregnant,
