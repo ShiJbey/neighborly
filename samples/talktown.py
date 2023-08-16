@@ -1,16 +1,19 @@
+#!/usr/bin/python3
+
 """
 Talk of the Town Sample
-------------------------
+=======================
 
-This samples shows Neighborly simulating a Talk of the Town-style
-town. It uses the talktown plugin included with Neighborly
-and simulates 140 years of town history.
+This samples shows Neighborly simulating a Talk of the Town-style town. It uses the
+talktown plugin included with Neighborly and simulates 140 years of town history.
+
 """
 
 import time
 
-from neighborly import NeighborlyConfig
+from neighborly import NeighborlyConfig, SimDateTime
 from neighborly.exporter import export_to_json
+from neighborly.settlement import Settlement
 from neighborly.simulation import Neighborly
 
 EXPORT_WORLD = False
@@ -19,28 +22,14 @@ sim = Neighborly(
     NeighborlyConfig.parse_obj(
         {
             "seed": "Apples",
-            "time_increment": "1mo",
-            "relationship_schema": {
-                "components": {
-                    "Friendship": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "Romance": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "InteractionScore": {
-                        "min_value": -5,
-                        "max_value": 5,
-                    },
-                }
-            },
             "plugins": [
                 "neighborly.plugins.defaults.all",
-                "neighborly.plugins.talktown.spawn_tables",
                 "neighborly.plugins.talktown",
-            ]
+            ],
+            "logging": {
+                "logging_enabled": True,
+                "log_level": "DEBUG",
+            },
         }
     )
 )
@@ -50,8 +39,8 @@ if __name__ == "__main__":
     sim.run_for(140)
     elapsed_time = time.time() - st
 
-
-    print(f"World Date: {sim.date.to_iso_str()}")
+    print(f"World Year: {sim.world.resource_manager.get_resource(SimDateTime).year}")
+    print(f"Settlement: {sim.world.resource_manager.get_resource(Settlement).name}")
     print("Execution time: ", elapsed_time, "seconds")
 
     if EXPORT_WORLD:

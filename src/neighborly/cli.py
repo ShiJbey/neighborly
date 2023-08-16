@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import pathlib
 import sys
@@ -13,9 +12,10 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from neighborly import NeighborlyConfig
 from neighborly.__version__ import VERSION
+from neighborly.config import NeighborlyConfig
 from neighborly.exporter import export_to_json
+from neighborly.settlement import Settlement
 from neighborly.simulation import Neighborly
 
 
@@ -41,24 +41,18 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "-c",
         "--config",
-        help="Path to the configuration file to load before running",
-    )
-
-    parser.add_argument("-o", "--output", help="path to write final simulation state")
-
-    parser.add_argument(
-        "--no-emit",
-        default=False,
-        action="store_true",
-        help="Disable creating an output file with the simulation's final state",
+        help="Path to the configuration file",
     )
 
     parser.add_argument(
-        "-q",
-        "--quiet",
+        "-o", "--output", help="Specify path to write generated world data"
+    )
+
+    parser.add_argument(
+        "--no-output",
         default=False,
         action="store_true",
-        help="Disable all printing to stdout",
+        help="Do not output generated world data",
     )
 
     return parser.parse_args()
@@ -79,15 +73,13 @@ def load_config_from_path(config_path: str) -> Dict[str, Any]:
     """
     path = pathlib.Path(os.path.abspath(config_path))
 
+    if path.suffix.lower() not in {".json", ".yaml", ".yml"}:
+        raise TypeError(
+            f"Incorrect file type. Expected .yaml or .json but was {path.suffix}."
+        )
+
     with open(path, "r") as f:
-        if path.suffix.lower() == ".json":
-            return json.load(f)
-        elif path.suffix.lower() == ".yaml":
-            return yaml.safe_load(f)
-        else:
-            raise ValueError(
-                f"Attempted to load config from incorrect file type: {path.suffix}."
-            )
+        return yaml.safe_load(f)
 
 
 def try_load_local_config() -> Optional[Dict[str, Any]]:
@@ -123,23 +115,6 @@ def run():
 
     config = NeighborlyConfig.parse_obj(
         {
-            "relationship_schema": {
-                "components": {
-                    "Friendship": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "Romance": {
-                        "min_value": -100,
-                        "max_value": 100,
-                    },
-                    "InteractionScore": {
-                        "min_value": -5,
-                        "max_value": 5,
-                    },
-                }
-            },
-            "time_increment": "1mo",
             "plugins": [
                 "neighborly.plugins.defaults.all",
                 "neighborly.plugins.talktown",
@@ -160,9 +135,11 @@ def run():
 
     sim.run_for(config.years_to_simulate)
 
-    if not args.no_emit:
+    settlement_name = sim.world.resource_manager.get_resource(Settlement).name
+
+    if args.no_output is False:
         output_path = (
-            args.output if args.output else f"neighborly_{sim.config.seed}.json"
+            args.output if args.output else f"{settlement_name}_{sim.config.seed}.json"
         )
 
         with open(output_path, "w") as f:

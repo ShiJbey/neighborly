@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import os
 import random
-import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pydantic
 
-from neighborly.core.time import SimDateTime, TimeDelta
-
 
 class PluginConfig(pydantic.BaseModel):
-    """settings for loading and constructing a plugin."""
+    """Settings for loading and constructing a plugin."""
 
     name: str
     """Name of the plugin's python module."""
@@ -19,15 +16,21 @@ class PluginConfig(pydantic.BaseModel):
     path: str = pydantic.Field(default_factory=lambda: os.getcwd())
     """The path where the plugin is located."""
 
-    options: Dict[str, Any] = pydantic.Field(default_factory=dict)
-    """Parameters to pass to the plugin when constructing and loading it."""
 
+class LoggingConfig(pydantic.BaseModel):
+    """Configuration settings for logging within a simulation."""
 
-class RelationshipSchema(pydantic.BaseModel):
-    """Prefab information specifying components for Relationship GameObjects."""
+    logging_enabled: bool = True
+    """Toggles if logging messages are sent anywhere."""
 
-    components: Dict[str, Dict[str, Any]] = pydantic.Field(default_factory=dict)
-    """The component information for relationship instance."""
+    log_directory: str = "./logs"
+    """The directory to save logs to when saving to file."""
+
+    log_level: str = "INFO"
+    """The logging level to use."""
+
+    log_file_name: Optional[str] = None
+    """Toggles if logging output should be save to this file name in log_directory."""
 
 
 class NeighborlyConfig(pydantic.BaseModel):
@@ -38,31 +41,25 @@ class NeighborlyConfig(pydantic.BaseModel):
     )
     """A value used to seed the random number generator."""
 
-    relationship_schema: RelationshipSchema = pydantic.Field(
-        default_factory=RelationshipSchema
-    )
-    """The default component configuration of new Relationship GameObjects."""
+    settlement_name: str = "#settlement_name#"
+    """The name of the simulated settlement."""
+
+    world_size: Tuple[int, int] = (5, 5)
+    """The X/Y dimensions of the world in."""
 
     plugins: List[PluginConfig] = pydantic.Field(default_factory=list)
-    """Configuration information for plugins to import before running the simulation."""
-
-    time_increment: TimeDelta = TimeDelta(hours=4)
-    """The amount of time to advance the current date by each timestep."""
+    """Plugins to import before running the simulation."""
 
     years_to_simulate: int = 50
-    """The number of years to simulate."""
+    """The number of years to simulate. This is mainly used by the CLI."""
 
-    start_date: SimDateTime = pydantic.Field(
-        default_factory=lambda: SimDateTime(1, 1, 1)
-    )
-    """The starting date of the simulation before world generation."""
-
-    verbose: bool = True
-    """Toggle verbose logging."""
+    logging: LoggingConfig = pydantic.Field(default_factory=LoggingConfig)
+    """Configuration settings for logging."""
 
     settings: Dict[str, Any] = pydantic.Field(default_factory=dict)
     """Miscellaneous keyword settings."""
 
+    # noinspection PyNestedDecorators
     @pydantic.validator("plugins", pre=True, each_item=True)  # type: ignore
     @classmethod
     def _validate_plugins(cls, value: Any) -> PluginConfig:
@@ -77,33 +74,6 @@ class NeighborlyConfig(pydantic.BaseModel):
                 options=value.get("options", {}),  # type: ignore
             )
         raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
-
-    @pydantic.validator("start_date", pre=True)  # type: ignore
-    @classmethod
-    def _validate_date(cls, value: Any) -> SimDateTime:
-        if isinstance(value, SimDateTime):
-            return value
-        elif isinstance(value, str):
-            return SimDateTime.from_str(value)
-        raise TypeError(f"Expected str or SimDateTime, but was {type(value)}")
-
-    @pydantic.validator("time_increment", pre=True)  # type: ignore
-    @classmethod
-    def _validate_time_increment(cls, value: Any) -> TimeDelta:
-        if isinstance(value, TimeDelta):
-            return value
-        elif isinstance(value, str):
-            if match := re.fullmatch(r"^[0-9]+mo$", value):
-                return TimeDelta(months=int(match.group(0)[:-2]))
-            elif match := re.fullmatch(r"^[0-9]+hr$", value):
-                return TimeDelta(hours=int(match.group(0)[:-2]))
-            elif match := re.fullmatch(r"^[0-9]+yr$", value):
-                return TimeDelta(years=int(match.group(0)[:-2]))
-            elif match := re.fullmatch(r"^[0-9]+dy$", value):
-                return TimeDelta(days=int(match.group(0)[:-2]))
-        elif isinstance(value, int):
-            return TimeDelta(hours=value)
-        raise TypeError(f"Expected str or DeltaTime, but was {type(value)}")
 
     @classmethod
     def from_partial(

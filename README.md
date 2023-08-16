@@ -17,84 +17,82 @@
   <img src="https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336">
 </p>
 
-# Overview
+Neighborly is an extensible agent-based settlement simulation. It was built to be a tool for emergent narrative storytelling research. Neighborly generates a virtual settlement and simulates the individual lives of its residents over multiple generations. It models the characters' traits, statuses, relationships, goals, occupations, life events, and more. Neighborly tracks all the life events (starting a new job, falling in love, turning into a demon, etc.), and these become the building blocks for creating emergent stories about characters and their legacies. The entire history of the settlement and its generations of characters is then made available for data analysis or as content for other applications such as games.
 
-Neighborly is an extensible, data-driven, agent-based modeling framework
-designed to simulate towns of characters for games. It is intended to be a
-tool for exploring simulationist approaches to character-driven emergent
-narratives. Neighborly's simulation architecture is inspired by roguelikes
-such as _Caves of Qud_ and _Dwarf Fortress_.
+Neighborly's was inspired [_Talk of the Town_](https://github.com/james-owen-ryan/talktown), another settlement simulation for emergent narrative storytelling research. And it also draws inspiration from commercial world-simulation games like _Caves of Qud_, _Dwarf Fortress_, _Crusader Kings_, _RimWorld_, and _WorldBox_. It aims to be an easily customizable simulation that can adapt to various narrative settings and support research or entertainment projects.
 
-Currently, Neighborly works best as a narrative data generator. It models
-characters’ lives, jobs, routines, relationships, and life
-events. All of these parts are harnessed to produce
-emergent character backstories as they interact with each other, grow, and
-change. You can even specify custom characters, businesses, residences,
-occupations, life events, social rules, and more. Neighborly is meant to
-be customized to the narrative setting of your creative vision. Check out the
-samples directory to see how we modeled the popular anime, _Demon Slayer_.
-
-Neighborly was inspired by lessons learned from working with
-[_Talk of the Town_](https://github.com/james-owen-ryan/talktown)
-and aims to give people better documentation, simpler interfaces, and more
-opportunities for extension and content authoring.
+If you use Neighborly in a project, please [cite this repository](./CITATION.bib).
 
 # Core Features
 
-- Data-driven
-- Add custom character prefabs
-- Add custom business prefabs
-- Define life events and actions to drive narrative generation
-- Define social rules for how characters should feel about each other
-- Define rules for where characters what locations characters should frequent
-- Specify goal-driven behaviors using behavior trees and utility AI
-- Can model various relationship facets like romance, friendship, trust, and respect
-- Collect and export data about agents using Pandas DataFrames
-- Commandline interface (CLI) tool
-- Create plugins to modularize and share custom content
-- Export simulation state to JSON
-- Could be integrated with roguelike development tools like [tcod](https://github.com/libtcod/python-tcod)
+- 🥸👹👽🏢🏨🏫 Easily create new character/business types
+- ⏱️ Time passes in 1-year increments
+- 🚀 Utilize a low-fidelity social simulation to simulate hundreds of years of world history within minutes.
+- ⚙️ Built using an entity-component system (ECS) architecture
+- 📦 Create and share new components and systems using Plugins.
+- 🤖 Implement goal-driven behavior using behavior trees and utility AI.
+- 👔 Characters can start businesses and hold jobs.
+- ️🧬 Give characters traits and statuses that modify their behavior.
+- ❤️💔 Model facets of relationships such as romance, friendship, trust, and respect.
+- 💥 Simulate random life events that spice up characters' lives.
+- ⚖️ Define Social Rules for how characters should feel about each other.
+- 🏬 Define location preference rules for what locations characters frequent in a year.
+- 📈 Collect and analyze simulation data using industry-standard data science tools like Pandas.
+- 📜 Export simulation data to JSON.
 
-## Not yet supported features
+# System caveats
 
-- Generating characters with a subset of character traits randomly selected from a
-  pool of traits
+- Simulates a single settlement
+- Buildings hold either one business or residence. No mixed-use or multifamily housing.
+- The internal architecture does not follow "Pure" ECS practices. It mixes ECS and object-oriented programing techniques to provide easy-to-use interfaces.
+- Characters can only hold one occupation at a time.
+- Does not model the exact position of characters or objects, only buildings.
+
+# Future work
+
+- Add a skill system.
+- Add mixed-use buildings and multifamily housing.
 
 # Installation
 
-Neighborly is available to install from
-[PyPI](https://pypi.org/project/neighborly/). This will install the latest
-official release.
+The latest official release of Neighborly is available to install from [PyPI](https://pypi.org/project/neighborly/).
 
 ```bash
 pip install neighborly
 ```
 
-If you want to install the most recent changes that have not been uploaded to
-PyPI, you can install it by cloning the main branch of this repo and installing that.
+The most recent changes not uploaded to PyPI can be installed directly from GitHub.
 
 ```bash
 pip install git+https://github.com/ShiJbey/neighborly.git
+```
+
+Then you can test if the installation was successful.
+
+```bash
+python -m neighborly --version
+# Should output the current version number
+1.x.x
 ```
 
 ## Installing for local development
 
 If you wish to download a Neighborly for local development or want to play around with
 any of the samples, you need to clone or download this repository and install
-using the _editable_ flag (-e). Please see the instructions below. This will install
+using the _editable_ flag (-e). Please see the instructions below. This command will install
 a Neighborly into the virtual environment along with all its dependencies and a few
-addition development dependencies such as _black_ and _isort_ for code formatting.
+additional development and testing dependencies such as _black_, _isort_, and _pytest_.
 
 ```bash
 # Step 1: Clone Repository and change into project directory
 git clone https://github.com/ShiJbey/neighborly.git
 cd neighborly
 
-# Step 2 (MacOS/Linux): Create and activate a python virtual environment
+# Step 2 (MacOS/Linux): Create and activate a Python virtual environment
 python3 -m venv venv
 source ./venv/bin/activate
 
-# Step 2 (Windows): Create and activate a python virtual environment
+# Step 2 (Windows): Create and activate a Python virtual environment
 python -m venv venv
 .\venv\Scripts\Activate
 
@@ -104,82 +102,71 @@ python -m pip install -e ".[development,testing]"
 
 # Usage
 
-If you want examples of how to use Neighborly and how to extend it
-with custom content, please refer to
-[Neighborly's docs](https://shijbey.github.io/neighborly/) and the sample scripts
-in the [`samples` directory](https://github.com/ShiJbey/neighborly/tree/main/samples).
+## Exploring the Samples
 
-## Using as a library
-
-Neighborly can be used as a library within a Python script or package.
-The `samples` directory contains python scripts that use Neighborly this
-way. Please refer to them when creating new Plugins and other content.
-
-## Writing plugins
-
-Users can extend Neighborly's default content/behavior using plugins.
-A few default plugins come prepackaged with Neighborly to help people get
-started. Plugins are implemented as Python packages or modules and are
-imported by passing their name in the `plugins` section of the configuration.
-
-Please see the [Plugins](https://shijbey.github.io/neighborly/plugins.html)
-section of the documentation for more information about authoring plugins.
-
-## Running the CLI
-
-Neighborly can be run as a module `$ python -m neighborly` or commandline `$ neighborly`
-script. If you require additional help while running, please use
-`$ python -m neighborly --help` or `$ neighborly --help`.
-
-By default, Neighborly runs a builtin version of **Talk of the Town**. However, you can
-configure the simulation settings by creating a `neighborlyconfig.yaml` file in
-the same directory where you're running the CLI.
-
-When world generation concludes, Neighborly can write the final simulation data
-to a JSON file with the seed used for world generation.
-
-## Running the Samples
-
-Neighborly provides sample simulations to show users how to customize
-it to create new story world themes.
-
-```bash
-# Make sure that you've activated your python virtual environment
-# Replace <sample_name>.py with the name of the
-# sample you want to run
-python ./samples/<sample_name>.py
-```
-
-The samples in the `notebooks` directory require Jupyter to be installed. So you will
-need to run the following command to install all the needed dependencies.
+The best way to learn how to use Neighborly is to explore the various samples in the `samples` directory
+that demonstrate how to create custom simulations and collect and visualize data. Interactive samples with the `.ipynb`
+extension are meant to be run using [Jupyter Lab](https://jupyter.org/). Please run the following command
+to ensure all dependencies are installed for the samples. Make sure that you've activated your Python virtual 
+environment beforehand.
 
 ```bash
 python -m pip install -e ".[samples]"
 ```
 
-Then start Jupyter and pass the relative path to the `notebooks` directory. The following
-assumes that the command is being run from the root of the project.
+Then, run the following commands to run the sample scripts or notebooks.
 
 ```bash
-notebook ./samples/notebooks
+# To run sample scripts, use:
+python ./samples/<name_of_sample>.py
+
+# Explore IPython notebooks using Jupyter Lab:
+jupyter-lab
 ```
 
-## Running the Tests
+## Plugins
 
-Testing is very important. It is how we are able to ensure that new changes don't
-break anything. I do my best to keep tests updated, but some tests may be out of
-date and refer to systems and logic that no longer exist in Neighborly.
+Plugins are importable Python modules or packages that add new components, resources, and systems.
+A few default plugins come prepackaged with Neighborly to help users get started. Users can specify what
+plugins to import by changing the names listed in the `plugins` section of a simulation's configuration.
+Any changes to the listed plugins must occur before the neighborly instance is constructed, as that is when
+plugins are loaded.
 
-Feel free to contribute tests by forking the repo, adding your test(s), and
-submitting a pull request with a description of your test cases. Your commits
-should only contain changes to files within the `tests` directory. If you
-change any files in other parts of the project, your PR will be rejected.
+Please see the [Plugins](https://shijbey.github.io/neighborly/plugins.html) section of the documentation for more 
+information about authoring plugins.
 
-Please follow the steps below to run Neighborly's test suite. Neighborly uses
-[PyTest](https://docs.pytest.org/en/7.1.x/) to handle unit testing.
+## Command-line interface
+
+Neighborly's command line interface (CLI) generates a world and exports the generated data to JSON. 
+By default, Neighborly runs a built-in version of _Talk of the Town_.
+Users can configure the simulation settings using config files written in yaml or json. By default, the CLI will
+look for a `neighborly.config.yaml` or `neighborly.config.json` file in the current working directory. Users can
+specify a path for the CLI to find a config file using the `-c` or `--config` arguments. Users can also control
+where the JSON output is stored or turn off JSON output using the `--output` and `--no-output` arguments.
 
 ```bash
-# Step 1: Install dependencies for tests
+# Run the default simulation
+python -m neighborly
+
+# Load custom config
+python -m neighborly --config <path_to_config_file>
+
+# Specify output path
+python -m neighborly --output <path_to_write_world_data>
+
+# Disable generating output
+python -m neighborly --no-output
+```
+
+# Tests
+
+Neighborly uses [PyTest](https://docs.pytest.org/) for unit testing. All tests are located in the `tests/` directory. I
+do my best to keep tests updated. However, some tests may need to be
+added or updated due to constant breaking changes between releases. If you want to contribute unit tests, please refer
+to [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+```bash
+# Step 1: Install additional dependencies for tests
 python -m pip install -e ".[testing]"
 
 # Step 2: Run Pytest
@@ -191,66 +178,43 @@ pytest --cov=neighborly tests/
 
 # Documentation
 
-The most up-to-date documentation can be found [here](https://shijbey.github.io/neighborly/)
-
-Neighborly uses [Numpy-style](https://numpydoc.readthedocs.io/en/latest/format.html)
-docstrings in code. When adding docstrings for existing or new bits of code please use the following
-references for how to format your contributions:
-
-- [Sphinx Napoleon Plugin for processing Numpy Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
-- [Example Numpy Style Docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html#example-numpy)
+The most up-to-date documentation can be found at [here](https://shijbey.github.io/neighborly/). The Sphinx docs usually need to catch up to the actual 
+codebase. So, when in doubt, please refer to the provided samples and in-code docstrings for assistance.
 
 ## Building the documentation
 
-Neighborly's docs are built using Sphinx. Below are instructions for building the docs
+Below are instructions for building Neighborly's documentation using Sphinx. We also provide a `package.json` file
+that eases docs development using Node.js. The file contains scripts for building, cleaning, and serving the 
+documentation.
 
 ```bash
-
 # Install the documentation dependencies
 python -m pip install -e ".[docs]"
 
-# Build docs as HTML
+# Build docs as HTML (Run these commands from the projects root folder)
 sphinx-apidoc -o docs/source/module_docs/ src/neighborly
 sphinx-build -b html docs/source/ docs/build/html
 ```
 
-If you happen to have _npm_ installed, you can use the `package.json` configuration file to
-run build, clean build output, and run a test HTTP server.
+# Getting help and submitting bug reports
+
+If you have any questions, feedback, or problems, please create a new Issue. I will do my best to answer as soon as I
+can. Please be respectful, and I appreciate your patience.
 
 # Contributing
 
-Here are some ways that people can contribute to Neighborly:
+Contributions are welcome. Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for more information about how to get
+involved.
 
-1. Proposing/Implementing new features
-2. Fixing bugs
-3. Providing optimizations
-4. Filing issues
-5. Contributing tutorials and how-to guides
-6. Fixing grammar and spelling
-7. Creating new samples and plugins
+# License
 
-If you are interested in contributing to Neighborly, there are multiple ways to get
-involved, and not all of them require you to be proficient with GitHub. Interested
-parties can contribute to the core code base of Neighborly and create new content
-in the way of plugins. I love feedback, and if you have any questions, create a new
-issue, and I will do my best to answer. If you want to contribute to the core code,
-free to fork this repository, make your changes, and submit a pull-request with a
-description of your contribution. Please keep in mind that this project is a
-tool for creativity and learning. I have a [code of conduct](./CODE_OF_CONDUCT.md) to
-encourage healthy collaboration, and will enforce it if I need to.
-
-# Code Style
-
-Neighborly uses [_Black_](https://black.readthedocs.io/en/stable/) to handle code style
-and sorts imports using [_isort_](https://pycqa.github.io/isort/).
+This project is licensed under the [MIT License](./LICENSE).
 
 # DMCA Statement
 
-Upon receipt of a notice alleging copyright infringement, I will take whatever action it
-deems appropriate within its sole discretion, including removal of the allegedly
-infringing materials.
+Upon receipt of a notice alleging copyright infringement, I will take whatever action it deems appropriate within its
+sole discretion, including removal of the allegedly infringing materials.
 
-The repo image is something fun that I made. I love _The Simpsons_, and I couldn't think
-of anyone more neighborly than Ned Flanders. If the copyright owner for _The Simpsons_
-would like me to take it down, please contact me. The same takedown policy applies to
-any code samples inspired by TV shows, movies, and games.
+The repo image is something fun that I made. I love _The Simpsons_, and I couldn't think of anyone more neighborly than
+Ned Flanders. If the copyright owner for _The Simpsons_ would like me to take it down, please contact me. The same
+takedown policy applies to code samples inspired by TV shows, movies, and games.

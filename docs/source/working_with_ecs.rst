@@ -385,7 +385,7 @@ Then we can use it in python like this:
 
 .. code-block:: python
 
-    from neighborly.loaders import load_prefab
+    from neighborly.loaders import load_prefabs
 
     # ... omitted imports and simulation instantiation for brevity
 
@@ -395,7 +395,7 @@ Then we can use it in python like this:
 
     # We have a utility function that loads prefab data from YAML or
     # JSON files located at the given path
-    load_prefab("sample_character_prefab.yaml")
+    load_prefabs("sample_character_prefab.yaml")
 
 
 

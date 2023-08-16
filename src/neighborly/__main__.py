@@ -1,8 +1,11 @@
+"""Main entry point when running Neighborly as a module.
+
+"""
+
 import neighborly.cli
 
 
-def main():
-    """Main entry point when running Neighborly as a module"""
+def main() -> None:
     neighborly.cli.run()
 
 

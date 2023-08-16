@@ -1,6 +1,8 @@
+import datetime
+
 import pytest
 
-from neighborly.core.time import SimDateTime, TimeDelta
+from neighborly.time import SimDateTime, TimeDelta
 
 
 def test_get_time_of_day():
@@ -114,6 +116,9 @@ def test_from_str():
     date = SimDateTime.from_str("03/10/0002")
     assert date == SimDateTime(2, 10, 3)
 
+    date = SimDateTime.from_str("0002-10-03T14:00:00")
+    assert date == SimDateTime(2, 10, 3, 14)
+
 
 def test_increment():
     date = SimDateTime(1, 1, 1)
@@ -171,3 +176,12 @@ def test__init__():
     with pytest.raises(ValueError):
         # Day cannot be greater than 28
         SimDateTime(2023, 13, 29)
+
+
+def test_datetime_strptime_compat() -> None:
+    """Test that SimDateTime.to_iso_str is compatible with datetime.strptime"""
+
+    date = SimDateTime(2023, 6, 3, 14)
+    parsed_date = datetime.datetime.strptime(str(date), "%Y-%m-%dT%H:%M:%S")
+
+    assert parsed_date == datetime.datetime(2023, 6, 3, 14, 0)

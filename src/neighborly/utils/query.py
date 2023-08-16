@@ -4,11 +4,12 @@ from typing import List, Set, Tuple, Type, Union
 
 from neighborly.components.business import Occupation, WorkHistory
 from neighborly.components.character import Dating, Family, Married
-from neighborly.core.ecs import Component, GameObject
-from neighborly.core.ecs.query import QueryClause, QueryContext, Relation, WithClause
-from neighborly.core.relationship import Relationship, RelationshipManager
-from neighborly.core.status import StatusComponent
-from neighborly.core.time import DAYS_PER_YEAR, SimDateTime
+from neighborly.ecs import Component, GameObject
+from neighborly.query import QueryClause, QueryContext, Relation, WithClause
+from neighborly.relationship import Relationship, Relationships
+from neighborly.roles import Roles
+from neighborly.statuses import IStatus
+from neighborly.time import SimDateTime
 
 
 def with_components(
@@ -31,23 +32,25 @@ def with_relationship(
     owner_var: str,
     target_var: str,
     relationship_var: str,
-    *statuses: Type[StatusComponent],
+    *statuses: Type[IStatus],
 ) -> QueryClause:
     def clause(ctx: QueryContext) -> Relation:
         results: List[Tuple[int, int, int]] = []
         for rel_id, relationship in ctx.world.get_component(Relationship):
-            r = ctx.world.get_gameobject(rel_id)
+            r = ctx.world.gameobject_manager.get_gameobject(rel_id)
 
             if statuses and not r.has_components(*statuses):
                 continue
 
-            results.append((relationship.owner, relationship.target, rel_id))
+            results.append((relationship.owner.uid, relationship.target.uid, rel_id))
         return Relation((owner_var, target_var, relationship_var), results)
 
     return clause
 
 
-def has_work_experience_as(occupation_type: str, years_experience: int = 0):
+def has_work_experience_as(
+    occupation_type: Type[Occupation], years_experience: int = 0
+):
     """
     Returns Precondition function that returns true if the entity
     has experience as a given occupation type.
@@ -63,7 +66,7 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
     def fn(gameobject: GameObject) -> bool:
         total_experience: float = 0
 
-        current_date = gameobject.world.get_resource(SimDateTime)
+        current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
         work_history = gameobject.try_component(WorkHistory)
 
@@ -74,20 +77,16 @@ def has_work_experience_as(occupation_type: str, years_experience: int = 0):
             if entry.occupation_type == occupation_type:
                 total_experience += entry.years_held
 
-        if gameobject.has_component(Occupation):
-            occupation = gameobject.get_component(Occupation)
-            if occupation.occupation_type == occupation_type:
-                total_experience += (
-                    float((current_date - occupation.start_date).total_days)
-                    / DAYS_PER_YEAR
-                )
+        for occupation in gameobject.get_component(Roles).get_roles_of_type(Occupation):
+            if isinstance(occupation, occupation_type):
+                total_experience += current_date.year - occupation.start_year
 
         return total_experience >= years_experience
 
     return fn
 
 
-def get_work_experience_as(occupation_type: str):
+def get_work_experience_as(occupation_type: Type[Occupation]):
     """
     Returns Precondition function that returns true if the entity
     has experience as a given occupation type.
@@ -101,7 +100,7 @@ def get_work_experience_as(occupation_type: str):
     def fn(gameobject: GameObject) -> float:
         total_experience: float = 0
 
-        current_date = gameobject.world.get_resource(SimDateTime)
+        current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
         work_history = gameobject.try_component(WorkHistory)
 
@@ -112,13 +111,9 @@ def get_work_experience_as(occupation_type: str):
             if entry.occupation_type == occupation_type:
                 total_experience += entry.years_held
 
-        if gameobject.has_component(Occupation):
-            occupation = gameobject.get_component(Occupation)
-            if occupation.occupation_type == occupation_type:
-                total_experience += (
-                    float((current_date - occupation.start_date).total_days)
-                    / DAYS_PER_YEAR
-                )
+        for occupation in gameobject.get_component(Roles).get_roles_of_type(Occupation):
+            if isinstance(occupation, occupation_type):
+                total_experience += current_date.year - occupation.start_year
 
         return total_experience
 
@@ -139,7 +134,7 @@ def has_any_work_experience(years_experience: int = 0):
     def fn(gameobject: GameObject) -> bool:
         total_experience: float = 0
 
-        current_date = gameobject.world.get_resource(SimDateTime)
+        current_date = gameobject.world.resource_manager.get_resource(SimDateTime)
 
         work_history = gameobject.try_component(WorkHistory)
 
@@ -152,11 +147,8 @@ def has_any_work_experience(years_experience: int = 0):
             if total_experience >= years_experience:
                 return True
 
-        if gameobject.has_component(Occupation):
-            occupation = gameobject.get_component(Occupation)
-            total_experience += (
-                float((current_date - occupation.start_date).total_days) / DAYS_PER_YEAR
-            )
+        for occupation in gameobject.get_component(Roles).get_roles_of_type(Occupation):
+            total_experience += current_date.year - occupation.start_year
 
         return total_experience >= years_experience
 
@@ -165,9 +157,7 @@ def has_any_work_experience(years_experience: int = 0):
 
 def is_single(gameobject: GameObject) -> bool:
     """Return true if the character is not dating or married"""
-    world = gameobject.world
-    for _, rel_id in gameobject.get_component(RelationshipManager).outgoing.items():
-        relationship = world.get_gameobject(rel_id)
+    for _, relationship in gameobject.get_component(Relationships).outgoing.items():
         if relationship.has_component(Dating) or relationship.has_component(Married):
             return False
     return True
@@ -175,17 +165,13 @@ def is_single(gameobject: GameObject) -> bool:
 
 def is_married(gameobject: GameObject) -> bool:
     """Return true if the character is not dating or married"""
-    world = gameobject.world
-    for _, rel_id in gameobject.get_component(RelationshipManager).outgoing.items():
-        relationship = world.get_gameobject(rel_id)
+    for _, relationship in gameobject.get_component(Relationships).outgoing.items():
         if relationship.has_component(Married):
             return False
     return True
 
 
 def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
-    world = a.world
-
     visited: Set[GameObject] = set()
     character_queue: List[Tuple[int, GameObject]] = [(0, a)]
 
@@ -199,14 +185,11 @@ def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
         if character == b:
             return True
 
-        for target_id, relationship_id in character.get_component(
-            RelationshipManager
+        for target, relationship in character.get_component(
+            Relationships
         ).outgoing.items():
-            relationship = world.get_gameobject(relationship_id)
             if relationship.has_component(Family):
-                family_member = world.get_gameobject(target_id)
-
-                if family_member not in visited:
-                    character_queue.append((deg + 1, family_member))
+                if target not in visited:
+                    character_queue.append((deg + 1, target))
 
     return False
