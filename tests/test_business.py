@@ -52,7 +52,7 @@ def test_sim():
 
 def test_construct_business(test_sim: Neighborly):
     """Constructing business components using BusinessArchetypes"""
-    restaurant = Restaurant._instantiate(test_sim.world, lot=(0, 0))
+    restaurant = Restaurant.instantiate(test_sim.world, lot=(0, 0))
     restaurant_business = restaurant.get_component(Business)
 
     assert restaurant_business.owner_type == Restaurateur
