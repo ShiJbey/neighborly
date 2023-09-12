@@ -260,7 +260,6 @@ dmypy.json
 cython_debug/
 
 ### VisualStudioCode ###
-.vscode/
 *.code-workspace
 
 # Local History for Visual Studio Code
@@ -273,7 +272,6 @@ cython_debug/
 
 # Support for Project snippet scope
 !.vscode/*.code-snippets
-
 
 **/.DS_Store
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,visualstudiocode,pycharm
