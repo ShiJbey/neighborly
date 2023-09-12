@@ -63,7 +63,7 @@ def component_factory(world: World, component_type: Type[Component]):
         The component type the factory instantiates.
     """
 
-    def decorator(factory_type: Type[_CF]) -> Type[_CF]:
+    def decorator(factory_type: _CF) -> _CF:
         world.gameobject_manager.get_component_info(
             component_type.__name__
         ).factory = factory_type

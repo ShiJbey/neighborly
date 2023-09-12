@@ -24,7 +24,7 @@ class SymbolsNotInRelation(Exception):
 
     def __init__(self, *args: str) -> None:
         super(Exception, self).__init__(*args)
-        self.symbols: Tuple[str] = args
+        self.symbols: Tuple[str, ...] = args
 
     def __str__(self) -> str:
         return f"SymbolsNotInRelation: {self.symbols}"
@@ -49,7 +49,7 @@ class Relation:
         self._bindings: List[Tuple[int, ...]] = bindings
         self._is_initialized: bool = is_initialized
 
-    def get_symbols(self) -> Tuple[str]:
+    def get_symbols(self) -> Tuple[str, ...]:
         return self._symbols
 
     def get_bindings(self) -> List[Tuple[int, ...]]:
@@ -250,12 +250,12 @@ class WithClause:
         self.variable: Optional[str] = variable
 
     def __call__(self, ctx: QueryContext) -> Relation:
-        results = list(
-            map(
-                lambda result: (result[0],),
-                ctx.world.get_components(self.component_types),  # type: ignore
+        results: List[Tuple[int, ...]] = [
+            (guid,)  # type: ignore
+            for guid, _ in ctx.world.get_components(  # type: ignore
+                self.component_types  # type: ignore
             )
-        )
+        ]
 
         chosen_variable = (
             self.variable if self.variable is not None else ctx.output_symbols[0]
@@ -379,7 +379,7 @@ class AndClause:
     __slots__ = "clauses"
 
     def __init__(self, *clauses: QueryClause) -> None:
-        self.clauses: Tuple[QueryClause] = clauses
+        self.clauses: Tuple[QueryClause, ...] = clauses
 
     def __call__(self, ctx: QueryContext) -> Relation:
         joined_relation = ctx.relation
@@ -396,7 +396,7 @@ class OrClause:
     __slots__ = "clauses"
 
     def __init__(self, *clauses: QueryClause) -> None:
-        self.clauses: Tuple[QueryClause] = clauses
+        self.clauses: Tuple[QueryClause, ...] = clauses
 
     def __call__(self, ctx: QueryContext) -> Relation:
         joined_relation = ctx.relation

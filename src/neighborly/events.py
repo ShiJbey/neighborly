@@ -67,8 +67,8 @@ class ChangeResidenceEvent(LifeEvent):
         world: World,
         date: SimDateTime,
         character: GameObject,
-        old_residence: GameObject,
-        new_residence: GameObject,
+        old_residence: Optional[GameObject],
+        new_residence: Optional[GameObject],
     ) -> None:
         super().__init__(
             world,
@@ -100,12 +100,18 @@ class ChangeResidenceEvent(LifeEvent):
                 self.character.name,
                 self.new_residence.name,
             )
-        else:
+        elif self.old_residence:
             return "{} [@ {}] '{}' moved out of residence ({}).".format(
                 type(self).__name__,
                 str(self.timestamp),
                 self.character.name,
                 self.old_residence.name,
+            )
+        else:
+            return "{} [@ {}] '{}' moved residences.".format(
+                type(self).__name__,
+                str(self.timestamp),
+                self.character.name,
             )
 
 

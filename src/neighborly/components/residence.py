@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Optional, Type, TypedDict, final
+from typing import Any, ClassVar, Dict, Optional, TypedDict, final
 
 from ordered_set import OrderedSet
 

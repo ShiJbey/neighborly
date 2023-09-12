@@ -780,9 +780,11 @@ class Component(ABC):
         pass
 
     @classmethod
-    def create(cls: Type[_CT], gameobject: GameObject, **kwargs) -> _CT:
+    def create(cls: Type[_CT], gameobject: GameObject, **kwargs: Any) -> _CT:
         """Default factory method for constructing this component type."""
-        return cls(**kwargs)
+        component = cls(**kwargs)
+        component.gameobject = gameobject
+        return component
 
 
 class TagComponent(Component, ISerializable):
@@ -1141,11 +1143,11 @@ class SystemManager(SystemGroup):
         self.on_update(self._world)
 
 
-class IComponentFactory(Protocol[_CT]):
+class IComponentFactory(Protocol):
     """Abstract base class for factory object that create Component instances"""
 
     @abstractmethod
-    def __call__(self, gameobject: GameObject, **kwargs: Any) -> _CT:
+    def __call__(self, gameobject: GameObject, **kwargs: Any) -> Component:
         """
         Create an instance of a component
 
@@ -1757,7 +1759,7 @@ class GameObjectManager:
     def register_component(
         self,
         component_type: Type[_CT],
-        factory: Optional[IComponentFactory[_CT]] = None,
+        factory: Optional[IComponentFactory] = None,
     ) -> None:
         """Register a component class type with the engine.
 

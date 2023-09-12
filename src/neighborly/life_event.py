@@ -16,6 +16,7 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
+    cast,
 )
 
 import attrs
@@ -292,7 +293,7 @@ def event_role(name: str):
 def event_consideration():
     """A decorator to indicate that a static method is an event consideration."""
 
-    def decorator(fn: EventConsideration):
+    def decorator(fn: EventConsideration[_T]):
         return _EventConsiderationWrapper(fn)
 
     return decorator
@@ -315,7 +316,7 @@ class RandomLifeEventMeta(ABCMeta):
         return cls
 
     @staticmethod
-    def _detect_roles(cls: type) -> None:
+    def _detect_roles(clsType: type) -> None:
         """Detect static methods that use the event_role decorator
 
         Parameters
@@ -326,23 +327,23 @@ class RandomLifeEventMeta(ABCMeta):
         event_roles: List[_EventRoleWrapper] = []
 
         # Check the existing event role methods of the parents
-        for base_class in cls.__bases__:
+        for base_class in clsType.__bases__:
             for entry in getattr(base_class, "__event_roles__", ()):
                 if isinstance(entry, _EventRoleWrapper):
                     event_roles.append(entry)
 
         # Check the declared event role methods
-        for attr_name, attr_value in cls.__dict__.items():
+        for attr_name, attr_value in clsType.__dict__.items():
             if type(attr_value) == staticmethod:
-                attr = getattr(cls, attr_name)
+                attr = getattr(clsType, attr_name)
                 if isinstance(attr, _EventRoleWrapper):
                     event_roles.append(attr)
 
         # Set combined collection of event roles for the given type
-        setattr(cls, "__event_roles__", tuple(event_roles))
+        setattr(clsType, "__event_roles__", tuple(event_roles))
 
     @staticmethod
-    def _detect_considerations(cls: type) -> None:
+    def _detect_considerations(clsType: type) -> None:
         """Detect static methods that use the event_consideration decorator.
 
         Parameters
@@ -350,23 +351,27 @@ class RandomLifeEventMeta(ABCMeta):
         cls
             The class to process
         """
-        probability_modifiers: List[_EventConsiderationWrapper] = []
+        probability_modifiers: List[_EventConsiderationWrapper[Any]] = []
 
         # Check the existing probability modifiers in base classes
-        for base_class in cls.__bases__:
+        for base_class in clsType.__bases__:
             for entry in getattr(base_class, "probability_modifiers", []):
                 if isinstance(entry, _EventConsiderationWrapper):
-                    probability_modifiers.append(entry)
+                    probability_modifiers.append(
+                        cast(_EventConsiderationWrapper[Any], entry)
+                    )
 
         # Check the declared probability modifiers
-        for attr_name, attr_value in cls.__dict__.items():
+        for attr_name, attr_value in clsType.__dict__.items():
             if type(attr_value) == staticmethod:
-                attr = getattr(cls, attr_name)
+                attr = getattr(clsType, attr_name)
                 if isinstance(attr, _EventConsiderationWrapper):
-                    probability_modifiers.append(attr)
+                    probability_modifiers.append(
+                        cast(_EventConsiderationWrapper[Any], attr)
+                    )
 
         # Set combined collection of event roles for the given type
-        setattr(cls, "probability_modifiers", tuple(probability_modifiers))
+        setattr(clsType, "probability_modifiers", tuple(probability_modifiers))
 
 
 @attrs.define
@@ -401,7 +406,7 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
     base_probability: ClassVar[float] = 0.5
     """The base probability that this event will occur."""
 
-    probability_modifiers: ClassVar[List[EventConsideration]] = []
+    probability_modifiers: ClassVar[List[EventConsideration[Any]]] = []
     """Functions that return modifiers for the base probability."""
 
     __slots__ = "_roles"
@@ -534,26 +539,9 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
 
                     result = next(current_state.binding_generator)
 
-                    if isinstance(result, tuple):
-                        for gameobject in result:
-                            new_bound_roles.append(
-                                EventRole(
-                                    current_state.role_to_cast.name, gameobject
-                                )
-                            )
-
-                    elif isinstance(result, GameObject):
+                    for gameobject in result:
                         new_bound_roles.append(
-                            EventRole(
-                                current_state.role_to_cast.name, result
-                            )
-                        )
-
-                    else:
-                        raise TypeError(
-                            "Expected GameObject or tuple but was: {}".format(
-                                type(result)
-                            )
+                            EventRole(current_state.role_to_cast.name, gameobject)
                         )
 
                     new_bindings = EventRoleList(
@@ -585,26 +573,9 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
                     for result in current_state.binding_generator:
                         new_bound_roles: List[EventRole] = []
 
-                        if isinstance(result, tuple):
-                            for gameobject in result:
-                                new_bound_roles.append(
-                                    EventRole(
-                                        current_state.role_to_cast.name, gameobject
-                                    )
-                                )
-
-                        elif isinstance(result, GameObject):
+                        for gameobject in result:
                             new_bound_roles.append(
-                                EventRole(
-                                    current_state.role_to_cast.name, result
-                                )
-                            )
-
-                        else:
-                            raise TypeError(
-                                "Expected GameObject or tuple but was: {}".format(
-                                    type(result)
-                                )
+                                EventRole(current_state.role_to_cast.name, gameobject)
                             )
 
                         new_bindings = EventRoleList(
@@ -658,12 +629,12 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         """
 
         try:
-            bindings = next(cls._generate_role_bindings(world, bindings))
+            result = next(cls._generate_role_bindings(world, bindings))
             return cls(
                 world=world,
                 timestamp=world.resource_manager.get_resource(SimDateTime).copy(),
-                roles=bindings.bindings,
-                **bindings.data,
+                roles=result.bindings,
+                **result.data,
             )
         except StopIteration:
             return None
@@ -688,12 +659,12 @@ class RandomLifeEvent(LifeEvent, metaclass=RandomLifeEventMeta):
         Generator[RandomLifeEvent, None, None]
             An generator function that produces instance of this life event
         """
-        for bindings in cls._generate_role_bindings(world, bindings):
+        for results in cls._generate_role_bindings(world, bindings):
             yield cls(
                 world=world,
                 timestamp=world.resource_manager.get_resource(SimDateTime).copy(),
-                roles=bindings.bindings,
-                **bindings.data,
+                roles=results.bindings,
+                **results.data,
             )
 
 

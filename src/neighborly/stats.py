@@ -14,17 +14,14 @@ from __future__ import annotations
 import enum
 import math
 from abc import ABC
-from typing import Any, Dict, Iterator, List, Optional, Type, Generic, TypeVar
+from typing import Any, Dict, Iterator, List, Optional, Type
 
 import attrs
 
-from neighborly import Component
-from neighborly.ecs import ISerializable
-
-_ST = TypeVar("_ST", int, float)
+from neighborly.ecs import Component, ISerializable
 
 
-class Stat(Generic[_ST]):
+class Stat:
     """A stat such as strength, reputation, or attraction."""
 
     __slots__ = (
@@ -34,34 +31,34 @@ class Stat(Generic[_ST]):
         "_is_dirty",
     )
 
-    _base_value: _ST
+    _base_value: float
     """The base score for this stat used by modifiers."""
 
-    _value: _ST
+    _value: float
     """The final score of the stat clamped between the min and max values."""
 
     _modifiers: List[StatModifier]
     """Active stat modifiers."""
 
-    def __init__(self, base_value: _ST = 0.0) -> None:
+    def __init__(self, base_value: float = 0.0) -> None:
         self._base_value = base_value
         self._value = base_value
         self._modifiers = []
         self._is_dirty: bool = False
 
     @property
-    def base_value(self) -> _ST:
+    def base_value(self) -> float:
         """Get the base value of the relationship stat."""
         return self._base_value
 
     @base_value.setter
-    def base_value(self, value: _ST) -> None:
+    def base_value(self, value: float) -> None:
         """Set the base value of the relationship stat."""
         self._base_value = value
         self._is_dirty = True
 
     @property
-    def value(self) -> _ST:
+    def value(self) -> float:
         """Get the final calculated value of the stat."""
         if self._is_dirty:
             self._recalculate_value()
@@ -124,7 +121,7 @@ class Stat(Generic[_ST]):
     def _recalculate_value(self) -> None:
         """Recalculate the stat's value due to a previous change."""
 
-        final_value: _ST = self.base_value
+        final_value: float = self.base_value
         sum_percent_add: float = 0.0
 
         for i, modifier in enumerate(self._modifiers):
@@ -161,7 +158,7 @@ class Stat(Generic[_ST]):
         )
 
 
-class StatComponent(Component, ISerializable, Generic[_ST], ABC):
+class StatComponent(Component, ISerializable, ABC):
     """A stat such as strength, reputation, or attraction."""
 
     __slots__ = (
@@ -171,16 +168,16 @@ class StatComponent(Component, ISerializable, Generic[_ST], ABC):
         "_is_dirty",
     )
 
-    _base_value: _ST
+    _base_value: float
     """The base score for this stat used by modifiers."""
 
-    _value: _ST
+    _value: float
     """The final score of the stat clamped between the min and max values."""
 
     _modifiers: List[StatModifier]
     """Active stat modifiers."""
 
-    def __init__(self, base_value: _ST = 0.0) -> None:
+    def __init__(self, base_value: float = 0.0) -> None:
         super().__init__()
         self._base_value = base_value
         self._value = base_value
@@ -188,18 +185,18 @@ class StatComponent(Component, ISerializable, Generic[_ST], ABC):
         self._is_dirty: bool = False
 
     @property
-    def base_value(self) -> _ST:
+    def base_value(self) -> float:
         """Get the base value of the relationship stat."""
         return self._base_value
 
     @base_value.setter
-    def base_value(self, value: _ST) -> None:
+    def base_value(self, value: float) -> None:
         """Set the base value of the relationship stat."""
         self._base_value = value
         self._is_dirty = True
 
     @property
-    def value(self) -> _ST:
+    def value(self) -> float:
         """Get the final calculated value of the stat."""
         if self._is_dirty:
             self._recalculate_value()
@@ -305,7 +302,7 @@ class StatComponent(Component, ISerializable, Generic[_ST], ABC):
         )
 
 
-class ClampedStatComponent(StatComponent[_ST], ABC):
+class ClampedStatComponent(StatComponent, ABC):
     """A stat component with a value clamped between maximum and minimum values."""
 
     __slots__ = (
@@ -313,17 +310,17 @@ class ClampedStatComponent(StatComponent[_ST], ABC):
         "_max_value",
     )
 
-    _min_value: _ST
+    _min_value: float
     """The minimum score the overall stat is clamped to."""
 
-    _max_value: _ST
+    _max_value: float
     """The maximum score the overall stat is clamped to."""
 
     def __init__(
         self,
-        base_value: _ST,
-        min_value: _ST,
-        max_value: _ST,
+        base_value: float,
+        min_value: float,
+        max_value: float,
     ) -> None:
         super().__init__(base_value=base_value)
         self._min_value = min_value

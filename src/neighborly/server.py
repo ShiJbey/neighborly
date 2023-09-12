@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 from flask import Flask, abort, request
 from flask_cors import CORS
@@ -52,13 +52,22 @@ class GameObjectQuerySchema(Schema):
     components = fields.Str(required=True)
 
 
+class GameObjectResourceEntry(TypedDict):
+    guid: int
+    name: str
+
+
+class GameObjectResourceResponse(TypedDict):
+    gameobjects: List[GameObjectResourceEntry]
+
+
 class QueryGameObjectsResource(Resource):
     """Allow users to query for GameObjects based on component types."""
 
     world: World
     schema = GameObjectQuerySchema()
 
-    def get(self):
+    def get(self) -> GameObjectResourceResponse:
         errors = self.schema.validate(request.args)
         if errors:
             abort(400, str(errors))
@@ -76,11 +85,11 @@ class QueryGameObjectsResource(Resource):
             ]
         )
 
-        results = {
+        results: GameObjectResourceResponse = {
             "gameobjects": [
                 {
                     "guid": guid,
-                    "name": self.world.gameobject_manager.get_gameobject(guid).name,
+                    "name": self.world.gameobject_manager.get_gameobject(guid).name,  # type: ignore
                 }
                 for guid, _ in self.world.get_components(component_types)  # type: ignore
             ]

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [1.0.1]
+
+### Removed
+
+- Removed generic parameters from `IComponentFactory` and `Stat` classes.
+
 ## [1.0.0]
 
 Version 1.0.0 departs significantly from previous Neighborly releases. This version emphasizes simplicity, focusing

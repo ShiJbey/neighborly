@@ -121,7 +121,7 @@ class BreathingStyle(enum.Enum):
 
 
 @component(sim.world)
-class PowerLevel(ClampedStatComponent[int]):
+class PowerLevel(ClampedStatComponent):
     """The strength of a character when in battle."""
 
     MAX_VALUE: ClassVar[int] = 255
@@ -132,11 +132,9 @@ class PowerLevel(ClampedStatComponent[int]):
         )
 
     @classmethod
-    def create(cls, gameobject: GameObject, **kwargs) -> PowerLevel:
+    def create(cls, gameobject: GameObject, **kwargs: Any) -> PowerLevel:
         rng = gameobject.world.resource_manager.get_resource(random.Random)
-        base_value = kwargs.get(
-            "base_value", rng.randint(0, PowerLevel.MAX_VALUE - 50)
-        )
+        base_value = kwargs.get("base_value", rng.randint(0, PowerLevel.MAX_VALUE - 50))
         return PowerLevel(base_value=base_value)
 
 
@@ -190,7 +188,7 @@ class DemonSlayer(Component):
         }
 
     @classmethod
-    def create(cls, gameobject: GameObject, **kwargs) -> DemonSlayer:
+    def create(cls, gameobject: GameObject, **kwargs: Any) -> DemonSlayer:
         world = gameobject.world
         rng = world.resource_manager.get_resource(random.Random)
         breathing_style = rng.choice(list(BreathingStyle))
@@ -428,23 +426,28 @@ class DemonKingdom:
 ########################################
 
 
-def probability_of_winning(rating_a: int, rating_b: int) -> float:
+def probability_of_winning(rating_a: float, rating_b: float) -> float:
     """
     Return the probability of a defeating b
 
     Parameters
     ----------
-    rating_a: int
+    rating_a
         Rating of entity A
-    rating_b: int
+    rating_b
         Rating of entity B
+
+    Returns
+    -------
+    float
+        The probability of a defeating b
     """
     return 1.0 / (1 + math.pow(10, (rating_a - rating_b) / PowerLevel.MAX_VALUE))
 
 
 def update_power_level(
-    winner_rating: int,
-    loser_rating: int,
+    winner_rating: float,
+    loser_rating: float,
     winner_expectation: float,
     loser_expectation: float,
     k: int = 16,
@@ -650,7 +653,7 @@ class DemonSlayerPromotion(RandomLifeEvent):
 
         if matches:
             for m in matches:
-                yield m
+                yield m,
 
         return None
 
@@ -686,7 +689,7 @@ class DemonChallengeForPower(RandomLifeEvent):
         rng = ctx.world.resource_manager.get_resource(random.Random)
         rng.shuffle(matches)
         for m in matches:
-            yield m
+            yield m,
 
         return
 
@@ -720,7 +723,7 @@ class DemonChallengeForPower(RandomLifeEvent):
         rng.shuffle(matches)
 
         for m in matches:
-            yield m
+            yield m,
 
         return None
 
@@ -757,7 +760,7 @@ class DevourHuman(RandomLifeEvent):
         rng.shuffle(candidates)
 
         for c in candidates:
-            yield c
+            yield c,
 
         return
 
@@ -803,7 +806,7 @@ class DevourHuman(RandomLifeEvent):
         rng.shuffle(matches)
 
         for m in matches:
-            yield m
+            yield m,
 
         return
 
@@ -835,7 +838,7 @@ class Battle(RandomLifeEvent):
         rng = ctx.world.resource_manager.get_resource(random.Random)
         rng.shuffle(candidates)
         for c in candidates:
-            yield c
+            yield c,
 
         return
 
@@ -853,7 +856,7 @@ class Battle(RandomLifeEvent):
         rng.shuffle(candidates)
 
         for c in candidates:
-            yield c
+            yield c,
 
         return None
 
@@ -873,7 +876,7 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
         rng = ctx.world.resource_manager.get_resource(random.Random)
         rng.shuffle(candidates)
         for c in candidates:
-            yield (c, )
+            yield (c,)
 
         return
 
@@ -917,7 +920,7 @@ class TurnSomeoneIntoDemon(RandomLifeEvent):
         rng = ctx.world.resource_manager.get_resource(random.Random)
         rng.shuffle(matches)
         for m in matches:
-            yield m
+            yield m,
 
         return None
 
@@ -978,7 +981,7 @@ class PromotionToLowerMoon(RandomLifeEvent):
         rng = ctx.world.resource_manager.get_resource(random.Random)
         rng.shuffle(matches)
         for m in matches:
-            yield m
+            yield m,
 
         return None
 
@@ -1022,7 +1025,7 @@ class PromotionToUpperMoon(RandomLifeEvent):
         rng.shuffle(matches)
 
         for m in matches:
-            yield m
+            yield m,
 
         return
 

@@ -164,11 +164,6 @@ class CharacterType(TagComponent, ABC):
     def _instantiate(
         cls,
         world: World,
-        first_name: str = "",
-        last_name: str = "",
-        age: Optional[int] = None,
-        life_stage: Optional[LifeStageType] = None,
-        gender: Optional[Type[GenderType]] = None,
         **kwargs: Any,
     ) -> GameObject:
         """Creates a new character instance.
@@ -177,16 +172,6 @@ class CharacterType(TagComponent, ABC):
         ----------
         world
             The world to spawn the character into
-        first_name
-            Optional first name override
-        last_name
-            Optional lasT name override
-        age
-            Optional age override
-        life_stage
-            Optional life stage override
-        gender
-            Optional gender override
         **kwargs
             Additional keyword arguments
         """
@@ -216,21 +201,21 @@ class CharacterType(TagComponent, ABC):
         return character
 
 
-class Health(ClampedStatComponent[int]):
+class Health(ClampedStatComponent):
     """The amount of health a character has. characters die when this reaches zero."""
 
-    def __init__(self, max_value: int) -> None:
+    def __init__(self, max_value: float) -> None:
         super().__init__(base_value=max_value, max_value=max_value, min_value=0)
 
 
-class HealthDecay(StatComponent[int]):
+class HealthDecay(StatComponent):
     """A potential amount of life lost by in adulthood characters after adolescence."""
 
     def __init__(self, base_value: float = 0) -> None:
         super().__init__(base_value=base_value)
 
 
-class HealthDecayChance(ClampedStatComponent[float]):
+class HealthDecayChance(ClampedStatComponent):
     """A potential amount of life lost by in adulthood characters after adolescence."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -291,14 +276,14 @@ class CanGetOthersPregnant(ITrait):
         )
 
 
-class Fertility(ClampedStatComponent[float]):
+class Fertility(ClampedStatComponent):
     """Probability of this character having a child."""
 
     def __init__(self, base_value: float) -> None:
         super().__init__(base_value=base_value, max_value=1.0, min_value=0)
 
 
-class FertilityDecay(StatComponent[float]):
+class FertilityDecay(StatComponent):
     """Reduction in fertility each year."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -546,9 +531,8 @@ class Virtues(Component, ISerializable):
             # Using an unknown virtue doesn't break anything, but we should log it
             _logger.warning(f"Unrecognized Virtues initialization '{initialization}'")
 
-        if overrides is not None:
-            # Override any values with manually-specified values
-            values_overrides = {**values_overrides, **overrides}
+        # Override any values with manually-specified values
+        values_overrides = {**values_overrides, **overrides}
 
         return Virtues(values_overrides)
 
@@ -770,7 +754,7 @@ class Asexual(ITrait):
             )
 
 
-class Boldness(ClampedStatComponent[int]):
+class Boldness(ClampedStatComponent):
     """A measure of a character's ambitiousness."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -783,7 +767,7 @@ class Boldness(ClampedStatComponent[int]):
         return cls(base_value=base_value)
 
 
-class Compassion(ClampedStatComponent[int]):
+class Compassion(ClampedStatComponent):
     """A measure of how compassionate character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -796,7 +780,7 @@ class Compassion(ClampedStatComponent[int]):
         return cls(base_value=base_value)
 
 
-class Greed(ClampedStatComponent[int]):
+class Greed(ClampedStatComponent):
     """A measure of how greedy a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -809,7 +793,7 @@ class Greed(ClampedStatComponent[int]):
         return cls(base_value=base_value)
 
 
-class Honor(ClampedStatComponent[int]):
+class Honor(ClampedStatComponent):
     """A measure of how honorable a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -822,7 +806,7 @@ class Honor(ClampedStatComponent[int]):
         return cls(base_value=base_value)
 
 
-class Sociability(ClampedStatComponent[int]):
+class Sociability(ClampedStatComponent):
     """A measure of how socially-inclined or extroverted a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -835,7 +819,7 @@ class Sociability(ClampedStatComponent[int]):
         return cls(base_value=base_value)
 
 
-class Vengefulness(ClampedStatComponent[int]):
+class Vengefulness(ClampedStatComponent):
     """A measure of how much a character holds grudges."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -848,7 +832,7 @@ class Vengefulness(ClampedStatComponent[int]):
         return cls(base_value=base_value)
 
 
-class Attractiveness(ClampedStatComponent[int]):
+class Attractiveness(ClampedStatComponent):
     """Tracks how visually attractive a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -861,7 +845,7 @@ class Attractiveness(ClampedStatComponent[int]):
         return cls(base_value=base_value)
 
 
-class SocialInfluence(ClampedStatComponent[int]):
+class SocialInfluence(ClampedStatComponent):
     """A measure of how honorable a character is."""
 
     def __init__(self, base_value: float = 0) -> None:
@@ -952,13 +936,17 @@ class Immortal(ITrait):
 
         if len(parents_with_trait) >= 2:
             return StatModifier(50, StatModifierType.PercentAdd)
+        else:
+            return StatModifier(0, StatModifierType.PercentAdd)
 
 
 class BaseCharacter(CharacterType):
     base_components: ClassVar[Dict[Union[str, Type[Component]], Dict[str, Any]]] = {}
 
     @classmethod
-    def add_default_component(cls, component_type: Type[Component], **kwargs) -> None:
+    def add_default_component(
+        cls, component_type: Type[Component], **kwargs: Any
+    ) -> None:
         """Add a new component to the default set of component all characters have.
 
         Parameters

@@ -1,4 +1,4 @@
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 from neighborly.components.residence import BaseResidence
 from neighborly.components.shared import Building, Location, Position2D
@@ -26,7 +26,8 @@ class House(BaseResidence):
 
         building_map = world.resource_manager.get_resource(BuildingMap)
 
-        lot: Tuple[int, int] = kwargs.get("lot")
+        lot: Optional[Tuple[int, int]] = kwargs.get("lot")
+
         if lot is None:
             raise TypeError(
                 "{}.instantiate is missing required keyword argument: 'lot'.".format(

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import random
 import re
-from typing import ClassVar, List, Optional, TypedDict
+from typing import ClassVar, List, Optional, TypedDict, cast
 
 import pandas as pd
 
@@ -50,7 +50,7 @@ class CharacterSpawnTable:
         self._table = pd.DataFrame(columns=CharacterSpawnTable._TABLE_SCHEMA)
 
         if entries:
-            self._table = pd.DataFrame.from_records(
+            self._table = pd.DataFrame.from_records(  # type: ignore
                 entries, columns=CharacterSpawnTable._TABLE_SCHEMA
             )
 
@@ -62,14 +62,14 @@ class CharacterSpawnTable:
         entry
             Row data.
         """
-        new_data = pd.DataFrame.from_records(
+        new_data = pd.DataFrame.from_records(  # type: ignore
             [entry], columns=CharacterSpawnTable._TABLE_SCHEMA
         )
 
         if entry["name"] in self._table["name"]:
-            self._table.update(new_data)
+            self._table.update(new_data)  # type: ignore
         else:
-            self._table = pd.concat([self._table, new_data])
+            self._table = pd.concat([self._table, new_data])  # type: ignore
 
     def choose_random(self, rng: random.Random) -> str:
         """Performs a weighted random selection across all entries.
@@ -89,8 +89,8 @@ class CharacterSpawnTable:
             raise IndexError("Character spawn table is empty")
 
         return rng.choices(
-            population=self._table["name"].to_list(),
-            weights=self._table["spawn_frequency"].to_list(),
+            population=self._table["name"].to_list(),  # type: ignore
+            weights=self._table["spawn_frequency"].to_list(),  # type: ignore
             k=1,
         )[0]
 
@@ -110,10 +110,9 @@ class CharacterSpawnTable:
 
         matches: List[str] = []
 
-        name: str  # Type hint the loop variable
-        for name in self._table["name"]:
-            if any([re.match(p, name) for p in patterns]):
-                matches.append(name)
+        names: List[str] = self._table["name"].to_list()
+
+        matches = [name for name in names if any([re.match(p, name) for p in patterns])]
 
         return matches
 
@@ -183,15 +182,15 @@ class BusinessSpawnTable:
         entry
             Row data
         """
-        new_data = pd.DataFrame.from_records(
+        new_data = pd.DataFrame.from_records(  # type: ignore
             [{**entry, "instances": 0}],
             columns=BusinessSpawnTable._TABLE_SCHEMA,
         )
 
         if entry["name"] in self._table["name"]:
-            self._table.update(new_data)
+            self._table.update(new_data)  # type: ignore
         else:
-            self._table = pd.concat([self._table, new_data])
+            self._table = pd.concat([self._table, new_data])  # type: ignore
 
     def increment_count(self, name: str) -> None:
         """Increment the instance count for an entry.
@@ -214,7 +213,9 @@ class BusinessSpawnTable:
         self._table.loc[self._table["name"] == name, "instances"] -= 1
 
     def get_frequency(self, name: str) -> int:
-        return self._table.loc[self._table["name"] == name, "spawn_frequency"].item()
+        return cast(
+            int, self._table.loc[self._table["name"] == name, "spawn_frequency"].item()
+        )
 
     def choose_random(self, world: World) -> Optional[str]:
         """Randomly choose entry that may be built in the given settlement.
@@ -245,10 +246,13 @@ class BusinessSpawnTable:
             & (self._table["year_obsolete"] > date.year)
         ]
 
+        names: List[str] = self._table["name"].to_list()
+        weights: List[int] = self._table["spawn_frequency"].to_list()
+
         if len(eligible_entries) > 0:
             return rng.choices(
-                population=self._table["name"].to_list(),
-                weights=self._table["spawn_frequency"].to_list(),
+                population=names,
+                weights=weights,
                 k=1,
             )[0]
 
@@ -266,7 +270,9 @@ class BusinessSpawnTable:
             & (self._table["year_obsolete"] > date.year)
         ]
 
-        return eligible_entries["name"].to_list()
+        names: List[str] = eligible_entries["name"].to_list()
+
+        return names
 
     def get_matching_names(self, *patterns: str) -> List[str]:
         """Get all entries with names that match the given regex strings.
@@ -284,9 +290,9 @@ class BusinessSpawnTable:
 
         matches: List[str] = []
 
-        for name in self._table["name"]:
-            if any([re.match(p, name) for p in patterns]):
-                matches.append(name)
+        names: List[str] = self._table["name"].to_list()
+
+        matches = [name for name in names if any([re.match(p, name) for p in patterns])]
 
         return matches
 
@@ -337,14 +343,14 @@ class ResidenceSpawnTable:
         entry
             Row data.
         """
-        new_data = pd.DataFrame.from_records(
+        new_data = pd.DataFrame.from_records(  # type: ignore
             [entry], columns=ResidenceSpawnTable._TABLE_SCHEMA
         )
 
         if entry["name"] in self._table["name"]:
-            self._table.update(new_data)
+            self._table.update(new_data)  # type: ignore
         else:
-            self._table = pd.concat([self._table, new_data])
+            self._table = pd.concat([self._table, new_data])  # type: ignore
 
     def choose_random(self, rng: random.Random) -> str:
         """Performs a weighted random selection across all entries.
@@ -363,9 +369,12 @@ class ResidenceSpawnTable:
         if len(self._table) == 0:
             raise IndexError("Residence spawn table is empty")
 
+        names: List[str] = self._table["name"].to_list()
+        weights: List[int] = self._table["spawn_frequency"].to_list()
+
         return rng.choices(
-            population=self._table["name"].to_list(),
-            weights=self._table["spawn_frequency"].to_list(),
+            population=names,
+            weights=weights,
             k=1,
         )[0]
 
@@ -385,10 +394,9 @@ class ResidenceSpawnTable:
 
         matches: List[str] = []
 
-        name: str  # Type hint the loop variable
-        for name in self._table["name"]:
-            if any([re.match(p, name) for p in patterns]):
-                matches.append(name)
+        names: List[str] = self._table["name"].to_list()
+
+        matches = [name for name in names if any([re.match(p, name) for p in patterns])]
 
         return matches
 

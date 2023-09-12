@@ -474,7 +474,7 @@ def get_places_with_services(world: World, services: ServiceType) -> List[GameOb
     """
     matches: List[GameObject] = []
 
-    for gid, services_component, _ in world.get_components((Services, Active)):
+    for gid, (services_component, _) in world.get_components((Services, Active)):
         if services in services_component:
             matches.append(world.gameobject_manager.get_gameobject(gid))
 

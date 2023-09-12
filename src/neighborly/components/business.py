@@ -663,7 +663,8 @@ class BaseBusiness(BusinessType):
             BusinessSpawnTable
         )
 
-        lot: Tuple[int, int] = kwargs.get("lot")
+        lot: Optional[Tuple[int, int]] = kwargs.get("lot")
+
         if lot is None:
             raise TypeError(
                 "{}.instantiate is missing required keyword argument: 'lot'.".format(
