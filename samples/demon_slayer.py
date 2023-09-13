@@ -30,25 +30,20 @@ import enum
 import math
 import random
 import time
-from typing import Any, Dict, Generator, List, Optional, Tuple, ClassVar
+from typing import Any, ClassVar, Dict, Generator, List, Optional, Tuple
 
 from ordered_set import OrderedSet
 
-from neighborly import (
-    Neighborly,
-    NeighborlyConfig,
-    SimDateTime,
-    System,
-)
+from neighborly import Neighborly, NeighborlyConfig, SimDateTime, System
 from neighborly.components.character import (
+    BaseCharacter,
     CanAge,
     CanGetPregnant,
+    Fertility,
     GameCharacter,
     Immortal,
     LifeStage,
     LifeStageType,
-    Fertility,
-    BaseCharacter,
 )
 from neighborly.components.shared import FrequentedLocations
 from neighborly.decorators import (
@@ -64,9 +59,9 @@ from neighborly.exporter import export_to_json
 from neighborly.life_event import (
     EventBindingContext,
     EventHistory,
+    EventLog,
     RandomLifeEvent,
     event_role,
-    EventLog,
 )
 from neighborly.settlement import Settlement
 from neighborly.stats import ClampedStatComponent, StatModifier, StatModifierType

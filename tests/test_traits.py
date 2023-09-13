@@ -1,5 +1,5 @@
 from neighborly import Neighborly
-from neighborly.components.character import Immortal, HealthDecay
+from neighborly.components.character import HealthDecay, Immortal
 from neighborly.stats import Stats
 from neighborly.traits import Traits
 

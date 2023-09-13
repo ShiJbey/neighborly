@@ -267,8 +267,23 @@ class BuildingMap(ISerializable):
 
     def to_dict(self) -> Dict[str, Any]:
         """Serializes the map to a dictionary."""
+
+        buildings: List[Dict[str, Any]] = []
+
+        for pos in sorted(self._occupied):
+            building = self._grid[pos]
+
+            if building is not None:
+                buildings.append(
+                    {
+                        "x": pos[0],
+                        "y": pos[1],
+                        "building": building.uid,
+                    }
+                )
+
         return {
             "width": self.get_size()[0],
             "height": self.get_size()[1],
-            "cells": [cell.uid if cell else -1 for cell in self._grid.get_cells()],
+            "buildings": buildings,
         }

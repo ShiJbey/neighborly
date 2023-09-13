@@ -16,7 +16,7 @@ from neighborly.exporter import export_to_json
 from neighborly.settlement import Settlement
 from neighborly.simulation import Neighborly
 
-EXPORT_WORLD = False
+EXPORT_WORLD = True
 
 sim = Neighborly(
     NeighborlyConfig.parse_obj(
