@@ -35,8 +35,8 @@ class SpiderManBossFight(RandomLifeEvent):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "hero": self.roles.get_first("hero"),
-            "villain": self.roles.get_first("villain"),
+            "hero": self.roles.get_first("hero").uid,
+            "villain": self.roles.get_first("villain").uid,
         }
 
     def execute(self) -> None:

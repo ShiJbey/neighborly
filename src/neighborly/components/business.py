@@ -719,7 +719,7 @@ class BusinessClosedEvent(LifeEvent):
         self.business.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "business": self.business}
+        return {**super().to_dict(), "business": self.business.uid}
 
     def __str__(self) -> str:
         return "{} [@ {}] {} closed for business".format(

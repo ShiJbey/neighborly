@@ -631,7 +631,7 @@ class Gender(Component, ISerializable):
         return f"{type(self).__name__}({type(self.gender_type).__name__})"
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"gender": {type(self.gender_type).__name__}}
+        return {"gender": type(self.gender_type).__name__}
 
 
 class GenderType(TagComponent, ABC):

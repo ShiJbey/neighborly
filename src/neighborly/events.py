@@ -129,7 +129,7 @@ class BirthEvent(LifeEvent):
         self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "character": self.character}
+        return {**super().to_dict(), "character": self.character.uid}
 
 
 class HaveChildEvent(LifeEvent):
@@ -164,9 +164,9 @@ class HaveChildEvent(LifeEvent):
     def to_dict(self) -> Dict[str, Any]:
         return {
             **super().to_dict(),
-            "birthing_parent": self.birthing_parent,
-            "other_parent": self.other_parent,
-            "baby": self.baby,
+            "birthing_parent": self.birthing_parent.uid,
+            "other_parent": self.other_parent.uid,
+            "baby": self.baby.uid,
         }
 
 
@@ -342,7 +342,7 @@ class BecomeAdolescentEvent(LifeEvent):
         self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "character": self.character}
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return "{} [@ {}] {} became a adolescent.".format(
@@ -372,7 +372,7 @@ class BecomeYoungAdultEvent(LifeEvent):
         self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "character": self.character}
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return "{} [@ {}] {} became a young adult.".format(
@@ -402,7 +402,7 @@ class BecomeAdultEvent(LifeEvent):
         self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "character": self.character}
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return "{} [@ {}] {} became an adult.".format(
@@ -432,7 +432,7 @@ class BecomeSeniorEvent(LifeEvent):
         self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "character": self.character}
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return "{} [@ {}] {} became a senior.".format(
@@ -461,7 +461,7 @@ class DeathEvent(LifeEvent):
         self.character.get_component(EventHistory).append(self)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {**super().to_dict(), "character": self.character}
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return "{} [@ {}] {} died.".format(
