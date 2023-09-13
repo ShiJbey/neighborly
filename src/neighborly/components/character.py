@@ -27,15 +27,20 @@ import attrs
 import numpy as np
 from numpy import typing as npt
 
-from neighborly import Event
 from neighborly.ai.brain import AIBrain, Goals
 from neighborly.components.business import WorkHistory
 from neighborly.components.shared import Age, FrequentedLocations, Lifespan
-from neighborly.ecs import Component, GameObject, ISerializable, TagComponent, World
+from neighborly.ecs import (
+    Event,
+    Component,
+    GameObject,
+    ISerializable,
+    TagComponent,
+    World,
+)
 from neighborly.life_event import EventHistory
 from neighborly.relationship import (
     Relationship,
-    RelationshipCreatedEvent,
     Relationships,
     RomanticCompatibility,
 )
@@ -683,75 +688,115 @@ class SexualOrientation(ITrait, ABC):
 
 
 class Homosexual(ITrait):
-    @classmethod
-    def on_register(cls, world: World) -> None:
-        super().on_register(world)
-        world.event_manager.on_event(
-            RelationshipCreatedEvent, Homosexual.add_attraction_buff
+    def on_add(self) -> None:
+        super().on_add()
+
+        self.gameobject.get_component(Relationships).on_relationship_created.subscribe(
+            self.add_attraction_buff
         )
 
-    @staticmethod
-    def add_attraction_buff(event: RelationshipCreatedEvent) -> None:
-        if event.owner.has_component(Homosexual):
-            if isinstance(
-                event.owner.get_component(Gender).gender_type,
-                type(event.target.get_component(Gender).gender_type),
-            ):
-                event.relationship.get_component(RomanticCompatibility).add_modifier(
-                    StatModifier(4, StatModifierType.Flat)
-                )
+    def on_remove(self) -> None:
+        super().on_remove()
 
-            if not isinstance(
-                event.owner.get_component(Gender).gender_type,
-                type(event.target.get_component(Gender).gender_type),
-            ):
-                event.relationship.get_component(RomanticCompatibility).add_modifier(
-                    StatModifier(-4, StatModifierType.Flat)
-                )
+        self.gameobject.get_component(
+            Relationships
+        ).on_relationship_created.unsubscribe(self.add_attraction_buff)
+
+        for _, relationship in self.gameobject.get_component(
+            Relationships
+        ).iter_relationships():
+            relationship.get_component(
+                RomanticCompatibility
+            ).remove_modifiers_from_source(self)
+
+    def add_attraction_buff(self, relationship: GameObject) -> None:
+        target = relationship.get_component(Relationship).target
+
+        if isinstance(
+            self.gameobject.get_component(Gender).gender_type,
+            type(target.get_component(Gender).gender_type),
+        ):
+            relationship.get_component(RomanticCompatibility).add_modifier(
+                StatModifier(4, StatModifierType.Flat, source=self)
+            )
+
+        if not isinstance(
+            self.gameobject.get_component(Gender).gender_type,
+            type(target.get_component(Gender).gender_type),
+        ):
+            relationship.get_component(RomanticCompatibility).add_modifier(
+                StatModifier(-4, StatModifierType.Flat, source=self)
+            )
 
 
 class Heterosexual(ITrait):
-    @classmethod
-    def on_register(cls, world: World) -> None:
-        super().on_register(world)
-        world.event_manager.on_event(
-            RelationshipCreatedEvent, Heterosexual.add_attraction_buff
+    def on_add(self) -> None:
+        super().on_add()
+
+        self.gameobject.get_component(Relationships).on_relationship_created.subscribe(
+            self.add_attraction_buff
         )
 
-    @staticmethod
-    def add_attraction_buff(event: RelationshipCreatedEvent) -> None:
-        if event.owner.has_component(Heterosexual):
-            if isinstance(
-                event.owner.get_component(Gender).gender_type,
-                type(event.target.get_component(Gender).gender_type),
-            ):
-                event.relationship.get_component(RomanticCompatibility).add_modifier(
-                    StatModifier(-4, StatModifierType.Flat)
-                )
+    def on_remove(self) -> None:
+        super().on_remove()
 
-            if not isinstance(
-                event.owner.get_component(Gender).gender_type,
-                type(event.target.get_component(Gender).gender_type),
-            ):
-                event.relationship.get_component(RomanticCompatibility).add_modifier(
-                    StatModifier(4, StatModifierType.Flat)
-                )
+        self.gameobject.get_component(
+            Relationships
+        ).on_relationship_created.unsubscribe(self.add_attraction_buff)
+
+        for _, relationship in self.gameobject.get_component(
+            Relationships
+        ).iter_relationships():
+            relationship.get_component(
+                RomanticCompatibility
+            ).remove_modifiers_from_source(self)
+
+    def add_attraction_buff(self, relationship: GameObject) -> None:
+        target = relationship.get_component(Relationship).target
+
+        if isinstance(
+            self.gameobject.get_component(Gender).gender_type,
+            type(target.get_component(Gender).gender_type),
+        ):
+            relationship.get_component(RomanticCompatibility).add_modifier(
+                StatModifier(-4, StatModifierType.Flat, source=self)
+            )
+
+        if not isinstance(
+            self.gameobject.get_component(Gender).gender_type,
+            type(target.get_component(Gender).gender_type),
+        ):
+            relationship.get_component(RomanticCompatibility).add_modifier(
+                StatModifier(4, StatModifierType.Flat, source=self)
+            )
 
 
 class Asexual(ITrait):
-    @classmethod
-    def on_register(cls, world: World) -> None:
-        super().on_register(world)
-        world.event_manager.on_event(
-            RelationshipCreatedEvent, Asexual.add_attraction_buff
+    def on_add(self) -> None:
+        super().on_add()
+        self.gameobject.get_component(Relationships).on_relationship_created.subscribe(
+            self.add_romantic_compatibility_buff
         )
 
-    @staticmethod
-    def add_attraction_buff(event: RelationshipCreatedEvent) -> None:
-        if event.owner.has_component(Asexual):
-            event.relationship.get_component(RomanticCompatibility).add_modifier(
-                StatModifier(-10, StatModifierType.Flat)
-            )
+    def on_remove(self) -> None:
+        super().on_remove()
+
+        self.gameobject.get_component(
+            Relationships
+        ).on_relationship_created.unsubscribe(self.add_romantic_compatibility_buff)
+
+        # Remove all romantic compatibility modifiers from this trait
+        for _, relationship in self.gameobject.get_component(
+            Relationships
+        ).iter_relationships():
+            relationship.get_component(
+                RomanticCompatibility
+            ).remove_modifiers_from_source(self)
+
+    def add_romantic_compatibility_buff(self, relationship: GameObject) -> None:
+        relationship.get_component(RomanticCompatibility).add_modifier(
+            StatModifier(-10, StatModifierType.Flat, source=self)
+        )
 
 
 class Boldness(ClampedStatComponent):
@@ -764,7 +809,7 @@ class Boldness(ClampedStatComponent):
     def create(cls, gameobject: GameObject, **kwargs: Any):
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
-        return cls(base_value=base_value)
+        return super().create(gameobject, base_value=base_value)
 
 
 class Compassion(ClampedStatComponent):
@@ -777,7 +822,7 @@ class Compassion(ClampedStatComponent):
     def create(cls, gameobject: GameObject, **kwargs: Any):
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
-        return cls(base_value=base_value)
+        return super().create(gameobject, base_value=base_value)
 
 
 class Greed(ClampedStatComponent):
@@ -790,7 +835,7 @@ class Greed(ClampedStatComponent):
     def create(cls, gameobject: GameObject, **kwargs: Any):
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
-        return cls(base_value=base_value)
+        return super().create(gameobject, base_value=base_value)
 
 
 class Honor(ClampedStatComponent):
@@ -803,7 +848,7 @@ class Honor(ClampedStatComponent):
     def create(cls, gameobject: GameObject, **kwargs: Any):
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
-        return cls(base_value=base_value)
+        return super().create(gameobject, base_value=base_value)
 
 
 class Sociability(ClampedStatComponent):
@@ -816,7 +861,7 @@ class Sociability(ClampedStatComponent):
     def create(cls, gameobject: GameObject, **kwargs: Any):
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
-        return cls(base_value=base_value)
+        return super().create(gameobject, base_value=base_value)
 
 
 class Vengefulness(ClampedStatComponent):
@@ -829,7 +874,7 @@ class Vengefulness(ClampedStatComponent):
     def create(cls, gameobject: GameObject, **kwargs: Any):
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
-        return cls(base_value=base_value)
+        return super().create(gameobject, base_value=base_value)
 
 
 class Attractiveness(ClampedStatComponent):
@@ -842,7 +887,7 @@ class Attractiveness(ClampedStatComponent):
     def create(cls, gameobject: GameObject, **kwargs: Any):
         rng = gameobject.world.resource_manager.get_resource(random.Random)
         base_value = float(kwargs.get("base_value", rng.randint(0, 255)))
-        return cls(base_value=base_value)
+        return super().create(gameobject, base_value=base_value)
 
 
 class SocialInfluence(ClampedStatComponent):
@@ -850,11 +895,6 @@ class SocialInfluence(ClampedStatComponent):
 
     def __init__(self, base_value: float = 0) -> None:
         super().__init__(base_value=base_value, max_value=10, min_value=0)
-
-    @classmethod
-    def create(cls, gameobject: GameObject, **kwargs: Any):
-        base_value = kwargs.get("base_value", 0)
-        return cls(base_value=base_value)
 
 
 class LifeStageType(enum.IntEnum):

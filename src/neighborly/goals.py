@@ -640,14 +640,14 @@ class GetMarried(GoalNode):
     def get_utility(self) -> Dict[GameObject, float]:
         initiator_to_target_romance = float(
             self.character.get_component(Relationships)
-            .outgoing[self.partner]
+            .get_relationship(self.partner)
             .get_component(Romance)
             .value
         )
 
         target_to_initiator_romance = float(
             self.partner.get_component(Relationships)
-            .outgoing[self.character]
+            .get_relationship(self.character)
             .get_component(Romance)
             .value
         )
@@ -1037,14 +1037,14 @@ class AskOut(GoalNode):
     def get_utility(self) -> Dict[GameObject, float]:
         initiator_to_target_romance = float(
             self.initiator.get_component(Relationships)
-            .outgoing[self.target]
+            .get_relationship(self.target)
             .get_component(Romance)
             .value
         )
 
         target_to_initiator_romance = float(
             self.target.get_component(Relationships)
-            .outgoing[self.initiator]
+            .get_relationship(self.initiator)
             .get_component(Romance)
             .value
         )
@@ -1132,12 +1132,9 @@ class FindRomance(GoalNode):
         ).settings.get("dating_romance_threshold", 25)
 
         # This character should try asking out another character
-        candidates = [c for c in self.character.get_component(Relationships).outgoing]
-
         actions: WeightedList[GoalNode] = WeightedList()
 
-        for other in candidates:
-            outgoing_relationship = get_relationship(self.character, other)
+        for other, outgoing_relationship in self.character.get_component(Relationships).iter_relationships():
 
             outgoing_romance = outgoing_relationship.get_component(Romance)
 

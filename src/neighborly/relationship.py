@@ -17,10 +17,10 @@ from typing import Any, ClassVar, Dict, Iterator, List, Protocol, Type, Union
 
 from ordered_set import OrderedSet
 
-from neighborly import Event
 from neighborly.ecs import Component, GameObject, ISerializable, World
 from neighborly.stats import ClampedStatComponent, StatComponent, Stats
 from neighborly.statuses import Statuses
+from neighborly.utils.event_emitter import EventEmitter
 
 
 class Friendship(ClampedStatComponent):
@@ -95,14 +95,6 @@ class Relationship(Component, ISerializable):
     def relationship_type(self):
         return self._relationship_type
 
-    def on_add(self) -> None:
-        self.owner.get_component(Relationships).outgoing[self.target] = self.gameobject
-        self.target.get_component(Relationships).incoming[self.owner] = self.gameobject
-
-    def on_remove(self) -> None:
-        del self.owner.get_component(Relationships).outgoing[self.target]
-        del self.target.get_component(Relationships).incoming[self.owner]
-
     def add_rule(self, rule: ISocialRule) -> None:
         """Apply a social rule to the relationship."""
         self._active_rules.append(rule)
@@ -142,101 +134,45 @@ class Relationships(Component, ISerializable):
     This component helps build a directed graph structure within the ECS.
     """
 
-    __slots__ = "incoming", "outgoing"
+    __slots__ = "_incoming", "_outgoing"
 
-    incoming: Dict[GameObject, GameObject]
+    _incoming: Dict[GameObject, GameObject]
     """Relationship owners mapped to the Relationship GameObjects."""
 
-    outgoing: Dict[GameObject, GameObject]
+    _outgoing: Dict[GameObject, GameObject]
     """Relationship targets mapped to the Relationship GameObjects."""
+
+    _on_relationship_created: EventEmitter[GameObject]
+    """Emits events when a new relationship is created."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.incoming = {}
-        self.outgoing = {}
+        self._incoming = {}
+        self._outgoing = {}
+        self._on_relationship_created = EventEmitter()
 
-    def add_incoming(self, owner: GameObject, relationship: GameObject) -> None:
-        """Add a new incoming relationship.
-
-        Parameters
-        ----------
-        owner
-            The relationship owner.
-        relationship
-            The relationship.
-        """
-        self.incoming[owner] = relationship
-
-    def remove_incoming(self, owner: GameObject) -> bool:
-        """Remove an incoming relationship
-
-        Parameters
-        ----------
-        owner
-            The owner of the relationship
-
-        Returns
-        -------
-        bool
-            True if a relationship was removed. False otherwise
-        """
-        if owner in self.incoming:
-            relationship = self.incoming[owner]
-            relationship.destroy()
-            del self.incoming[owner]
-            return True
-        return False
-
-    def add_outgoing(self, target: GameObject, relationship: GameObject) -> None:
-        """Add a new outgoing relationship.
-
-        Parameters
-        ----------
-        target
-            The relationship target.
-        relationship
-            The relationship.
-        """
-        self.outgoing[target] = relationship
-
-    def remove_outgoing(self, target: GameObject) -> bool:
-        """Remove an outgoing relationship.
-
-        Parameters
-        ----------
-        target
-            The target of the outgoing relationship
-
-        Returns
-        -------
-        bool
-            True if a relationship was removed. False otherwise.
-        """
-        if target in self.outgoing:
-            relationship = self.outgoing[target]
-            relationship.destroy()
-            del self.outgoing[target]
-            return True
-        return False
+    @property
+    def on_relationship_created(self) -> EventEmitter[GameObject]:
+        return self._on_relationship_created
 
     def on_deactivate(self) -> None:
         # When this component's GameObject becomes inactive, deactivate all the incoming
         # and outgoing relationship GameObjects too.
 
-        for _, relationship in self.outgoing.items():
+        for _, relationship in self._outgoing.items():
             relationship.deactivate()
 
-        for _, relationship in self.incoming.items():
+        for _, relationship in self._incoming.items():
             relationship.deactivate()
 
     def on_remove(self) -> None:
         # We need to destroy all incoming and outgoing relationships
         # and update the Relationship components on the owner/target
         # GameObjects.
-        for target in self.outgoing.keys():
+        for target in self._outgoing.keys():
             self.remove_relationship(target)
 
-        for owner in self.incoming.keys():
+        for owner in self._incoming.keys():
             owner.get_component(Relationships).remove_relationship(self.gameobject)
 
     def add_relationship(self, target: GameObject) -> GameObject:
@@ -253,16 +189,17 @@ class Relationships(Component, ISerializable):
         GameObject
             The new relationship instance
         """
-        if target in self.outgoing:
-            return self.outgoing[target]
+        if target in self._outgoing:
+            return self._outgoing[target]
 
         world = self.gameobject.world
 
         relationship = BaseRelationship.instantiate(world, self.gameobject, target)
 
-        RelationshipCreatedEvent(
-            relationship=relationship, owner=self.gameobject, target=target
-        ).dispatch()
+        self._outgoing[target] = relationship
+        target.get_component(Relationships)._incoming[self.gameobject] = relationship
+
+        self.on_relationship_created.dispatch(relationship)
 
         # Test all the rules in the library and apply those with passing preconditions
         social_rules = world.resource_manager.get_resource(SocialRuleLibrary)
@@ -286,10 +223,14 @@ class Relationships(Component, ISerializable):
         bool
             Returns True if a relationship was removed. False otherwise.
         """
-        if target in self.outgoing:
-            relationship = self.outgoing[target]
+        if target in self._outgoing:
+            relationship = self._outgoing[target]
             relationship.destroy()
-            del self.outgoing[target]
+            del self._outgoing[target]
+
+            if target_relationships := target.try_component(Relationships):
+                del target_relationships._incoming[self.gameobject]
+
             return True
 
         return False
@@ -312,10 +253,10 @@ class Relationships(Component, ISerializable):
         GameObject
             A relationship instance.
         """
-        if target not in self.outgoing:
+        if target not in self._outgoing:
             return self.add_relationship(target)
 
-        return self.outgoing[target]
+        return self._outgoing[target]
 
     def has_relationship(self, target: GameObject) -> bool:
         """Check if there is an existing relationship from the owner to the target.
@@ -331,7 +272,7 @@ class Relationships(Component, ISerializable):
             True if there is an existing Relationship between the GameObjects,
             False otherwise.
         """
-        return target in self.outgoing
+        return target in self._outgoing
 
     def get_relationships_with_components(
         self, *component_types: Type[Component]
@@ -353,16 +294,19 @@ class Relationships(Component, ISerializable):
 
         matches: List[GameObject] = []
 
-        for _, relationship in self.outgoing.items():
+        for _, relationship in self._outgoing.items():
             if all([relationship.has_component(st) for st in component_types]):
                 matches.append(relationship)
 
         return matches
 
+    def iter_relationships(self) -> Iterator[tuple[GameObject, GameObject]]:
+        return self._outgoing.items().__iter__()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "outgoing": {str(k.uid): v.uid for k, v in self.outgoing.items()},
-            "incoming": {str(k.uid): v.uid for k, v in self.incoming.items()},
+            "outgoing": {str(k.uid): v.uid for k, v in self._outgoing.items()},
+            "incoming": {str(k.uid): v.uid for k, v in self._incoming.items()},
         }
 
     def __str__(self) -> str:
@@ -370,7 +314,7 @@ class Relationships(Component, ISerializable):
 
     def __repr__(self) -> str:
         return "{}(outgoing={}, incoming={})".format(
-            self.__class__.__name__, self.outgoing, self.incoming
+            self.__class__.__name__, self._outgoing, self._incoming
         )
 
 
@@ -546,30 +490,6 @@ class BaseRelationship(RelationshipType):
         )
 
         return relationship
-
-
-class RelationshipCreatedEvent(Event):
-    __slots__ = "_relationship", "_owner", "_target"
-
-    def __init__(
-        self, relationship: GameObject, owner: GameObject, target: GameObject
-    ) -> None:
-        super().__init__(world=relationship.world)
-        self._relationship = relationship
-        self._owner = owner
-        self._target = target
-
-    @property
-    def relationship(self) -> GameObject:
-        return self._relationship
-
-    @property
-    def owner(self) -> GameObject:
-        return self._owner
-
-    @property
-    def target(self) -> GameObject:
-        return self._target
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:

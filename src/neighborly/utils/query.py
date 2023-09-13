@@ -157,7 +157,7 @@ def has_any_work_experience(years_experience: int = 0):
 
 def is_single(gameobject: GameObject) -> bool:
     """Return true if the character is not dating or married"""
-    for _, relationship in gameobject.get_component(Relationships).outgoing.items():
+    for _, relationship in gameobject.get_component(Relationships).iter_relationships():
         if relationship.has_component(Dating) or relationship.has_component(Married):
             return False
     return True
@@ -165,7 +165,7 @@ def is_single(gameobject: GameObject) -> bool:
 
 def is_married(gameobject: GameObject) -> bool:
     """Return true if the character is not dating or married"""
-    for _, relationship in gameobject.get_component(Relationships).outgoing.items():
+    for _, relationship in gameobject.get_component(Relationships).iter_relationships():
         if relationship.has_component(Married):
             return False
     return True
@@ -187,7 +187,7 @@ def are_related(a: GameObject, b: GameObject, degree_of_sep: int = 2) -> bool:
 
         for target, relationship in character.get_component(
             Relationships
-        ).outgoing.items():
+        ).iter_relationships():
             if relationship.has_component(Family):
                 if target not in visited:
                     character_queue.append((deg + 1, target))

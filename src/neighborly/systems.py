@@ -1021,7 +1021,7 @@ class PregnancySystem(System):
             # Try to find a romantic partner
             for other_character, relationship in character.get_component(
                 Relationships
-            ).outgoing.items():
+            ).iter_relationships():
                 if not other_character.has_component(Active):
                     continue
 

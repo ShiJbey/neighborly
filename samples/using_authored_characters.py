@@ -74,7 +74,7 @@ class RelationshipReporter(System):
                 game_character.first_name == "Delores"
                 and game_character.last_name == "Abernathy"
             ):
-                for target, relationship in relationship_manager.outgoing.items():
+                for target, relationship in relationship_manager.iter_relationships():
                     data_collector.add_table_row(
                         "relationships",
                         {
