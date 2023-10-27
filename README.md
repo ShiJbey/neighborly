@@ -19,12 +19,12 @@
 
 Neighborly is an extensible agent-based settlement simulation. It was built to be a tool for emergent narrative storytelling research. Neighborly generates a virtual settlement and simulates the individual lives of its residents over multiple generations. It models the characters' traits, statuses, relationships, occupations, life events, and more. Neighborly tracks all the life events (starting a new job, falling in love, turning into a demon, etc.), and these become the building blocks for creating emergent stories about characters and their legacies. The entire history of the settlement and its generations of characters is then made available for data analysis or as content for other applications such as games.
 
-Neighborly's was inspired [_Talk of the Town_](https://github.com/james-owen-ryan/talktown), another settlement simulation for emergent narrative storytelling research. And it also draws inspiration from commercial world-simulation games like _Caves of Qud_, _Dwarf Fortress_, _Crusader Kings_, _RimWorld_, and _WorldBox_. It aims to be an easily customizable simulation that can adapt to various narrative settings and support research or entertainment projects.
+Neighborly's was inspired [_Talk of the Town_](https://github.com/james-owen-ryan/talktown), another settlement simulation for emergent narrative storytelling research. It also draws inspiration from commercial world-simulation games like _Caves of Qud_, _Dwarf Fortress_, _Crusader Kings_, _RimWorld_, and _WorldBox_. It aims to be an easily customizable simulation that can adapt to various narrative settings and support research or entertainment projects.
 
 If you use Neighborly in a project, please [cite this repository](./CITATION.bib). You can read a copy of
 Neighborly's associated [paper](https://shijbey.github.io/publications/Neighborly.pdf) that was published in the
 proceedings of the 2022 IEEE Conference On Games. ⚠️ **Warning**: Please note that Neighborly's current structure
-deviates greatly from it's version when the paper was submitted.
+differs greatly from the version the paper describes.
 
 # Core Features
 
