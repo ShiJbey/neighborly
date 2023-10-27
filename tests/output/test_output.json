@@ -1,0 +1,3322 @@
+{
+  "seed": 1076043,
+  "gameobjects": {
+    "1": {
+      "id": 1,
+      "name": "Employee(1)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "employee",
+          "display_name": "Employee",
+          "description": "The target of this relationship is an employee.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "2": {
+      "id": 2,
+      "name": "Coworker(2)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "coworker",
+          "display_name": "Coworker",
+          "description": "The target of this relationship is a coworker.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "3": {
+      "id": 3,
+      "name": "Departed(3)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "departed",
+          "display_name": "Departed",
+          "description": "The character has departed the simulation.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "4": {
+      "id": 4,
+      "name": "Deceased(4)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "deceased",
+          "display_name": "Deceased",
+          "description": "The character is deceased.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "5": {
+      "id": 5,
+      "name": "Retired(5)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "retired",
+          "display_name": "Retired",
+          "description": "The character has retired from working.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "6": {
+      "id": 6,
+      "name": "Family(6)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "family",
+          "display_name": "Family",
+          "description": "These characters are related",
+          "conflicts_with": []
+        }
+      }
+    },
+    "7": {
+      "id": 7,
+      "name": "Parent(7)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "parent",
+          "display_name": "Parent",
+          "description": "The target of this relationship is the owner's parent",
+          "conflicts_with": []
+        }
+      }
+    },
+    "8": {
+      "id": 8,
+      "name": "Child(8)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "child",
+          "display_name": "Child",
+          "description": "The target of this relationship is a child of the owner.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "9": {
+      "id": 9,
+      "name": "Sibling(9)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "sibling",
+          "display_name": "Sibling",
+          "description": "The target of this relationship is a sibling of the owner.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "10": {
+      "id": 10,
+      "name": "Spouse(10)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "spouse",
+          "display_name": "Spouse",
+          "description": "The target of this relationship is a spouse of the owner.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "11": {
+      "id": 11,
+      "name": "Dating(11)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "dating",
+          "display_name": "Dating",
+          "description": "The relationship target and owner are dating.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "12": {
+      "id": 12,
+      "name": "Drinks too much(12)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "drinks_too_much",
+          "display_name": "Drinks too much",
+          "description": "",
+          "conflicts_with": []
+        }
+      }
+    },
+    "13": {
+      "id": 13,
+      "name": "Prejudice against lowborn(13)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "prejudice_against_lowborn",
+          "display_name": "Prejudice against lowborn",
+          "description": "",
+          "conflicts_with": []
+        }
+      }
+    },
+    "14": {
+      "id": 14,
+      "name": "Skeptical(14)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "skeptical",
+          "display_name": "Skeptical",
+          "description": "",
+          "conflicts_with": [
+            "gullible"
+          ]
+        }
+      }
+    },
+    "15": {
+      "id": 15,
+      "name": "Gullible(15)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "gullible",
+          "display_name": "Gullible",
+          "description": "",
+          "conflicts_with": [
+            "skeptical"
+          ]
+        }
+      }
+    },
+    "16": {
+      "id": 16,
+      "name": "Flirtatious(16)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "flirtatious",
+          "display_name": "Flirtatious",
+          "description": "",
+          "conflicts_with": []
+        }
+      }
+    },
+    "17": {
+      "id": 17,
+      "name": "Hot-Headed(17)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "hot_headed",
+          "display_name": "Hot-Headed",
+          "description": "",
+          "conflicts_with": []
+        }
+      }
+    },
+    "18": {
+      "id": 18,
+      "name": "Loyal(18)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "loyal",
+          "display_name": "Loyal",
+          "description": "This character is fiercely loyal to their friends and allies.",
+          "conflicts_with": [
+            "traitorous"
+          ]
+        }
+      }
+    },
+    "19": {
+      "id": 19,
+      "name": "Traitorous(19)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "traitorous",
+          "display_name": "Traitorous",
+          "description": "This character can betray their friends and allies for personal gain.",
+          "conflicts_with": [
+            "loyal"
+          ]
+        }
+      }
+    },
+    "20": {
+      "id": 20,
+      "name": "Introverted(20)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "introverted",
+          "display_name": "Introverted",
+          "description": "This character is reserved and prefers solitude.",
+          "conflicts_with": [
+            "extroverted"
+          ]
+        }
+      }
+    },
+    "21": {
+      "id": 21,
+      "name": "Extroverted(21)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "extroverted",
+          "display_name": "Extroverted",
+          "description": "This character is outgoing and thrives in social settings.",
+          "conflicts_with": [
+            "introverted"
+          ]
+        }
+      }
+    },
+    "22": {
+      "id": 22,
+      "name": "Compassionate(22)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "compassionate",
+          "display_name": "Compassionate",
+          "description": "This character cares deeply for the well-being of others.",
+          "conflicts_with": [
+            "callous"
+          ]
+        }
+      }
+    },
+    "23": {
+      "id": 23,
+      "name": "Callous(23)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "callous",
+          "display_name": "Callous",
+          "description": "This character is emotionally detached and unsympathetic.",
+          "conflicts_with": [
+            "compassionate"
+          ]
+        }
+      }
+    },
+    "24": {
+      "id": 24,
+      "name": "Adventurous(24)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "adventurous",
+          "display_name": "Adventurous",
+          "description": "This character seeks excitement and enjoys taking risks.",
+          "conflicts_with": [
+            "cautious"
+          ]
+        }
+      }
+    },
+    "25": {
+      "id": 25,
+      "name": "Cautious(25)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "cautious",
+          "display_name": "Cautious",
+          "description": "This character is risk-averse and avoids dangerous situations.",
+          "conflicts_with": [
+            "adventurous"
+          ]
+        }
+      }
+    },
+    "26": {
+      "id": 26,
+      "name": "Charismatic(26)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "charismatic",
+          "display_name": "Charismatic",
+          "description": "This character has a natural charm that draws others to them.",
+          "conflicts_with": [
+            "awkward"
+          ]
+        }
+      }
+    },
+    "27": {
+      "id": 27,
+      "name": "Awkward(27)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "awkward",
+          "display_name": "Awkward",
+          "description": "This character struggles with social interactions and comes across as clumsy.",
+          "conflicts_with": [
+            "charismatic"
+          ]
+        }
+      }
+    },
+    "28": {
+      "id": 28,
+      "name": "Ambitious(28)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "ambitious",
+          "display_name": "Ambitious",
+          "description": "This character is driven by ambition and seeks to achieve great success.",
+          "conflicts_with": [
+            "lazy"
+          ]
+        }
+      }
+    },
+    "29": {
+      "id": 29,
+      "name": "Lazy(29)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "lazy",
+          "display_name": "Lazy",
+          "description": "This character tends to avoid hard work and prefers a leisurely lifestyle.",
+          "conflicts_with": [
+            "ambitious"
+          ]
+        }
+      }
+    },
+    "30": {
+      "id": 30,
+      "name": "Hot-Headed(30)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "hot-headed",
+          "display_name": "Hot-Headed",
+          "description": "This character has a short temper and is quick to anger.",
+          "conflicts_with": [
+            "calm"
+          ]
+        }
+      }
+    },
+    "31": {
+      "id": 31,
+      "name": "Calm(31)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "calm",
+          "display_name": "Calm",
+          "description": "This character remains composed and rarely loses their temper.",
+          "conflicts_with": [
+            "hot-headed"
+          ]
+        }
+      }
+    },
+    "32": {
+      "id": 32,
+      "name": "Intelligent(32)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "intelligent",
+          "display_name": "Intelligent",
+          "description": "This character possesses a high level of intelligence and problem-solving abilities.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "33": {
+      "id": 33,
+      "name": "Simple-Minded(33)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "simpleminded",
+          "display_name": "Simple-Minded",
+          "description": "This character lacks intellectual depth and struggles with complex tasks.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "34": {
+      "id": 34,
+      "name": "Charitable(34)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "charitable",
+          "display_name": "Charitable",
+          "description": "This character is generous and often helps others in need.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "35": {
+      "id": 35,
+      "name": "Selfish(35)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "selfish",
+          "display_name": "Selfish",
+          "description": "This character prioritizes their own needs and desires over others.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "36": {
+      "id": 36,
+      "name": "Optimistic(36)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "optimistic",
+          "display_name": "Optimistic",
+          "description": "This character maintains a positive outlook and believes in a bright future.",
+          "conflicts_with": [
+            "pessimistic"
+          ]
+        }
+      }
+    },
+    "37": {
+      "id": 37,
+      "name": "Pessimistic(37)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "pessimistic",
+          "display_name": "Pessimistic",
+          "description": "This character often anticipates negative outcomes and struggles with optimism.",
+          "conflicts_with": [
+            "optimistic"
+          ]
+        }
+      }
+    },
+    "38": {
+      "id": 38,
+      "name": "Energetic(38)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "energetic",
+          "display_name": "Energetic",
+          "description": "This character is full of energy and enthusiasm for various activities.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "39": {
+      "id": 39,
+      "name": "Lethargic(39)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "lethargic",
+          "display_name": "Lethargic",
+          "description": "This character lacks energy and often feels tired or unenthusiastic.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "40": {
+      "id": 40,
+      "name": "Confident(40)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "confident",
+          "display_name": "Confident",
+          "description": "This character is self-assured and has a strong belief in their abilities.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "41": {
+      "id": 41,
+      "name": "Insecure(41)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "insecure",
+          "display_name": "Insecure",
+          "description": "This character struggles with self-doubt and often feels unattractive or inadequate.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "42": {
+      "id": 42,
+      "name": "Betraying(42)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "betraying",
+          "display_name": "Betraying",
+          "description": "This character is prone to betrayal and can turn on friends and allies.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "43": {
+      "id": 43,
+      "name": "Genius(43)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "genius",
+          "display_name": "Genius",
+          "description": "This character possesses exceptional intelligence and problem-solving abilities.",
+          "conflicts_with": [
+            "simpleminded"
+          ]
+        }
+      }
+    },
+    "44": {
+      "id": 44,
+      "name": "Friendly(44)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "friendly",
+          "display_name": "Friendly",
+          "description": "This character is amiable and easily forms positive relationships with others.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "45": {
+      "id": 45,
+      "name": "Lustful(45)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "lustful",
+          "display_name": "Lustful",
+          "description": "This character has strong sexual desires and is often drawn to romantic encounters.",
+          "conflicts_with": [
+            "chaste"
+          ]
+        }
+      }
+    },
+    "46": {
+      "id": 46,
+      "name": "Extrovert(46)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "extrovert",
+          "display_name": "Extrovert",
+          "description": "This character thrives in social settings and gains energy from interactions with others.",
+          "conflicts_with": [
+            "introvert"
+          ]
+        }
+      }
+    },
+    "47": {
+      "id": 47,
+      "name": "Immortal(47)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "immortal",
+          "display_name": "Immortal",
+          "description": "This character is immune to death and the passage of time.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "48": {
+      "id": 48,
+      "name": "Attracted to Men(48)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "attracted_to_men",
+          "display_name": "Attracted to Men",
+          "description": "This character experiences romantic attraction primarily to men.",
+          "conflicts_with": [
+            "attracted_to_women"
+          ]
+        }
+      }
+    },
+    "49": {
+      "id": 49,
+      "name": "Attracted to Women(49)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "attracted_to_women",
+          "display_name": "Attracted to Women",
+          "description": "This character experiences romantic attraction primarily to women.",
+          "conflicts_with": [
+            "attracted_to_men"
+          ]
+        }
+      }
+    },
+    "50": {
+      "id": 50,
+      "name": "Boss(50)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "boss",
+          "display_name": "Boss",
+          "description": "The target of this relationship is the their work boss.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "51": {
+      "id": 51,
+      "name": "Serves Alcohol(51)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "serves_alcohol",
+          "display_name": "Serves Alcohol",
+          "description": "This establishment serves alcohol.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "52": {
+      "id": 52,
+      "name": "Ex-Spouse(52)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "ex_spouse",
+          "display_name": "Ex-Spouse",
+          "description": "These characters were formerly married",
+          "conflicts_with": []
+        }
+      }
+    },
+    "53": {
+      "id": 53,
+      "name": "Ex-Partner(53)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "ex_partner",
+          "display_name": "Ex-Partner",
+          "description": "These character used to date.",
+          "conflicts_with": []
+        }
+      }
+    },
+    "54": {
+      "id": 54,
+      "name": "Human(54)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Trait": {
+          "definition_id": "human",
+          "display_name": "Human",
+          "description": "A plain ol' human being.",
+          "conflicts_with": []
+        },
+        "Species": {}
+      }
+    },
+    "55": {
+      "id": 55,
+      "name": "Blacksmith(55)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Blacksmith",
+          "job_level": 2,
+          "definition_id": "blacksmith"
+        }
+      }
+    },
+    "56": {
+      "id": 56,
+      "name": "Blacksmith Apprentice(56)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Blacksmith Apprentice",
+          "job_level": 1,
+          "definition_id": "blacksmith_apprentice"
+        }
+      }
+    },
+    "57": {
+      "id": 57,
+      "name": "Cafe Owner(57)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Cafe Owner",
+          "job_level": 1,
+          "definition_id": "cafe_owner"
+        }
+      }
+    },
+    "58": {
+      "id": 58,
+      "name": "Barista(58)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Barista",
+          "job_level": 1,
+          "definition_id": "barista"
+        }
+      }
+    },
+    "59": {
+      "id": 59,
+      "name": "Farmer(59)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Farmer",
+          "job_level": 1,
+          "definition_id": "farmer"
+        }
+      }
+    },
+    "60": {
+      "id": 60,
+      "name": "Farmhand(60)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Farmhand",
+          "job_level": 1,
+          "definition_id": "farmhand"
+        }
+      }
+    },
+    "61": {
+      "id": 61,
+      "name": "Shopkeeper(61)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Shopkeeper",
+          "job_level": 1,
+          "definition_id": "shopkeeper"
+        }
+      }
+    },
+    "62": {
+      "id": 62,
+      "name": "Cashier(62)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Cashier",
+          "job_level": 1,
+          "definition_id": "cashier"
+        }
+      }
+    },
+    "63": {
+      "id": 63,
+      "name": "Theatre Owner(63)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Theatre Owner",
+          "job_level": 1,
+          "definition_id": "theatre_owner"
+        }
+      }
+    },
+    "64": {
+      "id": 64,
+      "name": "Actor(64)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Actor",
+          "job_level": 1,
+          "definition_id": "actor"
+        }
+      }
+    },
+    "65": {
+      "id": 65,
+      "name": "Brothel Owner(65)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Brothel Owner",
+          "job_level": 1,
+          "definition_id": "brothel_owner"
+        }
+      }
+    },
+    "66": {
+      "id": 66,
+      "name": "Bartender(66)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Bartender",
+          "job_level": 1,
+          "definition_id": "bartender"
+        }
+      }
+    },
+    "67": {
+      "id": 67,
+      "name": "Brothel Worker(67)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Brothel Worker",
+          "job_level": 1,
+          "definition_id": "brothel_worker"
+        }
+      }
+    },
+    "68": {
+      "id": 68,
+      "name": "Bar Owner(68)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "JobRole": {
+          "name": "Bar Owner",
+          "job_level": 1,
+          "definition_id": "bar_owner"
+        }
+      }
+    },
+    "69": {
+      "id": 69,
+      "name": "Blacksmithing(69)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Skill": {
+          "definition_id": "blacksmithing",
+          "display_name": "Blacksmithing",
+          "description": "A character's skill at forging metal objects."
+        }
+      }
+    },
+    "70": {
+      "id": 70,
+      "name": "basic_settlement(70)",
+      "active": true,
+      "parent": -1,
+      "children": [
+        71,
+        72,
+        73,
+        74
+      ],
+      "components": {
+        "Active": {},
+        "Settlement": {
+          "name": "basic_settlement",
+          "districts": [
+            71,
+            72,
+            73,
+            74
+          ],
+          "population": 14
+        }
+      }
+    },
+    "71": {
+      "id": 71,
+      "name": "farming_district(71)",
+      "active": true,
+      "parent": 70,
+      "children": [
+        82,
+        86,
+        96,
+        100,
+        108,
+        112
+      ],
+      "components": {
+        "Active": {},
+        "District": {
+          "name": "farming_district",
+          "description": "Where the animals and farmers are.",
+          "settlement": 70,
+          "residences": [
+            82,
+            96,
+            108
+          ],
+          "businesses": [
+            86,
+            100,
+            112
+          ],
+          "population": 3
+        },
+        "BusinessSpawnTable": {},
+        "CharacterSpawnTable": {},
+        "ResidenceSpawnTable": {}
+      }
+    },
+    "72": {
+      "id": 72,
+      "name": "market_district(72)",
+      "active": true,
+      "parent": 70,
+      "children": [
+        75,
+        84,
+        89,
+        98,
+        110,
+        117,
+        118
+      ],
+      "components": {
+        "Active": {},
+        "District": {
+          "name": "market_district",
+          "description": "Where people are always selling things.",
+          "settlement": 70,
+          "residences": [
+            75,
+            89
+          ],
+          "businesses": [
+            84,
+            98,
+            110,
+            117,
+            118
+          ],
+          "population": 8
+        },
+        "BusinessSpawnTable": {},
+        "CharacterSpawnTable": {},
+        "ResidenceSpawnTable": {}
+      }
+    },
+    "73": {
+      "id": 73,
+      "name": "entertainment_district(73)",
+      "active": true,
+      "parent": 70,
+      "children": [
+        85,
+        99,
+        111
+      ],
+      "components": {
+        "Active": {},
+        "District": {
+          "name": "entertainment_district",
+          "description": "Where characters go to have 'fun'.",
+          "settlement": 70,
+          "residences": [],
+          "businesses": [
+            85,
+            99,
+            111
+          ],
+          "population": 0
+        },
+        "BusinessSpawnTable": {},
+        "CharacterSpawnTable": {},
+        "ResidenceSpawnTable": {}
+      }
+    },
+    "74": {
+      "id": 74,
+      "name": "upper_class_residences(74)",
+      "active": true,
+      "parent": 70,
+      "children": [
+        80,
+        94,
+        106
+      ],
+      "components": {
+        "Active": {},
+        "District": {
+          "name": "upper_class_residences",
+          "description": "Where the nobility live.",
+          "settlement": 70,
+          "residences": [
+            80,
+            94,
+            106
+          ],
+          "businesses": [],
+          "population": 3
+        },
+        "BusinessSpawnTable": {},
+        "CharacterSpawnTable": {},
+        "ResidenceSpawnTable": {}
+      }
+    },
+    "75": {
+      "id": 75,
+      "name": "Small Apartment Building(75)",
+      "active": true,
+      "parent": 72,
+      "children": [
+        76,
+        77,
+        78,
+        79
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 72,
+          "units": [
+            76,
+            77,
+            78,
+            79
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "76": {
+      "id": 76,
+      "name": "ResidentialUnit(76)",
+      "active": true,
+      "parent": 75,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            87
+          ],
+          "residents": [
+            87
+          ]
+        }
+      }
+    },
+    "77": {
+      "id": 77,
+      "name": "ResidentialUnit(77)",
+      "active": true,
+      "parent": 75,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            114
+          ],
+          "residents": [
+            114
+          ]
+        }
+      }
+    },
+    "78": {
+      "id": 78,
+      "name": "ResidentialUnit(78)",
+      "active": true,
+      "parent": 75,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            102
+          ],
+          "residents": [
+            102
+          ]
+        }
+      }
+    },
+    "79": {
+      "id": 79,
+      "name": "ResidentialUnit(79)",
+      "active": true,
+      "parent": 75,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            88
+          ],
+          "residents": [
+            88
+          ]
+        }
+      }
+    },
+    "80": {
+      "id": 80,
+      "name": "Mansion(80)",
+      "active": true,
+      "parent": 74,
+      "children": [
+        81
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 74,
+          "units": [
+            81
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "81": {
+      "id": 81,
+      "name": "ResidentialUnit(81)",
+      "active": true,
+      "parent": 80,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 74,
+          "owners": [
+            115
+          ],
+          "residents": [
+            115
+          ]
+        }
+      }
+    },
+    "82": {
+      "id": 82,
+      "name": "House(82)",
+      "active": true,
+      "parent": 71,
+      "children": [
+        83
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 71,
+          "units": [
+            83
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "83": {
+      "id": 83,
+      "name": "ResidentialUnit(83)",
+      "active": true,
+      "parent": 82,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 71,
+          "owners": [
+            103
+          ],
+          "residents": [
+            103
+          ]
+        }
+      }
+    },
+    "84": {
+      "id": 84,
+      "name": "cafe(84)",
+      "active": true,
+      "parent": 72,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "cafe",
+          "employees": [],
+          "owner": -1,
+          "district": 72
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "85": {
+      "id": 85,
+      "name": "brothel(85)",
+      "active": true,
+      "parent": 73,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "brothel",
+          "employees": [],
+          "owner": -1,
+          "district": 73
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "86": {
+      "id": 86,
+      "name": "dairy_farm(86)",
+      "active": true,
+      "parent": 71,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "dairy_farm",
+          "employees": [],
+          "owner": -1,
+          "district": 71
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "87": {
+      "id": 87,
+      "name": "Idris Leonards(87)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Idris",
+          "last_name": "Leonards",
+          "sex": "MALE",
+          "age": 78,
+          "life_stage": "SENIOR",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            35,
+            32,
+            15
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 1.3541666666666667,
+          "health_decay": 1.25,
+          "fertility": 0.315,
+          "boldness": 214.0,
+          "stewardship": 110.0,
+          "sociability": 79,
+          "attractiveness": 190.0,
+          "intelligence": 2,
+          "reliability": 221
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            0
+          ]
+        },
+        "Resident": {
+          "residence": 76
+        }
+      }
+    },
+    "88": {
+      "id": 88,
+      "name": "Jaylen Perrier(88)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Jaylen",
+          "last_name": "Perrier",
+          "sex": "MALE",
+          "age": 22,
+          "life_stage": "YOUNG_ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            15,
+            49,
+            31
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 71.35416666666661,
+          "health_decay": 1.25,
+          "fertility": 0.22,
+          "boldness": 129,
+          "stewardship": 191.0,
+          "sociability": 168,
+          "attractiveness": 156.0,
+          "intelligence": 223.0,
+          "reliability": 245.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            2
+          ]
+        },
+        "Resident": {
+          "residence": 79
+        }
+      }
+    },
+    "89": {
+      "id": 89,
+      "name": "Small Apartment Building(89)",
+      "active": true,
+      "parent": 72,
+      "children": [
+        90,
+        91,
+        92,
+        93
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 72,
+          "units": [
+            90,
+            91,
+            92,
+            93
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "90": {
+      "id": 90,
+      "name": "ResidentialUnit(90)",
+      "active": true,
+      "parent": 89,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            104
+          ],
+          "residents": [
+            104
+          ]
+        }
+      }
+    },
+    "91": {
+      "id": 91,
+      "name": "ResidentialUnit(91)",
+      "active": true,
+      "parent": 89,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            119
+          ],
+          "residents": [
+            119
+          ]
+        }
+      }
+    },
+    "92": {
+      "id": 92,
+      "name": "ResidentialUnit(92)",
+      "active": true,
+      "parent": 89,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            105
+          ],
+          "residents": [
+            105
+          ]
+        }
+      }
+    },
+    "93": {
+      "id": 93,
+      "name": "ResidentialUnit(93)",
+      "active": true,
+      "parent": 89,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 72,
+          "owners": [
+            116
+          ],
+          "residents": [
+            116
+          ]
+        }
+      }
+    },
+    "94": {
+      "id": 94,
+      "name": "Mansion(94)",
+      "active": true,
+      "parent": 74,
+      "children": [
+        95
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 74,
+          "units": [
+            95
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "95": {
+      "id": 95,
+      "name": "ResidentialUnit(95)",
+      "active": true,
+      "parent": 94,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 74,
+          "owners": [
+            121
+          ],
+          "residents": [
+            121
+          ]
+        }
+      }
+    },
+    "96": {
+      "id": 96,
+      "name": "House(96)",
+      "active": true,
+      "parent": 71,
+      "children": [
+        97
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 71,
+          "units": [
+            97
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "97": {
+      "id": 97,
+      "name": "ResidentialUnit(97)",
+      "active": true,
+      "parent": 96,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 71,
+          "owners": [
+            101
+          ],
+          "residents": [
+            101
+          ]
+        }
+      }
+    },
+    "98": {
+      "id": 98,
+      "name": "shop(98)",
+      "active": true,
+      "parent": 72,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "shop",
+          "employees": [],
+          "owner": -1,
+          "district": 72
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "99": {
+      "id": 99,
+      "name": "theatre(99)",
+      "active": true,
+      "parent": 73,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "theatre",
+          "employees": [],
+          "owner": -1,
+          "district": 73
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "100": {
+      "id": 100,
+      "name": "farm(100)",
+      "active": true,
+      "parent": 71,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "farm",
+          "employees": [],
+          "owner": -1,
+          "district": 71
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "101": {
+      "id": 101,
+      "name": "Aaron Lem(101)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Aaron",
+          "last_name": "Lem",
+          "sex": "MALE",
+          "age": 24,
+          "life_stage": "YOUNG_ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            48,
+            35,
+            44
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 68.95833333333329,
+          "health_decay": 1.25,
+          "fertility": 0.5,
+          "boldness": 4.0,
+          "stewardship": 168.0,
+          "sociability": 230.0,
+          "attractiveness": 26.0,
+          "intelligence": 38.0,
+          "reliability": 106
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            4
+          ]
+        },
+        "Resident": {
+          "residence": 97
+        }
+      }
+    },
+    "102": {
+      "id": 102,
+      "name": "Layton Culpepper(102)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Layton",
+          "last_name": "Culpepper",
+          "sex": "MALE",
+          "age": 55,
+          "life_stage": "ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            37,
+            43
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 28.54166666666668,
+          "health_decay": 3.25,
+          "fertility": 0.17600000000000002,
+          "boldness": 28.0,
+          "stewardship": 185.0,
+          "sociability": 204.0,
+          "attractiveness": 238.0,
+          "intelligence": 119,
+          "reliability": 96.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            6
+          ]
+        },
+        "Resident": {
+          "residence": 78
+        }
+      }
+    },
+    "103": {
+      "id": 103,
+      "name": "Alayah Savary(103)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Alayah",
+          "last_name": "Savary",
+          "sex": "FEMALE",
+          "age": 70,
+          "life_stage": "SENIOR",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            48,
+            47,
+            41
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 94.79166666666667,
+          "health_decay": -98.75,
+          "fertility": 0,
+          "boldness": 97.0,
+          "stewardship": 213.0,
+          "sociability": 29.0,
+          "attractiveness": 80,
+          "intelligence": 216.0,
+          "reliability": 243.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            8
+          ]
+        },
+        "Resident": {
+          "residence": 83
+        }
+      }
+    },
+    "104": {
+      "id": 104,
+      "name": "Noelle Shreeves(104)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Noelle",
+          "last_name": "Shreeves",
+          "sex": "FEMALE",
+          "age": 57,
+          "life_stage": "ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            43,
+            39,
+            47
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 111.04166666666669,
+          "health_decay": -98.75,
+          "fertility": 0,
+          "boldness": 1.0,
+          "stewardship": 89.0,
+          "sociability": 160.0,
+          "attractiveness": 79.0,
+          "intelligence": 68,
+          "reliability": 8.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            10
+          ]
+        },
+        "Resident": {
+          "residence": 90
+        }
+      }
+    },
+    "105": {
+      "id": 105,
+      "name": "Bridget Lambirth(105)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Bridget",
+          "last_name": "Lambirth",
+          "sex": "FEMALE",
+          "age": 21,
+          "life_stage": "YOUNG_ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            33,
+            34,
+            45
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 72.70833333333329,
+          "health_decay": 1.25,
+          "fertility": 0.8799999999999999,
+          "boldness": 153.0,
+          "stewardship": 109.0,
+          "sociability": 204.0,
+          "attractiveness": 50.0,
+          "intelligence": 30,
+          "reliability": 238
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            12
+          ]
+        },
+        "Resident": {
+          "residence": 92
+        }
+      }
+    },
+    "106": {
+      "id": 106,
+      "name": "Mansion(106)",
+      "active": true,
+      "parent": 74,
+      "children": [
+        107
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 74,
+          "units": [
+            107
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "107": {
+      "id": 107,
+      "name": "ResidentialUnit(107)",
+      "active": true,
+      "parent": 106,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 74,
+          "owners": [
+            120
+          ],
+          "residents": [
+            120
+          ]
+        }
+      }
+    },
+    "108": {
+      "id": 108,
+      "name": "House(108)",
+      "active": true,
+      "parent": 71,
+      "children": [
+        109
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 71,
+          "units": [
+            109
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "109": {
+      "id": 109,
+      "name": "ResidentialUnit(109)",
+      "active": true,
+      "parent": 108,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "Residence": {
+          "district": 71,
+          "owners": [
+            113
+          ],
+          "residents": [
+            113
+          ]
+        }
+      }
+    },
+    "110": {
+      "id": 110,
+      "name": "cafe(110)",
+      "active": true,
+      "parent": 72,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "cafe",
+          "employees": [],
+          "owner": -1,
+          "district": 72
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "111": {
+      "id": 111,
+      "name": "brothel(111)",
+      "active": true,
+      "parent": 73,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "brothel",
+          "employees": [],
+          "owner": -1,
+          "district": 73
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "112": {
+      "id": 112,
+      "name": "farm(112)",
+      "active": true,
+      "parent": 71,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "farm",
+          "employees": [],
+          "owner": -1,
+          "district": 71
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "113": {
+      "id": 113,
+      "name": "Anne Amason(113)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Anne",
+          "last_name": "Amason",
+          "sex": "FEMALE",
+          "age": 59,
+          "life_stage": "ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            37,
+            39,
+            15
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 23.81250000000001,
+          "health_decay": 3.25,
+          "fertility": 0,
+          "boldness": 181.0,
+          "stewardship": 249.0,
+          "sociability": 196,
+          "attractiveness": 200.0,
+          "intelligence": 230.0,
+          "reliability": 4.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            14
+          ]
+        },
+        "Resident": {
+          "residence": 109
+        }
+      }
+    },
+    "114": {
+      "id": 114,
+      "name": "Lydia Windes(114)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Lydia",
+          "last_name": "Windes",
+          "sex": "FEMALE",
+          "age": 28,
+          "life_stage": "YOUNG_ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            38,
+            36
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 65.5625,
+          "health_decay": -0.75,
+          "fertility": 1.0,
+          "boldness": 5.0,
+          "stewardship": 164.0,
+          "sociability": 212.0,
+          "attractiveness": 93.0,
+          "intelligence": 42.0,
+          "reliability": 9.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            16
+          ]
+        },
+        "Resident": {
+          "residence": 77
+        }
+      }
+    },
+    "115": {
+      "id": 115,
+      "name": "Clay Ledsome(115)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Clay",
+          "last_name": "Ledsome",
+          "sex": "MALE",
+          "age": 20,
+          "life_stage": "YOUNG_ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            46,
+            44,
+            35
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 74.06249999999996,
+          "health_decay": 1.25,
+          "fertility": 0.56,
+          "boldness": 231.0,
+          "stewardship": 148.0,
+          "sociability": 55,
+          "attractiveness": 151.0,
+          "intelligence": 71.0,
+          "reliability": 193
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            18
+          ]
+        },
+        "Resident": {
+          "residence": 81
+        }
+      }
+    },
+    "116": {
+      "id": 116,
+      "name": "Milan Delamar(116)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Milan",
+          "last_name": "Delamar",
+          "sex": "MALE",
+          "age": 32,
+          "life_stage": "ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            43,
+            39,
+            30
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 59.06250000000002,
+          "health_decay": 1.25,
+          "fertility": 0,
+          "boldness": 33,
+          "stewardship": 43.0,
+          "sociability": 176.0,
+          "attractiveness": 220.0,
+          "intelligence": 239,
+          "reliability": 145.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            20
+          ]
+        },
+        "Resident": {
+          "residence": 93
+        }
+      }
+    },
+    "117": {
+      "id": 117,
+      "name": "cafe(117)",
+      "active": true,
+      "parent": 72,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "cafe",
+          "employees": [],
+          "owner": -1,
+          "district": 72
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "118": {
+      "id": 118,
+      "name": "shop(118)",
+      "active": true,
+      "parent": 72,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "shop",
+          "employees": [],
+          "owner": -1,
+          "district": 72
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "119": {
+      "id": 119,
+      "name": "Mohamed Cheesman(119)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Mohamed",
+          "last_name": "Cheesman",
+          "sex": "MALE",
+          "age": 20,
+          "life_stage": "YOUNG_ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            47,
+            33,
+            42
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 132.60416666666669,
+          "health_decay": -98.75,
+          "fertility": 0.33,
+          "boldness": 152.0,
+          "stewardship": 149.0,
+          "sociability": 243.0,
+          "attractiveness": 164.0,
+          "intelligence": 51,
+          "reliability": 167.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            22
+          ]
+        },
+        "Resident": {
+          "residence": 91
+        }
+      }
+    },
+    "120": {
+      "id": 120,
+      "name": "Jay Acors(120)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Jay",
+          "last_name": "Acors",
+          "sex": "MALE",
+          "age": 42,
+          "life_stage": "ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            38,
+            44,
+            35
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 46.77083333333335,
+          "health_decay": 1.25,
+          "fertility": 1.0,
+          "boldness": 110.0,
+          "stewardship": 88.0,
+          "sociability": 188.0,
+          "attractiveness": 26.0,
+          "intelligence": 73.0,
+          "reliability": 60
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            24
+          ]
+        },
+        "Resident": {
+          "residence": 107
+        }
+      }
+    },
+    "121": {
+      "id": 121,
+      "name": "Emelia Hatchett(121)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Emelia",
+          "last_name": "Hatchett",
+          "sex": "FEMALE",
+          "age": 76,
+          "life_stage": "SENIOR",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            38,
+            39
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 4.479166666666665,
+          "health_decay": 1.25,
+          "fertility": 0,
+          "boldness": 218.0,
+          "stewardship": 176.0,
+          "sociability": 151.0,
+          "attractiveness": 233.0,
+          "intelligence": 142.0,
+          "reliability": 215.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            26
+          ]
+        },
+        "Resident": {
+          "residence": 95
+        }
+      }
+    }
+  },
+  "events": {
+    "0": {
+      "event_id": 0,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-02",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 87
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "1": {
+      "event_id": 1,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-02",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 87
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 76
+        }
+      ]
+    },
+    "2": {
+      "event_id": 2,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-02",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 88
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "3": {
+      "event_id": 3,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-02",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 88
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 79
+        }
+      ]
+    },
+    "4": {
+      "event_id": 4,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 101
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "5": {
+      "event_id": 5,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 101
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 97
+        }
+      ]
+    },
+    "6": {
+      "event_id": 6,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 102
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "7": {
+      "event_id": 7,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 102
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 78
+        }
+      ]
+    },
+    "8": {
+      "event_id": 8,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 103
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "9": {
+      "event_id": 9,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 103
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 83
+        }
+      ]
+    },
+    "10": {
+      "event_id": 10,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 104
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "11": {
+      "event_id": 11,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 104
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 90
+        }
+      ]
+    },
+    "12": {
+      "event_id": 12,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 105
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "13": {
+      "event_id": 13,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-03",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 105
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 92
+        }
+      ]
+    },
+    "14": {
+      "event_id": 14,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 113
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "15": {
+      "event_id": 15,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 113
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 109
+        }
+      ]
+    },
+    "16": {
+      "event_id": 16,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 114
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "17": {
+      "event_id": 17,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 114
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 77
+        }
+      ]
+    },
+    "18": {
+      "event_id": 18,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 115
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "19": {
+      "event_id": 19,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 115
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 81
+        }
+      ]
+    },
+    "20": {
+      "event_id": 20,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 116
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "21": {
+      "event_id": 21,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-04",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 116
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 93
+        }
+      ]
+    },
+    "22": {
+      "event_id": 22,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-06",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 119
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "23": {
+      "event_id": 23,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-06",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 119
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 91
+        }
+      ]
+    },
+    "24": {
+      "event_id": 24,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-06",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 120
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "25": {
+      "event_id": 25,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-06",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 120
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 107
+        }
+      ]
+    },
+    "26": {
+      "event_id": 26,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-08",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 121
+        },
+        {
+          "name": "settlement",
+          "gameobject": 70
+        }
+      ]
+    },
+    "27": {
+      "event_id": 27,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-08",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 121
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 95
+        }
+      ]
+    }
+  },
+  "data_tables": {}
+}

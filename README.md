@@ -17,41 +17,35 @@
   <img src="https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336">
 </p>
 
-Neighborly is an extensible agent-based settlement simulation. It was built to be a tool for emergent narrative storytelling research. Neighborly generates a virtual settlement and simulates the individual lives of its residents over multiple generations. It models the characters' traits, statuses, relationships, goals, occupations, life events, and more. Neighborly tracks all the life events (starting a new job, falling in love, turning into a demon, etc.), and these become the building blocks for creating emergent stories about characters and their legacies. The entire history of the settlement and its generations of characters is then made available for data analysis or as content for other applications such as games.
+Neighborly is an extensible agent-based settlement simulation. It was built to be a tool for emergent narrative storytelling research. Neighborly generates a virtual settlement and simulates the individual lives of its residents over multiple generations. It models the characters' traits, statuses, relationships, occupations, life events, and more. Neighborly tracks all the life events (starting a new job, falling in love, turning into a demon, etc.), and these become the building blocks for creating emergent stories about characters and their legacies. The entire history of the settlement and its generations of characters is then made available for data analysis or as content for other applications such as games.
 
 Neighborly's was inspired [_Talk of the Town_](https://github.com/james-owen-ryan/talktown), another settlement simulation for emergent narrative storytelling research. And it also draws inspiration from commercial world-simulation games like _Caves of Qud_, _Dwarf Fortress_, _Crusader Kings_, _RimWorld_, and _WorldBox_. It aims to be an easily customizable simulation that can adapt to various narrative settings and support research or entertainment projects.
 
-If you use Neighborly in a project, please [cite this repository](./CITATION.bib).
+If you use Neighborly in a project, please [cite this repository](./CITATION.bib). You can read a copy of
+Neighborly's associated [paper](https://shijbey.github.io/publications/Neighborly.pdf) that was published in the
+proceedings of the 2022 IEEE Conference On Games. ⚠️ **Warning**: Please note that Neighborly's current structure
+deviates greatly from it's version when the paper was submitted.
 
 # Core Features
 
-- 🥸👹👽🏢🏨🏫 Easily create new character/business types
-- ⏱️ Time passes in 1-year increments
+- 🏙️ Procedurally generates a settlement and the history of its residents.
 - 🚀 Utilize a low-fidelity social simulation to simulate hundreds of years of world history within minutes.
 - ⚙️ Built using an entity-component system (ECS) architecture
-- 📦 Create and share new components and systems using Plugins.
-- 🤖 Implement goal-driven behavior using behavior trees and utility AI.
+- 📦 Plugin system to load and share new content.
 - 👔 Characters can start businesses and hold jobs.
-- ️🧬 Give characters traits and statuses that modify their behavior.
-- ❤️💔 Model facets of relationships such as romance, friendship, trust, and respect.
+- ️🧬 Characters have traits that modify their stats and relationships.
+- ❤️ Characters form and cultivate relationships based on romance and reputation.
 - 💥 Simulate random life events that spice up characters' lives.
 - ⚖️ Define Social Rules for how characters should feel about each other.
-- 🏬 Define location preference rules for what locations characters frequent in a year.
-- 📈 Collect and analyze simulation data using industry-standard data science tools like Pandas.
+- 🏬 Define location preference rules for what locations characters frequent.
+- 📈 Uses [Polars](https://www.pola.rs) for fast data analysis.
 - 📜 Export simulation data to JSON.
 
 # System caveats
 
-- Simulates a single settlement
-- Buildings hold either one business or residence. No mixed-use or multifamily housing.
-- The internal architecture does not follow "Pure" ECS practices. It mixes ECS and object-oriented programing techniques to provide easy-to-use interfaces.
+- Only simulates a single settlement
 - Characters can only hold one occupation at a time.
-- Does not model the exact position of characters or objects, only buildings.
-
-# Future work
-
-- Add a skill system.
-- Add mixed-use buildings and multifamily housing.
+- Does not model the exact position of entities.
 
 # Installation
 
@@ -59,20 +53,6 @@ The latest official release of Neighborly is available to install from [PyPI](ht
 
 ```bash
 pip install neighborly
-```
-
-The most recent changes not uploaded to PyPI can be installed directly from GitHub.
-
-```bash
-pip install git+https://github.com/ShiJbey/neighborly.git
-```
-
-Then you can test if the installation was successful.
-
-```bash
-python -m neighborly --version
-# Should output the current version number
-1.x.x
 ```
 
 ## Installing for local development
@@ -102,12 +82,10 @@ python -m pip install -e ".[development,testing]"
 
 # Usage
 
-## Exploring the Samples
-
 The best way to learn how to use Neighborly is to explore the various samples in the `samples` directory
 that demonstrate how to create custom simulations and collect and visualize data. Interactive samples with the `.ipynb`
 extension are meant to be run using [Jupyter Lab](https://jupyter.org/). Please run the following command
-to ensure all dependencies are installed for the samples. Make sure that you've activated your Python virtual 
+to ensure all dependencies are installed for the samples. Make sure that you've activated your Python virtual
 environment beforehand.
 
 ```bash
@@ -124,39 +102,17 @@ python ./samples/<name_of_sample>.py
 jupyter-lab
 ```
 
-## Plugins
+# Plugins
 
-Plugins are importable Python modules or packages that add new components, resources, and systems.
-A few default plugins come prepackaged with Neighborly to help users get started. Users can specify what
-plugins to import by changing the names listed in the `plugins` section of a simulation's configuration.
-Any changes to the listed plugins must occur before the neighborly instance is constructed, as that is when
-plugins are loaded.
+Plugins are importable Python modules or packages that add new content to a simulation. They allow users to change
+a simulation's behavior without editing the core library code. All plugins should have a top-level
+`load_plugin(sim)` function that gets called to load in the plugin content.
 
-Please see the [Plugins](https://shijbey.github.io/neighborly/plugins.html) section of the documentation for more 
-information about authoring plugins.
+As with any piece of software, always express caution when downloading third-party plugins. Ensure they come from a
+source that you trust.
 
-## Command-line interface
-
-Neighborly's command line interface (CLI) generates a world and exports the generated data to JSON. 
-By default, Neighborly runs a built-in version of _Talk of the Town_.
-Users can configure the simulation settings using config files written in yaml or json. By default, the CLI will
-look for a `neighborly.config.yaml` or `neighborly.config.json` file in the current working directory. Users can
-specify a path for the CLI to find a config file using the `-c` or `--config` arguments. Users can also control
-where the JSON output is stored or turn off JSON output using the `--output` and `--no-output` arguments.
-
-```bash
-# Run the default simulation
-python -m neighborly
-
-# Load custom config
-python -m neighborly --config <path_to_config_file>
-
-# Specify output path
-python -m neighborly --output <path_to_write_world_data>
-
-# Disable generating output
-python -m neighborly --no-output
-```
+To read more about plugins, visit the [Plugins](https://github.com/ShiJbey/neighborly/wiki/plugins) section of the
+wiki.
 
 # Tests
 
@@ -178,23 +134,7 @@ pytest --cov=neighborly tests/
 
 # Documentation
 
-The most up-to-date documentation can be found at [here](https://shijbey.github.io/neighborly/). The Sphinx docs usually need to catch up to the actual 
-codebase. So, when in doubt, please refer to the provided samples and in-code docstrings for assistance.
-
-## Building the documentation
-
-Below are instructions for building Neighborly's documentation using Sphinx. We also provide a `package.json` file
-that eases docs development using Node.js. The file contains scripts for building, cleaning, and serving the 
-documentation.
-
-```bash
-# Install the documentation dependencies
-python -m pip install -e ".[docs]"
-
-# Build docs as HTML (Run these commands from the projects root folder)
-sphinx-apidoc -o docs/source/module_docs/ src/neighborly
-sphinx-build -b html docs/source/ docs/build/html
-```
+The best place to find examples of how to use Neighborly is actually in the `./tests` directory. There you will find examples of loading content from files, running a simulation, and saving the output to JSON. There is also the [wiki](https://github.com/ShiJbey/neighborly/wiki). However, the wiki has a tendency to be out of date when new, potentially breaking changes are made to the framework. However, unit tests are updated almost every time a new feature is added.
 
 # Getting help and submitting bug reports
 

@@ -1,0 +1,10 @@
+{
+    "basic_settlement": {
+        "districts": [
+            "farming_district",
+            "market_district",
+            "entertainment_district",
+            "upper_class_residences"
+        ]
+    }
+}

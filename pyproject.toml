@@ -5,9 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "neighborly"
 description = "A narrative-focused agent-based settlement simulation framework."
-authors = [
-    { name = "Shi Johnson-Bey", email = "shijbey@gmail.com" },
-]
+authors = [{ name = "Shi Johnson-Bey", email = "shijbey@gmail.com" }]
 readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.8"
@@ -21,7 +19,7 @@ keywords = [
     "emergent narrative",
     "narrative generation",
     "interactive storytelling",
-    "settlement simulation"
+    "settlement simulation",
 ]
 license = { file = "LICENSE.md" }
 classifiers = [
@@ -41,42 +39,14 @@ classifiers = [
     "Topic :: Sociology",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
-    "Typing :: Typed"
+    "Typing :: Typed",
 ]
-dependencies = [
-    "esper",
-    "ordered-set",
-    "numpy",
-    "pyYAML",
-    "pydantic==1.*",
-    "tracery3",
-    "flask",
-    "flask_restful",
-    "flask_cors",
-    "marshmallow",
-    "pandas"
-]
+dependencies = ["esper==2.*", "ordered-set", "tracery3", "polars==0.19.*"]
 
 [project.optional-dependencies]
-testing = [
-    "pytest",
-    "pytest-cov"
-]
-samples = [
-    "jupyterlab",
-    "matplotlib",
-    "tqdm"
-]
-development = [
-    "isort",
-    "black",
-    "black[d]",
-    "black[jupyter]",
-    "build"
-]
-docs = [
-    "sphinx"
-]
+testing = ["pytest", "pytest-cov"]
+samples = ["jupyterlab", "matplotlib", "tqdm"]
+development = ["isort", "black", "black[d]", "black[jupyter]", "build"]
 
 [project.urls]
 "Homepage" = "https://github.com/ShiJbey/neighborly"
@@ -84,9 +54,6 @@ docs = [
 "Repository" = "https://github.com/ShiJBey/neighborly.git"
 "Changelog" = "https://github.com/ShiJbey/neighborly/blob/main/CHANGELOG.md"
 "Documentation" = "https://shijbey.github.io/neighborly/"
-
-[project.scripts]
-neighborly = "neighborly.__main__:main"
 
 [tool.setuptools.dynamic]
 version = { attr = "neighborly.__version__.VERSION" }

@@ -1,498 +1,428 @@
+"""The main simulation class.
+
+This module contains class definitions for creating simulation instances.
+
+"""
+
 from __future__ import annotations
 
-import importlib
+import json
 import logging
-import os
 import pathlib
 import random
-import re
-import sys
-from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional
 
-import neighborly.relationship as relationship
-import neighborly.systems as systems
-from neighborly.__version__ import VERSION
-from neighborly.ai.brain import AIBrain, Goals
-from neighborly.components.business import (
-    BossOf,
-    Business,
-    BusinessOwner,
-    ClosedForBusiness,
-    CoworkerOf,
-    EmployeeOf,
-    InTheWorkforce,
-    Occupation,
-    OpenForBusiness,
-    Services,
-    Unemployed,
-    WorkHistory,
+from neighborly.config import SimulationConfig
+from neighborly.data_collection import DataCollectionSystems, DataTables
+from neighborly.datetime import SimDate
+from neighborly.defs.defaults import (
+    DefaultBusinessDef,
+    DefaultCharacterDef,
+    DefaultDistrictDef,
+    DefaultJobRoleDef,
+    DefaultResidenceDef,
+    DefaultSettlementDef,
+    DefaultSkillDef,
+    DefaultSpeciesDef,
+    DefaultTraitDef,
 )
-from neighborly.components.character import (
-    Asexual,
-    Attractiveness,
-    Boldness,
-    CanGetOthersPregnant,
-    CanGetPregnant,
-    Compassion,
-    Dating,
-    Deceased,
-    Departed,
-    Female,
-    Fertility,
-    FertilityDecay,
-    GameCharacter,
-    Gender,
-    Greed,
-    Health,
-    HealthDecay,
-    HealthDecayChance,
-    Heterosexual,
-    Homosexual,
-    Honor,
-    Immortal,
-    LifeStage,
-    Male,
-    Married,
-    NonBinary,
-    Pregnant,
-    Retired,
-    Sociability,
-    Vengefulness,
-    Virtues,
+from neighborly.ecs import World
+from neighborly.effects.effects import (
+    AddLocationPreference,
+    AddSocialRule,
+    IncreaseSkill,
+    StatBuff,
 )
-from neighborly.components.residence import Residence, Resident, Vacant
-from neighborly.components.shared import (
-    Age,
-    Building,
-    FrequentedBy,
-    FrequentedLocations,
-    Lifespan,
-    Location,
-    Name,
-    Position2D,
+from neighborly.helpers.traits import register_trait_def
+from neighborly.libraries import (
+    BusinessLibrary,
+    CharacterLibrary,
+    DistrictLibrary,
+    EffectLibrary,
+    JobRoleLibrary,
+    LifeEventLibrary,
+    PreconditionLibrary,
+    ResidenceLibrary,
+    SettlementLibrary,
+    SkillLibrary,
+    TraitLibrary,
 )
-from neighborly.config import NeighborlyConfig, PluginConfig
-from neighborly.data_collection import DataCollector
-from neighborly.ecs import Active, Event, World
-from neighborly.inventory import Item
-from neighborly.life_event import (
-    EventHistory,
-    EventLog,
-    LifeEvent,
-    RandomLifeEventLibrary,
+from neighborly.life_event import GlobalEventHistory
+from neighborly.preconditions.defaults import (
+    AtLeastLifeStage,
+    HasTrait,
+    SkillRequirement,
+    TargetHasTrait,
+    TargetIsSex,
+    TargetLifeStageLT,
 )
-from neighborly.location_preference import LocationPreferenceRuleLibrary
-from neighborly.roles import Roles
-from neighborly.settlement import Settlement
-from neighborly.spawn_table import (
-    BusinessSpawnTable,
-    CharacterSpawnTable,
-    ResidenceSpawnTable,
+from neighborly.systems import (
+    AgingSystem,
+    ChildBirthSystem,
+    DeathSystem,
+    EarlyUpdateSystems,
+    HealthDecaySystem,
+    InitializationSystems,
+    InitializeSettlementSystem,
+    InstantiateJobRolesSystem,
+    InstantiateSkillsSystem,
+    InstantiateTraitsSystem,
+    LateUpdateSystems,
+    LifeEventSystem,
+    MeetNewPeopleSystem,
+    PassiveReputationChange,
+    PassiveRomanceChange,
+    SpawnNewBusinessesSystem,
+    SpawnNewResidentSystem,
+    SpawnResidentialBuildingsSystem,
+    UpdateFrequentedLocationSystem,
+    UpdateSystems,
 )
-from neighborly.stats import Stats
-from neighborly.statuses import Statuses
-from neighborly.time import SimDateTime
 from neighborly.tracery import Tracery
-from neighborly.traits import TraitLibrary, Traits
-from neighborly.world_map import BuildingMap
-
-_logger = logging.getLogger(__name__)
 
 
-class PluginSetupError(Exception):
-    """Exception thrown when an error occurs while loading a plugin"""
+class Simulation:
+    """A Neighborly simulation instance."""
 
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args)
+    __slots__ = "_config", "_world"
 
+    _config: SimulationConfig
+    """Config parameters for the simulation."""
+    _world: World
+    """The simulation's ECS instance."""
 
-@dataclass
-class PluginInfo:
-    """Metadata for Neighborly plugins"""
-
-    name: str
-    """A display name"""
-
-    plugin_id: str
-    """A unique ID that differentiates this plugin from other plugins"""
-
-    version: str
-    """The plugin's version number in the form MAJOR.MINOR.PATCH"""
-
-    required_version: Optional[str] = None
-    """The version of Neighborly required to load the plugin"""
-
-
-class Neighborly:
-    """Main entry class for running Neighborly simulations."""
-
-    __slots__ = "world", "config"
-
-    world: World
-    """Entity-component system (ECS) that manages the virtual world."""
-
-    config: NeighborlyConfig
-    """Configuration settings for the simulation."""
-
-    def __init__(self, config: Optional[NeighborlyConfig] = None) -> None:
+    def __init__(self, config: Optional[SimulationConfig] = None) -> None:
         """
         Parameters
         ----------
         config
-            Configuration settings for the simulation.
+            Configuration parameters for the simulation, by default None.
+            Simulation will use a default configuration if no config is
+            provided.
         """
-        self.world = World()
-        self.config = config if config else NeighborlyConfig()
+        self._config = config if config is not None else SimulationConfig()
+        self._world = World()
 
-        # Seed RNG for libraries we don't control
-        random.seed(self.config.seed)
+        # Seed the global rng for third-party packages
+        random.seed(self._config.seed)
 
-        # Add default resources
-        self.world.resource_manager.add_resource(self.config)
-        self.world.resource_manager.add_resource(random.Random(self.config.seed))
-        self.world.resource_manager.add_resource(SimDateTime())
-        self.world.resource_manager.add_resource(Tracery(self.config.seed))
-        self.world.resource_manager.add_resource(EventLog())
-        self.world.resource_manager.add_resource(relationship.SocialRuleLibrary())
-        self.world.resource_manager.add_resource(LocationPreferenceRuleLibrary())
-        self.world.resource_manager.add_resource(DataCollector())
-        self.world.resource_manager.add_resource(RandomLifeEventLibrary())
-        self.world.resource_manager.add_resource(TraitLibrary())
-        self.world.resource_manager.add_resource(CharacterSpawnTable())
-        self.world.resource_manager.add_resource(BusinessSpawnTable())
-        self.world.resource_manager.add_resource(ResidenceSpawnTable())
-        self.world.resource_manager.add_resource(BuildingMap(self.config.world_size))
+        self._init_resources()
+        self._init_systems()
+        self._init_effects()
+        self._init_preconditions()
+        self._init_traits()
+        self._init_logging()
 
+    def _init_resources(self) -> None:
+        """Initialize built-in resources."""
+        self.world.resource_manager.add_resource(self._config)
+        self.world.resource_manager.add_resource(random.Random(self._config.seed))
+        self.world.resource_manager.add_resource(SimDate())
+        self.world.resource_manager.add_resource(DataTables())
+        self.world.resource_manager.add_resource(CharacterLibrary(DefaultCharacterDef))
+        self.world.resource_manager.add_resource(JobRoleLibrary(DefaultJobRoleDef))
+        self.world.resource_manager.add_resource(BusinessLibrary(DefaultBusinessDef))
+        self.world.resource_manager.add_resource(ResidenceLibrary(DefaultResidenceDef))
+        self.world.resource_manager.add_resource(DistrictLibrary(DefaultDistrictDef))
+        self.world.resource_manager.add_resource(
+            SettlementLibrary(DefaultSettlementDef)
+        )
+        self.world.resource_manager.add_resource(TraitLibrary(DefaultTraitDef))
+        self.world.resource_manager.get_resource(TraitLibrary).add_definition_type(
+            DefaultSpeciesDef
+        )
+        self.world.resource_manager.add_resource(EffectLibrary())
+        self.world.resource_manager.add_resource(SkillLibrary(DefaultSkillDef))
+        self.world.resource_manager.add_resource(PreconditionLibrary())
+        self.world.resource_manager.add_resource(LifeEventLibrary())
+        self.world.resource_manager.add_resource(Tracery(self._config.seed))
+        self.world.resource_manager.add_resource(GlobalEventHistory())
+
+    def _init_systems(self) -> None:
+        """Initialize built-in systems."""
         # Add default top-level system groups (in execution order)
-        self.world.system_manager.add_system(systems.InitializationSystemGroup())
-        self.world.system_manager.add_system(systems.EarlyUpdateSystemGroup())
-        self.world.system_manager.add_system(systems.UpdateSystemGroup())
-        self.world.system_manager.add_system(systems.LateUpdateSystemGroup())
+        self.world.system_manager.add_system(InitializationSystems())
+        self.world.system_manager.add_system(DataCollectionSystems())
+        self.world.system_manager.add_system(EarlyUpdateSystems())
+        self.world.system_manager.add_system(UpdateSystems())
+        self.world.system_manager.add_system(LateUpdateSystems())
 
-        # Add default early-update subgroups (in execution order)
+        # Add content initialization systems
         self.world.system_manager.add_system(
-            systems.DataCollectionSystemGroup(),
-            system_group=systems.EarlyUpdateSystemGroup,
+            system=InstantiateTraitsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
-            systems.StatusUpdateSystemGroup(),
-            system_group=systems.EarlyUpdateSystemGroup,
+            system=InstantiateJobRolesSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
-            systems.GoalSuggestionSystemGroup(),
-            system_group=systems.EarlyUpdateSystemGroup,
+            system=InstantiateSkillsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
-            systems.RelationshipUpdateSystemGroup(),
-            system_group=systems.EarlyUpdateSystemGroup,
+            system=InitializeSettlementSystem(), system_group=InitializationSystems
         )
 
-        # Add early-update systems (in execution order)
+        # Add core update systems
         self.world.system_manager.add_system(
-            systems.MeetNewPeopleSystem(),
-            system_group=systems.EarlyUpdateSystemGroup,
+            system=SpawnNewResidentSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
-            systems.RandomLifeEventSystem(),
-            system_group=systems.EarlyUpdateSystemGroup,
+            system=SpawnResidentialBuildingsSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
-            systems.UpdateFrequentedLocationSystem(),
-            system_group=systems.EarlyUpdateSystemGroup,
+            system=SpawnNewBusinessesSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=UpdateFrequentedLocationSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=AgingSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=HealthDecaySystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=ChildBirthSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=MeetNewPeopleSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=LifeEventSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=PassiveReputationChange(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=PassiveRomanceChange(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=DeathSystem(), system_group=UpdateSystems
         )
 
-        # Add relationship-update systems (in execution order)
-        self.world.system_manager.add_system(
-            systems.EvaluateSocialRulesSystem(),
-            system_group=systems.RelationshipUpdateSystemGroup,
+    def _init_effects(self) -> None:
+        """Initialize built-in Effect definitions."""
+        self._world.resource_manager.get_resource(EffectLibrary).add_effect_type(
+            StatBuff
         )
-        self.world.system_manager.add_system(
-            systems.PassiveFriendshipChange(),
-            system_group=systems.RelationshipUpdateSystemGroup,
+        self._world.resource_manager.get_resource(EffectLibrary).add_effect_type(
+            IncreaseSkill
         )
-        self.world.system_manager.add_system(
-            systems.PassiveRomanceChange(),
-            system_group=systems.RelationshipUpdateSystemGroup,
+        self._world.resource_manager.get_resource(EffectLibrary).add_effect_type(
+            AddLocationPreference
         )
-
-        # Goal suggestion systems
-        self.world.system_manager.add_system(
-            systems.DatingBreakUpSystem(),
-            system_group=systems.GoalSuggestionSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.EndMarriageSystem(),
-            system_group=systems.GoalSuggestionSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.MarriageSystem(), system_group=systems.GoalSuggestionSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.FindRomanceSystem(),
-            system_group=systems.GoalSuggestionSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.FindOwnPlaceSystem(),
-            system_group=systems.GoalSuggestionSystemGroup,
-        )
-        self.world.system_manager.add_system(
-            systems.RetirementSystem(),
-            system_group=systems.GoalSuggestionSystemGroup,
+        self._world.resource_manager.get_resource(EffectLibrary).add_effect_type(
+            AddSocialRule
         )
 
-        # Add update systems (in execution order)
-        self.world.system_manager.add_system(
-            systems.IncrementAgeSystem(), system_group=systems.UpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.UpdateLifeStageSystem(), system_group=systems.UpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.HealthDecaySystem(), system_group=systems.UpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.FertilityDecaySystem(), system_group=systems.UpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.DeathSystem(), system_group=systems.UpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.AIActionSystem(), system_group=systems.UpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.GoOutOfBusinessSystem(), system_group=systems.UpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.PregnancySystem(), system_group=systems.UpdateSystemGroup
+    def _init_preconditions(self) -> None:
+        """Initialize built-in precondition definitions."""
+        self.world.resource_manager.get_resource(
+            PreconditionLibrary
+        ).add_precondition_type(HasTrait)
+        self.world.resource_manager.get_resource(
+            PreconditionLibrary
+        ).add_precondition_type(SkillRequirement)
+        self.world.resource_manager.get_resource(
+            PreconditionLibrary
+        ).add_precondition_type(AtLeastLifeStage)
+        self.world.resource_manager.get_resource(
+            PreconditionLibrary
+        ).add_precondition_type(TargetHasTrait)
+        self.world.resource_manager.get_resource(
+            PreconditionLibrary
+        ).add_precondition_type(TargetIsSex)
+        self.world.resource_manager.get_resource(
+            PreconditionLibrary
+        ).add_precondition_type(TargetLifeStageLT)
+
+    def _init_traits(self) -> None:
+        """Initialize built-in trait definitions"""
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="employee",
+                display_name="Employee",
+                description="The target of this relationship is an employee.",
+                spawn_frequency=0,
+            ),
         )
 
-        # Add status-update systems (in execution order)
-        self.world.system_manager.add_system(
-            systems.ChildBirthSystem(), system_group=systems.StatusUpdateSystemGroup
-        )
-        self.world.system_manager.add_system(
-            systems.EmploymentSystem(),
-            system_group=systems.StatusUpdateSystemGroup,
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="coworker",
+                display_name="Coworker",
+                description="The target of this relationship is a coworker.",
+                spawn_frequency=0,
+            ),
         )
 
-        # Time actually sits outside any group and runs last
-        self.world.system_manager.add_system(systems.TimeSystem(), priority=-9999)
-
-        # Register components
-        self.world.gameobject_manager.register_component(Male)
-        self.world.gameobject_manager.register_component(Female)
-        self.world.gameobject_manager.register_component(NonBinary)
-        self.world.gameobject_manager.register_component(Active)
-        self.world.gameobject_manager.register_component(AIBrain)
-        self.world.gameobject_manager.register_component(Goals)
-        self.world.gameobject_manager.register_component(GameCharacter)
-        self.world.gameobject_manager.register_component(relationship.Relationships)
-        self.world.gameobject_manager.register_component(relationship.Relationship)
-        self.world.gameobject_manager.register_component(relationship.Friendship)
-        self.world.gameobject_manager.register_component(relationship.Romance)
-        self.world.gameobject_manager.register_component(relationship.InteractionScore)
-        self.world.gameobject_manager.register_component(
-            relationship.PlatonicCompatibility
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="departed",
+                display_name="Departed",
+                description="The character has departed the simulation.",
+                spawn_frequency=0,
+            ),
         )
-        self.world.gameobject_manager.register_component(
-            relationship.RomanticCompatibility
-        )
-        self.world.gameobject_manager.register_component(relationship.BaseRelationship)
-        self.world.gameobject_manager.register_component(Location)
-        self.world.gameobject_manager.register_component(FrequentedBy)
-        self.world.gameobject_manager.register_component(Virtues)
-        self.world.gameobject_manager.register_component(Occupation)
-        self.world.gameobject_manager.register_component(WorkHistory)
-        self.world.gameobject_manager.register_component(Services)
-        self.world.gameobject_manager.register_component(ClosedForBusiness)
-        self.world.gameobject_manager.register_component(OpenForBusiness)
-        self.world.gameobject_manager.register_component(Business)
-        self.world.gameobject_manager.register_component(BusinessOwner)
-        self.world.gameobject_manager.register_component(Unemployed)
-        self.world.gameobject_manager.register_component(InTheWorkforce)
-        self.world.gameobject_manager.register_component(BossOf)
-        self.world.gameobject_manager.register_component(EmployeeOf)
-        self.world.gameobject_manager.register_component(CoworkerOf)
-        self.world.gameobject_manager.register_component(Departed)
-        self.world.gameobject_manager.register_component(Health)
-        self.world.gameobject_manager.register_component(HealthDecay)
-        self.world.gameobject_manager.register_component(HealthDecayChance)
-        self.world.gameobject_manager.register_component(Fertility)
-        self.world.gameobject_manager.register_component(FertilityDecay)
-        self.world.gameobject_manager.register_component(Homosexual)
-        self.world.gameobject_manager.register_component(Heterosexual)
-        self.world.gameobject_manager.register_component(Asexual)
-        self.world.gameobject_manager.register_component(Boldness)
-        self.world.gameobject_manager.register_component(Compassion)
-        self.world.gameobject_manager.register_component(Greed)
-        self.world.gameobject_manager.register_component(Honor)
-        self.world.gameobject_manager.register_component(Sociability)
-        self.world.gameobject_manager.register_component(Vengefulness)
-        self.world.gameobject_manager.register_component(Attractiveness)
-        self.world.gameobject_manager.register_component(CanGetPregnant)
-        self.world.gameobject_manager.register_component(CanGetOthersPregnant)
-        self.world.gameobject_manager.register_component(Immortal)
-        self.world.gameobject_manager.register_component(Deceased)
-        self.world.gameobject_manager.register_component(Retired)
-        self.world.gameobject_manager.register_component(Residence)
-        self.world.gameobject_manager.register_component(Resident)
-        self.world.gameobject_manager.register_component(Vacant)
-        self.world.gameobject_manager.register_component(Building)
-        self.world.gameobject_manager.register_component(Position2D)
-        self.world.gameobject_manager.register_component(Statuses)
-        self.world.gameobject_manager.register_component(Traits)
-        self.world.gameobject_manager.register_component(Stats)
-        self.world.gameobject_manager.register_component(FrequentedLocations)
-        self.world.gameobject_manager.register_component(EventHistory)
-        self.world.gameobject_manager.register_component(Name)
-        self.world.gameobject_manager.register_component(Lifespan)
-        self.world.gameobject_manager.register_component(Age)
-        self.world.gameobject_manager.register_component(Gender)
-        self.world.gameobject_manager.register_component(Dating)
-        self.world.gameobject_manager.register_component(Married)
-        self.world.gameobject_manager.register_component(Pregnant)
-        self.world.gameobject_manager.register_component(LifeStage)
-        self.world.gameobject_manager.register_component(Item)
-        self.world.gameobject_manager.register_component(Roles)
 
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="deceased",
+                display_name="Deceased",
+                description="The character has died.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="retired",
+                display_name="Retired",
+                description="The character has retired from working.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="family",
+                display_name="Family",
+                description="These characters are related",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="parent",
+                display_name="Parent",
+                description="The target of this relationship is the owner's parent",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="child",
+                display_name="Child",
+                description="The target of this relationship is the owner's child",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="sibling",
+                display_name="Sibling",
+                description="The target of this relationship is the owner's sibling",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="spouse",
+                display_name="Spouse",
+                description="The target of this relationship is the owner's spouse",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="dating",
+                display_name="dating",
+                description="The relationship target and owner are dating.",
+                spawn_frequency=0,
+            ),
+        )
+
+    def _init_logging(self) -> None:
+        """Initialize simulation logging."""
         if self.config.logging.logging_enabled:
-            if self.config.logging.log_file_name is not None:
+            if self.config.logging.log_to_terminal is False:
                 # Output the logs to a file
-                log_path = (
-                    pathlib.Path(self.config.logging.log_directory)
-                    / self.config.logging.log_file_name
-                )
+                log_path = pathlib.Path(self.config.logging.log_file_path)
 
                 logging.basicConfig(
                     filename=log_path,
                     encoding="utf-8",
                     level=self.config.logging.log_level,
+                    format="%(message)s",
                 )
             else:
                 logging.basicConfig(
-                    level=self.config.logging.log_level,
+                    level=self.config.logging.log_level, format="%(message)s"
                 )
-
-            self.world.event_manager.on_any_event(Neighborly.log_life_event)
-
-        # Load plugins from the config
-        for entry in self.config.plugins:
-            self.load_plugin(entry)
-
-        # Generate the settlement last
-        self.world.resource_manager.add_resource(
-            Settlement(
-                self.world.resource_manager.get_resource(Tracery).generate(
-                    self.config.settlement_name
-                )
-            )
-        )
 
     @property
-    def date(self) -> SimDateTime:
-        """The current date of the simulation."""
-        return self.world.resource_manager.get_resource(SimDateTime)
+    def date(self) -> SimDate:
+        """The current date in the simulation."""
+        return self._world.resource_manager.get_resource(SimDate)
 
-    def load_plugin(self, plugin: PluginConfig) -> None:
-        """Load a plugin.
+    @property
+    def world(self) -> World:
+        """The simulation's ECS instance."""
+        return self._world
 
-        Parameters
-        ----------
-        plugin
-            Configuration data for a plugin to load.
-        """
+    @property
+    def config(self) -> SimulationConfig:
+        """Config parameters for the simulation."""
+        return self._config
 
-        plugin_abs_path = os.path.abspath(plugin.path)
-        sys.path.insert(0, plugin_abs_path)
-
-        plugin_module = importlib.import_module(plugin.name)
-        plugin_info: Optional[PluginInfo] = getattr(plugin_module, "plugin_info", None)
-        plugin_setup_fn: Optional[Callable[[Neighborly], None]] = getattr(
-            plugin_module, "setup", None
+    def initialize(self) -> None:
+        """Run initialization systems only."""
+        initialization_system_group = self.world.system_manager.get_system(
+            InitializationSystems
         )
 
-        if plugin_info is None:
-            raise PluginSetupError(
-                f"Cannot find 'plugin_info' dict in plugin: {plugin.name}."
-            )
+        initialization_system_group.on_update(self.world)
 
-        if plugin_setup_fn is None:
-            raise PluginSetupError(
-                f"'setup' function not found for plugin: {plugin.name}"
-            )
+        initialization_system_group.set_active(False)
 
-        if not callable(plugin_setup_fn):
-            raise PluginSetupError(
-                f"'setup' function is not callable in plugin: {plugin.name}"
-            )
+    def step(self) -> None:
+        """Advance the simulation one time step (month)."""
+        self._world.step()
+        self.date.increment_month()
 
-        if plugin_info.required_version is not None:
-            if re.fullmatch(r"^<=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
-                if VERSION > plugin_info.required_version:
-                    raise PluginSetupError(
-                        "Plugin {} requires {}".format(
-                            plugin_info.name, plugin_info.required_version
-                        )
-                    )
-            elif re.fullmatch(
-                r"^>=[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version
-            ):
-                if VERSION < plugin_info.required_version:
-                    raise PluginSetupError(
-                        "Plugin {} requires {}".format(
-                            plugin_info.name, plugin_info.required_version
-                        )
-                    )
-            elif re.fullmatch(r"^>[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
-                if VERSION <= plugin_info.required_version:
-                    raise PluginSetupError(
-                        "Plugin {} requires {}".format(
-                            plugin_info.name, plugin_info.required_version
-                        )
-                    )
-            elif re.fullmatch(r"^<[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version):
-                if VERSION > plugin_info.required_version:
-                    raise PluginSetupError(
-                        "Plugin {} requires {}".format(
-                            plugin_info.name, plugin_info.required_version
-                        )
-                    )
-            elif re.fullmatch(
-                r"^==[0-9]+.[0-9]+.[0-9]+$", plugin_info.required_version
-            ):
-                if VERSION != plugin_info.required_version:
-                    raise PluginSetupError(
-                        "Plugin {} requires {}".format(
-                            plugin_info.name, plugin_info.required_version
-                        )
-                    )
-
-        plugin_setup_fn(self)
-
-        # Remove the given plugin path from the front
-        # of the system path to prevent module resolution bugs
-        sys.path.pop(0)
-
-    def run_for(self, years: int) -> None:
-        """Run the simulation for a given number of simulated years.
+    def to_json(self, indent: Optional[int] = None) -> str:
+        """Export the simulation as a JSON string.
 
         Parameters
         ----------
-        years
-            The number of years to run the simulation for.
+        indent
+            An optional amount of spaces to indent lines in the string.
+
+        Returns
+        -------
+        str
+            A JSON data string.
         """
-        try:
-            for _ in range(years):
-                self.step()
-        except KeyboardInterrupt:
-            print("\nStopping Simulation")
+        serialized_data = {
+            "seed": self.config.seed,
+            "gameobjects": {
+                str(g.uid): g.to_dict()
+                for g in self.world.gameobject_manager.gameobjects
+            },
+            "events": self.world.resource_manager.get_resource(
+                GlobalEventHistory
+            ).to_dict(),
+            "data_tables": self.world.resource_manager.get_resource(
+                DataTables
+            ).to_dict(),
+        }
 
-    def step(self) -> None:
-        """Advance the simulation a single timestep."""
-        self.world.step()
-
-    @staticmethod
-    def log_life_event(event: Event) -> None:
-        if isinstance(event, LifeEvent):
-            _logger.info(str(event))
+        return json.dumps(
+            serialized_data,
+            indent=indent,
+        )
