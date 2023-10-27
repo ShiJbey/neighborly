@@ -1,71 +1,38 @@
-"""
-Tests for the Neighborly's Business and Occupation logic
-"""
+import pathlib
 
-import pytest
-
-from neighborly.components.business import (
-    BaseBusiness,
-    Business,
-    BusinessConfig,
-    Occupation,
-    Services,
-    ServiceType,
+from neighborly.components.business import Business
+from neighborly.helpers.business import create_business
+from neighborly.helpers.settlement import create_district, create_settlement
+from neighborly.loaders import (
+    load_businesses,
+    load_characters,
+    load_districts,
+    load_job_roles,
+    load_residences,
+    load_settlements,
 )
-from neighborly.simulation import Neighborly
+from neighborly.simulation import Simulation
+
+_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
-class Cook(Occupation):
-    pass
+def test_create_business() -> None:
+    sim = Simulation()
 
+    load_districts(sim, _TEST_DATA_DIR / "districts.json")
+    load_settlements(sim, _TEST_DATA_DIR / "settlements.json")
+    load_businesses(sim, _TEST_DATA_DIR / "businesses.json")
+    load_characters(sim, _TEST_DATA_DIR / "characters.json")
+    load_residences(sim, _TEST_DATA_DIR / "residences.json")
+    load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
-class Restaurateur(Occupation):
-    pass
+    sim.initialize()
 
+    settlement = create_settlement(sim.world, "basic_settlement")
 
-class Server(Occupation):
-    pass
+    district = create_district(sim.world, settlement, "entertainment_district")
 
+    business = create_business(sim.world, district, "blacksmith_shop")
 
-class Host(Occupation):
-    pass
-
-
-class Restaurant(BaseBusiness):
-    config = BusinessConfig(
-        owner_type=Restaurateur, employee_types={Cook: 1, Server: 2, Host: 1}
-    )
-
-
-@pytest.fixture
-def test_sim():
-    sim = Neighborly()
-
-    sim.world.gameobject_manager.register_component(Restaurateur)
-    sim.world.gameobject_manager.register_component(Cook)
-    sim.world.gameobject_manager.register_component(Server)
-    sim.world.gameobject_manager.register_component(Host)
-    sim.world.gameobject_manager.register_component(Restaurant)
-
-    return sim
-
-
-def test_construct_business(test_sim: Neighborly):
-    """Constructing business components using BusinessArchetypes"""
-    restaurant = Restaurant.instantiate(test_sim.world, lot=(0, 0))
-    restaurant_business = restaurant.get_component(Business)
-
-    assert restaurant_business.owner_type == Restaurateur
-    assert restaurant_business.owner is None
-
-
-def test_services_contains() -> None:
-    sim = Neighborly()
-
-    gameobject = sim.world.gameobject_manager.spawn_gameobject()
-
-    services_component = gameobject.add_component(Services, services=["Food", "Retail"])
-
-    assert ServiceType.Food in services_component
-    assert ServiceType.Retail in services_component
-    assert ServiceType.ChildCare not in services_component
+    assert business.get_component(Business).owner_role is not None
+    assert business.get_component(Business).district == district

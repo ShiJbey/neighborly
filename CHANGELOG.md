@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [2.0.0] - 2023-27-10
+
+This version breaks nearly all aspects of previous versions. Neighborly's internal architecture
+was rewritten to better support data-driven authoring workflows. While version 1.0.0 started to
+move away from the data-driven aspects, it made content authoring more difficult. This latest
+version was built with the authoring interface holding prime importance.
+
+### Added
+
+- New trait system
+- New skill system
+- Load entire Tracery grammars straight from JSON files
+- Simplified datetime representation
+- Reduced ECS feature set
+- Simplified simulation config
+
+### Removed
+
+- Support for authoring content using YAML. Now only supports JSON.
+- Grid-style world map
+- Server support
+- Commandline interface support
+- Entity prefab support
+- Sphinx docs
+- Goal system
+
 ## [1.0.1]
 
 ### Removed
@@ -23,9 +49,9 @@ The passage of time has been greatly simplified to only simulate one year at a t
 granular time steps such as hours, there is no need for character routines or operating hours. We also do not need
 to track the maximum capacity of a location or mark locations as eligible for travel.
 
-Neighborly moved away from the data-driven approach of loading prefab definitions from 
+Neighborly moved away from the data-driven approach of loading prefab definitions from
 external files. Creating characters or businesses this way required duplicate
-definitions and made it harder to share and modify existing prefabs. The new 
+definitions and made it harder to share and modify existing prefabs. The new
 `CharacterType` and `BusinessType` classes are a return to using factory objects to
 instantiate GameObjects. The best part is that the factory is also a component that is
 associate with the GameObject it instantiates. So, now users can easily query by

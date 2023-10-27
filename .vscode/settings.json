@@ -3,9 +3,12 @@
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
   "autoDocstring.docstringFormat": "numpy",
-  "python.testing.pytestArgs": [
-      "tests"
-  ],
+  "python.testing.pytestArgs": ["tests"],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
+  "markdownlint.config": {
+    "MD024": false,
+    "MD036": false,
+    "MD033": false
+  }
 }

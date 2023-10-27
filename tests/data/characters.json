@@ -1,0 +1,52 @@
+{
+    "person": {
+        "spawn_frequency": 1,
+        "species": [
+            "human"
+        ],
+        "gender": [
+            "Male",
+            "Female"
+        ],
+        "max_traits": 3
+    },
+    "farmer": {
+        "spawn_frequency": 1,
+        "species": [
+            "human"
+        ],
+        "gender": [
+            "Male",
+            "Female"
+        ],
+        "max_traits": 3,
+        "skills": {
+            "farming": [
+                0,
+                200
+            ]
+        }
+    },
+    "merchant": {
+        "spawn_frequency": 1,
+        "species": [
+            "human"
+        ],
+        "gender": [
+            "Male",
+            "Female"
+        ],
+        "max_traits": 3
+    },
+    "nobility": {
+        "spawn_frequency": 1,
+        "species": [
+            "human"
+        ],
+        "gender": [
+            "Male",
+            "Female"
+        ],
+        "max_traits": 3
+    }
+}
