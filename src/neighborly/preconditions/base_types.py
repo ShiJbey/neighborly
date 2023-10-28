@@ -13,6 +13,12 @@ from neighborly.ecs import GameObject, World
 class Precondition(ABC):
     """Abstract base class for all precondition objects."""
 
+    @property
+    @abstractmethod
+    def description(self) -> str:
+        """Get a string description of the effect."""
+        raise NotImplementedError()
+
     @abstractmethod
     def __call__(self, target: GameObject) -> bool:
         """Check if a GameObject passes the precondition.
@@ -42,3 +48,6 @@ class Precondition(ABC):
             Keyword parameters to pass to the precondition.
         """
         raise NotImplementedError()
+
+    def __str__(self) -> str:
+        return self.description

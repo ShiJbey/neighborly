@@ -148,7 +148,7 @@ def get_relationships_with_traits(
 
     Returns
     -------
-    List[GameObject]
+    list[GameObject]
         Relationships with the given traits.
     """
     matches: list[GameObject] = []

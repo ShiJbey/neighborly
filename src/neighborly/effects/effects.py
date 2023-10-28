@@ -47,6 +47,12 @@ class StatBuff(Effect):
         self.modifier_type = modifier_type
         self.amount = amount
 
+    @property
+    def description(self) -> str:
+        return (
+            f"add {self.amount}({self.modifier_type.name}) modifier to {self.stat_id}"
+        )
+
     def apply(self, target: GameObject) -> None:
         get_stat(target, self.stat_id).add_modifier(
             StatModifier(
@@ -73,22 +79,26 @@ class StatBuff(Effect):
 class IncreaseSkill(Effect):
     """Permanently increases a skill stat."""
 
-    __slots__ = "_skill_name", "_amount"
+    __slots__ = "skill_name", "amount"
 
-    _skill_name: str
+    skill_name: str
     """The skill to increase the base value of"""
-    _amount: float
+    amount: float
     """The amount of buff to apply to the stat."""
 
     def __init__(self, skill_name: str, amount: float) -> None:
         super().__init__()
-        self._skill_name = skill_name
-        self._amount = amount
+        self.skill_name = skill_name
+        self.amount = amount
+
+    @property
+    def description(self) -> str:
+        return f"add {self.amount} to the {self.skill_name} skill"
 
     def apply(self, target: GameObject) -> None:
-        if not has_skill(target, self._skill_name):
-            add_skill(target, self._skill_name)
-        get_skill(target, self._skill_name).base_value += self._amount
+        if not has_skill(target, self.skill_name):
+            add_skill(target, self.skill_name)
+        get_skill(target, self.skill_name).base_value += self.amount
 
     def remove(self, target: GameObject) -> None:
         # Skill increases the skill stat. Cannot be removed.
@@ -123,6 +133,19 @@ class AddLocationPreference(Effect):
         super().__init__()
         self.preconditions = preconditions
         self.amount = amount
+
+    @property
+    def description(self) -> str:
+        output = "(Location Preference): "
+
+        if self.preconditions:
+            output += "if location "
+            output += " and ".join(p.description for p in self.preconditions)
+            output += ", then "
+
+        output += f"add {self.amount} to the location score."
+
+        return output
 
     def apply(self, target: GameObject) -> None:
         target.get_component(LocationPreferences).add_rule(
@@ -170,6 +193,19 @@ class AddSocialRule(Effect):
         super().__init__()
         self.preconditions = preconditions
         self.effects = effects
+
+    @property
+    def description(self) -> str:
+        output = "(Social Rule): "
+
+        if self.preconditions:
+            output += "if "
+            output += " and ".join(p.description for p in self.preconditions)
+            output += ", then "
+
+        output += " and ".join(e.description for e in self.effects)
+
+        return output
 
     def apply(self, target: GameObject) -> None:
         add_social_rule(

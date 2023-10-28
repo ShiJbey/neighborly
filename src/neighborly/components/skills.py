@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 
 from neighborly.components.stats import Stat
 from neighborly.ecs import Component, GameObject
@@ -122,6 +122,9 @@ class Skills(Component):
             skill.name: stat.value for skill, stat in self._skills.items()
         }
         return f"{type(self).__name__}({skill_value_pairs})"
+
+    def __iter__(self) -> Iterator[tuple[GameObject, Stat]]:
+        return iter(self._skills.items())
 
     def to_dict(self) -> dict[str, Any]:
         return {**{skill.name: stat.value for skill, stat in self._skills.items()}}

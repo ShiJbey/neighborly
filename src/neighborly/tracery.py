@@ -5,7 +5,7 @@ businesses and other named objects.
 
 """
 
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 import tracery
 import tracery.modifiers as tracery_modifiers
@@ -36,7 +36,7 @@ class Tracery:
         """
         self._grammar.rng.seed(seed)
 
-    def add_rules(self, rules: Dict[str, List[str]]) -> None:
+    def add_rules(self, rules: dict[str, list[str]]) -> None:
         """Add grammar rules.
 
         Parameters

@@ -13,7 +13,7 @@ from neighborly.components.business import (
     Unemployed,
 )
 from neighborly.components.character import Character, LifeStage
-from neighborly.components.residence import Residence, Resident, Vacant
+from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
@@ -51,7 +51,7 @@ class Death(LifeEvent):
 
             # If there are no-more residents that are owner's remove everyone from
             # the residence and have them depart the simulation.
-            residence_data = residence.get_component(Residence)
+            residence_data = residence.get_component(ResidentialUnit)
             if len(list(residence_data.owners)) == 0:
                 residents = list(residence_data.residents)
                 for resident in residents:
@@ -72,7 +72,7 @@ class Death(LifeEvent):
 
     def __str__(self) -> str:
         character = self.roles["subject"]
-        return f"[{self.timestamp}] {character.name} died."
+        return f"{character.name} died."
 
 
 class JoinSettlementEvent(LifeEvent):
@@ -98,7 +98,7 @@ class JoinSettlementEvent(LifeEvent):
         character = self.roles["subject"]
         settlement = self.roles["settlement"]
 
-        return f"[{self.timestamp}] {character.name} immigrated to {settlement.name}."
+        return f"{character.name} immigrated to {settlement.name}."
 
 
 class BecomeAdolescentEvent(LifeEvent):
@@ -121,7 +121,7 @@ class BecomeAdolescentEvent(LifeEvent):
         return {**super().to_dict(), "character": self.roles["subject"].uid}
 
     def __str__(self) -> str:
-        return f"[{self.timestamp}] {self.roles['subject'].name} became an adolescent."
+        return f"{self.roles['subject'].name} became an adolescent."
 
 
 class BecomeYoungAdultEvent(LifeEvent):
@@ -144,7 +144,7 @@ class BecomeYoungAdultEvent(LifeEvent):
         return {**super().to_dict(), "character": self.roles["subject"].uid}
 
     def __str__(self) -> str:
-        return f"[{self.timestamp}] {self.roles['subject'].name} became a young adult."
+        return f"{self.roles['subject'].name} became a young adult."
 
 
 class BecomeAdultEvent(LifeEvent):
@@ -167,7 +167,7 @@ class BecomeAdultEvent(LifeEvent):
         return {**super().to_dict(), "character": self.roles["subject"].uid}
 
     def __str__(self) -> str:
-        return f"[{self.timestamp}] {self.roles['subject'].name} became an adult."
+        return f"{self.roles['subject'].name} became an adult."
 
 
 class BecomeSeniorEvent(LifeEvent):
@@ -190,7 +190,7 @@ class BecomeSeniorEvent(LifeEvent):
         return {**super().to_dict(), "character": self.roles["subject"].uid}
 
     def __str__(self) -> str:
-        return f"[{self.timestamp}] {self.roles['subject'].name} became a senior."
+        return f"{self.roles['subject'].name} became a senior."
 
 
 class ChangeResidenceEvent(LifeEvent):
@@ -218,7 +218,7 @@ class ChangeResidenceEvent(LifeEvent):
         if resident := character.try_component(Resident):
             # This character is currently a resident at another location
             former_residence = resident.residence
-            former_residence_comp = former_residence.get_component(Residence)
+            former_residence_comp = former_residence.get_component(ResidentialUnit)
 
             if former_residence_comp.is_owner(character):
                 former_residence_comp.remove_owner(character)
@@ -227,7 +227,7 @@ class ChangeResidenceEvent(LifeEvent):
             character.remove_component(Resident)
 
             former_district = former_residence.get_component(
-                Residence
+                ResidentialUnit
             ).district.get_component(District)
             former_district.population -= 1
 
@@ -239,19 +239,19 @@ class ChangeResidenceEvent(LifeEvent):
             return
 
         # Move into new residence
-        new_residence.get_component(Residence).add_resident(character)
+        new_residence.get_component(ResidentialUnit).add_resident(character)
 
         if self.data["is_owner"]:
-            new_residence.get_component(Residence).add_owner(character)
+            new_residence.get_component(ResidentialUnit).add_owner(character)
 
         character.add_component(Resident(residence=new_residence))
 
         if new_residence.has_component(Vacant):
             new_residence.remove_component(Vacant)
 
-        new_district = new_residence.get_component(Residence).district.get_component(
-            District
-        )
+        new_district = new_residence.get_component(
+            ResidentialUnit
+        ).district.get_component(District)
         new_district.population += 1
 
     @classmethod
@@ -263,16 +263,16 @@ class ChangeResidenceEvent(LifeEvent):
         new_residence = self.roles.get_first_or_none("new_residence")
 
         if new_residence is not None:
-            district = new_residence.get_component(Residence).district
+            district = new_residence.get_component(ResidentialUnit).district
             settlement = district.get_component(District).settlement
 
             return (
-                f"[{self.timestamp}] {subject.name} moved into a new residence "
+                f"{subject.name} moved into a new residence "
                 f"({new_residence.name}) in the {district.name} district of "
                 f"{settlement.name}."
             )
 
-        return f"[{self.timestamp}] {subject.name} moved out of their residence."
+        return f"{subject.name} moved out of their residence."
 
 
 class BirthEvent(LifeEvent):
@@ -296,7 +296,7 @@ class BirthEvent(LifeEvent):
         return BirthEvent(subject)
 
     def __str__(self) -> str:
-        return f"[{self.timestamp}] {self.roles['subject'].name} was born."
+        return f"{self.roles['subject'].name} was born."
 
 
 class HaveChildEvent(LifeEvent):
@@ -330,7 +330,7 @@ class HaveChildEvent(LifeEvent):
         parent_0, parent_1 = self.roles.get_all("subject")
         child = self.roles["child"]
         return (
-            f"[{self.timestamp}] {parent_0.name} and "
+            f"{parent_0.name} and "
             f"{parent_1.name} welcomed a new child, {child.name}."
         )
 
@@ -419,12 +419,12 @@ class LeaveJob(LifeEvent):
 
         if reason:
             return (
-                f"[{self.timestamp}] {subject.name} left their job as a "
+                f"{subject.name} left their job as a "
                 f"{job_role.name} at {business.name} due to {reason}."
             )
 
         return (
-            f"[{self.timestamp}] {subject.name} left their job as a "
+            f"{subject.name} left their job as a "
             f"{job_role.name} at {business.name}."
         )
 
@@ -464,7 +464,7 @@ class DepartSettlement(LifeEvent):
 
         # Have the character leave their residence
         if resident_data := character.try_component(Resident):
-            residence_data = resident_data.residence.get_component(Residence)
+            residence_data = resident_data.residence.get_component(ResidentialUnit)
             ChangeResidenceEvent(subject=character, new_residence=None).dispatch()
 
             # Get people that this character lives with and have them depart with their
@@ -593,7 +593,7 @@ class BusinessClosedEvent(LifeEvent):
             ).dispatch()
 
         # Remove the owner if applicable
-        if business_comp.owner is not None and business_comp.owner_role is not None:
+        if business_comp.owner is not None:
             LeaveJob(
                 business=business,
                 subject=business_comp.owner,
@@ -616,7 +616,4 @@ class BusinessClosedEvent(LifeEvent):
     def __str__(self) -> str:
         subject = self.roles["subject"]
         business = self.roles["business"]
-        return (
-            f"[{self.timestamp}] {subject.name}'s business {business.name} has "
-            "closed for business."
-        )
+        return f"{subject.name}'s business {business.name} has closed for business."

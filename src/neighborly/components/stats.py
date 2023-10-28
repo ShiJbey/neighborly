@@ -14,7 +14,7 @@ from __future__ import annotations
 import enum
 import math
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import attrs
 
@@ -49,7 +49,7 @@ class Stat:
     """The base score for this stat used by modifiers."""
     _value: float
     """The final score of the stat clamped between the min and max values."""
-    _modifiers: List[StatModifier]
+    _modifiers: list[StatModifier]
     """Active stat modifiers."""
     _min_value: float
     """The minimum score the overall stat is clamped to."""
@@ -145,7 +145,7 @@ class Stat:
 
         return did_remove
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the stat to a dict for data analysis."""
         return {
             "value": self.value,

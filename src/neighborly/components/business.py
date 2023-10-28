@@ -7,11 +7,12 @@ in the settlement and character occupations.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 from neighborly.datetime import SimDate
 from neighborly.ecs import Component, GameObject, TagComponent
 from neighborly.effects.base_types import Effect
+from neighborly.preconditions.base_types import Precondition
 
 
 class Occupation(Component):
@@ -61,7 +62,7 @@ class Occupation(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "job_role": self.job_role.name,
+            "job_role": self.job_role.display_name,
             "business": self.business.uid,
             "start_date": str(self.start_date),
         }
@@ -69,13 +70,13 @@ class Occupation(Component):
     def __str__(self) -> str:
         return (
             f"{self.__class__.__name__}(business={self.business}, "
-            f"start_date={self.start_date}, role_id={self.job_role.name})"
+            f"start_date={self.start_date}, role_id={self.job_role.display_name})"
         )
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(business={self.business}, "
-            f"start_date={self.start_date}, role_id={self.job_role.name})"
+            f"start_date={self.start_date}, role_id={self.job_role.display_name})"
         )
 
 
@@ -141,7 +142,7 @@ class Business(Component):
         return self._owner
 
     @property
-    def owner_role(self) -> Optional[JobRole]:
+    def owner_role(self) -> JobRole:
         """The role of the business' owner."""
         return self._owner_role
 
@@ -260,7 +261,7 @@ class Unemployed(Component):
         """The date the character became unemployed"""
         return self._timestamp
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"timestamp": str(self.timestamp)}
 
 
@@ -268,7 +269,8 @@ class JobRole(Component):
     """Information about a specific type of job in the world."""
 
     __slots__ = (
-        "name",
+        "display_name",
+        "description",
         "job_level",
         "requirements",
         "effects",
@@ -276,11 +278,13 @@ class JobRole(Component):
         "definition_id",
     )
 
-    name: str
+    display_name: str
     """The name of the role."""
+    description: str
+    """A description of the role."""
     job_level: int
     """General level of prestige associated with this role."""
-    requirements: list[Callable[[GameObject], bool]]
+    requirements: list[Precondition]
     """Requirement functions for the role."""
     effects: list[Effect]
     """Effects applied when the taking on the role."""
@@ -291,15 +295,17 @@ class JobRole(Component):
 
     def __init__(
         self,
-        name: str,
+        display_name: str,
+        description: str,
         job_level: int,
-        requirements: list[Callable[[GameObject], bool]],
+        requirements: list[Precondition],
         effects: list[Effect],
         monthly_effects: list[Effect],
         definition_id: str,
     ) -> None:
         super().__init__()
-        self.name = name
+        self.display_name = display_name
+        self.description = description
         self.job_level = job_level
         self.requirements = requirements
         self.effects = effects
@@ -312,7 +318,8 @@ class JobRole(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "name": self.name,
+            "display_name": self.display_name,
+            "description": self.description,
             "job_level": self.job_level,
             "definition_id": self.definition_id,
         }

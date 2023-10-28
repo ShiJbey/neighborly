@@ -122,7 +122,7 @@ class MeetSomeoneNew(LifeEvent):
 
     def __str__(self) -> str:
         return (
-            f"[{self.timestamp}] {self.roles['subject'].name} and "
+            f"{self.roles['subject'].name} and "
             f"{self.roles['other'].name} became acquaintances."
         )
 
@@ -269,7 +269,7 @@ class StartANewJob(LifeEvent):
         job_role = self.roles["job_role"]
 
         return (
-            f"[{self.timestamp}] {subject.name} started a new job as a "
+            f"{subject.name} started a new job as a "
             f"{job_role.name} at {business.name}."
         )
 
@@ -410,7 +410,7 @@ class StartBusiness(LifeEvent):
         settlement = self.roles["settlement"]
 
         return (
-            f"[{self.timestamp}] {subject.name} opened a new business, "
+            f"{subject.name} opened a new business, "
             f"{business.name}, in the {district.name} district of "
             f"{settlement.name}."
         )
@@ -464,9 +464,7 @@ class StartDating(LifeEvent):
 
     def __str__(self) -> str:
         subject_0, subject_1 = self.roles.get_all("subject")
-        return (
-            f"[{self.timestamp}] {subject_0.name} and {subject_1.name} started dating."
-        )
+        return f"{subject_0.name} and {subject_1.name} started dating."
 
 
 class GetMarried(LifeEvent):
@@ -541,7 +539,7 @@ class GetMarried(LifeEvent):
     def __str__(self) -> str:
         subject_0, subject_1 = self.roles.get_all("subject")
 
-        return f"[{self.timestamp}] {subject_0.name} and {subject_1.name} got married."
+        return f"{subject_0.name} and {subject_1.name} got married."
 
 
 class GetDivorced(LifeEvent):
@@ -588,7 +586,7 @@ class GetDivorced(LifeEvent):
         initiator = self.roles["subject"]
         ex_spouse = self.roles["ex_spouse"]
 
-        return f"[{self.timestamp}] {initiator.name} divorced from {ex_spouse.name}."
+        return f"{initiator.name} divorced from {ex_spouse.name}."
 
 
 class BreakUp(LifeEvent):
@@ -632,9 +630,7 @@ class BreakUp(LifeEvent):
         initiator = self.roles["subject"]
         ex_partner = self.roles["ex_partner"]
 
-        return (
-            f"[{self.timestamp}] {initiator.name} broke up with " f"{ex_partner.name}."
-        )
+        return f"{initiator.name} broke up with " f"{ex_partner.name}."
 
 
 class GetPregnant(LifeEvent):
@@ -712,7 +708,7 @@ class GetPregnant(LifeEvent):
         subject = self.roles["subject"]
         partner = self.roles["partner"]
 
-        return f"[{self.timestamp}] {subject.name} got pregnant by {partner.name}."
+        return f"{subject.name} got pregnant by {partner.name}."
 
 
 class Retire(LifeEvent):

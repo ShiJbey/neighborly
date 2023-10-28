@@ -8,7 +8,7 @@ of the simulation.
 
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import polars as pl
 
@@ -20,12 +20,12 @@ class DataTables:
 
     __slots__ = ("_tables",)
 
-    _tables: Dict[str, Dict[str, List[Any]]]
+    _tables: dict[str, dict[str, list[Any]]]
     """Table names mapped to dicts with column names mapped to data entries."""
 
     def __init__(
         self,
-        tables: Optional[Dict[str, Tuple[str, ...]]] = None,
+        tables: Optional[dict[str, tuple[str, ...]]] = None,
     ) -> None:
         """
         Parameters
@@ -40,7 +40,7 @@ class DataTables:
             for table_name, column_names in tables.items():
                 self.create_table(table_name, column_names)
 
-    def create_table(self, table_name: str, column_names: Tuple[str, ...]) -> None:
+    def create_table(self, table_name: str, column_names: tuple[str, ...]) -> None:
         """Create a new table for data collection.
 
         Parameters
@@ -50,10 +50,10 @@ class DataTables:
         column_names
             The names of columns within the table.
         """
-        new_table: Dict[str, List[Any]] = {column: [] for column in column_names}
+        new_table: dict[str, list[Any]] = {column: [] for column in column_names}
         self._tables[table_name] = new_table
 
-    def add_data_row(self, table_name: str, row_data: Dict[str, Any]) -> None:
+    def add_data_row(self, table_name: str, row_data: dict[str, Any]) -> None:
         """Add a new row of data to a table.
 
         Parameters

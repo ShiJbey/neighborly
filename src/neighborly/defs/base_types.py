@@ -305,7 +305,9 @@ class JobRoleDef(ABC):
     """The name of this definition."""
     display_name: str
     """The name of the role."""
-    job_level: int
+    description: str = ""
+    """A description of the role."""
+    job_level: int = 1
     """General level of prestige associated with this role."""
     requirements: list[dict[str, Any]] = attrs.field(factory=list[dict[str, Any]])
     """Requirement functions for the role."""

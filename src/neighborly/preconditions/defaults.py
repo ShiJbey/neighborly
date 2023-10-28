@@ -24,6 +24,10 @@ class HasTrait(Precondition):
         super().__init__()
         self.trait_id = trait
 
+    @property
+    def description(self) -> str:
+        return f"has the trait {self.trait_id}"
+
     def __call__(self, target: GameObject) -> bool:
         return has_trait(target, self.trait_id)
 
@@ -44,6 +48,10 @@ class TargetHasTrait(Precondition):
     def __init__(self, trait: str) -> None:
         super().__init__()
         self.trait_id = trait
+
+    @property
+    def description(self) -> str:
+        return f"relationship target has the {self.trait_id} trait"
 
     def __call__(self, target: GameObject) -> bool:
         return has_trait(target.get_component(Relationship).target, self.trait_id)
@@ -68,6 +76,10 @@ class SkillRequirement(Precondition):
         super().__init__()
         self.skill_id = skill
         self.skill_level = level
+
+    @property
+    def description(self) -> str:
+        return f"has {self.skill_id} skill  level of at least {self.skill_level}"
 
     def __call__(self, target: GameObject) -> bool:
         if has_skill(target, self.skill_id):
@@ -96,6 +108,10 @@ class AtLeastLifeStage(Precondition):
         super().__init__()
         self.life_stage = life_stage
 
+    @property
+    def description(self) -> str:
+        return f"is at least the {self.life_stage.name} life stage"
+
     def __call__(self, target: GameObject) -> bool:
         if character := target.try_component(Character):
             return character.life_stage >= self.life_stage
@@ -121,6 +137,10 @@ class TargetIsSex(Precondition):
         super().__init__()
         self.sex = sex
 
+    @property
+    def description(self) -> str:
+        return f"relationship target is a {self.sex.name}"
+
     def __call__(self, target: GameObject) -> bool:
         relationship_target = target.get_component(Relationship).target
         return relationship_target.get_component(Character).sex == self.sex
@@ -142,6 +162,10 @@ class TargetLifeStageLT(Precondition):
     def __init__(self, life_stage: LifeStage) -> None:
         super().__init__()
         self.life_stage = life_stage
+
+    @property
+    def description(self) -> str:
+        return f"relationship target is at least the {self.life_stage.name} life stage"
 
     def __call__(self, target: GameObject) -> bool:
         relationship_target = target.get_component(Relationship).target

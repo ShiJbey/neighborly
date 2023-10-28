@@ -20,7 +20,7 @@ from neighborly.components.location import (
     LocationPreferences,
 )
 from neighborly.components.relationship import Relationships, SocialRules
-from neighborly.components.residence import Residence, ResidentialBuilding, Vacant
+from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.skills import Skill, Skills
 from neighborly.components.spawn_table import (
@@ -465,7 +465,9 @@ class DefaultResidenceDef(ResidenceDef):
                 components=[Traits()], name="ResidentialUnit"
             )
             residence.add_child(residential_unit)
-            residential_unit.add_component(Residence(district=district))
+            residential_unit.add_component(
+                ResidentialUnit(building=residence, district=district)
+            )
             building.add_residential_unit(residential_unit)
             residential_unit.add_component(Vacant())
 
@@ -746,6 +748,7 @@ class DefaultJobRoleDef(JobRoleDef):
         """Create JobRoleDef from a data dictionary."""
         definition_id: str = obj["definition_id"]
         display_name: str = obj.get("display_name", definition_id)
+        description: str = obj.get("description", "")
         job_level: int = obj.get("job_level", 1)
         requirements_data: list[dict[str, Any]] = obj.get("requirements", [])
         effects_data: list[dict[str, Any]] = obj.get("../effects", [])
@@ -754,6 +757,7 @@ class DefaultJobRoleDef(JobRoleDef):
         return cls(
             definition_id=definition_id,
             display_name=display_name,
+            description=description,
             job_level=job_level,
             requirements=requirements_data,
             effects=effects_data,
@@ -777,7 +781,8 @@ class DefaultJobRoleDef(JobRoleDef):
         role.add_component(
             JobRole(
                 definition_id=self.definition_id,
-                name=self.display_name,
+                display_name=self.display_name,
+                description=self.description,
                 job_level=self.job_level,
                 requirements=[],
                 effects=effect_instances,

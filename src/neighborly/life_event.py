@@ -15,11 +15,9 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Dict,
     Generic,
     Iterable,
     Iterator,
-    List,
     Mapping,
     Optional,
     TypeVar,
@@ -45,7 +43,7 @@ class EventRole:
     log_event: bool = False
     """Should characters log the event when dispatched."""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the role to a JSON-serializable dictionary."""
         return {"name": self.name, "gameobject": self.gameobject.uid}
 
@@ -58,9 +56,9 @@ class EventRoleList:
 
     __slots__ = "_roles", "_sorted_roles"
 
-    _roles: List[EventRole]
+    _roles: list[EventRole]
     """All the roles within the list."""
-    _sorted_roles: Dict[str, List[EventRole]]
+    _sorted_roles: dict[str, list[EventRole]]
     """The roles sorted by role name."""
 
     def __init__(self, roles: Optional[Iterable[EventRole]] = None) -> None:
@@ -100,7 +98,7 @@ class EventRoleList:
 
         Returns
         -------
-        List[GameObject]
+        list[GameObject]
             A lis tof all the GameObjects bound to this role name.
         """
         return tuple(role.gameobject for role in self._sorted_roles[role_name])
@@ -209,7 +207,7 @@ class LifeEventMeta(ABCMeta):
         cls
             The class to process
         """
-        considerations: List[_EventConsiderationWrapper[Any]] = []
+        considerations: list[_EventConsiderationWrapper[Any]] = []
 
         # Check the existing probability modifiers in base classes
         for base_class in cls.__bases__:
@@ -331,11 +329,11 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
                     role.gameobject.get_component(PersonalEventHistory).append(self)
 
             self.world.resource_manager.get_resource(GlobalEventHistory).append(self)
-            _logger.info(str(self))
+            _logger.info("[%s] %s", str(self.timestamp), str(self))
 
         self.execute()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
         return {
             **super().to_dict(),
@@ -350,7 +348,7 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
         )
 
     def __str__(self) -> str:
-        return f"[{self.timestamp}] {self.__class__.__name__}"
+        return f"{self.__class__.__name__}"
 
 
 class PersonalEventHistory(Component):
@@ -358,7 +356,7 @@ class PersonalEventHistory(Component):
 
     __slots__ = ("_history",)
 
-    _history: List[LifeEvent]
+    _history: list[LifeEvent]
     """A list of events in chronological-order."""
 
     def __init__(self) -> None:
@@ -380,7 +378,7 @@ class PersonalEventHistory(Component):
         """
         self._history.append(event)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"events": [e.event_id for e in self._history]}
 
     def __str__(self) -> str:
@@ -396,7 +394,7 @@ class GlobalEventHistory:
 
     __slots__ = ("_history",)
 
-    _history: Dict[int, LifeEvent]
+    _history: dict[int, LifeEvent]
     """All recorded life events mapped to their event ID."""
 
     def __init__(self) -> None:
@@ -412,7 +410,7 @@ class GlobalEventHistory:
         """
         self._history[event.event_id] = event
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize object into JSON-serializable dict."""
         return {str(key): entry.to_dict() for key, entry in self._history.items()}
 

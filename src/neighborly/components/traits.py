@@ -41,7 +41,7 @@ class Trait(Component):
     """The name of this tag printed."""
     _effects: list[Effect]
     """Effects to apply when the tag is added."""
-    _conflicting_traits: frozenset[str]
+    _conflicting_traits: OrderedSet[str]
     """traits that this trait conflicts with."""
 
     def __init__(
@@ -57,7 +57,7 @@ class Trait(Component):
         self._display_name = display_name
         self._description = description
         self._effects = effects
-        self._conflicting_traits = frozenset(conflicting_traits)
+        self._conflicting_traits = OrderedSet(conflicting_traits)
 
     @property
     def definition_id(self) -> str:
@@ -75,7 +75,12 @@ class Trait(Component):
         return self._description
 
     @property
-    def conflicting_traits(self) -> frozenset[str]:
+    def effects(self) -> Iterable[Effect]:
+        """The effects associated with the trait."""
+        return self._effects
+
+    @property
+    def conflicting_traits(self) -> Iterable[str]:
         """A set of names of this trait's conflicts."""
         return self._conflicting_traits
 

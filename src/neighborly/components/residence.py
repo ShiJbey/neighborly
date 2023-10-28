@@ -11,11 +11,13 @@ from ordered_set import OrderedSet
 from neighborly.ecs import Component, GameObject, TagComponent
 
 
-class Residence(Component):
+class ResidentialUnit(Component):
     """A Residence is a place where characters live."""
 
-    __slots__ = "_owners", "_residents", "_district"
+    __slots__ = "_owners", "_residents", "_district", "_building"
 
+    _building: GameObject
+    """The building this unit is in."""
     _district: GameObject
     """The district the residence is in."""
     _owners: OrderedSet[GameObject]
@@ -23,11 +25,17 @@ class Residence(Component):
     _residents: OrderedSet[GameObject]
     """All the characters who live at the residence (including non-owners)."""
 
-    def __init__(self, district: GameObject) -> None:
+    def __init__(self, building: GameObject, district: GameObject) -> None:
         super().__init__()
+        self._building = building
         self._district = district
         self._owners = OrderedSet([])
         self._residents = OrderedSet([])
+
+    @property
+    def building(self) -> GameObject:
+        """Get the building the residential unit is in."""
+        return self._building
 
     @property
     def district(self) -> GameObject:

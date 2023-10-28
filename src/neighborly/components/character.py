@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import enum
-from typing import Any, Dict
+from typing import Any
 
 from neighborly.components.traits import Trait
 from neighborly.datetime import SimDate
@@ -184,7 +184,7 @@ class Pregnant(Component):
     def __repr__(self) -> str:
         return f"{type(self).__name__}(partner={self.partner.name})"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             **super().to_dict(),
             "partner": self.partner.uid,

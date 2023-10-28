@@ -20,7 +20,7 @@ from neighborly.components.location import (
     LocationPreferences,
 )
 from neighborly.components.relationship import Relationship
-from neighborly.components.residence import Residence, Resident, Vacant
+from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
@@ -227,7 +227,9 @@ class SpawnNewResidentSystem(System):
         rng = world.resource_manager.get_resource(random.Random)
 
         # Find vacant residences
-        for _, (_, residence, _) in world.get_components((Active, Residence, Vacant)):
+        for _, (_, residence, _) in world.get_components(
+            (Active, ResidentialUnit, Vacant)
+        ):
             # Get the spawn table of district the residence belongs to
             spawn_table = residence.district.get_component(CharacterSpawnTable)
 

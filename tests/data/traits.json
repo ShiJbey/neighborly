@@ -803,7 +803,14 @@
   "coworker": {
     "display_name": "Coworker",
     "description": "The target of this relationship is a coworker.",
-    "spawn_frequency": 0
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "interaction_score",
+        "amount": 1
+      }
+    ]
   },
   "departed": {
     "display_name": "Departed",
