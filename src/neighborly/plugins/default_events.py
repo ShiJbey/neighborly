@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import random
-from collections import defaultdict
 from typing import Any, Optional
 
 from neighborly.components.business import (
@@ -18,7 +17,6 @@ from neighborly.components.business import (
     Unemployed,
 )
 from neighborly.components.character import Character, LifeStage, Pregnant, Sex
-from neighborly.components.location import FrequentedBy, FrequentedLocations
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.settlement import District
 from neighborly.datetime import SimDate
@@ -26,105 +24,105 @@ from neighborly.ecs import Active, GameObject
 from neighborly.events.defaults import DepartSettlement, LeaveJob
 from neighborly.helpers.location import add_frequented_location
 from neighborly.helpers.relationship import (
-    add_relationship,
     get_relationship,
     get_relationships_with_traits,
-    has_relationship,
 )
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, has_trait, remove_trait
+from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.life_event import EventRole, LifeEvent, event_consideration
 from neighborly.loaders import register_life_event_type
 from neighborly.simulation import Simulation
 
+# class MeetSomeoneNew(LifeEvent):
+#     """A character will attempt to initiate a new social relationship with someone new.
 
-class MeetSomeoneNew(LifeEvent):
-    """A character will attempt to initiate a new social relationship with someone new.
+#     Notes
+#     -----
+#     This system uses a character's sociability stat score to determine the probability
+#     of them introducing themselves to someone else. The goal is for characters with
+#     higher sociability scores to form more relationships over the course of their lives.
+#     """
 
-    Notes
-    -----
-    This system uses a character's sociability stat score to determine the probability
-    of them introducing themselves to someone else. The goal is for characters with
-    higher sociability scores to form more relationships over the course of their lives.
-    """
+#     def __init__(
+#         self,
+#         initiator: GameObject,
+#         other: GameObject,
+#     ) -> None:
+#         super().__init__(
+#             world=initiator.world,
+#             roles=(
+#                 EventRole("subject", initiator, True),
+#                 EventRole("other", other, True),
+#             ),
+#         )
 
-    def __init__(
-        self,
-        initiator: GameObject,
-        other: GameObject,
-    ) -> None:
-        super().__init__(
-            world=initiator.world,
-            roles=(
-                EventRole("subject", initiator, True),
-                EventRole("other", other, True),
-            ),
-        )
+#     @staticmethod
+#     @event_consideration
+#     def subject_sociability(event: MeetSomeoneNew) -> float:
+#         """Add a consideration for the subject's sociability stat."""
+#         return get_stat(event.roles["subject"], "sociability").normalized
 
-    @staticmethod
-    @event_consideration
-    def subject_sociability(event: MeetSomeoneNew) -> float:
-        """Add a consideration for the subject's sociability stat."""
-        return get_stat(event.roles["subject"], "sociability").normalized
+#     @staticmethod
+#     @event_consideration
+#     def other_person_sociability(event: MeetSomeoneNew) -> float:
+#         """Add a consideration for the subject's sociability stat."""
+#         return get_stat(event.roles["other"], "sociability").normalized
 
-    @staticmethod
-    @event_consideration
-    def other_person_sociability(event: MeetSomeoneNew) -> float:
-        """Add a consideration for the subject's sociability stat."""
-        return get_stat(event.roles["other"], "sociability").normalized
+#     @classmethod
+#     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+#         candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
+#         frequented_locations = subject.get_component(FrequentedLocations)
 
-        frequented_locations = subject.get_component(FrequentedLocations)
+#         for loc in frequented_locations:
+#             for other in loc.get_component(FrequentedBy):
+#                 if other != subject and not has_relationship(subject, other):
+#                     candidate_scores[other] += 1
 
-        for loc in frequented_locations:
-            for other in loc.get_component(FrequentedBy):
-                if other != subject and not has_relationship(subject, other):
-                    candidate_scores[other] += 1
+#         if candidate_scores:
+#             rng = subject.world.resource_manager.get_resource(random.Random)
 
-        if candidate_scores:
-            rng = subject.world.resource_manager.get_resource(random.Random)
+#             acquaintance = rng.choices(
+#                 list(candidate_scores.keys()),
+#                 weights=list(candidate_scores.values()),
+#                 k=1,
+#             )[0]
 
-            acquaintance = rng.choices(
-                list(candidate_scores.keys()),
-                weights=list(candidate_scores.values()),
-                k=1,
-            )[0]
+#             return MeetSomeoneNew(subject, acquaintance)
 
-            return MeetSomeoneNew(subject, acquaintance)
+#         return None
 
-        return None
+#     def execute(self) -> None:
+#         subject = self.roles["subject"]
+#         other = self.roles["other"]
 
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        other = self.roles["other"]
+#         add_relationship(subject, other)
+#         add_relationship(other, subject)
 
-        add_relationship(subject, other)
-        add_relationship(other, subject)
+#         overlapping_frequents = len(
+#             set(subject.get_component(FrequentedLocations)).intersection(
+#                 set(other.get_component(FrequentedLocations))
+#             )
+#         )
 
-        overlapping_frequents = len(
-            set(subject.get_component(FrequentedLocations)).intersection(
-                set(other.get_component(FrequentedLocations))
-            )
-        )
+#         get_stat(get_relationship(subject, other), "reputation").base_value += 3
+#         get_stat(get_relationship(other, subject), "reputation").base_value += 3
 
-        get_stat(
-            get_relationship(subject, other),
-            "interaction_score",
-        ).base_value += overlapping_frequents
+#         get_stat(
+#             get_relationship(subject, other),
+#             "interaction_score",
+#         ).base_value += overlapping_frequents
 
-        get_stat(
-            get_relationship(other, subject),
-            "interaction_score",
-        ).base_value += overlapping_frequents
+#         get_stat(
+#             get_relationship(other, subject),
+#             "interaction_score",
+#         ).base_value += overlapping_frequents
 
-    def __str__(self) -> str:
-        return (
-            f"{self.roles['subject'].name} and "
-            f"{self.roles['other'].name} became acquaintances."
-        )
+#     def __str__(self) -> str:
+#         return (
+#             f"{self.roles['subject'].name} and "
+#             f"{self.roles['other'].name} became acquaintances."
+#         )
 
 
 class StartANewJob(LifeEvent):
@@ -420,6 +418,7 @@ class StartDating(LifeEvent):
     """Event dispatched when two characters start dating."""
 
     is_logged = True
+    base_probability = 0.5
 
     def __init__(self, subject: GameObject, partner: GameObject) -> None:
         super().__init__(
@@ -431,10 +430,39 @@ class StartDating(LifeEvent):
         )
 
     def execute(self) -> None:
-        subject_0, subject_1 = self.roles.get_all("subject")
+        subject_0 = self.roles["subject"]
+        partner = self.roles["partner"]
 
-        add_trait(get_relationship(subject_0, subject_1), "dating")
-        add_trait(get_relationship(subject_1, subject_0), "dating")
+        add_trait(get_relationship(subject_0, partner), "dating")
+        add_trait(get_relationship(partner, subject_0), "dating")
+
+    @staticmethod
+    @event_consideration
+    def romance_to_partner(event: StartDating) -> float:
+        """Consider the romance from the partner to the subject."""
+        return get_stat(
+            get_relationship(event.roles["subject"], event.roles["partner"]), "romance"
+        ).normalized
+
+    @staticmethod
+    @event_consideration
+    def romance_to_subject(event: StartDating) -> float:
+        """Consider the romance from the partner to the subject."""
+        return get_stat(
+            get_relationship(event.roles["partner"], event.roles["subject"]), "romance"
+        ).normalized
+
+    @staticmethod
+    @event_consideration
+    def partner_already_dating(event: StartDating) -> float:
+        """Consider if the partner is already dating someone."""
+        if len(get_relationships_with_traits(event.roles["partner"], "dating")) > 0:
+            return 0
+
+        if len(get_relationships_with_traits(event.roles["partner"], "spouse")) > 0:
+            return 0
+
+        return -1
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
@@ -446,25 +474,37 @@ class StartDating(LifeEvent):
 
         relationships = list(subject.get_component(Relationships).outgoing.items())
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
-
-        rng.shuffle(relationships)
+        potential_partners: list[GameObject] = []
+        partner_weights: list[float] = []
 
         for target, relationship in relationships:
             if target.get_component(Character).life_stage <= LifeStage.ADOLESCENT:
                 continue
 
-            if not has_trait(relationship, "dating"):
-                StartDating(
-                    subject=subject,
-                    partner=target,
-                )
+            romance = get_stat(relationship, "romance").normalized
+
+            if romance > 0:
+                potential_partners.append(target)
+                partner_weights.append(romance)
+
+        if potential_partners:
+            rng = subject.world.resource_manager.get_resource(random.Random)
+
+            chosen_partner = rng.choices(
+                potential_partners, weights=partner_weights, k=1
+            )[0]
+
+            return StartDating(
+                subject=subject,
+                partner=chosen_partner,
+            )
 
         return None
 
     def __str__(self) -> str:
-        subject_0, subject_1 = self.roles.get_all("subject")
-        return f"{subject_0.name} and {subject_1.name} started dating."
+        subject_0 = self.roles["subject"]
+        partner = self.roles["partner"]
+        return f"{subject_0.name} and {partner.name} started dating."
 
 
 class GetMarried(LifeEvent):
@@ -499,6 +539,36 @@ class GetMarried(LifeEvent):
             or subject_1_life_stage > LifeStage.ADULT
         ):
             return 0.05
+
+        return -1
+
+    @staticmethod
+    @event_consideration
+    def romance_to_partner(event: StartDating) -> float:
+        """Consider the romance from the partner to the subject."""
+        subject_0, subject_1 = event.roles.get_all("subject")
+
+        return get_stat(get_relationship(subject_0, subject_1), "romance").normalized
+
+    @staticmethod
+    @event_consideration
+    def romance_to_subject(event: StartDating) -> float:
+        """Consider the romance from the partner to the subject."""
+        subject_0, subject_1 = event.roles.get_all("subject")
+
+        return get_stat(get_relationship(subject_1, subject_0), "romance").normalized
+
+    @staticmethod
+    @event_consideration
+    def partner_already_dating(event: StartDating) -> float:
+        """Consider if the partner is already dating someone."""
+        _, subject_1 = event.roles.get_all("subject")
+
+        if len(get_relationships_with_traits(subject_1, "dating")) > 0:
+            return 0
+
+        if len(get_relationships_with_traits(subject_1, "spouse")) > 0:
+            return 0
 
         return -1
 
@@ -554,6 +624,18 @@ class GetDivorced(LifeEvent):
             ],
         )
 
+    @staticmethod
+    @event_consideration
+    def romance_to_spouse(event: GetDivorced) -> float:
+        """Consider how in-love the subject is with the ex_spouse"""
+        return (
+            1.0
+            - get_stat(
+                get_relationship(event.roles["subject"], event.roles["ex_spouse"]),
+                "romance",
+            ).normalized
+        )
+
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> Optional[LifeEvent]:
         spousal_relationships = get_relationships_with_traits(subject, "spouse")
@@ -582,6 +664,8 @@ class GetDivorced(LifeEvent):
         add_trait(get_relationship(initiator, ex_spouse), "ex_spouse")
         add_trait(get_relationship(ex_spouse, initiator), "ex_spouse")
 
+        get_stat(get_relationship(ex_spouse, initiator), "romance").base_value -= 25
+
     def __str__(self) -> str:
         initiator = self.roles["subject"]
         ex_spouse = self.roles["ex_spouse"]
@@ -601,6 +685,18 @@ class BreakUp(LifeEvent):
             ],
         )
 
+    @staticmethod
+    @event_consideration
+    def romance_to_partner(event: StartDating) -> float:
+        """Consider the romance from the partner to the subject."""
+        return (
+            1.0
+            - get_stat(
+                get_relationship(event.roles["subject"], event.roles["ex_partner"]),
+                "romance",
+            ).normalized
+        )
+
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
         dating_relationships = get_relationships_with_traits(subject, "dating")
@@ -609,7 +705,7 @@ class BreakUp(LifeEvent):
 
         if dating_relationships:
             relationship = rng.choice(dating_relationships)
-            BreakUp(
+            return BreakUp(
                 subject=subject,
                 ex_partner=relationship.get_component(Relationship).target,
             )
@@ -625,6 +721,8 @@ class BreakUp(LifeEvent):
 
         add_trait(get_relationship(initiator, ex_partner), "ex_partner")
         add_trait(get_relationship(ex_partner, initiator), "ex_partner")
+
+        get_stat(get_relationship(ex_partner, initiator), "romance").base_value -= 15
 
     def __str__(self) -> str:
         initiator = self.roles["subject"]
@@ -671,15 +769,15 @@ class GetPregnant(LifeEvent):
 
     @staticmethod
     @event_consideration
-    def avg_fertility_consideration(event: GetPregnant) -> float:
-        """Calculate average fertility between the two characters"""
-        subject = event.roles["subject"]
-        partner = event.roles["partner"]
+    def fertility_consideration(event: GetPregnant) -> float:
+        """Check the fertility of the subject."""
+        return get_stat(event.roles["subject"], "fertility").value
 
-        subject_fertility = get_stat(subject, "fertility").value
-        partner_fertility = get_stat(partner, "fertility").value
-
-        return (subject_fertility + partner_fertility) / 2.0
+    @staticmethod
+    @event_consideration
+    def partner_fertility_consideration(event: GetPregnant) -> float:
+        """Check fertility of the partner."""
+        return get_stat(event.roles["partner"], "fertility").value
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
@@ -767,13 +865,15 @@ class Retire(LifeEvent):
         business = self.roles["business"]
 
         return (
-            f"[{str(self.timestamp)}] {character.name} retired from their "
+            f"{character.name} retired from their "
             f"position as {occupation.name} at {business.name}."
         )
 
 
 class DepartDueToUnemployment(LifeEvent):
     """Character leave the settlement and the simulation."""
+
+    base_probability = 0.3
 
     def __init__(self, subject: GameObject, reason: str = "") -> None:
         super().__init__(
@@ -841,7 +941,7 @@ class DepartDueToUnemployment(LifeEvent):
         """Veto if spouse has a job"""
         subject = event.roles["subject"]
 
-        spousal_relationships = get_relationships_with_traits(subject, "Spouse")
+        spousal_relationships = get_relationships_with_traits(subject, "spouse")
 
         # Depart if none of their spouses has a job either
         if any(
@@ -867,3 +967,5 @@ def load_plugin(sim: Simulation) -> None:
     register_life_event_type(sim, GetDivorced)
     register_life_event_type(sim, BreakUp)
     register_life_event_type(sim, GetPregnant)
+    register_life_event_type(sim, Retire)
+    register_life_event_type(sim, DepartDueToUnemployment)

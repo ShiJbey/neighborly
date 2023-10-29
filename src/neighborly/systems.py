@@ -6,6 +6,7 @@ This module contains built-in systems that help simulations function.
 
 from __future__ import annotations
 
+import logging
 import random
 from collections import defaultdict
 from typing import ClassVar, Optional
@@ -60,6 +61,8 @@ from neighborly.libraries import (
     TraitLibrary,
 )
 from neighborly.life_event import LifeEvent
+
+_logger = logging.getLogger(__name__)
 
 
 class InitializationSystems(SystemGroup):
@@ -512,7 +515,7 @@ class HealthDecaySystem(System):
 class PassiveReputationChange(System):
     """Reputation stats have a probability of changing each time step."""
 
-    CHANCE_OF_CHANGE: ClassVar[float] = 0.20
+    CHANCE_OF_CHANGE: ClassVar[float] = 0.05
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
@@ -521,9 +524,12 @@ class PassiveReputationChange(System):
             relationship,
             _,
         ) in world.get_components((Relationship, Active)):
-            final_chance = (
-                PassiveReputationChange.CHANCE_OF_CHANGE
-                * get_stat(relationship.gameobject, "interaction_score").value
+            interaction_boost = max(
+                1.0, get_stat(relationship.gameobject, "interaction_score").value / 10.0
+            )
+
+            final_chance = PassiveReputationChange.CHANCE_OF_CHANGE * (
+                1.0 + interaction_boost
             )
 
             if rng.random() < final_chance:
@@ -536,7 +542,7 @@ class PassiveReputationChange(System):
 class PassiveRomanceChange(System):
     """Romance stats have a probability of changing each time step."""
 
-    CHANCE_OF_CHANGE: ClassVar[float] = 0.50
+    CHANCE_OF_CHANGE: ClassVar[float] = 0.1
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
@@ -545,9 +551,12 @@ class PassiveRomanceChange(System):
             relationship,
             _,
         ) in world.get_components((Relationship, Active)):
-            final_chance = (
-                PassiveRomanceChange.CHANCE_OF_CHANGE
-                * get_stat(relationship.gameobject, "interaction_score").value
+            interaction_boost = max(
+                1.0, get_stat(relationship.gameobject, "interaction_score").value / 10.0
+            )
+
+            final_chance = PassiveRomanceChange.CHANCE_OF_CHANGE * (
+                1.0 + interaction_boost
             )
 
             if rng.random() < final_chance:
@@ -584,6 +593,7 @@ class ChildBirthSystem(System):
                 character.gameobject.world,
                 definition_id=character.gameobject.metadata["definition_id"],
                 skills=[],
+                last_name=character.last_name,
             )
 
             ChangeResidenceEvent(
@@ -652,7 +662,7 @@ class LifeEventSystem(System):
     to the LifeEventLibrary instance within the simulation world's resource manager.
     """
 
-    EVENT_PROBABILITY_THRESHOLD: ClassVar[float] = 0.2
+    EVENT_PROBABILITY_THRESHOLD: ClassVar[float] = 0.5
     """The minimum required probability for an event to be considered for execution."""
 
     def on_update(self, world: World) -> None:
@@ -667,8 +677,8 @@ class LifeEventSystem(System):
                 # Skip event types that with base probability zero
                 # these are most likely events that require more than one
                 # role and are triggered by other events/systems.
-                if event_type.base_probability == 0.0:
-                    continue
+                # if event_type.base_probability == 0.0:
+                #     continue
 
                 event_instance = event_type.instantiate(character.gameobject)
                 if event_instance is not None:
@@ -676,6 +686,15 @@ class LifeEventSystem(System):
                     if event_probability >= self.EVENT_PROBABILITY_THRESHOLD:
                         life_event_choices.append(event_instance)
                         life_event_probabilities.append(event_probability)
+
+            # _logger.debug(
+            #     list(
+            #         zip(
+            #             [f.__class__.__name__ for f in life_event_choices],
+            #             life_event_probabilities,
+            #         )
+            #     )
+            # )
 
             if life_event_choices:
                 chosen_event = rng.choices(

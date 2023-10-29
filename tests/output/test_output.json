@@ -1,5 +1,5 @@
 {
-  "seed": 1076043,
+  "seed": 4157033,
   "gameobjects": {
     "1": {
       "id": 1,
@@ -195,23 +195,7 @@
     },
     "13": {
       "id": 13,
-      "name": "Prejudice against lowborn(13)",
-      "active": true,
-      "parent": -1,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Trait": {
-          "definition_id": "prejudice_against_lowborn",
-          "display_name": "Prejudice against lowborn",
-          "description": "",
-          "conflicts_with": []
-        }
-      }
-    },
-    "14": {
-      "id": 14,
-      "name": "Skeptical(14)",
+      "name": "Skeptical(13)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -227,9 +211,9 @@
         }
       }
     },
-    "15": {
-      "id": 15,
-      "name": "Gullible(15)",
+    "14": {
+      "id": 14,
+      "name": "Gullible(14)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -245,9 +229,9 @@
         }
       }
     },
-    "16": {
-      "id": 16,
-      "name": "Flirtatious(16)",
+    "15": {
+      "id": 15,
+      "name": "Flirtatious(15)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -261,25 +245,9 @@
         }
       }
     },
-    "17": {
-      "id": 17,
-      "name": "Hot-Headed(17)",
-      "active": true,
-      "parent": -1,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Trait": {
-          "definition_id": "hot_headed",
-          "display_name": "Hot-Headed",
-          "description": "",
-          "conflicts_with": []
-        }
-      }
-    },
-    "18": {
-      "id": 18,
-      "name": "Loyal(18)",
+    "16": {
+      "id": 16,
+      "name": "Loyal(16)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -295,9 +263,9 @@
         }
       }
     },
-    "19": {
-      "id": 19,
-      "name": "Traitorous(19)",
+    "17": {
+      "id": 17,
+      "name": "Traitorous(17)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -313,9 +281,9 @@
         }
       }
     },
-    "20": {
-      "id": 20,
-      "name": "Introverted(20)",
+    "18": {
+      "id": 18,
+      "name": "Introverted(18)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -331,9 +299,9 @@
         }
       }
     },
-    "21": {
-      "id": 21,
-      "name": "Extroverted(21)",
+    "19": {
+      "id": 19,
+      "name": "Extroverted(19)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -349,9 +317,9 @@
         }
       }
     },
-    "22": {
-      "id": 22,
-      "name": "Compassionate(22)",
+    "20": {
+      "id": 20,
+      "name": "Compassionate(20)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -367,9 +335,9 @@
         }
       }
     },
-    "23": {
-      "id": 23,
-      "name": "Callous(23)",
+    "21": {
+      "id": 21,
+      "name": "Callous(21)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -385,9 +353,9 @@
         }
       }
     },
-    "24": {
-      "id": 24,
-      "name": "Adventurous(24)",
+    "22": {
+      "id": 22,
+      "name": "Adventurous(22)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -403,9 +371,9 @@
         }
       }
     },
-    "25": {
-      "id": 25,
-      "name": "Cautious(25)",
+    "23": {
+      "id": 23,
+      "name": "Cautious(23)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -421,9 +389,9 @@
         }
       }
     },
-    "26": {
-      "id": 26,
-      "name": "Charismatic(26)",
+    "24": {
+      "id": 24,
+      "name": "Charismatic(24)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -439,9 +407,9 @@
         }
       }
     },
-    "27": {
-      "id": 27,
-      "name": "Awkward(27)",
+    "25": {
+      "id": 25,
+      "name": "Awkward(25)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -457,9 +425,9 @@
         }
       }
     },
-    "28": {
-      "id": 28,
-      "name": "Ambitious(28)",
+    "26": {
+      "id": 26,
+      "name": "Ambitious(26)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -475,9 +443,9 @@
         }
       }
     },
-    "29": {
-      "id": 29,
-      "name": "Lazy(29)",
+    "27": {
+      "id": 27,
+      "name": "Lazy(27)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -493,9 +461,9 @@
         }
       }
     },
-    "30": {
-      "id": 30,
-      "name": "Hot-Headed(30)",
+    "28": {
+      "id": 28,
+      "name": "Hot-Headed(28)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -511,9 +479,9 @@
         }
       }
     },
-    "31": {
-      "id": 31,
-      "name": "Calm(31)",
+    "29": {
+      "id": 29,
+      "name": "Calm(29)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -529,9 +497,9 @@
         }
       }
     },
-    "32": {
-      "id": 32,
-      "name": "Intelligent(32)",
+    "30": {
+      "id": 30,
+      "name": "Intelligent(30)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -545,9 +513,9 @@
         }
       }
     },
-    "33": {
-      "id": 33,
-      "name": "Simple-Minded(33)",
+    "31": {
+      "id": 31,
+      "name": "Simple-Minded(31)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -561,9 +529,9 @@
         }
       }
     },
-    "34": {
-      "id": 34,
-      "name": "Charitable(34)",
+    "32": {
+      "id": 32,
+      "name": "Charitable(32)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -577,9 +545,9 @@
         }
       }
     },
-    "35": {
-      "id": 35,
-      "name": "Selfish(35)",
+    "33": {
+      "id": 33,
+      "name": "Selfish(33)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -593,9 +561,9 @@
         }
       }
     },
-    "36": {
-      "id": 36,
-      "name": "Optimistic(36)",
+    "34": {
+      "id": 34,
+      "name": "Optimistic(34)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -611,9 +579,9 @@
         }
       }
     },
-    "37": {
-      "id": 37,
-      "name": "Pessimistic(37)",
+    "35": {
+      "id": 35,
+      "name": "Pessimistic(35)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -629,9 +597,9 @@
         }
       }
     },
-    "38": {
-      "id": 38,
-      "name": "Energetic(38)",
+    "36": {
+      "id": 36,
+      "name": "Energetic(36)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -645,9 +613,9 @@
         }
       }
     },
-    "39": {
-      "id": 39,
-      "name": "Lethargic(39)",
+    "37": {
+      "id": 37,
+      "name": "Lethargic(37)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -661,9 +629,9 @@
         }
       }
     },
-    "40": {
-      "id": 40,
-      "name": "Confident(40)",
+    "38": {
+      "id": 38,
+      "name": "Confident(38)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -677,9 +645,9 @@
         }
       }
     },
-    "41": {
-      "id": 41,
-      "name": "Insecure(41)",
+    "39": {
+      "id": 39,
+      "name": "Insecure(39)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -693,9 +661,9 @@
         }
       }
     },
-    "42": {
-      "id": 42,
-      "name": "Betraying(42)",
+    "40": {
+      "id": 40,
+      "name": "Betraying(40)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -709,9 +677,9 @@
         }
       }
     },
-    "43": {
-      "id": 43,
-      "name": "Genius(43)",
+    "41": {
+      "id": 41,
+      "name": "Genius(41)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -727,9 +695,9 @@
         }
       }
     },
-    "44": {
-      "id": 44,
-      "name": "Friendly(44)",
+    "42": {
+      "id": 42,
+      "name": "Friendly(42)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -743,9 +711,9 @@
         }
       }
     },
-    "45": {
-      "id": 45,
-      "name": "Lustful(45)",
+    "43": {
+      "id": 43,
+      "name": "Lustful(43)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -761,27 +729,9 @@
         }
       }
     },
-    "46": {
-      "id": 46,
-      "name": "Extrovert(46)",
-      "active": true,
-      "parent": -1,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Trait": {
-          "definition_id": "extrovert",
-          "display_name": "Extrovert",
-          "description": "This character thrives in social settings and gains energy from interactions with others.",
-          "conflicts_with": [
-            "introvert"
-          ]
-        }
-      }
-    },
-    "47": {
-      "id": 47,
-      "name": "Immortal(47)",
+    "44": {
+      "id": 44,
+      "name": "Immortal(44)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -795,9 +745,9 @@
         }
       }
     },
-    "48": {
-      "id": 48,
-      "name": "Attracted to Men(48)",
+    "45": {
+      "id": 45,
+      "name": "Attracted to Men(45)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -813,9 +763,9 @@
         }
       }
     },
-    "49": {
-      "id": 49,
-      "name": "Attracted to Women(49)",
+    "46": {
+      "id": 46,
+      "name": "Attracted to Women(46)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -831,9 +781,9 @@
         }
       }
     },
-    "50": {
-      "id": 50,
-      "name": "Boss(50)",
+    "47": {
+      "id": 47,
+      "name": "Boss(47)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -847,9 +797,9 @@
         }
       }
     },
-    "51": {
-      "id": 51,
-      "name": "Serves Alcohol(51)",
+    "48": {
+      "id": 48,
+      "name": "Serves Alcohol(48)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -863,9 +813,9 @@
         }
       }
     },
-    "52": {
-      "id": 52,
-      "name": "Ex-Spouse(52)",
+    "49": {
+      "id": 49,
+      "name": "Ex-Spouse(49)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -879,9 +829,9 @@
         }
       }
     },
-    "53": {
-      "id": 53,
-      "name": "Ex-Partner(53)",
+    "50": {
+      "id": 50,
+      "name": "Ex-Partner(50)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -895,9 +845,9 @@
         }
       }
     },
-    "54": {
-      "id": 54,
-      "name": "Human(54)",
+    "51": {
+      "id": 51,
+      "name": "Human(51)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -912,219 +862,233 @@
         "Species": {}
       }
     },
-    "55": {
-      "id": 55,
-      "name": "Blacksmith(55)",
+    "52": {
+      "id": 52,
+      "name": "Blacksmith(52)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Blacksmith",
+          "display_name": "Blacksmith",
+          "description": "",
           "job_level": 2,
           "definition_id": "blacksmith"
         }
       }
     },
-    "56": {
-      "id": 56,
-      "name": "Blacksmith Apprentice(56)",
+    "53": {
+      "id": 53,
+      "name": "Blacksmith Apprentice(53)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Blacksmith Apprentice",
+          "display_name": "Blacksmith Apprentice",
+          "description": "",
           "job_level": 1,
           "definition_id": "blacksmith_apprentice"
         }
       }
     },
-    "57": {
-      "id": 57,
-      "name": "Cafe Owner(57)",
+    "54": {
+      "id": 54,
+      "name": "Cafe Owner(54)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Cafe Owner",
+          "display_name": "Cafe Owner",
+          "description": "",
           "job_level": 1,
           "definition_id": "cafe_owner"
         }
       }
     },
-    "58": {
-      "id": 58,
-      "name": "Barista(58)",
+    "55": {
+      "id": 55,
+      "name": "Barista(55)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Barista",
+          "display_name": "Barista",
+          "description": "",
           "job_level": 1,
           "definition_id": "barista"
         }
       }
     },
-    "59": {
-      "id": 59,
-      "name": "Farmer(59)",
+    "56": {
+      "id": 56,
+      "name": "Farmer(56)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Farmer",
+          "display_name": "Farmer",
+          "description": "",
           "job_level": 1,
           "definition_id": "farmer"
         }
       }
     },
-    "60": {
-      "id": 60,
-      "name": "Farmhand(60)",
+    "57": {
+      "id": 57,
+      "name": "Farmhand(57)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Farmhand",
+          "display_name": "Farmhand",
+          "description": "",
           "job_level": 1,
           "definition_id": "farmhand"
         }
       }
     },
-    "61": {
-      "id": 61,
-      "name": "Shopkeeper(61)",
+    "58": {
+      "id": 58,
+      "name": "Shopkeeper(58)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Shopkeeper",
+          "display_name": "Shopkeeper",
+          "description": "",
           "job_level": 1,
           "definition_id": "shopkeeper"
         }
       }
     },
-    "62": {
-      "id": 62,
-      "name": "Cashier(62)",
+    "59": {
+      "id": 59,
+      "name": "Cashier(59)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Cashier",
+          "display_name": "Cashier",
+          "description": "",
           "job_level": 1,
           "definition_id": "cashier"
         }
       }
     },
-    "63": {
-      "id": 63,
-      "name": "Theatre Owner(63)",
+    "60": {
+      "id": 60,
+      "name": "Theatre Owner(60)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Theatre Owner",
+          "display_name": "Theatre Owner",
+          "description": "",
           "job_level": 1,
           "definition_id": "theatre_owner"
         }
       }
     },
-    "64": {
-      "id": 64,
-      "name": "Actor(64)",
+    "61": {
+      "id": 61,
+      "name": "Actor(61)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Actor",
+          "display_name": "Actor",
+          "description": "",
           "job_level": 1,
           "definition_id": "actor"
         }
       }
     },
-    "65": {
-      "id": 65,
-      "name": "Brothel Owner(65)",
+    "62": {
+      "id": 62,
+      "name": "Brothel Owner(62)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Brothel Owner",
+          "display_name": "Brothel Owner",
+          "description": "",
           "job_level": 1,
           "definition_id": "brothel_owner"
         }
       }
     },
-    "66": {
-      "id": 66,
-      "name": "Bartender(66)",
+    "63": {
+      "id": 63,
+      "name": "Bartender(63)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Bartender",
+          "display_name": "Bartender",
+          "description": "",
           "job_level": 1,
           "definition_id": "bartender"
         }
       }
     },
-    "67": {
-      "id": 67,
-      "name": "Brothel Worker(67)",
+    "64": {
+      "id": 64,
+      "name": "Brothel Worker(64)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Brothel Worker",
+          "display_name": "Brothel Worker",
+          "description": "",
           "job_level": 1,
           "definition_id": "brothel_worker"
         }
       }
     },
-    "68": {
-      "id": 68,
-      "name": "Bar Owner(68)",
+    "65": {
+      "id": 65,
+      "name": "Bar Owner(65)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "JobRole": {
-          "name": "Bar Owner",
+          "display_name": "Bar Owner",
+          "description": "",
           "job_level": 1,
           "definition_id": "bar_owner"
         }
       }
     },
-    "69": {
-      "id": 69,
-      "name": "Blacksmithing(69)",
+    "66": {
+      "id": 66,
+      "name": "Blacksmithing(66)",
       "active": true,
       "parent": -1,
       "children": [],
@@ -1137,59 +1101,59 @@
         }
       }
     },
-    "70": {
-      "id": 70,
-      "name": "basic_settlement(70)",
+    "67": {
+      "id": 67,
+      "name": "basic_settlement(67)",
       "active": true,
       "parent": -1,
       "children": [
-        71,
-        72,
-        73,
-        74
+        68,
+        69,
+        70,
+        71
       ],
       "components": {
         "Active": {},
         "Settlement": {
           "name": "basic_settlement",
           "districts": [
-            71,
-            72,
-            73,
-            74
+            68,
+            69,
+            70,
+            71
           ],
           "population": 14
         }
       }
     },
-    "71": {
-      "id": 71,
-      "name": "farming_district(71)",
+    "68": {
+      "id": 68,
+      "name": "farming_district(68)",
       "active": true,
-      "parent": 70,
+      "parent": 67,
       "children": [
-        82,
+        72,
+        81,
         86,
-        96,
-        100,
-        108,
-        112
+        95,
+        103,
+        107
       ],
       "components": {
         "Active": {},
         "District": {
           "name": "farming_district",
           "description": "Where the animals and farmers are.",
-          "settlement": 70,
+          "settlement": 67,
           "residences": [
-            82,
-            96,
-            108
+            72,
+            86,
+            103
           ],
           "businesses": [
-            86,
-            100,
-            112
+            81,
+            95,
+            107
           ],
           "population": 3
         },
@@ -1198,36 +1162,36 @@
         "ResidenceSpawnTable": {}
       }
     },
-    "72": {
-      "id": 72,
-      "name": "market_district(72)",
+    "69": {
+      "id": 69,
+      "name": "market_district(69)",
       "active": true,
-      "parent": 70,
+      "parent": 67,
       "children": [
-        75,
-        84,
-        89,
-        98,
-        110,
-        117,
-        118
+        74,
+        82,
+        88,
+        96,
+        108,
+        113,
+        117
       ],
       "components": {
         "Active": {},
         "District": {
           "name": "market_district",
           "description": "Where people are always selling things.",
-          "settlement": 70,
+          "settlement": 67,
           "residences": [
-            75,
-            89
+            74,
+            88
           ],
           "businesses": [
-            84,
-            98,
-            110,
-            117,
-            118
+            82,
+            96,
+            108,
+            113,
+            117
           ],
           "population": 8
         },
@@ -1236,27 +1200,27 @@
         "ResidenceSpawnTable": {}
       }
     },
-    "73": {
-      "id": 73,
-      "name": "entertainment_district(73)",
+    "70": {
+      "id": 70,
+      "name": "entertainment_district(70)",
       "active": true,
-      "parent": 70,
+      "parent": 67,
       "children": [
-        85,
-        99,
-        111
+        83,
+        97,
+        109
       ],
       "components": {
         "Active": {},
         "District": {
           "name": "entertainment_district",
           "description": "Where characters go to have 'fun'.",
-          "settlement": 70,
+          "settlement": 67,
           "residences": [],
           "businesses": [
-            85,
-            99,
-            111
+            83,
+            97,
+            109
           ],
           "population": 0
         },
@@ -1265,26 +1229,26 @@
         "ResidenceSpawnTable": {}
       }
     },
-    "74": {
-      "id": 74,
-      "name": "upper_class_residences(74)",
+    "71": {
+      "id": 71,
+      "name": "upper_class_residences(71)",
       "active": true,
-      "parent": 70,
+      "parent": 67,
       "children": [
-        80,
-        94,
-        106
+        79,
+        93,
+        105
       ],
       "components": {
         "Active": {},
         "District": {
           "name": "upper_class_residences",
           "description": "Where the nobility live.",
-          "settlement": 70,
+          "settlement": 67,
           "residences": [
-            80,
-            94,
-            106
+            79,
+            93,
+            105
           ],
           "businesses": [],
           "population": 3
@@ -1294,26 +1258,20 @@
         "ResidenceSpawnTable": {}
       }
     },
-    "75": {
-      "id": 75,
-      "name": "Small Apartment Building(75)",
+    "72": {
+      "id": 72,
+      "name": "House(72)",
       "active": true,
-      "parent": 72,
+      "parent": 68,
       "children": [
-        76,
-        77,
-        78,
-        79
+        73
       ],
       "components": {
         "Active": {},
         "ResidentialBuilding": {
-          "district": 72,
+          "district": 68,
           "units": [
-            76,
-            77,
-            78,
-            79
+            73
           ]
         },
         "Traits": {
@@ -1322,24 +1280,96 @@
         "Stats": {}
       }
     },
-    "76": {
-      "id": 76,
-      "name": "ResidentialUnit(76)",
+    "73": {
+      "id": 73,
+      "name": "ResidentialUnit(73)",
       "active": true,
-      "parent": 75,
+      "parent": 72,
       "children": [],
       "components": {
         "Traits": {
           "traits": []
         },
         "Active": {},
-        "Residence": {
-          "district": 72,
+        "ResidentialUnit": {
+          "district": 68,
           "owners": [
-            87
+            111
           ],
           "residents": [
-            87
+            111
+          ]
+        }
+      }
+    },
+    "74": {
+      "id": 74,
+      "name": "Small Apartment Building(74)",
+      "active": true,
+      "parent": 69,
+      "children": [
+        75,
+        76,
+        77,
+        78
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 69,
+          "units": [
+            75,
+            76,
+            77,
+            78
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "75": {
+      "id": 75,
+      "name": "ResidentialUnit(75)",
+      "active": true,
+      "parent": 74,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 69,
+          "owners": [
+            84
+          ],
+          "residents": [
+            84
+          ]
+        }
+      }
+    },
+    "76": {
+      "id": 76,
+      "name": "ResidentialUnit(76)",
+      "active": true,
+      "parent": 74,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 69,
+          "owners": [
+            98
+          ],
+          "residents": [
+            98
           ]
         }
       }
@@ -1348,20 +1378,20 @@
       "id": 77,
       "name": "ResidentialUnit(77)",
       "active": true,
-      "parent": 75,
+      "parent": 74,
       "children": [],
       "components": {
         "Traits": {
           "traits": []
         },
         "Active": {},
-        "Residence": {
-          "district": 72,
+        "ResidentialUnit": {
+          "district": 69,
           "owners": [
-            114
+            85
           ],
           "residents": [
-            114
+            85
           ]
         }
       }
@@ -1370,264 +1400,198 @@
       "id": 78,
       "name": "ResidentialUnit(78)",
       "active": true,
-      "parent": 75,
+      "parent": 74,
       "children": [],
       "components": {
         "Traits": {
           "traits": []
         },
         "Active": {},
-        "Residence": {
-          "district": 72,
+        "ResidentialUnit": {
+          "district": 69,
           "owners": [
-            102
+            118
           ],
           "residents": [
-            102
+            118
           ]
         }
       }
     },
     "79": {
       "id": 79,
-      "name": "ResidentialUnit(79)",
+      "name": "Mansion(79)",
       "active": true,
-      "parent": 75,
-      "children": [],
+      "parent": 71,
+      "children": [
+        80
+      ],
       "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 71,
+          "units": [
+            80
+          ]
+        },
         "Traits": {
           "traits": []
         },
-        "Active": {},
-        "Residence": {
-          "district": 72,
-          "owners": [
-            88
-          ],
-          "residents": [
-            88
-          ]
-        }
+        "Stats": {}
       }
     },
     "80": {
       "id": 80,
-      "name": "Mansion(80)",
+      "name": "ResidentialUnit(80)",
       "active": true,
-      "parent": 74,
-      "children": [
-        81
-      ],
+      "parent": 79,
+      "children": [],
       "components": {
-        "Active": {},
-        "ResidentialBuilding": {
-          "district": 74,
-          "units": [
-            81
-          ]
-        },
         "Traits": {
           "traits": []
         },
-        "Stats": {}
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 71,
+          "owners": [
+            99
+          ],
+          "residents": [
+            99
+          ]
+        }
       }
     },
     "81": {
       "id": 81,
-      "name": "ResidentialUnit(81)",
+      "name": "farm(81)",
       "active": true,
-      "parent": 80,
+      "parent": 68,
       "children": [],
       "components": {
+        "Active": {},
+        "Business": {
+          "name": "farm",
+          "employees": [],
+          "owner": -1,
+          "district": 68
+        },
         "Traits": {
           "traits": []
         },
-        "Active": {},
-        "Residence": {
-          "district": 74,
-          "owners": [
-            115
-          ],
-          "residents": [
-            115
-          ]
-        }
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
       }
     },
     "82": {
       "id": 82,
-      "name": "House(82)",
+      "name": "shop(82)",
       "active": true,
-      "parent": 71,
-      "children": [
-        83
-      ],
+      "parent": 69,
+      "children": [],
       "components": {
         "Active": {},
-        "ResidentialBuilding": {
-          "district": 71,
-          "units": [
-            83
-          ]
+        "Business": {
+          "name": "shop",
+          "employees": [],
+          "owner": -1,
+          "district": 69
         },
         "Traits": {
           "traits": []
         },
-        "Stats": {}
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
       }
     },
     "83": {
       "id": 83,
-      "name": "ResidentialUnit(83)",
+      "name": "theatre(83)",
       "active": true,
-      "parent": 82,
+      "parent": 70,
       "children": [],
       "components": {
+        "Active": {},
+        "Business": {
+          "name": "theatre",
+          "employees": [],
+          "owner": -1,
+          "district": 70
+        },
         "Traits": {
           "traits": []
         },
-        "Active": {},
-        "Residence": {
-          "district": 71,
-          "owners": [
-            103
-          ],
-          "residents": [
-            103
-          ]
-        }
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
       }
     },
     "84": {
       "id": 84,
-      "name": "cafe(84)",
-      "active": true,
-      "parent": 72,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Business": {
-          "name": "cafe",
-          "employees": [],
-          "owner": -1,
-          "district": 72
-        },
-        "Traits": {
-          "traits": []
-        },
-        "FrequentedBy": {
-          "characters": []
-        },
-        "PersonalEventHistory": {
-          "events": []
-        },
-        "Stats": {},
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "SocialRules": {},
-        "PendingOpening": {}
-      }
-    },
-    "85": {
-      "id": 85,
-      "name": "brothel(85)",
-      "active": true,
-      "parent": 73,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Business": {
-          "name": "brothel",
-          "employees": [],
-          "owner": -1,
-          "district": 73
-        },
-        "Traits": {
-          "traits": []
-        },
-        "FrequentedBy": {
-          "characters": []
-        },
-        "PersonalEventHistory": {
-          "events": []
-        },
-        "Stats": {},
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "SocialRules": {},
-        "PendingOpening": {}
-      }
-    },
-    "86": {
-      "id": 86,
-      "name": "dairy_farm(86)",
-      "active": true,
-      "parent": 71,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Business": {
-          "name": "dairy_farm",
-          "employees": [],
-          "owner": -1,
-          "district": 71
-        },
-        "Traits": {
-          "traits": []
-        },
-        "FrequentedBy": {
-          "characters": []
-        },
-        "PersonalEventHistory": {
-          "events": []
-        },
-        "Stats": {},
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "SocialRules": {},
-        "PendingOpening": {}
-      }
-    },
-    "87": {
-      "id": 87,
-      "name": "Idris Leonards(87)",
+      "name": "Jaxx Skates(84)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Idris",
-          "last_name": "Leonards",
+          "first_name": "Jaxx",
+          "last_name": "Skates",
           "sex": "MALE",
-          "age": 78,
-          "life_stage": "SENIOR",
+          "age": 34,
+          "life_stage": "ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            35,
-            32,
-            15
+            20,
+            36,
+            38
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 1.3541666666666667,
+          "health": 56.35416666666669,
           "health_decay": 1.25,
-          "fertility": 0.315,
-          "boldness": 214.0,
-          "stewardship": 110.0,
-          "sociability": 79,
-          "attractiveness": 190.0,
-          "intelligence": 2,
-          "reliability": 221
+          "fertility": 1.0,
+          "boldness": 167.0,
+          "stewardship": 93.0,
+          "sociability": 213.0,
+          "attractiveness": 76,
+          "intelligence": 130.0,
+          "reliability": 72.0
         },
         "FrequentedLocations": {
           "locations": []
@@ -1644,44 +1608,44 @@
           ]
         },
         "Resident": {
-          "residence": 76
+          "residence": 75
         }
       }
     },
-    "88": {
-      "id": 88,
-      "name": "Jaylen Perrier(88)",
+    "85": {
+      "id": 85,
+      "name": "Shane Care(85)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Jaylen",
-          "last_name": "Perrier",
+          "first_name": "Shane",
+          "last_name": "Care",
           "sex": "MALE",
-          "age": 22,
+          "age": 29,
           "life_stage": "YOUNG_ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            15,
-            49,
-            31
+            34,
+            31,
+            40
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 71.35416666666661,
-          "health_decay": 1.25,
-          "fertility": 0.22,
-          "boldness": 129,
-          "stewardship": 191.0,
-          "sociability": 168,
-          "attractiveness": 156.0,
-          "intelligence": 223.0,
-          "reliability": 245.0
+          "health": 63.75,
+          "health_decay": 0,
+          "fertility": 0.93,
+          "boldness": 154.0,
+          "stewardship": 112.0,
+          "sociability": 178.0,
+          "attractiveness": 138.0,
+          "intelligence": 49,
+          "reliability": 177.0
         },
         "FrequentedLocations": {
           "locations": []
@@ -1698,30 +1662,24 @@
           ]
         },
         "Resident": {
-          "residence": 79
+          "residence": 77
         }
       }
     },
-    "89": {
-      "id": 89,
-      "name": "Small Apartment Building(89)",
+    "86": {
+      "id": 86,
+      "name": "House(86)",
       "active": true,
-      "parent": 72,
+      "parent": 68,
       "children": [
-        90,
-        91,
-        92,
-        93
+        87
       ],
       "components": {
         "Active": {},
         "ResidentialBuilding": {
-          "district": 72,
+          "district": 68,
           "units": [
-            90,
-            91,
-            92,
-            93
+            87
           ]
         },
         "Traits": {
@@ -1730,24 +1688,96 @@
         "Stats": {}
       }
     },
-    "90": {
-      "id": 90,
-      "name": "ResidentialUnit(90)",
+    "87": {
+      "id": 87,
+      "name": "ResidentialUnit(87)",
       "active": true,
-      "parent": 89,
+      "parent": 86,
       "children": [],
       "components": {
         "Traits": {
           "traits": []
         },
         "Active": {},
-        "Residence": {
-          "district": 72,
+        "ResidentialUnit": {
+          "district": 68,
           "owners": [
-            104
+            112
           ],
           "residents": [
-            104
+            112
+          ]
+        }
+      }
+    },
+    "88": {
+      "id": 88,
+      "name": "Small Apartment Building(88)",
+      "active": true,
+      "parent": 69,
+      "children": [
+        89,
+        90,
+        91,
+        92
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 69,
+          "units": [
+            89,
+            90,
+            91,
+            92
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "89": {
+      "id": 89,
+      "name": "ResidentialUnit(89)",
+      "active": true,
+      "parent": 88,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 69,
+          "owners": [
+            114
+          ],
+          "residents": [
+            114
+          ]
+        }
+      }
+    },
+    "90": {
+      "id": 90,
+      "name": "ResidentialUnit(90)",
+      "active": true,
+      "parent": 88,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 69,
+          "owners": [
+            116
+          ],
+          "residents": [
+            116
           ]
         }
       }
@@ -1756,20 +1786,20 @@
       "id": 91,
       "name": "ResidentialUnit(91)",
       "active": true,
-      "parent": 89,
+      "parent": 88,
       "children": [],
       "components": {
         "Traits": {
           "traits": []
         },
         "Active": {},
-        "Residence": {
-          "district": 72,
+        "ResidentialUnit": {
+          "district": 69,
           "owners": [
-            119
+            100
           ],
           "residents": [
-            119
+            100
           ]
         }
       }
@@ -1778,203 +1808,73 @@
       "id": 92,
       "name": "ResidentialUnit(92)",
       "active": true,
-      "parent": 89,
+      "parent": 88,
       "children": [],
       "components": {
         "Traits": {
           "traits": []
         },
         "Active": {},
-        "Residence": {
-          "district": 72,
+        "ResidentialUnit": {
+          "district": 69,
           "owners": [
-            105
+            101
           ],
           "residents": [
-            105
+            101
           ]
         }
       }
     },
     "93": {
       "id": 93,
-      "name": "ResidentialUnit(93)",
+      "name": "Mansion(93)",
       "active": true,
-      "parent": 89,
-      "children": [],
+      "parent": 71,
+      "children": [
+        94
+      ],
       "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 71,
+          "units": [
+            94
+          ]
+        },
         "Traits": {
           "traits": []
         },
-        "Active": {},
-        "Residence": {
-          "district": 72,
-          "owners": [
-            116
-          ],
-          "residents": [
-            116
-          ]
-        }
+        "Stats": {}
       }
     },
     "94": {
       "id": 94,
-      "name": "Mansion(94)",
+      "name": "ResidentialUnit(94)",
       "active": true,
-      "parent": 74,
-      "children": [
-        95
-      ],
+      "parent": 93,
+      "children": [],
       "components": {
-        "Active": {},
-        "ResidentialBuilding": {
-          "district": 74,
-          "units": [
-            95
-          ]
-        },
         "Traits": {
           "traits": []
         },
-        "Stats": {}
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 71,
+          "owners": [
+            102
+          ],
+          "residents": [
+            102
+          ]
+        }
       }
     },
     "95": {
       "id": 95,
-      "name": "ResidentialUnit(95)",
+      "name": "farm(95)",
       "active": true,
-      "parent": 94,
-      "children": [],
-      "components": {
-        "Traits": {
-          "traits": []
-        },
-        "Active": {},
-        "Residence": {
-          "district": 74,
-          "owners": [
-            121
-          ],
-          "residents": [
-            121
-          ]
-        }
-      }
-    },
-    "96": {
-      "id": 96,
-      "name": "House(96)",
-      "active": true,
-      "parent": 71,
-      "children": [
-        97
-      ],
-      "components": {
-        "Active": {},
-        "ResidentialBuilding": {
-          "district": 71,
-          "units": [
-            97
-          ]
-        },
-        "Traits": {
-          "traits": []
-        },
-        "Stats": {}
-      }
-    },
-    "97": {
-      "id": 97,
-      "name": "ResidentialUnit(97)",
-      "active": true,
-      "parent": 96,
-      "children": [],
-      "components": {
-        "Traits": {
-          "traits": []
-        },
-        "Active": {},
-        "Residence": {
-          "district": 71,
-          "owners": [
-            101
-          ],
-          "residents": [
-            101
-          ]
-        }
-      }
-    },
-    "98": {
-      "id": 98,
-      "name": "shop(98)",
-      "active": true,
-      "parent": 72,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Business": {
-          "name": "shop",
-          "employees": [],
-          "owner": -1,
-          "district": 72
-        },
-        "Traits": {
-          "traits": []
-        },
-        "FrequentedBy": {
-          "characters": []
-        },
-        "PersonalEventHistory": {
-          "events": []
-        },
-        "Stats": {},
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "SocialRules": {},
-        "PendingOpening": {}
-      }
-    },
-    "99": {
-      "id": 99,
-      "name": "theatre(99)",
-      "active": true,
-      "parent": 73,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Business": {
-          "name": "theatre",
-          "employees": [],
-          "owner": -1,
-          "district": 73
-        },
-        "Traits": {
-          "traits": []
-        },
-        "FrequentedBy": {
-          "characters": []
-        },
-        "PersonalEventHistory": {
-          "events": []
-        },
-        "Stats": {},
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "SocialRules": {},
-        "PendingOpening": {}
-      }
-    },
-    "100": {
-      "id": 100,
-      "name": "farm(100)",
-      "active": true,
-      "parent": 71,
+      "parent": 68,
       "children": [],
       "components": {
         "Active": {},
@@ -1982,7 +1882,7 @@
           "name": "farm",
           "employees": [],
           "owner": -1,
-          "district": 71
+          "district": 68
         },
         "Traits": {
           "traits": []
@@ -2002,40 +1902,104 @@
         "PendingOpening": {}
       }
     },
-    "101": {
-      "id": 101,
-      "name": "Aaron Lem(101)",
+    "96": {
+      "id": 96,
+      "name": "cafe(96)",
+      "active": true,
+      "parent": 69,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "cafe",
+          "employees": [],
+          "owner": -1,
+          "district": 69
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "97": {
+      "id": 97,
+      "name": "brothel(97)",
+      "active": true,
+      "parent": 70,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "brothel",
+          "employees": [],
+          "owner": -1,
+          "district": 70
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "98": {
+      "id": 98,
+      "name": "Lian Hatley(98)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Aaron",
-          "last_name": "Lem",
+          "first_name": "Lian",
+          "last_name": "Hatley",
           "sex": "MALE",
-          "age": 24,
-          "life_stage": "YOUNG_ADULT",
+          "age": 54,
+          "life_stage": "ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            48,
-            35,
-            44
+            16,
+            39,
+            46
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 68.95833333333329,
+          "health": 31.458333333333336,
           "health_decay": 1.25,
-          "fertility": 0.5,
-          "boldness": 4.0,
-          "stewardship": 168.0,
-          "sociability": 230.0,
-          "attractiveness": 26.0,
-          "intelligence": 38.0,
-          "reliability": 106
+          "fertility": 0.10400000000000001,
+          "boldness": 206.0,
+          "stewardship": 163.0,
+          "sociability": 11.0,
+          "attractiveness": 80,
+          "intelligence": 242.0,
+          "reliability": 183
         },
         "FrequentedLocations": {
           "locations": []
@@ -2052,43 +2016,44 @@
           ]
         },
         "Resident": {
-          "residence": 97
+          "residence": 76
         }
       }
     },
-    "102": {
-      "id": 102,
-      "name": "Layton Culpepper(102)",
+    "99": {
+      "id": 99,
+      "name": "Jazmine Cressey(99)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Layton",
-          "last_name": "Culpepper",
-          "sex": "MALE",
-          "age": 55,
-          "life_stage": "ADULT",
+          "first_name": "Jazmine",
+          "last_name": "Cressey",
+          "sex": "FEMALE",
+          "age": 22,
+          "life_stage": "YOUNG_ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            37,
-            43
+            18,
+            31,
+            32
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 28.54166666666668,
-          "health_decay": 3.25,
-          "fertility": 0.17600000000000002,
-          "boldness": 28.0,
-          "stewardship": 185.0,
-          "sociability": 204.0,
-          "attractiveness": 238.0,
-          "intelligence": 119,
-          "reliability": 96.0
+          "health": 71.45833333333329,
+          "health_decay": 1.25,
+          "fertility": 0.06,
+          "boldness": 146.0,
+          "stewardship": 218.0,
+          "sociability": 174,
+          "attractiveness": 76.0,
+          "intelligence": 20,
+          "reliability": 184
         },
         "FrequentedLocations": {
           "locations": []
@@ -2105,44 +2070,44 @@
           ]
         },
         "Resident": {
-          "residence": 78
+          "residence": 80
         }
       }
     },
-    "103": {
-      "id": 103,
-      "name": "Alayah Savary(103)",
+    "100": {
+      "id": 100,
+      "name": "Maximiliano Birkhead(100)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Alayah",
-          "last_name": "Savary",
-          "sex": "FEMALE",
-          "age": 70,
-          "life_stage": "SENIOR",
+          "first_name": "Maximiliano",
+          "last_name": "Birkhead",
+          "sex": "MALE",
+          "age": 24,
+          "life_stage": "YOUNG_ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            48,
-            47,
-            41
+            31,
+            23,
+            18
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 94.79166666666667,
-          "health_decay": -98.75,
-          "fertility": 0,
-          "boldness": 97.0,
-          "stewardship": 213.0,
-          "sociability": 29.0,
-          "attractiveness": 80,
-          "intelligence": 216.0,
-          "reliability": 243.0
+          "health": 68.95833333333329,
+          "health_decay": 1.25,
+          "fertility": 0.7,
+          "boldness": 146,
+          "stewardship": 58.0,
+          "sociability": 52,
+          "attractiveness": 237.0,
+          "intelligence": 118,
+          "reliability": 118.0
         },
         "FrequentedLocations": {
           "locations": []
@@ -2159,44 +2124,44 @@
           ]
         },
         "Resident": {
-          "residence": 83
+          "residence": 91
         }
       }
     },
-    "104": {
-      "id": 104,
-      "name": "Noelle Shreeves(104)",
+    "101": {
+      "id": 101,
+      "name": "Malcolm Truan(101)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Noelle",
-          "last_name": "Shreeves",
-          "sex": "FEMALE",
-          "age": 57,
+          "first_name": "Malcolm",
+          "last_name": "Truan",
+          "sex": "MALE",
+          "age": 56,
           "life_stage": "ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            43,
-            39,
-            47
+            12,
+            24,
+            16
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 111.04166666666669,
-          "health_decay": -98.75,
-          "fertility": 0,
-          "boldness": 1.0,
-          "stewardship": 89.0,
-          "sociability": 160.0,
-          "attractiveness": 79.0,
-          "intelligence": 68,
-          "reliability": 8.0
+          "health": 28.95833333333332,
+          "health_decay": 1.25,
+          "fertility": 0.168,
+          "boldness": 254.0,
+          "stewardship": 14.0,
+          "sociability": 135.0,
+          "attractiveness": 159,
+          "intelligence": 1.0,
+          "reliability": 92
         },
         "FrequentedLocations": {
           "locations": []
@@ -2213,44 +2178,43 @@
           ]
         },
         "Resident": {
-          "residence": 90
+          "residence": 92
         }
       }
     },
-    "105": {
-      "id": 105,
-      "name": "Bridget Lambirth(105)",
+    "102": {
+      "id": 102,
+      "name": "David Fincher(102)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Bridget",
-          "last_name": "Lambirth",
-          "sex": "FEMALE",
-          "age": 21,
-          "life_stage": "YOUNG_ADULT",
+          "first_name": "David",
+          "last_name": "Fincher",
+          "sex": "MALE",
+          "age": 36,
+          "life_stage": "ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            33,
-            34,
-            45
+            40,
+            30
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 72.70833333333329,
+          "health": 53.95833333333336,
           "health_decay": 1.25,
-          "fertility": 0.8799999999999999,
-          "boldness": 153.0,
-          "stewardship": 109.0,
-          "sociability": 204.0,
-          "attractiveness": 50.0,
-          "intelligence": 30,
-          "reliability": 238
+          "fertility": 0.776,
+          "boldness": 188.0,
+          "stewardship": 160.0,
+          "sociability": 206.0,
+          "attractiveness": 21.0,
+          "intelligence": 82,
+          "reliability": 19.0
         },
         "FrequentedLocations": {
           "locations": []
@@ -2267,103 +2231,135 @@
           ]
         },
         "Resident": {
-          "residence": 92
+          "residence": 94
         }
+      }
+    },
+    "103": {
+      "id": 103,
+      "name": "House(103)",
+      "active": true,
+      "parent": 68,
+      "children": [
+        104
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 68,
+          "units": [
+            104
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
+      }
+    },
+    "104": {
+      "id": 104,
+      "name": "ResidentialUnit(104)",
+      "active": true,
+      "parent": 103,
+      "children": [],
+      "components": {
+        "Traits": {
+          "traits": []
+        },
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 68,
+          "owners": [
+            110
+          ],
+          "residents": [
+            110
+          ]
+        }
+      }
+    },
+    "105": {
+      "id": 105,
+      "name": "Mansion(105)",
+      "active": true,
+      "parent": 71,
+      "children": [
+        106
+      ],
+      "components": {
+        "Active": {},
+        "ResidentialBuilding": {
+          "district": 71,
+          "units": [
+            106
+          ]
+        },
+        "Traits": {
+          "traits": []
+        },
+        "Stats": {}
       }
     },
     "106": {
       "id": 106,
-      "name": "Mansion(106)",
+      "name": "ResidentialUnit(106)",
       "active": true,
-      "parent": 74,
-      "children": [
-        107
-      ],
+      "parent": 105,
+      "children": [],
       "components": {
-        "Active": {},
-        "ResidentialBuilding": {
-          "district": 74,
-          "units": [
-            107
-          ]
-        },
         "Traits": {
           "traits": []
         },
-        "Stats": {}
+        "Active": {},
+        "ResidentialUnit": {
+          "district": 71,
+          "owners": [
+            115
+          ],
+          "residents": [
+            115
+          ]
+        }
       }
     },
     "107": {
       "id": 107,
-      "name": "ResidentialUnit(107)",
+      "name": "dairy_farm(107)",
       "active": true,
-      "parent": 106,
+      "parent": 68,
       "children": [],
       "components": {
+        "Active": {},
+        "Business": {
+          "name": "dairy_farm",
+          "employees": [],
+          "owner": -1,
+          "district": 68
+        },
         "Traits": {
           "traits": []
         },
-        "Active": {},
-        "Residence": {
-          "district": 74,
-          "owners": [
-            120
-          ],
-          "residents": [
-            120
-          ]
-        }
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
       }
     },
     "108": {
       "id": 108,
-      "name": "House(108)",
+      "name": "cafe(108)",
       "active": true,
-      "parent": 71,
-      "children": [
-        109
-      ],
-      "components": {
-        "Active": {},
-        "ResidentialBuilding": {
-          "district": 71,
-          "units": [
-            109
-          ]
-        },
-        "Traits": {
-          "traits": []
-        },
-        "Stats": {}
-      }
-    },
-    "109": {
-      "id": 109,
-      "name": "ResidentialUnit(109)",
-      "active": true,
-      "parent": 108,
-      "children": [],
-      "components": {
-        "Traits": {
-          "traits": []
-        },
-        "Active": {},
-        "Residence": {
-          "district": 71,
-          "owners": [
-            113
-          ],
-          "residents": [
-            113
-          ]
-        }
-      }
-    },
-    "110": {
-      "id": 110,
-      "name": "cafe(110)",
-      "active": true,
-      "parent": 72,
+      "parent": 69,
       "children": [],
       "components": {
         "Active": {},
@@ -2371,7 +2367,7 @@
           "name": "cafe",
           "employees": [],
           "owner": -1,
-          "district": 72
+          "district": 69
         },
         "Traits": {
           "traits": []
@@ -2391,22 +2387,24 @@
         "PendingOpening": {}
       }
     },
-    "111": {
-      "id": 111,
-      "name": "brothel(111)",
+    "109": {
+      "id": 109,
+      "name": "bar(109)",
       "active": true,
-      "parent": 73,
+      "parent": 70,
       "children": [],
       "components": {
         "Active": {},
         "Business": {
-          "name": "brothel",
+          "name": "bar",
           "employees": [],
           "owner": -1,
-          "district": 73
+          "district": 70
         },
         "Traits": {
-          "traits": []
+          "traits": [
+            48
+          ]
         },
         "FrequentedBy": {
           "characters": []
@@ -2423,72 +2421,40 @@
         "PendingOpening": {}
       }
     },
-    "112": {
-      "id": 112,
-      "name": "farm(112)",
-      "active": true,
-      "parent": 71,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Business": {
-          "name": "farm",
-          "employees": [],
-          "owner": -1,
-          "district": 71
-        },
-        "Traits": {
-          "traits": []
-        },
-        "FrequentedBy": {
-          "characters": []
-        },
-        "PersonalEventHistory": {
-          "events": []
-        },
-        "Stats": {},
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "SocialRules": {},
-        "PendingOpening": {}
-      }
-    },
-    "113": {
-      "id": 113,
-      "name": "Anne Amason(113)",
+    "110": {
+      "id": 110,
+      "name": "Matilda Nash(110)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Anne",
-          "last_name": "Amason",
+          "first_name": "Matilda",
+          "last_name": "Nash",
           "sex": "FEMALE",
-          "age": 59,
-          "life_stage": "ADULT",
+          "age": 28,
+          "life_stage": "YOUNG_ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            37,
-            39,
-            15
+            43,
+            15,
+            30
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 23.81250000000001,
-          "health_decay": 3.25,
-          "fertility": 0,
-          "boldness": 181.0,
-          "stewardship": 249.0,
-          "sociability": 196,
-          "attractiveness": 200.0,
-          "intelligence": 230.0,
-          "reliability": 4.0
+          "health": 64.06249999999996,
+          "health_decay": 1.25,
+          "fertility": 1.0,
+          "boldness": 12.0,
+          "stewardship": 252.0,
+          "sociability": 87.0,
+          "attractiveness": 70.0,
+          "intelligence": 137,
+          "reliability": 99.0
         },
         "FrequentedLocations": {
           "locations": []
@@ -2505,43 +2471,44 @@
           ]
         },
         "Resident": {
-          "residence": 109
+          "residence": 104
         }
       }
     },
-    "114": {
-      "id": 114,
-      "name": "Lydia Windes(114)",
+    "111": {
+      "id": 111,
+      "name": "Kelvin Umble(111)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Lydia",
-          "last_name": "Windes",
-          "sex": "FEMALE",
-          "age": 28,
+          "first_name": "Kelvin",
+          "last_name": "Umble",
+          "sex": "MALE",
+          "age": 22,
           "life_stage": "YOUNG_ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            38,
-            36
+            19,
+            14,
+            34
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 65.5625,
-          "health_decay": -0.75,
-          "fertility": 1.0,
-          "boldness": 5.0,
-          "stewardship": 164.0,
-          "sociability": 212.0,
-          "attractiveness": 93.0,
-          "intelligence": 42.0,
-          "reliability": 9.0
+          "health": 72.5,
+          "health_decay": 0,
+          "fertility": 0.56,
+          "boldness": 122.0,
+          "stewardship": 67.0,
+          "sociability": 85,
+          "attractiveness": 185.0,
+          "intelligence": 68.0,
+          "reliability": 196.0
         },
         "FrequentedLocations": {
           "locations": []
@@ -2558,44 +2525,44 @@
           ]
         },
         "Resident": {
-          "residence": 77
+          "residence": 73
         }
       }
     },
-    "115": {
-      "id": 115,
-      "name": "Clay Ledsome(115)",
+    "112": {
+      "id": 112,
+      "name": "Milo Filbert(112)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Clay",
-          "last_name": "Ledsome",
+          "first_name": "Milo",
+          "last_name": "Filbert",
           "sex": "MALE",
-          "age": 20,
+          "age": 29,
           "life_stage": "YOUNG_ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            46,
-            44,
-            35
+            31,
+            37,
+            17
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 74.06249999999996,
+          "health": 62.81250000000002,
           "health_decay": 1.25,
-          "fertility": 0.56,
-          "boldness": 231.0,
-          "stewardship": 148.0,
-          "sociability": 55,
-          "attractiveness": 151.0,
-          "intelligence": 71.0,
-          "reliability": 193
+          "fertility": 0,
+          "boldness": 8.0,
+          "stewardship": 200.0,
+          "sociability": 192.0,
+          "attractiveness": 118.0,
+          "intelligence": 204,
+          "reliability": 71
         },
         "FrequentedLocations": {
           "locations": []
@@ -2612,43 +2579,75 @@
           ]
         },
         "Resident": {
-          "residence": 81
+          "residence": 87
         }
       }
     },
-    "116": {
-      "id": 116,
-      "name": "Milan Delamar(116)",
+    "113": {
+      "id": 113,
+      "name": "cafe(113)",
+      "active": true,
+      "parent": 69,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Business": {
+          "name": "cafe",
+          "employees": [],
+          "owner": -1,
+          "district": 69
+        },
+        "Traits": {
+          "traits": []
+        },
+        "FrequentedBy": {
+          "characters": []
+        },
+        "PersonalEventHistory": {
+          "events": []
+        },
+        "Stats": {},
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "SocialRules": {},
+        "PendingOpening": {}
+      }
+    },
+    "114": {
+      "id": 114,
+      "name": "Xzavier Riche(114)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Milan",
-          "last_name": "Delamar",
+          "first_name": "Xzavier",
+          "last_name": "Riche",
           "sex": "MALE",
-          "age": 32,
-          "life_stage": "ADULT",
+          "age": 23,
+          "life_stage": "YOUNG_ADULT",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            43,
-            39,
-            30
+            22,
+            29,
+            15
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 59.06250000000002,
+          "health": 70.41666666666663,
           "health_decay": 1.25,
-          "fertility": 0,
-          "boldness": 33,
-          "stewardship": 43.0,
-          "sociability": 176.0,
-          "attractiveness": 220.0,
-          "intelligence": 239,
+          "fertility": 0.45,
+          "boldness": 64,
+          "stewardship": 241.0,
+          "sociability": 205.0,
+          "attractiveness": 248.0,
+          "intelligence": 79.0,
           "reliability": 145.0
         },
         "FrequentedLocations": {
@@ -2666,7 +2665,114 @@
           ]
         },
         "Resident": {
-          "residence": 93
+          "residence": 89
+        }
+      }
+    },
+    "115": {
+      "id": 115,
+      "name": "Charlie Biswell(115)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Charlie",
+          "last_name": "Biswell",
+          "sex": "FEMALE",
+          "age": 58,
+          "life_stage": "ADULT",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            16,
+            24
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 26.666666666666657,
+          "health_decay": 1.25,
+          "fertility": 0.248,
+          "boldness": 49.0,
+          "stewardship": 62.0,
+          "sociability": 225.0,
+          "attractiveness": 131,
+          "intelligence": 122.0,
+          "reliability": 69
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            22
+          ]
+        },
+        "Resident": {
+          "residence": 106
+        }
+      }
+    },
+    "116": {
+      "id": 116,
+      "name": "Armani Sawdey(116)",
+      "active": true,
+      "parent": -1,
+      "children": [],
+      "components": {
+        "Active": {},
+        "Character": {
+          "first_name": "Armani",
+          "last_name": "Sawdey",
+          "sex": "MALE",
+          "age": 67,
+          "life_stage": "SENIOR",
+          "species": "human"
+        },
+        "Traits": {
+          "traits": [
+            27,
+            29,
+            13
+          ]
+        },
+        "Skills": {},
+        "Stats": {
+          "health": 15.416666666666668,
+          "health_decay": 1.25,
+          "fertility": 0.395,
+          "boldness": 99,
+          "stewardship": 243,
+          "sociability": 80,
+          "attractiveness": 76.0,
+          "intelligence": 122.0,
+          "reliability": 62.0
+        },
+        "FrequentedLocations": {
+          "locations": []
+        },
+        "Relationships": {
+          "outgoing": {},
+          "incoming": {}
+        },
+        "LocationPreferences": {},
+        "SocialRules": {},
+        "PersonalEventHistory": {
+          "events": [
+            24
+          ]
+        },
+        "Resident": {
+          "residence": 90
         }
       }
     },
@@ -2674,7 +2780,7 @@
       "id": 117,
       "name": "cafe(117)",
       "active": true,
-      "parent": 72,
+      "parent": 69,
       "children": [],
       "components": {
         "Active": {},
@@ -2682,7 +2788,7 @@
           "name": "cafe",
           "employees": [],
           "owner": -1,
-          "district": 72
+          "district": 69
         },
         "Traits": {
           "traits": []
@@ -2704,177 +2810,37 @@
     },
     "118": {
       "id": 118,
-      "name": "shop(118)",
-      "active": true,
-      "parent": 72,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Business": {
-          "name": "shop",
-          "employees": [],
-          "owner": -1,
-          "district": 72
-        },
-        "Traits": {
-          "traits": []
-        },
-        "FrequentedBy": {
-          "characters": []
-        },
-        "PersonalEventHistory": {
-          "events": []
-        },
-        "Stats": {},
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "SocialRules": {},
-        "PendingOpening": {}
-      }
-    },
-    "119": {
-      "id": 119,
-      "name": "Mohamed Cheesman(119)",
+      "name": "Duke Graley(118)",
       "active": true,
       "parent": -1,
       "children": [],
       "components": {
         "Active": {},
         "Character": {
-          "first_name": "Mohamed",
-          "last_name": "Cheesman",
+          "first_name": "Duke",
+          "last_name": "Graley",
           "sex": "MALE",
-          "age": 20,
-          "life_stage": "YOUNG_ADULT",
-          "species": "human"
-        },
-        "Traits": {
-          "traits": [
-            47,
-            33,
-            42
-          ]
-        },
-        "Skills": {},
-        "Stats": {
-          "health": 132.60416666666669,
-          "health_decay": -98.75,
-          "fertility": 0.33,
-          "boldness": 152.0,
-          "stewardship": 149.0,
-          "sociability": 243.0,
-          "attractiveness": 164.0,
-          "intelligence": 51,
-          "reliability": 167.0
-        },
-        "FrequentedLocations": {
-          "locations": []
-        },
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "LocationPreferences": {},
-        "SocialRules": {},
-        "PersonalEventHistory": {
-          "events": [
-            22
-          ]
-        },
-        "Resident": {
-          "residence": 91
-        }
-      }
-    },
-    "120": {
-      "id": 120,
-      "name": "Jay Acors(120)",
-      "active": true,
-      "parent": -1,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Character": {
-          "first_name": "Jay",
-          "last_name": "Acors",
-          "sex": "MALE",
-          "age": 42,
-          "life_stage": "ADULT",
-          "species": "human"
-        },
-        "Traits": {
-          "traits": [
-            38,
-            44,
-            35
-          ]
-        },
-        "Skills": {},
-        "Stats": {
-          "health": 46.77083333333335,
-          "health_decay": 1.25,
-          "fertility": 1.0,
-          "boldness": 110.0,
-          "stewardship": 88.0,
-          "sociability": 188.0,
-          "attractiveness": 26.0,
-          "intelligence": 73.0,
-          "reliability": 60
-        },
-        "FrequentedLocations": {
-          "locations": []
-        },
-        "Relationships": {
-          "outgoing": {},
-          "incoming": {}
-        },
-        "LocationPreferences": {},
-        "SocialRules": {},
-        "PersonalEventHistory": {
-          "events": [
-            24
-          ]
-        },
-        "Resident": {
-          "residence": 107
-        }
-      }
-    },
-    "121": {
-      "id": 121,
-      "name": "Emelia Hatchett(121)",
-      "active": true,
-      "parent": -1,
-      "children": [],
-      "components": {
-        "Active": {},
-        "Character": {
-          "first_name": "Emelia",
-          "last_name": "Hatchett",
-          "sex": "FEMALE",
-          "age": 76,
+          "age": 67,
           "life_stage": "SENIOR",
           "species": "human"
         },
         "Traits": {
           "traits": [
-            38,
-            39
+            22,
+            36
           ]
         },
         "Skills": {},
         "Stats": {
-          "health": 4.479166666666665,
+          "health": 15.833333333333332,
           "health_decay": 1.25,
-          "fertility": 0,
-          "boldness": 218.0,
-          "stewardship": 176.0,
-          "sociability": 151.0,
-          "attractiveness": 233.0,
-          "intelligence": 142.0,
-          "reliability": 215.0
+          "fertility": 1.0,
+          "boldness": 209,
+          "stewardship": 195.0,
+          "sociability": 130.0,
+          "attractiveness": 105.0,
+          "intelligence": 216.0,
+          "reliability": 10.0
         },
         "FrequentedLocations": {
           "locations": []
@@ -2891,7 +2857,7 @@
           ]
         },
         "Resident": {
-          "residence": 95
+          "residence": 78
         }
       }
     }
@@ -2904,11 +2870,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 87
+          "gameobject": 84
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -2919,11 +2885,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 87
+          "gameobject": 84
         },
         {
           "name": "new_residence",
-          "gameobject": 76
+          "gameobject": 75
         }
       ]
     },
@@ -2934,11 +2900,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 88
+          "gameobject": 85
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -2949,11 +2915,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 88
+          "gameobject": 85
         },
         {
           "name": "new_residence",
-          "gameobject": 79
+          "gameobject": 77
         }
       ]
     },
@@ -2964,11 +2930,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 101
+          "gameobject": 98
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -2979,11 +2945,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 101
+          "gameobject": 98
         },
         {
           "name": "new_residence",
-          "gameobject": 97
+          "gameobject": 76
         }
       ]
     },
@@ -2994,11 +2960,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 102
+          "gameobject": 99
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -3009,11 +2975,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 102
+          "gameobject": 99
         },
         {
           "name": "new_residence",
-          "gameobject": 78
+          "gameobject": 80
         }
       ]
     },
@@ -3024,11 +2990,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 103
+          "gameobject": 100
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -3039,11 +3005,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 103
+          "gameobject": 100
         },
         {
           "name": "new_residence",
-          "gameobject": 83
+          "gameobject": 91
         }
       ]
     },
@@ -3054,11 +3020,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 104
+          "gameobject": 101
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -3069,11 +3035,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 104
+          "gameobject": 101
         },
         {
           "name": "new_residence",
-          "gameobject": 90
+          "gameobject": 92
         }
       ]
     },
@@ -3084,11 +3050,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 105
+          "gameobject": 102
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -3099,11 +3065,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 105
+          "gameobject": 102
         },
         {
           "name": "new_residence",
-          "gameobject": 92
+          "gameobject": 94
         }
       ]
     },
@@ -3114,11 +3080,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 113
+          "gameobject": 110
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -3129,11 +3095,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 113
+          "gameobject": 110
         },
         {
           "name": "new_residence",
-          "gameobject": 109
+          "gameobject": 104
         }
       ]
     },
@@ -3144,11 +3110,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 114
+          "gameobject": 111
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -3159,11 +3125,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 114
+          "gameobject": 111
         },
         {
           "name": "new_residence",
-          "gameobject": 77
+          "gameobject": 73
         }
       ]
     },
@@ -3174,11 +3140,11 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 115
+          "gameobject": 112
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
@@ -3189,33 +3155,93 @@
       "roles": [
         {
           "name": "subject",
-          "gameobject": 115
+          "gameobject": 112
         },
         {
           "name": "new_residence",
-          "gameobject": 81
+          "gameobject": 87
         }
       ]
     },
     "20": {
       "event_id": 20,
       "type": "JoinSettlementEvent",
-      "timestamp": "0001-04",
+      "timestamp": "0001-05",
       "roles": [
         {
           "name": "subject",
-          "gameobject": 116
+          "gameobject": 114
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
     "21": {
       "event_id": 21,
       "type": "ChangeResidenceEvent",
-      "timestamp": "0001-04",
+      "timestamp": "0001-05",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 114
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 89
+        }
+      ]
+    },
+    "22": {
+      "event_id": 22,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-05",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 115
+        },
+        {
+          "name": "settlement",
+          "gameobject": 67
+        }
+      ]
+    },
+    "23": {
+      "event_id": 23,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-05",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 115
+        },
+        {
+          "name": "new_residence",
+          "gameobject": 106
+        }
+      ]
+    },
+    "24": {
+      "event_id": 24,
+      "type": "JoinSettlementEvent",
+      "timestamp": "0001-05",
+      "roles": [
+        {
+          "name": "subject",
+          "gameobject": 116
+        },
+        {
+          "name": "settlement",
+          "gameobject": 67
+        }
+      ]
+    },
+    "25": {
+      "event_id": 25,
+      "type": "ChangeResidenceEvent",
+      "timestamp": "0001-05",
       "roles": [
         {
           "name": "subject",
@@ -3223,97 +3249,37 @@
         },
         {
           "name": "new_residence",
-          "gameobject": 93
-        }
-      ]
-    },
-    "22": {
-      "event_id": 22,
-      "type": "JoinSettlementEvent",
-      "timestamp": "0001-06",
-      "roles": [
-        {
-          "name": "subject",
-          "gameobject": 119
-        },
-        {
-          "name": "settlement",
-          "gameobject": 70
-        }
-      ]
-    },
-    "23": {
-      "event_id": 23,
-      "type": "ChangeResidenceEvent",
-      "timestamp": "0001-06",
-      "roles": [
-        {
-          "name": "subject",
-          "gameobject": 119
-        },
-        {
-          "name": "new_residence",
-          "gameobject": 91
-        }
-      ]
-    },
-    "24": {
-      "event_id": 24,
-      "type": "JoinSettlementEvent",
-      "timestamp": "0001-06",
-      "roles": [
-        {
-          "name": "subject",
-          "gameobject": 120
-        },
-        {
-          "name": "settlement",
-          "gameobject": 70
-        }
-      ]
-    },
-    "25": {
-      "event_id": 25,
-      "type": "ChangeResidenceEvent",
-      "timestamp": "0001-06",
-      "roles": [
-        {
-          "name": "subject",
-          "gameobject": 120
-        },
-        {
-          "name": "new_residence",
-          "gameobject": 107
+          "gameobject": 90
         }
       ]
     },
     "26": {
       "event_id": 26,
       "type": "JoinSettlementEvent",
-      "timestamp": "0001-08",
+      "timestamp": "0001-09",
       "roles": [
         {
           "name": "subject",
-          "gameobject": 121
+          "gameobject": 118
         },
         {
           "name": "settlement",
-          "gameobject": 70
+          "gameobject": 67
         }
       ]
     },
     "27": {
       "event_id": 27,
       "type": "ChangeResidenceEvent",
-      "timestamp": "0001-08",
+      "timestamp": "0001-09",
       "roles": [
         {
           "name": "subject",
-          "gameobject": 121
+          "gameobject": 118
         },
         {
           "name": "new_residence",
-          "gameobject": 95
+          "gameobject": 78
         }
       ]
     }

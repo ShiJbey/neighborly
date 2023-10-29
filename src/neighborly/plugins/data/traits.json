@@ -1,0 +1,1005 @@
+{
+  "drinks_too_much": {
+    "display_name": "Drinks too much",
+    "effects": [
+      {
+        "type": "AddLocationPreference",
+        "preconditions": [
+          {
+            "type": "HasTrait",
+            "trait": "serves_alcohol"
+          }
+        ],
+        "amount": 50
+      }
+    ],
+    "spawn_frequency": 1
+  },
+  "skeptical": {
+    "display_name": "Skeptical",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "sociability",
+        "amount": -3
+      }
+    ],
+    "conflicts_with": [
+      "gullible"
+    ],
+    "spawn_frequency": 1
+  },
+  "gullible": {
+    "display_name": "Gullible",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "sociability",
+        "amount": 3
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": 5
+          },
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": 3
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "skeptical"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.25,
+    "inheritance_chance_both": 0.5
+  },
+  "flirtatious": {
+    "display_name": "Flirtatious",
+    "spawn_frequency": 1,
+    "effects": [
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "romance",
+            "amount": 5
+          },
+          {
+            "type": "StatBuff",
+            "stat": "romantic_compatibility",
+            "amount": 4
+          }
+        ]
+      }
+    ]
+  },
+  "loyal": {
+    "display_name": "Loyal",
+    "description": "This character is fiercely loyal to their friends and allies.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "reliability",
+        "amount": 2
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": 3
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "traitorous"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.5,
+    "inheritance_chance_both": 0.75
+  },
+  "traitorous": {
+    "display_name": "Traitorous",
+    "description": "This character can betray their friends and allies for personal gain.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "reliability",
+        "amount": -3
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": -5
+          },
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": -5
+          },
+          {
+            "type": "StatBuff",
+            "stat": "romantic_compatibility",
+            "amount": -3
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "loyal"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.2,
+    "inheritance_chance_both": 0.4
+  },
+  "introverted": {
+    "display_name": "Introverted",
+    "description": "This character is reserved and prefers solitude.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "sociability",
+        "amount": -3
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": -2
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "extroverted"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "extroverted": {
+    "display_name": "Extroverted",
+    "description": "This character is outgoing and thrives in social settings.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "sociability",
+        "amount": 20
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": 4
+          },
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": 3
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "introverted"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "compassionate": {
+    "display_name": "Compassionate",
+    "description": "This character cares deeply for the well-being of others.",
+    "effects": [
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": 5
+          },
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": 4
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "callous"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.4,
+    "inheritance_chance_both": 0.7
+  },
+  "callous": {
+    "display_name": "Callous",
+    "description": "This character is emotionally detached and unsympathetic.",
+    "effects": [
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": -4,
+            "modifier_type": "Flat"
+          },
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": -3,
+            "modifier_type": "Flat"
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "compassionate"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.2,
+    "inheritance_chance_both": 0.4
+  },
+  "adventurous": {
+    "display_name": "Adventurous",
+    "description": "This character seeks excitement and enjoys taking risks.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "boldness",
+        "amount": 3,
+        "modifier_type": "Flat"
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": 2,
+            "modifier_type": "Flat"
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "cautious"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "cautious": {
+    "display_name": "Cautious",
+    "description": "This character is risk-averse and avoids dangerous situations.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "boldness",
+        "amount": -2,
+        "modifier_type": "Flat"
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "compatibility",
+            "amount": -2,
+            "modifier_type": "Flat"
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "adventurous"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "charismatic": {
+    "display_name": "Charismatic",
+    "description": "This character has a natural charm that draws others to them.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "attractiveness",
+        "amount": 3,
+        "modifier_type": "Flat"
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": 3,
+            "modifier_type": "Flat"
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "awkward"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "awkward": {
+    "display_name": "Awkward",
+    "description": "This character struggles with social interactions and comes across as clumsy.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "attractiveness",
+        "amount": -3,
+        "modifier_type": "Flat"
+      },
+      {
+        "type": "AddSocialRule",
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": -2,
+            "modifier_type": "Flat"
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "charismatic"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.2,
+    "inheritance_chance_both": 0.4
+  },
+  "ambitious": {
+    "display_name": "Ambitious",
+    "description": "This character is driven by ambition and seeks to achieve great success.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "stewardship",
+        "amount": 2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "lazy"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.2,
+    "inheritance_chance_both": 0.4
+  },
+  "lazy": {
+    "display_name": "Lazy",
+    "description": "This character tends to avoid hard work and prefers a leisurely lifestyle.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "stewardship",
+        "amount": -3,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "ambitious"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.2,
+    "inheritance_chance_both": 0.4
+  },
+  "hot-headed": {
+    "display_name": "Hot-Headed",
+    "description": "This character has a short temper and is quick to anger.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "boldness",
+        "amount": 4,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "calm"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.2,
+    "inheritance_chance_both": 0.4
+  },
+  "calm": {
+    "display_name": "Calm",
+    "description": "This character remains composed and rarely loses their temper.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "boldness",
+        "amount": -4,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "hot-headed"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.2,
+    "inheritance_chance_both": 0.4
+  },
+  "intelligent": {
+    "display_name": "Intelligent",
+    "description": "This character possesses a high level of intelligence and problem-solving abilities.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "intelligence",
+        "amount": 2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.4,
+    "inheritance_chance_both": 0.7
+  },
+  "simpleminded": {
+    "display_name": "Simple-Minded",
+    "description": "This character lacks intellectual depth and struggles with complex tasks.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "intelligence",
+        "amount": -3,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.4,
+    "inheritance_chance_both": 0.7
+  },
+  "charitable": {
+    "display_name": "Charitable",
+    "description": "This character is generous and often helps others in need.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "reliability",
+        "amount": 2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "selfish": {
+    "display_name": "Selfish",
+    "description": "This character prioritizes their own needs and desires over others.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "reliability",
+        "amount": -3,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "optimistic": {
+    "display_name": "Optimistic",
+    "description": "This character maintains a positive outlook and believes in a bright future.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "health_decay",
+        "amount": -2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "pessimistic"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "pessimistic": {
+    "display_name": "Pessimistic",
+    "description": "This character often anticipates negative outcomes and struggles with optimism.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "health_decay",
+        "amount": 2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "optimistic"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "energetic": {
+    "display_name": "Energetic",
+    "description": "This character is full of energy and enthusiasm for various activities.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "fertility",
+        "amount": 2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 2,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "lethargic": {
+    "display_name": "Lethargic",
+    "description": "This character lacks energy and often feels tired or unenthusiastic.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "fertility",
+        "amount": -2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "confident": {
+    "display_name": "Confident",
+    "description": "This character is self-assured and has a strong belief in their abilities.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "attractiveness",
+        "amount": 2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "insecure": {
+    "display_name": "Insecure",
+    "description": "This character struggles with self-doubt and often feels unattractive or inadequate.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "attractiveness",
+        "amount": -2,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "betraying": {
+    "display_name": "Betraying",
+    "description": "This character is prone to betrayal and can turn on friends and allies.",
+    "effects": [
+      {
+        "type": "AddSocialRule",
+        "preconditions": [
+          {
+            "type": "HasTrait",
+            "trait": "friendly"
+          }
+        ],
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": -3,
+            "modifier_type": "FLAT"
+          }
+        ]
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "genius": {
+    "display_name": "Genius",
+    "description": "This character possesses exceptional intelligence and problem-solving abilities.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "intelligence",
+        "amount": 4,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "simpleminded"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "friendly": {
+    "display_name": "Friendly",
+    "description": "This character is amiable and easily forms positive relationships with others.",
+    "effects": [
+      {
+        "type": "AddSocialRule",
+        "preconditions": [],
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "reputation",
+            "amount": 3,
+            "modifier_type": "FLAT"
+          }
+        ]
+      }
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "lustful": {
+    "display_name": "Lustful",
+    "description": "This character has strong sexual desires and is often drawn to romantic encounters.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "fertility",
+        "amount": 0.3,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "conflicts_with": [
+      "chaste"
+    ],
+    "spawn_frequency": 1,
+    "inheritance_chance_single": 0.3,
+    "inheritance_chance_both": 0.6
+  },
+  "immortal": {
+    "display_name": "Immortal",
+    "description": "This character is immune to death and the passage of time.",
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "health_decay",
+        "amount": -100,
+        "modifier_type": "FLAT"
+      }
+    ],
+    "spawn_frequency": 0.01,
+    "inheritance_chance_single": 0.0,
+    "inheritance_chance_both": 0.9
+  },
+  "attracted_to_men": {
+    "display_name": "Attracted to Men",
+    "description": "This character experiences romantic attraction primarily to men.",
+    "effects": [
+      {
+        "type": "AddSocialRule",
+        "preconditions": [
+          {
+            "type": "TargetIsSex",
+            "sex": "MALE"
+          }
+        ],
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "romance",
+            "amount": 5
+          },
+          {
+            "type": "StatBuff",
+            "stat": "romantic_compatibility",
+            "amount": 5
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "attracted_to_women"
+    ],
+    "spawn_frequency": 1
+  },
+  "attracted_to_women": {
+    "display_name": "Attracted to Women",
+    "description": "This character experiences romantic attraction primarily to women.",
+    "effects": [
+      {
+        "type": "AddSocialRule",
+        "preconditions": [
+          {
+            "type": "TargetIsSex",
+            "sex": "FEMALE"
+          }
+        ],
+        "effects": [
+          {
+            "type": "StatBuff",
+            "stat": "romance",
+            "amount": 5
+          },
+          {
+            "type": "StatBuff",
+            "stat": "romantic_compatibility",
+            "amount": 5
+          }
+        ]
+      }
+    ],
+    "conflicts_with": [
+      "attracted_to_men"
+    ],
+    "spawn_frequency": 1
+  },
+  "boss": {
+    "display_name": "Boss",
+    "description": "The target of this relationship is the their work boss.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "interaction_score",
+        "amount": 1
+      }
+    ]
+  },
+  "employee": {
+    "display_name": "Employee",
+    "description": "The target of this relationship is an employee.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "interaction_score",
+        "amount": 1
+      }
+    ]
+  },
+  "coworker": {
+    "display_name": "Coworker",
+    "description": "The target of this relationship is a coworker.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "interaction_score",
+        "amount": 2
+      }
+    ]
+  },
+  "departed": {
+    "display_name": "Departed",
+    "description": "The character has departed the simulation.",
+    "spawn_frequency": 0
+  },
+  "deceased": {
+    "display_name": "Deceased",
+    "description": "The character is deceased.",
+    "spawn_frequency": 0
+  },
+  "retired": {
+    "display_name": "Retired",
+    "description": "The character has retired from working.",
+    "spawn_frequency": 0
+  },
+  "family": {
+    "display_name": "Family",
+    "description": "These characters are related",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": -30
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": 10
+      }
+    ]
+  },
+  "parent": {
+    "display_name": "Parent",
+    "description": "The target of this relationship is the owner's parent",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "interaction_score",
+        "amount": 1
+      },
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": -50
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": 10
+      },
+      {
+        "type": "StatBuff",
+        "stat": "romantic_compatibility",
+        "amount": -3
+      }
+    ]
+  },
+  "child": {
+    "display_name": "Child",
+    "description": "The target of this relationship is a child of the owner.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": -50
+      },
+      {
+        "type": "StatBuff",
+        "stat": "romantic_compatibility",
+        "amount": -5
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": 20
+      }
+    ]
+  },
+  "sibling": {
+    "display_name": "Sibling",
+    "description": "The target of this relationship is a sibling of the owner.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": -50
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": 15
+      }
+    ]
+  },
+  "spouse": {
+    "display_name": "Spouse",
+    "description": "The target of this relationship is a spouse of the owner.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": 15
+      },
+      {
+        "type": "StatBuff",
+        "stat": "romantic_compatibility",
+        "amount": 3
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": 20
+      },
+      {
+        "type": "StatBuff",
+        "stat": "compatibility",
+        "amount": 4
+      }
+    ]
+  },
+  "dating": {
+    "display_name": "Dating",
+    "description": "The relationship target and owner are dating.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": 10
+      },
+      {
+        "type": "StatBuff",
+        "stat": "romantic_compatibility",
+        "amount": 2
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": 15
+      },
+      {
+        "type": "StatBuff",
+        "stat": "compatibility",
+        "amount": 4
+      }
+    ]
+  },
+  "serves_alcohol": {
+    "display_name": "Serves Alcohol",
+    "description": "This establishment serves alcohol.",
+    "spawn_frequency": 0
+  },
+  "ex_spouse": {
+    "display_name": "Ex-Spouse",
+    "description": "These characters were formerly married",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": -20
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": -8
+      }
+    ]
+  },
+  "ex_partner": {
+    "display_name": "Ex-Partner",
+    "description": "These character used to date.",
+    "spawn_frequency": 0,
+    "effects": [
+      {
+        "type": "StatBuff",
+        "stat": "romance",
+        "amount": -10
+      },
+      {
+        "type": "StatBuff",
+        "stat": "reputation",
+        "amount": -5
+      }
+    ]
+  },
+  "human": {
+    "definition_type": "DefaultSpeciesDef",
+    "display_name": "Human",
+    "description": "A plain ol' human being.",
+    "adolescent_age": 13,
+    "young_adult_age": 20,
+    "adult_age": 30,
+    "senior_age": 65,
+    "lifespan": 80,
+    "spawn_frequency": 0
+  }
+}

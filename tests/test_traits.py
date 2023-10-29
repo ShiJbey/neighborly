@@ -5,7 +5,8 @@ from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.libraries import TraitLibrary
-from neighborly.loaders import load_characters, load_traits
+from neighborly.loaders import load_characters
+from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -16,7 +17,7 @@ def test_trait_instantiation() -> None:
 
     sim = Simulation()
 
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
 
     # Traits are initialized at the start of the simulation
     sim.initialize()
@@ -33,7 +34,8 @@ def test_add_trait() -> None:
 
     sim = Simulation()
 
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
+
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
 
     # Traits are initialized at the start of the simulation
@@ -53,7 +55,8 @@ def test_remove_trait() -> None:
 
     sim = Simulation()
 
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
+
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
 
     # Traits are initialized at the start of the simulation
@@ -77,7 +80,8 @@ def test_add_remove_trait_effects() -> None:
 
     sim = Simulation()
 
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
+
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
 
     # Traits are initialized at the start of the simulation
@@ -103,7 +107,8 @@ def test_try_add_conflicting_trait() -> None:
 
     sim = Simulation()
 
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
+
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
 
     # Traits are initialized at the start of the simulation

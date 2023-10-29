@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [2.1.0] - 2023-29-10
+
+## Added
+
+- New inspection functions to the `neighborly.inspection` module
+- Added back non-notebook samples to facilitate library debugging
+
+## Changed
+
+- Moved some of the test data to become default plugins to assist new users
+- Tweaked some considerations and probabilities to get more believable event histories
+
+## Fixed
+
+- Adjusted trait configurations to provide a better spread of relationship stats
+- Fixed event considerations that cause over reproduction and unwanted polyamory
+- Added `force=True` to logging config to allow logging to work in Google Colab
+- Fixed `StartDating.instantiate` method that was missing a return statement
+
 ## [2.0.0] - 2023-27-10
 
 This version breaks nearly all aspects of previous versions. Neighborly's internal architecture
@@ -80,7 +99,7 @@ Below is a non-exhaustive list of changes.
 
 - Converted `RelationshipFacet`s to use the new stat system
 - `BuildingMap` resource to replace the `ISettlementMap` associated with the settlement instance.
-- `Settlment` is now a resource instead of a component
+- `Settlement` is now a resource instead of a component
 - Spawn tables have been changed from components to resources
 - Removed map and business/location tracking from the `Settlement` class
 - Converted samples from python scripts to interactive python notebooks.
@@ -96,7 +115,6 @@ Below is a non-exhaustive list of changes.
 - Revised relationship system and class interfaces for social rules, relationship stats, and relationship modifiers.
 - Renamed `RelationshipFacet` to `RelationshipStat`.
 - Renamed `--no-emit` CLI argument to `--no-output`.
-
 
 ### Removed
 

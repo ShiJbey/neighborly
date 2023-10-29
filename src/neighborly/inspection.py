@@ -25,6 +25,7 @@ from neighborly.components.residence import (
 )
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.skills import Skill, Skills
+from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
 from neighborly.ecs import Active, GameObject
 from neighborly.helpers.stats import get_stat
@@ -316,12 +317,15 @@ def inspect_character(character: GameObject) -> None:
     output += f"UID: {character.uid}\n"
     output += f"Name: {character_data.full_name}\n"
     output += f"Status: {activity_status}\n"
-    output += f"Age: {int(character_data.age)}\n"
+    output += f"Age: {int(character_data.age)} ({character_data.life_stage.name})\n"
     output += f"Sex: {character_data.sex.name}\n"
     output += f"Species: {character_data.species.name}\n"
     output += "\n"
     output += f"Works at: {works_at}\n"
     output += f"Residence: {residence}\n"
+    output += "\n"
+    output += "=== Stats ===\n"
+    output += f"{_get_stats_table(character.get_component(Stats))}\n"
     output += "\n"
     output += "=== Traits ===\n"
     output += f"{_get_traits_table(character.get_component(Traits))}\n"
@@ -347,12 +351,6 @@ def inspect_relationship(relationship: GameObject) -> None:
 
     relationship_data = relationship.get_component(Relationship)
 
-    reputation = get_stat(relationship, "reputation").value
-    romance = get_stat(relationship, "romance").value
-    compatibility = get_stat(relationship, "compatibility").value
-    romantic_compatibility = get_stat(relationship, "romantic_compatibility").value
-    interaction_score = get_stat(relationship, "interaction_score").value
-
     output = "\n"
     output += "Relationship\n"
     output += "============\n"
@@ -363,11 +361,8 @@ def inspect_relationship(relationship: GameObject) -> None:
     output += f"Owner: {relationship_data.owner.name}\n"
     output += f"Target: {relationship_data.target.name}\n"
     output += "\n"
-    output += f"Reputation: {int(reputation)}\n"
-    output += f"Romance: {int(romance)}\n"
-    output += f"Compatibility: {compatibility}\n"
-    output += f"Romantic Compatibility: {romantic_compatibility}\n"
-    output += f"Interaction Score: {int(interaction_score)}\n"
+    output += "=== Stats ===\n"
+    output += f"{_get_stats_table(relationship.get_component(Stats))}\n"
     output += "\n"
     output += "=== Traits ===\n"
     output += f"{_get_traits_table(relationship.get_component(Traits))}\n"
@@ -724,7 +719,9 @@ def _get_personal_history_table(history: PersonalEventHistory) -> str:
 
 
 def _get_relationships_table(relationships: Relationships) -> str:
-    relationship_data: list[tuple[str, float, float, float, float, float, str]] = []
+    relationship_data: list[
+        tuple[bool, int, str, float, float, float, float, float, str]
+    ] = []
 
     for target, relationship in relationships.outgoing.items():
         reputation = get_stat(relationship, "reputation").value
@@ -736,6 +733,8 @@ def _get_relationships_table(relationships: Relationships) -> str:
 
         relationship_data.append(
             (
+                relationship.has_component(Active),
+                relationship.uid,
                 target.name,
                 int(reputation),
                 int(romance),
@@ -749,12 +748,24 @@ def _get_relationships_table(relationships: Relationships) -> str:
     return tabulate.tabulate(
         relationship_data,
         headers=(
+            "Active",
+            "UID",
             "Target",
-            "Reputation",
-            "Romance",
-            "Compatibility",
-            "Romantic Compatibility",
-            "Interaction Score",
+            "Rep.",
+            "Rom.",
+            "Compat.",
+            "Rom. Compat.",
+            "Int. Score",
             "Traits",
         ),
     )
+
+
+def _get_stats_table(stats: Stats) -> str:
+    """Generate a table for stats."""
+    table = tabulate.tabulate(
+        [(stat_id, stat.value) for stat_id, stat in stats],
+        headers=("Stat", "Value"),
+    )
+
+    return table

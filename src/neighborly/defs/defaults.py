@@ -614,9 +614,11 @@ class DefaultCharacterDef(CharacterDef):
         character_comp = character.get_component(Character)
         species = character.get_component(Character).species.get_component(Species)
 
-        health = add_stat(character, "health", Stat(base_value=100))
+        health = add_stat(character, "health", Stat(base_value=100, bounds=(0, 999999)))
         health_decay = add_stat(
-            character, "health_decay", Stat(base_value=100.0 / species.lifespan)
+            character,
+            "health_decay",
+            Stat(base_value=100.0 / species.lifespan, bounds=(0, 999999)),
         )
         fertility = add_stat(
             character,

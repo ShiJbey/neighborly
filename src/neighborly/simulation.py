@@ -359,10 +359,13 @@ class Simulation:
                     encoding="utf-8",
                     level=self.config.logging.log_level,
                     format="%(message)s",
+                    force=True,
                 )
             else:
                 logging.basicConfig(
-                    level=self.config.logging.log_level, format="%(message)s"
+                    level=self.config.logging.log_level,
+                    format="%(message)s",
+                    force=True,
                 )
 
     @property

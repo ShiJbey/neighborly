@@ -10,8 +10,11 @@ from neighborly.loaders import (
     load_residences,
     load_settlements,
     load_skills,
-    load_tracery,
-    load_traits,
+)
+from neighborly.plugins import (
+    default_character_names,
+    default_settlement_names,
+    default_traits,
 )
 from neighborly.simulation import Simulation
 
@@ -69,17 +72,12 @@ def test_simulation_to_json() -> None:
     load_businesses(sim, _TEST_DATA_DIR / "businesses.json")
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
     load_skills(sim, _TEST_DATA_DIR / "skills.json")
-    load_tracery(
-        sim,
-        _TEST_DATA_DIR / "character_names.tracery.json",
-    )
-    load_tracery(
-        sim,
-        _TEST_DATA_DIR / "settlement_names.tracery.json",
-    )
+
+    default_traits.load_plugin(sim)
+    default_character_names.load_plugin(sim)
+    default_settlement_names.load_plugin(sim)
 
     # Run the simulation for one year (12 months) of simulated time
     for _ in range(12):

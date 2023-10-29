@@ -9,7 +9,8 @@ import pathlib
 from neighborly.components.stats import Stat
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import add_stat, get_stat, has_stat, remove_stat
-from neighborly.loaders import load_characters, load_traits
+from neighborly.loaders import load_characters
+from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -20,7 +21,7 @@ def test_has_stat() -> None:
     sim = Simulation()
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
 
     sim.initialize()
 
@@ -36,7 +37,7 @@ def test_get_stat() -> None:
     sim = Simulation()
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
 
     sim.initialize()
 
@@ -59,7 +60,7 @@ def test_add_stat() -> None:
     sim = Simulation()
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    default_traits.load_plugin(sim)
 
     sim.initialize()
 
@@ -76,7 +77,8 @@ def test_remove_stat() -> None:
     sim = Simulation()
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+
+    default_traits.load_plugin(sim)
 
     sim.initialize()
 

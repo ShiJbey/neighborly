@@ -14,7 +14,7 @@ from __future__ import annotations
 import enum
 import math
 import sys
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 import attrs
 
@@ -327,6 +327,9 @@ class Stats(Component):
             return True
 
         return False
+
+    def __iter__(self) -> Iterator[tuple[str, Stat]]:
+        return iter(self._stats.items())
 
     def to_dict(self) -> dict[str, Any]:
         return {stat_id: stat.value for stat_id, stat in self._stats.items()}

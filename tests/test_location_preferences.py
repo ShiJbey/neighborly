@@ -18,8 +18,8 @@ from neighborly.loaders import (
     load_job_roles,
     load_residences,
     load_settlements,
-    load_traits,
 )
+from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -35,7 +35,8 @@ def test_trait_with_location_preferences() -> None:
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+
+    default_traits.load_plugin(sim)
 
     sim.initialize()
 

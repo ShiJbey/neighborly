@@ -41,11 +41,17 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Typing :: Typed",
 ]
-dependencies = ["esper==2.*", "ordered-set", "tracery3", "polars==0.19.*"]
+dependencies = [
+    "esper==2.*",
+    "ordered-set==4.*",
+    "tracery3==1.*",
+    "polars==0.19.*",
+    "tabulate==0.9.*",
+]
 
 [project.optional-dependencies]
 testing = ["pytest", "pytest-cov"]
-samples = ["jupyterlab", "matplotlib", "tqdm"]
+samples = ["jupyterlab", "matplotlib", "tqdm", "ipywidgets"]
 development = ["isort", "black", "black[d]", "black[jupyter]", "build"]
 
 [project.urls]
