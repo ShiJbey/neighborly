@@ -47,6 +47,10 @@ differs greatly from the version the paper describes.
 - Characters can only hold one occupation at a time.
 - Does not model the exact position of entities.
 
+# Try Neighboorly without installing
+
+Neighborly is available to use within this [sample Google Colab notebook](https://colab.research.google.com/drive/1WxZnCR8afekfBl-vI6WcIcS6OhRGdkam?usp=sharing). It contains a basic walkthrough of how to define content for the simulation and inspect the generated data.
+
 # Installation
 
 The latest official release of Neighborly is available to install from [PyPI](https://pypi.org/project/neighborly/).
