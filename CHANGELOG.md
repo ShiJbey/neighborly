@@ -8,17 +8,17 @@ between minor-version updates.
 
 ## [2.1.0] - 2023-29-10
 
-## Added
+### Added
 
 - New inspection functions to the `neighborly.inspection` module
 - Added back non-notebook samples to facilitate library debugging
 
-## Changed
+### Changed
 
 - Moved some of the test data to become default plugins to assist new users
 - Tweaked some considerations and probabilities to get more believable event histories
 
-## Fixed
+### Fixed
 
 - Adjusted trait configurations to provide a better spread of relationship stats
 - Fixed event considerations that cause over reproduction and unwanted polyamory
