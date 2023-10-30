@@ -23,7 +23,7 @@ from neighborly.helpers.location import (
     remove_all_frequenting_characters,
     remove_frequented_location,
 )
-from neighborly.helpers.relationship import get_relationship
+from neighborly.helpers.relationship import deactivate_relationships, get_relationship
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import EventRole, LifeEvent
 
@@ -43,6 +43,8 @@ class Death(LifeEvent):
         remove_all_frequented_locations(character)
         character.deactivate()
         add_trait(character, "deceased")
+
+        deactivate_relationships(character)
 
         # Remove the character from their residence
         if resident_data := character.try_component(Resident):
@@ -447,6 +449,8 @@ class DepartSettlement(LifeEvent):
         remove_all_frequented_locations(character)
         add_trait(character, "departed")
         character.deactivate()
+
+        deactivate_relationships(character)
 
         # Have the character leave their job
         if occupation := character.try_component(Occupation):

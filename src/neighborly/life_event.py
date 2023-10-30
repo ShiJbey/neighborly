@@ -414,8 +414,8 @@ class GlobalEventHistory:
         """Serialize object into JSON-serializable dict."""
         return {str(key): entry.to_dict() for key, entry in self._history.items()}
 
-    def __iter__(self) -> Iterator[Event]:
+    def __iter__(self) -> Iterator[LifeEvent]:
         return self._history.values().__iter__()
 
-    def __getitem__(self, key: int) -> Event:
+    def __getitem__(self, key: int) -> LifeEvent:
         return self._history[key]

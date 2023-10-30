@@ -13,7 +13,12 @@ from typing import ClassVar, Optional
 
 import polars as pl
 
-from neighborly.components.business import Business, OpenToPublic, PendingOpening
+from neighborly.components.business import (
+    Business,
+    Occupation,
+    OpenToPublic,
+    PendingOpening,
+)
 from neighborly.components.character import Character, LifeStage, Pregnant, Species
 from neighborly.components.location import (
     FrequentedBy,
@@ -756,3 +761,20 @@ class MeetNewPeopleSystem(System):
                         get_relationship(acquaintance, character.gameobject),
                         "interaction_score",
                     ).base_value += candidate_scores[acquaintance]
+
+
+class JobRoleMonthlyEffectsSystem(System):
+    """This system applies monthly effects associated with character's job roles.
+
+    Unlike the normal effects, monthly effects are not reversed when the character
+    leaves the role. The changes are permanent. This system is meant to give characters
+    a way of increasing specific skill points the longer they work at a job. This way
+    higher level jobs can require characters to meet skill thresholds.
+    """
+
+    def on_update(self, world: World) -> None:
+        for _, (character, occupation, _) in world.get_components(
+            (Character, Occupation, Active)
+        ):
+            for effect in occupation.job_role.monthly_effects:
+                effect.apply(character.gameobject)

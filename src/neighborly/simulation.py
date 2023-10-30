@@ -67,6 +67,7 @@ from neighborly.systems import (
     InstantiateJobRolesSystem,
     InstantiateSkillsSystem,
     InstantiateTraitsSystem,
+    JobRoleMonthlyEffectsSystem,
     LateUpdateSystems,
     LifeEventSystem,
     MeetNewPeopleSystem,
@@ -194,6 +195,9 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=PassiveRomanceChange(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=JobRoleMonthlyEffectsSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
             system=DeathSystem(), system_group=UpdateSystems

@@ -218,3 +218,15 @@ def remove_all_social_rules_from_source(gameobject: GameObject, source: object) 
     for rule in rules:
         if rule.source == source:
             remove_social_rule(gameobject, rule)
+
+
+def deactivate_relationships(gameobject: GameObject) -> None:
+    """Deactivates all an objects incoming and outgoing relationships."""
+
+    relationships = gameobject.get_component(Relationships)
+
+    for _, relationship in relationships.outgoing.items():
+        relationship.deactivate()
+
+    for _, relationship in relationships.incoming.items():
+        relationship.deactivate()

@@ -555,6 +555,9 @@
         "modifier_type": "FLAT"
       }
     ],
+    "conflicts_with": [
+      "lethargic"
+    ],
     "spawn_frequency": 2,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -569,6 +572,9 @@
         "amount": -2,
         "modifier_type": "FLAT"
       }
+    ],
+    "conflicts_with": [
+      "energetic"
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,

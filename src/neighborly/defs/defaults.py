@@ -12,7 +12,7 @@ from typing import Any, Optional, Union
 
 import attrs
 
-from neighborly.components.business import Business, JobRole
+from neighborly.components.business import Business, JobRole, OpenToPublic
 from neighborly.components.character import Character, LifeStage, Sex, Species
 from neighborly.components.location import (
     FrequentedBy,
@@ -823,6 +823,9 @@ class DefaultBusinessDef(BusinessDef):
         business.add_component(SocialRules())
 
         self.initialize_name(business)
+
+        if self.open_to_public:
+            business.add_component(OpenToPublic())
 
         for trait in self.traits:
             add_trait(business, trait)
