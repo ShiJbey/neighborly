@@ -57,7 +57,7 @@ def test_trait_with_location_preferences() -> None:
     add_trait(farmer, "drinks_too_much")
 
     assert farmer_preferences.score_location(cafe) == 0.5
-    assert farmer_preferences.score_location(bar) == pytest.approx(2 / 3, 0.001)  # type: ignore
+    assert farmer_preferences.score_location(bar) == pytest.approx(0.65, 0.001)  # type: ignore
 
     remove_trait(farmer, "drinks_too_much")
 

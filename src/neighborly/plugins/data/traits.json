@@ -10,7 +10,7 @@
             "trait": "serves_alcohol"
           }
         ],
-        "amount": 50
+        "probability": 0.8
       }
     ],
     "spawn_frequency": 1

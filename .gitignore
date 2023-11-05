@@ -287,3 +287,5 @@ node_modules/
 
 # Profiling output
 *.prof
+
+tests/output

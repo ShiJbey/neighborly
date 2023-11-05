@@ -118,21 +118,21 @@ class IncreaseSkill(Effect):
 class AddLocationPreference(Effect):
     """Add a new location preference rule."""
 
-    __slots__ = "preconditions", "amount"
+    __slots__ = "preconditions", "probability"
 
     preconditions: list[Precondition]
     """Preconditions that need to pass to apply the preference rule."""
-    amount: int
-    """The value of the score modifier."""
+    probability: float
+    """A probability of the character frequenting the location."""
 
     def __init__(
         self,
         preconditions: list[Precondition],
-        amount: int,
+        probability: float,
     ) -> None:
         super().__init__()
         self.preconditions = preconditions
-        self.amount = amount
+        self.probability = probability
 
     @property
     def description(self) -> str:
@@ -143,7 +143,7 @@ class AddLocationPreference(Effect):
             output += " and ".join(p.description for p in self.preconditions)
             output += ", then "
 
-        output += f"add {self.amount} to the location score."
+        output += f"apply an {self.probability*100}% consideration score."
 
         return output
 
@@ -151,7 +151,7 @@ class AddLocationPreference(Effect):
         target.get_component(LocationPreferences).add_rule(
             LocationPreferenceRule(
                 preconditions=self.preconditions,
-                amount=self.amount,
+                probability=self.probability,
                 source=self,
             )
         )
@@ -162,7 +162,7 @@ class AddLocationPreference(Effect):
     @classmethod
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
         preconditions_data: list[dict[str, Any]] = params.get("preconditions", [])
-        amount: int = int(params["amount"])
+        probability: float = float(params["probability"])
 
         precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
 
@@ -173,7 +173,7 @@ class AddLocationPreference(Effect):
 
         return cls(
             preconditions=preconditions,
-            amount=amount,
+            probability=probability,
         )
 
 

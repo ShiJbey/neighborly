@@ -368,6 +368,7 @@ class BusinessDef(ABC):
     max_instances: int = 9999
     """The maximum number of this definition that may exist in a district."""
 
+    @abstractmethod
     def initialize(self, district: GameObject, business: GameObject) -> None:
         """Initialize a business' components using the definition data.
 

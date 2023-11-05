@@ -39,7 +39,7 @@ To contribute unit tests:
 Your commits should only contain changes to files within the `tests/` directory. If you change any files in other parts
 of the project, your pull request will be rejected.
 
-# Licensing
+## Licensing
 
 This project is licensed under the [MIT License](./LICENSE). By submitting a contribution to this project, you are
 agreeing that your contribution will be released under the terms of this license.

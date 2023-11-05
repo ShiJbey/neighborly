@@ -140,12 +140,12 @@ class LocationPreferenceRule:
 
     preconditions: list[Precondition]
     """Precondition functions to run when scoring a location."""
-    amount: int
+    probability: float
     """The amount to apply to the score."""
     source: object
     """The source of this location."""
 
-    def __call__(self, gameobject: GameObject) -> int:
+    def __call__(self, gameobject: GameObject) -> float:
         """Check all preconditions and return a weight modifier.
 
         Parameters
@@ -155,15 +155,15 @@ class LocationPreferenceRule:
 
         Returns
         -------
-        int
-            A weight modifier used in scoring considerations for frequenting the given
-            location.
+        float
+            A probability score from [0.0, 1.0] of the character frequenting the
+            location. Or -1 if it does not pass the preconditions.
         """
 
         if all(p(gameobject) for p in self.preconditions):
-            return self.amount
+            return self.probability
 
-        return 0
+        return -1.0
 
 
 class LocationPreferences(Component):
@@ -204,22 +204,26 @@ class LocationPreferences(Component):
             A probability score from [0.0, 1.0]
         """
 
-        # This is a method borrowed from CK3
-        # Decompose the base probability into a numerator and denominator
-        # 100 is arbitrarily chosen. It provides a nice starting point for
-        # scores to have an impact without over saturating the score
-        numerator: int = 50
-        denominator: int = 100
+        cumulative_score: float = 0.5
+        consideration_count: int = 1
 
         for rule in self._rules:
-            score = rule(location)
+            consideration_score = rule(location)
 
-            numerator += score
+            # Scores greater than zero are added to the cumulative score
+            if consideration_score > 0:
+                cumulative_score += consideration_score
+                consideration_count += 1
 
-            if score > 0:
-                denominator += score
+            # Scores equal to zero make the entire score zero (make zero a veto value)
+            elif consideration_score == 0.0:
+                cumulative_score = 0.0
+                break
 
-        return max(0.0, float(numerator) / denominator)
+        # Scores are averaged using the arithmetic mean
+        final_score = cumulative_score / consideration_count
+
+        return final_score
 
     def to_dict(self) -> dict[str, Any]:
         return {}

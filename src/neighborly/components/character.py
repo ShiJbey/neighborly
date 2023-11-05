@@ -27,6 +27,7 @@ class Sex(enum.IntEnum):
 
     MALE = enum.auto()
     FEMALE = enum.auto()
+    NOT_SPECIFIED = enum.auto()
 
 
 class Species(Component):

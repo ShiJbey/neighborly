@@ -154,14 +154,6 @@ class EventRoleList:
         return str(self._roles)
 
 
-@attrs.define
-class RoleConfig:
-    """Configuration parameters for life event roles"""
-
-    log_event: bool = False
-    """Should characters log the event when dispatched."""
-
-
 _ET_contra = TypeVar("_ET_contra", bound="LifeEvent", contravariant=True)
 
 
@@ -298,25 +290,24 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
         cumulative_score: float = self.base_probability
         consideration_count: int = 1
 
+        cumulative_score: float = 0.5
+        consideration_count: int = 1
+
         for consideration in type(self)._considerations:
             consideration_score = consideration(self)
-            if consideration_score >= 0:
-                cumulative_score *= consideration_score
+
+            # Scores greater than zero are added to the cumulative score
+            if consideration_score > 0:
+                cumulative_score += consideration_score
                 consideration_count += 1
 
-            if cumulative_score == 0.0:
+            # Scores equal to zero make the entire score zero (make zero a veto value)
+            elif consideration_score == 0.0:
+                cumulative_score = 0.0
                 break
 
-        # Scores are averaged using the Geometric Mean instead of
-        # arithmetic mean. It calculates the mean of a product of
-        # n-numbers by finding the n-th root of the product
-        # Tried using the averaging scheme by Dave Mark, but it
-        # returned values that felt too small and were not easy
-        # to reason about.
-        # Using this method, a cumulative score of zero will still
-        # result in a final score of zero.
-
-        final_score = cumulative_score ** (1 / consideration_count)
+        # Scores are averaged using the arithmetic mean
+        final_score = cumulative_score / consideration_count
 
         return final_score
 
