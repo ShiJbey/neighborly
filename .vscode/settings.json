@@ -10,5 +10,6 @@
     "MD024": false,
     "MD036": false,
     "MD033": false
-  }
+  },
+  "esbonio.sphinx.confDir": ""
 }
