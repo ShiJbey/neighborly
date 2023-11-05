@@ -138,7 +138,7 @@ pytest --cov=neighborly tests/
 
 # Documentation
 
-The best place to find examples of how to use Neighborly is actually in the `./tests` directory. There you will find examples of loading content from files, running a simulation, and saving the output to JSON. There is also the [wiki](https://github.com/ShiJbey/neighborly/wiki). However, the wiki has a tendency to be out of date when new, potentially breaking changes are made to the framework. However, unit tests are updated almost every time a new feature is added.
+The best place to find examples of how to use Neighborly is actually in the `./tests` directory. There you will find examples of loading content from files, running a simulation, and saving the output to JSON. There is also the [Read the Docs](https://neighborly.readthedocs.io/en/latest/index.html). However, the docs has a tendency to be out of date when new, potentially breaking changes are made to the framework. However, unit tests are updated almost every time a new feature is added.
 
 # Getting help and submitting bug reports
 
