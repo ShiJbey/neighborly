@@ -62,7 +62,7 @@ class Occupation(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "job_role": self.job_role.display_name,
+            "job_role": self.job_role.gameobject.uid,
             "business": self.business.uid,
             "start_date": str(self.start_date),
         }
