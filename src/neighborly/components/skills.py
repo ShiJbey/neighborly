@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator
+from typing import Any, Iterator, Mapping
 
 from neighborly.components.stats import Stat
 from neighborly.ecs import Component, GameObject
@@ -74,6 +74,11 @@ class Skills(Component):
     def __init__(self) -> None:
         super().__init__()
         self._skills = {}
+
+    @property
+    def skills(self) -> Mapping[GameObject, Stat]:
+        """Get skills."""
+        return self._skills
 
     def has_skill(self, skill: GameObject) -> bool:
         """Check if a character has a skill.

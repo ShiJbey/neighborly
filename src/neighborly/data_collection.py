@@ -7,12 +7,42 @@ library written in Python. Here we adapt their functionality to fit the ECS arch
 of the simulation.
 
 """
+from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Iterator, Optional, Sequence
 
 import polars as pl
 
 from neighborly.ecs import SystemGroup
+
+
+class DataTablesIterator:
+    """Iterator for DataTables resource."""
+
+    __slots__ = ("table_names", "tables", "idx")
+
+    table_names: tuple[str, ...]
+    """table names to iterate over."""
+    tables: DataTables
+    """Tables to iterate over."""
+    idx: int
+    """The current index in the table names tuple."""
+
+    def __init__(self, table_names: Sequence[str], tables: DataTables) -> None:
+        self.table_names = tuple(table_names)
+        self.tables = tables
+        self.idx = 0
+
+    def __iter__(self) -> Iterator[tuple[str, pl.DataFrame]]:
+        return self
+
+    def __next__(self) -> tuple[str, pl.DataFrame]:
+        if self.idx < len(self.table_names):
+            name = self.table_names[self.idx]
+            df = self.tables.get_data_frame(name)
+            self.idx += 1
+            return name, df
+        raise StopIteration
 
 
 class DataTables:
@@ -87,6 +117,9 @@ class DataTables:
             A polars DataFrame.
         """
         return pl.DataFrame(self._tables[table_name])
+
+    def __iter__(self) -> Iterator[tuple[str, pl.DataFrame]]:
+        return DataTablesIterator(list(self._tables.keys()), self)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the object to a JSON-serializable dict."""
