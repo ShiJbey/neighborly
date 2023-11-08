@@ -13,6 +13,7 @@ from neighborly.components.business import (
     Unemployed,
 )
 from neighborly.components.character import Character, LifeStage
+from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
@@ -23,7 +24,11 @@ from neighborly.helpers.location import (
     remove_all_frequenting_characters,
     remove_frequented_location,
 )
-from neighborly.helpers.relationship import deactivate_relationships, get_relationship
+from neighborly.helpers.relationship import (
+    deactivate_relationships,
+    get_relationship,
+    get_relationships_with_traits,
+)
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import EventRole, LifeEvent
 
@@ -58,6 +63,27 @@ class Death(LifeEvent):
                 residents = list(residence_data.residents)
                 for resident in residents:
                     DepartSettlement(resident, "death in family")
+
+        # Adjust relationships
+        for rel in get_relationships_with_traits(character, "dating"):
+            target = rel.get_component(Relationship).target
+
+            remove_trait(rel, "dating")
+            remove_trait(get_relationship(target, character), "dating")
+
+            add_trait(rel, "ex_partner")
+            add_trait(get_relationship(target, character), "ex_partner")
+
+        for rel in get_relationships_with_traits(character, "spouse"):
+            target = rel.get_component(Relationship).target
+
+            remove_trait(rel, "spouse")
+            remove_trait(get_relationship(target, character), "spouse")
+
+            add_trait(rel, "ex_spouse")
+            add_trait(get_relationship(target, character), "ex_spouse")
+
+            add_trait(rel, "widow")
 
         # Remove the character from their occupation
         if occupation := character.try_component(Occupation):
@@ -222,6 +248,13 @@ class ChangeResidenceEvent(LifeEvent):
             former_residence = resident.residence
             former_residence_comp = former_residence.get_component(ResidentialUnit)
 
+            for resident in former_residence_comp.residents:
+                if resident == character:
+                    continue
+
+                remove_trait(get_relationship(character, resident), "live_together")
+                remove_trait(get_relationship(resident, character), "live_together")
+
             if former_residence_comp.is_owner(character):
                 former_residence_comp.remove_owner(character)
 
@@ -250,6 +283,13 @@ class ChangeResidenceEvent(LifeEvent):
 
         if new_residence.has_component(Vacant):
             new_residence.remove_component(Vacant)
+
+        for resident in new_residence.get_component(ResidentialUnit).residents:
+            if resident == character:
+                continue
+
+            add_trait(get_relationship(character, resident), "live_together")
+            add_trait(get_relationship(resident, character), "live_together")
 
         new_district = new_residence.get_component(
             ResidentialUnit
@@ -295,7 +335,7 @@ class BirthEvent(LifeEvent):
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return BirthEvent(subject)
+        return None
 
     def __str__(self) -> str:
         return f"{self.roles['subject'].name} was born."
