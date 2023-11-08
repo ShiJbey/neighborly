@@ -19,15 +19,18 @@ Characters have the following default components that manage their internal data
 - ``SocialRules``: A collection of social rules that affect a character's relationship's stats.
 - ``PersonalEventHistory``: Stores a list of all the life events that have directly involved this characters.
 
-## Sexes
+Sexes
+-----
 
 Every character has a biological sex that is stored within their ``Character`` components. A character's sex may be ``MALE``, ``FEMALE``, or ``NOT_SPECIFIED``. We represent it this way to simplify reproduction calculations.
 
-## Life stages
+Life stages
+-----------
 
 As characters get older, they can age physically. Characters have the following life stages they can progress through: ``CHILD``, ``ADOLESCENT``, ``YOUNG_ADULT``, ``ADULT``, and ``SENIOR``. The ages at which character reach these life stages varies based on the character's species. Events and systems can use a character's life stage to determine when and if character's should engage in certain behaviors.
 
-## Species
+Species
+-------
 
 Each character has a species that defines parameters for their biological processes. For example, it handles aging parameters for when characters change life stages and character lifespans.
 
