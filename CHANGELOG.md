@@ -6,14 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
-## [2.2.0] - Unreleased
+## [2.2.0] - 2023-11-07
 
 ### Changed
 
 - Changed location preference rules to use probability scores and arithmetic mean calculations
 - Changed life event considerations to use arithmetic mean calculations
 
-## [2.1.1] - 2023-30-10
+### Added
+
+- Added `BatchRunner` and `Metric` classes to assist with data analysis across multiple simulation runs
+- Added utility functions for converting various data to Polars DataFrames
+
+## [2.1.1] - 2023-10-30
 
 ### Fixed
 
@@ -43,7 +48,7 @@ to be frequented by characters.
 - Added `force=True` to logging config to allow logging to work in Google Colab
 - Fixed `StartDating.instantiate` method that was missing a return statement
 
-## [2.0.0] - 2023-27-10
+## [2.0.0] - 2023-10-27
 
 This version breaks nearly all aspects of previous versions. Neighborly's internal architecture
 was rewritten to better support data-driven authoring workflows. While version 1.0.0 started to
