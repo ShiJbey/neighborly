@@ -290,9 +290,6 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
         cumulative_score: float = self.base_probability
         consideration_count: int = 1
 
-        cumulative_score: float = 0.5
-        consideration_count: int = 1
-
         for consideration in type(self)._considerations:
             consideration_score = consideration(self)
 
