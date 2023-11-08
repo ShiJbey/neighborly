@@ -520,7 +520,7 @@ class HealthDecaySystem(System):
 class PassiveReputationChange(System):
     """Reputation stats have a probability of changing each time step."""
 
-    # CHANCE_OF_CHANGE: ClassVar[float] = 0.05
+    CHANCE_OF_CHANGE: ClassVar[float] = 0.05
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
@@ -533,7 +533,9 @@ class PassiveReputationChange(System):
                 1.0, get_stat(relationship.gameobject, "interaction_score").value / 10.0
             )
 
-            final_chance = interaction_boost
+            final_chance = PassiveReputationChange.CHANCE_OF_CHANGE * (
+                1.0 + interaction_boost
+            )
 
             if rng.random() < final_chance:
                 get_stat(relationship.gameobject, "reputation").base_value = (
@@ -545,7 +547,7 @@ class PassiveReputationChange(System):
 class PassiveRomanceChange(System):
     """Romance stats have a probability of changing each time step."""
 
-    CHANCE_OF_CHANGE: ClassVar[float] = 0.1
+    CHANCE_OF_CHANGE: ClassVar[float] = 0.05
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)

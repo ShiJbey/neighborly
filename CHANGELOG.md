@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [2.3.1] - 2023-11-08
+
+### Fixed
+
+- Fixed typo that ignored events base probability score
+
 ## [2.3.0] - 2023-11-08
 
 ### Added

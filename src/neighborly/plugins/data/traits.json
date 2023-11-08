@@ -70,7 +70,7 @@
           {
             "type": "StatBuff",
             "stat": "romance",
-            "amount": 5
+            "amount": 30
           },
           {
             "type": "StatBuff",
@@ -88,7 +88,7 @@
       {
         "type": "StatBuff",
         "stat": "reliability",
-        "amount": 2
+        "amount": 20
       },
       {
         "type": "AddSocialRule",
@@ -241,7 +241,7 @@
           {
             "type": "StatBuff",
             "stat": "reputation",
-            "amount": -4,
+            "amount": -10,
             "modifier_type": "Flat"
           },
           {
@@ -267,7 +267,7 @@
       {
         "type": "StatBuff",
         "stat": "boldness",
-        "amount": 3,
+        "amount": 25,
         "modifier_type": "Flat"
       },
       {
@@ -296,7 +296,7 @@
       {
         "type": "StatBuff",
         "stat": "boldness",
-        "amount": -2,
+        "amount": -15,
         "modifier_type": "Flat"
       },
       {
@@ -325,7 +325,7 @@
       {
         "type": "StatBuff",
         "stat": "attractiveness",
-        "amount": 3,
+        "amount": 20,
         "modifier_type": "Flat"
       },
       {
@@ -334,7 +334,7 @@
           {
             "type": "StatBuff",
             "stat": "reputation",
-            "amount": 3,
+            "amount": 15,
             "modifier_type": "Flat"
           }
         ]
@@ -514,9 +514,8 @@
     "effects": [
       {
         "type": "StatBuff",
-        "stat": "health_decay",
-        "amount": -2,
-        "modifier_type": "FLAT"
+        "stat": "sociability",
+        "amount": 30
       }
     ],
     "conflicts_with": [
@@ -532,9 +531,8 @@
     "effects": [
       {
         "type": "StatBuff",
-        "stat": "health_decay",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "stat": "sociability",
+        "amount": -20
       }
     ],
     "conflicts_with": [
@@ -551,8 +549,7 @@
       {
         "type": "StatBuff",
         "stat": "fertility",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "amount": 0.2
       }
     ],
     "conflicts_with": [
@@ -569,8 +566,7 @@
       {
         "type": "StatBuff",
         "stat": "fertility",
-        "amount": -2,
-        "modifier_type": "FLAT"
+        "amount": -0.2
       }
     ],
     "conflicts_with": [
@@ -587,7 +583,7 @@
       {
         "type": "StatBuff",
         "stat": "attractiveness",
-        "amount": 2,
+        "amount": 20,
         "modifier_type": "FLAT"
       }
     ],
@@ -602,7 +598,7 @@
       {
         "type": "StatBuff",
         "stat": "attractiveness",
-        "amount": -2,
+        "amount": -20,
         "modifier_type": "FLAT"
       }
     ],
@@ -643,7 +639,7 @@
       {
         "type": "StatBuff",
         "stat": "intelligence",
-        "amount": 4,
+        "amount": 40,
         "modifier_type": "FLAT"
       }
     ],
@@ -665,7 +661,7 @@
           {
             "type": "StatBuff",
             "stat": "reputation",
-            "amount": 3,
+            "amount": 20,
             "modifier_type": "FLAT"
           }
         ]
@@ -689,7 +685,7 @@
     "conflicts_with": [
       "chaste"
     ],
-    "spawn_frequency": 1,
+    "spawn_frequency": 0,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
@@ -704,7 +700,7 @@
         "modifier_type": "FLAT"
       }
     ],
-    "spawn_frequency": 0.01,
+    "spawn_frequency": 0.0,
     "inheritance_chance_single": 0.0,
     "inheritance_chance_both": 0.9
   },
@@ -724,7 +720,7 @@
           {
             "type": "StatBuff",
             "stat": "romance",
-            "amount": 5
+            "amount": 15
           },
           {
             "type": "StatBuff",
@@ -737,7 +733,7 @@
     "conflicts_with": [
       "attracted_to_women"
     ],
-    "spawn_frequency": 1
+    "spawn_frequency": 3
   },
   "attracted_to_women": {
     "display_name": "Attracted to Women",
@@ -768,7 +764,7 @@
     "conflicts_with": [
       "attracted_to_men"
     ],
-    "spawn_frequency": 1
+    "spawn_frequency": 3
   },
   "boss": {
     "display_name": "Boss",

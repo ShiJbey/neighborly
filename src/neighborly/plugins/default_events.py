@@ -802,7 +802,7 @@ class BreakUp(LifeEvent):
 class GetPregnant(LifeEvent):
     """Characters have a chance of getting pregnant while in romantic relationships."""
 
-    base_probability = 0.6
+    base_probability = 0.5
 
     def __init__(
         self,
@@ -1030,7 +1030,7 @@ class DepartDueToUnemployment(LifeEvent):
 class BecomeFriends(LifeEvent):
     """Two characters become friends."""
 
-    base_probability = 0.0
+    base_probability = 0.5
 
     def __init__(self, subject: GameObject, other: GameObject) -> None:
         super().__init__(
@@ -1239,7 +1239,7 @@ class DissolveFriendship(LifeEvent):
 class BecomeEnemies(LifeEvent):
     """Two characters become enemies."""
 
-    base_probability = 0.0
+    base_probability = 0.5
 
     def __init__(self, subject: GameObject, other: GameObject) -> None:
         super().__init__(
@@ -1568,7 +1568,7 @@ class TryFindOwnPlace(LifeEvent):
 class JobPromotion(LifeEvent):
     """The character is promoted at their job from a lower role to a higher role."""
 
-    base_probability = 0.5  # <-- The probability of the event without considerations
+    base_probability = 0.5
 
     def __init__(
         self,
