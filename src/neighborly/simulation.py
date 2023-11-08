@@ -351,6 +351,96 @@ class Simulation:
             ),
         )
 
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="crush",
+                display_name="Crush",
+                description="The owner of this relationship has a crush on the target.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="live_together",
+                display_name="Live Together",
+                description="The owner of this relationship lives with the target.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="friend",
+                display_name="Friend",
+                description="The owner of this relationship is friends with target.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="enemy",
+                display_name="Enemy",
+                description="The owner of this relationship is enemies with target.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="widow",
+                display_name="Widow",
+                description="The target of the relationship is the widow of the owner.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="step_parent",
+                display_name="Step Parent",
+                description="Target is the step parent of the owner.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="step_child",
+                display_name="Step Child",
+                description="Target is the step child of the owner.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="step_sibling",
+                display_name="Step Sibling",
+                description="Target is the step sibling of the owner.",
+                spawn_frequency=0,
+            ),
+        )
+
+        register_trait_def(
+            self.world,
+            DefaultTraitDef(
+                definition_id="biological_parent",
+                display_name="Biological Parent",
+                description="Target is the biological parent of the owner.",
+                spawn_frequency=0,
+            ),
+        )
+
     def _init_logging(self) -> None:
         """Initialize simulation logging."""
         if self.config.logging.logging_enabled:

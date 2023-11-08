@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [2.3.0] - 2023-11-08
+
+### Added
+
+- Added life events for creating/dissolving friendships and enmities
+- Added trait tracking for biological parents/step parents
+- Added event for forming romantic crushes
+- Added possibility for romantic infidelity
+- Married characters move into the same house
+- Adult characters will try to move into their own homes
+- Add widow trait to relationships when spouses die
+
 ## [2.2.0] - 2023-11-07
 
 ### Changed

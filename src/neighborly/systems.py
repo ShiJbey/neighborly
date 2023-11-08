@@ -520,7 +520,7 @@ class HealthDecaySystem(System):
 class PassiveReputationChange(System):
     """Reputation stats have a probability of changing each time step."""
 
-    CHANCE_OF_CHANGE: ClassVar[float] = 0.05
+    # CHANCE_OF_CHANGE: ClassVar[float] = 0.05
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
@@ -533,9 +533,7 @@ class PassiveReputationChange(System):
                 1.0, get_stat(relationship.gameobject, "interaction_score").value / 10.0
             )
 
-            final_chance = PassiveReputationChange.CHANCE_OF_CHANGE * (
-                1.0 + interaction_boost
-            )
+            final_chance = interaction_boost
 
             if rng.random() < final_chance:
                 get_stat(relationship.gameobject, "reputation").base_value = (
@@ -610,10 +608,12 @@ class ChildBirthSystem(System):
             # Birthing parent to child
             add_trait(get_relationship(character.gameobject, baby), "child")
             add_trait(get_relationship(baby, character.gameobject), "parent")
+            add_trait(get_relationship(baby, character.gameobject), "biological_parent")
 
             # Other parent to child
             add_trait(get_relationship(other_parent, baby), "child")
             add_trait(get_relationship(baby, other_parent), "parent")
+            add_trait(get_relationship(baby, other_parent), "biological_parent")
 
             # Create relationships with children of birthing parent
             for relationship in get_relationships_with_traits(
@@ -629,6 +629,27 @@ class ChildBirthSystem(System):
                 # Baby to sibling
                 add_trait(get_relationship(baby, sibling), "sibling")
                 add_trait(get_relationship(sibling, baby), "sibling")
+
+            # Create relationships with children of the birthing parent's spouses
+            for spousal_rel in get_relationships_with_traits(
+                character.gameobject, "spouse"
+            ):
+                spouse = spousal_rel.get_component(Relationship).target
+
+                if spousal_rel.is_active:
+                    add_trait(get_relationship(spouse, baby), "child")
+                    add_trait(get_relationship(baby, spouse), "parent")
+
+                for child_rel in get_relationships_with_traits(spouse, "child"):
+                    rel = child_rel.get_component(Relationship)
+                    if rel.target == baby:
+                        continue
+
+                    sibling = rel.target
+
+                    # Baby to sibling
+                    add_trait(get_relationship(baby, sibling), "sibling")
+                    add_trait(get_relationship(sibling, baby), "sibling")
 
             # Create relationships with children of other parent
             for relationship in get_relationships_with_traits(other_parent, "child"):

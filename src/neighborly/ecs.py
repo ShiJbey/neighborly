@@ -280,6 +280,11 @@ class GameObject:
         return self.world.gameobject_manager.has_gameobject(self)
 
     @property
+    def is_active(self) -> bool:
+        """Check if a GameObject is active."""
+        return self.has_component(Active)
+
+    @property
     def metadata(self) -> dict[str, Any]:
         """Get the metadata associated with this GameObject."""
         return self._metadata
@@ -580,7 +585,7 @@ class GameObject:
     def __eq__(self, other: object) -> bool:
         if isinstance(other, GameObject):
             return self.uid == other.uid
-        raise TypeError(f"Expected GameObject but was {type(other)}")
+        return False
 
     def __int__(self) -> int:
         return self._id

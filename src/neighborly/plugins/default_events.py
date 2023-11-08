@@ -18,17 +18,18 @@ from neighborly.components.business import (
 )
 from neighborly.components.character import Character, LifeStage, Pregnant, Sex
 from neighborly.components.relationship import Relationship, Relationships
+from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.datetime import SimDate
 from neighborly.ecs import Active, GameObject
-from neighborly.events.defaults import DepartSettlement, LeaveJob
+from neighborly.events.defaults import ChangeResidenceEvent, DepartSettlement, LeaveJob
 from neighborly.helpers.location import add_frequented_location
 from neighborly.helpers.relationship import (
     get_relationship,
     get_relationships_with_traits,
 )
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import EventRole, LifeEvent, event_consideration
 from neighborly.loaders import register_life_event_type
 from neighborly.simulation import Simulation
@@ -301,44 +302,32 @@ class StartBusiness(LifeEvent):
 
         return -1
 
-    # @staticmethod
-    # @event_consideration
-    # def number_children_consideration(event: StartBusiness) -> float:
-    #     """Consider the number of children the character has."""
-    #     subject = event.roles["subject"]
-    #     child_count = len(get_relationships_with_traits(subject, "child"))
-    #
-    #     if child_count != 0:
-    #         return min(1.0, child_count / 5.0)
-    #
-    #     return -1
-    #
-    # @staticmethod
-    # @event_consideration
-    # def boldness_consideration(event: StartBusiness) -> float:
-    #     """Considers the subject's boldness stat."""
-    #     return get_stat(event.roles["subject"], "boldness").normalized
-    #
-    # @staticmethod
-    # @event_consideration
-    # def reliability_consideration(event: StartBusiness) -> float:
-    #     """Considers the subjects reliability stat."""
-    #     return get_stat(event.roles["subject"], "reliability").normalized
-    #
-    # @staticmethod
-    # @event_consideration
-    # def time_unemployed_consideration(event: StartBusiness) -> float:
-    #     """Calculate consideration score based on the amount of time unemployed."""
-    #     subject = event.roles["subject"]
-    #
-    #     if unemployed := subject.try_component(Unemployed):
-    #         current_date = subject.world.resource_manager.get_resource(SimDate)
-    #         months_unemployed = (
-    #             current_date.total_months - unemployed.timestamp.total_months
-    #         )
-    #         return min(1.0, float(months_unemployed) / 6.0)
-    #
-    #     return -1
+    @staticmethod
+    @event_consideration
+    def boldness_consideration(event: StartBusiness) -> float:
+        """Considers the subject's boldness stat."""
+        return get_stat(event.roles["subject"], "boldness").normalized
+
+    @staticmethod
+    @event_consideration
+    def reliability_consideration(event: StartBusiness) -> float:
+        """Considers the subjects reliability stat."""
+        return get_stat(event.roles["subject"], "reliability").normalized
+
+    @staticmethod
+    @event_consideration
+    def time_unemployed_consideration(event: StartBusiness) -> float:
+        """Calculate consideration score based on the amount of time unemployed."""
+        subject = event.roles["subject"]
+
+        if unemployed := subject.try_component(Unemployed):
+            current_date = subject.world.resource_manager.get_resource(SimDate)
+            months_unemployed = (
+                current_date.total_months - unemployed.timestamp.total_months
+            )
+            return min(1.0, float(months_unemployed) / 6.0)
+
+        return -1
 
     def execute(self) -> None:
         character = self.roles["subject"]
@@ -438,29 +427,61 @@ class StartDating(LifeEvent):
 
     @staticmethod
     @event_consideration
+    def subject_has_crush(event: StartDating) -> float:
+        """Consider if the subject has a crush on the other person."""
+        subject = event.roles["subject"]
+        other = event.roles["partner"]
+
+        if has_trait(get_relationship(subject, other), "crush"):
+            return 0.7
+
+        return 0.2
+
+    @staticmethod
+    @event_consideration
+    def other_has_crush(event: StartDating) -> float:
+        """Consider if the other person has a crush on the subject."""
+        subject = event.roles["subject"]
+        other = event.roles["partner"]
+
+        if has_trait(get_relationship(other, subject), "crush"):
+            return 0.7
+
+        return 0.2
+
+    @staticmethod
+    @event_consideration
     def romance_to_partner(event: StartDating) -> float:
         """Consider the romance from the partner to the subject."""
-        return get_stat(
-            get_relationship(event.roles["subject"], event.roles["partner"]), "romance"
-        ).normalized
+        return (
+            get_stat(
+                get_relationship(event.roles["subject"], event.roles["partner"]),
+                "romance",
+            ).normalized
+            ** 2
+        )
 
     @staticmethod
     @event_consideration
     def romance_to_subject(event: StartDating) -> float:
         """Consider the romance from the partner to the subject."""
-        return get_stat(
-            get_relationship(event.roles["partner"], event.roles["subject"]), "romance"
-        ).normalized
+        return (
+            get_stat(
+                get_relationship(event.roles["partner"], event.roles["subject"]),
+                "romance",
+            ).normalized
+            ** 2
+        )
 
     @staticmethod
     @event_consideration
     def partner_already_dating(event: StartDating) -> float:
         """Consider if the partner is already dating someone."""
         if len(get_relationships_with_traits(event.roles["partner"], "dating")) > 0:
-            return 0
+            return 0.05
 
         if len(get_relationships_with_traits(event.roles["partner"], "spouse")) > 0:
-            return 0
+            return 0.05
 
         return -1
 
@@ -558,20 +579,6 @@ class GetMarried(LifeEvent):
 
         return get_stat(get_relationship(subject_1, subject_0), "romance").normalized
 
-    @staticmethod
-    @event_consideration
-    def partner_already_dating(event: StartDating) -> float:
-        """Consider if the partner is already dating someone."""
-        _, subject_1 = event.roles.get_all("subject")
-
-        if len(get_relationships_with_traits(subject_1, "dating")) > 0:
-            return 0
-
-        if len(get_relationships_with_traits(subject_1, "spouse")) > 0:
-            return 0
-
-        return -1
-
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
         subject_life_stage = subject.get_component(Character).life_stage
@@ -605,6 +612,54 @@ class GetMarried(LifeEvent):
 
         add_trait(get_relationship(subject_0, subject_1), "spouse")
         add_trait(get_relationship(subject_1, subject_0), "spouse")
+
+        # Update residences
+        shared_residence = subject_0.get_component(Resident).residence
+
+        ChangeResidenceEvent(
+            subject_1, new_residence=shared_residence, is_owner=True
+        ).dispatch()
+
+        for rel in get_relationships_with_traits(subject_1, "child", "live_together"):
+            target = rel.get_component(Relationship).target
+            ChangeResidenceEvent(target, new_residence=shared_residence).dispatch()
+
+        # Update step sibling relationships
+        for rel_0 in get_relationships_with_traits(subject_0, "child"):
+            if not rel_0.is_active:
+                continue
+
+            child_0 = rel_0.get_component(Relationship).target
+
+            for rel_1 in get_relationships_with_traits(subject_1, "child"):
+                if not rel_1.is_active:
+                    continue
+
+                child_1 = rel_1.get_component(Relationship).target
+
+                add_trait(get_relationship(child_0, child_1), "step_sibling")
+                add_trait(get_relationship(child_0, child_1), "sibling")
+                add_trait(get_relationship(child_1, child_0), "step_sibling")
+                add_trait(get_relationship(child_1, child_0), "sibling")
+
+        # Update relationships parent/child relationships
+        for rel in get_relationships_with_traits(subject_0, "child"):
+            if rel.is_active:
+                child = rel.get_component(Relationship).target
+                if not has_trait(get_relationship(subject_1, child), "child"):
+                    add_trait(get_relationship(subject_1, child), "child")
+                    add_trait(get_relationship(subject_1, child), "step_child")
+                    add_trait(get_relationship(child, subject_1), "parent")
+                    add_trait(get_relationship(child, subject_1), "step_parent")
+
+        for rel in get_relationships_with_traits(subject_1, "child"):
+            if rel.is_active:
+                child = rel.get_component(Relationship).target
+                if not has_trait(get_relationship(subject_0, child), "child"):
+                    add_trait(get_relationship(subject_0, child), "child")
+                    add_trait(get_relationship(subject_0, child), "step_child")
+                    add_trait(get_relationship(child, subject_0), "parent")
+                    add_trait(get_relationship(child, subject_0), "step_parent")
 
     def __str__(self) -> str:
         subject_0, subject_1 = self.roles.get_all("subject")
@@ -665,6 +720,19 @@ class GetDivorced(LifeEvent):
         add_trait(get_relationship(ex_spouse, initiator), "ex_spouse")
 
         get_stat(get_relationship(ex_spouse, initiator), "romance").base_value -= 25
+
+        # initiator finds new place to live or departs
+        vacant_housing = initiator.world.get_components((ResidentialUnit, Vacant))
+
+        if vacant_housing:
+            _, (residence, _) = vacant_housing[0]
+            ChangeResidenceEvent(
+                initiator, new_residence=residence.gameobject, is_owner=True
+            ).dispatch()
+
+        else:
+            ChangeResidenceEvent(initiator, new_residence=None).dispatch()
+            DepartSettlement(initiator).dispatch()
 
     def __str__(self) -> str:
         initiator = self.roles["subject"]
@@ -733,6 +801,8 @@ class BreakUp(LifeEvent):
 
 class GetPregnant(LifeEvent):
     """Characters have a chance of getting pregnant while in romantic relationships."""
+
+    base_probability = 0.6
 
     def __init__(
         self,
@@ -957,6 +1027,743 @@ class DepartDueToUnemployment(LifeEvent):
         DepartSettlement(subject=character, reason="unemployment").dispatch()
 
 
+class BecomeFriends(LifeEvent):
+    """Two characters become friends."""
+
+    base_probability = 0.0
+
+    def __init__(self, subject: GameObject, other: GameObject) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(
+                EventRole("subject", subject, True),
+                EventRole("other", other, True),
+            ),
+        )
+
+    @staticmethod
+    @event_consideration
+    def other_friend_count_consideration(event: BecomeFriends) -> float:
+        """Consider the number of friends the other character already has."""
+        return (
+            1.0
+            - min(
+                len(get_relationships_with_traits(event.roles["other"], "friend"))
+                / 8.0,
+                1.0,
+            )
+        ) ** 2
+
+    @staticmethod
+    @event_consideration
+    def friend_count_consideration(event: BecomeFriends) -> float:
+        """Consider the number of friends the subject already has."""
+        return (
+            1.0
+            - min(
+                len(get_relationships_with_traits(event.roles["subject"], "friend"))
+                / 8.0,
+                1.0,
+            )
+        ) ** 2
+
+    @staticmethod
+    @event_consideration
+    def other_reputation_consideration(event: BecomeFriends) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return (
+            get_stat(
+                get_relationship(event.roles["other"], event.roles["subject"]),
+                "reputation",
+            ).normalized
+            ** 2
+        )
+
+    @staticmethod
+    @event_consideration
+    def subject_reputation_consideration(event: BecomeFriends) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return (
+            get_stat(
+                get_relationship(event.roles["subject"], event.roles["other"]),
+                "reputation",
+            ).normalized
+            ** 2
+        )
+
+    @staticmethod
+    @event_consideration
+    def are_enemies(event: BecomeFriends) -> float:
+        """Consider if they are enemies."""
+        if has_trait(
+            get_relationship(event.roles["other"], event.roles["subject"]), "enemy"
+        ):
+            return 0.01
+        return -1
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        if not subject.has_component(Character):
+            # Friendships can only form between people. This is here for future proofing
+            # incase life events can ever be triggers by more than characters
+            return None
+
+        options: list[GameObject] = []
+        scores: list[float] = []
+
+        for target, rel in subject.get_component(Relationships).outgoing.items():
+            # Only allow friendships between characters
+            if not target.has_component(Character):
+                continue
+
+            if target.is_active is False:
+                continue
+
+            if has_trait(rel, "friend"):
+                continue
+
+            if get_stat(rel, "reputation").value <= 0:
+                continue
+
+            score = get_stat(rel, "reputation").normalized
+            if score > 0:
+                options.append(target)
+                scores.append(score)
+
+        if not options:
+            return None
+
+        rng = subject.world.resource_manager.get_resource(random.Random)
+
+        choice = rng.choices(options, weights=scores, k=1)[0]
+
+        return BecomeFriends(subject, choice)
+
+    def execute(self) -> None:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        add_trait(get_relationship(subject, other), "friend")
+        add_trait(get_relationship(other, subject), "friend")
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        return f"{subject.name} and {other.name} became friends."
+
+
+class DissolveFriendship(LifeEvent):
+    """Two characters stop being friends."""
+
+    base_probability = 0.2
+
+    def __init__(self, subject: GameObject, other: GameObject) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(
+                EventRole("subject", subject, True),
+                EventRole("other", other, True),
+            ),
+        )
+
+    @staticmethod
+    @event_consideration
+    def other_reputation_consideration(event: BecomeFriends) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return (
+            1
+            - get_stat(
+                get_relationship(event.roles["other"], event.roles["subject"]),
+                "reputation",
+            ).normalized
+        )
+
+    @staticmethod
+    @event_consideration
+    def subject_reputation_consideration(event: BecomeFriends) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return (
+            1
+            - get_stat(
+                get_relationship(event.roles["subject"], event.roles["other"]),
+                "reputation",
+            ).normalized
+        )
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        if not subject.has_component(Character):
+            # Friendships can only form between people. This is here for future proofing
+            # incase life events can ever be triggers by more than characters
+            return None
+
+        options: list[GameObject] = []
+        scores: list[float] = []
+
+        for target, rel in subject.get_component(Relationships).outgoing.items():
+            # Only allow friendships between characters
+            if not target.has_component(Character):
+                continue
+
+            if not has_trait(rel, "friend"):
+                continue
+
+            if target.is_active is False:
+                continue
+
+            score = 1.0 - get_stat(rel, "reputation").normalized
+            if score > 0:
+                options.append(target)
+                scores.append(score)
+
+        if not options:
+            return None
+
+        rng = subject.world.resource_manager.get_resource(random.Random)
+
+        choice = rng.choices(options, weights=scores, k=1)[0]
+
+        return DissolveFriendship(subject, choice)
+
+    def execute(self) -> None:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        remove_trait(get_relationship(subject, other), "friend")
+        remove_trait(get_relationship(other, subject), "friend")
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        return f"{subject.name} and {other.name} stopped being friends."
+
+
+class BecomeEnemies(LifeEvent):
+    """Two characters become enemies."""
+
+    base_probability = 0.0
+
+    def __init__(self, subject: GameObject, other: GameObject) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(
+                EventRole("subject", subject, True),
+                EventRole("other", other, True),
+            ),
+        )
+
+    @staticmethod
+    @event_consideration
+    def are_friends(event: BecomeEnemies) -> float:
+        """Consider if they are friends."""
+        if has_trait(
+            get_relationship(event.roles["other"], event.roles["subject"]), "friend"
+        ):
+            return 0.01
+        return -1
+
+    @staticmethod
+    @event_consideration
+    def other_reputation_consideration(event: BecomeEnemies) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return (
+            1
+            - get_stat(
+                get_relationship(event.roles["other"], event.roles["subject"]),
+                "reputation",
+            ).normalized
+        ) ** 2
+
+    @staticmethod
+    @event_consideration
+    def subject_reputation_consideration(event: BecomeEnemies) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return (
+            1
+            - get_stat(
+                get_relationship(event.roles["subject"], event.roles["other"]),
+                "reputation",
+            ).normalized
+        ) ** 2
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        if not subject.has_component(Character):
+            # Enmity can only form between people. This is here for future proofing
+            # incase life events can ever be triggers by more than characters
+            return None
+
+        options: list[GameObject] = []
+        scores: list[float] = []
+
+        for target, rel in subject.get_component(Relationships).outgoing.items():
+            # Only allow enmity between characters
+            if not target.has_component(Character):
+                continue
+
+            if target.is_active is False:
+                continue
+
+            if has_trait(rel, "enemy"):
+                continue
+
+            if get_stat(rel, "reputation").value >= 0:
+                continue
+
+            score = 1 - get_stat(rel, "reputation").normalized
+            if score > 0:
+                options.append(target)
+                scores.append(score)
+
+        if not options:
+            return None
+
+        rng = subject.world.resource_manager.get_resource(random.Random)
+
+        choice = rng.choices(options, weights=scores, k=1)[0]
+
+        return BecomeEnemies(subject, choice)
+
+    def execute(self) -> None:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        add_trait(get_relationship(subject, other), "enemy")
+        add_trait(get_relationship(other, subject), "enemy")
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        return f"{subject.name} and {other.name} became enemies."
+
+
+class DissolveEnmity(LifeEvent):
+    """Two characters stop being enemies."""
+
+    base_probability = 0.2
+
+    def __init__(self, subject: GameObject, other: GameObject) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(
+                EventRole("subject", subject, True),
+                EventRole("other", other, True),
+            ),
+        )
+
+    @staticmethod
+    @event_consideration
+    def other_reputation_consideration(event: BecomeFriends) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return get_stat(
+            get_relationship(event.roles["other"], event.roles["subject"]),
+            "reputation",
+        ).normalized
+
+    @staticmethod
+    @event_consideration
+    def subject_reputation_consideration(event: BecomeFriends) -> float:
+        """Consider the reputation from the subject to the other person."""
+        return get_stat(
+            get_relationship(event.roles["subject"], event.roles["other"]),
+            "reputation",
+        ).normalized
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        if not subject.has_component(Character):
+            # Friendships can only form between people. This is here for future proofing
+            # incase life events can ever be triggers by more than characters
+            return None
+
+        options: list[GameObject] = []
+        scores: list[float] = []
+
+        for target, rel in subject.get_component(Relationships).outgoing.items():
+            # Only allow friendships between characters
+            if not target.has_component(Character):
+                continue
+
+            if target.is_active is False:
+                continue
+
+            if not has_trait(rel, "enemy"):
+                continue
+
+            score = get_stat(rel, "reputation").normalized
+            if score > 0:
+                options.append(target)
+                scores.append(score)
+
+        if not options:
+            return None
+
+        rng = subject.world.resource_manager.get_resource(random.Random)
+
+        choice = rng.choices(options, weights=scores, k=1)[0]
+
+        return DissolveEnmity(subject, choice)
+
+    def execute(self) -> None:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        remove_trait(get_relationship(subject, other), "enemy")
+        remove_trait(get_relationship(other, subject), "enemy")
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        return f"{subject.name} and {other.name} stopped being enemies."
+
+
+class FormCrush(LifeEvent):
+    """A character forms a new crush on someone."""
+
+    base_probability = 0.2
+
+    def __init__(self, subject: GameObject, other: GameObject) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(
+                EventRole("subject", subject, True),
+                EventRole("other", other, False),
+            ),
+        )
+
+    @staticmethod
+    @event_consideration
+    def current_crush_consideration(event: FormCrush) -> float:
+        """Consider a character's current crush."""
+        subject = event.roles["subject"]
+        crush_relationships = get_relationships_with_traits(subject, "crush")
+
+        if crush_relationships:
+            relationship = crush_relationships[0]
+            if relationship.is_active:
+                return 1 - get_stat(relationship, "romance").normalized
+
+        return -1
+
+    @staticmethod
+    @event_consideration
+    def romance_consideration(event: FormCrush) -> float:
+        """Consider a character's romance value."""
+        return (
+            get_stat(
+                get_relationship(event.roles["subject"], event.roles["other"]),
+                "romance",
+            ).normalized
+            ** 2
+        )
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        if not subject.has_component(Character):
+            return None
+
+        options: list[GameObject] = []
+        scores: list[float] = []
+
+        for target, rel in subject.get_component(Relationships).outgoing.items():
+            # Only allow friendships between characters
+            if not target.has_component(Character):
+                continue
+
+            if target.is_active is False:
+                continue
+
+            if has_trait(rel, "crush"):
+                continue
+
+            if get_stat(rel, "romance").value <= 0:
+                continue
+
+            score = get_stat(rel, "romance").normalized
+            if score > 0:
+                options.append(target)
+                scores.append(score)
+
+        if not options:
+            return None
+
+        rng = subject.world.resource_manager.get_resource(random.Random)
+
+        choice = rng.choices(options, weights=scores, k=1)[0]
+
+        return FormCrush(subject, choice)
+
+    def execute(self) -> None:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+
+        # remove existing crushes
+        for rel in get_relationships_with_traits(subject, "crush"):
+            remove_trait(rel, "crush")
+
+        add_trait(get_relationship(subject, other), "crush")
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        other = self.roles["other"]
+        return f"{subject.name} formed a crush on {other.name}"
+
+
+class TryFindOwnPlace(LifeEvent):
+    """Adults living with parents will try to find their own residence."""
+
+    base_probability = 0.4
+
+    def __init__(self, subject: GameObject) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(EventRole("subject", subject, True),),
+        )
+
+    @staticmethod
+    @event_consideration
+    def boldness_consideration(event: StartANewJob) -> float:
+        """Considers the subject's boldness stat."""
+        return get_stat(event.roles["subject"], "boldness").normalized
+
+    @staticmethod
+    @event_consideration
+    def reliability_consideration(event: StartANewJob) -> float:
+        """Considers the subjects reliability stat."""
+        return get_stat(event.roles["subject"], "reliability").normalized
+
+    def execute(self) -> None:
+        subject = self.roles["subject"]
+
+        vacant_housing = subject.world.get_components((ResidentialUnit, Vacant))
+
+        if vacant_housing:
+            _, (residence, _) = vacant_housing[0]
+            ChangeResidenceEvent(
+                subject, new_residence=residence.gameobject, is_owner=True
+            ).dispatch()
+
+        else:
+            ChangeResidenceEvent(subject, new_residence=None).dispatch()
+            DepartSettlement(subject).dispatch()
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        parents_they_live_with = get_relationships_with_traits(
+            subject, "parent", "live_together"
+        )
+        owns_home = False
+
+        if resident := subject.try_component(Resident):
+            owns_home = resident.residence.get_component(ResidentialUnit).is_owner(
+                subject
+            )
+
+        if len(parents_they_live_with) > 0 and owns_home is False:
+            return TryFindOwnPlace(subject)
+
+        return None
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        return f"{subject.name} moved out of their parent's home."
+
+
+class JobPromotion(LifeEvent):
+    """The character is promoted at their job from a lower role to a higher role."""
+
+    base_probability = 0.5  # <-- The probability of the event without considerations
+
+    def __init__(
+        self,
+        subject: GameObject,
+        business: GameObject,
+        old_role: GameObject,
+        new_role: GameObject,
+    ) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(
+                EventRole("subject", subject, True),
+                EventRole("business", business),
+                EventRole("old_role", old_role),
+                EventRole("new_role", new_role),
+            ),
+        )
+
+    @staticmethod
+    @event_consideration
+    def relationship_with_owner(event: LifeEvent) -> float:
+        """Considers the subject's reputation with the business' owner."""
+        subject = event.roles["subject"]
+        business_owner = event.roles["business"].get_component(Business).owner
+
+        if business_owner is not None:
+            return get_stat(
+                get_relationship(business_owner, subject),
+                "reputation",
+            ).normalized
+
+        return -1
+
+    @staticmethod
+    @event_consideration
+    def boldness_consideration(event: LifeEvent) -> float:
+        """Considers the subject's boldness stat."""
+        return get_stat(event.roles["subject"], "boldness").normalized
+
+    @staticmethod
+    @event_consideration
+    def reliability_consideration(event: LifeEvent) -> float:
+        """Considers the subjects reliability stat."""
+        return get_stat(event.roles["subject"], "reliability").normalized
+
+    def execute(self) -> None:
+        character = self.roles["subject"]
+        business = self.roles["business"]
+        new_role = self.roles["new_role"]
+
+        business_data = business.get_component(Business)
+
+        # Remove the old occupation
+        character.remove_component(Occupation)
+
+        business_data.remove_employee(character)
+
+        # Add the new occupation
+        character.add_component(
+            Occupation(
+                business=business,
+                start_date=self.world.resource_manager.get_resource(SimDate),
+                job_role=new_role.get_component(JobRole),
+            )
+        )
+
+        business_data.add_employee(character, new_role.get_component(JobRole))
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        rng = subject.world.resource_manager.get_resource(random.Random)
+
+        if subject.has_component(Occupation) is False:
+            return None
+
+        occupation = subject.get_component(Occupation)
+        current_job_level = occupation.job_role.job_level
+        business_data = occupation.business.get_component(Business)
+        open_positions = business_data.get_open_positions()
+
+        higher_positions = [
+            role
+            for role in open_positions
+            if (role.job_level > current_job_level and role.check_requirements(subject))
+        ]
+
+        if len(higher_positions) == 0:
+            return None
+
+        # Get the simulation's random number generator
+        rng = subject.world.resource_manager.get_resource(random.Random)
+
+        chosen_role = rng.choice(higher_positions)
+
+        return JobPromotion(
+            subject=subject,
+            business=business_data.gameobject,
+            old_role=occupation.job_role.gameobject,
+            new_role=chosen_role.gameobject,
+        )
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        business = self.roles["business"]
+        old_role = self.roles["old_role"]
+        new_role = self.roles["new_role"]
+
+        return (
+            f"{subject.name} was promoted from {old_role.name} to "
+            f"{new_role.name} at {business.name}."
+        )
+
+
+class FiredFromJob(LifeEvent):
+    """The character is fired from their job."""
+
+    base_probability = 0.5
+
+    def __init__(
+        self, subject: GameObject, business: GameObject, job_role: GameObject
+    ) -> None:
+        super().__init__(
+            world=subject.world,
+            roles=(
+                EventRole("subject", subject, True),
+                EventRole("business", business),
+                EventRole("job_role", job_role),
+            ),
+        )
+
+    @staticmethod
+    @event_consideration
+    def relationship_with_owner(event: LifeEvent) -> float:
+        """Considers the subject's reputation with the business' owner."""
+        subject = event.roles["subject"]
+        business_owner = event.roles["business"].get_component(Business).owner
+
+        if business_owner is not None:
+            return (
+                1
+                - get_stat(
+                    get_relationship(business_owner, subject),
+                    "reputation",
+                ).normalized
+            )
+
+        return -1
+
+    @staticmethod
+    @event_consideration
+    def reliability_consideration(event: LifeEvent) -> float:
+        """Considers the subjects reliability stat."""
+        return 1 - get_stat(event.roles["subject"], "reliability").normalized
+
+    def execute(self) -> None:
+        subject = self.roles["subject"]
+        business = self.roles["business"]
+        job_role = self.roles["job_role"]
+
+        # Events can dispatch other events
+        LeaveJob(
+            subject=subject, business=business, job_role=job_role, reason="fired"
+        ).dispatch()
+
+        business_data = business.get_component(Business)
+
+        owner = business_data.owner
+        if owner is not None:
+            get_stat(get_relationship(subject, owner), "reputation").base_value -= 20
+            get_stat(get_relationship(owner, subject), "reputation").base_value -= 10
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        if subject.has_component(Occupation) is False:
+            return None
+
+        occupation = subject.get_component(Occupation)
+
+        return FiredFromJob(
+            subject=subject,
+            business=occupation.business,
+            job_role=occupation.job_role.gameobject,
+        )
+
+    def __str__(self) -> str:
+        subject = self.roles["subject"]
+        business = self.roles["business"]
+        job_role = self.roles["job_role"]
+
+        return (
+            f"{subject.name} was fired from their role as a "
+            f"{job_role.name} at {business.name}."
+        )
+
+
 def load_plugin(sim: Simulation) -> None:
     """Load plugin content."""
 
@@ -969,3 +1776,11 @@ def load_plugin(sim: Simulation) -> None:
     register_life_event_type(sim, GetPregnant)
     register_life_event_type(sim, Retire)
     register_life_event_type(sim, DepartDueToUnemployment)
+    register_life_event_type(sim, BecomeFriends)
+    register_life_event_type(sim, DissolveFriendship)
+    register_life_event_type(sim, BecomeEnemies)
+    register_life_event_type(sim, DissolveEnmity)
+    register_life_event_type(sim, FormCrush)
+    register_life_event_type(sim, TryFindOwnPlace)
+    register_life_event_type(sim, FiredFromJob)
+    register_life_event_type(sim, JobPromotion)
