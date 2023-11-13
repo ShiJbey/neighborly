@@ -10,7 +10,7 @@ powerful query API.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, cast
 
 import polars as pl
 import tqdm
@@ -25,7 +25,7 @@ from neighborly.components.skills import Skill, Skills
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
 from neighborly.data_collection import DataTables
-from neighborly.ecs import Active
+from neighborly.ecs import Active, Component
 from neighborly.life_event import GlobalEventHistory
 from neighborly.simulation import Simulation
 
@@ -48,7 +48,7 @@ class Metric(ABC):
         return self._tables
 
     def add_table(self, table: pl.DataFrame) -> None:
-        """Add a table to the metric's collection of tables."""
+        """Add a table to the Metric's collection of tables."""
         self._tables.append(table)
 
     @abstractmethod
@@ -125,7 +125,7 @@ class BatchRunner:
             metric.clear()
 
 
-def build_event_data_frames(sim: Simulation) -> dict[str, pl.DataFrame]:
+def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -> None:
     """Create data frames for the event data."""
     event_log = sim.world.resource_manager.get_resource(GlobalEventHistory)
 
@@ -151,73 +151,108 @@ def build_event_data_frames(sim: Simulation) -> dict[str, pl.DataFrame]:
             )
 
     if events:
-        return {
-            "events": pl.from_dicts(
-                events,
-                schema={
-                    "type": str,
-                    "event_id": int,
-                    "timestamp": str,
-                },
-            ),
-            "roles": pl.from_dicts(
-                roles,
-                schema={
-                    "event": int,
-                    "role": str,
-                    "gameobject": int,
-                },
-            ),
-        }
+        all_tables["events"] = pl.from_dicts(
+            events,
+            schema={
+                "type": str,
+                "event_id": int,
+                "timestamp": str,
+            },
+        )
 
-    else:
-        return {}
+        all_tables["event_roles"] = pl.from_dicts(
+            roles,
+            schema={
+                "event": int,
+                "role": str,
+                "gameobject": int,
+            },
+        )
 
 
-def build_gameobjects_table(sim: Simulation) -> pl.DataFrame:
-    """Create table  with GameObject Data."""
+ComponentTableFn = Callable[[list[Component]], pl.DataFrame]
+"""Creates a dataframe using a collection of component data."""
 
-    data: list[dict[str, Any]] = []
+
+def _build_component_table(components: list[Component]) -> pl.DataFrame:
+    """Default component table building function."""
+    return pl.from_dicts([{**c.to_dict(), "uid": c.gameobject.uid} for c in components])
+
+
+def _tabulate_gameobject_data(
+    sim: Simulation,
+    all_tables: dict[str, pl.DataFrame],
+    component_table_fns: dict[str, ComponentTableFn],
+    skipped_components: set[str],
+) -> None:
+    """Extract and tabulate data regarding GameObjects and their components.
+
+    Parameters
+    ----------
+    sim
+        A simulation instance.
+    all_tables
+        The cumulative dict of tables that will become a SQl context
+
+    """
+    # Data rows for the "gameobjects" table
+    gameobject_data: list[dict[str, Any]] = []
+
+    # Component instances separated by type name
+    component_data: dict[str, list[Component]] = {}
 
     for obj in sim.world.gameobject_manager.gameobjects:
-        data.append(
+        gameobject_data.append(
             {
                 "uid": obj.uid,
                 "active": obj.has_component(Active),
                 "name": obj.name,
-                "parent": obj.parent,
-                "children": [c.uid for c in obj.children],
             }
         )
 
-    return pl.from_dicts(
-        data,
+        # Sort its components by category into the component_data dict
+        for c in obj.get_components():
+            if c.__class__.__name__ not in component_data:
+                component_data[c.__class__.__name__] = []
+            component_data[c.__class__.__name__].append(c)
+
+    # Create tables for each component type
+    for type_name, components in component_data.items():
+        if type_name in skipped_components:
+            continue
+
+        if type_name in component_table_fns:
+            all_tables[type_name] = component_table_fns[type_name](components)
+        else:
+            all_tables[type_name] = _build_component_table(components)
+
+    all_tables["gameobjects"] = pl.from_dicts(
+        gameobject_data,
         schema={
             "uid": int,
             "active": bool,
             "name": str,
-            "parent": Optional[int],
-            "children": list[int],
         },
     )
 
 
-def build_pregnancy_table(sim: Simulation) -> pl.DataFrame:
+def _build_pregnancy_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for pregnancy data."""
 
-    data: list[dict[str, Any]] = []
+    pregnancies = cast(list[Pregnant], components)
+    table_rows: list[dict[str, Any]] = []
 
-    for uid, (pregnancy,) in sim.world.get_components((Pregnant,)):
-        data.append(
+    for pregnancy in pregnancies:
+        table_rows.append(
             {
-                "character": uid,
+                "character": pregnancy.gameobject.uid,
                 "partner": pregnancy.partner.uid,
                 "due_date": str(pregnancy.due_date),
             }
         )
 
     return pl.from_dicts(
-        data,
+        table_rows,
         schema={
             "character": int,
             "partner": int,
@@ -226,24 +261,22 @@ def build_pregnancy_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_frequented_locations_table(sim: Simulation) -> pl.DataFrame:
+def _build_frequented_locations_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for frequented locations data."""
+    frequented_locations_list = cast(list[FrequentedLocations], components)
+    table_rows: list[dict[str, Any]] = []
 
-    data: list[dict[str, Any]] = []
-
-    for uid, (frequented_locations,) in sim.world.get_components(
-        (FrequentedLocations,)
-    ):
+    for frequented_locations in frequented_locations_list:
         for location in frequented_locations:
-            data.append(
+            table_rows.append(
                 {
-                    "character": uid,
+                    "character": frequented_locations.gameobject.uid,
                     "location": location.uid,
                 }
             )
 
     return pl.from_dicts(
-        data,
+        table_rows,
         schema={
             "character": int,
             "location": int,
@@ -251,16 +284,16 @@ def build_frequented_locations_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_resident_table(sim: Simulation) -> pl.DataFrame:
+def _build_resident_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for resident data."""
-
+    residents = cast(list[Resident], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (resident,) in sim.world.get_components((Resident,)):
+    for resident in residents:
         unit = resident.residence.get_component(ResidentialUnit)
         data.append(
             {
-                "character": uid,
+                "character": resident.gameobject.uid,
                 "residential_unit": resident.residence.uid,
                 "building": unit.building.uid,
                 "district": unit.district.uid,
@@ -280,15 +313,16 @@ def build_resident_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_characters_table(sim: Simulation) -> pl.DataFrame:
+def _build_characters_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for character data."""
 
+    characters = cast(list[Character], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (character,) in sim.world.get_components((Character,)):
+    for character in characters:
         data.append(
             {
-                "uid": uid,
+                "uid": character.gameobject.uid,
                 "first_name": character.first_name,
                 "last_name": character.last_name,
                 "age": int(character.age),
@@ -314,16 +348,17 @@ def build_characters_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_stats_table(sim: Simulation) -> pl.DataFrame:
+def _build_stats_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for stat data."""
 
+    stats_list = cast(list[Stats], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (stats,) in sim.world.get_components((Stats,)):
+    for stats in stats_list:
         for name, stat in stats:
             data.append(
                 {
-                    "gameobject": uid,
+                    "gameobject": stats.gameobject.uid,
                     "stat": name,
                     "value": stat.value,
                 }
@@ -332,16 +367,16 @@ def build_stats_table(sim: Simulation) -> pl.DataFrame:
     return pl.from_dicts(data, schema={"gameobject": int, "stat": str, "value": float})
 
 
-def build_skills_table(sim: Simulation) -> pl.DataFrame:
+def _build_skills_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for skill data."""
-
+    skills_list = cast(list[Skills], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (skills,) in sim.world.get_components((Skills,)):
+    for skills in skills_list:
         for skill, stat in skills.skills.items():
             data.append(
                 {
-                    "gameobject": uid,
+                    "gameobject": skills.gameobject.uid,
                     "skill_uid": skill.uid,
                     "skill": skill.get_component(Skill).display_name,
                     "level": stat.value,
@@ -353,16 +388,16 @@ def build_skills_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_traits_table(sim: Simulation) -> pl.DataFrame:
+def _build_traits_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for trait data."""
-
+    traits_list = cast(list[Traits], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (traits,) in sim.world.get_components((Traits,)):
+    for traits in traits_list:
         for trait in traits.traits:
             data.append(
                 {
-                    "gameobject": uid,
+                    "gameobject": traits.gameobject.uid,
                     "trait_uid": trait.uid,
                     "trait": trait.get_component(Trait).display_name,
                 }
@@ -373,15 +408,15 @@ def build_traits_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_businesses_table(sim: Simulation) -> pl.DataFrame:
+def _build_businesses_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for business data."""
-
+    businesses = cast(list[Business], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (business,) in sim.world.get_components((Business,)):
+    for business in businesses:
         data.append(
             {
-                "uid": uid,
+                "uid": business.gameobject.uid,
                 "name": business.name,
                 "district": business.district.uid,
             }
@@ -397,15 +432,15 @@ def build_businesses_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_job_role_table(sim: Simulation) -> pl.DataFrame:
+def _build_job_role_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for job role data."""
-
+    job_roles = cast(list[JobRole], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (job_role,) in sim.world.get_components((JobRole,)):
+    for job_role in job_roles:
         data.append(
             {
-                "uid": uid,
+                "uid": job_role.gameobject.uid,
                 "name": job_role.display_name,
                 "level": job_role.job_level,
                 "description": job_role.description,
@@ -423,15 +458,15 @@ def build_job_role_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_occupations_table(sim: Simulation) -> pl.DataFrame:
+def _build_occupations_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for occupation data."""
-
+    occupations = cast(list[Occupation], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (occupation,) in sim.world.get_components((Occupation,)):
+    for occupation in occupations:
         data.append(
             {
-                "gameobject": uid,
+                "gameobject": occupation.gameobject.uid,
                 "job_role": occupation.job_role.gameobject.uid,
                 "name": occupation.job_role.display_name,
                 "business": occupation.business.uid,
@@ -451,15 +486,15 @@ def build_occupations_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_relationships_table(sim: Simulation) -> pl.DataFrame:
+def _build_relationships_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for relationship data."""
-
+    relationships = cast(list[Relationship], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (relationship,) in sim.world.get_components((Relationship,)):
+    for relationship in relationships:
         data.append(
             {
-                "uid": uid,
+                "uid": relationship.gameobject.uid,
                 "owner": relationship.owner.uid,
                 "target": relationship.target.uid,
             }
@@ -475,15 +510,15 @@ def build_relationships_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_districts_table(sim: Simulation) -> pl.DataFrame:
+def _build_districts_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for district data."""
-
+    districts = cast(list[District], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (district,) in sim.world.get_components((District,)):
+    for district in districts:
         data.append(
             {
-                "uid": uid,
+                "uid": district.gameobject.uid,
                 "name": district.name,
                 "population": district.population,
                 "settlement": district.settlement.uid,
@@ -503,26 +538,36 @@ def build_districts_table(sim: Simulation) -> pl.DataFrame:
     )
 
 
-def build_settlement_table(sim: Simulation) -> pl.DataFrame:
+def _build_settlement_table(components: list[Component]) -> pl.DataFrame:
     """Create dataframe for settlements."""
-
+    settlements = cast(list[Settlement], components)
     data: list[dict[str, Any]] = []
 
-    for uid, (settlement,) in sim.world.get_components((Settlement,)):
+    for settlement in settlements:
         data.append(
-            {"uid": uid, "name": settlement.name, "population": settlement.population}
+            {
+                "uid": settlement.gameobject.uid,
+                "name": settlement.name,
+                "population": settlement.population,
+            }
         )
 
     return pl.from_dicts(data, schema={"uid": int, "name": str, "population": int})
 
 
-def create_sql_db(sim: Simulation) -> pl.SQLContext[Any]:
+def create_sql_db(
+    sim: Simulation,
+    component_table_builders: Optional[dict[str, ComponentTableFn]] = None,
+    skipped_components: Optional[Sequence[str]] = None,
+) -> pl.SQLContext[Any]:
     """Create Polars SQL Context from simulation a simulation instance.
 
     Parameters
     ----------
     sim
         A simulation to use.
+    component_table_builders
+        Functions that override how component tables should be built
 
     Returns
     -------
@@ -530,28 +575,60 @@ def create_sql_db(sim: Simulation) -> pl.SQLContext[Any]:
         The constructed SQL Context with various tables corresponding to components,
         gameobjects, and events.
     """
-    all_data_frames: dict[str, pl.DataFrame] = {}
+    # This is the collection of data frames that will become our SQL database. Each of
+    # the steps below will add entries to this dict.
+    all_tables: dict[str, pl.DataFrame] = {}
 
-    all_data_frames["skills"] = build_skills_table(sim)
-    all_data_frames["traits"] = build_traits_table(sim)
-    all_data_frames["settlements"] = build_settlement_table(sim)
-    all_data_frames["districts"] = build_districts_table(sim)
-    all_data_frames["stats"] = build_stats_table(sim)
-    all_data_frames["relationships"] = build_districts_table(sim)
-    all_data_frames["occupations"] = build_occupations_table(sim)
-    all_data_frames["businesses"] = build_businesses_table(sim)
-    all_data_frames["job_roles"] = build_job_role_table(sim)
-    all_data_frames["characters"] = build_characters_table(sim)
-    all_data_frames["pregnancies"] = build_pregnancy_table(sim)
-    all_data_frames["residents"] = build_resident_table(sim)
-    all_data_frames["frequented_locations"] = build_frequented_locations_table(sim)
-    all_data_frames["gameobjects"] = build_gameobjects_table(sim)
+    # First, we extract game object and component data. There will be one table that
+    # hold information about the gameobjects themselves and each component type will
+    # have a dedicated table. The format of the component tables may be overwritten
+    # by one of the component table builder functions provided as input to this function
+    component_table_fns: dict[str, ComponentTableFn] = {
+        "FrequentedLocations": _build_frequented_locations_table,
+        "Skills": _build_skills_table,
+        "Stats": _build_stats_table,
+        "Relationships": _build_relationships_table,
+        "Traits": _build_traits_table,
+        "Character": _build_characters_table,
+        "District": _build_districts_table,
+        "Settlement": _build_settlement_table,
+        "Occupation": _build_occupations_table,
+        "Business": _build_businesses_table,
+        "JobRole": _build_job_role_table,
+        "Pregnant": _build_pregnancy_table,
+        "Resident": _build_resident_table,
+        **(component_table_builders if component_table_builders else {}),
+    }
 
+    components_to_skip: set[str] = set(
+        [
+            "CharacterSpawnTable",
+            "BusinessSpawnTable",
+            "ResidenceSpawnTable",
+            "Active",
+            "Relationships",
+            *(skipped_components if skipped_components else []),
+        ]
+    )
+
+    _tabulate_gameobject_data(
+        sim,
+        all_tables,
+        component_table_fns,
+        components_to_skip,
+    )
+
+    # Second, we tabulate the event data. This will create two additional tables. The
+    # "events" table holds the event_type, event_id, and timestamp. The "event_roles"
+    # table hold the names of event roles, UIDs of the gameobjects, and the event_ids.
+    _tabulate_event_data(sim, all_tables)
+
+    # Next, we pull the collected data directly from the simulations DataTables resource
     for name, df in sim.world.resource_manager.get_resource(DataTables):
-        all_data_frames[name] = df
+        all_tables[name] = df
 
-    all_data_frames = {**all_data_frames, **build_event_data_frames(sim)}
-
-    sql_ctx = pl.SQLContext(all_data_frames)
+    # Finally, we construct the SQL context using the dictionary that has been modified
+    # at each step of the process.
+    sql_ctx = pl.SQLContext(all_tables)
 
     return sql_ctx
