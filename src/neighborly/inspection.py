@@ -27,7 +27,7 @@ from neighborly.components.settlement import District, Settlement
 from neighborly.components.skills import Skill, Skills
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
-from neighborly.ecs import Active, GameObject
+from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
 from neighborly.helpers.stats import get_stat
 from neighborly.life_event import PersonalEventHistory
 from neighborly.simulation import Simulation
@@ -61,7 +61,11 @@ def inspect(sim: Simulation, obj: Union[int, GameObject]) -> None:
         The GameObject instance or ID to inspect.
     """
     if isinstance(obj, int):
-        obj_ref = sim.world.gameobject_manager.get_gameobject(obj)
+        try:
+            obj_ref = sim.world.gameobject_manager.get_gameobject(obj)
+        except GameObjectNotFoundError:
+            print(f"No GameObject exists with the ID: {obj}.")
+            return
     else:
         obj_ref = obj
 
@@ -282,7 +286,11 @@ def inspect_character(character: GameObject) -> None:
 
     skills_table = tabulate.tabulate(
         [
-            (skill.name, stat.value, skill.get_component(Skill).description)
+            (
+                skill.name,
+                f"{int(stat.value)}/{int(stat.bounds[1])}",
+                skill.get_component(Skill).description,
+            )
             for skill, stat in character.get_component(Skills)
         ],
         headers=("Name", "Level", "Description"),
@@ -763,9 +771,34 @@ def _get_relationships_table(relationships: Relationships) -> str:
 
 def _get_stats_table(stats: Stats) -> str:
     """Generate a table for stats."""
+
+    stats_table_data: list[tuple[str, str, str, str]] = []
+
+    for stat_id, stat in stats:
+        if stat.is_discrete:
+            value_label = f"{int(stat.value)}"
+        else:
+            value_label = f"{stat.value:.3}"
+
+        if stat.is_discrete:
+            base_value_label = f"{int(stat.base_value)}"
+        else:
+            base_value_label = f"{stat.base_value:.3}"
+
+        if stat.is_bounded:
+            min_value, max_value = stat.bounds
+            if stat.is_discrete:
+                bounds_label = f"[{int(min_value)}, {int(max_value)}]"
+            else:
+                bounds_label = f"[{min_value:.3}, {max_value:.3}]"
+        else:
+            bounds_label = "[-inf, inf]"
+
+        stats_table_data.append((stat_id, value_label, base_value_label, bounds_label))
+
     table = tabulate.tabulate(
         [(stat_id, stat.value) for stat_id, stat in stats],
-        headers=("Stat", "Value"),
+        headers=("Stat", "Value", "Base", "Bounds"),
     )
 
     return table

@@ -187,7 +187,7 @@ class Event(ABC):
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the event to a JSON-compliant dict."""
-        return {"event_id": self.event_id, "type": self.__class__.__name__}
+        return {"event_id": self.event_id, "event_type": self.__class__.__name__}
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, Event):

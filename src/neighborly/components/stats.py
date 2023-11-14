@@ -96,6 +96,21 @@ class Stat:
             self.recalculate_value()
         return self._value
 
+    @property
+    def is_bounded(self) -> bool:
+        """Returns True if the stat has min and max values."""
+        return self._is_bounded
+
+    @property
+    def bounds(self) -> tuple[float, float]:
+        """Get the min and max values of this stat."""
+        return self._min_value, self._max_value
+
+    @property
+    def is_discrete(self) -> bool:
+        """Returns True if the stat has min and max values."""
+        return self._is_discrete
+
     def add_modifier(self, modifier: StatModifier) -> None:
         """Add a modifier to the stat."""
         self._modifiers.append(modifier)
@@ -185,14 +200,10 @@ class Stat:
 
         self._is_dirty = False
 
-    def is_bounded(self) -> bool:
-        """Returns True if the stat has min and max values."""
-        return self._is_bounded
-
     @property
     def normalized(self) -> float:
         """Get the normalized value from 0.0 to 1.0."""
-        if self.is_bounded():
+        if self.is_bounded:
             return (self.value - self._min_value) / (self._max_value - self._min_value)
 
         raise ValueError("Cannot calculate normalized value of an unbound stat.")

@@ -135,7 +135,7 @@ def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -
     for event in event_log:
         events.append(
             {
-                "type": event.__class__.__name__,
+                "event_type": event.__class__.__name__,
                 "event_id": event.event_id,
                 "timestamp": str(event.timestamp),
             }
@@ -144,7 +144,7 @@ def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -
         for role in event.roles:
             roles.append(
                 {
-                    "event": event.event_id,
+                    "event_id": event.event_id,
                     "role": role.name,
                     "gameobject": role.gameobject.uid,
                 }
@@ -154,7 +154,7 @@ def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -
         all_tables["events"] = pl.from_dicts(
             events,
             schema={
-                "type": str,
+                "event_type": str,
                 "event_id": int,
                 "timestamp": str,
             },
@@ -163,7 +163,7 @@ def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -
         all_tables["event_roles"] = pl.from_dicts(
             roles,
             schema={
-                "event": int,
+                "event_id": int,
                 "role": str,
                 "gameobject": int,
             },
