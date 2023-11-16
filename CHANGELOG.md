@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [2.3.2] - 2023-11-16
+
+### Added
+
+- Additional "Min/Max" column to stats table when using inspection API
+
 ## [2.3.1] - 2023-11-08
 
 ### Fixed
@@ -41,7 +47,7 @@ between minor-version updates.
 ### Fixed
 
 - `open_to_public` field now adds `OpenToPublic` component to help locations appear as candidates
-to be frequented by characters.
+  to be frequented by characters.
 - `monthly_effects` associated with job roles are now applied every timestep.
 - Relationships are deactivated when a character departs or dies.
 - Characters cannot gain the `lethargic` and `energetic` traits at the same time.

@@ -772,33 +772,28 @@ def _get_relationships_table(relationships: Relationships) -> str:
 def _get_stats_table(stats: Stats) -> str:
     """Generate a table for stats."""
 
-    stats_table_data: list[tuple[str, str, str, str]] = []
+    stats_table_data: list[tuple[str, str, str]] = []
 
     for stat_id, stat in stats:
+
         if stat.is_discrete:
             value_label = f"{int(stat.value)}"
         else:
-            value_label = f"{stat.value:.3}"
-
-        if stat.is_discrete:
-            base_value_label = f"{int(stat.base_value)}"
-        else:
-            base_value_label = f"{stat.base_value:.3}"
+            value_label = f"{stat.value:.3f}"
 
         if stat.is_bounded:
             min_value, max_value = stat.bounds
             if stat.is_discrete:
-                bounds_label = f"[{int(min_value)}, {int(max_value)}]"
+                min_max_label = f"[{int(min_value)}, {int(max_value)}]"
             else:
-                bounds_label = f"[{min_value:.3}, {max_value:.3}]"
+                min_max_label = f"[{min_value:.3f}, {max_value:.3f}]"
         else:
-            bounds_label = "[-inf, inf]"
+            min_max_label = "N/A"
 
-        stats_table_data.append((stat_id, value_label, base_value_label, bounds_label))
+        stats_table_data.append((stat_id, value_label, min_max_label))
 
     table = tabulate.tabulate(
-        [(stat_id, stat.value) for stat_id, stat in stats],
-        headers=("Stat", "Value", "Base", "Bounds"),
+        stats_table_data, headers=("Stat", "Value", "Min/Max"), numalign="left"
     )
 
     return table

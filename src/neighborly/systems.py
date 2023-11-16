@@ -439,12 +439,7 @@ class UpdateFrequentedLocationSystem(System):
         # that the character belongs to
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (
-            frequented_locations,
-            _,
-            character,
-            _,
-        ) in world.get_components(
+        for _, (frequented_locations, _, character, _,) in world.get_components(
             (FrequentedLocations, LocationPreferences, Character, Active)
         ):
             if character.life_stage < LifeStage.YOUNG_ADULT:

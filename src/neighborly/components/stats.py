@@ -196,7 +196,7 @@ class Stat:
             self._value = max(self._min_value, min(self._max_value, self._value))
 
         if self._is_discrete:
-            self._value = math.trunc(self._value)
+            self._value = float(math.trunc(self._value))
 
         self._is_dirty = False
 
