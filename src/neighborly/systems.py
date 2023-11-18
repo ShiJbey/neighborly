@@ -724,6 +724,7 @@ class LifeEventSystem(System):
                     population=life_event_choices, weights=life_event_probabilities, k=1
                 )[0]
 
+                # if rng.random() < chosen_event.get_probability():
                 chosen_event.dispatch()
 
 

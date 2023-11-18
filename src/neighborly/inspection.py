@@ -13,7 +13,7 @@ from neighborly.components.business import (
     Business,
     JobRole,
     Occupation,
-    OpenForBusiness,
+    OpenForBusiness, PendingOpening, ClosedForBusiness,
 )
 from neighborly.components.character import Character
 from neighborly.components.location import FrequentedBy, FrequentedLocations
@@ -189,7 +189,13 @@ def inspect_business(business: GameObject) -> None:
         headers=("Employee", "Role"),
     )
 
-    activity_status = "active" if business.has_component(Active) else "inactive"
+    activity_status = "inactive"
+    if business.has_component(OpenForBusiness):
+        activity_status = "open-for-business"
+    elif business.has_component(PendingOpening):
+        activity_status = "looking for owner"
+    elif business.has_component(ClosedForBusiness):
+        activity_status = "closed-for-business"
 
     event_history = _get_personal_history_table(
         business.get_component(PersonalEventHistory)
@@ -203,7 +209,7 @@ def inspect_business(business: GameObject) -> None:
     output += f"Name: {business_data.name}\n"
     output += f"Status: {activity_status}\n"
     output += f"District: {business_data.district}\n"
-    output += f"Owner: {business_data.owner}\n"
+    output += f"Owner: {business_data.owner.name if business_data.owner else None}\n"
     output += f"Owner role: {business_data.owner_role.display_name}\n"
     output += "\n"
     output += "=== Employees ===\n"
@@ -511,30 +517,33 @@ def list_districts(sim: Simulation) -> None:
 
 def list_businesses(sim: Simulation, inactive_ok: bool = False) -> None:
     """Print businesses in the simulation."""
-    if inactive_ok:
-        businesses = [
-            (
-                uid,
-                business.name,
-                str(business.owner),
-                business.district.name,
-            )
-            for uid, (business,) in sim.world.get_components((Business,))
-        ]
-    else:
-        businesses = [
-            (
-                uid,
-                business.name,
-                str(business.owner),
-                business.district.name,
-            )
-            for uid, (business, _) in sim.world.get_components(
-                (Business, OpenForBusiness)
-            )
-        ]
 
-    table = tabulate.tabulate(businesses, headers=["UID", "Name", "Owner", "District"])
+
+
+    businesses: list[tuple[str, ...]] = []
+
+    for uid, (business,) in sim.world.get_components((Business,)):
+
+        activity_status = "inactive"
+        if business.gameobject.has_component(OpenForBusiness):
+            activity_status = "open-for-business"
+        elif business.gameobject.has_component(PendingOpening):
+            activity_status = "looking for owner"
+        elif business.gameobject.has_component(ClosedForBusiness):
+            activity_status = "closed-for-business"
+
+        if business.gameobject.has_component(OpenForBusiness) or inactive_ok:
+            businesses.append(
+                (
+                    str(uid),
+                    business.name,
+                    str(business.owner),
+                    activity_status,
+                    business.district.name,
+                )
+            )
+
+    table = tabulate.tabulate(businesses, headers=["UID", "Name", "Owner", "Status", "District"])
 
     # Display as a table the object ID, Display Name, Description
     output = "\n"

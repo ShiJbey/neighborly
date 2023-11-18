@@ -391,7 +391,7 @@ class LeaveJob(LifeEvent):
             world=subject.world,
             roles=[
                 EventRole("subject", subject, log_event=True),
-                EventRole("business", business),
+                EventRole("business", business, log_event=True),
                 EventRole("job_role", job_role),
             ],
             reason=reason,
@@ -418,7 +418,7 @@ class LeaveJob(LifeEvent):
 
         remove_frequented_location(subject, business)
 
-        if business_comp.owner is not None and subject == business_comp.owner:
+        if subject == business_comp.owner:
             business_comp.set_owner(None)
 
             # Update relationships boss/employee relationships
@@ -432,7 +432,6 @@ class LeaveJob(LifeEvent):
 
             subject.add_component(Unemployed(timestamp=current_date))
 
-            # BusinessShutsDown(business, f"owner {reason}")
         else:
             business_comp.remove_employee(subject)
 
@@ -531,6 +530,10 @@ class DepartSettlement(LifeEvent):
                 ):
                     DepartSettlement(resident).dispatch()
 
+    def __str__(self):
+        subject = self.roles["subject"]
+        return f"{subject.name} departed from the settlement."
+
 
 class LaidOffFromJob(LifeEvent):
     """The character is laid off from their job."""
@@ -591,6 +594,15 @@ class LaidOffFromJob(LifeEvent):
             )
 
         return None
+
+    def __str__(self):
+        subject = self.roles["subject"]
+        business = self.roles["business"]
+        job_role = self.roles["job_role"]
+        return (
+            f"{subject.name} was laid off from their job as a {job_role.name} "
+            f"at {business.name}"
+        )
 
 
 class BusinessClosedEvent(LifeEvent):
