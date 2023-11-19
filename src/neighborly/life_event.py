@@ -223,8 +223,6 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
 
     base_probability: ClassVar[float] = 0.5
     """The probability of the event happening, independent of considerations."""
-    is_logged: ClassVar[bool] = True
-    """Should this event type be logged when dispatched."""
     _considerations: tuple[_EventConsiderationWrapper[LifeEvent], ...]
     """Consideration functions for calculating an event's probability of occurring."""
 
@@ -308,10 +306,10 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
 
         return final_score
 
-    def dispatch(self) -> None:
+    def dispatch(self, log_event: bool = True) -> None:
         super().dispatch()
 
-        if self.is_logged:
+        if log_event:
             for role in self._roles:
                 if role.log_event:
                     role.gameobject.get_component(PersonalEventHistory).append(self)
