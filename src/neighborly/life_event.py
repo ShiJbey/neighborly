@@ -20,11 +20,13 @@ from typing import (
     Iterator,
     Mapping,
     Optional,
+    Type,
     TypeVar,
     cast,
 )
 
 import attrs
+from ordered_set import OrderedSet
 
 from neighborly.datetime import SimDate
 from neighborly.ecs import Component, Event, GameObject, World
@@ -288,7 +290,15 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
         cumulative_score: float = self.base_probability
         consideration_count: int = 1
 
-        for consideration in type(self)._considerations:
+        external_considerations = self.world.resource_manager.get_resource(
+            EventConsiderations
+        ).get_event_considerations(type(self))
+
+        all_considerations: list[Callable[[LifeEvent], float]] = list(
+            *type(self)._considerations, *external_considerations
+        )
+
+        for consideration in all_considerations:
             consideration_score = consideration(self)
 
             # Scores greater than zero are added to the cumulative score
@@ -373,6 +383,61 @@ class PersonalEventHistory(Component):
     def __repr__(self) -> str:
         history = [f"{type(e).__name__}({e.event_id})" for e in self._history]
         return f"{self.__class__.__name__}({history})"
+
+
+class EventConsiderations:
+    """A shared collection of third-party event considerations."""
+
+    _considerations_by_type: dict[
+        Type[LifeEvent], OrderedSet[Callable[[LifeEvent], float]]
+    ]
+    """Event listeners that are only called when a specific type of event fires."""
+
+    def __init__(self) -> None:
+        self._considerations_by_type = {}
+
+    def add_consideration(
+        self,
+        event_type: Type[_ET_contra],
+        consideration_fn: Callable[[_ET_contra], float],
+    ) -> None:
+        """Add a consideration to the collection.
+
+        Parameters
+        ----------
+        event_type
+            The event type the consideration is for
+        consideration_fn
+            The function with the consideration logic
+        """
+        if event_type not in self._considerations_by_type:
+            self._considerations_by_type[event_type] = OrderedSet()
+
+        self._considerations_by_type[event_type].add(
+            cast(Callable[[LifeEvent], float], consideration_fn)
+        )
+
+    def get_event_considerations(
+        self, event_type: Type[_ET_contra]
+    ) -> Iterable[Callable[[_ET_contra], float]]:
+        """Get all considerations for a given type.
+
+        Parameters
+        ----------
+        event_type
+            The event type to get considerations for.
+
+        Returns
+        -------
+        Iterable[Callable[[_ET_contra], float]]
+            All the added considerations for this event type
+        """
+        considerations = cast(
+            Iterable[Callable[[_ET_contra], float]],
+            self._considerations_by_type.get(event_type, OrderedSet()),
+        )
+
+        return considerations
 
 
 class GlobalEventHistory:

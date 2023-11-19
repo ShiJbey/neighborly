@@ -47,7 +47,7 @@ from neighborly.libraries import (
     SkillLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import GlobalEventHistory
+from neighborly.life_event import EventConsiderations, GlobalEventHistory
 from neighborly.preconditions.defaults import (
     AtLeastLifeStage,
     HasTrait,
@@ -138,6 +138,7 @@ class Simulation:
         self.world.resource_manager.add_resource(LifeEventLibrary())
         self.world.resource_manager.add_resource(Tracery(self._config.seed))
         self.world.resource_manager.add_resource(GlobalEventHistory())
+        self.world.resource_manager.add_resource(EventConsiderations())
 
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
