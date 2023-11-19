@@ -6,11 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
-## [2.3.2] - 2023-11-16
+## [2.4.0] - Unreleased
+
+### Fixed
+
+- Businesses were missing business owners
+
+### Changed
+
+- `GameObjectManager.has_gameobject()` now accepts an int as the parameter instead of a `GameObject` instance.
 
 ### Added
 
 - Additional "Min/Max" column to stats table when using inspection API
+- Added back support for YAML data files
+- Added back `Component.on_add()` and `Component.on_remove()` lifecycle functions.
+- Added social rule support for modifying incoming relationships.
+- Revised the inspection API to be expandable and display custom components.
+- `LifeEvent.dispatch()` now accept an optional boolean parameter to disable logging while still notifying listeners.
+- Added `EventConsiderations` resource as a way to add additional considerations to pre-authored events.
 
 ## [2.3.1] - 2023-11-08
 
