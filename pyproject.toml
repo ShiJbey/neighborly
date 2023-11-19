@@ -48,6 +48,7 @@ dependencies = [
     "tracery3==1.*",
     "polars==0.19.*",
     "tabulate==0.9.*",
+    "PyYAML==6.0.*",
 ]
 
 [project.optional-dependencies]
