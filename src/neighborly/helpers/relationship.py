@@ -54,10 +54,17 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     owner.get_component(Relationships).add_outgoing_relationship(target, relationship)
     target.get_component(Relationships).add_incoming_relationship(owner, relationship)
 
-    # Apply the social rules
-    social_rules = owner.get_component(SocialRules).rules
-    for rule in social_rules:
-        if rule.check_preconditions(relationship):
+    # Apply outgoing social rules from the owner
+    owner_social_rules = owner.get_component(SocialRules).rules
+    for rule in owner_social_rules:
+        if rule.is_outgoing and rule.check_preconditions(relationship):
+            rule.apply(relationship)
+            relationship.get_component(SocialRules).add_rule(rule)
+
+    # Apply incoming social rules from the target
+    target_social_rules = target.get_component(SocialRules).rules
+    for rule in target_social_rules:
+        if rule.is_outgoing is False and rule.check_preconditions(relationship):
             rule.apply(relationship)
             relationship.get_component(SocialRules).add_rule(rule)
 
@@ -171,7 +178,13 @@ def add_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
         The rule to add.
     """
     gameobject.get_component(SocialRules).add_rule(rule)
-    relationships = gameobject.get_component(Relationships).outgoing
+
+    if rule.is_outgoing:
+        # Apply the rule to outgoing relationships
+        relationships = gameobject.get_component(Relationships).outgoing
+    else:
+        # Apply the rule to incoming relationships
+        relationships = gameobject.get_component(Relationships).incoming
 
     # Apply this rule to all relationships
     for _, relationship in relationships.items():
@@ -191,7 +204,13 @@ def remove_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
         The rule to remove.
     """
     gameobject.get_component(SocialRules).add_rule(rule)
-    relationships = gameobject.get_component(Relationships).outgoing
+
+    if rule.is_outgoing:
+        # Remove the rule from outgoing relationships
+        relationships = gameobject.get_component(Relationships).outgoing
+    else:
+        # Remove the rule from incoming relationships
+        relationships = gameobject.get_component(Relationships).incoming
 
     for _, relationship in relationships.items():
         relationship_rules = relationship.get_component(SocialRules)
