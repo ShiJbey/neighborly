@@ -277,7 +277,7 @@ class GameObject:
         bool
             True if the GameObject exists, False otherwise.
         """
-        return self.world.gameobject_manager.has_gameobject(self)
+        return self.world.gameobject_manager.has_gameobject(self.uid)
 
     @property
     def is_active(self) -> bool:
