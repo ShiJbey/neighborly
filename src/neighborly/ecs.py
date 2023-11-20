@@ -187,7 +187,7 @@ class Event(ABC):
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the event to a JSON-compliant dict."""
-        return {"event_id": self.event_id, "type": self.__class__.__name__}
+        return {"event_id": self.event_id, "event_type": self.__class__.__name__}
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, Event):
@@ -277,7 +277,7 @@ class GameObject:
         bool
             True if the GameObject exists, False otherwise.
         """
-        return self.world.gameobject_manager.has_gameobject(self)
+        return self.world.gameobject_manager.has_gameobject(self.uid)
 
     @property
     def is_active(self) -> bool:
@@ -354,6 +354,7 @@ class GameObject:
         component.gameobject = self
         self._component_manager.add_component(self.uid, component)
         self._component_types.append(type(component))
+        component.on_add()
 
         return component
 
@@ -375,6 +376,7 @@ class GameObject:
                 return False
 
             component = self.get_component(component_type)
+            component.on_remove()
             self._component_types.remove(type(component))
             self._component_manager.remove_component(self.uid, component_type)
             return True
@@ -635,6 +637,14 @@ class Component(ABC):
         if self._has_gameobject is True:
             raise RuntimeError("Cannot reassign a component to another GameObject.")
         self._gameobject = value
+
+    def on_add(self) -> None:
+        """Lifecycle method called when the component is added to a GameObject."""
+        return
+
+    def on_remove(self) -> None:
+        """Lifecycle method called when the component is removed from a GameObject."""
+        return
 
     @abstractmethod
     def to_dict(self) -> dict[str, Any]:
@@ -1267,20 +1277,20 @@ class GameObjectManager:
 
         raise GameObjectNotFoundError(gameobject_id)
 
-    def has_gameobject(self, gameobject: GameObject) -> bool:
+    def has_gameobject(self, gameobject_id: int) -> bool:
         """Check that a GameObject exists.
 
         Parameters
         ----------
-        gameobject
-            The GameObject to check for.
+        gameobject_id
+            The UID of the GameObject to check for.
 
         Returns
         -------
         bool
             True if the GameObject exists. False otherwise.
         """
-        return gameobject.uid in self._gameobjects
+        return gameobject_id in self._gameobjects
 
     def destroy_gameobject(self, gameobject: GameObject) -> None:
         """Remove a gameobject from the world.

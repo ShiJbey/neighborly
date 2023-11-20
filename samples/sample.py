@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Sample Simulation for Terminal.
 
 """
@@ -64,7 +66,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
+def main() -> Simulation:
     """Main program entry point."""
     args = get_args()
 
@@ -106,6 +108,10 @@ def main() -> None:
 
         print(f"Simulation output written to: {output_path}")
 
+    return sim
+
 
 if __name__ == "__main__":
-    main()
+    from neighborly.inspection import *
+
+    sim = main()

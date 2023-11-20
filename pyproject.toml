@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Games/Entertainment :: Simulation",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -47,19 +48,28 @@ dependencies = [
     "tracery3==1.*",
     "polars==0.19.*",
     "tabulate==0.9.*",
+    "PyYAML==6.0.*",
 ]
 
 [project.optional-dependencies]
-testing = ["pytest", "pytest-cov"]
 samples = ["jupyterlab", "matplotlib", "tqdm", "ipywidgets"]
-development = ["isort", "black", "black[d]", "black[jupyter]", "build"]
+development = [
+    "isort",
+    "black",
+    "black[d]",
+    "black[jupyter]",
+    "build",
+    "pytest",
+    "pytest-cov",
+    "sphinx",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/ShiJbey/neighborly"
 "Bug Tracker" = "https://github.com/ShiJbey/neighborly/issues"
 "Repository" = "https://github.com/ShiJBey/neighborly.git"
 "Changelog" = "https://github.com/ShiJbey/neighborly/blob/main/CHANGELOG.md"
-"Documentation" = "https://shijbey.github.io/neighborly/"
+"Documentation" = "https://neighborly.readthedocs.io/en/latest/"
 
 [tool.setuptools.dynamic]
 version = { attr = "neighborly.__version__.VERSION" }

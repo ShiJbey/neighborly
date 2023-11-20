@@ -39,15 +39,6 @@
             "actor": 3
         }
     },
-    "brothel": {
-        "name": "Brothel",
-        "spawn_frequency": 1,
-        "owner_role": "brothel_owner",
-        "employee_roles": {
-            "bartender": 1,
-            "brothel_worker": 2
-        }
-    },
     "bar": {
         "name": "Bar",
         "spawn_frequency": 1,

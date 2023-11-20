@@ -259,6 +259,8 @@ class SocialRule:
     """Conditions that need to be met to apply the rule."""
     effects: list[Effect]
     """Side-effects of the rule applied to a relationship."""
+    is_outgoing: bool = True
+    """True if this rule is applied to outgoing relationships."""
     source: Optional[object] = None
     """The object responsible for adding this rule."""
 

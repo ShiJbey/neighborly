@@ -45,6 +45,7 @@ from neighborly.defs.base_types import (
 )
 from neighborly.ecs import GameObject
 from neighborly.helpers.settlement import create_district
+from neighborly.helpers.skills import add_skill
 from neighborly.helpers.stats import add_stat, get_stat
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import (
@@ -524,6 +525,7 @@ class DefaultCharacterDef(CharacterDef):
         self.initialize_character_age(character, **kwargs)
         self.initialize_character_stats(character, **kwargs)
         self.initialize_traits(character, **kwargs)
+        self.initialize_character_skills(character)
 
     def initialize_name(self, character: GameObject, **kwargs: Any) -> None:
         """Initialize the character's name.
@@ -614,16 +616,18 @@ class DefaultCharacterDef(CharacterDef):
         character_comp = character.get_component(Character)
         species = character.get_component(Character).species.get_component(Species)
 
-        health = add_stat(character, "health", Stat(base_value=100, bounds=(0, 999999)))
+        health = add_stat(
+            character, "health", Stat(base_value=1000, bounds=(0, 999_999))
+        )
         health_decay = add_stat(
             character,
             "health_decay",
-            Stat(base_value=100.0 / species.lifespan, bounds=(0, 999999)),
+            Stat(base_value=1000.0 / species.lifespan, bounds=(0, 999_999)),
         )
         fertility = add_stat(
             character,
             "fertility",
-            Stat(base_value=round(rng.random(), 2), bounds=(0, 1.0)),
+            Stat(base_value=round(rng.uniform(0.0, 1.0)), bounds=(0, 1.0)),
         )
         add_stat(
             character,
@@ -689,9 +693,12 @@ class DefaultCharacterDef(CharacterDef):
         for stat, override_value in stat_overrides.items():
             get_stat(character, stat).base_value = override_value
 
-    def initialize_character_skills(self, character: GameObject, **kwargs: Any) -> None:
+    def initialize_character_skills(self, character: GameObject) -> None:
         """Add default skills to the character."""
-        raise NotImplementedError()
+        rng = character.world.resource_manager.get_resource(random.Random)
+        for skill_id, interval in self.default_skills.items():
+            value = rng.randint(interval[0], interval[1])
+            add_skill(character, skill_id, value)
 
     @staticmethod
     def generate_first_name(character: GameObject, pattern: str) -> str:
@@ -729,7 +736,16 @@ class DefaultCharacterDef(CharacterDef):
         max_traits: int = obj.get("max_traits", 3)
         species: list[str] = obj["species"]
         default_traits: list[str] = obj.get("default_traits", [])
-        default_skills: list[dict[str, Any]] = obj.get("default_skills", [])
+
+        default_skills_raw: dict[str, Union[str, int]] = obj.get("skills", {})
+
+        default_skills: dict[str, tuple[int, int]] = {}
+        for skill_name, value in default_skills_raw.items():
+            if isinstance(value, int):
+                default_skills[skill_name] = (value, value)
+            else:
+                min_level, max_level = tuple(int(x.strip()) for x in value.split("-"))
+                default_skills[skill_name] = (min_level, max_level)
 
         return cls(
             definition_id=definition_id,

@@ -204,14 +204,7 @@ class Business(Component):
         owner
             The owner of the business.
         """
-        if owner is None:
-            self._owner = None
-
-        else:
-            if self._owner is not None:
-                raise ValueError("Business already has an owner.")
-
-            self._owner = owner
+        self._owner = owner
 
     def get_open_positions(self) -> Iterable[JobRole]:
         """Get positions at the business with at least one open slot."""

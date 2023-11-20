@@ -439,12 +439,7 @@ class UpdateFrequentedLocationSystem(System):
         # that the character belongs to
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (
-            frequented_locations,
-            _,
-            character,
-            _,
-        ) in world.get_components(
+        for _, (frequented_locations, _, character, _,) in world.get_components(
             (FrequentedLocations, LocationPreferences, Character, Active)
         ):
             if character.life_stage < LifeStage.YOUNG_ADULT:
@@ -729,6 +724,7 @@ class LifeEventSystem(System):
                     population=life_event_choices, weights=life_event_probabilities, k=1
                 )[0]
 
+                # if rng.random() < chosen_event.get_probability():
                 chosen_event.dispatch()
 
 

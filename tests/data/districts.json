@@ -45,7 +45,6 @@
         ],
         "business_types": [
             "theatre",
-            "brothel",
             "bar"
         ],
         "business_slots": 3

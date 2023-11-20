@@ -180,19 +180,25 @@ class AddLocationPreference(Effect):
 class AddSocialRule(Effect):
     """Add a new social rule."""
 
-    __slots__ = "preconditions", "effects"
+    __slots__ = "preconditions", "effects", "is_outgoing"
 
     preconditions: list[Precondition]
     """Preconditions that need to pass to apply the preference rule."""
     effects: list[Effect]
     """Effects applied if the relationship passes the preconditions."""
+    is_outgoing: bool
+    """If True, this rule applies to all outgoing relationships, incoming otherwise."""
 
     def __init__(
-        self, preconditions: list[Precondition], effects: list[Effect]
+        self,
+        preconditions: list[Precondition],
+        effects: list[Effect],
+        is_outgoing: bool,
     ) -> None:
         super().__init__()
         self.preconditions = preconditions
         self.effects = effects
+        self.is_outgoing = is_outgoing
 
     @property
     def description(self) -> str:
@@ -222,6 +228,7 @@ class AddSocialRule(Effect):
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
         preconditions_data: list[dict[str, Any]] = params.get("preconditions", [])
         effects_data: list[dict[str, Any]] = params.get("effects", [])
+        is_outgoing: bool = params.get("outgoing", True)
 
         precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
         effect_library = world.resource_manager.get_resource(EffectLibrary)
@@ -238,4 +245,5 @@ class AddSocialRule(Effect):
         return cls(
             preconditions=preconditions,
             effects=effects,
+            is_outgoing=is_outgoing,
         )

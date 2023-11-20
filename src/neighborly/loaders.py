@@ -7,9 +7,10 @@ simulation data into a simulation.
 
 from __future__ import annotations
 
-import json
 import os
 from typing import Any, Type, Union
+
+import yaml
 
 from neighborly.libraries import (
     BusinessLibrary,
@@ -40,7 +41,7 @@ def load_districts(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     district_library = sim.world.resource_manager.get_resource(DistrictLibrary)
 
@@ -63,7 +64,7 @@ def load_residences(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     residence_library = sim.world.resource_manager.get_resource(ResidenceLibrary)
 
@@ -86,7 +87,7 @@ def load_settlements(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     settlement_library = sim.world.resource_manager.get_resource(SettlementLibrary)
 
@@ -109,7 +110,7 @@ def load_businesses(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     business_library = sim.world.resource_manager.get_resource(BusinessLibrary)
 
@@ -132,7 +133,7 @@ def load_job_roles(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     job_role_library = sim.world.resource_manager.get_resource(JobRoleLibrary)
 
@@ -154,7 +155,7 @@ def load_characters(
     """
 
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     character_library = sim.world.resource_manager.get_resource(CharacterLibrary)
 
@@ -178,7 +179,7 @@ def load_traits(
     """
 
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     trait_library = sim.world.resource_manager.get_resource(TraitLibrary)
 
@@ -199,7 +200,7 @@ def load_tracery(
         The path of the data file to load.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        rule_data: dict[str, list[str]] = json.load(file)
+        rule_data: dict[str, list[str]] = yaml.safe_load(file)
         sim.world.resource_manager.get_resource(Tracery).add_rules(rule_data)
 
 
@@ -217,7 +218,7 @@ def load_skills(
     """
 
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = json.load(file)
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
 
     library = sim.world.resource_manager.get_resource(SkillLibrary)
 

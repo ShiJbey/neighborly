@@ -52,14 +52,8 @@
     "actor": {
         "display_name": "Actor"
     },
-    "brothel_owner": {
-        "display_name": "Brothel Owner"
-    },
     "bartender": {
         "display_name": "Bartender"
-    },
-    "brothel_worker": {
-        "display_name": "Brothel Worker"
     },
     "bar_owner": {
         "display_name": "Bar Owner"
