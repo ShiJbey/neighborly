@@ -265,7 +265,9 @@ class CharacterDef(ABC):
     """The max number of traits this character type spawns with."""
     default_traits: list[str] = attrs.field(factory=list[str])
     """Default traits applied to the character during generation."""
-    default_skills: list[dict[str, Any]] = attrs.field(factory=list[dict[str, Any]])
+    default_skills: dict[str, tuple[int, int]] = attrs.field(
+        factory=dict[str, tuple[int, int]]
+    )
     """Default skills applied to the character upon generation."""
 
     @abstractmethod

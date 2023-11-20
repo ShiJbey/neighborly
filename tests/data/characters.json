@@ -21,10 +21,7 @@
         ],
         "max_traits": 3,
         "skills": {
-            "farming": [
-                0,
-                200
-            ]
+            "farming": "50 - 150"
         }
     },
     "merchant": {

@@ -25,6 +25,7 @@ between minor-version updates.
 - Revised the inspection API to be expandable and display custom components.
 - `LifeEvent.dispatch()` now accept an optional boolean parameter to disable logging while still notifying listeners.
 - Added `EventConsiderations` resource as a way to add additional considerations to pre-authored events.
+- Implemented default skills for character definitions
 
 ## [2.3.1] - 2023-11-08
 
