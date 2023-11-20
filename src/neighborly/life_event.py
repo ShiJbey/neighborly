@@ -294,9 +294,10 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
             EventConsiderations
         ).get_event_considerations(type(self))
 
-        all_considerations: list[Callable[[LifeEvent], float]] = list(
-            *type(self)._considerations, *external_considerations
-        )
+        all_considerations: list[Callable[[LifeEvent], float]] = [
+            *type(self)._considerations,
+            *external_considerations,
+        ]
 
         for consideration in all_considerations:
             consideration_score = consideration(self)
