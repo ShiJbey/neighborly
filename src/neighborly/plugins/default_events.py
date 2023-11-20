@@ -23,10 +23,10 @@ from neighborly.components.settlement import District
 from neighborly.datetime import SimDate
 from neighborly.ecs import Active, GameObject
 from neighborly.events.defaults import (
+    BusinessClosedEvent,
     ChangeResidenceEvent,
     DepartSettlement,
     LeaveJob,
-    BusinessClosedEvent,
 )
 from neighborly.helpers.location import add_frequented_location
 from neighborly.helpers.relationship import (
@@ -38,98 +38,6 @@ from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import EventRole, LifeEvent, event_consideration
 from neighborly.loaders import register_life_event_type
 from neighborly.simulation import Simulation
-
-
-# class MeetSomeoneNew(LifeEvent):
-#     """A character will attempt to initiate a new social relationship with someone new.
-
-#     Notes
-#     -----
-#     This system uses a character's sociability stat score to determine the probability
-#     of them introducing themselves to someone else. The goal is for characters with
-#     higher sociability scores to form more relationships over the course of their lives.
-#     """
-
-#     def __init__(
-#         self,
-#         initiator: GameObject,
-#         other: GameObject,
-#     ) -> None:
-#         super().__init__(
-#             world=initiator.world,
-#             roles=(
-#                 EventRole("subject", initiator, True),
-#                 EventRole("other", other, True),
-#             ),
-#         )
-
-#     @staticmethod
-#     @event_consideration
-#     def subject_sociability(event: MeetSomeoneNew) -> float:
-#         """Add a consideration for the subject's sociability stat."""
-#         return get_stat(event.roles["subject"], "sociability").normalized
-
-#     @staticmethod
-#     @event_consideration
-#     def other_person_sociability(event: MeetSomeoneNew) -> float:
-#         """Add a consideration for the subject's sociability stat."""
-#         return get_stat(event.roles["other"], "sociability").normalized
-
-#     @classmethod
-#     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-#         candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
-
-#         frequented_locations = subject.get_component(FrequentedLocations)
-
-#         for loc in frequented_locations:
-#             for other in loc.get_component(FrequentedBy):
-#                 if other != subject and not has_relationship(subject, other):
-#                     candidate_scores[other] += 1
-
-#         if candidate_scores:
-#             rng = subject.world.resource_manager.get_resource(random.Random)
-
-#             acquaintance = rng.choices(
-#                 list(candidate_scores.keys()),
-#                 weights=list(candidate_scores.values()),
-#                 k=1,
-#             )[0]
-
-#             return MeetSomeoneNew(subject, acquaintance)
-
-#         return None
-
-#     def execute(self) -> None:
-#         subject = self.roles["subject"]
-#         other = self.roles["other"]
-
-#         add_relationship(subject, other)
-#         add_relationship(other, subject)
-
-#         overlapping_frequents = len(
-#             set(subject.get_component(FrequentedLocations)).intersection(
-#                 set(other.get_component(FrequentedLocations))
-#             )
-#         )
-
-#         get_stat(get_relationship(subject, other), "reputation").base_value += 3
-#         get_stat(get_relationship(other, subject), "reputation").base_value += 3
-
-#         get_stat(
-#             get_relationship(subject, other),
-#             "interaction_score",
-#         ).base_value += overlapping_frequents
-
-#         get_stat(
-#             get_relationship(other, subject),
-#             "interaction_score",
-#         ).base_value += overlapping_frequents
-
-#     def __str__(self) -> str:
-#         return (
-#             f"{self.roles['subject'].name} and "
-#             f"{self.roles['other'].name} became acquaintances."
-#         )
 
 
 class StartANewJob(LifeEvent):
@@ -431,7 +339,6 @@ class StartBusiness(LifeEvent):
 class StartDating(LifeEvent):
     """Event dispatched when two characters start dating."""
 
-    is_logged = True
     base_probability = 0.5
 
     def __init__(self, subject: GameObject, partner: GameObject) -> None:
@@ -1735,9 +1642,6 @@ class PromotedToBusinessOwner(LifeEvent):
     def execute(self) -> None:
         subject = self.roles["subject"]
         business = self.roles["business"]
-        former_owner = self.roles["former_owner"]
-
-        # Remove the former owner from their position
 
         if occupation := self.roles["subject"].try_component(Occupation):
             # The new owner needs to leave their current job
