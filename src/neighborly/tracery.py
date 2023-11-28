@@ -1,7 +1,9 @@
 """Tracery
 
 Neighborly uses Kate Compton's Tracery to generate names for characters, items,
-businesses and other named objects.
+businesses and other named objects. Users can add data to the simulations Tracery
+instance using JSON files loaded using the neighborly.loaders.load_tracery(...)
+function.
 
 """
 

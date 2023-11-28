@@ -18,7 +18,7 @@ from neighborly.ecs import GameObject
 
 @attrs.define(kw_only=True)
 class DistrictDef(ABC):
-    """A definition for a district type specified by the user."""
+    """A definition for a district within a settlement."""
 
     definition_id: str
     """The name of this definition."""
@@ -44,9 +44,9 @@ class DistrictDef(ABC):
         Parameters
         ----------
         settlement
-            The settlement that the district belongs to
+            The settlement that the district belongs to.
         district
-            The district to initialize
+            The district to initialize.
         """
         raise NotImplementedError()
 
@@ -63,14 +63,14 @@ class DistrictDef(ABC):
         Returns
         -------
         DistrictDef
-            An instance of this district definition
+            An instance of a district definition.
         """
         raise NotImplementedError()
 
 
 @attrs.define(kw_only=True)
 class SkillDef(ABC):
-    """A definition for a skill type."""
+    """A definition for a skill."""
 
     definition_id: str
     """The ID of this tag definition."""
@@ -82,7 +82,7 @@ class SkillDef(ABC):
     @classmethod
     @abstractmethod
     def from_obj(cls, obj: dict[str, Any]) -> SkillDef:
-        """Create a tag definition from a raw data.
+        """Create a skill definition from a data dictionary.
 
         Parameters
         ----------
@@ -91,7 +91,7 @@ class SkillDef(ABC):
 
         Returns
         -------
-        TraitDef
+        SkillDef
             An instantiated skill definition.
         """
         raise NotImplementedError()
@@ -110,7 +110,7 @@ class SkillDef(ABC):
 
 @attrs.define(kw_only=True)
 class TraitDef(ABC):
-    """A definition for a trait type."""
+    """A definition for a trait."""
 
     definition_id: str
     """The ID of this trait definition."""
@@ -132,7 +132,7 @@ class TraitDef(ABC):
     @classmethod
     @abstractmethod
     def from_obj(cls, obj: dict[str, Any]) -> TraitDef:
-        """Create a trait definition from a raw data.
+        """Create a trait definition from a data dictionary.
 
         Parameters
         ----------
@@ -160,7 +160,7 @@ class TraitDef(ABC):
 
 @attrs.define(kw_only=True)
 class SettlementDef(ABC):
-    """A definition for a settlement type specified by the user."""
+    """A definition for a settlement."""
 
     definition_id: str
     """The name of this definition"""
@@ -193,7 +193,7 @@ class SettlementDef(ABC):
         Returns
         -------
         SettlementDef
-            An instance of this definition.
+            An instance of a settlement definition.
         """
         raise NotImplementedError()
 
@@ -246,7 +246,7 @@ class ResidenceDef(ABC):
         Returns
         -------
         ResidenceDef
-            An instance of this definition.
+            An instance of a residence definition.
         """
         raise NotImplementedError()
 
@@ -294,7 +294,7 @@ class CharacterDef(ABC):
         Returns
         -------
         CharacterDef
-            An instance of this definition.
+            An instance of a character definition.
         """
         raise NotImplementedError()
 
@@ -331,7 +331,7 @@ class JobRoleDef(ABC):
         Returns
         -------
         JobRoleDef
-            An instance of this job role definition.
+            An instance of a job role definition.
         """
         raise NotImplementedError()
 
@@ -386,7 +386,7 @@ class BusinessDef(ABC):
     @classmethod
     @abstractmethod
     def from_obj(cls, obj: dict[str, Any]) -> BusinessDef:
-        """Create a business definition from a data dictionary
+        """Create a business definition from a data dictionary.
 
         Parameters
         ----------
@@ -396,6 +396,6 @@ class BusinessDef(ABC):
         Returns
         -------
         BusinessDef
-            An instance of this business definition
+            An instance of a business definition.
         """
         raise NotImplementedError()
