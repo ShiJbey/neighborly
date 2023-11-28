@@ -3,7 +3,7 @@
 Traits
 ======
 
-Traits are tags that can be applied to entities like characters, relationships, and businesses. Traits can represent personality types, faction memberships, and relationship types/statuses ("coworker", "dating", "secret-lover", ...). Their greatest strength is that users can specify effects that are triggered when the trait is added to a GameObject. Effects can range from stat/skill buffs to location preferences to social rules. When a trait is added to an object, all the effects are immediately applied. And when a trait is removed, all the effects are also undone. For example, say we have a ``friendly`` trait that boosts a character's ``sociability`` stat and provides a ``reputation`` boost on all relationships. When the trait is added, that character will immediately get the stat buff and a boost on all their active relationships. And when the trait is removed, they will also lose their ``sociability`` boost, and all relationships will lose the ``reputation`` boost.
+Traits are tags that can be applied to entities like characters, relationships, and businesses. Traits can represent personality traits, faction memberships, and relationship types/statuses ("coworker", "dating", "secret-lover", ...). Their greatest strength is that users can specify effects that are triggered when the trait is added to a GameObject. Effects can range from stat/skill buffs to location preferences to social rules. When a trait is added to an object, all the effects are immediately applied. And when a trait is removed, all the effects are also undone. For example, a ``friendly`` trait might boost a character's ``sociability`` stat and provide a ``reputation`` boost on all relationships. When the trait is added, that character will immediately get the stat buff and a boost on all their active relationships. And when the trait is removed, they will lose their ``sociability`` boost, and all relationships will lose the ``reputation`` boost.
 
 If you are interested in learning how to create custom effect types and make them available for content authoring, please see the :ref:`effects_preconditions` page.
 
@@ -51,6 +51,37 @@ Below is an example of a ``Gullible`` trait. As with other definition types, we 
             "inheritance_chance_both": 0.5
         }
     }
+
+Below is an example of the same trait defined using YAML
+
+.. code-block:: yaml
+
+    gullible:
+        display_name: Gullible
+        description: This character is more trusting of others to a fault.
+        effects:
+            - type: StatBuff
+              stat: Sociability
+              amount: 3
+            - type: AddSocialRule
+              stat: reputation
+              amount: 5
+        conflicts_with:
+            - skeptical
+        spawn_frequency: 1
+        inheritance_chance_single: 0.25
+        inheritance_chance_both: 0.5
+
+Last, we have an example of a trait defined directly in Python.
+
+.. code-block:: python
+
+    gullible = DefaultTraitDef(
+        definition_id="gullible",
+
+    )
+
+
 
 
 Loading traits into the simulation

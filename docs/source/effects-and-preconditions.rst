@@ -3,9 +3,18 @@
 Effects and Preconditions
 =========================
 
-``Effects`` are a class of objects that can perform modifications to a GameObject when applied and undo their modifications when removed. Effects are used with traits and social rules to make changes to characters and relationships.
+When building our simulations, there may be times when we want traits or job roles to have side-effects on characters. For example, maybe we want:
 
-``Preconditions`` are a class of objects that check GameObjects for certain conditions. If these conditions are met, they return true.
+- Customer service jobs to gradually increase a character's sociability stat
+- A ``flirtatious`` trait that makes other characters more likely attracted to the flirtatious character.
+- Require characters to have a high enough ``cooking`` skill before they become the owner of a restaurant.
+- Make characters with the ``shopaholic`` trait to frequent shopping locations.
+
+All these scenarios are accomplished through using :py:class:`~neighborly.effects.base_types.Effect` and :py:class:`~neighborly.preconditions.base_types.Precondition` types.
+
+:py:class:`~neighborly.effects.base_types.Effect` objects perform modifications to a GameObject when applied and undo their modifications when removed. Effects are used with traits and social rules to make changes to characters and relationships.
+
+:py:class:`~neighborly.preconditions.base_types.Precondition` objects check GameObjects for certain conditions. If these conditions are met, they return true.
 
 Using effects and preconditions
 -------------------------------
@@ -14,32 +23,82 @@ Effects are specified within the ``effects`` section of traits. Each effect ``ty
 
 The example below shows a trait with multiple effects. All effects are applied when a trait is attached. One of the effects adds a new location preference rule that accepts a list of preconditions. Like effects, precondition specifications require the user to provide a `type: ...`, and all other key-value pairs are used to parameterize an instance of that precondition type. Here we specify that this location preference only applies to places that serve alcohol.
 
+Below is an example of a ``drinks_too_much`` trait definition as it would appear in a JSON data file.
+
 .. code-block:: json
 
     {
         "drinks_too_much": {
             "display_name": "Drinks too much",
             "effects": [
-            {
-                "type": "StatBuff",
-                "stat": "health_decay",
-                "amount": 0.05,
-                "modifier_type": "FLAT"
-            },
-            {
-                "type": "AddLocationPreference",
-                "preconditions": [
                 {
-                    "type": "HasTrait",
-                    "trait": "serves_alcohol"
+                    "type": "StatBuff",
+                    "stat": "health_decay",
+                    "amount": 0.05,
+                    "modifier_type": "FLAT"
+                },
+                {
+                    "type": "AddLocationPreference",
+                    "preconditions": [
+                        {
+                            "type": "HasTrait",
+                            "trait": "serves_alcohol"
+                        }
+                    ],
+                    "amount": 0.2
                 }
-                ],
-                "amount": 0.2
-            }
             ]
         }
     }
 
+Below is the same trait defined using YAML.
+
+.. code-block:: yaml
+
+    drinks_too_much:
+        display_name: Drinks too much
+        effects:
+            - type: StatBuff
+              stat: health_decay
+              amount: 0.05
+              modifier_type: FLAT # <-- This is optional (defaults to FLAT)
+            - type: AddLocationPreference
+              preconditions:
+                - type: HasTrait
+                  trait: serves_alcohol
+              amount: 0.2
+
+
+Finally, this is how this trait might be defined directly within Python.
+
+.. code-block:: python
+
+    trait_lib = sim.world.resource_manager.get_resource(TraitLibrary)
+
+    trait_lib.add_definition_from_obj(
+        {
+            "definition_id": "drinks_too_much",
+            "display_name": "Drinks too much",
+            "effects": [
+                {
+                    "type": "StatBuff",
+                    "stat": "health_decay",
+                    "amount": 0.05,
+                    "modifier_type": "FLAT"
+                },
+                {
+                    "type": "AddLocationPreference",
+                    "preconditions": [
+                    {
+                        "type": "HasTrait",
+                        "trait": "serves_alcohol"
+                    }
+                    ],
+                    "amount": 0.2
+                }
+            ]
+        }
+    )
 
 Built-in effects
 ----------------
@@ -51,35 +110,10 @@ Below are a list of all the currently built-in effect types. If users want to ad
     sim.world.resource_manager.get_resource(EffectLibrary).add_effect_type(CustomEffect)
 
 
-- ``StatBuff``: Adds a modifier to a relationship's interaction_score stat
-
-  - Parameters:
-
-    - ``stat``: the ID of the stat to buff
-    - ``modifier_type``: "FLAT", "PERCENT_ADD", or "PERCENT_MULTIPLY"
-    - ``amount``: number
-
-- ``IncreaseSkill``: Permanently increases a skill stat
-
-  - Parameters:
-
-    - ``skill_name``: str
-    - ``amount``: number
-
-- ``AddLocationPreference``: Adds a location preference rule to the character
-
-  - Parameters:
-
-    - ``preconditions``: list of preconditions
-    - ``modifier_type``: "Flat", "PercentAdd", or "PercentMult"
-    - ``amount``: number
-
-- ``AddSocialRule``: Adds a social rule to the character
-
-  - Parameters:
-
-    - ``preconditions``: list of preconditions
-    - ``effects``: list of effects
+- :py:class:`neighborly.effects.effects.StatBuff`
+- :py:class:`neighborly.effects.effects.IncreaseSkill`
+- :py:class:`neighborly.effects.effects.AddSocialRule`
+- :py:class:`neighborly.effects.effects.AddLocationPreference`
 
 Defining new effects
 --------------------

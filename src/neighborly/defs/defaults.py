@@ -1,7 +1,8 @@
 """Default Content Definitions.
 
 This module contains default implementations of concrete definition classes that
-inherit from those found in neighborly.defs.base_types.
+inherit from those found in neighborly.defs.base_types. These definitions are loaded
+into ever Neighborly instance when it is constructed.
 
 """
 
@@ -62,7 +63,7 @@ from neighborly.tracery import Tracery
 
 @attrs.define
 class DefaultSkillDef(SkillDef):
-    """A definition for a skill type."""
+    """The default implementation of a skill definition."""
 
     @classmethod
     def from_obj(cls, obj: dict[str, Any]) -> SkillDef:

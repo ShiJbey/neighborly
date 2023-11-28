@@ -3,41 +3,42 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to neighborly's documentation!
+Welcome to Neighborly's documentation!
 ======================================
 
-Neighborly is an extensible agent-based settlement simulation. It was built to be a tool for emergent narrative storytelling research. Neighborly generates a virtual settlement and simulates the individual lives of its residents over multiple generations. It models the characters' traits, statuses, relationships, occupations, life events, and more. Neighborly tracks all the life events (starting a new job, falling in love, turning into a demon, etc.), and these become the building blocks for creating emergent stories about characters and their legacies. The entire history of the settlement and its generations of characters is then made available for data analysis or as content for other applications such as games.
+Neighborly is an agent-based settlement simulation for emergent narrative storytelling and data analysis. It simulates generations of characters living within a village/town/city with a particular focus on their relationships and life events (starting a new job, falling in love, turning into a demon, etc.). It combines social simulation elements, like relationship tracking, with RPG elements, such as character stats and skills, to generate backstories about characters and their families.
+Neighborly simulates characters' traits, statuses, relationships, occupations, and life events and makes the entire simulated history available for data analysis and game development.
 
-Neighborly's was inspired `Talk of the Town <https://github.com/james-owen-ryan/talktown>`_, another settlement simulation for emergent narrative storytelling research. It also draws inspiration from commercial world-simulation games like Caves of Qud, Dwarf Fortress*, Crusader Kings, RimWorld, and WorldBox. It aims to be an easily customizable simulation that can adapt to various narrative settings and support research or entertainment projects.
+Neighborly's was inspired by `Talk of the Town <https://github.com/james-owen-ryan/talktown>`_ and aims to be a more customizable and user-friendly alternative to support research or entertainment projects. It also draws inspiration from commercial simulation-driven emergent narrative games like *Caves of Qud*, *Dwarf Fortress*, *Crusader Kings*, *RimWorld*, and *WorldBox*.
 
-How to use this wiki
---------------------
+How to use these docs
+---------------------
 
-This wiki explains the core building blocks of Neighborly and how to get started simulating your own procedurally generated settlements. If you're looking for a tutorial or would like to try Neighborly without downloading it, we recommend that people try this `Google Colab notebook <https://colab.research.google.com/drive/1WxZnCR8afekfBl-vI6WcIcS6OhRGdkam?usp=sharing>`_.
+This wiki explains the core building blocks of Neighborly and how to get started simulating your own procedurally generated settlements. If you're looking for a tutorial or would like to try Neighborly without downloading it, here is a `Google Colab notebook <https://colab.research.google.com/drive/1WxZnCR8afekfBl-vI6WcIcS6OhRGdkam?usp=sharing>`_ that covers the basics of Neighborly.
 
-Problems with the wiki
+What if I find errors?
 ----------------------
 
-If you notice any error within the wiki, please file an issue and state where the repository maintainers can find the error. Errors can be anything ranging from typos to sample code that doesn't work. Thank you for helping to make Neighborly a tool for people to learn and experiment with.
+If you notice any errors with sample code or typos within the docs, please file a GitHub issue stating the issue. We appreciate your help in making Neighborly an accessible tool for learning and experimentation.
 
 Installation
 ------------
 
-Neighborly is available to download from PyPI. Please use the following command to install the latest release.
+Neighborly is available to install from PyPI. Please use the following command to install the latest release.
 
 .. code-block:: bash
 
    python3 -m pip install neighborly
 
 
-If you plan to use Neighborly as a dependency within a larger project. It is recommended that you specify the specific release in your ``pyproject.toml`` or ``requirements.txt`` files. For example, ``neighborly==2.*``. Neighborly's function and class interfaces may change drastically between releases, and this will prevent errors from appearing in your code if an updated version of Neighborly breaks something you rely on.
+We recommend that users specify a specific Neighborly release in their ``pyproject.toml`` or ``requirements.txt`` files. For example, ``neighborly==2.*``. Neighborly's function and class interfaces may change drastically between releases, and this will prevent errors from appearing in your code if an updated version of Neighborly breaks something you rely on.
 
 Neighborly's core content types
 -------------------------------
 
-Neighborly is a data-driven framework. So, before we can generate a settlement and simulate the characters' lives, we need to feed the simulation content that it can use. We refer to each piece of content as a content definition.
+Neighborly is a data-driven. So, user's need to feed it a decent amount of data to get diverse and interesting results. However, Neighborly makes it easy for people to start simulating with a small amount of data and gradually add more. Below are the main content types that users can define.
 
-- :ref:`settlements`: Different types of settlements that could be generated.
+- :ref:`settlements`: The overall place where characters live and start businesses.
 - :ref:`businesses`: Places where characters work.
 - :ref:`traits`: Represent characters' personalities, relationship statuses, faction affiliations, etc.
 - :ref:`relationships`: Track how characters feel about other characters.
