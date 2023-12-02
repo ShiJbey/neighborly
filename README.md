@@ -81,7 +81,7 @@ python -m venv venv
 .\venv\Scripts\Activate
 
 # Step 3: Install local build and dependencies
-python -m pip install -e ".[development,testing]"
+python -m pip install -e ".[development]"
 ```
 
 # Usage
@@ -127,7 +127,7 @@ to [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ```bash
 # Step 1: Install additional dependencies for tests
-python -m pip install -e ".[testing]"
+python -m pip install -e ".[development]"
 
 # Step 2: Run Pytest
 pytest

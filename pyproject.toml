@@ -49,10 +49,11 @@ dependencies = [
     "polars==0.19.*",
     "tabulate==0.9.*",
     "PyYAML==6.0.*",
+    "tqdm==4.*"
 ]
 
 [project.optional-dependencies]
-samples = ["jupyterlab", "matplotlib", "tqdm", "ipywidgets"]
+samples = ["jupyterlab", "matplotlib", "ipywidgets"]
 development = [
     "isort",
     "black",
