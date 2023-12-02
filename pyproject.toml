@@ -49,7 +49,7 @@ dependencies = [
     "polars==0.19.*",
     "tabulate==0.9.*",
     "PyYAML==6.0.*",
-    "tqdm==4.*"
+    "tqdm==4.*",
 ]
 
 [project.optional-dependencies]
@@ -93,3 +93,25 @@ testpaths = ["tests"]
 
 [tool.pyright]
 reportMissingTypeStubs = "none"
+
+
+[tool.pylint.design]
+# Minimum number of public methods for a class (see R0903).
+min-public-methods = 0
+
+# Maximum number of public methods for a class (see R0904).
+max-public-methods = 25
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes = 10
+
+# Maximum number of arguments for function / method.
+max-args = 8
+
+[tool.pylint.basic]
+# Allow us to use "_T1, _T2, _T3, ..." as typevar names
+typevar-rgx = "^_{0,2}(?!T[A-Z])(?:[A-Z]+|(?:[A-Z]+[a-z]+)+T?(?<!Type))(?:_co(?:ntra)?)?_?[0-9]*$"
+
+[tool.pylint.similarities]
+# Increases the default threshold for declaring code similarity
+min-similarity-lines = 30

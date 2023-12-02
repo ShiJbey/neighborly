@@ -137,7 +137,7 @@ class SpawnResidentialBuildingsSystem(System):
         eligible_entries: pl.DataFrame = spawn_table.table.filter(  # type: ignore
             (pl.col("instances") < pl.col("max_instances"))
             & (pl.col("required_population") <= district.population)
-            & (pl.col("is_multifamily") == False)
+            & (pl.col("is_multifamily") == False)  # pylint: disable=C0121
         )
 
         if len(eligible_entries) == 0:
@@ -172,7 +172,7 @@ class SpawnResidentialBuildingsSystem(System):
         eligible_entries: pl.DataFrame = spawn_table.table.filter(  # type: ignore
             (pl.col("instances") < pl.col("max_instances"))
             & (pl.col("required_population") <= district.population)
-            & (pl.col("is_multifamily") == True)
+            & (pl.col("is_multifamily") == True)  # pylint: disable=C0121
         )
 
         if len(eligible_entries) == 0:
@@ -439,7 +439,12 @@ class UpdateFrequentedLocationSystem(System):
         # that the character belongs to
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (frequented_locations, _, character, _,) in world.get_components(
+        for _, (
+            frequented_locations,
+            _,
+            character,
+            _,
+        ) in world.get_components(
             (FrequentedLocations, LocationPreferences, Character, Active)
         ):
             if character.life_stage < LifeStage.YOUNG_ADULT:
