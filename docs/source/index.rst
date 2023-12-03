@@ -63,6 +63,7 @@ Neighborly is a data-driven. So, user's need to feed it a decent amount of data 
    location-preferences
    plugins
    ecs
+   design-tips
    api/modules
 
 Indices and tables
