@@ -412,7 +412,7 @@ class EventConsiderations:
             The function with the consideration logic
         """
         if event_type not in self._considerations_by_type:
-            self._considerations_by_type[event_type] = OrderedSet()
+            self._considerations_by_type[event_type] = OrderedSet([])
 
         self._considerations_by_type[event_type].add(
             cast(Callable[[LifeEvent], float], consideration_fn)
@@ -435,7 +435,7 @@ class EventConsiderations:
         """
         considerations = cast(
             Iterable[Callable[[_ET_contra], float]],
-            self._considerations_by_type.get(event_type, OrderedSet()),
+            self._considerations_by_type.get(event_type, OrderedSet([])),
         )
 
         return considerations

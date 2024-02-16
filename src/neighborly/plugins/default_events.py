@@ -119,14 +119,13 @@ class StartANewJob(LifeEvent):
 
         life_stage = subject.get_component(Character).life_stage
 
-        if life_stage == LifeStage.CHILD or life_stage == life_stage.ADOLESCENT:
+        if life_stage in (LifeStage.CHILD, life_stage.ADOLESCENT):
             return 0.0
 
-        elif life_stage == life_stage.YOUNG_ADULT or life_stage == life_stage.ADULT:
+        if life_stage in (life_stage.YOUNG_ADULT, life_stage.ADULT):
             return 0.9
 
-        else:
-            return 0.1
+        return 0.1
 
     @staticmethod
     @event_consideration
@@ -918,19 +917,18 @@ class Retire(LifeEvent):
                 chosen_succession.dispatch()
                 return
 
-            else:
-                # Could not find suitable successors. Just leave and lay people off.
-                LeaveJob(
-                    subject=subject,
-                    business=business,
-                    job_role=job_role,
-                    reason="retired",
-                ).dispatch()
-                BusinessClosedEvent(subject, business, "owner retired").dispatch()
+            # Could not find suitable successors. Just leave and lay people off.
+            LeaveJob(
+                subject=subject,
+                business=business,
+                job_role=job_role,
+                reason="retired",
+            ).dispatch()
+            BusinessClosedEvent(subject, business, "owner retired").dispatch()
+            return
 
-        else:
-            # This is an employee. Keep the business running as usual
-            LeaveJob(subject=subject, business=business, job_role=job_role).dispatch()
+        # This is an employee. Keep the business running as usual
+        LeaveJob(subject=subject, business=business, job_role=job_role).dispatch()
 
     def __str__(self) -> str:
         character = self.roles["subject"]
