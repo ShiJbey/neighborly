@@ -41,6 +41,7 @@ from neighborly.defs.base_types import (
     JobRoleDef,
     ResidenceDef,
     SettlementDef,
+    SettlementDefDistrictEntry,
     SkillDef,
     TraitDef,
 )
@@ -56,6 +57,7 @@ from neighborly.libraries import (
     JobRoleLibrary,
     ResidenceLibrary,
     TraitLibrary,
+    DistrictLibrary
 )
 from neighborly.life_event import PersonalEventHistory
 from neighborly.tracery import Tracery
@@ -360,6 +362,7 @@ class DefaultDistrictDef(DistrictDef):
         definition_id: str = obj["definition_id"]
         display_name: str = obj.get("display_name", definition_id)
         description: str = obj.get("description", "")
+        tags: list[str] = obj.get("tags", [])
 
         business_types_data: list[Union[str, dict[str, Any]]] = obj.get(
             "business_types", []
@@ -405,6 +408,7 @@ class DefaultDistrictDef(DistrictDef):
             character_types=character_types,
             business_slots=business_slots,
             residential_slots=residential_slots,
+            tags=tags
         )
 
 
@@ -426,16 +430,50 @@ class DefaultSettlementDef(SettlementDef):
 
     def initialize_districts(self, settlement: GameObject) -> None:
         """Instantiates the settlement's districts."""
-        for definition_id in self.districts:
-            district = create_district(settlement.world, settlement, definition_id)
-            settlement.add_child(district)
+
+        #loop through a list of dictionary entry in self.districts, entry is settlement def strictint entry, entry go through ifs
+        # if entry.id: if an id exists
+        # elif entry.tags: Go through the tags
+        # else: raise Error("Must specify tags or id")
+
+        library = settlement.world.resource_manager.get_resource(DistrictLibrary)
+        rng = settlement.world.resource_manager.get_resource(random.Random)
+
+        for district_entry in self.districts:
+            if district_entry.defintion_id:
+                district = create_district(settlement.world, settlement, district_entry.defintion_id)
+                settlement.add_child(district)    
+            elif district_entry.tags:
+                matching_districts = library.get_with_tags(district_entry.tags)
+
+                if matching_districts:
+                    chosen_district = rng.choice(matching_districts)
+                    district = create_district(settlement.world, settlement,chosen_district.definition_id)
+                    settlement.add_child(district)
+
+            else:
+                raise ValueError("Must specify tags or id")
+                  
+
+
+        # for definition_id in self.districts:
+        #     district = create_district(settlement.world, settlement, definition_id)
+        #     settlement.add_child(district)
+        #Old version
+
 
     @classmethod
     def from_obj(cls, obj: dict[str, Any]) -> SettlementDef:
         """Create a settlement definition from a data dictionary."""
         definition_id: str = obj["definition_id"]
         display_name: str = obj.get("display_name", definition_id)
-        districts: list[str] = obj.get("districts", [])
+        districts: list[SettlementDefDistrictEntry] = [
+            SettlementDefDistrictEntry(
+                defintion_id=entry.get("id", ""),
+                tags=entry.get("tags", [])
+            )
+            for entry in obj.get("districts", [])
+        ]
 
         return cls(
             definition_id=definition_id,

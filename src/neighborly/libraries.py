@@ -291,6 +291,35 @@ class DistrictLibrary:
         self.add_definition(definition)
 
 
+        #begin the search algorithm
+        #return best_district
+        #else []
+    def get_with_tags(self, tags: list[str]) -> list[DistrictDef]:
+        matching_districts: list[DistrictDef] = [] #I want this to contain district defenitions, is that correct
+
+        for district_def in self._definitions.values():
+            mandatory_tags_present = all(tag.strip("~") in district_def.tags for tag in tags if not tag.startswith("~"))
+            optional_tags_present = any(tag.strip("~") in district_def.tags for tag in tags if tag.startswith("~"))
+            optional_tags_count = sum(1 for tag in tags if tag.startswith("~") and tag.strip("~") in district_def.tags)
+
+            if mandatory_tags_present:
+                matching_districts.append((district_def, optional_tags_count))
+            
+
+        #same as in the testing cats
+                
+        if matching_districts: #something exists
+            matching_districts.sort(key=lambda x: x[1], reverse=True)
+            max_optional_tags_count = matching_districts[0][1]
+            best_districts = [district_def for district_def, optional_tags_count in matching_districts if optional_tags_count == max_optional_tags_count]
+            
+            #do we want this to be a random choice I forgot, I believe no, just the full list
+            return best_districts #Is this what we want to return?
+        else:
+            return []
+
+
+
 class SettlementLibrary:
     """A Collection of all the settlement definitions."""
 
@@ -484,9 +513,9 @@ class JobRoleLibrary:
 
     def add_role(self, job_role: GameObject) -> None:
         """Add a job role instance to the library."""
-        self._job_role_instances[
-            job_role.get_component(JobRole).definition_id
-        ] = job_role
+        self._job_role_instances[job_role.get_component(JobRole).definition_id] = (
+            job_role
+        )
 
     def get_definition(self, definition_id: str) -> JobRoleDef:
         """Get a definition instance from the library."""
