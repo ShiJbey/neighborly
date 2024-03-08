@@ -17,7 +17,9 @@
             "house"
         ],
         "residential_slots": 3,
-        "business_slots": 3
+        "business_slots": 3,
+        "tags": ["lazy", "rural", "urban", "suburban", "hot"]
+
     },
     "market_district": {
         "name": "Market District",
@@ -35,7 +37,8 @@
             "large_apartment_building"
         ],
         "business_slots": 5,
-        "residential_slots": 2
+        "residential_slots": 2,
+        "tags": ["lazy", "rural", "urban", "suburban", "hot", "heat"]
     },
     "entertainment_district": {
         "name": "Entertainment District",
@@ -47,7 +50,8 @@
             "theatre",
             "bar"
         ],
-        "business_slots": 3
+        "business_slots": 3,
+        "tags": []
     },
     "upper_class_residences": {
         "name": "Upper Class Residences",
@@ -59,6 +63,7 @@
             "nobility"
         ],
         "business_slots": 3,
-        "residential_slots": 3
+        "residential_slots": 3,
+        "tags": []
     }
 }

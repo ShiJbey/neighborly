@@ -1411,33 +1411,28 @@ class World:
     @overload
     def get_components(
         self, component_types: tuple[Type[_T1]]
-    ) -> list[tuple[int, tuple[_T1]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1]]]: ...
 
     @overload
     def get_components(
         self, component_types: tuple[Type[_T1], Type[_T2]]
-    ) -> list[tuple[int, tuple[_T1, _T2]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1, _T2]]]: ...
 
     @overload
     def get_components(
         self, component_types: tuple[Type[_T1], Type[_T2], Type[_T3]]
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1, _T2, _T3]]]: ...
 
     @overload
     def get_components(
         self, component_types: tuple[Type[_T1], Type[_T2], Type[_T3], Type[_T4]]
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4]]]: ...
 
     @overload
     def get_components(
         self,
         component_types: tuple[Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5]],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]]]: ...
 
     @overload
     def get_components(
@@ -1445,8 +1440,7 @@ class World:
         component_types: tuple[
             Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5], Type[_T6]
         ],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]]]: ...
 
     @overload
     def get_components(
@@ -1454,8 +1448,7 @@ class World:
         component_types: tuple[
             Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5], Type[_T6], Type[_T7]
         ],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]]]: ...
 
     @overload
     def get_components(
@@ -1470,8 +1463,7 @@ class World:
             Type[_T7],
             Type[_T8],
         ],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]]:
-        ...
+    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]]: ...
 
     def get_components(
         self,

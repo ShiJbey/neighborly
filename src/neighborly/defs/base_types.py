@@ -36,6 +36,8 @@ class DistrictDef(ABC):
     """The max number of business buildings that can exist in the district."""
     residential_slots: int = 0
     """The max number of residential buildings that can exist in the district."""
+    tags: list[str] = attrs.field(factory=list[str])
+    """A set of descriptive tags for content selection."""
 
     @abstractmethod
     def initialize(self, settlement: GameObject, district: GameObject) -> None:
@@ -159,6 +161,16 @@ class TraitDef(ABC):
 
 
 @attrs.define(kw_only=True)
+class SettlementDefDistrictEntry:
+    """Settings for selecting a district."""
+
+    defintion_id: str = ""
+    """The name of this definition"""
+
+    tags: list[str] = attrs.field(factory=list[str])
+    """A set of descriptive tags for content selection."""
+
+@attrs.define(kw_only=True)
 class SettlementDef(ABC):
     """A definition for a settlement."""
 
@@ -166,7 +178,7 @@ class SettlementDef(ABC):
     """The name of this definition"""
     display_name: str
     """The name of the settlement for use in GUI's and descriptions."""
-    districts: list[str] = attrs.field(factory=list[str])
+    districts: list[SettlementDefDistrictEntry] = attrs.field(factory=list[SettlementDefDistrictEntry])
     """A function that generates the types of districts that exist in the settlement."""
 
     @abstractmethod
