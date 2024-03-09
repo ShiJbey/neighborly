@@ -34,18 +34,6 @@ from neighborly.components.spawn_table import (
 )
 from neighborly.components.stats import Stat, Stats
 from neighborly.components.traits import Trait, Traits
-from neighborly.defs.base_types import (
-    BusinessDef,
-    CharacterDef,
-    DistrictDef,
-    JobRoleDef,
-    ResidenceDef,
-    SettlementDef,
-    SettlementDefDistrictEntry,
-    SkillDef,
-    TraitDef,
-)
-from neighborly.ecs import GameObject
 from neighborly.helpers.settlement import create_district
 from neighborly.helpers.skills import add_skill
 from neighborly.helpers.stats import add_stat, get_stat
@@ -61,31 +49,30 @@ from neighborly.libraries import (
 )
 from neighborly.life_event import PersonalEventHistory
 from neighborly.tracery import Tracery
+from neighborly.v3.defs.base_types import (
+    BusinessDef,
+    CharacterDef,
+    DistrictDef,
+    JobRoleDef,
+    ResidenceDef,
+    SettlementDef,
+    SettlementDefDistrictEntry,
+    SkillDef,
+    TraitDef,
+)
+from neighborly.v3.ecs import GameObject
 
 
 @attrs.define
 class DefaultSkillDef(SkillDef):
     """The default implementation of a skill definition."""
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> SkillDef:
-        definition_id = obj["definition_id"]
-        display_name = obj.get("display_name", definition_id)
-        description = obj.get("description", "")
-
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            description=description,
-        )
-
     def initialize(self, skill: GameObject) -> None:
-        tracery = skill.world.resource_manager.get_resource(Tracery)
         skill.add_component(
             Skill(
                 definition_id=self.definition_id,
-                display_name=tracery.generate(self.display_name),
-                description=tracery.generate(self.description),
+                display_name=self.display_name,
+                description=self.description,
             )
         )
 

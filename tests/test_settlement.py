@@ -1,7 +1,10 @@
 import pathlib
 
 from neighborly.components.settlement import Settlement
+from neighborly.defs.base_types import SettlementDefDistrictEntry
+from neighborly.defs.defaults import DefaultSettlementDef
 from neighborly.helpers.settlement import create_settlement
+from neighborly.libraries import DistrictLibrary, SettlementLibrary
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -10,13 +13,6 @@ from neighborly.loaders import (
     load_residences,
     load_settlements,
 )
-from neighborly.defs.base_types import SettlementDefDistrictEntry
-from neighborly.defs.defaults import DefaultSettlementDef
-from neighborly.libraries import (
-    DistrictLibrary,
-    SettlementLibrary,
-)
-
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
