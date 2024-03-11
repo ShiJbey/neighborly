@@ -10,9 +10,8 @@ from __future__ import annotations
 from typing import Any, Iterable, Mapping, Optional
 
 from neighborly.datetime import SimDate
+from neighborly.defs.base_types import StatModifierData
 from neighborly.ecs import Component, GameObject, TagComponent
-from neighborly.effects.base_types import Effect
-from neighborly.preconditions.base_types import Precondition
 
 
 class Occupation(Component):
@@ -262,52 +261,57 @@ class JobRole(Component):
     """Information about a specific type of job in the world."""
 
     __slots__ = (
+        "definition_id",
         "display_name",
         "description",
         "job_level",
         "requirements",
-        "effects",
-        "monthly_effects",
-        "definition_id",
+        "stat_modifiers",
+        "periodic_stat_boosts",
+        "periodic_skill_boosts",
     )
 
+    definition_id: str
+    """The ID of this job role."""
     display_name: str
     """The name of the role."""
     description: str
     """A description of the role."""
     job_level: int
     """General level of prestige associated with this role."""
-    requirements: list[Precondition]
+    requirements: list[str]
     """Requirement functions for the role."""
-    effects: list[Effect]
-    """Effects applied when the taking on the role."""
-    monthly_effects: list[Effect]
-    """Effects applied every month the character has the role."""
-    definition_id: str
-    """The ID of this job role."""
+    stat_modifiers: list[StatModifierData]
+    """Stat modifiers applied when a character takes on this role."""
+    periodic_stat_boosts: list[StatModifierData]
+    """Periodic boosts repeatedly applied to stats while a character holds the role."""
+    periodic_skill_boosts: list[StatModifierData]
+    """Periodic boosts repeatedly applied to skills while a character holds the role."""
 
     def __init__(
         self,
+        definition_id: str,
         display_name: str,
         description: str,
         job_level: int,
-        requirements: list[Precondition],
-        effects: list[Effect],
-        monthly_effects: list[Effect],
-        definition_id: str,
+        requirements: list[str],
+        stat_modifiers: list[StatModifierData],
+        periodic_stat_boosts: list[StatModifierData],
+        periodic_skill_boosts: list[StatModifierData],
     ) -> None:
         super().__init__()
+        self.definition_id = definition_id
         self.display_name = display_name
         self.description = description
         self.job_level = job_level
         self.requirements = requirements
-        self.effects = effects
-        self.monthly_effects = monthly_effects
-        self.definition_id = definition_id
+        self.stat_modifiers = stat_modifiers
+        self.periodic_stat_boosts = periodic_stat_boosts
+        self.periodic_skill_boosts = periodic_skill_boosts
 
     def check_requirements(self, gameobject: GameObject) -> bool:
         """Check if a character passes all the requirements for this job."""
-        return all([req(gameobject)] for req in self.requirements)
+        raise NotImplementedError()
 
     def to_dict(self) -> dict[str, Any]:
         return {

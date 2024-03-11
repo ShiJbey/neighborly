@@ -7,23 +7,24 @@ simulation data into a simulation.
 
 from __future__ import annotations
 
+import json
 import os
-from typing import Any, Type, Union
+from typing import Any, Union, cast
 
+import pydantic
 import yaml
 
+from neighborly.defs.base_types import JobRoleDef, SkillDef, TraitDef
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
     JobRoleLibrary,
-    LifeEventLibrary,
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import LifeEvent
 from neighborly.simulation import Simulation
 from neighborly.tracery import Tracery
 
@@ -40,14 +41,26 @@ def load_districts(
     file_path
         The path to the data file.
     """
+
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    district_library = sim.world.resource_manager.get_resource(DistrictLibrary)
+    district_library = sim.world.resources.get_resource(DistrictLibrary)
 
-    for district_id, params in data.items():
-        district_library.add_definition_from_obj(
-            {"definition_id": district_id, **params}
+    # This is a single definition
+    if isinstance(data, dict):
+        district_library.add_definition_parse_obj(cast(dict[str, Any], data))
+
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            district_library.add_definition_parse_obj(entry)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
         )
 
 
@@ -64,13 +77,24 @@ def load_residences(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    residence_library = sim.world.resource_manager.get_resource(ResidenceLibrary)
+    residence_library = sim.world.resources.get_resource(ResidenceLibrary)
 
-    for residence_id, params in data.items():
-        residence_library.add_definition_from_obj(
-            {"definition_id": residence_id, **params}
+    # This is a single definition
+    if isinstance(data, dict):
+        residence_library.add_definition_parse_obj(cast(dict[str, Any], data))
+
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            residence_library.add_definition_parse_obj(entry)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
         )
 
 
@@ -87,13 +111,24 @@ def load_settlements(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    settlement_library = sim.world.resource_manager.get_resource(SettlementLibrary)
+    settlement_library = sim.world.resources.get_resource(SettlementLibrary)
 
-    for settlement_id, params in data.items():
-        settlement_library.add_definition_from_obj(
-            {"definition_id": settlement_id, **params}
+    # This is a single definition
+    if isinstance(data, dict):
+        settlement_library.add_definition_parse_obj(cast(dict[str, Any], data))
+
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            settlement_library.add_definition_parse_obj(entry)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
         )
 
 
@@ -110,13 +145,24 @@ def load_businesses(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    business_library = sim.world.resource_manager.get_resource(BusinessLibrary)
+    business_library = sim.world.resources.get_resource(BusinessLibrary)
 
-    for business_id, params in data.items():
-        business_library.add_definition_from_obj(
-            {"definition_id": business_id, **params}
+    # This is a single definition
+    if isinstance(data, dict):
+        business_library.add_definition_parse_obj(cast(dict[str, Any], data))
+
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            business_library.add_definition_parse_obj(entry)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
         )
 
 
@@ -133,12 +179,27 @@ def load_job_roles(
         The path to the data file.
     """
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    job_role_library = sim.world.resource_manager.get_resource(JobRoleLibrary)
+    job_role_library = sim.world.resources.get_resource(JobRoleLibrary)
 
-    for entry_id, params in data.items():
-        job_role_library.add_definition_from_obj({"definition_id": entry_id, **params})
+    # This is a single definition
+    if isinstance(data, dict):
+        definition = JobRoleDef.parse_obj(data)
+        job_role_library.add_definition(definition)
+
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            definition = JobRoleDef.parse_obj(entry)
+            job_role_library.add_definition(definition)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
+        )
 
 
 def load_characters(
@@ -155,13 +216,24 @@ def load_characters(
     """
 
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    character_library = sim.world.resource_manager.get_resource(CharacterLibrary)
+    character_library = sim.world.resources.get_resource(CharacterLibrary)
 
-    for character_id, params in data.items():
-        character_library.add_definition_from_obj(
-            {"definition_id": character_id, **params}
+    # This is a single definition
+    if isinstance(data, dict):
+        character_library.add_definition_parse_obj(cast(dict[str, Any], data))
+
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            character_library.add_definition_parse_obj(entry)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
         )
 
 
@@ -178,13 +250,48 @@ def load_traits(
         The path to the data file.
     """
 
+    def _try_parse_trait_data(data: dict[str, Any]) -> TraitDef:
+        """Attempts to parse the data into a trait definition."""
+        try:
+            definition = TraitDef.parse_obj(data)
+            trait_library.add_definition(definition)
+
+        except pydantic.ValidationError as err:
+            raise RuntimeError(
+                f"Error while parsing skill definition: {err!r}.\n"
+                f"{json.dumps(data, indent=2)}"
+            ) from err
+
+        except TypeError as err:
+            raise RuntimeError(
+                f"Error while parsing skill definition: {err!r}.\n"
+                f"{json.dumps(data, indent=2)}"
+            ) from err
+
+        return definition
+
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    trait_library = sim.world.resource_manager.get_resource(TraitLibrary)
+    trait_library = sim.world.resources.get_resource(TraitLibrary)
 
-    for trait_id, params in data.items():
-        trait_library.add_definition_from_obj({"definition_id": trait_id, **params})
+    # This is a single definition
+    if isinstance(data, dict):
+        definition = _try_parse_trait_data(cast(dict[str, Any], data))
+        trait_library.add_definition(definition)
+
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            definition = TraitDef.parse_obj(entry)
+            trait_library.add_definition(definition)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
+        )
 
 
 def load_tracery(
@@ -201,7 +308,7 @@ def load_tracery(
     """
     with open(file_path, "r", encoding="utf8") as file:
         rule_data: dict[str, list[str]] = yaml.safe_load(file)
-        sim.world.resource_manager.get_resource(Tracery).add_rules(rule_data)
+        sim.world.resources.get_resource(Tracery).add_rules(rule_data)
 
 
 def load_skills(
@@ -218,16 +325,42 @@ def load_skills(
     """
 
     with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+        data = yaml.safe_load(file)
 
-    library = sim.world.resource_manager.get_resource(SkillLibrary)
+    skill_library = sim.world.resources.get_resource(SkillLibrary)
 
-    for definition_id, params in data.items():
-        library.add_definition_from_obj({"definition_id": definition_id, **params})
+    # This is a single definition
+    if isinstance(data, dict):
+        try:
+            definition = SkillDef.parse_obj(data)
+        except pydantic.ValidationError as err:
+            raise RuntimeError(
+                f"""
+            Error while parsing skill definition: {err}.
+            {json.dumps(data, indent=2)}
+            """
+            ) from err
 
+        skill_library.add_definition(definition)
 
-def register_life_event_type(sim: Simulation, life_event_type: Type[LifeEvent]) -> None:
-    """Register a LifeEvent subtype with the simulation's library."""
-    sim.world.resource_manager.get_resource(LifeEventLibrary).add_event_type(
-        life_event_type
-    )
+    # This is a list of definitions
+    elif isinstance(data, list):
+        data = cast(list[dict[str, Any]], data)
+        for entry in data:
+            try:
+                definition = SkillDef.parse_obj(entry)
+            except pydantic.ValidationError as err:
+                raise RuntimeError(
+                    f"""
+                Error while parsing skill definition: {err}.
+                {json.dumps(data, indent=2)}
+                """
+                ) from err
+
+            skill_library.add_definition(definition)
+
+    # This condition should never be reached, but this is here as a sanity check.
+    else:
+        raise TypeError(
+            f"Unrecognized data type {type(data)} when loading {file_path!r}"
+        )

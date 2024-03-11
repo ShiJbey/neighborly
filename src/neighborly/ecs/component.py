@@ -2,11 +2,13 @@
 
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from neighborly.v3.ecs.game_object import GameObject
+    from neighborly.ecs.game_object import GameObject
 
 
 class Component(ABC):
@@ -49,3 +51,20 @@ class Component(ABC):
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component to a JSON-serializable dictionary."""
         return {}
+
+
+class TagComponent(Component):
+    """Tags a GameObject as active within the simulation."""
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {}
+
+
+class Active(TagComponent):
+    """Tags a GameObject as active within the simulation."""

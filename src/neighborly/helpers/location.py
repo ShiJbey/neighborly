@@ -62,3 +62,40 @@ def remove_all_frequenting_characters(location: GameObject) -> None:
     for character in characters:
         character.get_component(FrequentedLocations).remove_location(location)
         frequented_by_data.remove_character(character)
+
+
+def score_location(self, location: GameObject) -> float:
+    """Calculate a score for a character choosing to frequent this location.
+
+    Parameters
+    ----------
+    location
+        A location to score
+
+    Returns
+    -------
+    float
+        A probability score from [0.0, 1.0]
+    """
+
+    cumulative_score: float = 0.5
+    consideration_count: int = 1
+
+    for rule in self._rules:
+        if rule.check_preconditions(location):
+            consideration_score = rule.score
+
+            # Scores greater than zero are added to the cumulative score
+            if consideration_score > 0:
+                cumulative_score += consideration_score
+                consideration_count += 1
+
+            # Scores equal to zero make the entire score zero (make zero a veto value)
+            elif consideration_score == 0.0:
+                cumulative_score = 0.0
+                break
+
+    # Scores are averaged using the arithmetic mean
+    final_score = cumulative_score / consideration_count
+
+    return final_score

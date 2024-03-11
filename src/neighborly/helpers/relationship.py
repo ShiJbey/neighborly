@@ -5,14 +5,14 @@
 from neighborly.components.relationship import (
     Relationship,
     Relationships,
-    SocialRule,
-    SocialRules,
+    ActiveSocialRule,
 )
-from neighborly.components.stats import Stat, Stats
+from neighborly.components.stats import Stat, Stats, StatModifier, StatModifierType
 from neighborly.components.traits import Traits
 from neighborly.ecs import GameObject
 from neighborly.helpers.stats import add_stat
 from neighborly.helpers.traits import has_trait
+from neighborly.libraries import SocialRuleLibrary
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
@@ -34,11 +34,10 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     if has_relationship(owner, target):
         return get_relationship(owner, target)
 
-    relationship = owner.world.gameobject_manager.spawn_gameobject(
+    relationship = owner.world.gameobjects.spawn_gameobject(
         components=[
             Relationship(owner=owner, target=target),
             Stats(),
-            SocialRules(),
             Traits(),
         ],
     )
@@ -54,19 +53,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     owner.get_component(Relationships).add_outgoing_relationship(target, relationship)
     target.get_component(Relationships).add_incoming_relationship(owner, relationship)
 
-    # Apply outgoing social rules from the owner
-    owner_social_rules = owner.get_component(SocialRules).rules
-    for rule in owner_social_rules:
-        if rule.is_outgoing and rule.check_preconditions(relationship):
-            rule.apply(relationship)
-            relationship.get_component(SocialRules).add_rule(rule)
-
-    # Apply incoming social rules from the target
-    target_social_rules = target.get_component(SocialRules).rules
-    for rule in target_social_rules:
-        if rule.is_outgoing is False and rule.check_preconditions(relationship):
-            rule.apply(relationship)
-            relationship.get_component(SocialRules).add_rule(rule)
+    reevaluate_social_rules(relationship)
 
     return relationship
 
@@ -166,77 +153,37 @@ def get_relationships_with_traits(
 
     return matches
 
+def reevaluate_social_rules(relationship_obj: GameObject) -> None:
 
-def add_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
-    """Add a social rule to a GameObject.
+    relationship = relationship_obj.get_component(Relationship)
+    stats = relationship_obj.get_component(Stats)
+    for entry in relationship.active_social_rules:
+        for modifier in entry.rule.modifiers:
+            stats.get_stat(modifier.name).remove_modifiers_from_source(entry.rule)
 
-    Parameters
-    ----------
-    gameobject
-        The GameObject to add the social rule to.
-    rule
-        The rule to add.
-    """
-    gameobject.get_component(SocialRules).add_rule(rule)
+    relationship.active_social_rules.clear()
 
-    if rule.is_outgoing:
-        # Apply the rule to outgoing relationships
-        relationships = gameobject.get_component(Relationships).outgoing
-    else:
-        # Apply the rule to incoming relationships
-        relationships = gameobject.get_component(Relationships).incoming
+    rule_library = relationship_obj.world.resources.get_resource(SocialRuleLibrary)
 
-    # Apply this rule to all relationships
-    for _, relationship in relationships.items():
-        if rule.check_preconditions(relationship):
-            relationship.get_component(SocialRules).add_rule(rule)
-            rule.apply(relationship)
+    for rule in rule_library.rules:
+        if rule.check_preconditions(relationship_obj):
+            for modifier in rule.modifiers:
+                stats.get_stat(modifier.name).add_modifier(
+                    StatModifier(
+                        value=modifier.value,
+                        modifier_type=StatModifierType.FLAT,
+                        source=rule,
+                    )
+                )
 
-
-def remove_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
-    """Remove a social rule from a GameObject.
-
-    Parameters
-    ----------
-    gameobject
-        The GameObject to remove the social rule from.
-    rule
-        The rule to remove.
-    """
-    gameobject.get_component(SocialRules).add_rule(rule)
-
-    if rule.is_outgoing:
-        # Remove the rule from outgoing relationships
-        relationships = gameobject.get_component(Relationships).outgoing
-    else:
-        # Remove the rule from incoming relationships
-        relationships = gameobject.get_component(Relationships).incoming
-
-    for _, relationship in relationships.items():
-        relationship_rules = relationship.get_component(SocialRules)
-        if relationship_rules.has_rule(rule):
-            rule.remove(relationship)
-            relationship_rules.remove_rule(rule)
-
-    gameobject.get_component(SocialRules).remove_rule(rule)
-
-
-def remove_all_social_rules_from_source(gameobject: GameObject, source: object) -> None:
-    """Remove all social rules with a given source.
-
-    Parameters
-    ----------
-    gameobject
-        The GameObject modify.
-    source
-        The source object to check for.
-    """
-    # Remove the effects of this social rule from all current relationships.
-    rules = list(gameobject.get_component(SocialRules).rules)
-
-    for rule in rules:
-        if rule.source == source:
-            remove_social_rule(gameobject, rule)
+            relationship.active_social_rules.append(
+                ActiveSocialRule(
+                    rule=rule,
+                    description=rule.description.replace(
+                        f"[owner]", relationship.owner.name
+                    ).replace(f"[target]", relationship.target.name),
+                )
+            )
 
 
 def deactivate_relationships(gameobject: GameObject) -> None:

@@ -2,7 +2,18 @@
 
 """
 
-from abc import ABC
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Iterator, Optional, Type, TypeVar
+
+from neighborly.ecs.errors import SystemNotFoundError
+
+if TYPE_CHECKING:
+    from neighborly.ecs.world import World
+
+
+_ST = TypeVar("_ST", bound="System")
 
 
 class ISystem(ABC):
@@ -271,7 +282,7 @@ class SystemManager(SystemGroup):
                 for _, child in current_sys.iter_children():
                     stack.append(child)
 
-        raise SystemNotFoundError(system_group)
+        raise SystemNotFoundError(system_group.__name__)
 
     def get_system(self, system_type: Type[_ST]) -> _ST:
         """Attempt to get a System of the given type.
@@ -300,7 +311,7 @@ class SystemManager(SystemGroup):
                 for _, child in current_sys.iter_children():
                     stack.append((current_sys, child))
 
-        raise SystemNotFoundError(system_type)
+        raise SystemNotFoundError(system_type.__name__)
 
     def remove_system(self, system_type: Type[System]) -> None:
         """Remove all instances of a system type.

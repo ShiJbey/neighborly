@@ -127,7 +127,7 @@ class BatchRunner:
 
 def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -> None:
     """Create data frames for the event data."""
-    event_log = sim.world.resource_manager.get_resource(GlobalEventHistory)
+    event_log = sim.world.resources.get_resource(GlobalEventHistory)
 
     events: list[dict[str, Any]] = []
     roles: list[dict[str, Any]] = []
@@ -136,7 +136,7 @@ def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -
         events.append(
             {
                 "event_type": event.__class__.__name__,
-                "event_id": event.event_id,
+                "event_id": id(event),
                 "timestamp": str(event.timestamp),
             }
         )
@@ -144,7 +144,7 @@ def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -
         for role in event.roles:
             roles.append(
                 {
-                    "event_id": event.event_id,
+                    "event_id": id(event),
                     "role": role.name,
                     "gameobject": role.gameobject.uid,
                 }
@@ -201,7 +201,7 @@ def _tabulate_gameobject_data(
     # Component instances separated by type name
     component_data: dict[str, list[Component]] = {}
 
-    for obj in sim.world.gameobject_manager.gameobjects:
+    for obj in sim.world.gameobjects.gameobjects:
         gameobject_data.append(
             {
                 "uid": obj.uid,
@@ -624,7 +624,7 @@ def create_sql_db(
     _tabulate_event_data(sim, all_tables)
 
     # Next, we pull the collected data directly from the simulations DataTables resource
-    for name, df in sim.world.resource_manager.get_resource(DataTables):
+    for name, df in sim.world.resources.get_resource(DataTables):
         all_tables[name] = df
 
     # Finally, we construct the SQL context using the dictionary that has been modified

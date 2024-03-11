@@ -7,243 +7,299 @@ social rules.
 
 from __future__ import annotations
 
-from typing import Any
-
-from neighborly.components.location import LocationPreferenceRule, LocationPreferences
-from neighborly.components.relationship import SocialRule
-from neighborly.components.stats import StatModifier, StatModifierType
-from neighborly.ecs import GameObject, World
-from neighborly.effects.base_types import Effect
-from neighborly.helpers.relationship import (
-    add_social_rule,
-    remove_all_social_rules_from_source,
-)
-from neighborly.helpers.skills import add_skill, get_skill, has_skill
-from neighborly.helpers.stats import get_stat
-from neighborly.libraries import EffectLibrary, PreconditionLibrary
-from neighborly.preconditions.base_types import Precondition
+from neighborly.components.skills import Skills
+from neighborly.components.stats import Stats
+from neighborly.ecs import GameObject
+from neighborly.effects.base_types import Effect, EffectContext
+from neighborly.helpers.relationship import get_relationship
+from neighborly.helpers.skills import add_skill, has_skill
+from neighborly.helpers.traits import remove_trait, add_trait
 
 
-class StatBuff(Effect):
-    """Add a buff to a stat."""
+class AddTrait(Effect):
+    """Add trait to a GameObject."""
 
-    __slots__ = "modifier_type", "amount", "stat_id"
+    __slots__ = ("target", "trait_id", "duration")
 
-    modifier_type: StatModifierType
-    """The how the modifier amount should be applied to the stat."""
-    amount: float
-    """The amount of buff to apply to the stat."""
-    stat_id: str
-    """The definition ID of the stat to modify."""
+    target: GameObject
+    """The GameObject to add the trait to."""
+    trait_id: str
+    """The ID of the trait to add."""
+    duration: int
+    """The amount of time to apply the trait."""
 
-    def __init__(
-        self,
-        stat_id: str,
-        amount: float,
-        modifier_type: StatModifierType,
-    ) -> None:
-        super().__init__()
-        self.stat_id = stat_id
-        self.modifier_type = modifier_type
-        self.amount = amount
+    def __init__(self, target: GameObject, trait_id: str, duration: int) -> None:
+        self.target = target
+        self.trait_id = trait_id
+        self.duration = duration
 
-    @property
-    def description(self) -> str:
-        return (
-            f"add {self.amount}({self.modifier_type.name}) modifier to {self.stat_id}"
-        )
-
-    def apply(self, target: GameObject) -> None:
-        get_stat(target, self.stat_id).add_modifier(
-            StatModifier(
-                modifier_type=self.modifier_type,
-                value=self.amount,
-                source=self,
-            )
-        )
-
-    def remove(self, target: GameObject) -> None:
-        get_stat(target, self.stat_id).remove_modifiers_from_source(self)
+    def apply(self) -> None:
+        add_trait(self.target, self.trait_id, self.duration)
 
     @classmethod
-    def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        modifier_name: str = params.get("modifier_type", "FLAT")
-        amount: float = float(params["amount"])
-        stat_id: str = str(params["stat"])
+    def instantiate(cls, ctx: EffectContext) -> Effect:
+        target_var: str = ctx.args[0]
+        trait_id: str = ctx.args[1]
+        duration: int = int(ctx.args[2])
 
-        modifier_type = StatModifierType[modifier_name.upper()]
-
-        return cls(stat_id=stat_id, amount=amount, modifier_type=modifier_type)
-
-
-class IncreaseSkill(Effect):
-    """Permanently increases a skill stat."""
-
-    __slots__ = "skill_name", "amount"
-
-    skill_name: str
-    """The skill to increase the base value of"""
-    amount: float
-    """The amount of buff to apply to the stat."""
-
-    def __init__(self, skill_name: str, amount: float) -> None:
-        super().__init__()
-        self.skill_name = skill_name
-        self.amount = amount
-
-    @property
-    def description(self) -> str:
-        return f"add {self.amount} to the {self.skill_name} skill"
-
-    def apply(self, target: GameObject) -> None:
-        if not has_skill(target, self.skill_name):
-            add_skill(target, self.skill_name)
-        get_skill(target, self.skill_name).base_value += self.amount
-
-    def remove(self, target: GameObject) -> None:
-        # Skill increases the skill stat. Cannot be removed.
-        return
-
-    @classmethod
-    def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        skill_name: str = params["skill"]
-        amount: float = float(params["amount"])
+        target = ctx.world.gameobjects.get_gameobject(
+            int(
+                str(ctx.bindings[target_var])
+            )  # We cant go straight from an obj to an int
+        )
 
         return cls(
-            skill_name=skill_name,
+            target=target,
+            trait_id=trait_id,
+            duration=duration,
+        )
+
+
+class RemoveTrait(Effect):
+    """Remove a trait from a GameObject."""
+
+    __slots__ = ("target", "trait_id")
+
+    target: GameObject
+    """The GameObject to add the trait to."""
+    trait_id: str
+    """The ID of the trait to add."""
+
+    def __init__(self, target: GameObject, trait_id: str) -> None:
+        self.target = target
+        self.trait_id = trait_id
+
+    def apply(self) -> None:
+        remove_trait(self.target, self.trait_id)
+
+    @classmethod
+    def instantiate(cls, ctx: EffectContext) -> Effect:
+        target_var: str = ctx.args[0]
+        trait_id: str = ctx.args[1]
+
+        target = ctx.world.gameobjects.get_gameobject(
+            int(
+                str(ctx.bindings[target_var])
+            )  # We cant go straight from an obj to an int
+        )
+
+        return cls(
+            target=target,
+            trait_id=trait_id,
+        )
+
+
+class AddRelationshipTrait(Effect):
+    """Add trait to a Relationship."""
+
+    __slots__ = ("target", "trait_id", "duration")
+
+    target: GameObject
+    """The GameObject to add the trait to."""
+    trait_id: str
+    """The ID of the trait to add."""
+    duration: int
+    """The amount of time to apply the trait."""
+
+    def __init__(self, target: GameObject, trait_id: str, duration: int) -> None:
+        self.target = target
+        self.trait_id = trait_id
+        self.duration = duration
+
+    def apply(self) -> None:
+        add_trait(self.target, self.trait_id, self.duration)
+
+    @classmethod
+    def instantiate(cls, ctx: EffectContext) -> Effect:
+        owner_var: str = ctx.args[0]
+        target_var: str = ctx.args[1]
+        trait_id: str = ctx.args[2]
+        duration: int = int(ctx.args[3])
+
+        target = get_relationship(
+            ctx.world.gameobjects.get_gameobject(
+                int(
+                    str(ctx.bindings[owner_var])
+                )  # We cant go straight from an obj to an int
+            ),
+            ctx.world.gameobjects.get_gameobject(
+                int(
+                    str(ctx.bindings[target_var])
+                )  # We cant go straight from an obj to an int
+            ),
+        )
+
+        return cls(target=target, trait_id=trait_id, duration=duration)
+
+
+class RemoveRelationshipTrait(Effect):
+    """Remove a trait from a relationship."""
+
+    __slots__ = ("target", "trait_id")
+
+    target: GameObject
+    """The GameObject whose skill to modify."""
+    trait_id: str
+    """The ID of the trait."""
+
+    def __init__(self, target: GameObject, trait_id: str) -> None:
+        self.target = target
+        self.trait_id = trait_id
+
+    def apply(self) -> None:
+        remove_trait(self.target, self.trait_id)
+
+    @classmethod
+    def instantiate(cls, ctx: EffectContext) -> Effect:
+        owner_var: str = ctx.args[0]
+        target_var: str = ctx.args[1]
+        trait_id: str = ctx.args[2]
+
+        target = get_relationship(
+            ctx.world.gameobjects.get_gameobject(
+                int(
+                    str(ctx.bindings[owner_var])
+                )  # We cant go straight from an obj to an int
+            ),
+            ctx.world.gameobjects.get_gameobject(
+                int(
+                    str(ctx.bindings[target_var])
+                )  # We cant go straight from an obj to an int
+            ),
+        )
+
+        return cls(
+            target=target,
+            trait_id=trait_id,
+        )
+
+
+class AddStatBuff(Effect):
+    """Add an amount to a GameObject's stat (not a relationship)."""
+
+    __slots__ = ("target", "stat", "amount")
+
+    target: GameObject
+    """The GameObject whose skill to modify."""
+    stat: str
+    """The name of the skill to modify."""
+    amount: float
+    """The amount to modify the skill by."""
+
+    def __init__(self, target: GameObject, stat: str, amount: float) -> None:
+        self.target = target
+        self.stat = stat
+        self.amount = amount
+
+    def apply(self) -> None:
+        stats = self.target.get_component(Stats)
+        stats.get_stat(self.stat).base_value += self.amount
+
+    @classmethod
+    def instantiate(cls, ctx: EffectContext) -> Effect:
+        target_var: str = ctx.args[0]
+        stat: str = ctx.args[1]
+        amount: float = float(ctx.args[2])
+
+        target = ctx.world.gameobjects.get_gameobject(
+            int(
+                str(ctx.bindings[target_var])
+            )  # We cant go straight from an obj to an int
+        )
+
+        return cls(
+            target=target,
+            stat=stat,
             amount=amount,
         )
 
 
-class AddLocationPreference(Effect):
-    """Add a new location preference rule."""
+class AddRelationshipStatBuff(Effect):
+    """Add an amount a relationship's stat's base value."""
 
-    __slots__ = "preconditions", "probability"
+    __slots__ = ("target", "stat", "amount")
 
-    preconditions: list[Precondition]
-    """Preconditions that need to pass to apply the preference rule."""
-    probability: float
-    """A probability of the character frequenting the location."""
+    target: GameObject
+    """The GameObject whose skill to modify."""
+    stat: str
+    """The name of the skill to modify."""
+    amount: float
+    """The amount to modify the skill by."""
 
-    def __init__(
-        self,
-        preconditions: list[Precondition],
-        probability: float,
-    ) -> None:
-        super().__init__()
-        self.preconditions = preconditions
-        self.probability = probability
+    def __init__(self, target: GameObject, stat: str, amount: float) -> None:
+        self.target = target
+        self.stat = stat
+        self.amount = amount
 
-    @property
-    def description(self) -> str:
-        output = "(Location Preference): "
-
-        if self.preconditions:
-            output += "if location "
-            output += " and ".join(p.description for p in self.preconditions)
-            output += ", then "
-
-        output += f"apply an {self.probability*100}% consideration score."
-
-        return output
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(LocationPreferences).add_rule(
-            LocationPreferenceRule(
-                preconditions=self.preconditions,
-                probability=self.probability,
-                source=self,
-            )
-        )
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(LocationPreferences).remove_rules_from_source(self)
+    def apply(self) -> None:
+        stats = self.target.get_component(Stats)
+        stats.get_stat(self.stat).base_value += self.amount
 
     @classmethod
-    def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        preconditions_data: list[dict[str, Any]] = params.get("preconditions", [])
-        probability: float = float(params["probability"])
+    def instantiate(cls, ctx: EffectContext) -> Effect:
+        owner_var: str = ctx.args[0]
+        target_var: str = ctx.args[1]
+        stat: str = ctx.args[2]
+        amount: float = float(ctx.args[3])
 
-        precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
-
-        preconditions: list[Precondition] = [
-            precondition_library.create_from_obj(world, entry)
-            for entry in preconditions_data
-        ]
-
-        return cls(
-            preconditions=preconditions,
-            probability=probability,
-        )
-
-
-class AddSocialRule(Effect):
-    """Add a new social rule."""
-
-    __slots__ = "preconditions", "effects", "is_outgoing"
-
-    preconditions: list[Precondition]
-    """Preconditions that need to pass to apply the preference rule."""
-    effects: list[Effect]
-    """Effects applied if the relationship passes the preconditions."""
-    is_outgoing: bool
-    """If True, this rule applies to all outgoing relationships, incoming otherwise."""
-
-    def __init__(
-        self,
-        preconditions: list[Precondition],
-        effects: list[Effect],
-        is_outgoing: bool,
-    ) -> None:
-        super().__init__()
-        self.preconditions = preconditions
-        self.effects = effects
-        self.is_outgoing = is_outgoing
-
-    @property
-    def description(self) -> str:
-        output = "(Social Rule): "
-
-        if self.preconditions:
-            output += "if "
-            output += " and ".join(p.description for p in self.preconditions)
-            output += ", then "
-
-        output += " and ".join(e.description for e in self.effects)
-
-        return output
-
-    def apply(self, target: GameObject) -> None:
-        add_social_rule(
-            target,
-            SocialRule(
-                preconditions=self.preconditions, effects=self.effects, source=self
+        target = get_relationship(
+            ctx.world.gameobjects.get_gameobject(
+                int(
+                    str(ctx.bindings[owner_var])
+                )  # We cant go straight from an obj to an int
+            ),
+            ctx.world.gameobjects.get_gameobject(
+                int(
+                    str(ctx.bindings[target_var])
+                )  # We cant go straight from an obj to an int
             ),
         )
 
-    def remove(self, target: GameObject) -> None:
-        remove_all_social_rules_from_source(target, self)
+        return cls(
+            target=target,
+            stat=stat,
+            amount=amount,
+        )
+
+
+class AddSkillBuff(Effect):
+    """Add an amount to a skill's base value."""
+
+    __slots__ = ("target", "skill", "amount")
+
+    target: GameObject
+    """The GameObject whose skill to modify."""
+    skill: str
+    """The name of the skill to modify."""
+    amount: float
+    """The amount to modify the skill by."""
+
+    def __init__(self, target: GameObject, skill: str, amount: float) -> None:
+        self.target = target
+        self.skill = skill
+        self.amount = amount
+
+    def apply(self) -> None:
+        if not has_skill(self.target, self.skill):
+            add_skill(self.target, self.skill)
+
+        skills = self.target.get_component(Skills)
+        skills.get_skill(self.skill).base_value += self.amount
 
     @classmethod
-    def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        preconditions_data: list[dict[str, Any]] = params.get("preconditions", [])
-        effects_data: list[dict[str, Any]] = params.get("effects", [])
-        is_outgoing: bool = params.get("outgoing", True)
+    def instantiate(cls, ctx: EffectContext) -> Effect:
+        target_var: str = ctx.args[0]
+        skill: str = ctx.args[1]
+        amount: float = float(ctx.args[2])
 
-        precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
-        effect_library = world.resource_manager.get_resource(EffectLibrary)
-
-        preconditions: list[Precondition] = [
-            precondition_library.create_from_obj(world, entry)
-            for entry in preconditions_data
-        ]
-
-        effects: list[Effect] = [
-            effect_library.create_from_obj(world, entry) for entry in effects_data
-        ]
+        target = ctx.world.gameobjects.get_gameobject(
+            int(
+                str(ctx.bindings[target_var])
+            )  # We cant go straight from an obj to an int
+        )
 
         return cls(
-            preconditions=preconditions,
-            effects=effects,
-            is_outgoing=is_outgoing,
+            target=target,
+            skill=skill,
+            amount=amount,
         )

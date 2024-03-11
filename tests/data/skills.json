@@ -1,10 +1,12 @@
-{
-    "blacksmithing": {
-        "display_name": "Blacksmithing",
-        "description": "A character's skill at forging metal objects."
-    },
-    "farming": {
-        "display_name": "Farming",
-        "description": "A measure of a character's ability to plat and harvest crops."
-    }
-}
+[
+  {
+    "definition_id": "blacksmithing",
+    "display_name": "Blacksmithing",
+    "description": "A character's skill at forging metal objects."
+  },
+  {
+    "definition_id": "farming",
+    "display_name": "Farming",
+    "description": "A measure of a character's ability to plat and harvest crops."
+  }
+]

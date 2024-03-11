@@ -1,9 +1,12 @@
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Type, TypeVar
+"""ECS Resource Manager.
 
-from neighborly.v3.ecs.errors import ResourceNotFoundError
+"""
 
-if TYPE_CHECKING:
-    from neighborly.v3.ecs.world import World
+from __future__ import annotations
+
+from typing import Any, Iterable, Optional, Type, TypeVar
+
+from neighborly.ecs.errors import ResourceNotFoundError
 
 _RT = TypeVar("_RT", bound="Any")
 
@@ -11,15 +14,12 @@ _RT = TypeVar("_RT", bound="Any")
 class ResourceManager:
     """Manages shared resources for a world instance."""
 
-    __slots__ = ("_resources", "_world")
+    __slots__ = ("_resources",)
 
-    _world: World
-    """The world instance associated with the SystemManager."""
     _resources: dict[Type[Any], Any]
     """Resources shared by the world instance."""
 
-    def __init__(self, world: World) -> None:
-        self._world = world
+    def __init__(self) -> None:
         self._resources = {}
 
     @property

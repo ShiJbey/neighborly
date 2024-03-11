@@ -1,12 +1,13 @@
 import pathlib
 
 from neighborly.components.traits import Trait
+from neighborly.defs.base_types import CharacterGenerationOptions
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.libraries import TraitLibrary
 from neighborly.loaders import load_characters, load_skills
-from neighborly.plugins import default_traits
+from neighborly.plugins import default_definition_types, default_traits
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -17,12 +18,13 @@ def test_trait_instantiation() -> None:
 
     sim = Simulation()
 
+    default_definition_types.load_plugin(sim)
     default_traits.load_plugin(sim)
 
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    library = sim.world.resource_manager.get_resource(TraitLibrary)
+    library = sim.world.resources.get_resource(TraitLibrary)
 
     trait = library.get_trait("flirtatious")
 
@@ -34,6 +36,7 @@ def test_add_trait() -> None:
 
     sim = Simulation()
 
+    default_definition_types.load_plugin(sim)
     default_traits.load_plugin(sim)
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
@@ -42,7 +45,9 @@ def test_add_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(
+        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    )
 
     assert has_trait(character, "flirtatious") is False
 
@@ -56,6 +61,7 @@ def test_remove_trait() -> None:
 
     sim = Simulation()
 
+    default_definition_types.load_plugin(sim)
     default_traits.load_plugin(sim)
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
@@ -64,7 +70,9 @@ def test_remove_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.step()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(
+        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    )
 
     assert has_trait(character, "flirtatious") is False
 
@@ -82,6 +90,7 @@ def test_add_remove_trait_effects() -> None:
 
     sim = Simulation()
 
+    default_definition_types.load_plugin(sim)
     default_traits.load_plugin(sim)
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
@@ -90,7 +99,9 @@ def test_add_remove_trait_effects() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    farmer = create_character(sim.world, "farmer", n_traits=0)
+    farmer = create_character(
+        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    )
 
     get_stat(farmer, "sociability").base_value = 0
 
@@ -110,6 +121,7 @@ def test_try_add_conflicting_trait() -> None:
 
     sim = Simulation()
 
+    default_definition_types.load_plugin(sim)
     default_traits.load_plugin(sim)
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
@@ -118,7 +130,9 @@ def test_try_add_conflicting_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    character = create_character(sim.world, "farmer", n_traits=0)
+    character = create_character(
+        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    )
 
     success = add_trait(character, "skeptical")
 

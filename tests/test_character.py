@@ -1,5 +1,6 @@
 import pathlib
 
+from neighborly.defs.base_types import CharacterGenerationOptions
 from neighborly.helpers.character import create_character
 from neighborly.loaders import load_characters, load_skills
 from neighborly.plugins import default_traits
@@ -18,6 +19,8 @@ def test_create_character() -> None:
 
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(
+        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    )
 
     assert character is not None

@@ -655,7 +655,7 @@ def inspect(sim: Simulation, obj: Union[int, GameObject]) -> None:
     """
     if isinstance(obj, int):
         try:
-            obj_ref = sim.world.gameobject_manager.get_gameobject(obj)
+            obj_ref = sim.world.gameobjects.get_gameobject(obj)
         except GameObjectNotFoundError:
             print(f"No GameObject exists with the ID: {obj}.")
             return

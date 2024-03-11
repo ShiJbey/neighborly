@@ -1,10 +1,23 @@
-{
-    "basic_settlement": {
-        "districts": [
-            {"tags" : ["urban", "suburban", ""]},
-            {"id" : "market_district"},
-            {"id" : "entertainment_district"},
-            {"id": "upper_class_residences"}
+[
+  {
+    "definition_id": "basic_settlement",
+    "districts": [
+      {
+        "tags": [
+          "urban",
+          "suburban",
+          ""
         ]
-    }
-}
+      },
+      {
+        "id": "market_district"
+      },
+      {
+        "id": "entertainment_district"
+      },
+      {
+        "id": "upper_class_residences"
+      }
+    ]
+  }
+]

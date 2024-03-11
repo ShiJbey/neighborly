@@ -1,69 +1,85 @@
-{
-    "farming_district": {
-        "name": "Farming District",
-        "description": "Where the animals and farmers are.",
-        "business_types": [
-            "dairy_farm",
-            {
-                "definition_id": "farm",
-                "max_instances": 2,
-                "spawn_frequency": 2
-            }
-        ],
-        "character_types": [
-            "farmer"
-        ],
-        "residence_types": [
-            "house"
-        ],
-        "residential_slots": 3,
-        "business_slots": 3,
-        "tags": ["lazy", "rural", "urban", "suburban", "hot"]
-
-    },
-    "market_district": {
-        "name": "Market District",
-        "description": "Where people are always selling things.",
-        "business_types": [
-            "shop",
-            "cafe"
-        ],
-        "character_types": [
-            "merchant"
-        ],
-        "residence_types": [
-            "small_apartment_building",
-            "medium_apartment_building",
-            "large_apartment_building"
-        ],
-        "business_slots": 5,
-        "residential_slots": 2,
-        "tags": ["lazy", "rural", "urban", "suburban", "hot", "heat"]
-    },
-    "entertainment_district": {
-        "name": "Entertainment District",
-        "description": "Where characters go to have 'fun'.",
-        "residence_types": [
-            "small_apartment_building"
-        ],
-        "business_types": [
-            "theatre",
-            "bar"
-        ],
-        "business_slots": 3,
-        "tags": []
-    },
-    "upper_class_residences": {
-        "name": "Upper Class Residences",
-        "description": "Where the nobility live.",
-        "residence_types": [
-            "mansion"
-        ],
-        "character_types": [
-            "nobility"
-        ],
-        "business_slots": 3,
-        "residential_slots": 3,
-        "tags": []
-    }
-}
+[
+  {
+    "definition_id": "farming_district",
+    "name": "Farming District",
+    "description": "Where the animals and farmers are.",
+    "business_types": [
+      "dairy_farm",
+      {
+        "definition_id": "farm",
+        "max_instances": 2,
+        "spawn_frequency": 2
+      }
+    ],
+    "character_types": [
+      "farmer"
+    ],
+    "residence_types": [
+      "house"
+    ],
+    "residential_slots": 3,
+    "business_slots": 3,
+    "tags": [
+      "lazy",
+      "rural",
+      "urban",
+      "suburban",
+      "hot"
+    ]
+  },
+  {
+    "definition_id": "market_district",
+    "name": "Market District",
+    "description": "Where people are always selling things.",
+    "business_types": [
+      "shop",
+      "cafe"
+    ],
+    "character_types": [
+      "merchant"
+    ],
+    "residence_types": [
+      "small_apartment_building",
+      "medium_apartment_building",
+      "large_apartment_building"
+    ],
+    "business_slots": 5,
+    "residential_slots": 2,
+    "tags": [
+      "lazy",
+      "rural",
+      "urban",
+      "suburban",
+      "hot",
+      "heat"
+    ]
+  },
+  {
+    "definition_id": "entertainment_district",
+    "name": "Entertainment District",
+    "description": "Where characters go to have 'fun'.",
+    "residence_types": [
+      "small_apartment_building"
+    ],
+    "business_types": [
+      "theatre",
+      "bar"
+    ],
+    "business_slots": 3,
+    "tags": []
+  },
+  {
+    "definition_id": "upper_class_residences",
+    "name": "Upper Class Residences",
+    "description": "Where the nobility live.",
+    "residence_types": [
+      "mansion"
+    ],
+    "character_types": [
+      "nobility"
+    ],
+    "business_slots": 3,
+    "residential_slots": 3,
+    "tags": []
+  }
+]

@@ -1,7 +1,10 @@
 import pathlib
 
 from neighborly.components.settlement import Settlement
-from neighborly.defs.base_types import SettlementDefDistrictEntry
+from neighborly.defs.base_types import (
+    SettlementDefDistrictEntry,
+    SettlementGenerationOptions,
+)
 from neighborly.defs.defaults import DefaultSettlementDef
 from neighborly.helpers.settlement import create_settlement
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
@@ -28,7 +31,9 @@ def test_create_settlement() -> None:
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
-    settlement = create_settlement(sim.world, "basic_settlement")
+    settlement = create_settlement(
+        sim.world, SettlementGenerationOptions(definition_id="basic_settlement")
+    )
 
     assert settlement.metadata["definition_id"] == "basic_settlement"
 
@@ -48,24 +53,20 @@ def test_required_tags() -> None:
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
-    sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
+    sim.world.resources.get_resource(SettlementLibrary).add_definition(
         DefaultSettlementDef(
-            definition_id = "basic_settlement",
+            definition_id="basic_settlement",
             display_name="Settlement",
-            districts = [
-                SettlementDefDistrictEntry(
-                    tags=["urban", "suburban"]
-                ),
-                SettlementDefDistrictEntry(
-                    tags=["urban", "suburban"]
-                )
-            ]
+            districts=[
+                SettlementDefDistrictEntry(tags=["urban", "suburban"]),
+                SettlementDefDistrictEntry(tags=["urban", "suburban"]),
+            ],
         )
     )
 
-    #it doesn't actually check if the tags match, just if the amount matches
+    # it doesn't actually check if the tags match, just if the amount matches
 
-    # sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
+    # sim.world.resources.get_resource(SettlementLibrary).add_definition(
     #     DefaultSettlementDef(
     #         definition_id = "basic_settlement2",
     #         display_name="Settlement",
@@ -78,10 +79,10 @@ def test_required_tags() -> None:
     #     )
     # )
 
-    settlement = create_settlement(sim.world, "basic_settlement")
-    library = settlement.world.resource_manager.get_resource(DistrictLibrary)
-
-
+    settlement = create_settlement(
+        sim.world, SettlementGenerationOptions(definition_id="basic_settlement")
+    )
+    library = settlement.world.resources.get_resource(DistrictLibrary)
 
     required_tags = ["suburban", "urban"]
     districts = list(settlement.get_component(Settlement).districts)
@@ -90,9 +91,10 @@ def test_required_tags() -> None:
         district_def = library.get_definition(district.metadata["definition_id"])
         assert all(tag in district_def.tags for tag in required_tags), "Missing tags"
 
-    #assert False
+    # assert False
 
-#Both have the same issue
+
+# Both have the same issue
 def test_optional_tags() -> None:
 
     sim = Simulation()
@@ -104,25 +106,20 @@ def test_optional_tags() -> None:
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
-    sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
+    sim.world.resources.get_resource(SettlementLibrary).add_definition(
         DefaultSettlementDef(
-            definition_id = "basic_settlement",
+            definition_id="basic_settlement",
             display_name="Settlement",
-            districts = [
-                SettlementDefDistrictEntry(
-                    tags=["urban", "suburban", "~hot", "~heat"]
-                ),
-                SettlementDefDistrictEntry(
-                    tags=["urban", "suburban", "~hot", "~heat"]
-                )
-
-            ]
+            districts=[
+                SettlementDefDistrictEntry(tags=["urban", "suburban", "~hot", "~heat"]),
+                SettlementDefDistrictEntry(tags=["urban", "suburban", "~hot", "~heat"]),
+            ],
         )
     )
 
-    #it doesn't actually check if the tags match, just if the amount matches
+    # it doesn't actually check if the tags match, just if the amount matches
 
-    # sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
+    # sim.world.resources.get_resource(SettlementLibrary).add_definition(
     #     DefaultSettlementDef(
     #         definition_id = "basic_settlement2",
     #         display_name="Settlement",
@@ -135,10 +132,10 @@ def test_optional_tags() -> None:
     #     )
     # )
 
-    settlement = create_settlement(sim.world, "basic_settlement")
-    library = settlement.world.resource_manager.get_resource(DistrictLibrary)
-
-
+    settlement = create_settlement(
+        sim.world, SettlementGenerationOptions(definition_id="basic_settlement")
+    )
+    library = settlement.world.resources.get_resource(DistrictLibrary)
 
     required_tags = ["suburban", "urban"]
     districts = list(settlement.get_component(Settlement).districts)

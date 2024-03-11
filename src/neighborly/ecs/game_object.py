@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, Type, TypeVar
 import esper
 from ordered_set import OrderedSet
 
-from neighborly.v3.ecs.errors import ComponentNotFoundError, GameObjectNotFoundError
+from neighborly.ecs.component import Active, Component
+from neighborly.ecs.errors import ComponentNotFoundError, GameObjectNotFoundError
 
 if TYPE_CHECKING:
-    from neighborly.v3.ecs.component import Component
-    from neighborly.v3.ecs.world import World
+    from neighborly.ecs.world import World
 
 
 _CT = TypeVar("_CT", bound="Component")
@@ -106,6 +106,21 @@ class GameObject:
         """Set the GameObject's name"""
         self._name = value
 
+    def activate(self) -> None:
+        """Tag the GameObject as active."""
+        self.add_component(Active())
+
+        for child in self.children:
+            child.activate()
+
+    def deactivate(self) -> None:
+        """Remove the Active tag from a GameObject."""
+
+        self.remove_component(Active)
+
+        for child in self.children:
+            child.deactivate()
+
     def get_components(self) -> tuple[Component, ...]:
         """Get all components associated with the GameObject.
 
@@ -192,7 +207,7 @@ class GameObject:
                 self.uid, component_type
             )
         except KeyError as exc:
-            raise ComponentNotFoundError(component_type) from exc
+            raise ComponentNotFoundError(component_type.__name__) from exc
 
     def has_components(self, *component_types: Type[Component]) -> bool:
         """Check if a GameObject has one or more components.
@@ -308,7 +323,7 @@ class GameObject:
             for child in entity.children:
                 stack.append(child)
 
-        raise ComponentNotFoundError(component_type)
+        raise ComponentNotFoundError(component_type.__name__)
 
     def get_component_in_children(
         self, component_type: Type[_CT]
@@ -463,6 +478,8 @@ class GameObjectManager:
         if components:
             for component in components:
                 gameobject.add_component(component)
+
+        gameobject.activate()
 
         return gameobject
 

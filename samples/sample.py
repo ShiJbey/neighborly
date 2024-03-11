@@ -70,7 +70,7 @@ def main() -> Simulation:
     """Main program entry point."""
     args = get_args()
 
-    sim = Simulation(
+    _sim = Simulation(
         SimulationConfig(
             seed=args.seed,
             settlement="basic_settlement",
@@ -78,37 +78,37 @@ def main() -> Simulation:
         )
     )
 
-    load_districts(sim, TEST_DATA_DIR / "districts.json")
-    load_settlements(sim, TEST_DATA_DIR / "settlements.json")
-    load_businesses(sim, TEST_DATA_DIR / "businesses.json")
-    load_characters(sim, TEST_DATA_DIR / "characters.json")
-    load_residences(sim, TEST_DATA_DIR / "residences.json")
-    load_job_roles(sim, TEST_DATA_DIR / "job_roles.json")
-    load_skills(sim, TEST_DATA_DIR / "skills.json")
+    load_districts(_sim, TEST_DATA_DIR / "districts.json")
+    load_settlements(_sim, TEST_DATA_DIR / "settlements.json")
+    load_businesses(_sim, TEST_DATA_DIR / "businesses.json")
+    load_characters(_sim, TEST_DATA_DIR / "characters.json")
+    load_residences(_sim, TEST_DATA_DIR / "residences.json")
+    load_job_roles(_sim, TEST_DATA_DIR / "job_roles.json")
+    load_skills(_sim, TEST_DATA_DIR / "skills.json")
 
-    default_events.load_plugin(sim)
-    default_traits.load_plugin(sim)
-    default_character_names.load_plugin(sim)
-    default_settlement_names.load_plugin(sim)
+    default_events.load_plugin(_sim)
+    default_traits.load_plugin(_sim)
+    default_character_names.load_plugin(_sim)
+    default_settlement_names.load_plugin(_sim)
 
     total_time_steps: int = args.years * 12
 
     for _ in range(total_time_steps):
-        sim.step()
+        _sim.step()
 
     if args.output:
         output_path: pathlib.Path = (
             args.output
             if args.output
-            else pathlib.Path(__file__).parent / f"neighborly_{sim.config.seed}.json"
+            else pathlib.Path(__file__).parent / f"neighborly_{_sim.config.seed}.json"
         )
 
         with open(output_path, "w", encoding="utf-8") as file:
-            file.write(sim.to_json())
+            file.write(_sim.to_json())
 
         print(f"Simulation output written to: {output_path}")
 
-    return sim
+    return _sim
 
 
 if __name__ == "__main__":

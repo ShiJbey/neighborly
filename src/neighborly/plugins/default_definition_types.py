@@ -9,18 +9,12 @@ into ever Neighborly instance when it is constructed.
 from __future__ import annotations
 
 import random
-from typing import Any, Optional, Union
-
-import attrs
+from typing import Any, Optional
 
 from neighborly.components.business import Business, JobRole, OpenToPublic
 from neighborly.components.character import Character, LifeStage, Sex, Species
-from neighborly.components.location import (
-    FrequentedBy,
-    FrequentedLocations,
-    LocationPreferences,
-)
-from neighborly.components.relationship import Relationships, SocialRules
+from neighborly.components.location import FrequentedBy, FrequentedLocations
+from neighborly.components.relationship import Relationships
 from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.skills import Skill, Skills
@@ -36,12 +30,15 @@ from neighborly.components.stats import Stat, Stats
 from neighborly.components.traits import Trait, Traits
 from neighborly.defs.base_types import (
     BusinessDef,
+    BusinessGenerationOptions,
     CharacterDef,
+    CharacterGenerationOptions,
     DistrictDef,
+    DistrictGenerationOptions,
     JobRoleDef,
     ResidenceDef,
     SettlementDef,
-    SettlementDefDistrictEntry,
+    SettlementGenerationOptions,
     SkillDef,
     TraitDef,
 )
@@ -54,92 +51,46 @@ from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
-    EffectLibrary,
     JobRoleLibrary,
     ResidenceLibrary,
+    SettlementLibrary,
+    SkillLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import PersonalEventHistory
+from neighborly.simulation import Simulation
 from neighborly.tracery import Tracery
 
 
-@attrs.define
 class DefaultSkillDef(SkillDef):
     """The default implementation of a skill definition."""
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> SkillDef:
-        definition_id = obj["definition_id"]
-        display_name = obj.get("display_name", definition_id)
-        description = obj.get("description", "")
-
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            description=description,
-        )
-
     def initialize(self, skill: GameObject) -> None:
-        tracery = skill.world.resource_manager.get_resource(Tracery)
         skill.add_component(
             Skill(
                 definition_id=self.definition_id,
-                display_name=tracery.generate(self.display_name),
-                description=tracery.generate(self.description),
+                display_name=self.display_name,
+                description=self.description,
             )
         )
 
 
-@attrs.define
 class DefaultTraitDef(TraitDef):
     """A definition for a trait type."""
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> TraitDef:
-        """Create a trait definition from a data dictionary."""
-
-        definition_id: str = obj["definition_id"]
-        display_name: str = obj.get("display_name", definition_id)
-        description: str = obj.get("description", "")
-        effects: list[dict[str, Any]] = obj.get("effects", [])
-        conflicts_with: list[str] = obj.get("conflicts_with", [])
-        spawn_frequency: int = obj.get("spawn_frequency", 0)
-        inheritance_chance_single: float = float(
-            obj.get("inheritance_chance_single", 0)
-        )
-        inheritance_chance_both: float = float(obj.get("inheritance_chance_both", 0))
-
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            description=description,
-            effects=effects,
-            conflicts_with=frozenset(conflicts_with),
-            spawn_frequency=spawn_frequency,
-            inheritance_chance_single=inheritance_chance_single,
-            inheritance_chance_both=inheritance_chance_both,
-        )
-
     def initialize(self, trait: GameObject) -> None:
-        effect_library = trait.world.resource_manager.get_resource(EffectLibrary)
-        tracery = trait.world.resource_manager.get_resource(Tracery)
-
-        effects = [
-            effect_library.create_from_obj(trait.world, entry) for entry in self.effects
-        ]
-
         trait.add_component(
             Trait(
                 definition_id=self.definition_id,
-                display_name=tracery.generate(self.display_name),
-                description=tracery.generate(self.description),
-                effects=effects,
+                display_name=self.display_name,
+                description=self.description,
+                stat_modifiers=self.stat_modifiers,
+                skill_modifiers=self.skill_modifiers,
                 conflicting_traits=self.conflicts_with,
             )
         )
 
 
-@attrs.define(kw_only=True)
 class DefaultSpeciesDef(DefaultTraitDef):
     """A definition for a trait type."""
 
@@ -156,39 +107,6 @@ class DefaultSpeciesDef(DefaultTraitDef):
     can_physically_age: bool
     """Does this character go through the various life stages."""
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> TraitDef:
-        """Create a trait definition from a data dictionary."""
-
-        definition_id: str = obj["definition_id"]
-        display_name: str = obj.get("display_name", definition_id)
-        description: str = obj.get("description", "")
-        effects: list[dict[str, Any]] = obj.get("effects", [])
-        conflicts_with: list[str] = obj.get("conflicts_with", [])
-        adolescent_age = obj["adolescent_age"]
-        young_adult_age = obj["young_adult_age"]
-        adult_age = obj["adult_age"]
-        senior_age = obj["senior_age"]
-        lifespan = obj["lifespan"]
-        can_physically_age: bool = obj.get("can_physically_age", True)
-
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            description=description,
-            effects=effects,
-            conflicts_with=frozenset(conflicts_with),
-            spawn_frequency=0,
-            inheritance_chance_single=0,
-            inheritance_chance_both=0,
-            adolescent_age=adolescent_age,
-            young_adult_age=young_adult_age,
-            adult_age=adult_age,
-            senior_age=senior_age,
-            lifespan=lifespan,
-            can_physically_age=can_physically_age,
-        )
-
     def initialize(self, trait: GameObject) -> None:
         super().initialize(trait)
 
@@ -204,11 +122,15 @@ class DefaultSpeciesDef(DefaultTraitDef):
         )
 
 
-@attrs.define
 class DefaultDistrictDef(DistrictDef):
     """A definition for a district type specified by the user."""
 
-    def initialize(self, settlement: GameObject, district: GameObject) -> None:
+    def initialize(
+        self,
+        settlement: GameObject,
+        district: GameObject,
+        options: DistrictGenerationOptions,
+    ) -> None:
         district.metadata["definition_id"] = self.definition_id
 
         district.add_component(
@@ -222,33 +144,26 @@ class DefaultDistrictDef(DistrictDef):
         )
 
         self.initialize_name(district)
-        self.initialize_description(district)
         self.initialize_business_spawn_table(district)
         self.initialize_character_spawn_table(district)
         self.initialize_residence_spawn_table(district)
 
     def initialize_name(self, district: GameObject) -> None:
         """Generates a name for the district."""
-        tracery = district.world.resource_manager.get_resource(Tracery)
+        tracery = district.world.resources.get_resource(Tracery)
         name = tracery.generate(self.display_name)
         district.get_component(District).name = name
         district.name = name
-
-    def initialize_description(self, district: GameObject) -> None:
-        """Generates a description for the district."""
-        tracery = district.world.resource_manager.get_resource(Tracery)
-        description = tracery.generate(self.description)
-        district.get_component(District).description = description
 
     def initialize_business_spawn_table(self, district: GameObject) -> None:
         """Create the business spawn table for the district."""
         world = district.world
 
-        business_library = world.resource_manager.get_resource(BusinessLibrary)
+        business_library = world.resources.get_resource(BusinessLibrary)
 
         table_entries: list[BusinessSpawnTableEntry] = []
 
-        for entry in self.business_types:
+        for entry in self.businesses:
             if isinstance(entry, str):
                 business_def = business_library.get_definition(entry)
                 table_entries.append(
@@ -284,41 +199,33 @@ class DefaultDistrictDef(DistrictDef):
     def initialize_character_spawn_table(self, district: GameObject) -> None:
         """Create the character spawn table for the district."""
         world = district.world
-        character_library = world.resource_manager.get_resource(CharacterLibrary)
+        character_library = world.resources.get_resource(CharacterLibrary)
 
         table_entries: list[CharacterSpawnTableEntry] = []
 
-        for entry in self.character_types:
-            if isinstance(entry, str):
-                character_def = character_library.get_definition(entry)
-                table_entries.append(
-                    CharacterSpawnTableEntry(
-                        name=entry,
-                        spawn_frequency=character_def.spawn_frequency,
-                    )
-                )
-            else:
-                character_def = character_library.get_definition(entry["definition_id"])
+        for entry in self.characters:
 
-                table_entries.append(
-                    CharacterSpawnTableEntry(
-                        name=entry["definition_id"],
-                        spawn_frequency=entry.get(
-                            "spawn_frequency", character_def.spawn_frequency
-                        ),
-                    )
+            character_def = character_library.get_definition(entry["definition_id"])
+
+            table_entries.append(
+                CharacterSpawnTableEntry(
+                    name=entry["definition_id"],
+                    spawn_frequency=entry.get(
+                        "spawn_frequency", character_def.spawn_frequency
+                    ),
                 )
+            )
 
         district.add_component(CharacterSpawnTable(entries=table_entries))
 
     def initialize_residence_spawn_table(self, district: GameObject) -> None:
         """Create the residence spawn table for the district."""
         world = district.world
-        residence_library = world.resource_manager.get_resource(ResidenceLibrary)
+        residence_library = world.resources.get_resource(ResidenceLibrary)
 
         table_entries: list[ResidenceSpawnTableEntry] = []
 
-        for entry in self.residence_types:
+        for entry in self.residences:
             # The entry is a string. We import all defaults from the main definition
             if isinstance(entry, str):
                 residence_def = residence_library.get_definition(entry)
@@ -356,74 +263,20 @@ class DefaultDistrictDef(DistrictDef):
 
         district.add_component(ResidenceSpawnTable(entries=table_entries))
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> DistrictDef:
-        """Create a district definition from a data dictionary."""
-        definition_id: str = obj["definition_id"]
-        display_name: str = obj.get("display_name", definition_id)
-        description: str = obj.get("description", "")
-        tags: list[str] = obj.get("tags", [])
 
-        business_types_data: list[Union[str, dict[str, Any]]] = obj.get(
-            "business_types", []
-        )
-
-        business_types: list[dict[str, Any]] = []
-        for entry in business_types_data:
-            if isinstance(entry, str):
-                business_types.append({"definition_id": entry})
-            else:
-                business_types.append(entry)
-
-        residence_types_data: list[Union[str, dict[str, Any]]] = obj.get(
-            "residence_types", []
-        )
-
-        residence_types: list[dict[str, Any]] = []
-        for entry in residence_types_data:
-            if isinstance(entry, str):
-                residence_types.append({"definition_id": entry})
-            else:
-                residence_types.append(entry)
-
-        character_types_data: list[Union[str, dict[str, Any]]] = obj.get(
-            "character_types", []
-        )
-        character_types: list[dict[str, Any]] = []
-        for entry in character_types_data:
-            if isinstance(entry, str):
-                character_types.append({"definition_id": entry})
-            else:
-                character_types.append(entry)
-
-        residential_slots = obj.get("residential_slots", 0)
-        business_slots = obj.get("business_slots", 0)
-
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            description=description,
-            business_types=business_types,
-            residence_types=residence_types,
-            character_types=character_types,
-            business_slots=business_slots,
-            residential_slots=residential_slots,
-            tags=tags,
-        )
-
-
-@attrs.define
 class DefaultSettlementDef(SettlementDef):
     """A definition for a settlement type specified by the user."""
 
-    def initialize(self, settlement: GameObject) -> None:
+    def initialize(
+        self, settlement: GameObject, options: SettlementGenerationOptions
+    ) -> None:
         settlement.metadata["definition_id"] = self.definition_id
         self.initialize_name(settlement)
         self.initialize_districts(settlement)
 
     def initialize_name(self, settlement: GameObject) -> None:
         """Generates a name for the settlement."""
-        tracery = settlement.world.resource_manager.get_resource(Tracery)
+        tracery = settlement.world.resources.get_resource(Tracery)
         settlement_name = tracery.generate(self.display_name)
         settlement.get_component(Settlement).name = settlement_name
         settlement.name = settlement_name
@@ -436,8 +289,8 @@ class DefaultSettlementDef(SettlementDef):
         # elif entry.tags: Go through the tags
         # else: raise Error("Must specify tags or id")
 
-        library = settlement.world.resource_manager.get_resource(DistrictLibrary)
-        rng = settlement.world.resource_manager.get_resource(random.Random)
+        library = settlement.world.resources.get_resource(DistrictLibrary)
+        rng = settlement.world.resources.get_resource(random.Random)
 
         for district_entry in self.districts:
             if district_entry.defintion_id:
@@ -446,7 +299,9 @@ class DefaultSettlementDef(SettlementDef):
                 )
                 settlement.add_child(district)
             elif district_entry.tags:
-                matching_districts = library.get_with_tags(district_entry.tags)
+                matching_districts = library.get_definition_with_tags(
+                    district_entry.tags
+                )
 
                 if matching_districts:
                     chosen_district = rng.choice(matching_districts)
@@ -463,26 +318,7 @@ class DefaultSettlementDef(SettlementDef):
         #     settlement.add_child(district)
         # Old version
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> SettlementDef:
-        """Create a settlement definition from a data dictionary."""
-        definition_id: str = obj["definition_id"]
-        display_name: str = obj.get("display_name", definition_id)
-        districts: list[SettlementDefDistrictEntry] = [
-            SettlementDefDistrictEntry(
-                defintion_id=entry.get("id", ""), tags=entry.get("tags", [])
-            )
-            for entry in obj.get("districts", [])
-        ]
 
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            districts=districts,
-        )
-
-
-@attrs.define
 class DefaultResidenceDef(ResidenceDef):
     """A default implementation of a Residence Definition."""
 
@@ -494,14 +330,15 @@ class DefaultResidenceDef(ResidenceDef):
     def initialize(self, district: GameObject, residence: GameObject) -> None:
         world = residence.world
 
-        building = residence.add_component(ResidentialBuilding(district=district))
+        building = ResidentialBuilding(district=district)
+        residence.add_component(building)
         residence.add_component(Traits())
         residence.add_component(Stats())
 
         residence.name = self.display_name
 
         for _ in range(self.residential_units):
-            residential_unit = world.gameobject_manager.spawn_gameobject(
+            residential_unit = world.gameobjects.spawn_gameobject(
                 components=[Traits()], name="ResidentialUnit"
             )
             residence.add_child(residential_unit)
@@ -511,36 +348,18 @@ class DefaultResidenceDef(ResidenceDef):
             building.add_residential_unit(residential_unit)
             residential_unit.add_component(Vacant())
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> ResidenceDef:
-        """Create a residence definition from a data dictionary."""
-        definition_id: str = obj["definition_id"]
-        display_name: str = obj["display_name"]
-        spawn_frequency: int = obj.get("spawn_frequency", 1)
-        residential_units: int = obj.get("residential_units", 1)
-        required_population: int = obj.get("required_population", 0)
-        max_instances: int = obj.get("max_instances", 9999)
 
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            spawn_frequency=spawn_frequency,
-            residential_units=residential_units,
-            required_population=required_population,
-            max_instances=max_instances,
-        )
-
-
-@attrs.define
 class DefaultCharacterDef(CharacterDef):
     """Default implementation for character definitions."""
 
-    def initialize(self, character: GameObject, **kwargs: Any) -> None:
-        rng = character.world.resource_manager.get_resource(random.Random)
+    def initialize(
+        self, character: GameObject, options: CharacterGenerationOptions
+    ) -> None:
+        rng = character.world.resources.get_resource(random.Random)
 
         species_id = rng.choice(self.species)
 
-        library = character.world.resource_manager.get_resource(TraitLibrary)
+        library = character.world.resources.get_resource(TraitLibrary)
         species = library.get_trait(species_id)
 
         character.add_component(
@@ -556,17 +375,17 @@ class DefaultCharacterDef(CharacterDef):
         character.add_component(Stats())
         character.add_component(FrequentedLocations())
         character.add_component(Relationships())
-        character.add_component(LocationPreferences())
-        character.add_component(SocialRules())
         character.add_component(PersonalEventHistory())
 
-        self.initialize_name(character, **kwargs)
-        self.initialize_character_age(character, **kwargs)
-        self.initialize_character_stats(character, **kwargs)
-        self.initialize_traits(character, **kwargs)
+        self.initialize_name(character, options)
+        self.initialize_character_age(character, options)
+        self.initialize_character_stats(character, options)
+        self.initialize_traits(character, options)
         self.initialize_character_skills(character)
 
-    def initialize_name(self, character: GameObject, **kwargs: Any) -> None:
+    def initialize_name(
+        self, character: GameObject, options: CharacterGenerationOptions
+    ) -> None:
         """Initialize the character's name.
 
         Parameters
@@ -584,9 +403,11 @@ class DefaultCharacterDef(CharacterDef):
         )
         character_comp.last_name = self.generate_last_name(character, default_last_name)
 
-    def initialize_character_age(self, character: GameObject, **kwargs: Any) -> None:
+    def initialize_character_age(
+        self, character: GameObject, options: CharacterGenerationOptions
+    ) -> None:
         """Initializes the characters age."""
-        rng = character.world.resource_manager.get_resource(random.Random)
+        rng = character.world.resources.get_resource(random.Random)
         life_stage: Optional[LifeStage] = kwargs.get("life_stage")
         character_comp = character.get_component(Character)
         species = character.get_component(Character).species.get_component(Species)
@@ -618,11 +439,13 @@ class DefaultCharacterDef(CharacterDef):
                     species.lifespan - 1,
                 )
 
-    def initialize_traits(self, character: GameObject, **kwargs: Any) -> None:
+    def initialize_traits(
+        self, character: GameObject, options: CharacterGenerationOptions
+    ) -> None:
         """Set the traits for a character."""
         character.add_component(Traits())
-        rng = character.world.resource_manager.get_resource(random.Random)
-        trait_library = character.world.resource_manager.get_resource(TraitLibrary)
+        rng = character.world.resources.get_resource(random.Random)
+        trait_library = character.world.resources.get_resource(TraitLibrary)
 
         traits: list[str] = []
         trait_weights: list[int] = []
@@ -648,9 +471,11 @@ class DefaultCharacterDef(CharacterDef):
         for trait in default_traits:
             add_trait(character, trait)
 
-    def initialize_character_stats(self, character: GameObject, **kwargs: Any) -> None:
+    def initialize_character_stats(
+        self, character: GameObject, options: CharacterGenerationOptions
+    ) -> None:
         """Initializes a characters stats with random values."""
-        rng = character.world.resource_manager.get_resource(random.Random)
+        rng = character.world.resources.get_resource(random.Random)
 
         character_comp = character.get_component(Character)
         species = character.get_component(Character).species.get_component(Species)
@@ -734,7 +559,7 @@ class DefaultCharacterDef(CharacterDef):
 
     def initialize_character_skills(self, character: GameObject) -> None:
         """Add default skills to the character."""
-        rng = character.world.resource_manager.get_resource(random.Random)
+        rng = character.world.resources.get_resource(random.Random)
         for skill_id, interval in self.default_skills.items():
             value = rng.randint(interval[0], interval[1])
             add_skill(character, skill_id, value)
@@ -743,7 +568,7 @@ class DefaultCharacterDef(CharacterDef):
     def generate_first_name(character: GameObject, pattern: str) -> str:
         """Generates a first name for the character"""
 
-        tracery = character.world.resource_manager.get_resource(Tracery)
+        tracery = character.world.resources.get_resource(Tracery)
 
         if pattern:
             name = tracery.generate(pattern)
@@ -758,7 +583,7 @@ class DefaultCharacterDef(CharacterDef):
     def generate_last_name(character: GameObject, pattern: str) -> str:
         """Generates a last_name for the character."""
 
-        tracery = character.world.resource_manager.get_resource(Tracery)
+        tracery = character.world.resources.get_resource(Tracery)
 
         if pattern:
             name = tracery.generate(pattern)
@@ -767,94 +592,36 @@ class DefaultCharacterDef(CharacterDef):
 
         return name
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> CharacterDef:
-        """Create a character definition from a data dictionary."""
-        definition_id: str = obj["definition_id"]
-        spawn_frequency: int = obj.get("spawn_frequency", 1)
-        max_traits: int = obj.get("max_traits", 3)
-        species: list[str] = obj["species"]
-        default_traits: list[str] = obj.get("default_traits", [])
 
-        default_skills_raw: dict[str, Union[str, int]] = obj.get("skills", {})
-
-        default_skills: dict[str, tuple[int, int]] = {}
-        for skill_name, value in default_skills_raw.items():
-            if isinstance(value, int):
-                default_skills[skill_name] = (value, value)
-            else:
-                min_level, max_level = tuple(int(x.strip()) for x in value.split("-"))
-                default_skills[skill_name] = (min_level, max_level)
-
-        return cls(
-            definition_id=definition_id,
-            spawn_frequency=spawn_frequency,
-            max_traits=max_traits,
-            default_skills=default_skills,
-            default_traits=default_traits,
-            species=species,
-        )
-
-
-@attrs.define
 class DefaultJobRoleDef(JobRoleDef):
     """A default implementation of a Job Role Definition."""
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> JobRoleDef:
-        """Create JobRoleDef from a data dictionary."""
-        definition_id: str = obj["definition_id"]
-        display_name: str = obj.get("display_name", definition_id)
-        description: str = obj.get("description", "")
-        job_level: int = obj.get("job_level", 1)
-        requirements_data: list[dict[str, Any]] = obj.get("requirements", [])
-        effects_data: list[dict[str, Any]] = obj.get("../effects", [])
-        monthly_effects_data: list[dict[str, Any]] = obj.get("monthly_effects", [])
-
-        return cls(
-            definition_id=definition_id,
-            display_name=display_name,
-            description=description,
-            job_level=job_level,
-            requirements=requirements_data,
-            effects=effects_data,
-            monthly_effects=monthly_effects_data,
-        )
-
     def initialize(self, role: GameObject, **kwargs: Any) -> None:
-        world = role.world
-
-        effects_library = world.resource_manager.get_resource(EffectLibrary)
-
-        effect_instances = [
-            effects_library.create_from_obj(world, entry) for entry in self.effects
-        ]
-
-        monthly_effect_instances = [
-            effects_library.create_from_obj(world, entry)
-            for entry in self.monthly_effects
-        ]
-
         role.add_component(
             JobRole(
                 definition_id=self.definition_id,
                 display_name=self.display_name,
                 description=self.description,
                 job_level=self.job_level,
-                requirements=[],
-                effects=effect_instances,
-                monthly_effects=monthly_effect_instances,
+                requirements=self.requirements,
+                stat_modifiers=self.stat_modifiers,
+                periodic_stat_boosts=self.periodic_stat_boosts,
+                periodic_skill_boosts=self.periodic_skill_boosts,
             )
         )
 
 
-@attrs.define
 class DefaultBusinessDef(BusinessDef):
     """A default implementation of a Business Definition."""
 
-    def initialize(self, district: GameObject, business: GameObject) -> None:
+    def initialize(
+        self,
+        district: GameObject,
+        business: GameObject,
+        options: BusinessGenerationOptions,
+    ) -> None:
         world = business.world
-        job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
+        job_role_library = world.resources.get_resource(JobRoleLibrary)
 
         business.add_component(
             Business(
@@ -875,7 +642,6 @@ class DefaultBusinessDef(BusinessDef):
         business.add_component(PersonalEventHistory())
         business.add_component(Stats())
         business.add_component(Relationships())
-        business.add_component(SocialRules())
 
         self.initialize_name(business)
 
@@ -887,34 +653,47 @@ class DefaultBusinessDef(BusinessDef):
 
     def initialize_name(self, business: GameObject) -> None:
         """Generates a name for the business."""
-        tracery = business.world.resource_manager.get_resource(Tracery)
+        tracery = business.world.resources.get_resource(Tracery)
         name = tracery.generate(self.display_name)
         business.get_component(Business).name = name
         business.name = name
 
-    @classmethod
-    def from_obj(cls, obj: dict[str, Any]) -> BusinessDef:
-        """Create a business definition from a data dictionary."""
-        definition_id: str = obj["definition_id"]
-        spawn_frequency: int = obj.get("spawn_frequency", 1)
-        display_name: str = obj.get("display_name", definition_id)
-        min_population: int = obj.get("min_population", 0)
-        max_instances: int = obj.get("max_instances", 9999)
-        traits: list[str] = obj.get("traits", [])
-        open_to_public: bool = obj.get("open_to_public", False)
 
-        owner_role: str = obj["owner_role"]
+def load_plugin(sim: Simulation) -> None:
+    """Load plugin content."""
 
-        employee_roles: dict[str, int] = obj.get("employee_roles", {})
+    sim.world.resources.get_resource(TraitLibrary).add_definition_type(
+        DefaultTraitDef, set_default=True
+    )
 
-        return cls(
-            definition_id=definition_id,
-            spawn_frequency=spawn_frequency,
-            display_name=display_name,
-            min_population=min_population,
-            max_instances=max_instances,
-            owner_role=owner_role,
-            employee_roles=employee_roles,
-            traits=traits,
-            open_to_public=open_to_public,
-        )
+    sim.world.resources.get_resource(SkillLibrary).add_definition_type(
+        DefaultSkillDef, set_default=True
+    )
+
+    sim.world.resources.get_resource(TraitLibrary).add_definition_type(
+        DefaultSpeciesDef
+    )
+
+    sim.world.resources.get_resource(DistrictLibrary).add_definition_type(
+        DefaultDistrictDef, set_default=True
+    )
+
+    sim.world.resources.get_resource(SettlementLibrary).add_definition_type(
+        DefaultSettlementDef, set_default=True
+    )
+
+    sim.world.resources.get_resource(ResidenceLibrary).add_definition_type(
+        DefaultResidenceDef, set_default=True
+    )
+
+    sim.world.resources.get_resource(CharacterLibrary).add_definition_type(
+        DefaultCharacterDef, set_default=True
+    )
+
+    sim.world.resources.get_resource(JobRoleLibrary).add_definition_type(
+        DefaultJobRoleDef, set_default=True
+    )
+
+    sim.world.resources.get_resource(BusinessLibrary).add_definition_type(
+        DefaultBusinessDef, set_default=True
+    )

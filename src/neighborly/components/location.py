@@ -13,7 +13,6 @@ import attrs
 from ordered_set import OrderedSet
 
 from neighborly.ecs import Component, GameObject
-from neighborly.preconditions.base_types import Precondition
 
 
 class FrequentedBy(Component):
@@ -138,14 +137,12 @@ class FrequentedLocations(Component):
 class LocationPreferenceRule:
     """A rule that helps characters score how they feel about locations to frequent."""
 
-    preconditions: list[Precondition]
-    """Precondition functions to run when scoring a location."""
-    probability: float
+    preconditions: list[str]
+    """Precondition statements to run when scoring a location."""
+    score: float
     """The amount to apply to the score."""
-    source: object
-    """The source of this location."""
 
-    def __call__(self, gameobject: GameObject) -> float:
+    def check_preconditions(self, gameobject: GameObject) -> float:
         """Check all preconditions and return a weight modifier.
 
         Parameters
@@ -160,70 +157,4 @@ class LocationPreferenceRule:
             location. Or -1 if it does not pass the preconditions.
         """
 
-        if all(p(gameobject) for p in self.preconditions):
-            return self.probability
-
-        return -1.0
-
-
-class LocationPreferences(Component):
-    """A component that manages a character's location preference rules."""
-
-    __slots__ = ("_rules",)
-
-    _rules: list[LocationPreferenceRule]
-    """Rules added to the location preferences."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._rules = []
-
-    def add_rule(self, rule: LocationPreferenceRule) -> None:
-        """Add a location preference rule."""
-        self._rules.append(rule)
-
-    def remove_rule(self, rule: LocationPreferenceRule) -> None:
-        """Remove a location preference rule."""
-        self._rules.remove(rule)
-
-    def remove_rules_from_source(self, source: object) -> None:
-        """Remove all preference rules from the given source."""
-        self._rules = [rule for rule in self._rules if rule.source != source]
-
-    def score_location(self, location: GameObject) -> float:
-        """Calculate a score for a character choosing to frequent this location.
-
-        Parameters
-        ----------
-        location
-            A location to score
-
-        Returns
-        -------
-        float
-            A probability score from [0.0, 1.0]
-        """
-
-        cumulative_score: float = 0.5
-        consideration_count: int = 1
-
-        for rule in self._rules:
-            consideration_score = rule(location)
-
-            # Scores greater than zero are added to the cumulative score
-            if consideration_score > 0:
-                cumulative_score += consideration_score
-                consideration_count += 1
-
-            # Scores equal to zero make the entire score zero (make zero a veto value)
-            elif consideration_score == 0.0:
-                cumulative_score = 0.0
-                break
-
-        # Scores are averaged using the arithmetic mean
-        final_score = cumulative_score / consideration_count
-
-        return final_score
-
-    def to_dict(self) -> dict[str, Any]:
-        return {}
+        raise NotImplementedError()

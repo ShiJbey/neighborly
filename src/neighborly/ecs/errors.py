@@ -2,6 +2,7 @@
 
 """
 
+
 class ResourceNotFoundError(Exception):
     """Exception raised when attempting to access a resource that does not exist."""
 
@@ -112,4 +113,3 @@ class ComponentNotFoundError(Exception):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.component_type = })"
-

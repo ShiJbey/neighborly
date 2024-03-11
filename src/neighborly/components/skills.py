@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any, Iterator, Mapping
 
 from neighborly.components.stats import Stat
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component
 
 
 class Skill(Component):
@@ -68,7 +68,7 @@ class Skills(Component):
 
     __slots__ = ("_skills",)
 
-    _skills: dict[GameObject, Stat]
+    _skills: dict[str, Stat]
     """Skill names mapped to scores."""
 
     def __init__(self) -> None:
@@ -76,11 +76,11 @@ class Skills(Component):
         self._skills = {}
 
     @property
-    def skills(self) -> Mapping[GameObject, Stat]:
+    def skills(self) -> Mapping[str, Stat]:
         """Get skills."""
         return self._skills
 
-    def has_skill(self, skill: GameObject) -> bool:
+    def has_skill(self, skill: str) -> bool:
         """Check if a character has a skill.
 
         Parameters
@@ -95,14 +95,14 @@ class Skills(Component):
         """
         return skill in self._skills
 
-    def add_skill(self, skill: GameObject, base_value: float = 0.0) -> None:
+    def add_skill(self, skill: str, base_value: float = 0.0) -> None:
         """Add a new skill to the skill tracker."""
         if skill not in self._skills:
             self._skills[skill] = Stat(base_value=base_value, bounds=(0, 255))
         else:
             return
 
-    def get_skill(self, skill: GameObject) -> Stat:
+    def get_skill(self, skill: str) -> Stat:
         """Get the stat for a skill.
 
         Parameters
@@ -112,24 +112,20 @@ class Skills(Component):
         """
         return self._skills[skill]
 
-    def __getitem__(self, item: GameObject) -> Stat:
-        """Get the value of a skill."""
-        return self.get_skill(item)
-
     def __str__(self) -> str:
         skill_value_pairs = {
-            skill.name: stat.value for skill, stat in self._skills.items()
+            skill: stat.value for skill, stat in self._skills.items()
         }
         return f"{type(self).__name__}({skill_value_pairs})"
 
     def __repr__(self) -> str:
         skill_value_pairs = {
-            skill.name: stat.value for skill, stat in self._skills.items()
+            skill: stat.value for skill, stat in self._skills.items()
         }
         return f"{type(self).__name__}({skill_value_pairs})"
 
-    def __iter__(self) -> Iterator[tuple[GameObject, Stat]]:
+    def __iter__(self) -> Iterator[tuple[str, Stat]]:
         return iter(self._skills.items())
 
     def to_dict(self) -> dict[str, Any]:
-        return {**{skill.name: stat.value for skill, stat in self._skills.items()}}
+        return {**{skill: stat.value for skill, stat in self._skills.items()}}

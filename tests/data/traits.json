@@ -1,5 +1,6 @@
-{
-    "flirtatious": {
-        "display_name": "Flirtatious"
-    }
-}
+[
+  {
+    "definition_id": "flirtatious",
+    "display_name": "Flirtatious"
+  }
+]

@@ -1,3 +1,0 @@
-"""Neighborly Content Definitions.
-
-"""

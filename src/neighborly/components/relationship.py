@@ -8,24 +8,34 @@ graph.
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping, Optional
+import dataclasses
+from typing import Any, Mapping
 
 import attrs
 
+from neighborly.defs.base_types import StatModifierData
 from neighborly.ecs import Component, GameObject
-from neighborly.effects.base_types import Effect
-from neighborly.preconditions.base_types import Precondition
+
+
+@dataclasses.dataclass
+class ActiveSocialRule:
+    """A record of a social rule being applied to a relationship."""
+
+    rule: SocialRule
+    description: str
 
 
 class Relationship(Component):
     """Tags a GameObject as a relationship and tracks the owner and target."""
 
-    __slots__ = "_target", "_owner"
+    __slots__ = ("_target", "_owner", "active_social_rules")
 
     _owner: GameObject
     """Who owns this relationship."""
     _target: GameObject
     """Who is the relationship directed toward."""
+    active_social_rules: list[ActiveSocialRule]
+    """Social rules currently applied to this relationship."""
 
     def __init__(
         self,
@@ -35,6 +45,7 @@ class Relationship(Component):
         super().__init__()
         self._owner = owner
         self._target = target
+        self.active_social_rules = []
 
     @property
     def owner(self) -> GameObject:
@@ -255,74 +266,13 @@ class Relationships(Component):
 class SocialRule:
     """A rule that modifies a relationship depending on some preconditions."""
 
-    preconditions: list[Precondition]
+    preconditions: list[str]
     """Conditions that need to be met to apply the rule."""
-    effects: list[Effect]
+    modifiers: list[StatModifierData]
     """Side-effects of the rule applied to a relationship."""
-    is_outgoing: bool = True
-    """True if this rule is applied to outgoing relationships."""
-    source: Optional[object] = None
-    """The object responsible for adding this rule."""
+    description: str
+    """Description of the social rule."""
 
     def check_preconditions(self, relationship: GameObject) -> bool:
         """Check that a relationship passes all the preconditions."""
-        return all(p(relationship) for p in self.preconditions)
-
-    def apply(self, relationship: GameObject) -> None:
-        """Apply the effects of the social rule.
-
-        Parameters
-        ----------
-        relationship
-            The relationship to apply the effects to.
-        """
-        for effect in self.effects:
-            effect.apply(relationship)
-
-    def remove(self, relationship: GameObject) -> None:
-        """Remove the effects of the social rule.
-
-        Parameters
-        ----------
-        relationship
-            The relationship to remove the effects from.
-        """
-        for effect in self.effects:
-            effect.remove(relationship)
-
-
-class SocialRules(Component):
-    """Tracks all the social rules that a GameObject abides by."""
-
-    __slots__ = ("_rules",)
-
-    _rules: list[SocialRule]
-    """Rules applied to the owning GameObject's relationships."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._rules = []
-
-    @property
-    def rules(self) -> Iterable[SocialRule]:
-        """Rules applied to the owning GameObject's relationships."""
-        return self._rules
-
-    def add_rule(self, rule: SocialRule) -> None:
-        """Add a rule to the rule collection."""
-        self._rules.append(rule)
-
-    def has_rule(self, rule: SocialRule) -> bool:
-        """Check if a rule is present."""
-        return rule in self._rules
-
-    def remove_rule(self, rule: SocialRule) -> bool:
-        """Remove a rule from the rules collection."""
-        try:
-            self._rules.remove(rule)
-            return True
-        except ValueError:
-            return False
-
-    def to_dict(self) -> dict[str, Any]:
-        return {}
+        raise NotImplementedError()

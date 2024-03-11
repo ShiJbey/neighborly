@@ -5,43 +5,38 @@
 from __future__ import annotations
 
 from neighborly.components.settlement import Settlement
-from neighborly.defs.base_types import DistrictDef, SettlementDef
+from neighborly.defs.base_types import (
+    DistrictDef,
+    DistrictGenerationOptions,
+    SettlementDef,
+    SettlementGenerationOptions,
+)
 from neighborly.ecs import GameObject, World
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 
 
-#Do we have to update so that it can do this with tags?
-def create_settlement(world: World, definition_id: str) -> GameObject:
+# Do we have to update so that it can do this with tags?
+def create_settlement(world: World, options: SettlementGenerationOptions) -> GameObject:
     """Create a new settlement.
 
     Parameters
     ----------
     world
         The world instance to spawn the settlement in.
-    definition_id
-        The definition to use to initialize the settlement.
+    options
+        Generation options.
 
     Returns
     -------
     GameObject
         The settlement.
     """
-    settlement = world.gameobject_manager.spawn_gameobject()
-    settlement.metadata["definition_id"] = definition_id
 
-    settlement.add_component(Settlement(name=""))
-
-    library = world.resource_manager.get_resource(SettlementLibrary)
-
-    settlement_def = library.get_definition(definition_id)
-
-    settlement_def.initialize(settlement)
-
-    return settlement
+    raise NotImplementedError()
 
 
 def create_district(
-    world: World, settlement: GameObject, definition_id: str
+    world: World, settlement: GameObject, options: DistrictGenerationOptions
 ) -> GameObject:
     """Create a new district GameObject.
 
@@ -51,26 +46,16 @@ def create_district(
         The world instance spawn the district in.
     settlement
         The settlement that owns district belongs to.
-    definition_id
-        The definition to use to initialize the district.
+    options
+        Generation options.
 
     Returns
     -------
     GameObject
         The district.
     """
-    library = world.resource_manager.get_resource(DistrictLibrary)
 
-    district_def = library.get_definition(definition_id)
-
-    district = world.gameobject_manager.spawn_gameobject()
-    district.metadata["definition_id"] = definition_id
-
-    district_def.initialize(settlement, district)
-
-    settlement.get_component(Settlement).add_district(district)
-
-    return district
+    raise NotImplementedError()
 
 
 def register_settlement_def(world: World, definition: SettlementDef) -> None:
@@ -83,7 +68,7 @@ def register_settlement_def(world: World, definition: SettlementDef) -> None:
     definition
         The definition to add.
     """
-    world.resource_manager.get_resource(SettlementLibrary).add_definition(definition)
+    world.resources.get_resource(SettlementLibrary).add_definition(definition)
 
 
 def register_district_def(world: World, definition: DistrictDef) -> None:
@@ -96,4 +81,4 @@ def register_district_def(world: World, definition: DistrictDef) -> None:
     definition
         The definition to add.
     """
-    world.resource_manager.get_resource(DistrictLibrary).add_definition(definition)
+    world.resources.get_resource(DistrictLibrary).add_definition(definition)

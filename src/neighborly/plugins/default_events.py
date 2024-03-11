@@ -88,7 +88,7 @@ class StartANewJob(LifeEvent):
         subject = event.roles["subject"]
 
         if unemployed := subject.try_component(Unemployed):
-            current_date = subject.world.resource_manager.get_resource(SimDate)
+            current_date = subject.world.resources.get_resource(SimDate)
             months_unemployed = (
                 current_date.total_months - unemployed.timestamp.total_months
             )
@@ -144,7 +144,7 @@ class StartANewJob(LifeEvent):
         job_role = self.roles["job_role"]
 
         business_comp = business.get_component(Business)
-        current_date = self.world.resource_manager.get_resource(SimDate)
+        current_date = self.world.resources.get_resource(SimDate)
 
         character.add_component(
             Occupation(
@@ -176,7 +176,7 @@ class StartANewJob(LifeEvent):
         if subject.has_component(Occupation):
             return None
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         active_businesses = subject.world.get_components(
             (Business, OpenForBusiness, Active)
@@ -256,7 +256,7 @@ class StartBusiness(LifeEvent):
         subject = event.roles["subject"]
 
         if unemployed := subject.try_component(Unemployed):
-            current_date = subject.world.resource_manager.get_resource(SimDate)
+            current_date = subject.world.resources.get_resource(SimDate)
             months_unemployed = (
                 current_date.total_months - unemployed.timestamp.total_months
             )
@@ -269,7 +269,7 @@ class StartBusiness(LifeEvent):
         business = self.roles["business"]
         business_comp = business.get_component(Business)
         job_role = business_comp.owner_role
-        current_date = self.world.resource_manager.get_resource(SimDate)
+        current_date = self.world.resources.get_resource(SimDate)
 
         character.add_component(
             Occupation(business=business, start_date=current_date, job_role=job_role)
@@ -300,7 +300,7 @@ class StartBusiness(LifeEvent):
             )
         ]
 
-        rng = world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
         eligible_businesses: list[tuple[Business, JobRole]] = []
 
@@ -443,7 +443,7 @@ class StartDating(LifeEvent):
                 partner_weights.append(romance)
 
         if potential_partners:
-            rng = subject.world.resource_manager.get_resource(random.Random)
+            rng = subject.world.resources.get_resource(random.Random)
 
             chosen_partner = rng.choices(
                 potential_partners, weights=partner_weights, k=1
@@ -525,7 +525,7 @@ class GetMarried(LifeEvent):
 
         dating_relationships = get_relationships_with_traits(subject, "dating")
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
         rng.shuffle(dating_relationships)
 
         for relationship in dating_relationships:
@@ -632,7 +632,7 @@ class GetDivorced(LifeEvent):
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> Optional[LifeEvent]:
         spousal_relationships = get_relationships_with_traits(subject, "spouse")
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         rng.shuffle(spousal_relationships)
 
@@ -709,7 +709,7 @@ class BreakUp(LifeEvent):
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
         dating_relationships = get_relationships_with_traits(subject, "dating")
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         if dating_relationships:
             relationship = rng.choice(dating_relationships)
@@ -814,7 +814,7 @@ class GetPregnant(LifeEvent):
         subject = self.roles["subject"]
         partner = self.roles["partner"]
 
-        due_date = self.world.resource_manager.get_resource(SimDate).copy()
+        due_date = self.world.resources.get_resource(SimDate).copy()
         due_date.increment(months=9)
 
         subject.add_component(Pregnant(partner=partner, due_date=due_date))
@@ -903,7 +903,7 @@ class Retire(LifeEvent):
                     succession_scores.append(succession_score)
 
             if potential_successions:
-                rng = subject.world.resource_manager.get_resource(random.Random)
+                rng = subject.world.resources.get_resource(random.Random)
                 chosen_succession = rng.choices(
                     population=potential_successions, weights=succession_scores, k=1
                 )[0]
@@ -999,7 +999,7 @@ class DepartDueToUnemployment(LifeEvent):
         """Calculate consideration score based on the amount of time unemployed."""
         subject = event.roles["subject"]
         if unemployed := subject.try_component(Unemployed):
-            current_date = subject.world.resource_manager.get_resource(SimDate)
+            current_date = subject.world.resources.get_resource(SimDate)
             months_unemployed = (
                 current_date.total_months - unemployed.timestamp.total_months
             )
@@ -1140,7 +1140,7 @@ class BecomeFriends(LifeEvent):
         if not options:
             return None
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         choice = rng.choices(options, weights=scores, k=1)[0]
 
@@ -1227,7 +1227,7 @@ class DissolveFriendship(LifeEvent):
         if not options:
             return None
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         choice = rng.choices(options, weights=scores, k=1)[0]
 
@@ -1325,7 +1325,7 @@ class BecomeEnemies(LifeEvent):
         if not options:
             return None
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         choice = rng.choices(options, weights=scores, k=1)[0]
 
@@ -1410,7 +1410,7 @@ class DissolveEnmity(LifeEvent):
         if not options:
             return None
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         choice = rng.choices(options, weights=scores, k=1)[0]
 
@@ -1498,7 +1498,7 @@ class FormCrush(LifeEvent):
         if not options:
             return None
 
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         choice = rng.choices(options, weights=scores, k=1)[0]
 
@@ -1652,7 +1652,7 @@ class PromotedToBusinessOwner(LifeEvent):
 
         # Set the subject as the new owner of the business
         business_data = business.get_component(Business)
-        current_date = subject.world.resource_manager.get_resource(SimDate)
+        current_date = subject.world.resources.get_resource(SimDate)
 
         subject.add_component(
             Occupation(
@@ -1747,7 +1747,7 @@ class JobPromotion(LifeEvent):
         character.add_component(
             Occupation(
                 business=business,
-                start_date=self.world.resource_manager.get_resource(SimDate),
+                start_date=self.world.resources.get_resource(SimDate),
                 job_role=new_role.get_component(JobRole),
             )
         )
@@ -1756,7 +1756,7 @@ class JobPromotion(LifeEvent):
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         if subject.has_component(Occupation) is False:
             return None
@@ -1780,7 +1780,7 @@ class JobPromotion(LifeEvent):
             return None
 
         # Get the simulation's random number generator
-        rng = subject.world.resource_manager.get_resource(random.Random)
+        rng = subject.world.resources.get_resource(random.Random)
 
         chosen_role = rng.choice(higher_positions)
 

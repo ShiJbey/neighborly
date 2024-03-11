@@ -13,369 +13,138 @@ from neighborly.components.business import (
     OpenForBusiness,
     Unemployed,
 )
-from neighborly.components.character import Character, LifeStage
-from neighborly.components.relationship import Relationship
-from neighborly.components.residence import Resident, ResidentialUnit, Vacant
+from neighborly.components.residence import Resident, ResidentialUnit
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
 from neighborly.ecs import GameObject
-from neighborly.helpers.location import (
-    remove_all_frequented_locations,
-    remove_all_frequenting_characters,
-    remove_frequented_location,
-)
-from neighborly.helpers.relationship import (
-    deactivate_relationships,
-    get_relationship,
-    get_relationships_with_traits,
-)
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
-from neighborly.life_event import EventRole, LifeEvent
+from neighborly.life_event import LifeEvent
 
 
 class Death(LifeEvent):
     """Event emitted when a character passes away."""
 
-    base_probability = 0.0
+    subject: GameObject
+    """The character that died."""
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
-
-    def execute(self) -> None:
-        character = self.roles["subject"]
-        remove_all_frequented_locations(character)
-        character.deactivate()
-        add_trait(character, "deceased")
-
-        deactivate_relationships(character)
-
-        # Remove the character from their residence
-        if resident_data := character.try_component(Resident):
-            residence = resident_data.residence
-            ChangeResidenceEvent(subject=character, new_residence=None).dispatch()
-
-            # If there are no-more residents that are owner's remove everyone from
-            # the residence and have them depart the simulation.
-            residence_data = residence.get_component(ResidentialUnit)
-            if len(list(residence_data.owners)) == 0:
-                residents = list(residence_data.residents)
-                for resident in residents:
-                    DepartSettlement(resident, "death in family")
-
-        # Adjust relationships
-        for rel in get_relationships_with_traits(character, "dating"):
-            target = rel.get_component(Relationship).target
-
-            remove_trait(rel, "dating")
-            remove_trait(get_relationship(target, character), "dating")
-
-            add_trait(rel, "ex_partner")
-            add_trait(get_relationship(target, character), "ex_partner")
-
-        for rel in get_relationships_with_traits(character, "spouse"):
-            target = rel.get_component(Relationship).target
-
-            remove_trait(rel, "spouse")
-            remove_trait(get_relationship(target, character), "spouse")
-
-            add_trait(rel, "ex_spouse")
-            add_trait(get_relationship(target, character), "ex_spouse")
-
-            add_trait(rel, "widow")
-
-        # Remove the character from their occupation
-        if occupation := character.try_component(Occupation):
-            LeaveJob(
-                subject=character,
-                business=occupation.business,
-                job_role=occupation.job_role.gameobject,
-                reason="died",
-            ).dispatch()
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def __str__(self) -> str:
-        character = self.roles["subject"]
-        return f"{character.name} died."
+    @property
+    def description(self) -> str:
+        return f"{self.subject.name} died."
 
 
 class JoinSettlementEvent(LifeEvent):
     """Dispatched when a character joins a settlement."""
 
-    def __init__(self, subject: GameObject, settlement: GameObject) -> None:
-        super().__init__(
-            world=subject.world,
-            roles=[
-                EventRole("subject", subject, True),
-                EventRole("settlement", settlement),
-            ],
-        )
+    subject: GameObject
+    """The character the joined."""
+    settlement: GameObject
+    """The settlement that was joined."""
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        return
-
-    def __str__(self) -> str:
-        character = self.roles["subject"]
-        settlement = self.roles["settlement"]
-
-        return f"{character.name} immigrated to {settlement.name}."
+    @property
+    def description(self) -> str:
+        return f"{self.subject.name} immigrated to {self.settlement.name}."
 
 
 class BecomeAdolescentEvent(LifeEvent):
     """Event dispatched when a character becomes an adolescent."""
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    subject: GameObject
+    """The character that became an adolescent."""
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.ADOLESCENT
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
-
-    def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became an adolescent."
+    @property
+    def description(self) -> str:
+        return f"{self.subject.name} became an adolescent."
 
 
 class BecomeYoungAdultEvent(LifeEvent):
     """Event dispatched when a character becomes a young adult."""
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    subject: GameObject
+    """The character that became a young adult."""
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.YOUNG_ADULT
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
-
-    def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became a young adult."
+    @property
+    def description(self) -> str:
+        return f"{self.subject.name} became a young adult."
 
 
 class BecomeAdultEvent(LifeEvent):
     """Event dispatched when a character becomes an adult."""
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    subject: GameObject
+    """The character that became an adult."""
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.ADULT
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
-
-    def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became an adult."
+    @property
+    def description(self) -> str:
+        return f"{self.subject.name} became an adult."
 
 
 class BecomeSeniorEvent(LifeEvent):
     """Event dispatched when a character becomes a senior."""
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    subject: GameObject
+    """The character that became a senior."""
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.SENIOR
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
-
-    def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became a senior."
+    @property
+    def description(self) -> str:
+        return f"{self.subject.name} became a senior."
 
 
 class ChangeResidenceEvent(LifeEvent):
     """Sets the characters current residence."""
 
-    def __init__(
-        self,
-        subject: GameObject,
-        new_residence: Optional[GameObject],
-        is_owner: bool = False,
-    ) -> None:
-        super().__init__(
-            world=subject.world,
-            roles=(EventRole("subject", subject),),
-            is_owner=is_owner,
-        )
+    subject: GameObject
+    """The character that changed residences."""
+    new_residence: Optional[GameObject]
+    """The residence the subject moved to."""
+    old_residence: Optional[GameObject]
+    """The residence the subject moved from."""
 
-        if new_residence is not None:
-            self.roles.add_role(EventRole("new_residence", new_residence))
-
-    def execute(self) -> None:
-        character = self.roles["subject"]
-        new_residence = self.roles.get_first_or_none("new_residence")
-
-        if resident := character.try_component(Resident):
-            # This character is currently a resident at another location
-            former_residence = resident.residence
-            former_residence_comp = former_residence.get_component(ResidentialUnit)
-
-            for resident in former_residence_comp.residents:
-                if resident == character:
-                    continue
-
-                remove_trait(get_relationship(character, resident), "live_together")
-                remove_trait(get_relationship(resident, character), "live_together")
-
-            if former_residence_comp.is_owner(character):
-                former_residence_comp.remove_owner(character)
-
-            former_residence_comp.remove_resident(character)
-            character.remove_component(Resident)
-
-            former_district = former_residence.get_component(
-                ResidentialUnit
-            ).district.get_component(District)
-            former_district.population -= 1
-
-            if len(former_residence_comp) <= 0:
-                former_residence.add_component(Vacant())
-
-        # Don't add them to a new residence if none is given
-        if new_residence is None:
-            return
-
-        # Move into new residence
-        new_residence.get_component(ResidentialUnit).add_resident(character)
-
-        if self.data["is_owner"]:
-            new_residence.get_component(ResidentialUnit).add_owner(character)
-
-        character.add_component(Resident(residence=new_residence))
-
-        if new_residence.has_component(Vacant):
-            new_residence.remove_component(Vacant)
-
-        for resident in new_residence.get_component(ResidentialUnit).residents:
-            if resident == character:
-                continue
-
-            add_trait(get_relationship(character, resident), "live_together")
-            add_trait(get_relationship(resident, character), "live_together")
-
-        new_district = new_residence.get_component(
-            ResidentialUnit
-        ).district.get_component(District)
-        new_district.population += 1
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def __str__(self) -> str:
-        subject = self.roles["subject"]
-        new_residence = self.roles.get_first_or_none("new_residence")
-
-        if new_residence is not None:
-            district = new_residence.get_component(ResidentialUnit).district
+    @property
+    def description(self) -> str:
+        if self.new_residence is not None:
+            district = self.new_residence.get_component(ResidentialUnit).district
             settlement = district.get_component(District).settlement
 
             return (
-                f"{subject.name} moved into a new residence "
-                f"({new_residence.name}) in the {district.name} district of "
+                f"{self.subject.name} moved into a new residence "
+                f"({self.new_residence.name}) in the {district.name} district of "
                 f"{settlement.name}."
             )
 
-        return f"{subject.name} moved out of their residence."
+        if self.old_residence is not None and self.new_residence is None:
+            return f"{self.subject.name} moved out of {self.old_residence.name}."
+
+        return f"{self.subject.name} moved"
 
 
 class BirthEvent(LifeEvent):
     """Event dispatched when a child is born."""
 
-    base_probability = 0.0
-
-    def __init__(
-        self,
-        subject: GameObject,
-    ) -> None:
-        super().__init__(
-            world=subject.world, roles=(EventRole("subject", subject, True),)
-        )
-
-    def execute(self) -> None:
-        return
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
+    subject: GameObject
+    """The character that was born."""
 
     def __str__(self) -> str:
-        return f"{self.roles['subject'].name} was born."
+        return f"{self.subject.name} was born."
 
 
 class HaveChildEvent(LifeEvent):
     """Event dispatched when a character has a child."""
 
-    base_probability = 0
-
-    def __init__(
-        self,
-        parent_0: GameObject,
-        parent_1: GameObject,
-        child: GameObject,
-    ) -> None:
-        super().__init__(
-            world=parent_0.world,
-            roles=(
-                EventRole("subject", parent_0, True),
-                EventRole("subject", parent_1, True),
-                EventRole("child", child),
-            ),
-        )
-
-    def execute(self) -> None:
-        return
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
+    birthing_parent: GameObject
+    other_parent: Optional[GameObject]
+    child: GameObject
 
     def __str__(self) -> str:
-        parent_0, parent_1 = self.roles.get_all("subject")
-        child = self.roles["child"]
-        return (
-            f"{parent_0.name} and "
-            f"{parent_1.name} welcomed a new child, {child.name}."
-        )
+        if self.other_parent is not None:
+            return (
+                f"{self.birthing_parent.name} and "
+                f"{self.other_parent.name} welcomed a new child, {self.child.name}."
+            )
+        else:
+            return (
+                f"{self.birthing_parent.name} welcomed a new child, {self.child.name}."
+            )
 
 
 class LeaveJob(LifeEvent):
@@ -398,22 +167,11 @@ class LeaveJob(LifeEvent):
             reason=reason,
         )
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        if occupation := subject.try_component(Occupation):
-            return LeaveJob(
-                subject=subject,
-                business=occupation.business,
-                job_role=occupation.job_role.gameobject,
-            )
-
-        return None
-
     def execute(self) -> None:
         business = self.roles["business"]
         subject = self.roles["subject"]
 
-        current_date = self.world.resource_manager.get_resource(SimDate)
+        current_date = self.world.resources.get_resource(SimDate)
 
         business_comp = business.get_component(Business)
 
@@ -560,7 +318,7 @@ class LaidOffFromJob(LifeEvent):
         business = self.roles["business"]
         employee = self.roles["subject"]
 
-        current_date = self.world.resource_manager.get_resource(SimDate)
+        current_date = self.world.resources.get_resource(SimDate)
 
         business_comp = business.get_component(Business)
 

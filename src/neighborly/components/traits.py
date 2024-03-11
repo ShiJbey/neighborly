@@ -6,12 +6,12 @@ This module contains class definitions for implementing the trait system.
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Union
 
 from ordered_set import OrderedSet
 
-from neighborly.ecs import Component, GameObject
-from neighborly.effects.base_types import Effect
+from neighborly.defs.base_types import StatModifierData
+from neighborly.ecs import Component
 
 
 class Trait(Component):
@@ -29,18 +29,21 @@ class Trait(Component):
         "_definition_id",
         "_description",
         "_display_name",
-        "_effects",
+        "_stat_modifiers",
+        "_skill_modifiers",
         "_conflicting_traits",
     )
 
     _definition_id: str
-    """The ID of this tag definition."""
+    """The ID of this trait."""
     _description: str
-    """A short description of the tag."""
+    """A short description of the trait."""
     _display_name: str
-    """The name of this tag printed."""
-    _effects: list[Effect]
-    """Effects to apply when the tag is added."""
+    """The name of this trait."""
+    _stat_modifiers: list[StatModifierData]
+    """Stat modifiers to apply to GameObjects with this trait."""
+    _skill_modifiers: list[StatModifierData]
+    """Skill modifiers to apply to GameObjects with this trait."""
     _conflicting_traits: OrderedSet[str]
     """traits that this trait conflicts with."""
 
@@ -49,68 +52,53 @@ class Trait(Component):
         definition_id: str,
         display_name: str,
         description: str,
-        effects: list[Effect],
+        stat_modifiers: list[StatModifierData],
+        skill_modifiers: list[StatModifierData],
         conflicting_traits: Iterable[str],
     ) -> None:
         super().__init__()
         self._definition_id = definition_id
         self._display_name = display_name
         self._description = description
-        self._effects = effects
+        self._stat_modifiers = stat_modifiers
+        self._skill_modifiers = skill_modifiers
         self._conflicting_traits = OrderedSet(conflicting_traits)
 
     @property
     def definition_id(self) -> str:
-        """The ID of this tag definition."""
+        """The ID of this  trait."""
         return self._definition_id
 
     @property
     def display_name(self) -> str:
-        """The name of this tag printed."""
+        """The name of this trait."""
         return self._display_name
 
     @property
     def description(self) -> str:
-        """A short description of the tag."""
+        """A short description of the trait."""
         return self._description
 
     @property
-    def effects(self) -> Iterable[Effect]:
-        """The effects associated with the trait."""
-        return self._effects
+    def stat_modifiers(self) -> Iterable[StatModifierData]:
+        """The data for initializing stat modifiers."""
+        return self._stat_modifiers
+
+    @property
+    def skill_modifiers(self) -> Iterable[StatModifierData]:
+        """The data for initializing skill stat modifiers."""
+        return self._skill_modifiers
 
     @property
     def conflicting_traits(self) -> Iterable[str]:
         """A set of names of this trait's conflicts."""
         return self._conflicting_traits
 
-    def apply(self, target: GameObject) -> None:
-        """Callback method executed when the trait is added.
-
-        Parameters
-        ----------
-        target
-            The gameobject with the trait
-        """
-        for effect in self._effects:
-            effect.apply(target)
-
-    def remove(self, target: GameObject) -> None:
-        """Callback method executed when the trait is removed.
-
-        Parameters
-        ----------
-        target
-            The gameobject with the trait
-        """
-        for effect in self._effects:
-            effect.remove(target)
-
     def __str__(self) -> str:
         return self.display_name
 
     def __repr__(self) -> str:
-        return f"{type(self)}({self.definition_id})"
+        return f"{type(self)}({self.definition_id!r})"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -121,37 +109,64 @@ class Trait(Component):
         }
 
 
+class TraitInstance:
+    """A record of a trait attached to a GameObject."""
+
+    __slots__ = ("trait", "description", "has_duration", "duration")
+
+    trait: Trait
+    """The trait this is an instance of."""
+    description: str
+    """A description of the trait or the reason why it was applied."""
+    has_duration: bool
+    """Does this trait have a duration that needs to be ticked."""
+    duration: int
+    """Number of simulation ticks before this trait is removed."""
+
+    def __init__(self, trait: Trait, description: str, duration: int) -> None:
+        self.trait = trait
+        self.description = description
+        self.has_duration = duration > 0
+        self.duration = duration
+
+
 class Traits(Component):
     """Tracks the traits attached to a GameObject."""
 
-    __slots__ = "_traits", "_conflicting_traits"
+    __slots__ = ("_traits",)
 
-    _traits: OrderedSet[GameObject]
-    """References to traits attached to the GameObject."""
-    _conflicting_traits: set[str]
-    """IDs of all traits that conflict with the equipped traits."""
+    _traits: dict[str, TraitInstance]
+    """Traits currently applied to the GameObject."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._traits = OrderedSet([])
-        self._conflicting_traits = set()
+        self._traits = dict()
 
     @property
-    def traits(self) -> Iterable[GameObject]:
+    def traits(self) -> Iterable[TraitInstance]:
         """Return an iterator for the trait collection."""
-        return self._traits
+        return self._traits.values()
 
-    def has_trait(self, trait: GameObject) -> bool:
+    def has_trait(self, trait: Union[str, Trait]) -> bool:
         """Check if a trait is present."""
+        if isinstance(trait, Trait):
+            return trait.definition_id in self._traits
+
         return trait in self._traits
 
-    def add_trait(self, trait: GameObject) -> bool:
+    def add_trait(
+        self, trait: Trait, duration: int = -1, description: str = ""
+    ) -> bool:
         """Add a trait to the tracker.
 
         Parameters
         ----------
         trait
             A trait to add.
+        duration
+            The amount of time the trait will be active. (-1 is indefinite).
+        description
+            A description of the trait instance.
 
         Return
         ------
@@ -160,20 +175,16 @@ class Traits(Component):
             if the trait conflict with existing traits.
         """
 
-        if trait in self._traits:
+        if trait.definition_id in self._traits:
             return False
 
         if self.has_conflicting_trait(trait):
             return False
 
-        self._traits.add(trait)
-        self._conflicting_traits = self._conflicting_traits.union(
-            trait.get_component(Trait).conflicting_traits
-        )
-        trait.get_component(Trait).apply(self.gameobject)
+        self._traits[trait.definition_id] = TraitInstance(trait, description, duration)
         return True
 
-    def remove_trait(self, trait: GameObject) -> bool:
+    def remove_trait(self, trait: Union[str, Trait]) -> bool:
         """Remove a trait from the tracker.
 
         Parameters
@@ -186,22 +197,20 @@ class Traits(Component):
         bool
             True if a trait was successfully removed. False otherwise.
         """
-        if trait in self._traits:
-            self._traits.remove(trait)
+        if isinstance(trait, Trait):
+            if trait.definition_id not in self._traits:
+                return False
 
-            self._conflicting_traits = set()
-            for remaining_trait in self._traits:
-                self._conflicting_traits = self._conflicting_traits.union(
-                    remaining_trait.get_component(Trait).conflicting_traits
-                )
-
-            trait.get_component(Trait).remove(self.gameobject)
-
+            del self._traits[trait.definition_id]
             return True
 
-        return False
+        if trait not in self._traits:
+            return False
 
-    def has_conflicting_trait(self, trait: GameObject) -> bool:
+        del self._traits[trait]
+        return True
+
+    def has_conflicting_trait(self, trait: Trait) -> bool:
         """Check if a trait conflicts with current traits.
 
         Parameters
@@ -215,15 +224,14 @@ class Traits(Component):
             True if the trait conflicts with any of the current traits or if any current
             traits conflict with the given trait. False otherwise.
         """
-        if trait.get_component(Trait).definition_id in self._conflicting_traits:
-            return True
+        for trait_instance in self._traits.values():
+            if (
+                trait.definition_id in trait_instance.trait.conflicting_traits
+                or trait_instance.trait.definition_id in trait.definition_id
+            ):
+                return True
 
-        incoming_trait_conflicts = trait.get_component(Trait).conflicting_traits
-
-        return any(
-            t.get_component(Trait).definition_id in incoming_trait_conflicts
-            for t in self._traits
-        )
+        return False
 
     def __str__(self) -> str:
         return f"{type(self).__name__}({list(self._traits)})"
@@ -232,4 +240,4 @@ class Traits(Component):
         return f"{type(self).__name__}({list(self._traits)})"
 
     def to_dict(self) -> dict[str, Any]:
-        return {"traits": [t.uid for t in self._traits]}
+        return {"traits": [t.trait.definition_id for t in self.traits]}

@@ -6,7 +6,6 @@ This module contains built-in systems that help simulations function.
 
 from __future__ import annotations
 
-import logging
 import random
 from collections import defaultdict
 from typing import ClassVar, Optional
@@ -15,26 +14,26 @@ import polars as pl
 
 from neighborly.components.business import (
     Business,
+    JobRole,
     Occupation,
     OpenToPublic,
     PendingOpening,
 )
 from neighborly.components.character import Character, LifeStage, Pregnant, Species
-from neighborly.components.location import (
-    FrequentedBy,
-    FrequentedLocations,
-    LocationPreferences,
-)
+from neighborly.components.location import FrequentedBy, FrequentedLocations
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
+from neighborly.components.skills import Skill
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
+from neighborly.components.traits import Trait, Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
+from neighborly.defs.base_types import CharacterGenerationOptions
 from neighborly.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
     BecomeAdolescentEvent,
@@ -58,16 +57,15 @@ from neighborly.helpers.relationship import (
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait
+from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.libraries import (
     JobRoleLibrary,
     LifeEventLibrary,
+    LocationPreferenceRuleLibrary,
     SkillLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import LifeEvent
-
-_logger = logging.getLogger(__name__)
 
 
 class InitializationSystems(SystemGroup):
@@ -96,18 +94,18 @@ class LateUpdateSystems(SystemGroup):
 
 
 class InitializeSettlementSystem(System):
-    """Creates one or more settlement instances using simulation config settings."""
+    """Creates a settlement instance using simulation config settings."""
 
     def on_update(self, world: World) -> None:
-        config = world.resource_manager.get_resource(SimulationConfig)
+        config = world.resources.get_resource(SimulationConfig)
 
         definition_ids = config.settlement
 
-        rng = world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
         if isinstance(definition_ids, str):
-            if definition_ids:
-                create_settlement(world, definition_ids)
+            create_settlement(world, definition_ids)
+
         elif len(definition_ids) > 0:
             choice = rng.choice(definition_ids)
             create_settlement(world, choice)
@@ -143,7 +141,7 @@ class SpawnResidentialBuildingsSystem(System):
         if len(eligible_entries) == 0:
             return None
 
-        rng = district.gameobject.world.resource_manager.get_resource(random.Random)
+        rng = district.gameobject.world.resources.get_resource(random.Random)
 
         return rng.choices(
             population=eligible_entries["name"].to_list(),
@@ -178,7 +176,7 @@ class SpawnResidentialBuildingsSystem(System):
         if len(eligible_entries) == 0:
             return None
 
-        rng = district.gameobject.world.resource_manager.get_resource(random.Random)
+        rng = district.gameobject.world.resources.get_resource(random.Random)
 
         return rng.choices(
             population=eligible_entries["name"].to_list(),
@@ -232,7 +230,7 @@ class SpawnNewResidentSystem(System):
     CHANCE_NEW_RESIDENT: ClassVar[float] = 0.5
 
     def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
         # Find vacant residences
         for _, (_, residence, _) in world.get_components(
@@ -262,7 +260,11 @@ class SpawnNewResidentSystem(System):
             )[0]
 
             character = create_character(
-                world, character_definition_id, life_stage=character_life_stage
+                world,
+                CharacterGenerationOptions(
+                    definition_id=character_definition_id,
+                    life_stage=character_life_stage,
+                ),
             )
 
             JoinSettlementEvent(
@@ -305,7 +307,7 @@ class SpawnNewBusinessesSystem(System):
         if len(eligible_entries) == 0:
             return None
 
-        rng = district.gameobject.world.resource_manager.get_resource(random.Random)
+        rng = district.gameobject.world.resources.get_resource(random.Random)
 
         return rng.choices(
             population=eligible_entries["name"].to_list(),
@@ -334,18 +336,57 @@ class SpawnNewBusinessesSystem(System):
                 business.add_component(PendingOpening())
 
 
+class InstantiateSpeciesSystem(System):
+    """Instantiates all the trait definitions within the TraitLibrary."""
+
+    def on_update(self, world: World) -> None:
+        trait_library = world.resources.get_resource(TraitLibrary)
+
+        for trait_id in trait_library.trait_ids:
+            trait_def = trait_library.get_definition(trait_id)
+            trait = world.gameobjects.spawn_gameobject(name=trait_def.display_name)
+            trait.add_component(
+                Trait(
+                    definition_id=trait_def.definition_id,
+                    display_name=trait_def.display_name,
+                    description=trait_def.description,
+                    stat_modifiers=trait_def.stat_modifiers,
+                    skill_modifiers=trait_def.skill_modifiers,
+                    conflicting_traits=trait_def.conflicts_with,
+                )
+            )
+            trait.add_component(
+                Species(
+                    adolescent_age=trait_def.adolescent_age,
+                    young_adult_age=trait_def.young_adult_age,
+                    adult_age=trait_def.adult_age,
+                    senior_age=trait_def.senior_age,
+                    lifespan=trait_def.lifespan,
+                    can_physically_age=trait_def.can_physically_age,
+                )
+            )
+            trait_library.add_trait(trait)
+
+
 class InstantiateTraitsSystem(System):
     """Instantiates all the trait definitions within the TraitLibrary."""
 
     def on_update(self, world: World) -> None:
-        trait_library = world.resource_manager.get_resource(TraitLibrary)
+        trait_library = world.resources.get_resource(TraitLibrary)
 
         for trait_id in trait_library.trait_ids:
             trait_def = trait_library.get_definition(trait_id)
-            trait = world.gameobject_manager.spawn_gameobject(
-                name=trait_def.display_name
+            trait = world.gameobjects.spawn_gameobject(name=trait_def.display_name)
+            trait.add_component(
+                Trait(
+                    definition_id=trait_def.definition_id,
+                    display_name=trait_def.display_name,
+                    description=trait_def.description,
+                    stat_modifiers=trait_def.stat_modifiers,
+                    skill_modifiers=trait_def.skill_modifiers,
+                    conflicting_traits=trait_def.conflicts_with,
+                )
             )
-            trait_def.initialize(trait)
             trait_library.add_trait(trait)
 
 
@@ -353,14 +394,18 @@ class InstantiateSkillsSystem(System):
     """Instantiates all the skill definitions within the SkillLibrary."""
 
     def on_update(self, world: World) -> None:
-        skill_library = world.resource_manager.get_resource(SkillLibrary)
+        skill_library = world.resources.get_resource(SkillLibrary)
 
         for skill_id in skill_library.skill_ids:
             skill_def = skill_library.get_definition(skill_id)
-            skill = world.gameobject_manager.spawn_gameobject(
-                name=skill_def.display_name
+            skill = world.gameobjects.spawn_gameobject(name=skill_def.display_name)
+            skill.add_component(
+                Skill(
+                    definition_id=skill_def.definition_id,
+                    display_name=skill_def.display_name,
+                    description=skill_def.description,
+                )
             )
-            skill_def.initialize(skill)
             skill_library.add_skill(skill)
 
 
@@ -368,14 +413,23 @@ class InstantiateJobRolesSystem(System):
     """Instantiates all the job role definitions within the TraitLibrary."""
 
     def on_update(self, world: World) -> None:
-        job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
+        job_role_library = world.resources.get_resource(JobRoleLibrary)
 
         for role_id in job_role_library.job_role_ids:
             role_def = job_role_library.get_definition(role_id)
-            job_role = world.gameobject_manager.spawn_gameobject(
-                name=role_def.display_name
+            job_role = world.gameobjects.spawn_gameobject(name=role_def.display_name)
+            job_role.add_component(
+                JobRole(
+                    definition_id=role_def.definition_id,
+                    display_name=role_def.display_name,
+                    description=role_def.description,
+                    job_level=role_def.job_level,
+                    requirements=role_def.requirements,
+                    stat_modifiers=role_def.stat_modifiers,
+                    periodic_stat_boosts=role_def.periodic_stat_boosts,
+                    periodic_skill_boosts=role_def.periodic_skill_boosts,
+                )
             )
-            role_def.initialize(job_role)
             job_role_library.add_role(job_role)
 
 
@@ -419,7 +473,9 @@ class UpdateFrequentedLocationSystem(System):
             A list of tuples containing location scores and the location, sorted in
             descending order
         """
-        location_prefs = character.get_component(LocationPreferences)
+        location_prefs = character.world.resources.get_resource(
+            LocationPreferenceRuleLibrary
+        )
 
         scores: list[float] = []
         locations: list[GameObject] = []
@@ -437,16 +493,13 @@ class UpdateFrequentedLocationSystem(System):
     def on_update(self, world: World) -> None:
         # Frequented locations are sampled from the current settlement
         # that the character belongs to
-        rng = world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
         for _, (
             frequented_locations,
-            _,
             character,
             _,
-        ) in world.get_components(
-            (FrequentedLocations, LocationPreferences, Character, Active)
-        ):
+        ) in world.get_components((FrequentedLocations, Character, Active)):
             if character.life_stage < LifeStage.YOUNG_ADULT:
                 continue
 
@@ -523,7 +576,7 @@ class PassiveReputationChange(System):
     CHANCE_OF_CHANGE: ClassVar[float] = 0.05
 
     def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
         for _, (
             relationship,
@@ -550,7 +603,7 @@ class PassiveRomanceChange(System):
     CHANCE_OF_CHANGE: ClassVar[float] = 0.05
 
     def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
         for _, (
             relationship,
@@ -584,7 +637,7 @@ class ChildBirthSystem(System):
     """Spawns new children when pregnant characters reach their due dates."""
 
     def on_update(self, world: World) -> None:
-        current_date = world.resource_manager.get_resource(SimDate)
+        current_date = world.resources.get_resource(SimDate)
 
         for _, (character, pregnancy, _) in world.get_components(
             (Character, Pregnant, Active)
@@ -694,8 +747,8 @@ class LifeEventSystem(System):
     """The minimum required probability for an event to be considered for execution."""
 
     def on_update(self, world: World) -> None:
-        life_event_library = world.resource_manager.get_resource(LifeEventLibrary)
-        rng = world.resource_manager.get_resource(random.Random)
+        life_event_library = world.resources.get_resource(LifeEventLibrary)
+        rng = world.resources.get_resource(random.Random)
 
         for _, (character, _) in world.get_components((Character, Active)):
             life_event_choices: list[LifeEvent] = []
@@ -744,7 +797,7 @@ class MeetNewPeopleSystem(System):
     """
 
     def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
         for _, (character, _, frequented_locs) in world.get_components(
             (Character, Active, FrequentedLocations)
@@ -764,7 +817,7 @@ class MeetNewPeopleSystem(System):
                             candidate_scores[other] += 1
 
                 if candidate_scores:
-                    rng = world.resource_manager.get_resource(random.Random)
+                    rng = world.resources.get_resource(random.Random)
 
                     acquaintance = rng.choices(
                         list(candidate_scores.keys()),
@@ -802,3 +855,16 @@ class JobRoleMonthlyEffectsSystem(System):
         ):
             for effect in occupation.job_role.monthly_effects:
                 effect.apply(character.gameobject)
+
+
+class TickTraitsSystem(System):
+    def on_update(self, world: World) -> None:
+        for _, (traits,) in world.get_components((Traits,)):
+            trait_instances = list(traits.traits)
+
+            for instance in trait_instances:
+                if instance.has_duration:
+                    instance.duration -= 1
+
+                    if instance.duration <= 0:
+                        remove_trait(traits.gameobject, instance.trait.definition_id)
