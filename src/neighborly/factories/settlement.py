@@ -49,6 +49,8 @@ class SettlementFactory:
         self.initialize_name(settlement)
         self.initialize_districts(settlement)
 
+        raise NotImplementedError()
+
     def initialize_name(self, settlement: GameObject) -> None:
         """Generates a name for the settlement."""
         tracery = settlement.world.resources.get_resource(Tracery)

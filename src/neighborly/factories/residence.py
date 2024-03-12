@@ -8,7 +8,7 @@ from neighborly.ecs import GameObject, World
 class ResidenceFactory:
     """A default implementation of a Residence Definition."""
 
-    def instantiate(self, world: World, district: GameObject) -> None:
+    def instantiate(self, world: World, district: GameObject) -> GameObject:
 
         building = ResidentialBuilding(district=district)
         residence.add_component(building)
@@ -27,3 +27,5 @@ class ResidenceFactory:
             )
             building.add_residential_unit(residential_unit)
             residential_unit.add_component(Vacant())
+
+        raise NotImplementedError()

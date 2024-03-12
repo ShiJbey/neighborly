@@ -1,53 +1,68 @@
 [
   {
     "definition_id": "person",
-    "spawn_frequency": 1,
-    "species": [
-      "human"
+    "species": "human",
+    "stats": [
+      {
+        "stat": "confidence"
+      },
+      {
+        "stat": "intelligence"
+      },
+      {
+        "stat": "reliability"
+      },
+      {
+        "stat": "attractiveness"
+      },
+      {
+        "stat": "sociability"
+      },
+      {
+        "stat": "stewardship"
+      },
+      {
+        "stat": "fertility"
+      },
+      {
+        "stat": "boldness"
+      }
     ],
-    "gender": [
-      "Male",
-      "Female"
-    ],
-    "max_traits": 3
+    "variants": [
+      {
+        "variant_id": "male",
+        "name_factory": "masculine_names",
+        "sex": "male"
+      },
+      {
+        "variant_id": "female",
+        "name_factory": "feminine_names",
+        "sex": "female"
+      }
+    ]
   },
   {
     "definition_id": "farmer",
-    "spawn_frequency": 1,
-    "species": [
-      "human"
+    "extends": [
+      "person"
     ],
-    "gender": [
-      "Male",
-      "Female"
-    ],
-    "max_traits": 3,
-    "skills": {
-      "farming": "50 - 150"
-    }
+    "skills": [
+      {
+        "skill": "farming",
+        "value_range": "50 - 150"
+      }
+    ]
   },
   {
     "definition_id": "merchant",
-    "spawn_frequency": 1,
-    "species": [
-      "human"
-    ],
-    "gender": [
-      "Male",
-      "Female"
-    ],
-    "max_traits": 3
+    "extends": [
+      "person"
+    ]
   },
   {
     "definition_id": "nobility",
-    "spawn_frequency": 1,
-    "species": [
-      "human"
-    ],
-    "gender": [
-      "Male",
-      "Female"
-    ],
-    "max_traits": 3
+    "extends": [
+      "person"
+    ]
   }
 ]

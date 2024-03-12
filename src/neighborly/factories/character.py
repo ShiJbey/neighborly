@@ -43,7 +43,7 @@ class CharacterFactory:
         world: World,
         character_def: CharacterDef,
         options: CharacterGenerationOptions,
-    ) -> None:
+    ) -> GameObject:
         """Generate a new character."""
 
         character = world.gameobjects.spawn_gameobject()
@@ -76,6 +76,8 @@ class CharacterFactory:
         self._initialize_character_stats(character, options)
         self._initialize_traits(character, options)
         self._initialize_character_skills(character)
+
+        raise NotImplementedError()
 
     def _initialize_name(
         self, character: GameObject, options: CharacterGenerationOptions

@@ -26,12 +26,14 @@ from neighborly.components.residence import (
     ResidentialUnit,
 )
 from neighborly.components.settlement import District, Settlement
+from neighborly.components.shared import PersonalEventHistory
 from neighborly.components.skills import Skill, Skills
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
-from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
+from neighborly.ecs.component import Active
+from neighborly.ecs.errors import GameObjectNotFoundError
+from neighborly.ecs.game_object import GameObject
 from neighborly.helpers.stats import get_stat
-from neighborly.life_event import PersonalEventHistory
 from neighborly.simulation import Simulation
 
 

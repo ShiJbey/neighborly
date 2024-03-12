@@ -185,14 +185,14 @@ def load_job_roles(
 
     # This is a single definition
     if isinstance(data, dict):
-        definition = JobRoleDef.parse_obj(data)
+        definition = JobRoleDef.model_validate(data)
         job_role_library.add_definition(definition)
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            definition = JobRoleDef.parse_obj(entry)
+            definition = JobRoleDef.model_validate(entry)
             job_role_library.add_definition(definition)
 
     # This condition should never be reached, but this is here as a sanity check.
@@ -253,7 +253,7 @@ def load_traits(
     def _try_parse_trait_data(data: dict[str, Any]) -> TraitDef:
         """Attempts to parse the data into a trait definition."""
         try:
-            definition = TraitDef.parse_obj(data)
+            definition = TraitDef.model_validate(data)
             trait_library.add_definition(definition)
 
         except pydantic.ValidationError as err:
@@ -284,7 +284,7 @@ def load_traits(
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            definition = TraitDef.parse_obj(entry)
+            definition = TraitDef.model_validate(entry)
             trait_library.add_definition(definition)
 
     # This condition should never be reached, but this is here as a sanity check.
@@ -332,7 +332,7 @@ def load_skills(
     # This is a single definition
     if isinstance(data, dict):
         try:
-            definition = SkillDef.parse_obj(data)
+            definition = SkillDef.model_validate(data)
         except pydantic.ValidationError as err:
             raise RuntimeError(
                 f"""
@@ -348,7 +348,7 @@ def load_skills(
         data = cast(list[dict[str, Any]], data)
         for entry in data:
             try:
-                definition = SkillDef.parse_obj(entry)
+                definition = SkillDef.model_validate(entry)
             except pydantic.ValidationError as err:
                 raise RuntimeError(
                     f"""

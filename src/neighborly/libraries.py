@@ -299,44 +299,37 @@ class CharacterLibrary:
 
 
 class JobRoleLibrary:
-    """Manages trait definitions and trait instances."""
+    """The collection of job role definitions and instances."""
 
     _slots__ = (
         "definitions",
-        "job_role_instances",
+        "instances",
     )
 
-    job_role_instances: dict[str, GameObject]
+    instances: dict[str, GameObject]
     """IDs mapped to instances of job roles."""
     definitions: dict[str, JobRoleDef]
     """Definition instances added to the library."""
 
     def __init__(self) -> None:
-        self.job_role_instances = {}
+        self.instances = {}
         self.definitions = {}
-
-    @property
-    def job_role_ids(self) -> Iterable[str]:
-        """The definition IDs of instantiated job roles."""
-        return self.definitions.keys()
 
     def get_role(self, job_role_id: str) -> GameObject:
         """Get a job role instance given an ID."""
-        return self.job_role_instances[job_role_id]
+        return self.instances[job_role_id]
 
     def add_role(self, job_role: GameObject) -> None:
         """Add a job role instance to the library."""
-        self.job_role_instances[job_role.get_component(JobRole).definition_id] = (
-            job_role
-        )
+        self.instances[job_role.get_component(JobRole).definition_id] = job_role
 
     def get_definition(self, definition_id: str) -> JobRoleDef:
-        """Get a definition instance from the library."""
+        """Get a definition from the library."""
         return self.definitions[definition_id]
 
-    def add_definition(self, job_role_def: JobRoleDef) -> None:
-        """Add a definition instance to the library."""
-        self.definitions[job_role_def.definition_id] = job_role_def
+    def add_definition(self, definition: JobRoleDef) -> None:
+        """Add a definition to the library."""
+        self.definitions[definition.definition_id] = definition
 
 
 class BusinessLibrary:

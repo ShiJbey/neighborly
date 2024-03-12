@@ -1,8 +1,13 @@
+"""Tests for Trait-related functionality.
+
+"""
+
 import pathlib
 
-from neighborly.components.traits import Trait
-from neighborly.defs.base_types import CharacterGenerationOptions
-from neighborly.helpers.character import create_character
+from neighborly.components.skills import Skills
+from neighborly.components.stats import Stats
+from neighborly.components.traits import Trait, Traits
+from neighborly.defs.base_types import TraitDef
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.libraries import TraitLibrary
@@ -18,13 +23,14 @@ def test_trait_instantiation() -> None:
 
     sim = Simulation()
 
-    default_definition_types.load_plugin(sim)
-    default_traits.load_plugin(sim)
+    library = sim.world.resources.get_resource(TraitLibrary)
+
+    library.add_definition(
+        TraitDef(definition_id="flirtatious", display_name="Flirtatious")
+    )
 
     # Traits are initialized at the start of the simulation
     sim.initialize()
-
-    library = sim.world.resources.get_resource(TraitLibrary)
 
     trait = library.get_trait("flirtatious")
 
@@ -45,8 +51,8 @@ def test_add_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    character = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    character = sim.world.gameobjects.spawn_gameobject(
+        components=[Traits(), Stats(), Skills()]
     )
 
     assert has_trait(character, "flirtatious") is False
@@ -70,10 +76,9 @@ def test_remove_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.step()
 
-    character = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    character = sim.world.gameobjects.spawn_gameobject(
+        components=[Traits(), Stats(), Skills()]
     )
-
     assert has_trait(character, "flirtatious") is False
 
     add_trait(character, "flirtatious")
@@ -99,8 +104,8 @@ def test_add_remove_trait_effects() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    farmer = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    farmer = sim.world.gameobjects.spawn_gameobject(
+        components=[Traits(), Stats(), Skills()]
     )
 
     get_stat(farmer, "sociability").base_value = 0
@@ -130,8 +135,8 @@ def test_try_add_conflicting_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    character = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
+    character = sim.world.gameobjects.spawn_gameobject(
+        components=[Traits(), Stats(), Skills()]
     )
 
     success = add_trait(character, "skeptical")

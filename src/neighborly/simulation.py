@@ -17,13 +17,13 @@ from neighborly.data_collection import DataCollectionSystems, DataTables
 from neighborly.datetime import SimDate
 from neighborly.ecs import World
 from neighborly.effects.effects import (
-    AddTrait,
-    RemoveTrait,
+    AddRelationshipStatBuff,
     AddRelationshipTrait,
-    RemoveRelationshipTrait,
     AddSkillBuff,
     AddStatBuff,
-    AddRelationshipStatBuff
+    AddTrait,
+    RemoveRelationshipTrait,
+    RemoveTrait,
 )
 from neighborly.libraries import (
     BusinessLibrary,
@@ -31,13 +31,14 @@ from neighborly.libraries import (
     DistrictLibrary,
     EffectLibrary,
     JobRoleLibrary,
+    LifeEventConsiderationLibrary,
     LifeEventLibrary,
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import EventConsiderations, GlobalEventHistory
+from neighborly.life_event import GlobalEventHistory
 from neighborly.systems import (
     AgingSystem,
     ChildBirthSystem,
@@ -112,7 +113,7 @@ class Simulation:
         self.world.resources.add_resource(LifeEventLibrary())
         self.world.resources.add_resource(Tracery(self._config.seed))
         self.world.resources.add_resource(GlobalEventHistory())
-        self.world.resources.add_resource(EventConsiderations())
+        self.world.resources.add_resource(LifeEventConsiderationLibrary())
 
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
@@ -253,8 +254,7 @@ class Simulation:
         serialized_data = {
             "seed": self.config.seed,
             "gameobjects": {
-                str(g.uid): g.to_dict()
-                for g in self.world.gameobjects.gameobjects
+                str(g.uid): g.to_dict() for g in self.world.gameobjects.gameobjects
             },
             "events": self.world.resources.get_resource(GlobalEventHistory).to_dict(),
             "data_tables": self.world.resources.get_resource(DataTables).to_dict(),

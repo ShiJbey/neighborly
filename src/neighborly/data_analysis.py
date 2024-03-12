@@ -21,7 +21,7 @@ from neighborly.components.location import FrequentedLocations
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.skills import Skill, Skills
+from neighborly.components.skills import Skills
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
 from neighborly.data_collection import DataTables
@@ -141,14 +141,14 @@ def _tabulate_event_data(sim: Simulation, all_tables: dict[str, pl.DataFrame]) -
             }
         )
 
-        for role in event.roles:
-            roles.append(
-                {
-                    "event_id": id(event),
-                    "role": role.name,
-                    "gameobject": role.gameobject.uid,
-                }
-            )
+        # for role in event.roles:
+        #     roles.append(
+        #         {
+        #             "event_id": id(event),
+        #             "role": role.name,
+        #             "gameobject": role.gameobject.uid,
+        #         }
+        #     )
 
     if events:
         all_tables["events"] = pl.from_dicts(
@@ -377,8 +377,8 @@ def _build_skills_table(components: list[Component]) -> pl.DataFrame:
             data.append(
                 {
                     "gameobject": skills.gameobject.uid,
-                    "skill_uid": skill.uid,
-                    "skill": skill.get_component(Skill).display_name,
+                    "skill_uid": skill,
+                    "skill": skill,
                     "level": stat.value,
                 }
             )
@@ -398,8 +398,8 @@ def _build_traits_table(components: list[Component]) -> pl.DataFrame:
             data.append(
                 {
                     "gameobject": traits.gameobject.uid,
-                    "trait_uid": trait.uid,
-                    "trait": trait.get_component(Trait).display_name,
+                    "trait_uid": trait.trait.definition_id,
+                    "trait": trait.trait.display_name,
                 }
             )
 

@@ -65,6 +65,8 @@ class DistrictFactory:
         self._initialize_character_spawn_table(district)
         self._initialize_residence_spawn_table(district)
 
+        raise NotImplementedError()
+
     def _initialize_name(self, district: GameObject) -> None:
         """Generates a name for the district."""
         tracery = district.world.resources.get_resource(Tracery)

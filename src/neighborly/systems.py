@@ -33,7 +33,8 @@ from neighborly.components.spawn_table import (
 from neighborly.components.traits import Trait, Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
-from neighborly.defs.base_types import CharacterGenerationOptions
+from neighborly.definition_compiler import compile_definitions
+from neighborly.defs.base_types import JobRoleDef, SkillDef, TraitDef
 from neighborly.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
     BecomeAdolescentEvent,
@@ -46,6 +47,7 @@ from neighborly.events.defaults import (
     HaveChildEvent,
     JoinSettlementEvent,
 )
+from neighborly.factories.character import CharacterGenerationOptions
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
 from neighborly.helpers.relationship import (
@@ -63,6 +65,7 @@ from neighborly.libraries import (
     LifeEventLibrary,
     LocationPreferenceRuleLibrary,
     SkillLibrary,
+    SpeciesLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import LifeEvent
@@ -340,32 +343,31 @@ class InstantiateSpeciesSystem(System):
     """Instantiates all the trait definitions within the TraitLibrary."""
 
     def on_update(self, world: World) -> None:
-        trait_library = world.resources.get_resource(TraitLibrary)
+        species_library = world.resources.get_resource(SpeciesLibrary)
 
-        for trait_id in trait_library.trait_ids:
-            trait_def = trait_library.get_definition(trait_id)
-            trait = world.gameobjects.spawn_gameobject(name=trait_def.display_name)
-            trait.add_component(
+        for _, species_def in species_library.definitions.items():
+            species = world.gameobjects.spawn_gameobject(name=species_def.display_name)
+            species.add_component(
                 Trait(
-                    definition_id=trait_def.definition_id,
-                    display_name=trait_def.display_name,
-                    description=trait_def.description,
-                    stat_modifiers=trait_def.stat_modifiers,
-                    skill_modifiers=trait_def.skill_modifiers,
-                    conflicting_traits=trait_def.conflicts_with,
+                    definition_id=species_def.definition_id,
+                    display_name=species_def.display_name,
+                    description=species_def.description,
+                    stat_modifiers=species_def.stat_modifiers,
+                    skill_modifiers=species_def.skill_modifiers,
+                    conflicting_traits=species_def.conflicts_with,
                 )
             )
-            trait.add_component(
+            species.add_component(
                 Species(
-                    adolescent_age=trait_def.adolescent_age,
-                    young_adult_age=trait_def.young_adult_age,
-                    adult_age=trait_def.adult_age,
-                    senior_age=trait_def.senior_age,
-                    lifespan=trait_def.lifespan,
-                    can_physically_age=trait_def.can_physically_age,
+                    adolescent_age=species_def.adolescent_age,
+                    young_adult_age=species_def.young_adult_age,
+                    adult_age=species_def.adult_age,
+                    senior_age=species_def.senior_age,
+                    lifespan=species_def.lifespan,
+                    can_physically_age=species_def.can_physically_age,
                 )
             )
-            trait_library.add_trait(trait)
+            species_library.add_species(species)
 
 
 class InstantiateTraitsSystem(System):
@@ -374,8 +376,16 @@ class InstantiateTraitsSystem(System):
     def on_update(self, world: World) -> None:
         trait_library = world.resources.get_resource(TraitLibrary)
 
-        for trait_id in trait_library.trait_ids:
-            trait_def = trait_library.get_definition(trait_id)
+        # Compile the loaded definitions
+        compiled_defs = compile_definitions(
+            TraitDef, trait_library.definitions.values()
+        )
+
+        # Clear out the unprocessed ones
+        trait_library.definitions.clear()
+
+        for trait_def in compiled_defs:
+            trait_library.add_definition(trait_def)
             trait = world.gameobjects.spawn_gameobject(name=trait_def.display_name)
             trait.add_component(
                 Trait(
@@ -396,8 +406,16 @@ class InstantiateSkillsSystem(System):
     def on_update(self, world: World) -> None:
         skill_library = world.resources.get_resource(SkillLibrary)
 
-        for skill_id in skill_library.skill_ids:
-            skill_def = skill_library.get_definition(skill_id)
+        # Compile the loaded definitions
+        compiled_defs = compile_definitions(
+            SkillDef, skill_library.definitions.values()
+        )
+
+        # Clear out the unprocessed ones
+        skill_library.definitions.clear()
+
+        for skill_def in compiled_defs:
+            skill_library.add_definition(skill_def)
             skill = world.gameobjects.spawn_gameobject(name=skill_def.display_name)
             skill.add_component(
                 Skill(
@@ -415,8 +433,15 @@ class InstantiateJobRolesSystem(System):
     def on_update(self, world: World) -> None:
         job_role_library = world.resources.get_resource(JobRoleLibrary)
 
-        for role_id in job_role_library.job_role_ids:
-            role_def = job_role_library.get_definition(role_id)
+        # Compile the loaded definitions
+        compiled_defs = compile_definitions(
+            JobRoleDef, job_role_library.definitions.values()
+        )
+
+        # Clear out the unprocessed ones
+        job_role_library.definitions.clear()
+
+        for role_def in compiled_defs:
             job_role = world.gameobjects.spawn_gameobject(name=role_def.display_name)
             job_role.add_component(
                 JobRole(
@@ -858,6 +883,8 @@ class JobRoleMonthlyEffectsSystem(System):
 
 
 class TickTraitsSystem(System):
+    """Update trait durations."""
+
     def on_update(self, world: World) -> None:
         for _, (traits,) in world.get_components((Traits,)):
             trait_instances = list(traits.traits)

@@ -3,6 +3,7 @@
 """
 
 import pydantic
+from neighborly.ecs.game_object import GameObject
 
 from neighborly.ecs.world import World
 
@@ -24,7 +25,7 @@ class BusinessFactory:
         world: World
         district: GameObject,
         options: BusinessGenerationOptions,
-    ) -> None:
+    ) -> GameObject:
 
         library = world.resources.get_resource(BusinessLibrary)
 
@@ -65,6 +66,8 @@ class BusinessFactory:
 
         for trait in self.traits:
             add_trait(business, trait)
+
+        raise NotImplementedError()
 
     def initialize_name(self, business: GameObject) -> None:
         """Generates a name for the business."""
