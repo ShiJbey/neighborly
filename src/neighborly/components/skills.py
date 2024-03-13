@@ -4,10 +4,23 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator, Mapping
+from typing import Any
 
-from neighborly.components.stats import Stat
+import attrs
+
+from neighborly.components.stats import OnStatUpdate, Stat
 from neighborly.ecs import Component
+from neighborly.ecs.event import Event
+from neighborly.ecs.game_object import GameObject
+
+
+@attrs.define
+class OnSkillChange(Event):
+    """Event emitted when a skill value changes."""
+
+    gameobject: GameObject
+    skill: SkillInstance
+    value: float
 
 
 class Skill(Component):
@@ -63,22 +76,37 @@ class Skill(Component):
         }
 
 
+class SkillInstance:
+    """A record of a skill attached to a GameObject."""
+
+    __slots__ = (
+        "skill",
+        "stat",
+    )
+
+    skill: Skill
+    """The skill this is an instance of."""
+    stat: Stat
+    """The current stat for this skill."""
+    data: dict[str, Any]
+    """General key-value data store for the trait."""
+
+    def __init__(self, skill: Skill, value: float = 0) -> None:
+        self.skill = skill
+        self.stat = Stat(value, (0, 250), is_discrete=True)
+
+
 class Skills(Component):
     """Tracks skills stats for a character."""
 
-    __slots__ = ("_skills",)
+    __slots__ = ("skills",)
 
-    _skills: dict[str, Stat]
-    """Skill names mapped to scores."""
+    skills: dict[str, SkillInstance]
+    """This GameObjects skill stats."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._skills = {}
-
-    @property
-    def skills(self) -> Mapping[str, Stat]:
-        """Get skills."""
-        return self._skills
+        self.skills = {}
 
     def has_skill(self, skill: str) -> bool:
         """Check if a character has a skill.
@@ -93,16 +121,20 @@ class Skills(Component):
         bool
             True if the skill is present, False otherwise.
         """
-        return skill in self._skills
+        return skill in self.skills
 
-    def add_skill(self, skill: str, base_value: float = 0.0) -> None:
+    def add_skill(self, skill: Skill, base_value: float = 0.0) -> None:
         """Add a new skill to the skill tracker."""
-        if skill not in self._skills:
-            self._skills[skill] = Stat(base_value=base_value, bounds=(0, 255))
+        if skill.definition_id not in self.skills:
+            skill_instance = SkillInstance(skill, base_value)
+            skill_instance.stat.on_value_change.add_listener(
+                self._handle_skill_change(skill.definition_id)
+            )
+            self.skills[skill.definition_id] = skill_instance
         else:
             return
 
-    def get_skill(self, skill: str) -> Stat:
+    def get_skill(self, skill: str) -> SkillInstance:
         """Get the stat for a skill.
 
         Parameters
@@ -110,22 +142,29 @@ class Skills(Component):
         skill
             The skill to get the stat for.
         """
-        return self._skills[skill]
+        return self.skills[skill]
+
+    def _handle_skill_change(self, skill_id: str):
+        """Wrapper function to capture skill ID for actual handler."""
+
+        def event_handler(_: object, event: OnStatUpdate):
+            self.gameobject.world.events.dispatch_event(
+                OnSkillChange(
+                    gameobject=self.gameobject,
+                    skill=self.get_skill(skill_id),
+                    value=event.value,
+                )
+            )
+
+        return event_handler
 
     def __str__(self) -> str:
-        skill_value_pairs = {
-            skill: stat.value for skill, stat in self._skills.items()
-        }
-        return f"{type(self).__name__}({skill_value_pairs})"
+        skill_value_pairs = {k: v.stat.value for k, v in self.skills.items()}
+        return f"Skills({skill_value_pairs})"
 
     def __repr__(self) -> str:
-        skill_value_pairs = {
-            skill: stat.value for skill, stat in self._skills.items()
-        }
-        return f"{type(self).__name__}({skill_value_pairs})"
-
-    def __iter__(self) -> Iterator[tuple[str, Stat]]:
-        return iter(self._skills.items())
+        skill_value_pairs = {k: v.stat.value for k, v in self.skills.items()}
+        return f"Skills({skill_value_pairs})"
 
     def to_dict(self) -> dict[str, Any]:
-        return {**{skill: stat.value for skill, stat in self._skills.items()}}
+        return {k: v.stat.value for k, v in self.skills.items()}

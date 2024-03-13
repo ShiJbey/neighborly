@@ -4,47 +4,31 @@
 
 from abc import ABC, abstractmethod
 
-import pydantic
-
-from neighborly.components.character import Character, Sex
+from neighborly.components.character import Character, LifeStage, Sex, Species
 from neighborly.components.location import FrequentedLocations
 from neighborly.components.relationship import Relationships
 from neighborly.components.shared import Agent, PersonalEventHistory
 from neighborly.components.skills import Skills
-from neighborly.components.stats import Stats
+from neighborly.components.stats import Stat, Stats
 from neighborly.components.traits import Traits
-from neighborly.defs.base_types import CharacterDef
+from neighborly.defs.base_types import CharacterDef, CharacterGenOptions
 from neighborly.ecs import World
 from neighborly.ecs.game_object import GameObject
-from neighborly.libraries import TraitLibrary
+from neighborly.helpers.skills import add_skill
+from neighborly.helpers.stats import add_stat
+from neighborly.helpers.traits import add_trait
+from neighborly.libraries import SkillLibrary, TraitLibrary
 from neighborly.tracery import Tracery
 
 
-class CharacterGenerationOptions(pydantic.BaseModel):
-    """Generation parameters for creating characters."""
-
-    definition_id: str
-    """The definition to use for generation."""
-    first_name: str = ""
-    """The character's first name."""
-    last_name: str = ""
-    """The character's last name/surname/family name."""
-    age: int = -1
-    """The character's age (overrides life_stage)."""
-    life_stage: str = ""
-    """The life stage of the character."""
-
-
-class CharacterFactory:
+class DefaultCharacterDef(CharacterDef):
     """Generates characters from definitions."""
 
     def instantiate(
         self,
         world: World,
-        character_def: CharacterDef,
-        options: CharacterGenerationOptions,
+        options: CharacterGenOptions,
     ) -> GameObject:
-        """Generate a new character."""
 
         character = world.gameobjects.spawn_gameobject()
         character.metadata["definition_id"] = options.definition_id
@@ -66,7 +50,7 @@ class CharacterFactory:
             Character(
                 first_name="",
                 last_name="",
-                sex=Sex[character_def.sex],
+                sex=Sex[self.sex],
                 species=species,
             )
         )
@@ -80,7 +64,7 @@ class CharacterFactory:
         raise NotImplementedError()
 
     def _initialize_name(
-        self, character: GameObject, options: CharacterGenerationOptions
+        self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Initialize the character's name.
 
@@ -92,36 +76,35 @@ class CharacterFactory:
         character_comp = character.get_component(Character)
 
         character_comp.first_name = self.generate_first_name(
-            character, default_first_name
+            character, options.first_name
         )
-        character_comp.last_name = self.generate_last_name(character, default_last_name)
+        character_comp.last_name = self.generate_last_name(character, options.last_name)
 
     def _initialize_character_age(
-        self, character: GameObject, options: CharacterGenerationOptions
+        self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Initializes the characters age."""
-        rng = character.world.resources.get_resource(random.Random)
-        life_stage: Optional[LifeStage] = kwargs.get("life_stage")
+        rng = character.world.rng
         character_comp = character.get_component(Character)
         species = character.get_component(Character).species.get_component(Species)
 
-        if life_stage is not None:
-            character_comp.life_stage = life_stage
+        if options.life_stage:
+            character_comp.life_stage = LifeStage[options.life_stage]
 
             # Generate an age for this character
-            if life_stage == LifeStage.CHILD:
+            if character_comp.life_stage == LifeStage.CHILD:
                 character_comp.age = rng.randint(0, species.adolescent_age - 1)
-            elif life_stage == LifeStage.ADOLESCENT:
+            elif character_comp.life_stage == LifeStage.ADOLESCENT:
                 character_comp.age = rng.randint(
                     species.adolescent_age,
                     species.young_adult_age - 1,
                 )
-            elif life_stage == LifeStage.YOUNG_ADULT:
+            elif character_comp.life_stage == LifeStage.YOUNG_ADULT:
                 character_comp.age = rng.randint(
                     species.young_adult_age,
                     species.adult_age - 1,
                 )
-            elif life_stage == LifeStage.ADULT:
+            elif character_comp.life_stage == LifeStage.ADULT:
                 character_comp.age = rng.randint(
                     species.adult_age,
                     species.senior_age - 1,
@@ -133,42 +116,50 @@ class CharacterFactory:
                 )
 
     def _initialize_traits(
-        self, character: GameObject, options: CharacterGenerationOptions
+        self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Set the traits for a character."""
         character.add_component(Traits())
-        rng = character.world.resources.get_resource(random.Random)
+        rng = character.world.rng
         trait_library = character.world.resources.get_resource(TraitLibrary)
 
         traits: list[str] = []
         trait_weights: list[int] = []
 
-        for trait_id in trait_library.trait_ids:
-            trait_def = trait_library.get_definition(trait_id)
+        for trait_def in trait_library.definitions.values():
             if trait_def.spawn_frequency >= 1:
-                traits.append(trait_id)
+                traits.append(trait_def.definition_id)
                 trait_weights.append(trait_def.spawn_frequency)
 
         if len(traits) == 0:
             return
 
-        max_traits = kwargs.get("n_traits", self.max_traits)
-
-        chosen_traits = rng.choices(traits, trait_weights, k=max_traits)
+        chosen_traits = rng.choices(traits, trait_weights, k=3)
 
         for trait in chosen_traits:
             add_trait(character, trait)
 
-        default_traits: list[str] = kwargs.get("default_traits", [])
+        for entry in self.traits:
+            if entry.with_id:
+                add_trait(character, entry.with_id)
 
-        for trait in default_traits:
-            add_trait(character, trait)
+            elif entry.with_id:
+                potential_traits = trait_library.get_definition_with_tags(
+                    entry.with_tags
+                )
+
+                if not potential_traits:
+                    continue
+
+                trait_def = character.world.rng.choice(potential_traits)
+
+                add_trait(character, trait_def.definition_id)
 
     def _initialize_character_stats(
-        self, character: GameObject, options: CharacterGenerationOptions
+        self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Initializes a characters stats with random values."""
-        rng = character.world.resources.get_resource(random.Random)
+        rng = character.world.rng
 
         character_comp = character.get_component(Character)
         species = character.get_component(Character).species.get_component(Species)
@@ -229,6 +220,29 @@ class CharacterFactory:
             ),
         )
 
+        for stat_data in self.stats:
+            stat_value = 0
+
+            if stat_data.value is not None:
+                stat_value = stat_data.value
+
+            elif stat_data.value_range:
+                range_min, range_max = tuple[float, ...](
+                    float(val.strip()) for val in stat_data.value_range.split()
+                )
+
+                stat_value = ((range_max - range_min) * rng.random()) + range_min
+
+            add_stat(
+                character,
+                stat_data.stat,
+                Stat(
+                    stat_value,
+                    bounds=(stat_data.min_value, stat_data.max_value),
+                    is_discrete=stat_data.is_discrete,
+                ),
+            )
+
         # Adjust health for current age
         health.base_value -= character_comp.age * health_decay.value
 
@@ -244,18 +258,42 @@ class CharacterFactory:
             if character_comp.life_stage == LifeStage.ADULT:
                 fertility.base_value = fertility.base_value * 0.4
 
-        # Override the generate values use specified values
-        stat_overrides: dict[str, float] = kwargs.get("stats", {})
-
-        for stat, override_value in stat_overrides.items():
-            get_stat(character, stat).base_value = override_value
-
     def _initialize_character_skills(self, character: GameObject) -> None:
         """Add default skills to the character."""
-        rng = character.world.resources.get_resource(random.Random)
-        for skill_id, interval in self.default_skills.items():
-            value = rng.randint(interval[0], interval[1])
-            add_skill(character, skill_id, value)
+        for entry in self.skills:
+            skill_value = 0
+
+            if entry.value is not None:
+                skill_value = entry.value
+
+            elif entry.value_range:
+                range_min, range_max = tuple[float, ...](
+                    float(val.strip()) for val in entry.value_range.split()
+                )
+
+                skill_value = (
+                    (range_max - range_min) * character.world.rng.random()
+                ) + range_min
+
+            if entry.with_id:
+                add_skill(
+                    gameobject=character, skill_id=entry.with_id, base_value=skill_value
+                )
+
+            elif entry.with_tags:
+                skill_library = character.world.resources.get_resource(SkillLibrary)
+                potential_defs = skill_library.get_definition_with_tags(entry.with_tags)
+
+                if not potential_defs:
+                    continue
+
+                skill_def = character.world.rng.choice(potential_defs)
+
+                add_skill(
+                    gameobject=character,
+                    skill_id=skill_def.definition_id,
+                    base_value=skill_value,
+                )
 
     @staticmethod
     def generate_first_name(character: GameObject, pattern: str) -> str:
@@ -290,7 +328,7 @@ class ICharacterNameFactory(ABC):
     """Generates a part of a character's name"""
 
     @abstractmethod
-    def generate(self, options: CharacterGenerationOptions) -> str:
+    def generate(self, options: CharacterGenOptions) -> str:
         """Generates a last name for a character."""
         raise NotImplementedError()
 
@@ -307,7 +345,7 @@ class FirstNameFactory:
         """Add a new sub factory for first name generation."""
         self.factories[name] = factory
 
-    def generate(self, options: CharacterGenerationOptions) -> str:
+    def generate(self, options: CharacterGenOptions) -> str:
         """Generates a last name for a character."""
         if options.first_name:
             return options.first_name
@@ -318,6 +356,6 @@ class FirstNameFactory:
 class LastNameFactory:
     """Generates a last name for a character."""
 
-    def generate(self, options: CharacterGenerationOptions) -> str:
+    def generate(self, options: CharacterGenOptions) -> str:
         """Generates a last name for a character."""
         raise NotImplementedError()

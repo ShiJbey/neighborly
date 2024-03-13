@@ -12,6 +12,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Iterator
 
+import attrs
 import pydantic
 
 from neighborly.datetime import SimDate
@@ -27,6 +28,7 @@ class LifeEventConsideration(pydantic.BaseModel):
     """A score to add if the preconditions pass."""
 
 
+@attrs.define
 class LifeEvent(Event, ABC):
     """An event of significant importance in a GameObject's life"""
 

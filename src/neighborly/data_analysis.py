@@ -16,7 +16,7 @@ import polars as pl
 import tqdm
 
 from neighborly.components.business import Business, JobRole, Occupation
-from neighborly.components.character import Character, Pregnant
+from neighborly.components.character import Character
 from neighborly.components.location import FrequentedLocations
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit
@@ -236,31 +236,6 @@ def _tabulate_gameobject_data(
     )
 
 
-def _build_pregnancy_table(components: list[Component]) -> pl.DataFrame:
-    """Create data frame for pregnancy data."""
-
-    pregnancies = cast(list[Pregnant], components)
-    table_rows: list[dict[str, Any]] = []
-
-    for pregnancy in pregnancies:
-        table_rows.append(
-            {
-                "character": pregnancy.gameobject.uid,
-                "partner": pregnancy.partner.uid,
-                "due_date": str(pregnancy.due_date),
-            }
-        )
-
-    return pl.from_dicts(
-        table_rows,
-        schema={
-            "character": int,
-            "partner": int,
-            "due_date": str,
-        },
-    )
-
-
 def _build_frequented_locations_table(components: list[Component]) -> pl.DataFrame:
     """Create data frame for frequented locations data."""
     frequented_locations_list = cast(list[FrequentedLocations], components)
@@ -373,13 +348,13 @@ def _build_skills_table(components: list[Component]) -> pl.DataFrame:
     data: list[dict[str, Any]] = []
 
     for skills in skills_list:
-        for skill, stat in skills.skills.items():
+        for skill_instance in skills.skills.values():
             data.append(
                 {
                     "gameobject": skills.gameobject.uid,
-                    "skill_uid": skill,
-                    "skill": skill,
-                    "level": stat.value,
+                    "skill_uid": skill_instance.skill.definition_id,
+                    "skill": skill_instance.skill.display_name,
+                    "level": skill_instance.stat.value,
                 }
             )
 
@@ -595,7 +570,6 @@ def create_sql_db(
         "Occupation": _build_occupations_table,
         "Business": _build_businesses_table,
         "JobRole": _build_job_role_table,
-        "Pregnant": _build_pregnancy_table,
         "Resident": _build_resident_table,
         **(component_table_builders if component_table_builders else {}),
     }

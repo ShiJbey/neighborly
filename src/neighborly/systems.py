@@ -12,29 +12,32 @@ from typing import ClassVar, Optional
 
 import polars as pl
 
-from neighborly.components.business import (
-    Business,
-    JobRole,
-    Occupation,
-    OpenToPublic,
-    PendingOpening,
-)
-from neighborly.components.character import Character, LifeStage, Pregnant, Species
-from neighborly.components.location import FrequentedBy, FrequentedLocations
+from neighborly.components.business import JobRole, Occupation
+from neighborly.components.character import Character, LifeStage, Species
+from neighborly.components.location import FrequentedLocations, Location
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
-from neighborly.components.skills import Skill
+from neighborly.components.skills import Skill, Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
+from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.definition_compiler import compile_definitions
-from neighborly.defs.base_types import JobRoleDef, SkillDef, TraitDef
+from neighborly.defs.base_types import (
+    BusinessGenOptions,
+    CharacterGenOptions,
+    JobRoleDef,
+    ResidenceGenOptions,
+    SettlementGenOptions,
+    SkillDef,
+    TraitDef,
+)
 from neighborly.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
     BecomeAdolescentEvent,
@@ -47,9 +50,9 @@ from neighborly.events.defaults import (
     HaveChildEvent,
     JoinSettlementEvent,
 )
-from neighborly.factories.character import CharacterGenerationOptions
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
+from neighborly.helpers.location import score_location
 from neighborly.helpers.relationship import (
     add_relationship,
     get_relationship,
@@ -63,9 +66,8 @@ from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.libraries import (
     JobRoleLibrary,
     LifeEventLibrary,
-    LocationPreferenceRuleLibrary,
+    SettlementLibrary,
     SkillLibrary,
-    SpeciesLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import LifeEvent
@@ -101,17 +103,43 @@ class InitializeSettlementSystem(System):
 
     def on_update(self, world: World) -> None:
         config = world.resources.get_resource(SimulationConfig)
+        settlement_library = world.resources.get_resource(SettlementLibrary)
 
-        definition_ids = config.settlement
+        if not settlement_library.definitions:
+            raise RuntimeError(
+                "No settlement definitions have been loaded into the library."
+            )
 
-        rng = world.resources.get_resource(random.Random)
+        if config.settlement_with_id:
+            create_settlement(
+                world, SettlementGenOptions(definition_id=config.settlement_with_id)
+            )
+            return
 
-        if isinstance(definition_ids, str):
-            create_settlement(world, definition_ids)
+        elif config.settlement_with_tags:
+            potential_defs = settlement_library.get_definition_with_tags(
+                config.settlement_with_tags
+            )
 
-        elif len(definition_ids) > 0:
-            choice = rng.choice(definition_ids)
-            create_settlement(world, choice)
+            if potential_defs:
+                settlement_def = world.rng.choice(potential_defs)
+
+                create_settlement(
+                    world,
+                    SettlementGenOptions(definition_id=settlement_def.definition_id),
+                )
+
+                return
+
+        # Just choose one at random
+
+        potential_defs = list(settlement_library.definitions.values())
+
+        settlement_def = world.rng.choice(potential_defs)
+
+        create_settlement(
+            world, SettlementGenOptions(definition_id=settlement_def.definition_id)
+        )
 
 
 class SpawnResidentialBuildingsSystem(System):
@@ -204,7 +232,9 @@ class SpawnResidentialBuildingsSystem(System):
 
             if multifamily_building is not None:
                 residence = create_residence(
-                    world, district.gameobject, multifamily_building
+                    world,
+                    district.gameobject,
+                    ResidenceGenOptions(definition_id=multifamily_building),
                 )
                 district.add_residence(residence)
                 district.gameobject.add_child(residence)
@@ -220,7 +250,9 @@ class SpawnResidentialBuildingsSystem(System):
 
             if single_family_building is not None:
                 residence = create_residence(
-                    world, district.gameobject, single_family_building
+                    world,
+                    district.gameobject,
+                    ResidenceGenOptions(definition_id=single_family_building),
                 )
                 district.add_residence(residence)
                 district.gameobject.add_child(residence)
@@ -242,7 +274,7 @@ class SpawnNewResidentSystem(System):
             # Get the spawn table of district the residence belongs to
             spawn_table = residence.district.get_component(CharacterSpawnTable)
 
-            if len(spawn_table) == 0:
+            if len(spawn_table.table) == 0:
                 continue
 
             if rng.random() > SpawnNewResidentSystem.CHANCE_NEW_RESIDENT:
@@ -264,9 +296,9 @@ class SpawnNewResidentSystem(System):
 
             character = create_character(
                 world,
-                CharacterGenerationOptions(
+                CharacterGenOptions(
                     definition_id=character_definition_id,
-                    life_stage=character_life_stage,
+                    life_stage=character_life_stage.name,
                 ),
             )
 
@@ -331,43 +363,14 @@ class SpawnNewBusinessesSystem(System):
             )
 
             if business_id is not None:
-                business = create_business(world, district.gameobject, business_id)
+                business = create_business(
+                    world,
+                    district.gameobject,
+                    BusinessGenOptions(definition_id=business_id),
+                )
                 district.add_business(business)
                 district.gameobject.add_child(business)
                 spawn_table.increment_count(business_id)
-
-                business.add_component(PendingOpening())
-
-
-class InstantiateSpeciesSystem(System):
-    """Instantiates all the trait definitions within the TraitLibrary."""
-
-    def on_update(self, world: World) -> None:
-        species_library = world.resources.get_resource(SpeciesLibrary)
-
-        for _, species_def in species_library.definitions.items():
-            species = world.gameobjects.spawn_gameobject(name=species_def.display_name)
-            species.add_component(
-                Trait(
-                    definition_id=species_def.definition_id,
-                    display_name=species_def.display_name,
-                    description=species_def.description,
-                    stat_modifiers=species_def.stat_modifiers,
-                    skill_modifiers=species_def.skill_modifiers,
-                    conflicting_traits=species_def.conflicts_with,
-                )
-            )
-            species.add_component(
-                Species(
-                    adolescent_age=species_def.adolescent_age,
-                    young_adult_age=species_def.young_adult_age,
-                    adult_age=species_def.adult_age,
-                    senior_age=species_def.senior_age,
-                    lifespan=species_def.lifespan,
-                    can_physically_age=species_def.can_physically_age,
-                )
-            )
-            species_library.add_species(species)
 
 
 class InstantiateTraitsSystem(System):
@@ -498,20 +501,20 @@ class UpdateFrequentedLocationSystem(System):
             A list of tuples containing location scores and the location, sorted in
             descending order
         """
-        location_prefs = character.world.resources.get_resource(
-            LocationPreferenceRuleLibrary
-        )
 
         scores: list[float] = []
         locations: list[GameObject] = []
 
-        for _, (business, _, _) in character.world.get_components(
-            (Business, OpenToPublic, Active)
-        ):
-            score = location_prefs.score_location(business.gameobject)
+        for _, (location, _) in character.world.get_components((Location, Active)):
+
+            if location.is_private:
+                continue
+
+            score = score_location(character, location.gameobject)
+
             if score >= self.location_score_threshold:
                 scores.append(score)
-                locations.append(business.gameobject)
+                locations.append(location.gameobject)
 
         return scores, locations
 
@@ -664,19 +667,25 @@ class ChildBirthSystem(System):
     def on_update(self, world: World) -> None:
         current_date = world.resources.get_resource(SimDate)
 
-        for _, (character, pregnancy, _) in world.get_components(
-            (Character, Pregnant, Active)
+        for _, (character, traits, _) in world.get_components(
+            (Character, Traits, Active)
         ):
-            if pregnancy.due_date > current_date:
+            if not traits.has_trait("pregnant"):
                 continue
 
-            other_parent = pregnancy.partner
+            pregnancy = traits.get_trait("pregnant")
+
+            if pregnancy.data["due_date"] > current_date:
+                continue
+
+            other_parent: GameObject = pregnancy.data["partner"]
 
             baby = create_character(
                 character.gameobject.world,
-                definition_id=character.gameobject.metadata["definition_id"],
-                skills=[],
-                last_name=character.last_name,
+                CharacterGenOptions(
+                    definition_id=character.gameobject.metadata["definition_id"],
+                    last_name=character.last_name,
+                ),
             )
 
             ChangeResidenceEvent(
@@ -743,7 +752,7 @@ class ChildBirthSystem(System):
                 add_trait(get_relationship(baby, sibling), "sibling")
                 add_trait(get_relationship(sibling, baby), "sibling")
 
-            character.gameobject.remove_component(Pregnant)
+            remove_trait(character.gameobject, "pregnant")
             get_stat(character.gameobject, "fertility").base_value -= 0.2
 
             HaveChildEvent(
@@ -835,7 +844,7 @@ class MeetNewPeopleSystem(System):
                 candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
 
                 for loc in frequented_locs:
-                    for other in loc.get_component(FrequentedBy):
+                    for other in loc.get_component(Location):
                         if other != character.gameobject and not has_relationship(
                             character.gameobject, other
                         ):
@@ -875,11 +884,15 @@ class JobRoleMonthlyEffectsSystem(System):
     """
 
     def on_update(self, world: World) -> None:
-        for _, (character, occupation, _) in world.get_components(
-            (Character, Occupation, Active)
+        for _, (skills, stats, occupation, _) in world.get_components(
+            (Skills, Stats, Occupation, Active)
         ):
-            for effect in occupation.job_role.monthly_effects:
-                effect.apply(character.gameobject)
+
+            for skill_boost in occupation.job_role.periodic_skill_boosts:
+                skills.get_skill(skill_boost.name).stat.base_value += skill_boost.value
+
+            for stat_boost in occupation.job_role.periodic_stat_boosts:
+                stats.get_stat(stat_boost.name).base_value += stat_boost.value
 
 
 class TickTraitsSystem(System):

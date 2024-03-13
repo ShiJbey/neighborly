@@ -4,47 +4,30 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
-import pydantic
-
+from neighborly.components.settlement import District, Settlement
+from neighborly.components.spawn_table import (
+    BusinessSpawnTable,
+    BusinessSpawnTableEntry,
+    CharacterSpawnTable,
+    CharacterSpawnTableEntry,
+    ResidenceSpawnTable,
+    ResidenceSpawnTableEntry,
+)
+from neighborly.defs.base_types import DistrictDef, DistrictGenOptions
 from neighborly.ecs import GameObject, World
+from neighborly.libraries import BusinessLibrary, CharacterLibrary, ResidenceLibrary
+from neighborly.tracery import Tracery
 
 
-class DistrictGenerationOptions(pydantic.BaseModel):
-    """Parameter overrides used when creating a new district GameObject."""
-
-    definition_id: str
-    """The definition to create."""
-    name: Optional[str] = None
-    """The name of the district."""
-
-
-class DistrictFactory:
+class DefaultDistrictDef(DistrictDef):
     """Creates instances of districts using definitions."""
 
     def instantiate(
-        self, world: World, settlement: GameObject, options: DistrictGenerationOptions
+        self, world: World, settlement: GameObject, options: DistrictGenOptions
     ) -> GameObject:
-        """Create instance of district using the options.
-
-        Parameters
-        ----------
-        world
-            The simulation's world instance.
-        settlement
-            The settlement the district will belong to.
-        options
-            Generation options.
-        """
-        library = world.resources.get_resource(DistrictLibrary)
-
-        district_def = library.get_definition(options.definition_id)
 
         district = world.gameobjects.spawn_gameobject()
         district.metadata["definition_id"] = options.definition_id
-
-        district_def.initialize(settlement, district, options)
 
         settlement.get_component(Settlement).add_district(district)
 
@@ -65,7 +48,7 @@ class DistrictFactory:
         self._initialize_character_spawn_table(district)
         self._initialize_residence_spawn_table(district)
 
-        raise NotImplementedError()
+        return district
 
     def _initialize_name(self, district: GameObject) -> None:
         """Generates a name for the district."""
@@ -83,32 +66,33 @@ class DistrictFactory:
         table_entries: list[BusinessSpawnTableEntry] = []
 
         for entry in self.businesses:
-            if isinstance(entry, str):
-                business_def = business_library.get_definition(entry)
+            if entry.with_id:
+                business_def = business_library.get_definition(entry.with_id)
                 table_entries.append(
                     BusinessSpawnTableEntry(
-                        name=entry,
+                        name=entry.with_id,
                         spawn_frequency=business_def.spawn_frequency,
                         max_instances=business_def.max_instances,
                         min_population=business_def.min_population,
                         instances=0,
                     )
                 )
-            else:
-                business_def = business_library.get_definition(entry["definition_id"])
+            elif entry.with_tags:
+                potential_defs = business_library.get_definition_with_tags(
+                    entry.with_tags
+                )
+
+                if not potential_defs:
+                    continue
+
+                business_def = world.rng.choice(potential_defs)
 
                 table_entries.append(
                     BusinessSpawnTableEntry(
-                        name=entry["definition_id"],
-                        spawn_frequency=entry.get(
-                            "spawn_frequency", business_def.spawn_frequency
-                        ),
-                        max_instances=entry.get(
-                            "max_instances", business_def.max_instances
-                        ),
-                        min_population=entry.get(
-                            "min_population", business_def.min_population
-                        ),
+                        name=business_def.definition_id,
+                        spawn_frequency=entry.spawn_frequency,
+                        max_instances=entry.max_instances,
+                        min_population=entry.min_population,
                         instances=0,
                     )
                 )
@@ -123,34 +107,52 @@ class DistrictFactory:
         table_entries: list[CharacterSpawnTableEntry] = []
 
         for entry in self.characters:
+            if entry.with_id:
 
-            character_def = character_library.get_definition(entry["definition_id"])
+                character_def = character_library.get_definition(entry.with_id)
 
-            table_entries.append(
-                CharacterSpawnTableEntry(
-                    name=entry["definition_id"],
-                    spawn_frequency=entry.get(
-                        "spawn_frequency", character_def.spawn_frequency
-                    ),
+                table_entries.append(
+                    CharacterSpawnTableEntry(
+                        name=character_def.definition_id,
+                        spawn_frequency=entry.spawn_frequency,
+                    )
                 )
-            )
+
+            elif entry.with_id:
+
+                potential_defs = character_library.get_definition_with_tags(
+                    entry.with_tags
+                )
+
+                if not potential_defs:
+                    continue
+
+                character_def = world.rng.choice(potential_defs)
+
+                table_entries.append(
+                    CharacterSpawnTableEntry(
+                        name=character_def.definition_id,
+                        spawn_frequency=entry.spawn_frequency,
+                    )
+                )
 
         district.add_component(CharacterSpawnTable(entries=table_entries))
 
     def _initialize_residence_spawn_table(self, district: GameObject) -> None:
         """Create the residence spawn table for the district."""
         world = district.world
+
         residence_library = world.resources.get_resource(ResidenceLibrary)
 
         table_entries: list[ResidenceSpawnTableEntry] = []
 
         for entry in self.residences:
-            # The entry is a string. We import all defaults from the main definition
-            if isinstance(entry, str):
-                residence_def = residence_library.get_definition(entry)
+            if entry.with_id:
+                residence_def = residence_library.get_definition(entry.with_id)
+
                 table_entries.append(
                     ResidenceSpawnTableEntry(
-                        name=entry,
+                        name=residence_def.definition_id,
                         spawn_frequency=residence_def.spawn_frequency,
                         instances=0,
                         required_population=residence_def.required_population,
@@ -159,23 +161,24 @@ class DistrictFactory:
                     )
                 )
 
-            # The entry is an object with overrides
-            else:
-                residence_def = residence_library.get_definition(entry["definition_id"])
+            elif entry.with_tags:
+
+                potential_defs = residence_library.get_definition_with_tags(
+                    entry.with_tags
+                )
+
+                if not potential_defs:
+                    continue
+
+                residence_def = world.rng.choice(potential_defs)
 
                 table_entries.append(
                     ResidenceSpawnTableEntry(
-                        name=entry["definition_id"],
-                        spawn_frequency=entry.get(
-                            "spawn_frequency", residence_def.spawn_frequency
-                        ),
+                        name=residence_def.definition_id,
+                        spawn_frequency=residence_def.spawn_frequency,
                         instances=0,
-                        required_population=entry.get(
-                            "required_population", residence_def.required_population
-                        ),
-                        max_instances=entry.get(
-                            "max_instances", residence_def.max_instances
-                        ),
+                        required_population=residence_def.required_population,
+                        max_instances=residence_def.max_instances,
                         is_multifamily=residence_def.is_multifamily,
                     )
                 )

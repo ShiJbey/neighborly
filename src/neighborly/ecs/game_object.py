@@ -92,6 +92,11 @@ class GameObject:
         return self.world.gameobjects.has_gameobject(self.uid)
 
     @property
+    def is_active(self) -> bool:
+        """Check if a GameObject is active."""
+        return self.has_component(Active)
+
+    @property
     def metadata(self) -> dict[str, Any]:
         """Get the metadata associated with this GameObject."""
         return self._metadata

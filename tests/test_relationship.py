@@ -7,7 +7,7 @@ import pathlib
 
 import pytest
 
-from neighborly.defs.base_types import CharacterGenerationOptions
+from neighborly.defs.base_types import CharacterGenOptions
 from neighborly.helpers.character import create_character
 from neighborly.helpers.relationship import (
     add_relationship,
@@ -53,8 +53,8 @@ def sim() -> Simulation:
 def test_get_relationship(sim: Simulation) -> None:
     """Test that get_relationship creates new relationship if one does not exist."""
 
-    a = create_character(sim.world, CharacterGenerationOptions(definition_id="person"))
-    b = create_character(sim.world, CharacterGenerationOptions(definition_id="person"))
+    a = create_character(sim.world, CharacterGenOptions(definition_id="person"))
+    b = create_character(sim.world, CharacterGenOptions(definition_id="person"))
 
     assert has_relationship(a, b) is False
     assert has_relationship(b, a) is False
@@ -79,8 +79,8 @@ def test_get_relationship(sim: Simulation) -> None:
 def test_add_relationship(sim: Simulation) -> None:
     """Test that adding a relationship create a new relationship or returns the old"""
 
-    a = create_character(sim.world, CharacterGenerationOptions(definition_id="person"))
-    b = create_character(sim.world, CharacterGenerationOptions(definition_id="person"))
+    a = create_character(sim.world, CharacterGenOptions(definition_id="person"))
+    b = create_character(sim.world, CharacterGenOptions(definition_id="person"))
 
     assert has_relationship(a, b) is False
     assert has_relationship(b, a) is False
@@ -94,15 +94,11 @@ def test_add_relationship(sim: Simulation) -> None:
 def test_trait_with_social_rules(sim: Simulation) -> None:
     """Test traits that apply social rules"""
 
-    farmer = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
-    )
+    farmer = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
     merchant = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="merchant")
+        sim.world, CharacterGenOptions(definition_id="merchant")
     )
-    noble = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="nobility")
-    )
+    noble = create_character(sim.world, CharacterGenOptions(definition_id="nobility"))
 
     rel_to_noble = add_relationship(farmer, noble)
 

@@ -1,8 +1,12 @@
+"""Helper functions for working with traits.
+
+"""
+
 from typing import Union
 
 from neighborly.components.skills import Skills
 from neighborly.components.stats import Stats
-from neighborly.components.traits import Trait, Traits
+from neighborly.components.traits import Trait, TraitInstance, Traits
 from neighborly.ecs import GameObject
 from neighborly.libraries import TraitLibrary
 
@@ -37,7 +41,7 @@ def add_trait(gameobject: GameObject, trait_id: str, duration: int = -1) -> bool
 
         skills = gameobject.get_component(Skills)
         for modifier in trait.skill_modifiers:
-            skills.get_skill(modifier.name).remove_modifiers_from_source(trait)
+            skills.get_skill(modifier.name).stat.remove_modifiers_from_source(trait)
 
         return True
 
@@ -70,7 +74,7 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
 
         skills = gameobject.get_component(Skills)
         for modifier in trait.skill_modifiers:
-            skills.get_skill(modifier.name).remove_modifiers_from_source(trait)
+            skills.get_skill(modifier.name).stat.remove_modifiers_from_source(trait)
 
     return gameobject.get_component(Traits).remove_trait(trait_id)
 
@@ -94,3 +98,21 @@ def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
         return gameobject.get_component(Traits).has_trait(trait.definition_id)
 
     return gameobject.get_component(Traits).has_trait(trait)
+
+
+def get_trait(gameobject: GameObject, trait: Union[str, Trait]) -> TraitInstance:
+    """Get a trait from a gameobject.
+
+    Parameters
+    ----------
+    gameobject
+        The gameobject to check.
+    trait
+        The ID of a trait or a trait object.
+
+    Returns
+    -------
+    bool
+        True if the gameobject has the trait, False otherwise.
+    """
+    return gameobject.get_component(Traits).get_trait(trait)

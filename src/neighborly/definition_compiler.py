@@ -18,29 +18,9 @@ This script aims to reproduce the following capabilities:
 
 from typing import Any, Iterable, Type, TypeVar
 
-from neighborly.defs.base_types import (
-    BusinessDef,
-    CharacterDef,
-    JobRoleDef,
-    ResidenceDef,
-    SettlementDef,
-    SkillDef,
-    SpeciesDef,
-    TraitDef,
-)
+from neighborly.defs.base_types import ContentDefinition
 
-_T = TypeVar(
-    "_T",
-    CharacterDef,
-    SkillDef,
-    TraitDef,
-    SpeciesDef,
-    SettlementDef,
-    ResidenceDef,
-    CharacterDef,
-    BusinessDef,
-    JobRoleDef,
-)
+_T = TypeVar("_T", bound=ContentDefinition)
 
 
 def compile_definitions(
@@ -116,18 +96,23 @@ def _process_definition(
     for variant_def in final_definition.variants:
         # We have to do the following to ensure that 'is_template' has the
         # 'set' flag and is not excluded from model_dump(...)
-        if variant_def.is_template is False:
-            variant_def.is_template = False
+        if "name" not in variant_def:
+            raise ValueError(
+                f"{final_definition.definition_id} has variant that is missing a name."
+            )
+
+        variant_name = variant_def["name"]
+        variant_tags: set[str] = set(variant_def.get("tags", []))
 
         variant_definition_data: dict[str, Any] = {}
 
         variant_definition_data.update(final_definition.model_dump(exclude_unset=True))
 
-        variant_definition_data.update(variant_def.model_dump(exclude_unset=True))
+        variant_definition_data.update(variant_def)
 
-        variant_id = f"{final_definition.definition_id}.{variant_def.definition_id}"
+        variant_id = f"{final_definition.definition_id}.{variant_name}"
         variant_definition_data["definition_id"] = variant_id
-        variant_definition_data["tags"] = final_definition.tags.union(variant_def.tags)
+        variant_definition_data["tags"] = final_definition.tags.union(variant_tags)
 
         processed_defs[variant_id] = definition_type.model_validate(
             variant_definition_data

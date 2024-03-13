@@ -1,6 +1,11 @@
 import pathlib
 
 from neighborly.components.residence import ResidentialBuilding
+from neighborly.defs.base_types import (
+    DistrictGenOptions,
+    ResidenceGenOptions,
+    SettlementGenOptions,
+)
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_district, create_settlement
 from neighborly.loaders import (
@@ -26,14 +31,26 @@ def test_create_residence() -> None:
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
-    settlement = create_settlement(sim.world, "basic_settlement")
+    settlement = create_settlement(
+        sim.world, SettlementGenOptions(definition_id="basic_settlement")
+    )
 
-    district = create_district(sim.world, settlement, "entertainment_district")
+    district = create_district(
+        sim.world,
+        settlement,
+        DistrictGenOptions(definition_id="entertainment_district"),
+    )
 
-    r0 = create_residence(sim.world, district, "house")
+    r0 = create_residence(
+        sim.world, district, ResidenceGenOptions(definition_id="house")
+    )
     r0_units = list(r0.get_component(ResidentialBuilding).units)
     assert len(r0_units) == 1
 
-    r1 = create_residence(sim.world, district, "large_apartment_building")
+    r1 = create_residence(
+        sim.world,
+        district,
+        ResidenceGenOptions(definition_id="large_apartment_building"),
+    )
     r1_units = list(r1.get_component(ResidentialBuilding).units)
     assert len(r1_units) == 10

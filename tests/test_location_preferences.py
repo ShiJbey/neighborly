@@ -6,9 +6,15 @@ import pathlib
 
 import pytest
 
-from neighborly.components.location import LocationPreferences
+from neighborly.defs.base_types import (
+    BusinessGenOptions,
+    CharacterGenOptions,
+    DistrictGenOptions,
+    SettlementGenOptions,
+)
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
+from neighborly.helpers.location import score_location
 from neighborly.helpers.settlement import create_district, create_settlement
 from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.loaders import (
@@ -42,25 +48,32 @@ def test_trait_with_location_preferences() -> None:
 
     sim.initialize()
 
-    settlement = create_settlement(sim.world, "basic_settlement")
+    settlement = create_settlement(
+        sim.world, SettlementGenOptions(definition_id="basic_settlement")
+    )
 
-    district = create_district(sim.world, settlement, "entertainment_district")
+    district = create_district(
+        sim.world,
+        settlement,
+        DistrictGenOptions(definition_id="entertainment_district"),
+    )
 
-    cafe = create_business(sim.world, district, "cafe")
-    bar = create_business(sim.world, district, "bar")
+    cafe = create_business(
+        sim.world, district, BusinessGenOptions(definition_id="cafe")
+    )
 
-    farmer = create_character(sim.world, "farmer", n_traits=0)
+    bar = create_business(sim.world, district, BusinessGenOptions(definition_id="bar"))
 
-    farmer_preferences = farmer.get_component(LocationPreferences)
+    farmer = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
 
-    assert farmer_preferences.score_location(cafe) == 0.5
-    assert farmer_preferences.score_location(bar) == 0.5
+    assert score_location(farmer, cafe) == 0.5
+    assert score_location(farmer, bar) == 0.5
 
     add_trait(farmer, "drinks_too_much")
 
-    assert farmer_preferences.score_location(cafe) == 0.5
-    assert farmer_preferences.score_location(bar) == pytest.approx(0.65, 0.001)  # type: ignore
+    assert score_location(farmer, cafe) == 0.5
+    assert score_location(farmer, bar) == pytest.approx(0.65, 0.001)  # type: ignore
 
     remove_trait(farmer, "drinks_too_much")
 
-    assert farmer_preferences.score_location(bar) == 0.5
+    assert score_location(farmer, bar) == 0.5

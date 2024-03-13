@@ -7,7 +7,7 @@ the simulation.
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, Sequence, TypedDict, cast
 
 import polars as pl
 
@@ -26,9 +26,9 @@ class CharacterSpawnTableEntry(TypedDict):
 class CharacterSpawnTable(Component):
     """Manages the frequency that character defs are spawned."""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
+    table: pl.DataFrame
     """Column names mapped to column data."""
 
     def __init__(self, entries: list[CharacterSpawnTableEntry]) -> None:
@@ -39,21 +39,10 @@ class CharacterSpawnTable(Component):
             Starting entries.
         """
         super().__init__()
-        # The following line is type ignored since pl.from_dicts(...) expects a
-        # sequence of dict[str, Any]. Typed dict is not a subclass of that type since
-        # it does not use arbitrary keys. The Polars maintainers should update the
-        # type hints for Mapping[str, Any] to allow TypeDict usage.
-        self._table = pl.from_dicts(
-            entries, schema=[("name", str), ("spawn_frequency", int)]  # type: ignore
+        self.table = pl.from_dicts(
+            cast(Sequence[dict[str, Any]], entries),
+            schema=[("name", str), ("spawn_frequency", int)],
         )
-
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
-
-    def __len__(self) -> int:
-        return len(self._table)
 
     def to_dict(self) -> dict[str, Any]:
         return {}
@@ -77,9 +66,9 @@ class BusinessSpawnTableEntry(TypedDict):
 class BusinessSpawnTable(Component):
     """Manages the frequency that business types are spawned"""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
+    table: pl.DataFrame
     """Table data with entries."""
 
     def __init__(self, entries: list[BusinessSpawnTableEntry]) -> None:
@@ -90,9 +79,8 @@ class BusinessSpawnTable(Component):
             Starting entries.
         """
         super().__init__()
-        # See comment in CharacterSpawnTable.__init__ for why this is type ignored
-        self._table = pl.from_dicts(
-            entries,  # type: ignore
+        self.table = pl.from_dicts(
+            cast(Sequence[dict[str, Any]], entries),
             schema=[
                 ("name", str),
                 ("spawn_frequency", int),
@@ -102,11 +90,6 @@ class BusinessSpawnTable(Component):
             ],
         )
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
-
     def increment_count(self, name: str) -> None:
         """Increment the instance count for an entry.
 
@@ -115,10 +98,12 @@ class BusinessSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
-            .then(pl.col("instances") + 1)
-            .otherwise(pl.col("instances"))
+        self.table = self.table.with_columns(  # type: ignore
+            instances=(
+                pl.when(pl.col("name") == name)  # type: ignore
+                .then(pl.col("instances") + 1)
+                .otherwise(pl.col("instances"))
+            )
         )
 
     def decrement_count(self, name: str) -> None:
@@ -129,17 +114,16 @@ class BusinessSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
-            .then(pl.col("instances") - 1)
-            .otherwise(pl.col("instances"))
+        self.table = self.table.with_columns(  # type: ignore
+            instances=(
+                pl.when(pl.col("name") == name)  # type: ignore
+                .then(pl.col("instances") - 1)
+                .otherwise(pl.col("instances"))
+            )
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {}
-
-    def __len__(self) -> int:
-        return len(self._table)
 
 
 class ResidenceSpawnTableEntry(TypedDict):
@@ -162,9 +146,9 @@ class ResidenceSpawnTableEntry(TypedDict):
 class ResidenceSpawnTable(Component):
     """Manages the frequency that residence types are spawned"""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
+    table: pl.DataFrame
     """Column names mapped to column data."""
 
     def __init__(self, entries: list[ResidenceSpawnTableEntry]) -> None:
@@ -175,9 +159,8 @@ class ResidenceSpawnTable(Component):
             Starting entries.
         """
         super().__init__()
-        # See comment in CharacterSpawnTable.__init__ for why this is type ignored.
-        self._table = pl.from_dicts(
-            entries,  # type: ignore
+        self.table = pl.from_dicts(
+            cast(Sequence[dict[str, Any]], entries),
             schema=[
                 ("name", str),
                 ("spawn_frequency", int),
@@ -188,11 +171,6 @@ class ResidenceSpawnTable(Component):
             ],
         )
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
-
     def increment_count(self, name: str) -> None:
         """Increment the instance count for an entry.
 
@@ -201,10 +179,12 @@ class ResidenceSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
-            .then(pl.col("instances") + 1)
-            .otherwise(pl.col("instances"))
+        self.table = self.table.with_columns(  # type: ignore
+            instances=(
+                pl.when(pl.col("name") == name)  # type: ignore
+                .then(pl.col("instances") + 1)
+                .otherwise(pl.col("instances"))
+            )
         )
 
     def decrement_count(self, name: str) -> None:
@@ -215,14 +195,13 @@ class ResidenceSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
-            .then(pl.col("instances") - 1)
-            .otherwise(pl.col("instances"))
+        self.table = self.table.with_columns(  # type: ignore
+            instances=(
+                pl.when(pl.col("name") == name)  # type: ignore
+                .then(pl.col("instances") - 1)
+                .otherwise(pl.col("instances"))
+            )
         )
-
-    def __len__(self) -> int:
-        return len(self._table)
 
     def to_dict(self) -> dict[str, Any]:
         return {}

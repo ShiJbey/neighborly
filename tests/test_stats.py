@@ -7,7 +7,7 @@ from __future__ import annotations
 import pathlib
 
 from neighborly.components.stats import Stat
-from neighborly.defs.base_types import CharacterGenerationOptions
+from neighborly.defs.base_types import CharacterGenOptions
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import add_stat, get_stat, has_stat, remove_stat
 from neighborly.loaders import load_characters, load_skills
@@ -28,9 +28,7 @@ def test_has_stat() -> None:
 
     sim.initialize()
 
-    character = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
-    )
+    character = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
 
     assert has_stat(character, "hunger") is False
 
@@ -48,9 +46,7 @@ def test_get_stat() -> None:
 
     sim.initialize()
 
-    character = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
-    )
+    character = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
 
     health = get_stat(character, "health")
     health.base_value = 10
@@ -75,9 +71,7 @@ def test_add_stat() -> None:
 
     sim.initialize()
 
-    character = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
-    )
+    character = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
 
     hunger = add_stat(character, "hunger", Stat(base_value=100, bounds=(0, 255)))
 
@@ -96,9 +90,7 @@ def test_remove_stat() -> None:
 
     sim.initialize()
 
-    character = create_character(
-        sim.world, CharacterGenerationOptions(definition_id="farmer")
-    )
+    character = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
 
     add_stat(character, "hunger", Stat(base_value=0, bounds=(0, 255)))
 

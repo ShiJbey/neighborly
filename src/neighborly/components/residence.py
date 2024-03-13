@@ -8,7 +8,8 @@ from typing import Any, Iterable
 
 from ordered_set import OrderedSet
 
-from neighborly.ecs import Component, GameObject, TagComponent
+from neighborly.ecs import Component, GameObject
+from neighborly.ecs.component import TagComponent
 
 
 class ResidentialUnit(Component):
@@ -120,10 +121,16 @@ class ResidentialUnit(Component):
         return character in self._residents
 
     def __repr__(self) -> str:
-        return f"Residence({self.to_dict()})"
+        return (
+            f"Residence({self.building=}, {self.district=}, "
+            f"{self.owners=}, {self.residents=})"
+        )
 
     def __str__(self) -> str:
-        return f"Residence({self.to_dict()})"
+        return (
+            f"Residence({self.building=}, {self.district=}, "
+            f"{self.owners=}, {self.residents=})"
+        )
 
     def __len__(self) -> int:
         return len(self._residents)
@@ -188,13 +195,13 @@ class Resident(Component):
         self.residence = residence
 
     def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "residence": self.residence.uid}
+        return {"residence": self.residence.uid}
 
     def __repr__(self) -> str:
-        return f"Resident({self.to_dict()})"
+        return f"Resident({self.residence=})"
 
     def __str__(self) -> str:
-        return f"Resident({self.to_dict()})"
+        return f"Resident({self.residence=})"
 
 
 class Vacant(TagComponent):

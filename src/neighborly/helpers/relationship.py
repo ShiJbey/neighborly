@@ -3,11 +3,11 @@
 """
 
 from neighborly.components.relationship import (
+    ActiveSocialRule,
     Relationship,
     Relationships,
-    ActiveSocialRule,
 )
-from neighborly.components.stats import Stat, Stats, StatModifier, StatModifierType
+from neighborly.components.stats import Stat, StatModifier, StatModifierType, Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import GameObject
 from neighborly.helpers.stats import add_stat
@@ -153,7 +153,9 @@ def get_relationships_with_traits(
 
     return matches
 
+
 def reevaluate_social_rules(relationship_obj: GameObject) -> None:
+    """Reevaluate the social rules against the given relationship."""
 
     relationship = relationship_obj.get_component(Relationship)
     stats = relationship_obj.get_component(Stats)
@@ -180,8 +182,8 @@ def reevaluate_social_rules(relationship_obj: GameObject) -> None:
                 ActiveSocialRule(
                     rule=rule,
                     description=rule.description.replace(
-                        f"[owner]", relationship.owner.name
-                    ).replace(f"[target]", relationship.target.name),
+                        "[owner]", relationship.owner.name
+                    ).replace("[target]", relationship.target.name),
                 )
             )
 

@@ -73,7 +73,7 @@ def main() -> Simulation:
     _sim = Simulation(
         SimulationConfig(
             seed=args.seed,
-            settlement="basic_settlement",
+            settlement_with_id="basic_settlement",
             logging=LoggingConfig(logging_enabled=True),
         )
     )

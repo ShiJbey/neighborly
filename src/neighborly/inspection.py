@@ -9,16 +9,9 @@ from typing import Callable, Union
 import tabulate
 
 from neighborly.__version__ import VERSION
-from neighborly.components.business import (
-    Business,
-    ClosedForBusiness,
-    JobRole,
-    Occupation,
-    OpenForBusiness,
-    PendingOpening,
-)
+from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import Character
-from neighborly.components.location import FrequentedBy, FrequentedLocations
+from neighborly.components.location import FrequentedLocations, Location
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.residence import (
     Resident,
@@ -147,11 +140,11 @@ def _business_header(business: GameObject) -> str:
     )
 
     activity_status = "inactive"
-    if business.has_component(OpenForBusiness):
+    if business_data.status == BusinessStatus.OPEN:
         activity_status = "open-for-business"
-    elif business.has_component(PendingOpening):
+    elif business_data.status == BusinessStatus.PENDING:
         activity_status = "looking for owner"
-    elif business.has_component(ClosedForBusiness):
+    elif business_data.status == BusinessStatus.CLOSED:
         activity_status = "closed-for-business"
 
     output = "Business\n"
@@ -291,11 +284,11 @@ def _job_role_section(job_role: GameObject) -> str:
 
     job_role_data = job_role.get_component(JobRole)
 
-    requirements = "\n".join(f"- {p.description}" for p in job_role_data.requirements)
-    effects = "\n".join(f"- {e.description}" for e in job_role_data.effects)
-    monthly_effects = "\n".join(
-        f"- {e.description}" for e in job_role_data.monthly_effects
-    )
+    # requirements = "\n".join(f"- {p.description}" for p in job_role_data.requirements)
+    # effects = "\n".join(f"- {e.description}" for e in job_role_data.effects)
+    # monthly_effects = "\n".join(
+    #     f"- {e.description}" for e in job_role_data.monthly_effects
+    # )
 
     output = "Job Role\n"
     output += "========\n"
@@ -306,14 +299,14 @@ def _job_role_section(job_role: GameObject) -> str:
     output += f"Description:\n {job_role_data.description}\n"
     output += f"Job Level:\n {job_role_data.job_level}\n"
     output += "\n"
-    output += "=== Requirements ===\n"
-    output += f"{requirements}\n"
-    output += "\n"
-    output += "=== Effects ===\n"
-    output += f"{effects}\n"
-    output += "\n"
-    output += "=== Monthly Effects ===\n"
-    output += f"{monthly_effects}\n"
+    # output += "=== Requirements ===\n"
+    # output += f"{requirements}\n"
+    # output += "\n"
+    # output += "=== Effects ===\n"
+    # output += f"{effects}\n"
+    # output += "\n"
+    # output += "=== Monthly Effects ===\n"
+    # output += f"{monthly_effects}\n"
 
     return output
 
@@ -325,7 +318,7 @@ def _trait_section(trait: GameObject) -> str:
 
     trait_data = trait.get_component(Trait)
 
-    effects = "\n".join(f"- {e.description}" for e in trait_data.effects)
+    # effects = "\n".join(f"- {e.description}" for e in trait_data.effects)
     conflicting_traits = ", ".join(t for t in trait_data.conflicting_traits)
 
     output = "Trait\n"
@@ -339,8 +332,8 @@ def _trait_section(trait: GameObject) -> str:
     output += "=== Conflicting Trait Definitions ===\n"
     output += f"{conflicting_traits}\n"
     output += "\n"
-    output += "=== Effects ===\n"
-    output += f"{effects}\n"
+    # output += "=== Effects ===\n"
+    # output += f"{effects}\n"
 
     return output
 
@@ -395,7 +388,7 @@ def get_settlement_description(settlement: Settlement) -> str:
 
 def _get_frequented_by_table(obj: GameObject) -> str:
     """Generate a string table for a FrequentedBy component."""
-    frequented_by = obj.try_component(FrequentedBy)
+    frequented_by = obj.try_component(Location)
 
     if frequented_by is None:
         return ""
@@ -420,7 +413,7 @@ def _get_traits_table(obj: GameObject) -> str:
 
     output += tabulate.tabulate(
         [
-            (entry.name, entry.get_component(Trait).description)
+            (entry.trait.display_name, entry.trait.description)
             for entry in traits.traits
         ],
         headers=("Name", "Description"),
@@ -468,7 +461,9 @@ def _get_relationships_table(obj: GameObject) -> str:
         compatibility = get_stat(relationship, "compatibility").value
         romantic_compatibility = get_stat(relationship, "romantic_compatibility").value
         interaction_score = get_stat(relationship, "interaction_score").value
-        traits = ", ".join(t.name for t in relationship.get_component(Traits).traits)
+        traits = ", ".join(
+            t.trait.display_name for t in relationship.get_component(Traits).traits
+        )
 
         relationship_data.append(
             (
@@ -549,11 +544,11 @@ def _get_skills_table(obj: GameObject) -> str:
     output += tabulate.tabulate(
         [
             (
-                skill.name,
-                f"{int(stat.value)}/{int(stat.bounds[1])}",
-                skill.get_component(Skill).description,
+                entry.skill.display_name,
+                f"{int(entry.stat.value)}/{int(entry.stat.bounds[1])}",
+                entry.skill.description,
             )
-            for skill, stat in skill_data
+            for entry in skill_data.skills.values()
         ],
         headers=("Name", "Level", "Description"),
     )
@@ -719,14 +714,14 @@ def list_businesses(sim: Simulation, inactive_ok: bool = False) -> None:
 
     for uid, (business,) in sim.world.get_components((Business,)):
         activity_status = "inactive"
-        if business.gameobject.has_component(OpenForBusiness):
+        if business.status == BusinessStatus.OPEN:
             activity_status = "open-for-business"
-        elif business.gameobject.has_component(PendingOpening):
+        elif business.status == BusinessStatus.PENDING:
             activity_status = "looking for owner"
-        elif business.gameobject.has_component(ClosedForBusiness):
+        elif business.status == BusinessStatus.CLOSED:
             activity_status = "closed-for-business"
 
-        if business.gameobject.has_component(OpenForBusiness) or inactive_ok:
+        if business.status == BusinessStatus.OPEN or inactive_ok:
             businesses.append(
                 (
                     str(uid),

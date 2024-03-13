@@ -44,7 +44,7 @@ def test_simulation_step() -> None:
 
 
 def test_simulation_initialization() -> None:
-    sim = Simulation(SimulationConfig(settlement="basic_settlement"))
+    sim = Simulation(SimulationConfig(settlement_with_id="basic_settlement"))
 
     load_districts(sim, _TEST_DATA_DIR / "districts.json")
     load_settlements(sim, _TEST_DATA_DIR / "settlements.json")
@@ -65,7 +65,7 @@ def test_simulation_initialization() -> None:
 
 
 def test_simulation_to_json() -> None:
-    sim = Simulation(SimulationConfig(settlement="basic_settlement"))
+    sim = Simulation(SimulationConfig(settlement_with_id="basic_settlement"))
 
     load_districts(sim, _TEST_DATA_DIR / "districts.json")
     load_settlements(sim, _TEST_DATA_DIR / "settlements.json")

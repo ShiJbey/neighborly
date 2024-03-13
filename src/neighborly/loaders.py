@@ -14,7 +14,6 @@ from typing import Any, Union, cast
 import pydantic
 import yaml
 
-from neighborly.defs.base_types import JobRoleDef, SkillDef, TraitDef
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
@@ -49,13 +48,13 @@ def load_districts(
 
     # This is a single definition
     if isinstance(data, dict):
-        district_library.add_definition_parse_obj(cast(dict[str, Any], data))
+        district_library.add_definition_from_obj(cast(dict[str, Any], data))
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            district_library.add_definition_parse_obj(entry)
+            district_library.add_definition_from_obj(entry)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:
@@ -83,13 +82,13 @@ def load_residences(
 
     # This is a single definition
     if isinstance(data, dict):
-        residence_library.add_definition_parse_obj(cast(dict[str, Any], data))
+        residence_library.add_definition_from_obj(cast(dict[str, Any], data))
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            residence_library.add_definition_parse_obj(entry)
+            residence_library.add_definition_from_obj(entry)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:
@@ -117,13 +116,13 @@ def load_settlements(
 
     # This is a single definition
     if isinstance(data, dict):
-        settlement_library.add_definition_parse_obj(cast(dict[str, Any], data))
+        settlement_library.add_definition_from_obj(cast(dict[str, Any], data))
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            settlement_library.add_definition_parse_obj(entry)
+            settlement_library.add_definition_from_obj(entry)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:
@@ -151,13 +150,13 @@ def load_businesses(
 
     # This is a single definition
     if isinstance(data, dict):
-        business_library.add_definition_parse_obj(cast(dict[str, Any], data))
+        business_library.add_definition_from_obj(cast(dict[str, Any], data))
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            business_library.add_definition_parse_obj(entry)
+            business_library.add_definition_from_obj(entry)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:
@@ -185,15 +184,13 @@ def load_job_roles(
 
     # This is a single definition
     if isinstance(data, dict):
-        definition = JobRoleDef.model_validate(data)
-        job_role_library.add_definition(definition)
+        job_role_library.add_definition_from_obj(cast(dict[str, Any], data))
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            definition = JobRoleDef.model_validate(entry)
-            job_role_library.add_definition(definition)
+            job_role_library.add_definition_from_obj(entry)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:
@@ -222,13 +219,13 @@ def load_characters(
 
     # This is a single definition
     if isinstance(data, dict):
-        character_library.add_definition_parse_obj(cast(dict[str, Any], data))
+        character_library.add_definition_from_obj(cast(dict[str, Any], data))
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            character_library.add_definition_parse_obj(entry)
+            character_library.add_definition_from_obj(entry)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:
@@ -250,26 +247,6 @@ def load_traits(
         The path to the data file.
     """
 
-    def _try_parse_trait_data(data: dict[str, Any]) -> TraitDef:
-        """Attempts to parse the data into a trait definition."""
-        try:
-            definition = TraitDef.model_validate(data)
-            trait_library.add_definition(definition)
-
-        except pydantic.ValidationError as err:
-            raise RuntimeError(
-                f"Error while parsing skill definition: {err!r}.\n"
-                f"{json.dumps(data, indent=2)}"
-            ) from err
-
-        except TypeError as err:
-            raise RuntimeError(
-                f"Error while parsing skill definition: {err!r}.\n"
-                f"{json.dumps(data, indent=2)}"
-            ) from err
-
-        return definition
-
     with open(file_path, "r", encoding="utf8") as file:
         data = yaml.safe_load(file)
 
@@ -277,15 +254,13 @@ def load_traits(
 
     # This is a single definition
     if isinstance(data, dict):
-        definition = _try_parse_trait_data(cast(dict[str, Any], data))
-        trait_library.add_definition(definition)
+        trait_library.add_definition_from_obj(cast(dict[str, Any], data))
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
-            definition = TraitDef.model_validate(entry)
-            trait_library.add_definition(definition)
+            trait_library.add_definition_from_obj(entry)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:
@@ -332,32 +307,28 @@ def load_skills(
     # This is a single definition
     if isinstance(data, dict):
         try:
-            definition = SkillDef.model_validate(data)
+            skill_library.add_definition_from_obj(cast(dict[str, Any], data))
         except pydantic.ValidationError as err:
             raise RuntimeError(
                 f"""
-            Error while parsing skill definition: {err}.
-            {json.dumps(data, indent=2)}
-            """
+                Error while parsing skill definition: {err}.
+                {json.dumps(data, indent=2)}
+                """
             ) from err
-
-        skill_library.add_definition(definition)
 
     # This is a list of definitions
     elif isinstance(data, list):
         data = cast(list[dict[str, Any]], data)
         for entry in data:
             try:
-                definition = SkillDef.model_validate(entry)
+                skill_library.add_definition_from_obj(entry)
             except pydantic.ValidationError as err:
                 raise RuntimeError(
                     f"""
-                Error while parsing skill definition: {err}.
-                {json.dumps(data, indent=2)}
-                """
+                    Error while parsing skill definition: {err}.
+                    {json.dumps(data, indent=2)}
+                    """
                 ) from err
-
-            skill_library.add_definition(definition)
 
     # This condition should never be reached, but this is here as a sanity check.
     else:

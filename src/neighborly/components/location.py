@@ -15,17 +15,23 @@ from ordered_set import OrderedSet
 from neighborly.ecs import Component, GameObject
 
 
-class FrequentedBy(Component):
+class Location(Component):
     """Tracks the characters that frequent a location."""
 
-    __slots__ = ("_characters",)
+    __slots__ = (
+        "is_private",
+        "frequented_by",
+    )
 
-    _characters: OrderedSet[GameObject]
+    is_private: bool
+    """Private locations are not available to frequent except by certain characters."""
+    frequented_by: OrderedSet[GameObject]
     """GameObject IDs of characters that frequent the location."""
 
-    def __init__(self) -> None:
+    def __init__(self, is_private: bool) -> None:
         super().__init__()
-        self._characters = OrderedSet([])
+        self.is_private = is_private
+        self.frequented_by = OrderedSet([])
 
     def add_character(self, character: GameObject) -> None:
         """Add a character.
@@ -35,7 +41,7 @@ class FrequentedBy(Component):
         character
             The GameObject reference to a character.
         """
-        self._characters.add(character)
+        self.frequented_by.add(character)
 
     def remove_character(self, character: GameObject) -> bool:
         """Remove a character.
@@ -50,28 +56,29 @@ class FrequentedBy(Component):
         bool
             Returns True if a character was removed. False otherwise.
         """
-        if character in self._characters:
-            self._characters.remove(character)
+        if character in self.frequented_by:
+            self.frequented_by.remove(character)
             return True
 
         return False
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "characters": [entry.uid for entry in self._characters],
+            "is_private": self.is_private,
+            "characters": [entry.uid for entry in self.frequented_by],
         }
 
     def __contains__(self, item: GameObject) -> bool:
-        return item in self._characters
+        return item in self.frequented_by
 
     def __iter__(self) -> Iterator[GameObject]:
-        return iter(self._characters)
+        return iter(self.frequented_by)
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._characters})"
+        return f"{self.__class__.__name__}({self.frequented_by})"
 
 
 class FrequentedLocations(Component):

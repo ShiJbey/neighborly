@@ -8,7 +8,7 @@ description = "A narrative-focused agent-based settlement simulation framework."
 authors = [{ name = "Shi Johnson-Bey", email = "shijbey@gmail.com" }]
 readme = "README.md"
 dynamic = ["version"]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 keywords = [
     "social simulation",
     "games",
@@ -50,6 +50,8 @@ dependencies = [
     "tabulate==0.9.*",
     "PyYAML==6.0.*",
     "tqdm==4.*",
+    "pydantic==2.6.*",
+    "repraxis@git+https://github.com/ShiJbey/RePraxisPy",
 ]
 
 [project.optional-dependencies]
@@ -86,7 +88,7 @@ line-length = 88
 profile = "black"
 default_section = "THIRDPARTY"
 known_first_party = "neighborly"
-src_paths = ["src/neighborly", "test", "samples"]
+src_paths = ["src/neighborly", "tests", "samples"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

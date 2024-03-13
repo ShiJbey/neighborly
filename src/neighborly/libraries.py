@@ -8,9 +8,11 @@ ID.
 
 from __future__ import annotations
 
+import json
 from collections import defaultdict
-from typing import Iterable, Iterator, Type
+from typing import Any, Generic, Iterable, Iterator, Type, TypeVar
 
+import pydantic
 from ordered_set import OrderedSet
 
 from neighborly.components.business import JobRole
@@ -21,12 +23,12 @@ from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
     BusinessDef,
     CharacterDef,
+    ContentDefinition,
     DistrictDef,
     JobRoleDef,
     ResidenceDef,
     SettlementDef,
     SkillDef,
-    SpeciesDef,
     TraitDef,
 )
 from neighborly.ecs import GameObject
@@ -34,23 +36,97 @@ from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.life_event import LifeEvent, LifeEventConsideration
 
+_T = TypeVar("_T", bound=ContentDefinition)
 
-class SkillLibrary:
+
+class ContentDefinitionLibrary(Generic[_T]):
     """The collection of skill definitions and instances."""
 
     _slots__ = (
         "definitions",
-        "instances",
+        "definition_types",
+        "default_definition_type",
     )
+
+    definitions: dict[str, _T]
+    """Skill IDs mapped to skill definition instances."""
+    definition_types: dict[str, Type[_T]]
+    """Skill IDs mapped to skill definition class types."""
+    default_definition_type: str
+    """The type name of the definition to use when importing raw data."""
+
+    def __init__(self) -> None:
+        self.definitions = {}
+        self.definition_types = {}
+        self.default_definition_type = ""
+
+    def get_definition(self, definition_id: str) -> _T:
+        """Get a definition from the library."""
+
+        return self.definitions[definition_id]
+
+    def add_definition(self, definition: _T) -> None:
+        """Add a definition to the library."""
+
+        self.definitions[definition.definition_id] = definition
+
+    def get_definition_with_tags(self, tags: list[str]) -> list[_T]:
+        """Get a definition from the library with the given tags."""
+
+        return get_with_tags(
+            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
+        )
+
+    def add_definition_type(
+        self,
+        definition_type: Type[_T],
+        set_default: bool = False,
+        alias: str = "",
+    ) -> None:
+        """Add a definition type to the library."""
+        definition_key = alias if alias else definition_type.__class__.__name__
+
+        self.definition_types[definition_key] = definition_type
+
+        if set_default:
+            self.default_definition_type = definition_key
+
+    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
+        """Parse a definition from a dict and add to the library."""
+
+        definition_type_name: str = obj.get(
+            "definition_type", self.default_definition_type
+        )
+        definition_type = self.definition_types[definition_type_name]
+
+        try:
+            definition = definition_type.model_validate(obj)
+            self.add_definition(definition)
+
+        except pydantic.ValidationError as err:
+            raise RuntimeError(
+                f"Error while parsing definition: {err!r}.\n"
+                f"{json.dumps(obj, indent=2)}"
+            ) from err
+
+        except TypeError as err:
+            raise RuntimeError(
+                f"Error while parsing definition: {err!r}.\n"
+                f"{json.dumps(obj, indent=2)}"
+            ) from err
+
+
+class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
+    """The collection of skill definitions and instances."""
+
+    _slots__ = "instances"
 
     instances: dict[str, GameObject]
     """Skill IDs mapped to instances of the skill."""
-    definitions: dict[str, SkillDef]
-    """Skill IDs mapped to skill definition instances."""
 
     def __init__(self) -> None:
+        super().__init__()
         self.instances = {}
-        self.definitions = {}
 
     def get_skill(self, skill_id: str) -> GameObject:
         """Get a skill instance given an ID."""
@@ -62,40 +138,18 @@ class SkillLibrary:
 
         self.instances[skill.get_component(Skill).definition_id] = skill
 
-    def get_definition(self, definition_id: str) -> SkillDef:
-        """Get a definition from the library."""
 
-        return self.definitions[definition_id]
-
-    def add_definition(self, skill_def: SkillDef) -> None:
-        """Add a definition to the library."""
-
-        self.definitions[skill_def.definition_id] = skill_def
-
-    def get_definition_with_tags(self, tags: list[str]) -> list[SkillDef]:
-        """Get a definition from the library with the given tags."""
-
-        return get_with_tags(
-            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
-        )
-
-
-class TraitLibrary:
+class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
     """The collection of trait definitions and instances."""
 
-    _slots__ = (
-        "definitions",
-        "instances",
-    )
+    _slots__ = ("instances",)
 
     instances: dict[str, GameObject]
     """Trait IDs mapped to instances of definitions."""
-    definitions: dict[str, TraitDef]
-    """Definition instances added to the library."""
 
     def __init__(self) -> None:
+        super().__init__()
         self.instances = {}
-        self.definitions = {}
 
     def get_trait(self, trait_id: str) -> GameObject:
         """Get a trait instance given an ID."""
@@ -106,61 +160,6 @@ class TraitLibrary:
         """Add a trait instance to the library."""
 
         self.instances[trait.get_component(Trait).definition_id] = trait
-
-    def get_definition(self, definition_id: str) -> TraitDef:
-        """Get a definition instance from the library."""
-
-        return self.definitions[definition_id]
-
-    def add_definition(self, trait_def: TraitDef) -> None:
-        """Add a definition instance to the library."""
-
-        self.definitions[trait_def.definition_id] = trait_def
-
-    def get_definition_with_tags(self, tags: list[str]) -> list[TraitDef]:
-        """Get a definition from the library with the given tags."""
-
-        return get_with_tags(
-            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
-        )
-
-
-class SpeciesLibrary:
-    """The collection of species definitions and instances."""
-
-    _slots__ = (
-        "definitions",
-        "instances",
-    )
-
-    instances: dict[str, GameObject]
-    """Species IDs mapped to GameObject instances."""
-    definitions: dict[str, SpeciesDef]
-    """Species IDs mapped to definitions."""
-
-    def __init__(self) -> None:
-        self.instances = {}
-        self.definitions = {}
-
-    def get_species(self, species_id: str) -> GameObject:
-        """Get a species instance given an ID."""
-
-        return self.instances[species_id]
-
-    def add_species(self, species: GameObject) -> None:
-        """Add a species instance to the library."""
-
-        self.instances[species.get_component(Trait).definition_id] = species
-
-    def get_definition(self, definition_id: str) -> SpeciesDef:
-        """Get a definition from the library."""
-
-        return self.definitions[definition_id]
-
-    def add_definition(self, species_def: SpeciesDef) -> None:
-        """Add a definition to the library."""
-
-        self.definitions[species_def.definition_id] = species_def
 
 
 class EffectLibrary:
@@ -183,136 +182,32 @@ class EffectLibrary:
         self.effect_types[factory.__name__] = factory
 
 
-class DistrictLibrary:
+class DistrictLibrary(ContentDefinitionLibrary[DistrictDef]):
     """A collection of all district definitions."""
 
-    __slots__ = ("definitions",)
 
-    definitions: dict[str, DistrictDef]
-    """Definition instances added to the library."""
-
-    def __init__(self) -> None:
-        self.definitions = {}
-
-    def get_definition(self, definition_id: str) -> DistrictDef:
-        """Get a definition from the library."""
-
-        return self.definitions[definition_id]
-
-    def add_definition(self, district_def: DistrictDef) -> None:
-        """Add a definition to the library."""
-
-        self.definitions[district_def.definition_id] = district_def
-
-    def get_definition_with_tags(self, tags: list[str]) -> list[DistrictDef]:
-        """Get a definition from the library with the given tags."""
-
-        return get_with_tags(
-            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
-        )
-
-
-class SettlementLibrary:
+class SettlementLibrary(ContentDefinitionLibrary[SettlementDef]):
     """The Collection of all the settlement definitions."""
 
-    __slots__ = ("definitions",)
 
-    definitions: dict[str, SettlementDef]
-
-    def __init__(self) -> None:
-        self.definitions = {}
-
-    def get_definition(self, definition_id: str) -> SettlementDef:
-        """Get a definition from the library."""
-
-        return self.definitions[definition_id]
-
-    def add_definition(self, settlement_def: SettlementDef) -> None:
-        """Add a definition to the library."""
-
-        self.definitions[settlement_def.definition_id] = settlement_def
-
-    def get_definition_with_tags(self, tags: list[str]) -> list[SettlementDef]:
-        """Get a definition from the library with the given tags."""
-
-        return get_with_tags(
-            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
-        )
-
-
-class ResidenceLibrary:
+class ResidenceLibrary(ContentDefinitionLibrary[ResidenceDef]):
     """A collection of all character definitions."""
 
-    __slots__ = ("definitions",)
 
-    definitions: dict[str, ResidenceDef]
-    """Definition instances added to the library."""
-
-    def __init__(self) -> None:
-        self.definitions = {}
-
-    def get_definition(self, definition_id: str) -> ResidenceDef:
-        """Get a definition instance from the library."""
-
-        return self.definitions[definition_id]
-
-    def add_definition(self, residence_def: ResidenceDef) -> None:
-        """Add a definition instance to the library."""
-
-        self.definitions[residence_def.definition_id] = residence_def
-
-    def get_definition_with_tags(self, tags: list[str]) -> list[ResidenceDef]:
-        """Get a definition from the library with the given tags."""
-
-        return get_with_tags(
-            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
-        )
-
-
-class CharacterLibrary:
+class CharacterLibrary(ContentDefinitionLibrary[CharacterDef]):
     """A collection of all character definitions."""
 
-    __slots__ = ("definitions",)
 
-    definitions: dict[str, CharacterDef]
-    """Definition instances added to the library."""
-
-    def __init__(self) -> None:
-        self.definitions = {}
-
-    def get_definition(self, definition_id: str) -> CharacterDef:
-        """Get a definition instance from the library."""
-
-        return self.definitions[definition_id]
-
-    def add_definition(self, character_def: CharacterDef) -> None:
-        """Add a definition instance to the library."""
-
-        self.definitions[character_def.definition_id] = character_def
-
-    def get_definition_with_tags(self, tags: list[str]) -> list[CharacterDef]:
-        """Get a definition from the library with the given tags."""
-
-        return get_with_tags(
-            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
-        )
-
-
-class JobRoleLibrary:
+class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
     """The collection of job role definitions and instances."""
 
-    _slots__ = (
-        "definitions",
-        "instances",
-    )
+    _slots__ = ("instances",)
 
     instances: dict[str, GameObject]
     """IDs mapped to instances of job roles."""
-    definitions: dict[str, JobRoleDef]
-    """Definition instances added to the library."""
 
     def __init__(self) -> None:
-        self.instances = {}
+        super().__init__()
         self.definitions = {}
 
     def get_role(self, job_role_id: str) -> GameObject:
@@ -323,40 +218,9 @@ class JobRoleLibrary:
         """Add a job role instance to the library."""
         self.instances[job_role.get_component(JobRole).definition_id] = job_role
 
-    def get_definition(self, definition_id: str) -> JobRoleDef:
-        """Get a definition from the library."""
-        return self.definitions[definition_id]
 
-    def add_definition(self, definition: JobRoleDef) -> None:
-        """Add a definition to the library."""
-        self.definitions[definition.definition_id] = definition
-
-
-class BusinessLibrary:
+class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
     """A collection of all business definitions."""
-
-    __slots__ = ("definitions",)
-
-    definitions: dict[str, BusinessDef]
-    """Definition instances added to the library."""
-
-    def __init__(self) -> None:
-        self.definitions = {}
-
-    def get_definition(self, definition_id: str) -> BusinessDef:
-        """Get a definition instance from the library."""
-        return self.definitions[definition_id]
-
-    def add_definition(self, business_def: BusinessDef) -> None:
-        """Add a definition instance to the library."""
-        self.definitions[business_def.definition_id] = business_def
-
-    def get_definition_with_tags(self, tags: list[str]) -> list[BusinessDef]:
-        """Get a definition from the library with the given tags."""
-
-        return get_with_tags(
-            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
-        )
 
 
 class LifeEventLibrary:

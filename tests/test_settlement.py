@@ -1,11 +1,8 @@
 import pathlib
 
 from neighborly.components.settlement import Settlement
-from neighborly.defs.base_types import (
-    SettlementDefDistrictEntry,
-    SettlementGenerationOptions,
-)
-from neighborly.defs.defaults import DefaultSettlementDef
+from neighborly.defs.base_types import SettlementDefDistrictEntry, SettlementGenOptions
+from neighborly.defs.settlement import DefaultSettlementDef
 from neighborly.helpers.settlement import create_settlement
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 from neighborly.loaders import (
@@ -32,7 +29,7 @@ def test_create_settlement() -> None:
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
     settlement = create_settlement(
-        sim.world, SettlementGenerationOptions(definition_id="basic_settlement")
+        sim.world, SettlementGenOptions(definition_id="basic_settlement")
     )
 
     assert settlement.metadata["definition_id"] == "basic_settlement"
@@ -58,8 +55,8 @@ def test_required_tags() -> None:
             definition_id="basic_settlement",
             display_name="Settlement",
             districts=[
-                SettlementDefDistrictEntry(tags=["urban", "suburban"]),
-                SettlementDefDistrictEntry(tags=["urban", "suburban"]),
+                SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
+                SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
             ],
         )
     )
@@ -80,7 +77,7 @@ def test_required_tags() -> None:
     # )
 
     settlement = create_settlement(
-        sim.world, SettlementGenerationOptions(definition_id="basic_settlement")
+        sim.world, SettlementGenOptions(definition_id="basic_settlement")
     )
     library = settlement.world.resources.get_resource(DistrictLibrary)
 
@@ -111,8 +108,12 @@ def test_optional_tags() -> None:
             definition_id="basic_settlement",
             display_name="Settlement",
             districts=[
-                SettlementDefDistrictEntry(tags=["urban", "suburban", "~hot", "~heat"]),
-                SettlementDefDistrictEntry(tags=["urban", "suburban", "~hot", "~heat"]),
+                SettlementDefDistrictEntry(
+                    with_tags=["urban", "suburban", "~hot", "~heat"]
+                ),
+                SettlementDefDistrictEntry(
+                    with_tags=["urban", "suburban", "~hot", "~heat"]
+                ),
             ],
         )
     )
@@ -133,7 +134,7 @@ def test_optional_tags() -> None:
     # )
 
     settlement = create_settlement(
-        sim.world, SettlementGenerationOptions(definition_id="basic_settlement")
+        sim.world, SettlementGenOptions(definition_id="basic_settlement")
     )
     library = settlement.world.resources.get_resource(DistrictLibrary)
 

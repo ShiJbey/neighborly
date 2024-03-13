@@ -19,6 +19,27 @@ from typing import Any, Iterator, Optional
 import attrs
 
 from neighborly.ecs import Component
+from neighborly.ecs.event import Event, EventEmitter
+from neighborly.ecs.game_object import GameObject
+
+
+@attrs.define
+class OnStatUpdate(Event):
+    """Event emitted when a stat's value changes."""
+
+    stat: Stat
+    value: float
+
+
+@attrs.define
+class OnStatComponentUpdate(Event):
+    """Event emitted when a stat's value changes."""
+
+    __event_id__ = "on-stat-change"
+
+    gameobject: GameObject
+    stat: Stat
+    value: float
 
 
 class Stat:
@@ -43,6 +64,7 @@ class Stat:
         "_max_value",
         "_is_bounded",
         "_is_discrete",
+        "on_value_change",
     )
 
     _base_value: float
@@ -58,6 +80,8 @@ class Stat:
     _is_discrete: bool
     """Should the final calculated stat value be converted to an int."""
 
+    on_value_change: EventEmitter[OnStatUpdate]
+
     def __init__(
         self,
         base_value: float,
@@ -69,6 +93,7 @@ class Stat:
         self._modifiers = []
         self._is_dirty = False
         self._is_discrete = is_discrete
+        self.on_value_change = EventEmitter()
 
         if bounds is None:
             self._min_value = sys.float_info.min
@@ -88,6 +113,7 @@ class Stat:
         """Set the base value of the relationship stat."""
         self._base_value = value
         self._is_dirty = True
+        self.on_value_change.dispatch(self, OnStatUpdate(stat=self, value=self.value))
 
     @property
     def value(self) -> float:
@@ -116,6 +142,7 @@ class Stat:
         self._modifiers.append(modifier)
         self._modifiers.sort(key=lambda m: m.order)
         self._is_dirty = True
+        self.on_value_change.dispatch(self, OnStatUpdate(stat=self, value=self.value))
 
     def remove_modifier(self, modifier: StatModifier) -> bool:
         """Remove a modifier from the stat.
@@ -133,6 +160,9 @@ class Stat:
         try:
             self._modifiers.remove(modifier)
             self._is_dirty = True
+            self.on_value_change.dispatch(
+                self, OnStatUpdate(stat=self, value=self.value)
+            )
             return True
         except ValueError:
             return False
@@ -157,6 +187,11 @@ class Stat:
                 self._is_dirty = True
                 did_remove = True
                 self._modifiers.remove(modifier)
+
+        if did_remove:
+            self.on_value_change.dispatch(
+                self, OnStatUpdate(stat=self, value=self.value)
+            )
 
         return did_remove
 
@@ -289,6 +324,7 @@ class Stats(Component):
             A stat instance.
         """
         self._stats[stat_id] = stat
+        stat.on_value_change.add_listener(self._handle_stat_update)
 
     def has_stat(self, stat_id: str) -> bool:
         """Check if a stat exists.
@@ -334,10 +370,20 @@ class Stats(Component):
             True if the stat was removed successfully, False otherwise.
         """
         if stat_id in self._stats:
+            stat = self._stats[stat_id]
+            stat.on_value_change.remove_listener(self._handle_stat_update)
             del self._stats[stat_id]
             return True
 
         return False
+
+    def _handle_stat_update(self, _: object, event: OnStatUpdate) -> None:
+        """Handle when one of the stats changes"""
+        self.gameobject.world.events.dispatch_event(
+            OnStatComponentUpdate(
+                gameobject=self.gameobject, stat=event.stat, value=event.value
+            )
+        )
 
     def __iter__(self) -> Iterator[tuple[str, Stat]]:
         return iter(self._stats.items())

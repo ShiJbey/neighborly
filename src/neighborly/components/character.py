@@ -7,8 +7,6 @@ from __future__ import annotations
 import enum
 from typing import Any
 
-from neighborly.components.traits import Trait
-from neighborly.datetime import SimDate
 from neighborly.ecs import Component, GameObject
 
 
@@ -151,7 +149,7 @@ class Character(Component):
             "sex": self.sex.name,
             "age": int(self.age),
             "life_stage": self.life_stage.name,
-            "species": self.species.get_component(Trait).definition_id,
+            "species": self.species.name,
         }
 
     def __repr__(self) -> str:
@@ -162,32 +160,3 @@ class Character(Component):
 
     def __str__(self) -> str:
         return self.full_name
-
-
-class Pregnant(Component):
-    """Tags a character as pregnant and tracks relevant information."""
-
-    __slots__ = "partner", "due_date"
-
-    partner: GameObject
-    """The GameObject ID of the character that impregnated this character."""
-    due_date: SimDate
-    """The date the baby is due."""
-
-    def __init__(self, partner: GameObject, due_date: SimDate) -> None:
-        super().__init__()
-        self.partner = partner
-        self.due_date = due_date.copy()
-
-    def __str__(self) -> str:
-        return f"{type(self).__name__}(partner={self.partner.name})"
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}(partner={self.partner.name})"
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "partner": self.partner.uid,
-            "due_date": str(self.due_date),
-        }

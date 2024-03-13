@@ -6,12 +6,15 @@ from __future__ import annotations
 
 from typing import Optional
 
+import attrs
+
 from neighborly.components.residence import ResidentialUnit
 from neighborly.components.settlement import District
 from neighborly.ecs import GameObject
 from neighborly.life_event import LifeEvent
 
 
+@attrs.define
 class Death(LifeEvent):
     """Event emitted when a character passes away."""
 
@@ -23,6 +26,7 @@ class Death(LifeEvent):
         return f"{self.subject.name} died."
 
 
+@attrs.define
 class JoinSettlementEvent(LifeEvent):
     """Dispatched when a character joins a settlement."""
 
@@ -36,6 +40,7 @@ class JoinSettlementEvent(LifeEvent):
         return f"{self.subject.name} immigrated to {self.settlement.name}."
 
 
+@attrs.define
 class BecomeAdolescentEvent(LifeEvent):
     """Event dispatched when a character becomes an adolescent."""
 
@@ -47,6 +52,7 @@ class BecomeAdolescentEvent(LifeEvent):
         return f"{self.subject.name} became an adolescent."
 
 
+@attrs.define
 class BecomeYoungAdultEvent(LifeEvent):
     """Event dispatched when a character becomes a young adult."""
 
@@ -58,6 +64,7 @@ class BecomeYoungAdultEvent(LifeEvent):
         return f"{self.subject.name} became a young adult."
 
 
+@attrs.define
 class BecomeAdultEvent(LifeEvent):
     """Event dispatched when a character becomes an adult."""
 
@@ -69,6 +76,7 @@ class BecomeAdultEvent(LifeEvent):
         return f"{self.subject.name} became an adult."
 
 
+@attrs.define
 class BecomeSeniorEvent(LifeEvent):
     """Event dispatched when a character becomes a senior."""
 
@@ -80,6 +88,7 @@ class BecomeSeniorEvent(LifeEvent):
         return f"{self.subject.name} became a senior."
 
 
+@attrs.define
 class ChangeResidenceEvent(LifeEvent):
     """Sets the characters current residence."""
 
@@ -108,6 +117,7 @@ class ChangeResidenceEvent(LifeEvent):
         return f"{self.subject.name} moved"
 
 
+@attrs.define
 class BirthEvent(LifeEvent):
     """Event dispatched when a child is born."""
 
@@ -118,6 +128,7 @@ class BirthEvent(LifeEvent):
         return f"{self.subject.name} was born."
 
 
+@attrs.define
 class HaveChildEvent(LifeEvent):
     """Event dispatched when a character has a child."""
 
@@ -137,6 +148,7 @@ class HaveChildEvent(LifeEvent):
             )
 
 
+@attrs.define
 class LeaveJob(LifeEvent):
     """Character leaves job of their own will."""
 
@@ -163,6 +175,7 @@ class LeaveJob(LifeEvent):
         )
 
 
+@attrs.define
 class DepartSettlement(LifeEvent):
     """Character leave the settlement and the simulation."""
 
@@ -174,6 +187,7 @@ class DepartSettlement(LifeEvent):
         return f"{self.subject.name} departed from the settlement."
 
 
+@attrs.define
 class LaidOffFromJob(LifeEvent):
     """The character is laid off from their job."""
 
@@ -200,6 +214,7 @@ class LaidOffFromJob(LifeEvent):
         )
 
 
+@attrs.define
 class BusinessClosedEvent(LifeEvent):
     """Event emitted when a business closes."""
 

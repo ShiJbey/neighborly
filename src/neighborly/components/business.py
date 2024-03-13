@@ -7,11 +7,12 @@ in the settlement and character occupations.
 
 from __future__ import annotations
 
+import enum
 from typing import Any, Iterable, Mapping, Optional
 
 from neighborly.datetime import SimDate
 from neighborly.defs.base_types import StatModifierData
-from neighborly.ecs import Component, GameObject, TagComponent
+from neighborly.ecs import Component, GameObject
 
 
 class Occupation(Component):
@@ -79,6 +80,14 @@ class Occupation(Component):
         )
 
 
+class BusinessStatus(enum.Enum):
+    """Current activity status of the business."""
+
+    CLOSED = enum.auto()
+    OPEN = enum.auto()
+    PENDING = enum.auto()
+
+
 class Business(Component):
     """A business where characters work."""
 
@@ -89,6 +98,7 @@ class Business(Component):
         "_district",
         "_owner",
         "_employees",
+        "status",
     )
 
     _name: str
@@ -103,6 +113,8 @@ class Business(Component):
     """Owner and their job role ID."""
     _employees: dict[GameObject, JobRole]
     """Employees mapped to their job role ID."""
+    status: BusinessStatus
+    """Current activity status of the business."""
 
     def __init__(
         self,
@@ -118,6 +130,7 @@ class Business(Component):
         self._employee_roles = employee_roles
         self._owner = None
         self._employees = {}
+        self.status = BusinessStatus.PENDING
 
     @property
     def district(self) -> GameObject:
@@ -218,43 +231,6 @@ class Business(Component):
             "owner": self._owner.uid if self._owner else -1,
             "district": self._district.uid,
         }
-
-
-class OpenToPublic(TagComponent):
-    """Tags a business as frequented by characters that don't work there."""
-
-
-class PendingOpening(TagComponent):
-    """Tags a business that needs to find a business owner before it can open."""
-
-
-class ClosedForBusiness(TagComponent):
-    """Tags a business as closed and no longer active in the simulation."""
-
-
-class OpenForBusiness(TagComponent):
-    """Tags a business as actively conducting business in the simulation."""
-
-
-class Unemployed(Component):
-    """Tags a character as needing a job, but not having a job."""
-
-    __slots__ = ("_timestamp",)
-
-    _timestamp: SimDate
-    """The date the character became unemployed."""
-
-    def __init__(self, timestamp: SimDate) -> None:
-        super().__init__()
-        self._timestamp = timestamp
-
-    @property
-    def timestamp(self) -> SimDate:
-        """The date the character became unemployed"""
-        return self._timestamp
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"timestamp": str(self.timestamp)}
 
 
 class JobRole(Component):

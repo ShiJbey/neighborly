@@ -7,11 +7,10 @@ from __future__ import annotations
 import random
 from typing import Union
 
-import attrs
+import pydantic
 
 
-@attrs.define
-class LoggingConfig:
+class LoggingConfig(pydantic.BaseModel):
     """Configuration settings for logging within a simulation."""
 
     logging_enabled: bool = True
@@ -27,15 +26,19 @@ class LoggingConfig:
     """Toggles if logs should be printed to the terminal or saved to a file."""
 
 
-@attrs.define
-class SimulationConfig:
+class SimulationConfig(pydantic.BaseModel):
     """Configuration settings for a Simulation instance."""
 
-    seed: Union[str, int] = attrs.field(factory=lambda: random.randint(0, 9999999))
+    seed: Union[str, int] = pydantic.Field(
+        default_factory=lambda: random.randint(0, 9999999)
+    )
     """Value used for pseudo-random number generation."""
 
-    logging: LoggingConfig = attrs.field(factory=LoggingConfig)
+    logging: LoggingConfig = pydantic.Field(default_factory=LoggingConfig)
     """Configuration settings for logging."""
 
-    settlement: Union[str, list[str]] = attrs.field(factory=list[str])
+    settlement_with_id: str = ""
     """Settlement definition ID to instantiate during simulation initialization."""
+
+    settlement_with_tags: list[str] = pydantic.Field(default_factory=list)
+    """Tags to use to select a settlement definition to instantiate."""

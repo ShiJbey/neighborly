@@ -7,16 +7,8 @@ from __future__ import annotations
 import random
 from typing import Any, Optional
 
-from neighborly.components.business import (
-    Business,
-    JobRole,
-    Occupation,
-    OpenForBusiness,
-    OpenToPublic,
-    PendingOpening,
-    Unemployed,
-)
-from neighborly.components.character import Character, LifeStage, Pregnant, Sex
+from neighborly.components.business import Business, JobRole, Occupation
+from neighborly.components.character import Character, LifeStage, Sex
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
@@ -52,7 +44,6 @@ class StartANewJob(LifeEvent):
     """The role they work."""
 
     @staticmethod
-    @event_consideration
     def number_children_consideration(event: StartANewJob) -> float:
         """Consider the number of children the character has."""
         subject = event.roles["subject"]
@@ -64,19 +55,16 @@ class StartANewJob(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def boldness_consideration(event: StartANewJob) -> float:
         """Considers the subject's boldness stat."""
         return get_stat(event.roles["subject"], "boldness").normalized
 
     @staticmethod
-    @event_consideration
     def reliability_consideration(event: StartANewJob) -> float:
         """Considers the subjects reliability stat."""
         return get_stat(event.roles["subject"], "reliability").normalized
 
     @staticmethod
-    @event_consideration
     def time_unemployed_consideration(event: StartANewJob) -> float:
         """Calculate consideration score based on the amount of time unemployed."""
         subject = event.roles["subject"]
@@ -91,7 +79,6 @@ class StartANewJob(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def relationship_with_owner(event: StartANewJob) -> float:
         """Considers the subject's reputation with the business' owner."""
         subject = event.roles["subject"]
@@ -106,7 +93,6 @@ class StartANewJob(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def life_stage_consideration(event: GetMarried) -> float:
         """Check the life stage of both partners"""
         subject = event.roles["subject"]
@@ -122,7 +108,6 @@ class StartANewJob(LifeEvent):
         return 0.1
 
     @staticmethod
-    @event_consideration
     def retired_consideration(event: GetMarried) -> float:
         """Check the life stage of both partners"""
         subject = event.roles["subject"]
@@ -161,7 +146,6 @@ class StartBusiness(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def has_job_consideration(event: StartBusiness) -> float:
         """check if the character already has a job."""
         if event.roles["subject"].has_component(Occupation):
@@ -170,19 +154,16 @@ class StartBusiness(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def boldness_consideration(event: StartBusiness) -> float:
         """Considers the subject's boldness stat."""
         return get_stat(event.roles["subject"], "boldness").normalized
 
     @staticmethod
-    @event_consideration
     def reliability_consideration(event: StartBusiness) -> float:
         """Considers the subjects reliability stat."""
         return get_stat(event.roles["subject"], "reliability").normalized
 
     @staticmethod
-    @event_consideration
     def time_unemployed_consideration(event: StartBusiness) -> float:
         """Calculate consideration score based on the amount of time unemployed."""
         subject = event.roles["subject"]
@@ -231,7 +212,6 @@ class StartDating(LifeEvent):
         add_trait(get_relationship(partner, subject_0), "dating")
 
     @staticmethod
-    @event_consideration
     def subject_has_crush(event: StartDating) -> float:
         """Consider if the subject has a crush on the other person."""
         subject = event.roles["subject"]
@@ -243,7 +223,6 @@ class StartDating(LifeEvent):
         return 0.2
 
     @staticmethod
-    @event_consideration
     def other_has_crush(event: StartDating) -> float:
         """Consider if the other person has a crush on the subject."""
         subject = event.roles["subject"]
@@ -255,7 +234,6 @@ class StartDating(LifeEvent):
         return 0.2
 
     @staticmethod
-    @event_consideration
     def romance_to_partner(event: StartDating) -> float:
         """Consider the romance from the partner to the subject."""
         return (
@@ -267,7 +245,6 @@ class StartDating(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def romance_to_subject(event: StartDating) -> float:
         """Consider the romance from the partner to the subject."""
         return (
@@ -279,7 +256,6 @@ class StartDating(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def partner_already_dating(event: StartDating) -> float:
         """Consider if the partner is already dating someone."""
         if len(get_relationships_with_traits(event.roles["partner"], "dating")) > 0:
@@ -309,7 +285,6 @@ class GetMarried(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def life_stage_consideration(event: GetMarried) -> float:
         """Check the life stage of both partners"""
         subject_0, subject_1 = event.roles.get_all("subject")
@@ -332,7 +307,6 @@ class GetMarried(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def romance_to_partner(event: StartDating) -> float:
         """Consider the romance from the partner to the subject."""
         subject_0, subject_1 = event.roles.get_all("subject")
@@ -340,7 +314,6 @@ class GetMarried(LifeEvent):
         return get_stat(get_relationship(subject_0, subject_1), "romance").normalized
 
     @staticmethod
-    @event_consideration
     def romance_to_subject(event: StartDating) -> float:
         """Consider the romance from the partner to the subject."""
         subject_0, subject_1 = event.roles.get_all("subject")
@@ -366,7 +339,6 @@ class GetDivorced(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def romance_to_spouse(event: GetDivorced) -> float:
         """Consider how in-love the subject is with the ex_spouse"""
         return (
@@ -422,7 +394,6 @@ class BreakUp(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def romance_to_partner(event: StartDating) -> float:
         """Consider the romance from the partner to the subject."""
         return (
@@ -468,7 +439,6 @@ class GetPregnant(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def check_if_pregnant(event: GetPregnant) -> float:
         """Check if the subject is already pregnant"""
         if event.roles["subject"].has_component(Pregnant):
@@ -476,7 +446,6 @@ class GetPregnant(LifeEvent):
         return -1.0
 
     @staticmethod
-    @event_consideration
     def proper_sex_consideration(event: GetPregnant) -> float:
         """Check that characters are the right sex to procreate."""
         subject = event.roles["subject"]
@@ -491,13 +460,11 @@ class GetPregnant(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def fertility_consideration(event: GetPregnant) -> float:
         """Check the fertility of the subject."""
         return get_stat(event.roles["subject"], "fertility").value
 
     @staticmethod
-    @event_consideration
     def partner_fertility_consideration(event: GetPregnant) -> float:
         """Check fertility of the partner."""
         return get_stat(event.roles["partner"], "fertility").value
@@ -547,7 +514,6 @@ class Retire(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def life_stage_consideration(event: Retire) -> float:
         """Calculate probability of retiring based on life stage."""
         subject = event.roles["subject"]
@@ -580,7 +546,6 @@ class DepartDueToUnemployment(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def employment_spouse_consideration(event: DepartDueToUnemployment) -> float:
         """Calculate consideration score for if the character is married."""
         subject = event.roles["subject"]
@@ -589,7 +554,6 @@ class DepartDueToUnemployment(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def employment_children_consideration(event: DepartDueToUnemployment) -> float:
         """Calculate a consideration score based on a character's number of children/"""
         subject = event.roles["subject"]
@@ -602,7 +566,6 @@ class DepartDueToUnemployment(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def has_occupation_consideration(event: DepartDueToUnemployment) -> float:
         """Calculate consideration score for if the character already has a job"""
         subject = event.roles["subject"]
@@ -612,13 +575,11 @@ class DepartDueToUnemployment(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def reliability_consideration(event: DepartDueToUnemployment) -> float:
         """Calculate consideration score for a character's reliability"""
         return get_stat(event.roles["subject"], "reliability").normalized
 
     @staticmethod
-    @event_consideration
     def time_unemployed_consideration(event: DepartDueToUnemployment) -> float:
         """Calculate consideration score based on the amount of time unemployed."""
         subject = event.roles["subject"]
@@ -631,7 +592,6 @@ class DepartDueToUnemployment(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def spouse_employment_consideration(event: DepartDueToUnemployment) -> float:
         """Veto if spouse has a job"""
         subject = event.roles["subject"]
@@ -673,7 +633,6 @@ class BecomeFriends(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def other_friend_count_consideration(event: BecomeFriends) -> float:
         """Consider the number of friends the other character already has."""
         return (
@@ -686,7 +645,6 @@ class BecomeFriends(LifeEvent):
         ) ** 2
 
     @staticmethod
-    @event_consideration
     def friend_count_consideration(event: BecomeFriends) -> float:
         """Consider the number of friends the subject already has."""
         return (
@@ -699,7 +657,6 @@ class BecomeFriends(LifeEvent):
         ) ** 2
 
     @staticmethod
-    @event_consideration
     def other_reputation_consideration(event: BecomeFriends) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -711,7 +668,6 @@ class BecomeFriends(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def subject_reputation_consideration(event: BecomeFriends) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -723,7 +679,6 @@ class BecomeFriends(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def are_enemies(event: BecomeFriends) -> float:
         """Consider if they are enemies."""
         if has_trait(
@@ -753,7 +708,6 @@ class DissolveFriendship(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def other_reputation_consideration(event: BecomeFriends) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -766,7 +720,6 @@ class DissolveFriendship(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def subject_reputation_consideration(event: BecomeFriends) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -805,7 +758,6 @@ class BecomeEnemies(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def are_friends(event: BecomeEnemies) -> float:
         """Consider if they are friends."""
         if has_trait(
@@ -815,7 +767,6 @@ class BecomeEnemies(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def other_reputation_consideration(event: BecomeEnemies) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -827,7 +778,6 @@ class BecomeEnemies(LifeEvent):
         ) ** 2
 
     @staticmethod
-    @event_consideration
     def subject_reputation_consideration(event: BecomeEnemies) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -865,7 +815,6 @@ class DissolveEnmity(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def other_reputation_consideration(event: BecomeFriends) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -877,7 +826,6 @@ class DissolveEnmity(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def subject_reputation_consideration(event: BecomeFriends) -> float:
         """Consider the reputation from the subject to the other person."""
         return (
@@ -915,7 +863,6 @@ class FormCrush(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def current_crush_consideration(event: FormCrush) -> float:
         """Consider a character's current crush."""
         subject = event.roles["subject"]
@@ -929,7 +876,6 @@ class FormCrush(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def romance_consideration(event: FormCrush) -> float:
         """Consider a character's romance value."""
         return (
@@ -958,13 +904,11 @@ class TryFindOwnPlace(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def boldness_consideration(event: StartANewJob) -> float:
         """Considers the subject's boldness stat."""
         return get_stat(event.roles["subject"], "boldness").normalized
 
     @staticmethod
-    @event_consideration
     def reliability_consideration(event: StartANewJob) -> float:
         """Considers the subjects reliability stat."""
         return get_stat(event.roles["subject"], "reliability").normalized
@@ -995,7 +939,6 @@ class PromotedToBusinessOwner(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def relationship_with_owner(event: LifeEvent) -> float:
         """Considers the subject's reputation with the business' owner."""
         subject = event.roles["subject"]
@@ -1013,13 +956,11 @@ class PromotedToBusinessOwner(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def boldness_consideration(event: LifeEvent) -> float:
         """Considers the subject's boldness stat."""
         return get_stat(event.roles["subject"], "boldness").normalized ** 3
 
     @staticmethod
-    @event_consideration
     def reliability_consideration(event: LifeEvent) -> float:
         """Considers the subjects reliability stat."""
         return get_stat(event.roles["subject"], "reliability").normalized ** 2
@@ -1058,7 +999,6 @@ class JobPromotion(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def relationship_with_owner(event: LifeEvent) -> float:
         """Considers the subject's reputation with the business' owner."""
         subject = event.roles["subject"]
@@ -1073,13 +1013,11 @@ class JobPromotion(LifeEvent):
         return -1
 
     @staticmethod
-    @event_consideration
     def boldness_consideration(event: LifeEvent) -> float:
         """Considers the subject's boldness stat."""
         return get_stat(event.roles["subject"], "boldness").normalized
 
     @staticmethod
-    @event_consideration
     def reliability_consideration(event: LifeEvent) -> float:
         """Considers the subjects reliability stat."""
         return get_stat(event.roles["subject"], "reliability").normalized
@@ -1114,13 +1052,11 @@ class FiredFromJob(LifeEvent):
         )
 
     @staticmethod
-    @event_consideration
     def stewardship_consideration(event: LifeEvent) -> float:
         """Considers the subjects reliability stat."""
         return 1 - get_stat(event.roles["subject"], "stewardship").normalized
 
     @staticmethod
-    @event_consideration
     def reliability_consideration(event: LifeEvent) -> float:
         """Considers the subjects reliability stat."""
         return 1 - get_stat(event.roles["subject"], "reliability").normalized ** 2

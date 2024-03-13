@@ -1,25 +1,61 @@
 """Definition Base Types.
 
-This module contains abstract base types of for content definitions. They are kept
-separate from the default definitions to avoid circular imports and improve end-user
-customization.
+This module contains abstract base types of for various content definitions. Each
+definition is an abstract factory responsible for creating GameObjects of a given type.
+Neighborly's library + abstract definition workflow leverages the abstract factory
+pattern, which allows users to create new definitions, and subsequently new factory
+types.
 
-Definitions are factories responsible for creating certain pieces of content at runtime.
+Casual users will probably not need to create their own definition types. This feature
+is for people that want to:
+
+1) Add components default to the GameObject construction process
+2) Add custom fields to definitions
+3) Change how existing fields are processed during construction
+4) Add additional fields to the generation options
+
+The abstract classed are kept separate from the built-in concrete definitions to
+to avoid circular imports.
+
+We chose Pydantic as the base class for all definitions to offload the data parsing and
+validation processes.
 
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from abc import ABC, abstractmethod
+from typing import Any, Optional
 
 import pydantic
+
+from neighborly.ecs import GameObject, World
+
+
+class ContentDefinition(pydantic.BaseModel):
+    """ABC for all content definitions."""
+
+    definition_id: str
+    """The name of this definition."""
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
+    """Variant settings of this type."""
+    extends: list[str] = pydantic.Field(default_factory=list)
+    """Definition IDs of definitions this inherits properties from."""
+    is_template: bool = False
+    """Is this definition a template for creating other definitions."""
+    tags: set[str] = pydantic.Field(default_factory=set)
+    """Tags describing this definition."""
 
 
 class DistrictDefCharacterEntry(pydantic.BaseModel):
     """Parameters for a type of character that can spawn."""
 
     with_id: str = ""
+    """ID to search for when adding a character def to the spawn table."""
     with_tags: list[str] = pydantic.Field(default_factory=list)
+    """Tags to search for when adding a character def to the spawn table."""
+    spawn_frequency: int = 1
+    """Frequency of this character def spawning relative to others."""
 
     @pydantic.model_validator(mode="after")  # type: ignore
     def check_id_or_tags(self):
@@ -34,7 +70,15 @@ class DistrictDefBusinessEntry(pydantic.BaseModel):
     """Parameters for a type of business that can spawn in a district."""
 
     with_id: str = ""
+    """ID to search for when adding a business to the spawn table."""
     with_tags: list[str] = pydantic.Field(default_factory=list)
+    """Tags to search for when adding a business to the spawn table."""
+    spawn_frequency: int = 1
+    """Frequency of this business spawning relative to others."""
+    max_instances: int = 999
+    """Maximum number of this business that can exist at once."""
+    min_population: int = 0
+    """Minimum number of characters required for this business."""
 
     @pydantic.model_validator(mode="after")  # type: ignore
     def check_id_or_tags(self):
@@ -49,8 +93,15 @@ class DistrictDefResidenceEntry(pydantic.BaseModel):
     """Parameters for a type of residential building that can spawn in a district."""
 
     with_id: str = ""
+    """ID to search for when adding a residence def to the spawn table."""
     with_tags: list[str] = pydantic.Field(default_factory=list)
-    characters: list[DistrictDefCharacterEntry] = pydantic.Field(default_factory=list)
+    """Tags to search for when adding a residence def to the spawn table."""
+    spawn_frequency: int = 1
+    """Frequency of this residence def spawning relative to others."""
+    max_instances: int = 999
+    """Maximum number of this residence def that can exist at once."""
+    min_population: int = 0
+    """Minimum number of characters required for this residence def."""
 
     @pydantic.model_validator(mode="after")  # type: ignore
     def check_id_or_tags(self):
@@ -61,7 +112,16 @@ class DistrictDefResidenceEntry(pydantic.BaseModel):
         return self
 
 
-class DistrictDef(pydantic.BaseModel):
+class DistrictGenOptions(pydantic.BaseModel):
+    """Parameter overrides used when creating a new district GameObject."""
+
+    definition_id: str
+    """The definition to create."""
+    name: str = ""
+    """The name of the district."""
+
+
+class DistrictDef(ContentDefinition, ABC):
     """A definition for a district within a settlement."""
 
     definition_id: str
@@ -80,7 +140,7 @@ class DistrictDef(pydantic.BaseModel):
     """The max number of business buildings that can exist in the district."""
     residential_slots: int = 0
     """The max number of residential buildings that can exist in the district."""
-    variants: list[DistrictDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -89,11 +149,34 @@ class DistrictDef(pydantic.BaseModel):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
+    @abstractmethod
+    def instantiate(
+        self,
+        world: World,
+        settlement: GameObject,
+        options: DistrictGenOptions,
+    ) -> GameObject:
+        """Create instance of district using the options.
 
-DistrictDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's world instance.
+        settlement
+            The settlement the district will belong to.
+        options
+            Generation options.
+
+        Returns
+        -------
+        GameObject
+            The instantiated district.
+        """
+
+        raise NotImplementedError()
 
 
-class SkillDef(pydantic.BaseModel):
+class SkillDef(ContentDefinition, ABC):
     """A definition for a skill."""
 
     definition_id: str
@@ -102,7 +185,7 @@ class SkillDef(pydantic.BaseModel):
     """The skill's name."""
     description: str = ""
     """A short description of the skill."""
-    variants: list[SkillDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -111,8 +194,22 @@ class SkillDef(pydantic.BaseModel):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
+    @abstractmethod
+    def instantiate(self, world: World) -> GameObject:
+        """Create a new skill using the definition's data.
 
-SkillDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+
+        Returns
+        -------
+        GameObject
+            The instantiated skill.
+        """
+
+        raise NotImplementedError()
 
 
 class StatModifierData(pydantic.BaseModel):
@@ -123,7 +220,7 @@ class StatModifierData(pydantic.BaseModel):
     modifier_type: str = "FLAT"
 
 
-class TraitDef(pydantic.BaseModel):
+class TraitDef(ContentDefinition, ABC):
     """A definition for a trait."""
 
     definition_id: str
@@ -144,7 +241,7 @@ class TraitDef(pydantic.BaseModel):
     """The probability of inheriting this trait if one parent has it."""
     inheritance_chance_both: float = 0.0
     """The probability of inheriting this trait if both parents have it."""
-    variants: list[SkillDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -153,56 +250,22 @@ class TraitDef(pydantic.BaseModel):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
+    @abstractmethod
+    def instantiate(self, world: World) -> GameObject:
+        """Create a new trait using the definition's data.
 
-TraitDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
 
+        Returns
+        -------
+        GameObject
+            The instantiated trait.
+        """
 
-class SpeciesDef(pydantic.BaseModel):
-    """A definition for a species type."""
-
-    definition_id: str
-    """The ID of this trait definition."""
-    display_name: str
-    """The name of this trait printed."""
-    description: str = ""
-    """A short description of the trait."""
-    stat_modifiers: list[StatModifierData] = pydantic.Field(default_factory=list)
-    """Modifiers applied to the owner's stats."""
-    skill_modifiers: list[StatModifierData] = pydantic.Field(default_factory=list)
-    """Modifiers applied to the owner's skills."""
-    conflicts_with: set[str] = pydantic.Field(default_factory=set)
-    """IDs of traits that this trait conflicts with."""
-    spawn_frequency: int = 0
-    """The relative frequency of this trait being chosen relative to others."""
-    inheritance_chance_single: float = 0.0
-    """The probability of inheriting this trait if one parent has it."""
-    inheritance_chance_both: float = 0.0
-    """The probability of inheriting this trait if both parents have it."""
-    adolescent_age: int
-    """Age this species reaches adolescence."""
-    young_adult_age: int
-    """Age this species reaches young adulthood."""
-    adult_age: int
-    """Age this species reaches main adulthood."""
-    senior_age: int
-    """Age this species becomes a senior/elder."""
-    lifespan: int
-    """The number of years that this species lives."""
-    can_physically_age: bool = True
-    """Does this character go through the various life stages."""
-    starting_health: int = 1000
-    """The amount of health points this species starts with."""
-    variants: list[SpeciesDef] = pydantic.Field(default_factory=list)
-    """Variant settings of this type."""
-    extends: list[str] = pydantic.Field(default_factory=list)
-    """Definition IDs of definitions this inherits properties from."""
-    is_template: bool = False
-    """Is this definition a template for creating other definitions."""
-    tags: set[str] = pydantic.Field(default_factory=set)
-    """Tags describing this definition."""
-
-
-SpeciesDef.model_rebuild()
+        raise NotImplementedError()
 
 
 class SettlementDefDistrictEntry(pydantic.BaseModel):
@@ -222,7 +285,16 @@ class SettlementDefDistrictEntry(pydantic.BaseModel):
         return self
 
 
-class SettlementDef(pydantic.BaseModel):
+class SettlementGenOptions(pydantic.BaseModel):
+    """Parameters used when generating new settlements."""
+
+    definition_id: str
+    """The definition to generate."""
+    name: str = ""
+    """The name of the settlement."""
+
+
+class SettlementDef(ContentDefinition, ABC):
     """A definition for a settlement."""
 
     definition_id: str
@@ -233,7 +305,7 @@ class SettlementDef(pydantic.BaseModel):
     """The name of the factory to use to generate the settlement name."""
     districts: list[SettlementDefDistrictEntry] = pydantic.Field(default_factory=list)
     """The districts to spawn in the settlement."""
-    variants: list[SkillDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=list)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -242,11 +314,33 @@ class SettlementDef(pydantic.BaseModel):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
+    @abstractmethod
+    def instantiate(self, world: World, options: SettlementGenOptions) -> GameObject:
+        """Generate a new settlement from the definition.
 
-SettlementDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        options
+            The settlement to initialize.
+
+        Returns
+        -------
+        GameObject
+            The instantiated settlement.
+        """
+        raise NotImplementedError()
 
 
-class ResidenceDef(pydantic.BaseModel):
+class ResidenceGenOptions(pydantic.BaseModel):
+    """Options provided to a residence factory."""
+
+    definition_id: str
+    """The definition to use."""
+
+
+class ResidenceDef(ContentDefinition, ABC):
     """A definition for a residential building."""
 
     definition_id: str
@@ -261,7 +355,7 @@ class ResidenceDef(pydantic.BaseModel):
     """The number of people required to build this residential building."""
     max_instances: int = 9999
     """Maximum number of this type of residential building allowed within a district."""
-    variants: list[ResidenceDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -275,8 +369,26 @@ class ResidenceDef(pydantic.BaseModel):
         """Is this a multifamily residential building"""
         return self.residential_units > 1
 
+    @abstractmethod
+    def instantiate(
+        self, world: World, district: GameObject, options: ResidenceGenOptions
+    ) -> GameObject:
+        """Create a new residential building using the definition's data.
 
-ResidenceDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        district
+            The district the building will belong to.
+
+        Returns
+        -------
+        GameObject
+            The instantiated residential building.
+        """
+
+        raise NotImplementedError()
 
 
 class CharacterDefTraitEntry(pydantic.BaseModel):
@@ -334,7 +446,24 @@ class CharacterDefSkillEntry(pydantic.BaseModel):
         return self
 
 
-class CharacterDef(pydantic.BaseModel):
+class CharacterGenOptions(pydantic.BaseModel):
+    """Generation parameters for creating characters."""
+
+    definition_id: str
+    """The definition to use for generation."""
+    first_name: str = ""
+    """The character's first name."""
+    last_name: str = ""
+    """The character's last name/surname/family name."""
+    age: int = -1
+    """The character's age (overrides life_stage)."""
+    life_stage: str = ""
+    """The life stage of the character."""
+    traits: list[str] = pydantic.Field(default_factory=list)
+    """Traits that this character should start with."""
+
+
+class CharacterDef(ContentDefinition, ABC):
     """A definition for a character that can spawn into the world."""
 
     definition_id: str
@@ -353,7 +482,7 @@ class CharacterDef(pydantic.BaseModel):
     """Default skills applied to the character upon generation."""
     stats: list[CharacterDefStatEntry] = pydantic.Field(default_factory=list)
     """Default stats applied to the character during generation."""
-    variants: list[CharacterDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -362,11 +491,31 @@ class CharacterDef(pydantic.BaseModel):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
+    @abstractmethod
+    def instantiate(
+        self,
+        world: World,
+        options: CharacterGenOptions,
+    ) -> GameObject:
+        """Generate a new character using the definition's data.
 
-CharacterDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        options
+            Generation options.
+
+        Returns
+        -------
+        GameObject
+            The instantiated character.
+        """
+
+        raise NotImplementedError()
 
 
-class JobRoleDef(pydantic.BaseModel):
+class JobRoleDef(ContentDefinition, ABC):
     """A definition of a type of job characters can work at a business."""
 
     definition_id: str
@@ -385,7 +534,7 @@ class JobRoleDef(pydantic.BaseModel):
     """Periodic boosts repeatedly applied to stats while a character holds the role."""
     periodic_skill_boosts: list[StatModifierData] = pydantic.Field(default_factory=list)
     """Periodic boosts repeatedly applied to skills while a character holds the role."""
-    variants: list[JobRoleDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -394,11 +543,34 @@ class JobRoleDef(pydantic.BaseModel):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
+    @abstractmethod
+    def instantiate(self, world: World) -> GameObject:
+        """Create a job role using the definition's data.
 
-JobRoleDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+
+        Returns
+        -------
+        GameObject
+            The instantiated job role.
+        """
+
+        raise NotImplementedError()
 
 
-class BusinessDef(pydantic.BaseModel):
+class BusinessGenOptions(pydantic.BaseModel):
+    """Parameters used to generate new businesses."""
+
+    definition_id: str
+    """The definition to generate."""
+    name: str = ""
+    """The name of the business."""
+
+
+class BusinessDef(ContentDefinition, ABC):
     """A definition for a business where characters can work and meet people."""
 
     definition_id: str
@@ -421,7 +593,7 @@ class BusinessDef(pydantic.BaseModel):
     """The minimum number of residents required to spawn the business."""
     max_instances: int = 9999
     """The maximum number of this definition that may exist in a district."""
-    variants: list[BusinessDef] = pydantic.Field(default_factory=list)
+    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict[str, Any])
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
     """Definition IDs of definitions this inherits properties from."""
@@ -430,5 +602,25 @@ class BusinessDef(pydantic.BaseModel):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
+    @abstractmethod
+    def instantiate(
+        self, world: World, district: GameObject, options: BusinessGenOptions
+    ) -> GameObject:
+        """Create a new business building using the definition's data.
 
-BusinessDef.model_rebuild()
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        district
+            The district the building will belong to.
+        options
+            Generation options.
+
+        Returns
+        -------
+        GameObject
+            The instantiated business building.
+        """
+
+        raise NotImplementedError()

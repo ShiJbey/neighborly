@@ -8,10 +8,29 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Union
 
+import attrs
 from ordered_set import OrderedSet
 
 from neighborly.defs.base_types import StatModifierData
 from neighborly.ecs import Component
+from neighborly.ecs.event import Event
+from neighborly.ecs.game_object import GameObject
+
+
+@attrs.define
+class OnTraitAdded(Event):
+    """Event emitted when a stat's value changes."""
+
+    gameobject: GameObject
+    trait: TraitInstance
+
+
+@attrs.define
+class OnTraitRemoved(Event):
+    """Event emitted when a stat's value changes."""
+
+    gameobject: GameObject
+    trait: TraitInstance
 
 
 class Trait(Component):
@@ -112,7 +131,13 @@ class Trait(Component):
 class TraitInstance:
     """A record of a trait attached to a GameObject."""
 
-    __slots__ = ("trait", "description", "has_duration", "duration")
+    __slots__ = (
+        "trait",
+        "description",
+        "has_duration",
+        "duration",
+        "data",
+    )
 
     trait: Trait
     """The trait this is an instance of."""
@@ -122,12 +147,15 @@ class TraitInstance:
     """Does this trait have a duration that needs to be ticked."""
     duration: int
     """Number of simulation ticks before this trait is removed."""
+    data: dict[str, Any]
+    """General key-value data store for the trait."""
 
     def __init__(self, trait: Trait, description: str, duration: int) -> None:
         self.trait = trait
         self.description = description
         self.has_duration = duration > 0
         self.duration = duration
+        self.data = {}
 
 
 class Traits(Component):
@@ -146,6 +174,13 @@ class Traits(Component):
     def traits(self) -> Iterable[TraitInstance]:
         """Return an iterator for the trait collection."""
         return self._traits.values()
+
+    def get_trait(self, trait: Union[str, Trait]) -> TraitInstance:
+        """Get a trait instance."""
+        if isinstance(trait, Trait):
+            return self._traits[trait.definition_id]
+
+        return self._traits[trait]
 
     def has_trait(self, trait: Union[str, Trait]) -> bool:
         """Check if a trait is present."""
@@ -182,6 +217,12 @@ class Traits(Component):
             return False
 
         self._traits[trait.definition_id] = TraitInstance(trait, description, duration)
+
+        self.gameobject.world.events.dispatch_event(
+            OnTraitAdded(
+                gameobject=self.gameobject, trait=self._traits[trait.definition_id]
+            )
+        )
         return True
 
     def remove_trait(self, trait: Union[str, Trait]) -> bool:
@@ -206,6 +247,10 @@ class Traits(Component):
 
         if trait not in self._traits:
             return False
+
+        self.gameobject.world.events.dispatch_event(
+            OnTraitRemoved(gameobject=self.gameobject, trait=self._traits[trait])
+        )
 
         del self._traits[trait]
         return True

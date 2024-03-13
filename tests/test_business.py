@@ -1,6 +1,11 @@
 import pathlib
 
 from neighborly.components.business import Business
+from neighborly.defs.base_types import (
+    BusinessGenOptions,
+    DistrictGenOptions,
+    SettlementGenOptions,
+)
 from neighborly.helpers.business import create_business
 from neighborly.helpers.settlement import create_district, create_settlement
 from neighborly.loaders import (
@@ -28,11 +33,19 @@ def test_create_business() -> None:
 
     sim.initialize()
 
-    settlement = create_settlement(sim.world, "basic_settlement")
+    settlement = create_settlement(
+        sim.world, SettlementGenOptions(definition_id="basic_settlement")
+    )
 
-    district = create_district(sim.world, settlement, "entertainment_district")
+    district = create_district(
+        sim.world,
+        settlement,
+        DistrictGenOptions(definition_id="entertainment_district"),
+    )
 
-    business = create_business(sim.world, district, "blacksmith_shop")
+    business = create_business(
+        sim.world, district, BusinessGenOptions(definition_id="blacksmith_shop")
+    )
 
     assert business.get_component(Business).owner_role is not None
     assert business.get_component(Business).district == district

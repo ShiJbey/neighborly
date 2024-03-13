@@ -13,7 +13,7 @@ from neighborly.ecs import GameObject
 from neighborly.effects.base_types import Effect, EffectContext
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.skills import add_skill, has_skill
-from neighborly.helpers.traits import remove_trait, add_trait
+from neighborly.helpers.traits import add_trait, remove_trait
 
 
 class AddTrait(Effect):
@@ -284,7 +284,7 @@ class AddSkillBuff(Effect):
             add_skill(self.target, self.skill)
 
         skills = self.target.get_component(Skills)
-        skills.get_skill(self.skill).base_value += self.amount
+        skills.get_skill(self.skill).stat.base_value += self.amount
 
     @classmethod
     def instantiate(cls, ctx: EffectContext) -> Effect:
