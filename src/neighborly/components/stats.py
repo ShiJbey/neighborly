@@ -18,9 +18,7 @@ from typing import Any, Iterator, Optional
 
 import attrs
 
-from neighborly.ecs import Component
-from neighborly.ecs.event import Event, EventEmitter
-from neighborly.ecs.game_object import GameObject
+from neighborly.ecs import Component, Event, EventEmitter, GameObject
 
 
 @attrs.define

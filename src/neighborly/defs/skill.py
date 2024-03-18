@@ -4,8 +4,7 @@
 
 from neighborly.components.skills import Skill
 from neighborly.defs.base_types import SkillDef
-from neighborly.ecs.game_object import GameObject
-from neighborly.ecs.world import World
+from neighborly.ecs import GameObject, World
 
 
 class DefaultSkillDef(SkillDef):

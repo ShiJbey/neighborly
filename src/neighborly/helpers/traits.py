@@ -5,7 +5,7 @@
 from typing import Union
 
 from neighborly.components.skills import Skills
-from neighborly.components.stats import Stats
+from neighborly.components.stats import StatModifier, StatModifierType, Stats
 from neighborly.components.traits import Trait, TraitInstance, Traits
 from neighborly.ecs import GameObject
 from neighborly.libraries import TraitLibrary
@@ -36,12 +36,24 @@ def add_trait(gameobject: GameObject, trait_id: str, duration: int = -1) -> bool
     if gameobject.get_component(Traits).add_trait(trait, duration=duration):
 
         stats = gameobject.get_component(Stats)
-        for modifier in trait.stat_modifiers:
-            stats.get_stat(modifier.name).remove_modifiers_from_source(trait)
+        for modifier_data in trait.stat_modifiers:
+            stats.get_stat(modifier_data.name).add_modifier(
+                StatModifier(
+                    value=modifier_data.value,
+                    modifier_type=StatModifierType[modifier_data.modifier_type],
+                    source=trait,
+                )
+            )
 
         skills = gameobject.get_component(Skills)
-        for modifier in trait.skill_modifiers:
-            skills.get_skill(modifier.name).stat.remove_modifiers_from_source(trait)
+        for modifier_data in trait.skill_modifiers:
+            skills.get_skill(modifier_data.name).stat.add_modifier(
+                StatModifier(
+                    value=modifier_data.value,
+                    modifier_type=StatModifierType[modifier_data.modifier_type],
+                    source=trait,
+                )
+            )
 
         return True
 

@@ -2,8 +2,7 @@
 
 from neighborly.components.traits import Trait
 from neighborly.defs.base_types import TraitDef
-from neighborly.ecs import GameObject
-from neighborly.ecs.world import World
+from neighborly.ecs import GameObject, World
 
 
 class DefaultTraitDef(TraitDef):

@@ -15,6 +15,13 @@ from typing import Optional
 from neighborly.config import SimulationConfig
 from neighborly.data_collection import DataCollectionSystems, DataTables
 from neighborly.datetime import SimDate
+from neighborly.defs.business import DefaultBusinessDef, DefaultJobRoleDef
+from neighborly.defs.character import DefaultCharacterDef
+from neighborly.defs.district import DefaultDistrictDef
+from neighborly.defs.residence import DefaultResidenceDef
+from neighborly.defs.settlement import DefaultSettlementDef
+from neighborly.defs.skill import DefaultSkillDef
+from neighborly.defs.trait import DefaultTraitDef
 from neighborly.ecs import World
 from neighborly.effects.effects import (
     AddRelationshipStatBuff,
@@ -52,7 +59,6 @@ from neighborly.systems import (
     InstantiateTraitsSystem,
     JobRoleMonthlyEffectsSystem,
     LateUpdateSystems,
-    LifeEventSystem,
     MeetNewPeopleSystem,
     PassiveReputationChange,
     PassiveRomanceChange,
@@ -101,15 +107,15 @@ class Simulation:
         self.world.resources.add_resource(random.Random(self._config.seed))
         self.world.resources.add_resource(SimDate())
         self.world.resources.add_resource(DataTables())
-        self.world.resources.add_resource(CharacterLibrary())
-        self.world.resources.add_resource(JobRoleLibrary())
-        self.world.resources.add_resource(BusinessLibrary())
-        self.world.resources.add_resource(ResidenceLibrary())
-        self.world.resources.add_resource(DistrictLibrary())
-        self.world.resources.add_resource(SettlementLibrary())
-        self.world.resources.add_resource(TraitLibrary())
+        self.world.resources.add_resource(CharacterLibrary(DefaultCharacterDef))
+        self.world.resources.add_resource(JobRoleLibrary(DefaultJobRoleDef))
+        self.world.resources.add_resource(BusinessLibrary(DefaultBusinessDef))
+        self.world.resources.add_resource(ResidenceLibrary(DefaultResidenceDef))
+        self.world.resources.add_resource(DistrictLibrary(DefaultDistrictDef))
+        self.world.resources.add_resource(SettlementLibrary(DefaultSettlementDef))
+        self.world.resources.add_resource(TraitLibrary(DefaultTraitDef))
         self.world.resources.add_resource(EffectLibrary())
-        self.world.resources.add_resource(SkillLibrary())
+        self.world.resources.add_resource(SkillLibrary(DefaultSkillDef))
         self.world.resources.add_resource(LifeEventLibrary())
         self.world.resources.add_resource(Tracery(self._config.seed))
         self.world.resources.add_resource(GlobalEventHistory())
@@ -160,9 +166,6 @@ class Simulation:
         )
         self.world.systems.add_system(
             system=MeetNewPeopleSystem(), system_group=UpdateSystems
-        )
-        self.world.systems.add_system(
-            system=LifeEventSystem(), system_group=UpdateSystems
         )
         self.world.systems.add_system(
             system=PassiveReputationChange(), system_group=UpdateSystems

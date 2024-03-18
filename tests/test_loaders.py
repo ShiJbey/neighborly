@@ -33,6 +33,7 @@ _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 def test_load_residences() -> None:
     sim = Simulation()
+
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     library = sim.world.resources.get_resource(ResidenceLibrary)
 

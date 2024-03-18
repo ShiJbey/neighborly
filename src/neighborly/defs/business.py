@@ -8,12 +8,34 @@ from neighborly.components.relationship import Relationships
 from neighborly.components.shared import Agent, PersonalEventHistory
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
-from neighborly.defs.base_types import BusinessDef, BusinessGenOptions
-from neighborly.ecs.game_object import GameObject
-from neighborly.ecs.world import World
+from neighborly.defs.base_types import BusinessDef, BusinessGenOptions, JobRoleDef
+from neighborly.ecs import GameObject, World
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import JobRoleLibrary
 from neighborly.tracery import Tracery
+
+
+class DefaultJobRoleDef(JobRoleDef):
+    """A default implementation of a Job Role Definition."""
+
+    def instantiate(self, world: World) -> GameObject:
+
+        role = world.gameobjects.spawn_gameobject(name=self.display_name)
+
+        role.add_component(
+            JobRole(
+                definition_id=self.definition_id,
+                display_name=self.display_name,
+                description=self.description,
+                job_level=self.job_level,
+                requirements=[],
+                stat_modifiers=self.stat_modifiers,
+                periodic_stat_boosts=self.periodic_stat_boosts,
+                periodic_skill_boosts=self.periodic_skill_boosts,
+            )
+        )
+
+        return role
 
 
 class DefaultBusinessDef(BusinessDef):

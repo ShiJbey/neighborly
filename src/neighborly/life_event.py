@@ -41,11 +41,10 @@ class LifeEvent(Event, ABC):
         """A string description of the event."""
         raise NotImplementedError()
 
-    @abstractmethod
     def to_dict(self) -> dict[str, Any]:
         """Serialize this LifeEvent to a dictionary"""
 
-        raise NotImplementedError()
+        return {}
 
 
 class GlobalEventHistory:

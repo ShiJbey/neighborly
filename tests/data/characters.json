@@ -48,7 +48,7 @@
     ],
     "skills": [
       {
-        "skill": "farming",
+        "with_id": "farming",
         "value_range": "50 - 150"
       }
     ]

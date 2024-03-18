@@ -23,9 +23,7 @@ from neighborly.components.shared import PersonalEventHistory
 from neighborly.components.skills import Skill, Skills
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
-from neighborly.ecs.component import Active
-from neighborly.ecs.errors import GameObjectNotFoundError
-from neighborly.ecs.game_object import GameObject
+from neighborly.ecs import Active, GameObject
 from neighborly.helpers.stats import get_stat
 from neighborly.simulation import Simulation
 
@@ -653,7 +651,7 @@ def inspect(sim: Simulation, obj: Union[int, GameObject]) -> None:
     if isinstance(obj, int):
         try:
             obj_ref = sim.world.gameobjects.get_gameobject(obj)
-        except GameObjectNotFoundError:
+        except KeyError:
             print(f"No GameObject exists with the ID: {obj}.")
             return
     else:

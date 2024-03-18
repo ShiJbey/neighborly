@@ -1,5 +1,19 @@
 """Business Agent Actions."""
 
+from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
+from neighborly.components.settlement import District
+from neighborly.components.spawn_table import BusinessSpawnTable
+from neighborly.datetime import SimDate
+from neighborly.ecs import GameObject
+from neighborly.helpers.location import (
+    add_frequented_location,
+    remove_all_frequenting_characters,
+    remove_frequented_location,
+)
+from neighborly.helpers.relationship import get_relationship
+from neighborly.helpers.stats import get_stat
+from neighborly.helpers.traits import add_trait, get_trait, has_trait, remove_trait
+
 
 def leave_job(subject: GameObject) -> None:
     world = subject.world
@@ -40,11 +54,9 @@ def leave_job(subject: GameObject) -> None:
     subject.remove_component(Occupation)
 
 
-def lay_off_employee(self) -> None:
-    business = self.roles["business"]
-    employee = self.roles["subject"]
-
-    current_date = self.world.resources.get_resource(SimDate)
+def lay_off_employee(business: GameObject, employee: GameObject) -> None:
+    world = business.world
+    current_date = world.resources.get_resource(SimDate)
 
     business_comp = business.get_component(Business)
 
@@ -66,34 +78,33 @@ def lay_off_employee(self) -> None:
         remove_trait(get_relationship(employee, other_employee), "coworker")
         remove_trait(get_relationship(other_employee, employee), "coworker")
 
-    employee.add_component(Unemployed(timestamp=current_date))
+    add_trait(employee, "unemployed")
+    get_trait(employee, "unemployed").data["timestamp"] = current_date.copy()
     employee.remove_component(Occupation)
 
 
-def close_for_business(self) -> None:
-    business = self.roles["business"]
+def close_for_business(business: GameObject) -> None:
+
     business_comp = business.get_component(Business)
 
-    # Update the business as no longer active
-    business.remove_component(OpenForBusiness)
-    business.add_component(ClosedForBusiness())
+    business_comp.status = BusinessStatus.CLOSED
 
     # Remove all the employees
     for employee, role in [*business_comp.employees.items()]:
-        LaidOffFromJob(
+        lay_off_employee(
             subject=employee,
             business=business,
             job_role=role.gameobject,
-        ).dispatch()
+        )
 
     # Remove the owner if applicable
     if business_comp.owner is not None:
-        LeaveJob(
+        leave_job(
             business=business,
             subject=business_comp.owner,
             job_role=business_comp.owner_role.gameobject,
             reason="business closed",
-        ).dispatch()
+        )
 
     # Decrement the number of this type
     business_comp.district.get_component(BusinessSpawnTable).decrement_count(
@@ -108,13 +119,13 @@ def close_for_business(self) -> None:
     business.deactivate()
 
 
-def start_job(self) -> None:
-    character = self.roles["subject"]
-    business = self.roles["business"]
-    job_role = self.roles["job_role"]
+def start_job(
+    character: GameObject, business: GameObject, job_role: GameObject
+) -> None:
+    world = character.world
 
     business_comp = business.get_component(Business)
-    current_date = self.world.resources.get_resource(SimDate)
+    current_date = world.resources.get_resource(SimDate)
 
     character.add_component(
         Occupation(
@@ -126,8 +137,8 @@ def start_job(self) -> None:
 
     add_frequented_location(character, business)
 
-    if character.has_component(Unemployed):
-        character.remove_component(Unemployed)
+    if has_trait(character, "unemployed"):
+        remove_trait(character, "unemployed")
 
     # Update boss/employee relationships if needed
     if business_comp.owner is not None:
@@ -142,12 +153,11 @@ def start_job(self) -> None:
     business_comp.add_employee(character, job_role.get_component(JobRole))
 
 
-def open_business(self) -> None:
-    character = self.roles["subject"]
-    business = self.roles["business"]
+def open_business(character: GameObject, business: GameObject) -> None:
+    world = character.world
     business_comp = business.get_component(Business)
     job_role = business_comp.owner_role
-    current_date = self.world.resources.get_resource(SimDate)
+    current_date = world.resources.get_resource(SimDate)
 
     character.add_component(
         Occupation(business=business, start_date=current_date, job_role=job_role)
@@ -156,24 +166,18 @@ def open_business(self) -> None:
     add_frequented_location(character, business)
 
     business_comp.set_owner(character)
+    business_comp.status = BusinessStatus.OPEN
 
-    business.remove_component(PendingOpening)
-    business.add_component(OpenForBusiness())
-    business.add_component(OpenToPublic())
-
-    if character.has_component(Unemployed):
-        character.remove_component(Unemployed)
+    if has_trait(character, "unemployed"):
+        remove_trait(character, "unemployed")
 
 
-def fire_employee(self) -> None:
-    subject = self.roles["subject"]
-    business = self.roles["business"]
-    job_role = self.roles["job_role"]
+def fire_employee(
+    business: GameObject, subject: GameObject, job_role: GameObject
+) -> None:
 
     # Events can dispatch other events
-    LeaveJob(
-        subject=subject, business=business, job_role=job_role, reason="fired"
-    ).dispatch()
+    leave_job(subject=subject, business=business, job_role=job_role, reason="fired")
 
     business_data = business.get_component(Business)
 
@@ -184,10 +188,10 @@ def fire_employee(self) -> None:
         get_stat(get_relationship(subject, owner), "romance").base_value -= 30
 
 
-def promote_employee(self) -> None:
-    character = self.roles["subject"]
-    business = self.roles["business"]
-    new_role = self.roles["new_role"]
+def promote_employee(
+    business: GameObject, character: GameObject, new_role: GameObject
+) -> None:
+    world = business.world
 
     business_data = business.get_component(Business)
 
@@ -200,7 +204,7 @@ def promote_employee(self) -> None:
     character.add_component(
         Occupation(
             business=business,
-            start_date=self.world.resources.get_resource(SimDate),
+            start_date=world.resources.get_resource(SimDate).copy(),
             job_role=new_role.get_component(JobRole),
         )
     )
@@ -208,18 +212,16 @@ def promote_employee(self) -> None:
     business_data.add_employee(character, new_role.get_component(JobRole))
 
 
-def promote_employee_to_owner(self) -> None:
-    subject = self.roles["subject"]
-    business = self.roles["business"]
+def promote_employee_to_owner(business: GameObject, subject: GameObject) -> None:
 
-    if occupation := self.roles["subject"].try_component(Occupation):
+    if occupation := subject.try_component(Occupation):
         # The new owner needs to leave their current job
-        LeaveJob(
+        leave_job(
             subject=subject,
             business=business,
             job_role=occupation.job_role.gameobject,
             reason="Promoted to business owner",
-        ).dispatch()
+        )
 
     # Set the subject as the new owner of the business
     business_data = business.get_component(Business)

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import Any, Generic, Iterable, Iterator, Type, TypeVar
+from typing import Any, Generic, Iterable, Iterator, Optional, Type, TypeVar
 
 import pydantic
 from ordered_set import OrderedSet
@@ -49,16 +49,19 @@ class ContentDefinitionLibrary(Generic[_T]):
     )
 
     definitions: dict[str, _T]
-    """Skill IDs mapped to skill definition instances."""
+    """IDs mapped to definition instances."""
     definition_types: dict[str, Type[_T]]
-    """Skill IDs mapped to skill definition class types."""
+    """IDs mapped to definition class types."""
     default_definition_type: str
     """The type name of the definition to use when importing raw data."""
 
-    def __init__(self) -> None:
+    def __init__(self, default_definition_type: Optional[Type[_T]] = None) -> None:
         self.definitions = {}
         self.definition_types = {}
         self.default_definition_type = ""
+
+        if default_definition_type:
+            self.add_definition_type(default_definition_type, set_default=True)
 
     def get_definition(self, definition_id: str) -> _T:
         """Get a definition from the library."""
@@ -124,8 +127,10 @@ class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
     instances: dict[str, GameObject]
     """Skill IDs mapped to instances of the skill."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self, default_definition_type: Optional[Type[SkillDef]] = None
+    ) -> None:
+        super().__init__(default_definition_type)
         self.instances = {}
 
     def get_skill(self, skill_id: str) -> GameObject:
@@ -147,8 +152,10 @@ class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
     instances: dict[str, GameObject]
     """Trait IDs mapped to instances of definitions."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self, default_definition_type: Optional[Type[TraitDef]] = None
+    ) -> None:
+        super().__init__(default_definition_type)
         self.instances = {}
 
     def get_trait(self, trait_id: str) -> GameObject:
@@ -206,8 +213,10 @@ class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
     instances: dict[str, GameObject]
     """IDs mapped to instances of job roles."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self, default_definition_type: Optional[Type[JobRoleDef]] = None
+    ) -> None:
+        super().__init__(default_definition_type)
         self.definitions = {}
 
     def get_role(self, job_role_id: str) -> GameObject:

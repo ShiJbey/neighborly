@@ -1,45 +1,79 @@
+# pylint: disable=W0621
+
 """Tests for Trait-related functionality.
 
 """
 
+import pytest
+
 from neighborly.components.skills import Skills
-from neighborly.components.stats import Stats
+from neighborly.components.stats import Stat, Stats
 from neighborly.components.traits import Trait, Traits
+from neighborly.defs.base_types import StatModifierData
 from neighborly.defs.trait import DefaultTraitDef
-from neighborly.helpers.stats import get_stat
+from neighborly.helpers.stats import add_stat, get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.libraries import TraitLibrary
 from neighborly.simulation import Simulation
+from neighborly.systems import InitializeSettlementSystem
 
 
-def test_trait_instantiation() -> None:
-    """Test that traits are properly initialized by the simulation."""
+@pytest.fixture
+def test_sim() -> Simulation:
+    """Create a test simulation instance."""
 
     sim = Simulation()
 
+    # Turn off settlement generation. We only care about traits.
+    sim.world.systems.get_system(InitializeSettlementSystem).set_active(False)
+
     library = sim.world.resources.get_resource(TraitLibrary)
+
+    library.add_definition_type(DefaultTraitDef, set_default=True)
 
     library.add_definition(
         DefaultTraitDef(definition_id="flirtatious", display_name="Flirtatious")
     )
 
-    # Traits are initialized at the start of the simulation
-    sim.initialize()
+    library.add_definition(
+        DefaultTraitDef(
+            definition_id="gullible",
+            display_name="Gullible",
+            stat_modifiers=[StatModifierData(name="sociability", value=3)],
+        )
+    )
+
+    library.add_definition(
+        DefaultTraitDef(
+            definition_id="skeptical",
+            display_name="Skeptical",
+            stat_modifiers=[StatModifierData(name="sociability", value=-3)],
+            conflicts_with={"gullible"},
+        )
+    )
+
+    return sim
+
+
+def test_trait_instantiation(test_sim: Simulation) -> None:
+    """Test that traits are properly initialized by the simulation."""
+
+    test_sim.initialize()
+
+    library = test_sim.world.resources.get_resource(TraitLibrary)
 
     trait = library.get_trait("flirtatious")
 
     assert trait.get_component(Trait).display_name == "Flirtatious"
 
 
-def test_add_trait() -> None:
+def test_add_trait(test_sim: Simulation) -> None:
     """Test that adding a trait makes it visible with has_trait."""
 
-    sim = Simulation()
-
     # Traits are initialized at the start of the simulation
-    sim.initialize()
+    test_sim.initialize()
 
-    character = sim.world.gameobjects.spawn_gameobject(
+    character = test_sim.world.gameobjects.spawn_gameobject(
         components=[Traits(), Stats(), Skills()]
     )
 
@@ -50,15 +84,13 @@ def test_add_trait() -> None:
     assert has_trait(character, "flirtatious") is True
 
 
-def test_remove_trait() -> None:
+def test_remove_trait(test_sim: Simulation) -> None:
     """Test that removing a trait makes it not available to has_trait."""
 
-    sim = Simulation()
-
     # Traits are initialized at the start of the simulation
-    sim.step()
+    test_sim.step()
 
-    character = sim.world.gameobjects.spawn_gameobject(
+    character = test_sim.world.gameobjects.spawn_gameobject(
         components=[Traits(), Stats(), Skills()]
     )
 
@@ -73,17 +105,17 @@ def test_remove_trait() -> None:
     assert has_trait(character, "flirtatious") is False
 
 
-def test_add_remove_trait_effects() -> None:
+def test_add_remove_trait_effects(test_sim: Simulation) -> None:
     """Test that trait effects are added and removed with the trait."""
 
-    sim = Simulation()
-
     # Traits are initialized at the start of the simulation
-    sim.initialize()
+    test_sim.initialize()
 
-    farmer = sim.world.gameobjects.spawn_gameobject(
+    farmer = test_sim.world.gameobjects.spawn_gameobject(
         components=[Traits(), Stats(), Skills()]
     )
+
+    add_stat(farmer, "sociability", Stat(0, (0, 255), is_discrete=True))
 
     get_stat(farmer, "sociability").base_value = 0
 
@@ -98,17 +130,17 @@ def test_add_remove_trait_effects() -> None:
     assert get_stat(farmer, "sociability").value == 0
 
 
-def test_try_add_conflicting_trait() -> None:
+def test_try_add_conflicting_trait(test_sim: Simulation) -> None:
     """Test that adding a conflicting trait to a character fails"""
 
-    sim = Simulation()
-
     # Traits are initialized at the start of the simulation
-    sim.initialize()
+    test_sim.initialize()
 
-    character = sim.world.gameobjects.spawn_gameobject(
+    character = test_sim.world.gameobjects.spawn_gameobject(
         components=[Traits(), Stats(), Skills()]
     )
+
+    add_stat(character, "sociability", Stat(0, (0, 255), is_discrete=True))
 
     success = add_trait(character, "skeptical")
 

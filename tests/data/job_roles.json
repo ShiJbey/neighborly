@@ -3,18 +3,11 @@
     "definition_id": "blacksmith",
     "display_name": "Blacksmith",
     "job_level": 2,
-    "requirements": [
+    "requirements": [],
+    "periodic_skill_boosts": [
       {
-        "type": "SkillRequirement",
-        "skill": "blacksmithing",
-        "level": 50
-      }
-    ],
-    "monthly_effects": [
-      {
-        "type": "IncreaseSkill",
-        "skill": "blacksmithing",
-        "amount": 0.2
+        "name": "blacksmithing",
+        "value": 0.2
       }
     ]
   },
@@ -22,11 +15,10 @@
     "definition_id": "blacksmith_apprentice",
     "display_name": "Blacksmith Apprentice",
     "job_level": 1,
-    "monthly_effects": [
+    "periodic_skill_boosts": [
       {
-        "type": "IncreaseSkill",
-        "skill": "blacksmithing",
-        "amount": 3
+        "name": "blacksmithing",
+        "value": 3
       }
     ]
   },

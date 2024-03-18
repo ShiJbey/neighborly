@@ -3,20 +3,19 @@
     "definition_id": "basic_settlement",
     "districts": [
       {
-        "tags": [
+        "with_tags": [
           "urban",
-          "suburban",
-          ""
+          "suburban"
         ]
       },
       {
-        "id": "market_district"
+        "with_id": "market_district"
       },
       {
-        "id": "entertainment_district"
+        "with_id": "entertainment_district"
       },
       {
-        "id": "upper_class_residences"
+        "with_id": "upper_class_residences"
       }
     ]
   }

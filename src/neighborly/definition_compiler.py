@@ -24,7 +24,6 @@ _T = TypeVar("_T", bound=ContentDefinition)
 
 
 def compile_definitions(
-    definition_type: Type[_T],
     definitions: Iterable[_T],
 ) -> list[_T]:
     """Compile final definitions from a collection of raw definitions."""
@@ -39,7 +38,7 @@ def compile_definitions(
             continue
 
         _process_definition(
-            definition_type, definition, unprocessed_defs, processed_defs
+            type(definition), definition, unprocessed_defs, processed_defs
         )
 
     final_results: list[_T] = []

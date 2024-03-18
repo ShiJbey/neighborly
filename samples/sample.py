@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=W0401,W0614
 
 """Sample Simulation for Terminal.
 
@@ -20,7 +21,6 @@ from neighborly.loaders import (
 )
 from neighborly.plugins import (
     default_character_names,
-    default_events,
     default_settlement_names,
     default_traits,
 )
@@ -86,7 +86,7 @@ def main() -> Simulation:
     load_job_roles(_sim, TEST_DATA_DIR / "job_roles.json")
     load_skills(_sim, TEST_DATA_DIR / "skills.json")
 
-    default_events.load_plugin(_sim)
+    # default_events.load_plugin(_sim)
     default_traits.load_plugin(_sim)
     default_character_names.load_plugin(_sim)
     default_settlement_names.load_plugin(_sim)

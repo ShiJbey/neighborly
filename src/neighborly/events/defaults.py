@@ -124,7 +124,8 @@ class BirthEvent(LifeEvent):
     subject: GameObject
     """The character that was born."""
 
-    def __str__(self) -> str:
+    @property
+    def description(self) -> str:
         return f"{self.subject.name} was born."
 
 
@@ -136,7 +137,8 @@ class HaveChildEvent(LifeEvent):
     other_parent: Optional[GameObject]
     child: GameObject
 
-    def __str__(self) -> str:
+    @property
+    def description(self) -> str:
         if self.other_parent is not None:
             return (
                 f"{self.birthing_parent.name} and "

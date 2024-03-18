@@ -8,8 +8,7 @@ from typing import Any, Iterable
 
 from ordered_set import OrderedSet
 
-from neighborly.ecs import Component, GameObject
-from neighborly.ecs.component import TagComponent
+from neighborly.ecs import Component, GameObject, TagComponent
 
 
 class ResidentialUnit(Component):

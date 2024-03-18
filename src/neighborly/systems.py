@@ -12,31 +12,30 @@ from typing import ClassVar, Optional
 
 import polars as pl
 
-from neighborly.components.business import JobRole, Occupation
-from neighborly.components.character import Character, LifeStage, Species
+from neighborly.actions.character import die
+from neighborly.components.business import Occupation
+from neighborly.components.character import Character, LifeStage, Sex, Species
 from neighborly.components.location import FrequentedLocations, Location
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
-from neighborly.components.skills import Skill, Skills
+from neighborly.components.shared import PersonalEventHistory
+from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
 from neighborly.components.stats import Stats
-from neighborly.components.traits import Trait, Traits
+from neighborly.components.traits import Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.definition_compiler import compile_definitions
 from neighborly.defs.base_types import (
     BusinessGenOptions,
     CharacterGenOptions,
-    JobRoleDef,
     ResidenceGenOptions,
     SettlementGenOptions,
-    SkillDef,
-    TraitDef,
 )
 from neighborly.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
@@ -46,7 +45,6 @@ from neighborly.events.defaults import (
     BecomeYoungAdultEvent,
     BirthEvent,
     ChangeResidenceEvent,
-    Death,
     HaveChildEvent,
     JoinSettlementEvent,
 )
@@ -62,15 +60,14 @@ from neighborly.helpers.relationship import (
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.libraries import (
     JobRoleLibrary,
-    LifeEventLibrary,
     SettlementLibrary,
     SkillLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import LifeEvent
+from neighborly.life_event import GlobalEventHistory
 
 
 class InitializationSystems(SystemGroup):
@@ -266,6 +263,7 @@ class SpawnNewResidentSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.resources.get_resource(random.Random)
+        current_date = world.resources.get_resource(SimDate)
 
         # Find vacant residences
         for _, (_, residence, _) in world.get_components(
@@ -302,15 +300,31 @@ class SpawnNewResidentSystem(System):
                 ),
             )
 
-            JoinSettlementEvent(
+            join_settlement_event = JoinSettlementEvent(
                 subject=character,
                 settlement=residence.district.get_component(District).settlement,
-            ).dispatch()
+                timestamp=current_date.copy(),
+            )
+
+            world.events.dispatch_event(join_settlement_event)
+            character.get_component(PersonalEventHistory).append(join_settlement_event)
+            world.resources.get_resource(GlobalEventHistory).append(
+                join_settlement_event
+            )
 
             # Add the character as the owner of the home and a resident
-            ChangeResidenceEvent(
-                subject=character, new_residence=residence.gameobject, is_owner=True
-            ).dispatch()
+            change_residence_event = ChangeResidenceEvent(
+                subject=character,
+                old_residence=None,
+                new_residence=residence.gameobject,
+                timestamp=current_date.copy(),
+            )
+
+            world.events.dispatch_event(change_residence_event)
+            character.get_component(PersonalEventHistory).append(change_residence_event)
+            world.resources.get_resource(GlobalEventHistory).append(
+                change_residence_event
+            )
 
 
 class SpawnNewBusinessesSystem(System):
@@ -380,26 +394,15 @@ class InstantiateTraitsSystem(System):
         trait_library = world.resources.get_resource(TraitLibrary)
 
         # Compile the loaded definitions
-        compiled_defs = compile_definitions(
-            TraitDef, trait_library.definitions.values()
-        )
+        compiled_defs = compile_definitions(trait_library.definitions.values())
 
         # Clear out the unprocessed ones
         trait_library.definitions.clear()
 
+        # Add the new definitions and instances to the library.
         for trait_def in compiled_defs:
             trait_library.add_definition(trait_def)
-            trait = world.gameobjects.spawn_gameobject(name=trait_def.display_name)
-            trait.add_component(
-                Trait(
-                    definition_id=trait_def.definition_id,
-                    display_name=trait_def.display_name,
-                    description=trait_def.description,
-                    stat_modifiers=trait_def.stat_modifiers,
-                    skill_modifiers=trait_def.skill_modifiers,
-                    conflicting_traits=trait_def.conflicts_with,
-                )
-            )
+            trait = trait_def.instantiate(world)
             trait_library.add_trait(trait)
 
 
@@ -410,23 +413,14 @@ class InstantiateSkillsSystem(System):
         skill_library = world.resources.get_resource(SkillLibrary)
 
         # Compile the loaded definitions
-        compiled_defs = compile_definitions(
-            SkillDef, skill_library.definitions.values()
-        )
+        compiled_defs = compile_definitions(skill_library.definitions.values())
 
         # Clear out the unprocessed ones
         skill_library.definitions.clear()
 
         for skill_def in compiled_defs:
             skill_library.add_definition(skill_def)
-            skill = world.gameobjects.spawn_gameobject(name=skill_def.display_name)
-            skill.add_component(
-                Skill(
-                    definition_id=skill_def.definition_id,
-                    display_name=skill_def.display_name,
-                    description=skill_def.description,
-                )
-            )
+            skill = skill_def.instantiate(world)
             skill_library.add_skill(skill)
 
 
@@ -437,27 +431,14 @@ class InstantiateJobRolesSystem(System):
         job_role_library = world.resources.get_resource(JobRoleLibrary)
 
         # Compile the loaded definitions
-        compiled_defs = compile_definitions(
-            JobRoleDef, job_role_library.definitions.values()
-        )
+        compiled_defs = compile_definitions(job_role_library.definitions.values())
 
         # Clear out the unprocessed ones
         job_role_library.definitions.clear()
 
         for role_def in compiled_defs:
-            job_role = world.gameobjects.spawn_gameobject(name=role_def.display_name)
-            job_role.add_component(
-                JobRole(
-                    definition_id=role_def.definition_id,
-                    display_name=role_def.display_name,
-                    description=role_def.description,
-                    job_level=role_def.job_level,
-                    requirements=role_def.requirements,
-                    stat_modifiers=role_def.stat_modifiers,
-                    periodic_stat_boosts=role_def.periodic_stat_boosts,
-                    periodic_skill_boosts=role_def.periodic_skill_boosts,
-                )
-            )
+            job_role_library.add_definition(role_def)
+            job_role = role_def.instantiate(world)
             job_role_library.add_role(job_role)
 
 
@@ -555,27 +536,57 @@ class AgingSystem(System):
     def on_update(self, world: World) -> None:
         # This system runs every simulated month
         elapsed_years: float = 1.0 / MONTHS_PER_YEAR
+        current_date = world.resources.get_resource(SimDate)
+        global_event_history = world.resources.get_resource(GlobalEventHistory)
 
-        for _, (character, _) in world.get_components((Character, Active)):
+        for _, (character, event_history, _) in world.get_components(
+            (Character, PersonalEventHistory, Active)
+        ):
             character.age = character.age + elapsed_years
             species = character.species.get_component(Species)
 
             if species.can_physically_age:
                 if character.age >= species.senior_age:
                     if character.life_stage != LifeStage.SENIOR:
-                        BecomeSeniorEvent(character.gameobject).dispatch()
+                        character.life_stage = LifeStage.SENIOR
+                        remove_trait(character.gameobject, "adult")
+                        add_trait(character.gameobject, "senior")
+                        event = BecomeSeniorEvent(
+                            subject=character.gameobject, timestamp=current_date.copy()
+                        )
+                        event_history.append(event)
+                        global_event_history.append(event)
+                        world.events.dispatch_event(event)
 
                 elif character.age >= species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
-                        BecomeAdultEvent(character.gameobject).dispatch()
+                        character.life_stage = LifeStage.SENIOR
+                        remove_trait(character.gameobject, "adult")
+                        add_trait(character.gameobject, "senior")
+                        event = BecomeAdultEvent(
+                            subject=character.gameobject, timestamp=current_date.copy()
+                        )
+                        event_history.append(event)
+                        global_event_history.append(event)
+                        world.events.dispatch_event(event)
 
                 elif character.age >= species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
-                        BecomeYoungAdultEvent(character.gameobject).dispatch()
+                        event = BecomeYoungAdultEvent(
+                            subject=character.gameobject, timestamp=current_date.copy()
+                        )
+                        event_history.append(event)
+                        global_event_history.append(event)
+                        world.events.dispatch_event(event)
 
                 elif character.age >= species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
-                        BecomeAdolescentEvent(character.gameobject).dispatch()
+                        event = BecomeAdolescentEvent(
+                            subject=character.gameobject, timestamp=current_date.copy()
+                        )
+                        event_history.append(event)
+                        global_event_history.append(event)
+                        world.events.dispatch_event(event)
 
                 else:
                     if character.life_stage != LifeStage.CHILD:
@@ -658,7 +669,50 @@ class DeathSystem(System):
     def on_update(self, world: World) -> None:
         for _, (_, character) in world.get_components((Active, Character)):
             if get_stat(character.gameobject, "health").value <= 0:
-                Death(character.gameobject).dispatch()
+                die(character.gameobject)
+
+
+class PregnancySystem(System):
+    """Characters have a chance of getting pregnant while in romantic relationships."""
+
+    @staticmethod
+    def check_if_pregnant(subject: GameObject) -> float:
+        """Check if the subject is already pregnant"""
+        if has_trait(subject, "pregnant"):
+            return 0.0
+        return -1.0
+
+    @staticmethod
+    def proper_sex_consideration(subject: GameObject, partner: GameObject) -> float:
+        """Check that characters are the right sex to procreate."""
+
+        if subject.get_component(Character).sex == Sex.MALE:
+            return 0.0
+
+        if partner.get_component(Character).sex == Sex.FEMALE:
+            return 0.0
+
+        return -1
+
+    @staticmethod
+    def fertility_consideration(subject: GameObject) -> float:
+        """Check the fertility of the subject."""
+        return get_stat(subject, "fertility").value
+
+    @staticmethod
+    def partner_fertility_consideration(partner: GameObject) -> float:
+        """Check fertility of the partner."""
+        return get_stat(partner, "fertility").value
+
+    def on_update(self, world: World) -> None:
+        # subject = self.roles["subject"]
+        # partner = self.roles["partner"]
+
+        # due_date = self.world.resources.get_resource(SimDate).copy()
+        # due_date.increment(months=9)
+
+        # subject.add_component(Pregnant(partner=partner, due_date=due_date))
+        pass
 
 
 class ChildBirthSystem(System):
@@ -666,6 +720,7 @@ class ChildBirthSystem(System):
 
     def on_update(self, world: World) -> None:
         current_date = world.resources.get_resource(SimDate)
+        global_event_history = world.resources.get_resource(GlobalEventHistory)
 
         for _, (character, traits, _) in world.get_components(
             (Character, Traits, Active)
@@ -688,11 +743,15 @@ class ChildBirthSystem(System):
                 ),
             )
 
-            ChangeResidenceEvent(
-                baby,
+            event = ChangeResidenceEvent(
+                subject=baby,
                 new_residence=character.gameobject.get_component(Resident).residence,
-                is_owner=False,
-            ).dispatch()
+                old_residence=None,
+                timestamp=current_date.copy(),
+            )
+            baby.get_component(PersonalEventHistory).append(event)
+            global_event_history.append(event)
+            world.events.dispatch_event(event)
 
             # Birthing parent to child
             add_trait(get_relationship(character.gameobject, baby), "child")
@@ -756,68 +815,84 @@ class ChildBirthSystem(System):
             get_stat(character.gameobject, "fertility").base_value -= 0.2
 
             HaveChildEvent(
-                parent_0=character.gameobject,
-                parent_1=other_parent,
+                birthing_parent=character.gameobject,
+                other_parent=other_parent,
                 child=baby,
-            ).dispatch()
+                timestamp=current_date.copy(),
+            )
 
-            BirthEvent(baby).dispatch()
+            BirthEvent(subject=baby, timestamp=current_date.copy())
 
 
-class LifeEventSystem(System):
-    """Simulate life events/character behavior.
-
-    This system is the core of character behavior for the Simulation. Each time step,
-    characters probabilistically select a life event to execute from a shared collection
-    of LifeEvent types. Life events are how we represent character behaviors and track
-    the various narrative-relevant events that happen in the simulation. Every life
-    event has a 'subject' (the character who the event happens to).
-
-    To add a new life event to this system, create a new LifeEvent subclass and add it
-    to the LifeEventLibrary instance within the simulation world's resource manager.
-    """
-
-    EVENT_PROBABILITY_THRESHOLD: ClassVar[float] = 0.5
-    """The minimum required probability for an event to be considered for execution."""
+class AgentActionSystem(System):
+    """Simulate agents taking actions this timestep."""
 
     def on_update(self, world: World) -> None:
-        life_event_library = world.resources.get_resource(LifeEventLibrary)
-        rng = world.resources.get_resource(random.Random)
+        # action_library = world.resources.get_resource(ActionLibrary)
 
-        for _, (character, _) in world.get_components((Character, Active)):
-            life_event_choices: list[LifeEvent] = []
-            life_event_probabilities: list[float] = []
+        # for _, (agent,) in world.get_components((Agent,)):
+        #     potential_actions:
 
-            for event_type in life_event_library:
-                # Skip event types that with base probability zero
-                # these are most likely events that require more than one
-                # role and are triggered by other events/systems.
-                # if event_type.base_probability == 0.0:
-                #     continue
+        #     # Loop through the agent's action set
+        #     for action_id in agent.action_set:
+        #         action_library.get_action(action_id)
+        pass
 
-                event_instance = event_type.instantiate(character.gameobject)
-                if event_instance is not None:
-                    event_probability = event_instance.get_probability()
-                    if event_probability >= self.EVENT_PROBABILITY_THRESHOLD:
-                        life_event_choices.append(event_instance)
-                        life_event_probabilities.append(event_probability)
 
-            # _logger.debug(
-            #     list(
-            #         zip(
-            #             [f.__class__.__name__ for f in life_event_choices],
-            #             life_event_probabilities,
-            #         )
-            #     )
-            # )
+# class LifeEventSystem(System):
+#     """Simulate life events/character behavior.
 
-            if life_event_choices:
-                chosen_event = rng.choices(
-                    population=life_event_choices, weights=life_event_probabilities, k=1
-                )[0]
+#     This system is the core of character behavior for the Simulation. Each time step,
+#     characters probabilistically select a life event to execute from a shared collection
+#     of LifeEvent types. Life events are how we represent character behaviors and track
+#     the various narrative-relevant events that happen in the simulation. Every life
+#     event has a 'subject' (the character who the event happens to).
 
-                # if rng.random() < chosen_event.get_probability():
-                chosen_event.dispatch()
+#     To add a new life event to this system, create a new LifeEvent subclass and add it
+#     to the LifeEventLibrary instance within the simulation world's resource manager.
+#     """
+
+#     EVENT_PROBABILITY_THRESHOLD: ClassVar[float] = 0.5
+#     """The minimum required probability for an event to be considered for execution."""
+
+#     def on_update(self, world: World) -> None:
+#         life_event_library = world.resources.get_resource(LifeEventLibrary)
+#         rng = world.resources.get_resource(random.Random)
+
+#         for _, (character, _) in world.get_components((Character, Active)):
+#             life_event_choices: list[LifeEvent] = []
+#             life_event_probabilities: list[float] = []
+
+#             for event_type in life_event_library:
+#                 # Skip event types that with base probability zero
+#                 # these are most likely events that require more than one
+#                 # role and are triggered by other events/systems.
+#                 # if event_type.base_probability == 0.0:
+#                 #     continue
+
+#                 event_instance = event_type.instantiate(character.gameobject)
+#                 if event_instance is not None:
+#                     event_probability = event_instance.get_probability()
+#                     if event_probability >= self.EVENT_PROBABILITY_THRESHOLD:
+#                         life_event_choices.append(event_instance)
+#                         life_event_probabilities.append(event_probability)
+
+#             # _logger.debug(
+#             #     list(
+#             #         zip(
+#             #             [f.__class__.__name__ for f in life_event_choices],
+#             #             life_event_probabilities,
+#             #         )
+#             #     )
+#             # )
+
+#             if life_event_choices:
+#                 chosen_event = rng.choices(
+#                     population=life_event_choices, weights=life_event_probabilities, k=1
+#                 )[0]
+
+#                 # if rng.random() < chosen_event.get_probability():
+#                 chosen_event
 
 
 class MeetNewPeopleSystem(System):

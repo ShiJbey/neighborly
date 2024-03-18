@@ -9,9 +9,7 @@ from typing import Any
 import attrs
 
 from neighborly.components.stats import OnStatUpdate, Stat
-from neighborly.ecs import Component
-from neighborly.ecs.event import Event
-from neighborly.ecs.game_object import GameObject
+from neighborly.ecs import Component, Event, GameObject
 
 
 @attrs.define

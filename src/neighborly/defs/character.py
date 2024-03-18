@@ -12,8 +12,7 @@ from neighborly.components.skills import Skills
 from neighborly.components.stats import Stat, Stats
 from neighborly.components.traits import Traits
 from neighborly.defs.base_types import CharacterDef, CharacterGenOptions
-from neighborly.ecs import World
-from neighborly.ecs.game_object import GameObject
+from neighborly.ecs import GameObject, World
 from neighborly.helpers.skills import add_skill
 from neighborly.helpers.stats import add_stat
 from neighborly.helpers.traits import add_trait
