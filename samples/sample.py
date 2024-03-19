@@ -56,13 +56,6 @@ def get_args() -> argparse.Namespace:
         help="The number of years to simulate.",
     )
 
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=pathlib.Path,
-        help="Specify path to write generated world data.",
-    )
-
     return parser.parse_args()
 
 
@@ -95,18 +88,6 @@ def main() -> Simulation:
 
     for _ in range(total_time_steps):
         _sim.step()
-
-    if args.output:
-        output_path: pathlib.Path = (
-            args.output
-            if args.output
-            else pathlib.Path(__file__).parent / f"neighborly_{_sim.config.seed}.json"
-        )
-
-        with open(output_path, "w", encoding="utf-8") as file:
-            file.write(_sim.to_json())
-
-        print(f"Simulation output written to: {output_path}")
 
     return _sim
 

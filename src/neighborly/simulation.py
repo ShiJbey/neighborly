@@ -6,7 +6,6 @@ This module contains class definitions for creating simulation instances.
 
 from __future__ import annotations
 
-import json
 import logging
 import pathlib
 import random
@@ -74,11 +73,11 @@ from neighborly.tracery import Tracery
 class Simulation:
     """A Neighborly simulation instance."""
 
-    __slots__ = "_config", "_world"
+    __slots__ = "config", "world"
 
-    _config: SimulationConfig
+    config: SimulationConfig
     """Config parameters for the simulation."""
-    _world: World
+    world: World
     """The simulation's ECS instance."""
 
     def __init__(self, config: Optional[SimulationConfig] = None) -> None:
@@ -90,11 +89,11 @@ class Simulation:
             Simulation will use a default configuration if no config is
             provided.
         """
-        self._config = config if config is not None else SimulationConfig()
-        self._world = World()
+        self.config = config if config is not None else SimulationConfig()
+        self.world = World()
 
         # Seed the global rng for third-party packages
-        random.seed(self._config.seed)
+        random.seed(self.config.seed)
 
         self._init_resources()
         self._init_systems()
@@ -103,8 +102,8 @@ class Simulation:
 
     def _init_resources(self) -> None:
         """Initialize built-in resources."""
-        self.world.resources.add_resource(self._config)
-        self.world.resources.add_resource(random.Random(self._config.seed))
+        self.world.resources.add_resource(self.config)
+        self.world.resources.add_resource(random.Random(self.config.seed))
         self.world.resources.add_resource(SimDate())
         self.world.resources.add_resource(DataTables())
         self.world.resources.add_resource(CharacterLibrary(DefaultCharacterDef))
@@ -117,7 +116,7 @@ class Simulation:
         self.world.resources.add_resource(EffectLibrary())
         self.world.resources.add_resource(SkillLibrary(DefaultSkillDef))
         self.world.resources.add_resource(LifeEventLibrary())
-        self.world.resources.add_resource(Tracery(self._config.seed))
+        self.world.resources.add_resource(Tracery(self.config.seed))
         self.world.resources.add_resource(GlobalEventHistory())
         self.world.resources.add_resource(LifeEventConsiderationLibrary())
 
@@ -180,7 +179,7 @@ class Simulation:
 
     def _init_effects(self) -> None:
         """Initialize built-in Effect definitions."""
-        effect_library = self._world.resources.get_resource(EffectLibrary)
+        effect_library = self.world.resources.get_resource(EffectLibrary)
 
         effect_library.add_event(AddTrait)
         effect_library.add_event(RemoveTrait)
@@ -214,17 +213,7 @@ class Simulation:
     @property
     def date(self) -> SimDate:
         """The current date in the simulation."""
-        return self._world.resources.get_resource(SimDate)
-
-    @property
-    def world(self) -> World:
-        """The simulation's ECS instance."""
-        return self._world
-
-    @property
-    def config(self) -> SimulationConfig:
-        """Config parameters for the simulation."""
-        return self._config
+        return self.world.resources.get_resource(SimDate)
 
     def initialize(self) -> None:
         """Run initialization systems only."""
@@ -238,32 +227,5 @@ class Simulation:
 
     def step(self) -> None:
         """Advance the simulation one time step (month)."""
-        self._world.step()
+        self.world.step()
         self.date.increment_month()
-
-    def to_json(self, indent: Optional[int] = None) -> str:
-        """Export the simulation as a JSON string.
-
-        Parameters
-        ----------
-        indent
-            An optional amount of spaces to indent lines in the string.
-
-        Returns
-        -------
-        str
-            A JSON data string.
-        """
-        serialized_data = {
-            "seed": self.config.seed,
-            "gameobjects": {
-                str(g.uid): g.to_dict() for g in self.world.gameobjects.gameobjects
-            },
-            "events": self.world.resources.get_resource(GlobalEventHistory).to_dict(),
-            "data_tables": self.world.resources.get_resource(DataTables).to_dict(),
-        }
-
-        return json.dumps(
-            serialized_data,
-            indent=indent,
-        )
