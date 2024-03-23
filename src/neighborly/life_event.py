@@ -28,7 +28,6 @@ class LifeEventConsideration(pydantic.BaseModel):
     """A score to add if the preconditions pass."""
 
 
-@attrs.define
 class LifeEvent(Event, ABC):
     """An event of significant importance in a GameObject's life"""
 
@@ -40,11 +39,6 @@ class LifeEvent(Event, ABC):
     def description(self) -> str:
         """A string description of the event."""
         raise NotImplementedError()
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize this LifeEvent to a dictionary"""
-
-        return {}
 
 
 class GlobalEventHistory:

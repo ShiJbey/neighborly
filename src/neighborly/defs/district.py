@@ -26,27 +26,28 @@ class DefaultDistrictDef(DistrictDef):
         self, world: World, settlement: GameObject, options: DistrictGenOptions
     ) -> GameObject:
 
-        district = world.gameobjects.spawn_gameobject()
+        district = GameObject.create_new(world)
         district.metadata["definition_id"] = options.definition_id
-
-        settlement.get_component(Settlement).add_district(district)
 
         district.metadata["definition_id"] = self.definition_id
 
         district.add_component(
-            District(
-                name="",
-                description="",
-                settlement=settlement,
-                residential_slots=self.residential_slots,
-                business_slots=self.business_slots,
-            )
+            District,
+            name="",
+            description="",
+            settlement=settlement,
+            residential_slots=self.residential_slots,
+            business_slots=self.business_slots,
         )
 
         self._initialize_name(district)
         self._initialize_business_spawn_table(district)
         self._initialize_character_spawn_table(district)
         self._initialize_residence_spawn_table(district)
+
+        settlement.get_component(Settlement).districts.append(
+            district.get_component(District)
+        )
 
         return district
 
@@ -63,12 +64,12 @@ class DefaultDistrictDef(DistrictDef):
 
         business_library = world.resources.get_resource(BusinessLibrary)
 
-        table_entries: list[BusinessSpawnTableEntry] = []
+        spawn_table = district.add_component(BusinessSpawnTable)
 
         for entry in self.businesses:
             if entry.with_id:
                 business_def = business_library.get_definition(entry.with_id)
-                table_entries.append(
+                spawn_table.entries.append(
                     BusinessSpawnTableEntry(
                         name=entry.with_id,
                         spawn_frequency=business_def.spawn_frequency,
@@ -87,7 +88,7 @@ class DefaultDistrictDef(DistrictDef):
 
                 business_def = world.rng.choice(potential_defs)
 
-                table_entries.append(
+                spawn_table.entries.append(
                     BusinessSpawnTableEntry(
                         name=business_def.definition_id,
                         spawn_frequency=entry.spawn_frequency,
@@ -97,21 +98,19 @@ class DefaultDistrictDef(DistrictDef):
                     )
                 )
 
-        district.add_component(BusinessSpawnTable(entries=table_entries))
-
     def _initialize_character_spawn_table(self, district: GameObject) -> None:
         """Create the character spawn table for the district."""
         world = district.world
         character_library = world.resources.get_resource(CharacterLibrary)
 
-        table_entries: list[CharacterSpawnTableEntry] = []
+        spawn_table = district.add_component(CharacterSpawnTable)
 
         for entry in self.characters:
             if entry.with_id:
 
                 character_def = character_library.get_definition(entry.with_id)
 
-                table_entries.append(
+                spawn_table.entries.append(
                     CharacterSpawnTableEntry(
                         name=character_def.definition_id,
                         spawn_frequency=entry.spawn_frequency,
@@ -129,14 +128,12 @@ class DefaultDistrictDef(DistrictDef):
 
                 character_def = world.rng.choice(potential_defs)
 
-                table_entries.append(
+                spawn_table.entries.append(
                     CharacterSpawnTableEntry(
                         name=character_def.definition_id,
                         spawn_frequency=entry.spawn_frequency,
                     )
                 )
-
-        district.add_component(CharacterSpawnTable(entries=table_entries))
 
     def _initialize_residence_spawn_table(self, district: GameObject) -> None:
         """Create the residence spawn table for the district."""
@@ -144,13 +141,13 @@ class DefaultDistrictDef(DistrictDef):
 
         residence_library = world.resources.get_resource(ResidenceLibrary)
 
-        table_entries: list[ResidenceSpawnTableEntry] = []
+        spawn_table = district.add_component(ResidenceSpawnTable)
 
         for entry in self.residences:
             if entry.with_id:
                 residence_def = residence_library.get_definition(entry.with_id)
 
-                table_entries.append(
+                spawn_table.entries.append(
                     ResidenceSpawnTableEntry(
                         name=residence_def.definition_id,
                         spawn_frequency=residence_def.spawn_frequency,
@@ -172,7 +169,7 @@ class DefaultDistrictDef(DistrictDef):
 
                 residence_def = world.rng.choice(potential_defs)
 
-                table_entries.append(
+                spawn_table.entries.append(
                     ResidenceSpawnTableEntry(
                         name=residence_def.definition_id,
                         spawn_frequency=residence_def.spawn_frequency,
@@ -182,5 +179,3 @@ class DefaultDistrictDef(DistrictDef):
                         is_multifamily=residence_def.is_multifamily,
                     )
                 )
-
-        district.add_component(ResidenceSpawnTable(entries=table_entries))

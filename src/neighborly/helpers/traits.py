@@ -2,12 +2,19 @@
 
 """
 
-from typing import Union
+from sqlalchemy import delete
 
-from neighborly.components.skills import Skills
-from neighborly.components.stats import StatModifier, StatModifierType, Stats
-from neighborly.components.traits import Trait, TraitInstance, Traits
+from neighborly.components.stats import StatModifier, StatModifierType
+from neighborly.components.traits import TraitInstance, Traits
 from neighborly.ecs import GameObject
+from neighborly.helpers.skills import (
+    add_skill_modifier,
+    remove_skill_modifiers_from_source,
+)
+from neighborly.helpers.stats import (
+    add_stat_modifier,
+    remove_stat_modifiers_from_source,
+)
 from neighborly.libraries import TraitLibrary
 
 
@@ -31,33 +38,46 @@ def add_trait(gameobject: GameObject, trait_id: str, duration: int = -1) -> bool
     """
     world = gameobject.world
     library = world.resources.get_resource(TraitLibrary)
-    trait = library.get_trait(trait_id).get_component(Trait)
+    trait_def = library.get_definition(trait_id)
 
-    if gameobject.get_component(Traits).add_trait(trait, duration=duration):
+    if has_trait(gameobject, trait_id):
+        return False
 
-        stats = gameobject.get_component(Stats)
-        for modifier_data in trait.stat_modifiers:
-            stats.get_stat(modifier_data.name).add_modifier(
-                StatModifier(
-                    value=modifier_data.value,
-                    modifier_type=StatModifierType[modifier_data.modifier_type],
-                    source=trait,
-                )
-            )
+    if has_conflicting_traits(gameobject, trait_id):
+        return False
 
-        skills = gameobject.get_component(Skills)
-        for modifier_data in trait.skill_modifiers:
-            skills.get_skill(modifier_data.name).stat.add_modifier(
-                StatModifier(
-                    value=modifier_data.value,
-                    modifier_type=StatModifierType[modifier_data.modifier_type],
-                    source=trait,
-                )
-            )
+    gameobject.get_component(Traits).instances.append(
+        TraitInstance(
+            trait_id=trait_id,
+            description=trait_def.description,
+            has_duration=duration > 0,
+            duration=duration,
+        )
+    )
 
-        return True
+    for modifier_data in trait_def.stat_modifiers:
+        add_stat_modifier(
+            gameobject,
+            modifier_data.name,
+            StatModifier(
+                value=modifier_data.value,
+                modifier_type=StatModifierType[modifier_data.modifier_type],
+                source=trait_def,
+            ),
+        )
 
-    return False
+    for modifier_data in trait_def.skill_modifiers:
+        add_skill_modifier(
+            gameobject,
+            modifier_data.name,
+            StatModifier(
+                value=modifier_data.value,
+                modifier_type=StatModifierType[modifier_data.modifier_type],
+                source=trait_def,
+            ),
+        )
+
+    return True
 
 
 def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
@@ -76,55 +96,102 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
         True if the trait was removed successfully, False otherwise.
     """
     library = gameobject.world.resources.get_resource(TraitLibrary)
-    trait = library.get_trait(trait_id).get_component(Trait)
+    trait_def = library.get_definition(trait_id)
 
-    if has_trait(gameobject, trait_id):
-        # Remove stat and skill modifiers
-        stats = gameobject.get_component(Stats)
-        for modifier in trait.stat_modifiers:
-            stats.get_stat(modifier.name).remove_modifiers_from_source(trait)
+    if not has_trait(gameobject, trait_id):
+        return False
 
-        skills = gameobject.get_component(Skills)
-        for modifier in trait.skill_modifiers:
-            skills.get_skill(modifier.name).stat.remove_modifiers_from_source(trait)
+    for modifier in trait_def.stat_modifiers:
+        remove_stat_modifiers_from_source(gameobject, modifier.name, trait_id)
 
-    return gameobject.get_component(Traits).remove_trait(trait_id)
+    for modifier in trait_def.skill_modifiers:
+        remove_skill_modifiers_from_source(gameobject, modifier.name, trait_id)
+
+    gameobject.world.session.execute(
+        delete(TraitInstance)
+        .where(TraitInstance.uid == gameobject.uid)
+        .where(TraitInstance.trait_id == trait_id)
+    )
+
+    gameobject.world.session.flush()
+
+    return True
 
 
-def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
+def has_trait(gameobject: GameObject, trait_id: str) -> bool:
     """Check if a GameObject has a given trait.
 
     Parameters
     ----------
     gameobject
         The gameobject to check.
-    trait
-        The ID of a trait or a trait object.
+    trait_id
+        The ID of a trait.
 
     Returns
     -------
     bool
         True if the gameobject has the trait, False otherwise.
     """
-    if isinstance(trait, Trait):
-        return gameobject.get_component(Traits).has_trait(trait.definition_id)
+    trait_instances = gameobject.get_component(Traits).instances
 
-    return gameobject.get_component(Traits).has_trait(trait)
+    for instance in trait_instances:
+        if instance.trait_id == trait_id:
+            return True
+
+    return False
 
 
-def get_trait(gameobject: GameObject, trait: Union[str, Trait]) -> TraitInstance:
+def get_trait(gameobject: GameObject, trait_id: str) -> TraitInstance:
     """Get a trait from a gameobject.
 
     Parameters
     ----------
     gameobject
         The gameobject to check.
-    trait
-        The ID of a trait or a trait object.
+    trait_id
+        The ID of a trait.
 
     Returns
     -------
     bool
         True if the gameobject has the trait, False otherwise.
     """
-    return gameobject.get_component(Traits).get_trait(trait)
+    trait_instances = gameobject.get_component(Traits).instances
+
+    for instance in trait_instances:
+        if instance.trait_id == trait_id:
+            return instance
+
+    raise KeyError(f"Could not find trait: {trait_id!r}")
+
+
+def has_conflicting_traits(gameobject: GameObject, trait_id: str) -> bool:
+    """Check if a GameObject has traits that conflict with the given trait.
+
+    Parameters
+    ----------
+    gameobject
+        The gameobject to check.
+    trait_id
+        The ID of a trait.
+
+    Returns
+    -------
+    bool
+        True if the gameobject has conflicts, False otherwise.
+    """
+    library = gameobject.world.resources.get_resource(TraitLibrary)
+    trait_def = library.get_definition(trait_id)
+    trait_instances = gameobject.get_component(Traits).instances
+
+    for instance in trait_instances:
+        instance_def = library.get_definition(instance.trait_id)
+
+        if trait_id in instance_def.conflicts_with:
+            return True
+
+        if instance.trait_id in trait_def.conflicts_with:
+            return True
+
+    return False

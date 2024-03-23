@@ -30,10 +30,10 @@ class DefaultSettlementDef(SettlementDef):
             Generation options
         """
 
-        settlement = world.gameobjects.spawn_gameobject()
+        settlement = GameObject.create_new(world)
         settlement.metadata["definition_id"] = options.definition_id
 
-        settlement.add_component(Settlement(name=""))
+        settlement.add_component(Settlement, name="")
 
         library = world.resources.get_resource(SettlementLibrary)
 

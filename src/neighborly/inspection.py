@@ -9,22 +9,23 @@ from typing import Callable, Union
 import tabulate
 
 from neighborly.__version__ import VERSION
-from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
+from neighborly.components.business import Business, BusinessStatus, Occupation
 from neighborly.components.character import Character
 from neighborly.components.location import FrequentedLocations, Location
-from neighborly.components.relationship import Relationship, Relationships
+from neighborly.components.relationship import Relationship
 from neighborly.components.residence import (
     Resident,
     ResidentialBuilding,
     ResidentialUnit,
 )
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.shared import PersonalEventHistory
-from neighborly.components.skills import Skill, Skills
+from neighborly.components.shared import EventHistory
+from neighborly.components.skills import Skills
 from neighborly.components.stats import Stats
-from neighborly.components.traits import Trait, Traits
+from neighborly.components.traits import Traits
 from neighborly.ecs import Active, GameObject
 from neighborly.helpers.stats import get_stat
+from neighborly.libraries import JobRoleLibrary, SkillLibrary, TraitLibrary
 from neighborly.simulation import Simulation
 
 
@@ -52,12 +53,11 @@ def _settlement_section(obj: GameObject) -> str:
         [
             (
                 entry.uid,
-                entry.get_component(District).name,
-                entry.get_component(District).population,
+                entry.name,
             )
             for entry in settlement_data.districts
         ],
-        headers=("UID", "Name", "Population"),
+        headers=("UID", "Name"),
     )
 
     output = ""
@@ -424,7 +424,7 @@ def _get_traits_table(obj: GameObject) -> str:
 
 def _get_personal_history_table(obj: GameObject) -> str:
     """Generate a string table for a PersonalEventHistory component."""
-    history = obj.try_component(PersonalEventHistory)
+    history = obj.try_component(EventHistory)
 
     if history is None:
         return ""
@@ -781,6 +781,7 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
 
 def list_residences(sim: Simulation) -> None:
     """Print active residential buildings in the simulation."""
+
     residential_buildings = [
         (uid, building.gameobject.name, building.district.name)
         for uid, (building, _) in sim.world.get_components(
@@ -802,9 +803,12 @@ def list_residences(sim: Simulation) -> None:
 
 def list_job_roles(sim: Simulation) -> None:
     """List job roles instances from the simulation."""
+
+    job_role_library = sim.world.resources.get_resource(JobRoleLibrary)
+
     job_roles = [
-        (uid, role.display_name, role.description)
-        for uid, (role,) in sim.world.get_components((JobRole,))
+        (role_id, role_def.display_name, role_def.description)
+        for role_id, role_def in job_role_library.definitions.items()
     ]
 
     table = tabulate.tabulate(job_roles, headers=["UID", "Name", "Description"])
@@ -819,9 +823,12 @@ def list_job_roles(sim: Simulation) -> None:
 
 def list_traits(sim: Simulation) -> None:
     """List the trait instances from the simulation."""
+
+    trait_library = sim.world.resources.get_resource(TraitLibrary)
+
     traits = [
-        (uid, trait.display_name, trait.description)
-        for uid, (trait,) in sim.world.get_components((Trait,))
+        (trait_id, trait_def.display_name, trait_def.description)
+        for trait_id, trait_def in trait_library.definitions.items()
     ]
 
     table = tabulate.tabulate(traits, headers=["UID", "Name", "Description"])
@@ -837,9 +844,11 @@ def list_traits(sim: Simulation) -> None:
 def list_skills(sim: Simulation) -> None:
     """List all the potential skills in the simulation."""
 
+    skill_library = sim.world.resources.get_resource(SkillLibrary)
+
     skills = [
-        (uid, skill.display_name, skill.description)
-        for uid, (skill,) in sim.world.get_components((Skill,))
+        (skill_id, skill_def.display_name, skill_def.description)
+        for skill_id, skill_def in skill_library.definitions.items()
     ]
 
     table = tabulate.tabulate(skills, headers=["UID", "Name", "Description"])

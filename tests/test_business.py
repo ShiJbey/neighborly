@@ -47,5 +47,5 @@ def test_create_business() -> None:
         sim.world, district, BusinessGenOptions(definition_id="blacksmith_shop")
     )
 
-    assert business.get_component(Business).owner_role is not None
+    assert business.get_component(Business).owner_role_id is not None
     assert business.get_component(Business).district == district

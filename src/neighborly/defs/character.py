@@ -3,15 +3,16 @@
 """
 
 from abc import ABC, abstractmethod
+from typing import cast
 
-from neighborly.components.character import Character, LifeStage, Sex, Species
+from neighborly.components.character import Character, LifeStage, Sex
 from neighborly.components.location import FrequentedLocations
-from neighborly.components.relationship import Relationships
-from neighborly.components.shared import Agent, PersonalEventHistory
+from neighborly.components.shared import Age, Agent, EventHistory
 from neighborly.components.skills import Skills
-from neighborly.components.stats import Stat, Stats
+from neighborly.components.stats import StatEntry, Stats
 from neighborly.components.traits import Traits
 from neighborly.defs.base_types import CharacterDef, CharacterGenOptions
+from neighborly.defs.species import SpeciesDef
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.skills import add_skill
 from neighborly.helpers.stats import add_stat
@@ -29,29 +30,27 @@ class DefaultCharacterDef(CharacterDef):
         options: CharacterGenOptions,
     ) -> GameObject:
 
-        character = world.gameobjects.spawn_gameobject()
+        character = GameObject.create_new(world)
         character.metadata["definition_id"] = options.definition_id
 
-        character.add_component(Agent("character"))
-        character.add_component(Traits())
-        character.add_component(Skills())
-        character.add_component(Stats())
-        character.add_component(FrequentedLocations())
-        character.add_component(Relationships())
-        character.add_component(PersonalEventHistory())
+        character.add_component(Agent, agent_type="character")
+        character.add_component(Traits)
+        character.add_component(Skills)
+        character.add_component(Stats)
+        character.add_component(FrequentedLocations)
+        character.add_component(EventHistory)
 
         species_id = world.rng.choice(self.species)
 
         library = character.world.resources.get_resource(TraitLibrary)
-        species = library.get_trait(species_id)
+        species = library.get_definition(species_id)
 
         character.add_component(
-            Character(
-                first_name="",
-                last_name="",
-                sex=Sex[self.sex],
-                species=species,
-            )
+            Character,
+            first_name="",
+            last_name="",
+            sex=Sex[self.sex],
+            species=species,
         )
 
         self._initialize_name(character, options)
@@ -60,7 +59,7 @@ class DefaultCharacterDef(CharacterDef):
         self._initialize_traits(character, options)
         self._initialize_character_skills(character)
 
-        raise NotImplementedError()
+        return character
 
     def _initialize_name(
         self, character: GameObject, options: CharacterGenOptions
@@ -74,9 +73,7 @@ class DefaultCharacterDef(CharacterDef):
         """
         character_comp = character.get_component(Character)
 
-        character_comp.first_name = self.generate_first_name(
-            character, options.first_name
-        )
+        character_comp.name = self.generate_first_name(character, options.first_name)
         character_comp.last_name = self.generate_last_name(character, options.last_name)
 
     def _initialize_character_age(
@@ -85,31 +82,38 @@ class DefaultCharacterDef(CharacterDef):
         """Initializes the characters age."""
         rng = character.world.rng
         character_comp = character.get_component(Character)
-        species = character.get_component(Character).species.get_component(Species)
+        age_comp = character.get_component(Age)
+
+        species = cast(
+            SpeciesDef,
+            character.world.resources.get_resource(TraitLibrary).get_definition(
+                character_comp.species
+            ),
+        )
 
         if options.life_stage:
             character_comp.life_stage = LifeStage[options.life_stage]
 
             # Generate an age for this character
             if character_comp.life_stage == LifeStage.CHILD:
-                character_comp.age = rng.randint(0, species.adolescent_age - 1)
+                age_comp.value = rng.randint(0, species.adolescent_age - 1)
             elif character_comp.life_stage == LifeStage.ADOLESCENT:
-                character_comp.age = rng.randint(
+                age_comp.value = rng.randint(
                     species.adolescent_age,
                     species.young_adult_age - 1,
                 )
             elif character_comp.life_stage == LifeStage.YOUNG_ADULT:
-                character_comp.age = rng.randint(
+                age_comp.value = rng.randint(
                     species.young_adult_age,
                     species.adult_age - 1,
                 )
             elif character_comp.life_stage == LifeStage.ADULT:
-                character_comp.age = rng.randint(
+                age_comp.value = rng.randint(
                     species.adult_age,
                     species.senior_age - 1,
                 )
             else:
-                character_comp.age = character_comp.age = rng.randint(
+                age_comp.value = age_comp.value = rng.randint(
                     species.senior_age,
                     species.lifespan - 1,
                 )
@@ -118,7 +122,7 @@ class DefaultCharacterDef(CharacterDef):
         self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Set the traits for a character."""
-        character.add_component(Traits())
+        character.add_component(Traits)
         rng = character.world.rng
         trait_library = character.world.resources.get_resource(TraitLibrary)
 
@@ -160,62 +164,100 @@ class DefaultCharacterDef(CharacterDef):
         """Initializes a characters stats with random values."""
         rng = character.world.rng
 
-        character_comp = character.get_component(Character)
-        species = character.get_component(Character).species.get_component(Species)
+        species_id = character.get_component(Character).species
 
-        health = add_stat(
-            character, "health", Stat(base_value=1000, bounds=(0, 999_999))
-        )
-        health_decay = add_stat(
-            character,
-            "health_decay",
-            Stat(base_value=1000.0 / species.lifespan, bounds=(0, 999_999)),
-        )
-        fertility = add_stat(
-            character,
-            "fertility",
-            Stat(base_value=round(rng.uniform(0.0, 1.0)), bounds=(0, 1.0)),
-        )
-        add_stat(
-            character,
-            "boldness",
-            Stat(
-                base_value=float(rng.randint(0, 255)), bounds=(0, 255), is_discrete=True
+        species = cast(
+            SpeciesDef,
+            character.world.resources.get_resource(TraitLibrary).get_definition(
+                species_id
             ),
         )
+
         add_stat(
             character,
-            "stewardship",
-            Stat(
-                base_value=float(rng.randint(0, 255)), bounds=(0, 255), is_discrete=True
+            StatEntry(
+                name="lifespan",
+                base_value=species.lifespan,
+                min_value=0,
+                max_value=999_999,
+                is_discrete=True,
             ),
         )
+
         add_stat(
             character,
-            "sociability",
-            Stat(
-                base_value=float(rng.randint(0, 255)), bounds=(0, 255), is_discrete=True
+            StatEntry(
+                name="fertility",
+                base_value=float(rng.uniform(0.0, 1.0)),
+                min_value=0,
+                max_value=1.0,
+                is_discrete=True,
             ),
         )
+
         add_stat(
             character,
-            "attractiveness",
-            Stat(
-                base_value=float(rng.randint(0, 255)), bounds=(0, 255), is_discrete=True
+            StatEntry(
+                name="boldness",
+                base_value=float(rng.randint(0, 255)),
+                min_value=0,
+                max_value=255,
+                is_discrete=True,
             ),
         )
+
         add_stat(
             character,
-            "intelligence",
-            Stat(
-                base_value=float(rng.randint(0, 255)), bounds=(0, 255), is_discrete=True
+            StatEntry(
+                name="stewardship",
+                base_value=float(rng.randint(0, 255)),
+                min_value=0,
+                max_value=255,
+                is_discrete=True,
             ),
         )
+
         add_stat(
             character,
-            "reliability",
-            Stat(
-                base_value=float(rng.randint(0, 255)), bounds=(0, 255), is_discrete=True
+            StatEntry(
+                name="sociability",
+                base_value=float(rng.randint(0, 255)),
+                min_value=0,
+                max_value=255,
+                is_discrete=True,
+            ),
+        )
+
+        add_stat(
+            character,
+            StatEntry(
+                name="attractiveness",
+                base_value=float(rng.randint(0, 255)),
+                min_value=0,
+                max_value=255,
+                is_discrete=True,
+            ),
+        )
+
+        add_stat(
+            character,
+            StatEntry(
+                name="intelligence",
+                base_value=float(rng.randint(0, 255)),
+                min_value=0,
+                max_value=255,
+                is_discrete=True,
+            ),
+        )
+
+        add_stat(
+            character,
+            StatEntry(
+                name="reliability",
+                base_value=float(rng.randint(0, 255)),
+                min_value=0,
+                max_value=255,
+                is_discrete=True,
             ),
         )
 
@@ -234,28 +276,13 @@ class DefaultCharacterDef(CharacterDef):
 
             add_stat(
                 character,
-                stat_data.stat,
-                Stat(
-                    stat_value,
+                StatEntry(
+                    name=stat_data.stat,
+                    base_value=stat_value,
                     bounds=(stat_data.min_value, stat_data.max_value),
                     is_discrete=stat_data.is_discrete,
                 ),
             )
-
-        # Adjust health for current age
-        health.base_value -= character_comp.age * health_decay.value
-
-        # Adjust fertility for current life stage
-        if character_comp.sex == Sex.MALE:
-            if character_comp.life_stage == LifeStage.SENIOR:
-                fertility.base_value = fertility.base_value * 0.5
-            if character_comp.life_stage == LifeStage.ADULT:
-                fertility.base_value = fertility.base_value * 0.8
-        elif character_comp.sex == Sex.FEMALE:
-            if character_comp.life_stage == LifeStage.SENIOR:
-                fertility.base_value = 0
-            if character_comp.life_stage == LifeStage.ADULT:
-                fertility.base_value = fertility.base_value * 0.4
 
     def _initialize_character_skills(self, character: GameObject) -> None:
         """Add default skills to the character."""

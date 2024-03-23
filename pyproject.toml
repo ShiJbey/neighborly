@@ -43,15 +43,13 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "esper==2.*",
-    "ordered-set==4.*",
     "tracery3==1.*",
     "polars==0.19.*",
     "tabulate==0.9.*",
     "PyYAML==6.0.*",
     "tqdm==4.*",
     "pydantic==2.6.*",
-    "repraxis@git+https://github.com/ShiJbey/RePraxisPy",
+    "sqlalchemy==2.*",
 ]
 
 [project.optional-dependencies]

@@ -11,5 +11,6 @@
     "MD036": false,
     "MD033": false
   },
-  "esbonio.sphinx.confDir": ""
+  "esbonio.sphinx.confDir": "",
+  "python.REPL.enableREPLSmartSend": false
 }

@@ -9,13 +9,12 @@ from typing import Optional
 import attrs
 
 from neighborly.components.residence import ResidentialUnit
-from neighborly.components.settlement import District
 from neighborly.ecs import GameObject
 from neighborly.life_event import LifeEvent
 
 
 @attrs.define
-class Death(LifeEvent):
+class DeathEvent(LifeEvent):
     """Event emitted when a character passes away."""
 
     subject: GameObject
@@ -102,8 +101,10 @@ class ChangeResidenceEvent(LifeEvent):
     @property
     def description(self) -> str:
         if self.new_residence is not None:
-            district = self.new_residence.get_component(ResidentialUnit).district
-            settlement = district.get_component(District).settlement
+            district = self.new_residence.get_component(
+                ResidentialUnit
+            ).building.district
+            settlement = district.settlement
 
             return (
                 f"{self.subject.name} moved into a new residence "
@@ -151,7 +152,7 @@ class HaveChildEvent(LifeEvent):
 
 
 @attrs.define
-class LeaveJob(LifeEvent):
+class LeaveJobEvent(LifeEvent):
     """Character leaves job of their own will."""
 
     subject: GameObject
@@ -178,7 +179,7 @@ class LeaveJob(LifeEvent):
 
 
 @attrs.define
-class DepartSettlement(LifeEvent):
+class DepartSettlementEvent(LifeEvent):
     """Character leave the settlement and the simulation."""
 
     subject: GameObject
@@ -190,7 +191,7 @@ class DepartSettlement(LifeEvent):
 
 
 @attrs.define
-class LaidOffFromJob(LifeEvent):
+class LaidOffFromJobEvent(LifeEvent):
     """The character is laid off from their job."""
 
     subject: GameObject

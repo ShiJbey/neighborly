@@ -14,12 +14,12 @@ import polars as pl
 
 from neighborly.actions.character import die
 from neighborly.components.business import Occupation
-from neighborly.components.character import Character, LifeStage, Sex, Species
+from neighborly.components.character import Character, LifeStage, Sex
 from neighborly.components.location import FrequentedLocations, Location
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
-from neighborly.components.shared import PersonalEventHistory
+from neighborly.components.shared import EventHistory
 from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
@@ -307,7 +307,7 @@ class SpawnNewResidentSystem(System):
             )
 
             world.events.dispatch_event(join_settlement_event)
-            character.get_component(PersonalEventHistory).append(join_settlement_event)
+            character.get_component(EventHistory).append(join_settlement_event)
             world.resources.get_resource(GlobalEventHistory).append(
                 join_settlement_event
             )
@@ -321,7 +321,7 @@ class SpawnNewResidentSystem(System):
             )
 
             world.events.dispatch_event(change_residence_event)
-            character.get_component(PersonalEventHistory).append(change_residence_event)
+            character.get_component(EventHistory).append(change_residence_event)
             world.resources.get_resource(GlobalEventHistory).append(
                 change_residence_event
             )
@@ -540,7 +540,7 @@ class AgingSystem(System):
         global_event_history = world.resources.get_resource(GlobalEventHistory)
 
         for _, (character, event_history, _) in world.get_components(
-            (Character, PersonalEventHistory, Active)
+            (Character, EventHistory, Active)
         ):
             character.age = character.age + elapsed_years
             species = character.species.get_component(Species)
@@ -749,7 +749,7 @@ class ChildBirthSystem(System):
                 old_residence=None,
                 timestamp=current_date.copy(),
             )
-            baby.get_component(PersonalEventHistory).append(event)
+            baby.get_component(EventHistory).append(event)
             global_event_history.append(event)
             world.events.dispatch_event(event)
 

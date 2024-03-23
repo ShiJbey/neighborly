@@ -4,204 +4,54 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ordered_set import OrderedSet
-
-from neighborly.ecs import Component, GameObject, TagComponent
+from neighborly.components.settlement import District
+from neighborly.ecs import Component
 
 
 class ResidentialUnit(Component):
     """A Residence is a place where characters live."""
 
-    __slots__ = "_owners", "_residents", "_district", "_building"
+    __tablename__ = "residential_unit"
 
-    _building: GameObject
+    building_id: Mapped[int] = mapped_column(ForeignKey("residential_building.uid"))
+    building: Mapped[ResidentialBuilding] = relationship(
+        foreign_keys=[building_id], back_populates="units"
+    )
     """The building this unit is in."""
-    _district: GameObject
-    """The district the residence is in."""
-    _owners: OrderedSet[GameObject]
-    """Characters that currently own the residence."""
-    _residents: OrderedSet[GameObject]
+    residents: Mapped[Resident] = relationship(back_populates="residence")
     """All the characters who live at the residence (including non-owners)."""
-
-    def __init__(self, building: GameObject, district: GameObject) -> None:
-        super().__init__()
-        self._building = building
-        self._district = district
-        self._owners = OrderedSet([])
-        self._residents = OrderedSet([])
-
-    @property
-    def building(self) -> GameObject:
-        """Get the building the residential unit is in."""
-        return self._building
-
-    @property
-    def district(self) -> GameObject:
-        """Get the district the residence is in."""
-        return self._district
-
-    @property
-    def owners(self) -> Iterable[GameObject]:
-        """Get the owners of the residence."""
-        return self._owners
-
-    @property
-    def residents(self) -> Iterable[GameObject]:
-        """Get all the residents of the residence."""
-        return self._residents
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "district": self.district.uid,
-            "owners": [entry.uid for entry in self.owners],
-            "residents": [entry.uid for entry in self.residents],
-        }
-
-    def add_owner(self, owner: GameObject) -> None:
-        """Add owner to the residence.
-
-        Parameters
-        ----------
-        owner
-            A GameObject reference to a residence owner.
-        """
-        self._owners.add(owner)
-
-    def remove_owner(self, owner: GameObject) -> None:
-        """Remove owner from residence.
-
-        Parameters
-        ----------
-        owner
-            A GameObject reference to a residence owner.
-        """
-        self._owners.remove(owner)
-
-    def is_owner(self, character: GameObject) -> bool:
-        """Check if a GameObject owns a residence.
-
-        Parameters
-        ----------
-        character
-            A GameObject reference to a residence owner.
-        """
-        return character in self._owners
-
-    def add_resident(self, resident: GameObject) -> None:
-        """Add a tenant to this residence.
-
-        Parameters
-        ----------
-        resident
-            A GameObject reference to a resident.
-        """
-        self._residents.add(resident)
-
-    def remove_resident(self, resident: GameObject) -> None:
-        """Remove a tenant rom this residence.
-
-        Parameters
-        ----------
-        resident
-            A GameObject reference to a resident.
-        """
-        self._residents.remove(resident)
-
-    def is_resident(self, character: GameObject) -> bool:
-        """Check if a GameObject is a resident.
-
-        Parameters
-        ----------
-        character
-            A GameObject reference to a character
-        """
-        return character in self._residents
-
-    def __repr__(self) -> str:
-        return (
-            f"Residence({self.building=}, {self.district=}, "
-            f"{self.owners=}, {self.residents=})"
-        )
-
-    def __str__(self) -> str:
-        return (
-            f"Residence({self.building=}, {self.district=}, "
-            f"{self.owners=}, {self.residents=})"
-        )
-
-    def __len__(self) -> int:
-        return len(self._residents)
 
 
 class ResidentialBuilding(Component):
     """Tags a building as managing multiple residential units."""
 
-    __slots__ = "_residential_units", "_district"
+    __tablename__ = "residential_building"
 
-    _district: GameObject
-    """The district the residence is in."""
-    _residential_units: list[GameObject]
+    district_id: Mapped[int] = mapped_column(ForeignKey("district.uid"))
+    """The ID of the district this building is in."""
+    district: Mapped[District] = relationship(foreign_keys=[district_id])
+    """The district this building is in."""
+    units: Mapped[list[ResidentialUnit]] = relationship(back_populates="building")
     """The residential units that belong to this building."""
-
-    def __init__(self, district: GameObject) -> None:
-        super().__init__()
-        self._district = district
-        self._residential_units = []
-
-    @property
-    def district(self) -> GameObject:
-        """Get the district the residential building belongs to."""
-        return self._district
-
-    @property
-    def units(self) -> Iterable[GameObject]:
-        """Get the residential units within the building."""
-        return self._residential_units
-
-    def add_residential_unit(self, residence: GameObject) -> None:
-        """Add a residential unit to the building."""
-        self._residential_units.append(residence)
-
-    def remove_residential_unit(self, residence: GameObject) -> None:
-        """Add a residential unit to the building."""
-        self._residential_units.remove(residence)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "district": self.district.uid,
-            "units": [u.uid for u in self._residential_units],
-        }
 
 
 class Resident(Component):
     """A Component attached to characters that tracks where they live."""
 
-    __slots__ = ("residence",)
+    __tablename__ = "resident"
 
-    residence: GameObject
+    residence_id: Mapped[int] = mapped_column(ForeignKey("residential_unit.uid"))
     """The GameObject ID of their residence."""
-
-    def __init__(self, residence: GameObject) -> None:
-        """
-        Parameters
-        ----------
-        residence
-            A GameObject reference to their residence.
-        """
-        super().__init__()
-        self.residence = residence
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"residence": self.residence.uid}
-
-    def __repr__(self) -> str:
-        return f"Resident({self.residence=})"
-
-    def __str__(self) -> str:
-        return f"Resident({self.residence=})"
+    is_owner: Mapped[bool] = mapped_column(default=False)
+    residence: Mapped[ResidentialUnit] = relationship(
+        foreign_keys=[residence_id], back_populates="residents"
+    )
 
 
-class Vacant(TagComponent):
+class Vacant(Component):
     """Tags a residence that does not currently have anyone living there."""
+
+    __tablename__ = "vacant"

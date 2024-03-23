@@ -10,16 +10,12 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import Any, Generic, Iterable, Iterator, Optional, Type, TypeVar
+from typing import Any, Generic, Iterable, Optional, Type, TypeVar
 
 import pydantic
-from ordered_set import OrderedSet
 
-from neighborly.components.business import JobRole
 from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
-from neighborly.components.skills import Skill
-from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
     BusinessDef,
     CharacterDef,
@@ -31,10 +27,8 @@ from neighborly.defs.base_types import (
     SkillDef,
     TraitDef,
 )
-from neighborly.ecs import GameObject
-from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
-from neighborly.life_event import LifeEvent, LifeEventConsideration
+from neighborly.life_event import LifeEventConsideration
 
 _T = TypeVar("_T", bound=ContentDefinition)
 
@@ -122,71 +116,9 @@ class ContentDefinitionLibrary(Generic[_T]):
 class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
     """The collection of skill definitions and instances."""
 
-    _slots__ = "instances"
-
-    instances: dict[str, GameObject]
-    """Skill IDs mapped to instances of the skill."""
-
-    def __init__(
-        self, default_definition_type: Optional[Type[SkillDef]] = None
-    ) -> None:
-        super().__init__(default_definition_type)
-        self.instances = {}
-
-    def get_skill(self, skill_id: str) -> GameObject:
-        """Get a skill instance given an ID."""
-
-        return self.instances[skill_id]
-
-    def add_skill(self, skill: GameObject) -> None:
-        """Add a skill instance to the library."""
-
-        self.instances[skill.get_component(Skill).definition_id] = skill
-
 
 class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
     """The collection of trait definitions and instances."""
-
-    _slots__ = ("instances",)
-
-    instances: dict[str, GameObject]
-    """Trait IDs mapped to instances of definitions."""
-
-    def __init__(
-        self, default_definition_type: Optional[Type[TraitDef]] = None
-    ) -> None:
-        super().__init__(default_definition_type)
-        self.instances = {}
-
-    def get_trait(self, trait_id: str) -> GameObject:
-        """Get a trait instance given an ID."""
-
-        return self.instances[trait_id]
-
-    def add_trait(self, trait: GameObject) -> None:
-        """Add a trait instance to the library."""
-
-        self.instances[trait.get_component(Trait).definition_id] = trait
-
-
-class EffectLibrary:
-    """Manages effect types for easy lookup at runtime."""
-
-    __slots__ = ("effect_types",)
-
-    effect_types: dict[str, Type[Effect]]
-    """SettlementDef types for loading data from config files."""
-
-    def __init__(self) -> None:
-        self.effect_types = {}
-
-    def get_event(self, name: str) -> Type[Effect]:
-        """Get a factory"""
-        return self.effect_types[name]
-
-    def add_event(self, factory: Type[Effect]) -> None:
-        """Add a factory."""
-        self.effect_types[factory.__name__] = factory
 
 
 class DistrictLibrary(ContentDefinitionLibrary[DistrictDef]):
@@ -208,47 +140,9 @@ class CharacterLibrary(ContentDefinitionLibrary[CharacterDef]):
 class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
     """The collection of job role definitions and instances."""
 
-    _slots__ = ("instances",)
-
-    instances: dict[str, GameObject]
-    """IDs mapped to instances of job roles."""
-
-    def __init__(
-        self, default_definition_type: Optional[Type[JobRoleDef]] = None
-    ) -> None:
-        super().__init__(default_definition_type)
-        self.definitions = {}
-
-    def get_role(self, job_role_id: str) -> GameObject:
-        """Get a job role instance given an ID."""
-        return self.instances[job_role_id]
-
-    def add_role(self, job_role: GameObject) -> None:
-        """Add a job role instance to the library."""
-        self.instances[job_role.get_component(JobRole).definition_id] = job_role
-
 
 class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
     """A collection of all business definitions."""
-
-
-class LifeEventLibrary:
-    """The collection of all life events."""
-
-    __slots__ = ("_event_types",)
-
-    _event_types: OrderedSet[Type[LifeEvent]]
-    """Collection of all LifeEvent subtypes that have been added to the library."""
-
-    def __init__(self) -> None:
-        self._event_types = OrderedSet([])
-
-    def add_event_type(self, event_type: Type[LifeEvent]) -> None:
-        """Add a LifeEvent subtype to the library."""
-        self._event_types.add(event_type)
-
-    def __iter__(self) -> Iterator[Type[LifeEvent]]:
-        return iter(self._event_types)
 
 
 class SocialRuleLibrary:
@@ -256,16 +150,16 @@ class SocialRuleLibrary:
 
     __slots__ = ("rules",)
 
-    rules: list[SocialRule]
+    rules: dict[str, SocialRule]
     """Rules applied to the owning GameObject's relationships."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.rules = []
+        self.rules = {}
 
     def add_rule(self, rule: SocialRule) -> None:
         """Add a rule to the rule collection."""
-        self.rules.append(rule)
+        self.rules[rule.rule_id] = rule
 
 
 class LocationPreferenceRuleLibrary:

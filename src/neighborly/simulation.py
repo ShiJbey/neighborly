@@ -11,6 +11,12 @@ import pathlib
 import random
 from typing import Optional
 
+from neighborly.components.business import Business
+from neighborly.components.character import Character
+from neighborly.components.location import FrequentedLocations, Location
+from neighborly.components.skills import Skills
+from neighborly.components.stats import Stats
+from neighborly.components.traits import Traits
 from neighborly.config import SimulationConfig
 from neighborly.data_collection import DataCollectionSystems, DataTables
 from neighborly.datetime import SimDate
@@ -22,23 +28,11 @@ from neighborly.defs.settlement import DefaultSettlementDef
 from neighborly.defs.skill import DefaultSkillDef
 from neighborly.defs.trait import DefaultTraitDef
 from neighborly.ecs import World
-from neighborly.effects.effects import (
-    AddRelationshipStatBuff,
-    AddRelationshipTrait,
-    AddSkillBuff,
-    AddStatBuff,
-    AddTrait,
-    RemoveRelationshipTrait,
-    RemoveTrait,
-)
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
-    EffectLibrary,
     JobRoleLibrary,
-    LifeEventConsiderationLibrary,
-    LifeEventLibrary,
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
@@ -90,15 +84,15 @@ class Simulation:
             provided.
         """
         self.config = config if config is not None else SimulationConfig()
-        self.world = World()
+        self.world = World(self.config.seed)
 
         # Seed the global rng for third-party packages
         random.seed(self.config.seed)
 
         self._init_resources()
         self._init_systems()
-        self._init_effects()
         self._init_logging()
+        self._register_components()
 
     def _init_resources(self) -> None:
         """Initialize built-in resources."""
@@ -113,12 +107,9 @@ class Simulation:
         self.world.resources.add_resource(DistrictLibrary(DefaultDistrictDef))
         self.world.resources.add_resource(SettlementLibrary(DefaultSettlementDef))
         self.world.resources.add_resource(TraitLibrary(DefaultTraitDef))
-        self.world.resources.add_resource(EffectLibrary())
         self.world.resources.add_resource(SkillLibrary(DefaultSkillDef))
-        self.world.resources.add_resource(LifeEventLibrary())
         self.world.resources.add_resource(Tracery(self.config.seed))
         self.world.resources.add_resource(GlobalEventHistory())
-        self.world.resources.add_resource(LifeEventConsiderationLibrary())
 
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
@@ -177,18 +168,6 @@ class Simulation:
         )
         self.world.systems.add_system(system=DeathSystem(), system_group=UpdateSystems)
 
-    def _init_effects(self) -> None:
-        """Initialize built-in Effect definitions."""
-        effect_library = self.world.resources.get_resource(EffectLibrary)
-
-        effect_library.add_event(AddTrait)
-        effect_library.add_event(RemoveTrait)
-        effect_library.add_event(AddRelationshipTrait)
-        effect_library.add_event(RemoveRelationshipTrait)
-        effect_library.add_event(AddSkillBuff)
-        effect_library.add_event(AddStatBuff)
-        effect_library.add_event(AddRelationshipStatBuff)
-
     def _init_logging(self) -> None:
         """Initialize simulation logging."""
         if self.config.logging.logging_enabled:
@@ -209,6 +188,16 @@ class Simulation:
                     format="%(message)s",
                     force=True,
                 )
+
+    def _register_components(self) -> None:
+        """Register component types with the ecs."""
+        self.world.register_component_type(Location)
+        self.world.register_component_type(FrequentedLocations)
+        self.world.register_component_type(Traits)
+        self.world.register_component_type(Stats)
+        self.world.register_component_type(Business)
+        self.world.register_component_type(Character)
+        self.world.register_component_type(Skills)
 
     @property
     def date(self) -> SimDate:

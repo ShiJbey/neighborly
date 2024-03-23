@@ -85,7 +85,9 @@ def test_required_tags() -> None:
     districts = list(settlement.get_component(Settlement).districts)
 
     for district in districts:
-        district_def = library.get_definition(district.metadata["definition_id"])
+        district_def = library.get_definition(
+            district.gameobject.metadata["definition_id"]
+        )
         assert all(tag in district_def.tags for tag in required_tags), "Missing tags"
 
     # assert False
@@ -142,5 +144,7 @@ def test_optional_tags() -> None:
     districts = list(settlement.get_component(Settlement).districts)
 
     for district in districts:
-        district_def = library.get_definition(district.metadata["definition_id"])
+        district_def = library.get_definition(
+            district.gameobject.metadata["definition_id"]
+        )
         assert all(tag in district_def.tags for tag in required_tags), "Missing tags"

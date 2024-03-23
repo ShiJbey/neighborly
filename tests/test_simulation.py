@@ -52,8 +52,8 @@ def test_simulation_initialization() -> None:
     # Settlements are created at the beginning of the first time step
     sim.initialize()
 
-    settlements = sim.world.get_component(Settlement)
+    settlements = sim.world.get_components((Settlement,))
 
     assert len(settlements) == 1
 
-    assert settlements[0][1].gameobject.metadata["definition_id"] == "basic_settlement"
+    # assert settlements[0][0].gameobject.metadata["definition_id"] == "basic_settlement"

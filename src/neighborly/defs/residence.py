@@ -3,6 +3,7 @@
 """
 
 from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
+from neighborly.components.settlement import District
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.defs.base_types import ResidenceDef, ResidenceGenOptions
@@ -21,24 +22,27 @@ class DefaultResidenceDef(ResidenceDef):
         residence_library = world.resources.get_resource(ResidenceLibrary)
         residence_def = residence_library.get_definition(options.definition_id)
 
-        residence = world.gameobjects.spawn_gameobject()
+        residence = GameObject.create_new(world)
 
-        building = ResidentialBuilding(district=district)
-        residence.add_component(building)
-        residence.add_component(Traits())
-        residence.add_component(Stats())
+        building = residence.add_component(
+            ResidentialBuilding, district=district.get_component(District)
+        )
+        residence.add_component(Traits)
+        residence.add_component(Stats)
 
         residence.name = residence_def.display_name
 
         for _ in range(residence_def.residential_units):
-            residential_unit = world.gameobjects.spawn_gameobject(
-                components=[Traits()], name="ResidentialUnit"
+            residential_unit = GameObject.create_new(
+                world,
+                components={Traits: {}, ResidentialUnit: {}},
+                name="ResidentialUnit",
             )
             residence.add_child(residential_unit)
             residential_unit.add_component(
-                ResidentialUnit(building=residence, district=district)
+                ResidentialUnit, building=residence, district=district
             )
-            building.add_residential_unit(residential_unit)
-            residential_unit.add_component(Vacant())
+            building.units.append(residential_unit.get_component(ResidentialUnit))
+            residential_unit.add_component(Vacant)
 
         return residence

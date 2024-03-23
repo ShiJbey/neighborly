@@ -5,9 +5,11 @@
 from __future__ import annotations
 
 import enum
-from typing import Any
 
-from neighborly.ecs import Component, GameObject
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from neighborly.ecs import Component
 
 
 class LifeStage(enum.IntEnum):
@@ -28,135 +30,57 @@ class Sex(enum.IntEnum):
     NOT_SPECIFIED = enum.auto()
 
 
-class Species(Component):
-    """Configuration information about a character's species."""
-
-    __slots__ = (
-        "adolescent_age",
-        "young_adult_age",
-        "adult_age",
-        "senior_age",
-        "lifespan",
-        "can_physically_age",
-    )
-
-    def __init__(
-        self,
-        adolescent_age: int,
-        young_adult_age: int,
-        adult_age: int,
-        senior_age: int,
-        lifespan: int,
-        can_physically_age: bool,
-    ) -> None:
-        super().__init__()
-        self.adolescent_age = adolescent_age
-        self.young_adult_age = young_adult_age
-        self.adult_age = adult_age
-        self.senior_age = senior_age
-        self.lifespan = lifespan
-        self.can_physically_age = can_physically_age
-
-    def to_dict(self) -> dict[str, Any]:
-        return {}
-
-
 class Character(Component):
-    """A character within the story world."""
+    """A character agent."""
 
-    __slots__ = ("_first_name", "_last_name", "_sex", "_age", "_life_stage", "species")
+    __tablename__ = "character"
 
-    _first_name: str
-    """The character's first name."""
-    _last_name: str
-    """The character's last name or family name."""
-    _age: float
-    """the character's current age."""
-    _sex: Sex
-    """The physical sex of the character."""
-    _life_stage: LifeStage
-    """The character's current life stage."""
-    species: GameObject
-    """The character's species"""
-
-    def __init__(
-        self, first_name: str, last_name: str, sex: Sex, species: GameObject
-    ) -> None:
-        super().__init__()
-        self._first_name = first_name
-        self._last_name = last_name
-        self._sex = sex
-        self._age = 0
-        self._life_stage = LifeStage.CHILD
-        self.species = species
-
-    @property
-    def first_name(self) -> str:
-        """The character's first name."""
-        return self._first_name
-
-    @first_name.setter
-    def first_name(self, value: str) -> None:
-        """Set the character's first name."""
-        self._first_name = value
-        self.gameobject.name = self.full_name
-
-    @property
-    def last_name(self) -> str:
-        """The character's last name."""
-        return self._last_name
-
-    @last_name.setter
-    def last_name(self, value: str) -> None:
-        """Set the character's last name."""
-        self._last_name = value
-        self.gameobject.name = self.full_name
+    name: Mapped[str]
+    last_name: Mapped[str]
+    life_stage: Mapped[LifeStage]
+    sex: Mapped[Sex]
+    species: Mapped[str]
 
     @property
     def full_name(self) -> str:
-        """The combined full name of the character."""
-        return f"{self._first_name} {self._last_name}"
+        """The full name of the character."""
+        return f"{self.name} {self.last_name}"
 
-    @property
-    def age(self) -> float:
-        """Get the character's age."""
-        return self._age
-
-    @age.setter
-    def age(self, value: float) -> None:
-        """Set the character's age."""
-        self._age = value
-
-    @property
-    def sex(self) -> Sex:
-        """Get the characters sex."""
-        return self._sex
-
-    @property
-    def life_stage(self) -> LifeStage:
-        """Get the character's life stage."""
-        return self._life_stage
-
-    @life_stage.setter
-    def life_stage(self, value: LifeStage) -> None:
-        """Set the character's life stage."""
-        self._life_stage = value
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "first_name": self._first_name,
-            "last_name": self._last_name,
-            "sex": self.sex.name,
-            "age": int(self.age),
-            "life_stage": self.life_stage.name,
-            "species": self.species.name,
-        }
+    def __str__(self) -> str:
+        return (
+            f"Character(uid={self.uid!r}, full_name={self.full_name!r}, "
+            f"life_stage={self.life_stage.name!r}, sex={self.sex.name!r}, "
+            f"species={self.species!r})"
+        )
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(name={self.full_name}, sex={self.sex}, "
-            f"age={self.age}({self.life_stage}), species={self.species.name})"
+            f"Character(uid={self.uid!r}, full_name={self.full_name!r}, "
+            f"life_stage={self.life_stage.name!r}, sex={self.sex.name!r}, "
+            f"species={self.species!r})"
         )
 
+
+class Pregnancy(Component):
+    """Tags a character as pregnant and tracks relevant information."""
+
+    __tablename__ = "pregnancy"
+
+    partner_id: Mapped[int] = mapped_column(ForeignKey("character.uid"))
+    """The GameObject ID of the character that impregnated this character."""
+    ordinal_due_date: Mapped[int]
+    """The ordinal date the baby is due."""
+    due_date: Mapped[str]
+    """The string timestamp of the due date."""
+
     def __str__(self) -> str:
-        return self.full_name
+        return (
+            f"Pregnancy(partner={self.partner_id!r}, due_date={self.due_date!r}, "
+            f"ordinal_due_date={self.ordinal_due_date!r})"
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"Pregnancy(partner={self.partner_id!r}, due_date={self.due_date!r}, "
+            f"ordinal_due_date={self.ordinal_due_date!r})"
+        )

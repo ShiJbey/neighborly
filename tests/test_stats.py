@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pathlib
 
-from neighborly.components.stats import Stat
+from neighborly.components.stats import StatEntry
 from neighborly.defs.base_types import CharacterGenOptions
 from neighborly.helpers.character import create_character
-from neighborly.helpers.stats import add_stat, get_stat, has_stat, remove_stat
+from neighborly.helpers.stats import add_stat, get_stat, has_stat
 from neighborly.loaders import load_characters, load_skills
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
@@ -73,29 +73,8 @@ def test_add_stat() -> None:
 
     character = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
 
-    hunger = add_stat(character, "hunger", Stat(base_value=100, bounds=(0, 255)))
+    hunger = add_stat(
+        character, StatEntry(name="hunger", base_value=100, min_value=0, max_value=255)
+    )
 
     assert hunger.base_value == 100
-
-
-def test_remove_stat() -> None:
-    """Test removing stats."""
-
-    sim = Simulation()
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    default_traits.load_plugin(sim)
-
-    sim.initialize()
-
-    character = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
-
-    add_stat(character, "hunger", Stat(base_value=0, bounds=(0, 255)))
-
-    assert has_stat(character, "hunger")
-
-    remove_stat(character, "hunger")
-
-    assert has_stat(character, "hunger") is False
