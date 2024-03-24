@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pathlib
 
-from neighborly.components.stats import StatEntry
+from neighborly.components.stats import Stat
 from neighborly.defs.base_types import CharacterGenOptions
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import add_stat, get_stat, has_stat
@@ -74,7 +74,7 @@ def test_add_stat() -> None:
     character = create_character(sim.world, CharacterGenOptions(definition_id="farmer"))
 
     hunger = add_stat(
-        character, StatEntry(name="hunger", base_value=100, min_value=0, max_value=255)
+        character, Stat(name="hunger", base_value=100, min_value=0, max_value=255)
     )
 
     assert hunger.base_value == 100

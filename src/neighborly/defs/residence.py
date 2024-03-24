@@ -4,8 +4,6 @@
 
 from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
-from neighborly.components.stats import Stats
-from neighborly.components.traits import Traits
 from neighborly.defs.base_types import ResidenceDef, ResidenceGenOptions
 from neighborly.ecs import GameObject, World
 from neighborly.libraries import ResidenceLibrary
@@ -27,15 +25,13 @@ class DefaultResidenceDef(ResidenceDef):
         building = residence.add_component(
             ResidentialBuilding, district=district.get_component(District)
         )
-        residence.add_component(Traits)
-        residence.add_component(Stats)
 
         residence.name = residence_def.display_name
 
         for _ in range(residence_def.residential_units):
             residential_unit = GameObject.create_new(
                 world,
-                components={Traits: {}, ResidentialUnit: {}},
+                components={ResidentialUnit: {}},
                 name="ResidentialUnit",
             )
             residence.add_child(residential_unit)

@@ -5,12 +5,12 @@
 from abc import ABC, abstractmethod
 from typing import cast
 
+from sqlalchemy import select
+
 from neighborly.components.character import Character, LifeStage, Sex
 from neighborly.components.location import FrequentedLocations
 from neighborly.components.shared import Age, Agent, EventHistory
-from neighborly.components.skills import Skills
-from neighborly.components.stats import StatEntry, Stats
-from neighborly.components.traits import Traits
+from neighborly.components.stats import STAT_MAX_VALUE, STAT_MIN_VALUE, Stat
 from neighborly.defs.base_types import CharacterDef, CharacterGenOptions
 from neighborly.defs.species import SpeciesDef
 from neighborly.ecs import GameObject, World
@@ -34,9 +34,6 @@ class DefaultCharacterDef(CharacterDef):
         character.metadata["definition_id"] = options.definition_id
 
         character.add_component(Agent, agent_type="character")
-        character.add_component(Traits)
-        character.add_component(Skills)
-        character.add_component(Stats)
         character.add_component(FrequentedLocations)
         character.add_component(EventHistory)
 
@@ -82,7 +79,9 @@ class DefaultCharacterDef(CharacterDef):
         """Initializes the characters age."""
         rng = character.world.rng
         character_comp = character.get_component(Character)
-        age_comp = character.get_component(Age)
+        age = character.world.session.scalars(
+            select(Age).where(Age.gameobject == character.uid)
+        ).one()
 
         species = cast(
             SpeciesDef,
@@ -96,24 +95,24 @@ class DefaultCharacterDef(CharacterDef):
 
             # Generate an age for this character
             if character_comp.life_stage == LifeStage.CHILD:
-                age_comp.value = rng.randint(0, species.adolescent_age - 1)
+                age.value = rng.randint(0, species.adolescent_age - 1)
             elif character_comp.life_stage == LifeStage.ADOLESCENT:
-                age_comp.value = rng.randint(
+                age.value = rng.randint(
                     species.adolescent_age,
                     species.young_adult_age - 1,
                 )
             elif character_comp.life_stage == LifeStage.YOUNG_ADULT:
-                age_comp.value = rng.randint(
+                age.value = rng.randint(
                     species.young_adult_age,
                     species.adult_age - 1,
                 )
             elif character_comp.life_stage == LifeStage.ADULT:
-                age_comp.value = rng.randint(
+                age.value = rng.randint(
                     species.adult_age,
                     species.senior_age - 1,
                 )
             else:
-                age_comp.value = age_comp.value = rng.randint(
+                age.value = age.value = rng.randint(
                     species.senior_age,
                     species.lifespan - 1,
                 )
@@ -122,7 +121,6 @@ class DefaultCharacterDef(CharacterDef):
         self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Set the traits for a character."""
-        character.add_component(Traits)
         rng = character.world.rng
         trait_library = character.world.resources.get_resource(TraitLibrary)
 
@@ -175,7 +173,7 @@ class DefaultCharacterDef(CharacterDef):
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="lifespan",
                 base_value=species.lifespan,
                 min_value=0,
@@ -186,77 +184,63 @@ class DefaultCharacterDef(CharacterDef):
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="fertility",
-                base_value=float(rng.uniform(0.0, 1.0)),
-                min_value=0,
-                max_value=1.0,
+                base_value=float(rng.uniform(0.0, 255)),
                 is_discrete=True,
             ),
         )
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="boldness",
-                base_value=float(rng.randint(0, 255)),
-                min_value=0,
-                max_value=255,
+                base_value=float(rng.randint(STAT_MIN_VALUE, STAT_MAX_VALUE)),
                 is_discrete=True,
             ),
         )
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="stewardship",
-                base_value=float(rng.randint(0, 255)),
-                min_value=0,
-                max_value=255,
+                base_value=float(rng.randint(STAT_MIN_VALUE, STAT_MAX_VALUE)),
                 is_discrete=True,
             ),
         )
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="sociability",
-                base_value=float(rng.randint(0, 255)),
-                min_value=0,
-                max_value=255,
+                base_value=float(rng.randint(STAT_MIN_VALUE, STAT_MAX_VALUE)),
                 is_discrete=True,
             ),
         )
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="attractiveness",
-                base_value=float(rng.randint(0, 255)),
-                min_value=0,
-                max_value=255,
+                base_value=float(rng.randint(STAT_MIN_VALUE, STAT_MAX_VALUE)),
                 is_discrete=True,
             ),
         )
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="intelligence",
-                base_value=float(rng.randint(0, 255)),
-                min_value=0,
-                max_value=255,
+                base_value=float(rng.randint(STAT_MIN_VALUE, STAT_MAX_VALUE)),
                 is_discrete=True,
             ),
         )
 
         add_stat(
             character,
-            StatEntry(
+            Stat(
                 name="reliability",
-                base_value=float(rng.randint(0, 255)),
-                min_value=0,
-                max_value=255,
+                base_value=float(rng.randint(STAT_MIN_VALUE, STAT_MAX_VALUE)),
                 is_discrete=True,
             ),
         )
@@ -276,7 +260,7 @@ class DefaultCharacterDef(CharacterDef):
 
             add_stat(
                 character,
-                StatEntry(
+                Stat(
                     name=stat_data.stat,
                     base_value=stat_value,
                     bounds=(stat_data.min_value, stat_data.max_value),

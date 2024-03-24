@@ -5,8 +5,6 @@
 from neighborly.components.business import Business, JobOpening
 from neighborly.components.location import Location
 from neighborly.components.shared import Agent, EventHistory
-from neighborly.components.stats import Stats
-from neighborly.components.traits import Traits
 from neighborly.defs.base_types import BusinessDef, BusinessGenOptions, JobRoleDef
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.traits import add_trait
@@ -47,10 +45,8 @@ class DefaultBusinessDef(BusinessDef):
             )
 
         business.add_component(Agent, agent_type="business")
-        business.add_component(Traits)
         business.add_component(Location, is_private=self.open_to_public)
         business.add_component(EventHistory)
-        business.add_component(Stats)
 
         if self.name_factory:
             tracery = world.resources.get_resource(Tracery)

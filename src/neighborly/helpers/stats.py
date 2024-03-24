@@ -4,14 +4,14 @@
 
 from __future__ import annotations
 
-from neighborly.components.stats import StatEntry, StatModifier, Stats
+from neighborly.components.stats import Stat, StatModifier
 from neighborly.ecs import GameObject
 
 
 def add_stat(
     gameobject: GameObject,
-    stat: StatEntry,
-) -> StatEntry:
+    stat: Stat,
+) -> Stat:
     """Add a new stat to the gameobject.
 
     Parameters
@@ -26,7 +26,8 @@ def add_stat(
     Stat
         The newly created stat.
     """
-    gameobject.get_component(Stats).entries.append(stat)
+    gameobject.world.session.add(stat)
+    gameobject.world.session.flush()
 
     return stat
 
@@ -46,11 +47,10 @@ def has_stat(gameobject: GameObject, name: str) -> bool:
     bool
         True if the GameObject has the stat. False otherwise.
     """
-    stats = gameobject.get_component(Stats)
-    return any(entry.name == name for entry in stats.entries)
+    gameobject.world.session.query()
 
 
-def get_stat(gameobject: GameObject, name: str) -> StatEntry:
+def get_stat(gameobject: GameObject, name: str) -> Stat:
     """Get a GameObject's stat.
 
     Parameters

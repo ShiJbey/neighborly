@@ -12,12 +12,11 @@ https://www.youtube.com/watch?v=SH25f3cXBVc.
 from __future__ import annotations
 
 import enum
-from typing import Optional
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from neighborly.ecs import Component, GameData
+from neighborly.ecs import GameData
 
 
 class StatModifierType(enum.IntEnum):
@@ -41,12 +40,11 @@ class StatModifier(GameData):
     """
 
     __tablename__ = "stat_modifier"
-    __allow_unmapped__ = True
 
     key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uid: Mapped[int] = mapped_column(ForeignKey("stat_entry.uid"))
-    stat: Mapped[StatEntry] = relationship(
-        back_populates="modifiers", foreign_keys=[uid]
+    stat_key: Mapped[int] = mapped_column(ForeignKey("stats.key"))
+    stat: Mapped[Stat] = relationship(
+        back_populates="modifiers", foreign_keys=[stat_key]
     )
     value: Mapped[float]
     """The amount to modify the stat."""
@@ -54,32 +52,23 @@ class StatModifier(GameData):
     """How the modifier value is applied."""
     order: Mapped[int]
     """The priority of this modifier when calculating final stat values."""
-    source: Optional[object] = None
-    """The source of the modifier (for debugging purposes)."""
+    source: Mapped[str]
+    """The source of the modifier."""
 
 
-class StatEntry(GameData):
-    """Information about a single stat."""
+STAT_MIN_VALUE = 0
+STAT_MAX_VALUE = 255
 
-    __tablename__ = "stat_entry"
+
+class Stat(GameData):
+    """A numerical stat associated with a character."""
+
+    __tablename__ = "stats"
 
     key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str]
     value: Mapped[float]
     base_value: Mapped[float]
     modifiers: Mapped[list[StatModifier]] = relationship(back_populates="stat")
-    min_value: Mapped[float]
-    max_value: Mapped[float]
     is_discrete: Mapped[bool] = mapped_column(default=False)
-    uid: Mapped[int] = mapped_column(ForeignKey("stats.uid"))
-    component: Mapped[Stats] = relationship(
-        back_populates="entries", foreign_keys=[uid]
-    )
-
-
-class Stats(Component):
-    """Tracks all the various stats for a GameObject."""
-
-    __tablename__ = "stats"
-
-    entries: Mapped[list[StatEntry]] = relationship(back_populates="component")
+    gameobject: Mapped[int]

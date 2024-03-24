@@ -7,7 +7,7 @@
 import pytest
 
 from neighborly.components.skills import Skills
-from neighborly.components.stats import StatEntry, Stats
+from neighborly.components.stats import Stat, Stats
 from neighborly.components.traits import Traits
 from neighborly.defs.base_types import StatModifierData
 from neighborly.defs.trait import DefaultTraitDef
@@ -118,7 +118,7 @@ def test_add_remove_trait_effects(test_sim: Simulation) -> None:
 
     add_stat(
         farmer,
-        StatEntry(
+        Stat(
             name="sociability",
             base_value=0,
             min_value=0,
@@ -151,7 +151,7 @@ def test_try_add_conflicting_trait(test_sim: Simulation) -> None:
 
     add_stat(
         character,
-        StatEntry(
+        Stat(
             name="sociability",
             base_value=0,
             min_value=0,

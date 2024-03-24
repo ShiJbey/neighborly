@@ -6,8 +6,7 @@ from sqlalchemy import exists, select
 
 from neighborly.components.relationship import Relationship
 from neighborly.components.shared import Agent
-from neighborly.components.stats import StatEntry, Stats
-from neighborly.components.traits import Traits
+from neighborly.components.stats import Stat
 from neighborly.ecs import GameObject
 from neighborly.helpers.stats import add_stat, remove_stat_modifiers_from_source
 from neighborly.libraries import SocialRuleLibrary
@@ -38,33 +37,31 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
             Relationship: {
                 "owner": owner.get_component(Agent),
                 "target": target.get_component(Agent),
-            },
-            Stats: {},
-            Traits: {},
+            }
         },
     )
 
     add_stat(
         relationship,
-        StatEntry(name="reputation", base_value=0, min_value=-100, max_value=100),
+        Stat(name="reputation", base_value=0, min_value=-100, max_value=100),
     )
     add_stat(
         relationship,
-        StatEntry(name="romance", base_value=0, min_value=-100, max_value=100),
+        Stat(name="romance", base_value=0, min_value=-100, max_value=100),
     )
     add_stat(
         relationship,
-        StatEntry(name="compatibility", base_value=0, min_value=-100, max_value=100),
+        Stat(name="compatibility", base_value=0, min_value=-100, max_value=100),
     )
     add_stat(
         relationship,
-        StatEntry(
+        Stat(
             name="romantic_compatibility", base_value=0, min_value=-100, max_value=100
         ),
     )
     add_stat(
         relationship,
-        StatEntry(name="interaction_score", base_value=0, min_value=0, max_value=10),
+        Stat(name="interaction_score", base_value=0, min_value=0, max_value=10),
     )
 
     relationship.name = f"{owner.name} -> {target.name}"

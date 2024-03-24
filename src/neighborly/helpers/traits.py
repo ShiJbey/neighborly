@@ -2,10 +2,10 @@
 
 """
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from neighborly.components.stats import StatModifier, StatModifierType
-from neighborly.components.traits import TraitInstance, Traits
+from neighborly.components.traits import Trait
 from neighborly.ecs import GameObject
 from neighborly.helpers.skills import (
     add_skill_modifier,
@@ -46,14 +46,16 @@ def add_trait(gameobject: GameObject, trait_id: str, duration: int = -1) -> bool
     if has_conflicting_traits(gameobject, trait_id):
         return False
 
-    gameobject.get_component(Traits).instances.append(
-        TraitInstance(
-            trait_id=trait_id,
-            description=trait_def.description,
-            has_duration=duration > 0,
-            duration=duration,
-        )
+    trait = Trait(
+        trait_id=trait_id,
+        description=trait_def.description,
+        has_duration=duration > 0,
+        duration=duration,
     )
+
+    gameobject.world.session.add(trait)
+
+    gameobject.world.session.flush()
 
     for modifier_data in trait_def.stat_modifiers:
         add_stat_modifier(
@@ -108,9 +110,9 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
         remove_skill_modifiers_from_source(gameobject, modifier.name, trait_id)
 
     gameobject.world.session.execute(
-        delete(TraitInstance)
-        .where(TraitInstance.uid == gameobject.uid)
-        .where(TraitInstance.trait_id == trait_id)
+        delete(Trait)
+        .where(Trait.gameobject == gameobject.uid)
+        .where(Trait.trait_id == trait_id)
     )
 
     gameobject.world.session.flush()
@@ -133,16 +135,20 @@ def has_trait(gameobject: GameObject, trait_id: str) -> bool:
     bool
         True if the gameobject has the trait, False otherwise.
     """
-    trait_instances = gameobject.get_component(Traits).instances
+    result = (
+        gameobject.world.session.execute(
+            select(Trait)
+            .where(Trait.trait_id == trait_id)
+            .where(Trait.gameobject == gameobject.uid)
+        )
+        .tuples()
+        .all()
+    )
 
-    for instance in trait_instances:
-        if instance.trait_id == trait_id:
-            return True
-
-    return False
+    return bool(result)
 
 
-def get_trait(gameobject: GameObject, trait_id: str) -> TraitInstance:
+def get_trait(gameobject: GameObject, trait_id: str) -> Trait:
     """Get a trait from a gameobject.
 
     Parameters
@@ -157,13 +163,20 @@ def get_trait(gameobject: GameObject, trait_id: str) -> TraitInstance:
     bool
         True if the gameobject has the trait, False otherwise.
     """
-    trait_instances = gameobject.get_component(Traits).instances
+    result = (
+        gameobject.world.session.execute(
+            select(Trait)
+            .where(Trait.trait_id == trait_id)
+            .where(Trait.gameobject == gameobject.uid)
+        )
+        .tuples()
+        .one()
+    )
 
-    for instance in trait_instances:
-        if instance.trait_id == trait_id:
-            return instance
+    if result:
+        return result[0]
 
-    raise KeyError(f"Could not find trait: {trait_id!r}")
+    raise KeyError(f"Could not find trait {trait_id!r} for {gameobject.name!r}")
 
 
 def has_conflicting_traits(gameobject: GameObject, trait_id: str) -> bool:
@@ -183,15 +196,24 @@ def has_conflicting_traits(gameobject: GameObject, trait_id: str) -> bool:
     """
     library = gameobject.world.resources.get_resource(TraitLibrary)
     trait_def = library.get_definition(trait_id)
-    trait_instances = gameobject.get_component(Traits).instances
 
-    for instance in trait_instances:
-        instance_def = library.get_definition(instance.trait_id)
+    results = (
+        gameobject.world.session.execute(
+            select(Trait)
+            .where(Trait.trait_id == trait_id)
+            .where(Trait.gameobject == gameobject.uid)
+        )
+        .tuples()
+        .all()
+    )
 
-        if trait_id in instance_def.conflicts_with:
+    for (trait,) in results:
+        other_trait_def = library.get_definition(trait.trait_id)
+
+        if trait_id in other_trait_def.conflicts_with:
             return True
 
-        if instance.trait_id in trait_def.conflicts_with:
+        if other_trait_def.definition_id in trait_def.conflicts_with:
             return True
 
     return False
