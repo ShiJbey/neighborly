@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [2.5.0] - 2024-03-24
+
+This version introduces minor breaking changes to the content authoring pipeline. Please check your YAML and JSON files.
+
+### Changed
+
+- Convert content definition classes to use Pydantic
+
+### Added
+
+- Tag-based content selection to all authored content libraries
+- Content definition compiler that allows for variants and templates
+- Additional fields to all content definitions
+
+### Removed
+
+- Removed some fields from content definitions
+
 ## [2.4.1] - 2023-11-20
 
 ### Fixed
@@ -125,7 +143,7 @@ version was built with the authoring interface holding prime importance.
 
 - Removed generic parameters from `IComponentFactory` and `Stat` classes.
 
-## [1.0.0]
+## [1.0.0] - 2023-08-16
 
 Version 1.0.0 departs significantly from previous Neighborly releases. This version emphasizes simplicity, focusing
 more on Neighborly's use as a data science and prototyping tool. This change reflects my evolving understanding of my
@@ -203,7 +221,7 @@ Below is a non-exhaustive list of changes.
 
 - [Added] Added functions to `GameObject` and `AllEvents` classes to clear event listeners.
 
-## [0.11.2]
+## [0.11.2] - 2023-05-21
 
 - Fixed problem with non-determinism caused by VirtuesFactory iterating sets
 
@@ -213,7 +231,7 @@ Below is a non-exhaustive list of changes.
 
 - The Tracery class is now seeded inside the Neighborly constructor
 
-## [0.11.0]
+## [0.11.0] - 2023-05-05
 
 **This update has breaking changes from version 0.10.x**
 
@@ -246,7 +264,7 @@ Below is a non-exhaustive list of changes.
   are placed below their type hints.
 - Updated to newer build of Tracery (`tracery3`)
 
-## [0.10.0]
+## [0.10.0] - 2023-03-27
 
 **This update has breaking changes from version 0.9.x**
 
@@ -308,7 +326,7 @@ Below is a non-exhaustive list of changes.
 - Consolidated redundant components such as `Gender` into a single
   component with an enum value
 
-## [0.9.4]
+## [0.9.4] - 2022-11-15
 
 **0.9.4 is not compatible with 0.9.3**
 
@@ -345,3 +363,19 @@ Below is a non-exhaustive list of changes.
 
 - Bug in Business operating hours regex that did not recognize AM/PM strings
 - `setup.cfg` did not properly include data files in the wheel build.
+
+## [0.9.3] - 2022-08-15
+
+_Initial Release._
+
+[2.5.0]: https://github.com/ShiJbey/neighborly/releases/tag/v2.5.0
+[2.4.1]: https://github.com/ShiJbey/neighborly/releases/tag/v2.4.1
+[2.1.1]: https://github.com/ShiJbey/neighborly/releases/tag/v2.1.1
+[2.1.0]: https://github.com/ShiJbey/neighborly/releases/tag/v2.1.0
+[2.0.0]: https://github.com/ShiJbey/neighborly/releases/tag/v2.0.0
+[1.0.0]: https://github.com/ShiJbey/neighborly/releases/tag/v1.0.0
+[0.11.2]: https://github.com/ShiJbey/neighborly/releases/tag/v0.11.2
+[0.11.0]: https://github.com/ShiJbey/neighborly/releases/tag/v0.11.0
+[0.10.0]: https://github.com/ShiJbey/neighborly/releases/tag/v0.10.0
+[0.9.4]: https://github.com/ShiJbey/neighborly/releases/tag/v0.9.4
+[0.9.3]: https://github.com/ShiJbey/neighborly/releases/tag/v0.9.3

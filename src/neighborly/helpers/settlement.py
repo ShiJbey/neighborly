@@ -4,13 +4,22 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from neighborly.components.settlement import Settlement
-from neighborly.defs.base_types import DistrictDef, SettlementDef
+from neighborly.defs.base_types import (
+    DistrictDef,
+    DistrictGenOptions,
+    SettlementDef,
+    SettlementGenOptions,
+)
 from neighborly.ecs import GameObject, World
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 
-#Do we have to update so that it can do this with tags?
-def create_settlement(world: World, definition_id: str) -> GameObject:
+
+def create_settlement(
+    world: World, definition_id: str, options: Optional[SettlementGenOptions] = None
+) -> GameObject:
     """Create a new settlement.
 
     Parameters
@@ -18,29 +27,31 @@ def create_settlement(world: World, definition_id: str) -> GameObject:
     world
         The world instance to spawn the settlement in.
     definition_id
-        The definition to use to initialize the settlement.
+        The ID of the definition to instantiate.
+    options
+        Generation options.
 
     Returns
     -------
     GameObject
         The settlement.
     """
-    settlement = world.gameobject_manager.spawn_gameobject()
-    settlement.metadata["definition_id"] = definition_id
-
-    settlement.add_component(Settlement(name=""))
-
     library = world.resource_manager.get_resource(SettlementLibrary)
 
     settlement_def = library.get_definition(definition_id)
 
-    settlement_def.initialize(settlement)
+    options = options if options else SettlementGenOptions()
+
+    settlement = settlement_def.instantiate(world, options)
 
     return settlement
 
 
 def create_district(
-    world: World, settlement: GameObject, definition_id: str
+    world: World,
+    settlement: GameObject,
+    definition_id: str,
+    options: Optional[DistrictGenOptions] = None,
 ) -> GameObject:
     """Create a new district GameObject.
 
@@ -51,7 +62,9 @@ def create_district(
     settlement
         The settlement that owns district belongs to.
     definition_id
-        The definition to use to initialize the district.
+        The ID of the definition to instantiate.
+    options
+        Generation options.
 
     Returns
     -------
@@ -62,10 +75,9 @@ def create_district(
 
     district_def = library.get_definition(definition_id)
 
-    district = world.gameobject_manager.spawn_gameobject()
-    district.metadata["definition_id"] = definition_id
+    options = options if options else DistrictGenOptions()
 
-    district_def.initialize(settlement, district)
+    district = district_def.instantiate(world, settlement, options)
 
     settlement.get_component(Settlement).add_district(district)
 
@@ -95,4 +107,5 @@ def register_district_def(world: World, definition: DistrictDef) -> None:
     definition
         The definition to add.
     """
+    world.resource_manager.get_resource(DistrictLibrary).add_definition(definition)
     world.resource_manager.get_resource(DistrictLibrary).add_definition(definition)

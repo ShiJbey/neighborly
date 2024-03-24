@@ -115,8 +115,8 @@ class BusinessSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
+        self._table = self._table.with_columns(  # type: ignore
+            instances=pl.when(pl.col("name") == name)  # type: ignore
             .then(pl.col("instances") + 1)
             .otherwise(pl.col("instances"))
         )
@@ -129,8 +129,8 @@ class BusinessSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
+        self._table = self._table.with_columns(  # type: ignore
+            instances=pl.when(pl.col("name") == name)  # type: ignore
             .then(pl.col("instances") - 1)
             .otherwise(pl.col("instances"))
         )
@@ -201,8 +201,8 @@ class ResidenceSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
+        self._table = self._table.with_columns(  # type: ignore
+            instances=pl.when(pl.col("name") == name)  # type: ignore
             .then(pl.col("instances") + 1)
             .otherwise(pl.col("instances"))
         )
@@ -215,8 +215,8 @@ class ResidenceSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(
-            instances=pl.when(pl.col("name") == name)
+        self._table = self._table.with_columns(  # type: ignore
+            instances=pl.when(pl.col("name") == name)  # type: ignore
             .then(pl.col("instances") - 1)
             .otherwise(pl.col("instances"))
         )

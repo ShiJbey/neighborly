@@ -35,6 +35,8 @@ from neighborly.components.spawn_table import (
 )
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
+from neighborly.defs.base_types import CharacterGenOptions
+from neighborly.defs.definition_compiler import compile_definitions
 from neighborly.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
     BecomeAdolescentEvent,
@@ -203,7 +205,9 @@ class SpawnResidentialBuildingsSystem(System):
 
             if multifamily_building is not None:
                 residence = create_residence(
-                    world, district.gameobject, multifamily_building
+                    world,
+                    district.gameobject,
+                    multifamily_building,
                 )
                 district.add_residence(residence)
                 district.gameobject.add_child(residence)
@@ -219,7 +223,9 @@ class SpawnResidentialBuildingsSystem(System):
 
             if single_family_building is not None:
                 residence = create_residence(
-                    world, district.gameobject, single_family_building
+                    world,
+                    district.gameobject,
+                    single_family_building,
                 )
                 district.add_residence(residence)
                 district.gameobject.add_child(residence)
@@ -262,7 +268,11 @@ class SpawnNewResidentSystem(System):
             )[0]
 
             character = create_character(
-                world, character_definition_id, life_stage=character_life_stage
+                world,
+                character_definition_id,
+                CharacterGenOptions(
+                    life_stage=character_life_stage.name,
+                ),
             )
 
             JoinSettlementEvent(
@@ -326,7 +336,11 @@ class SpawnNewBusinessesSystem(System):
             )
 
             if business_id is not None:
-                business = create_business(world, district.gameobject, business_id)
+                business = create_business(
+                    world,
+                    district.gameobject,
+                    business_id,
+                )
                 district.add_business(business)
                 district.gameobject.add_child(business)
                 spawn_table.increment_count(business_id)
@@ -340,12 +354,16 @@ class InstantiateTraitsSystem(System):
     def on_update(self, world: World) -> None:
         trait_library = world.resource_manager.get_resource(TraitLibrary)
 
-        for trait_id in trait_library.trait_ids:
-            trait_def = trait_library.get_definition(trait_id)
-            trait = world.gameobject_manager.spawn_gameobject(
-                name=trait_def.display_name
-            )
-            trait_def.initialize(trait)
+        # Compile the loaded definitions
+        compiled_defs = compile_definitions(trait_library.definitions.values())
+
+        # Clear out the unprocessed ones
+        trait_library.definitions.clear()
+
+        # Add the new definitions and instances to the library.
+        for trait_def in compiled_defs:
+            trait_library.add_definition(trait_def)
+            trait = trait_def.instantiate(world)
             trait_library.add_trait(trait)
 
 
@@ -355,12 +373,16 @@ class InstantiateSkillsSystem(System):
     def on_update(self, world: World) -> None:
         skill_library = world.resource_manager.get_resource(SkillLibrary)
 
-        for skill_id in skill_library.skill_ids:
-            skill_def = skill_library.get_definition(skill_id)
-            skill = world.gameobject_manager.spawn_gameobject(
-                name=skill_def.display_name
-            )
-            skill_def.initialize(skill)
+        # Compile the loaded definitions
+        compiled_defs = compile_definitions(skill_library.definitions.values())
+
+        # Clear out the unprocessed ones
+        skill_library.definitions.clear()
+
+        # Add the new definitions and instances to the library.
+        for skill_def in compiled_defs:
+            skill_library.add_definition(skill_def)
+            skill = skill_def.instantiate(world)
             skill_library.add_skill(skill)
 
 
@@ -370,12 +392,16 @@ class InstantiateJobRolesSystem(System):
     def on_update(self, world: World) -> None:
         job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
 
-        for role_id in job_role_library.job_role_ids:
-            role_def = job_role_library.get_definition(role_id)
-            job_role = world.gameobject_manager.spawn_gameobject(
-                name=role_def.display_name
-            )
-            role_def.initialize(job_role)
+        # Compile the loaded definitions
+        compiled_defs = compile_definitions(job_role_library.definitions.values())
+
+        # Clear out the unprocessed ones
+        job_role_library.definitions.clear()
+
+        # Add the new definitions and instances to the library.
+        for role_def in compiled_defs:
+            job_role_library.add_definition(role_def)
+            job_role = role_def.instantiate(world)
             job_role_library.add_role(job_role)
 
 
@@ -596,9 +622,10 @@ class ChildBirthSystem(System):
 
             baby = create_character(
                 character.gameobject.world,
-                definition_id=character.gameobject.metadata["definition_id"],
-                skills=[],
-                last_name=character.last_name,
+                character.gameobject.metadata["definition_id"],
+                CharacterGenOptions(
+                    last_name=character.last_name,
+                ),
             )
 
             ChangeResidenceEvent(

@@ -7,6 +7,7 @@ import pathlib
 
 import pytest
 
+from neighborly.defs.base_types import CharacterGenOptions
 from neighborly.helpers.character import create_character
 from neighborly.helpers.relationship import (
     add_relationship,
@@ -93,9 +94,9 @@ def test_add_relationship(sim: Simulation) -> None:
 def test_trait_with_social_rules(sim: Simulation) -> None:
     """Test traits that apply social rules"""
 
-    farmer = create_character(sim.world, "farmer", n_traits=0)
-    merchant = create_character(sim.world, "merchant", n_traits=0)
-    noble = create_character(sim.world, "nobility", n_traits=0)
+    farmer = create_character(sim.world, "farmer", CharacterGenOptions(n_traits=0))
+    merchant = create_character(sim.world, "merchant", CharacterGenOptions(n_traits=0))
+    noble = create_character(sim.world, "nobility", CharacterGenOptions(n_traits=0))
 
     rel_to_noble = add_relationship(farmer, noble)
 

@@ -8,8 +8,10 @@ ID.
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Iterator, Type
+import json
+from typing import Any, Generic, Iterable, Iterator, Optional, Type, TypeVar
 
+import pydantic
 from ordered_set import OrderedSet
 
 from neighborly.components.business import JobRole
@@ -18,6 +20,7 @@ from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
     BusinessDef,
     CharacterDef,
+    ContentDefinition,
     DistrictDef,
     JobRoleDef,
     ResidenceDef,
@@ -27,154 +30,147 @@ from neighborly.defs.base_types import (
 )
 from neighborly.ecs import GameObject, World
 from neighborly.effects.base_types import Effect
+from neighborly.helpers.content_selection import get_with_tags
 from neighborly.life_event import LifeEvent
 from neighborly.preconditions.base_types import Precondition
 
+_T = TypeVar("_T", bound=ContentDefinition)
 
-class SkillLibrary:
-    """Manages skill definitions and Skill instances."""
+
+class ContentDefinitionLibrary(Generic[_T]):
+    """The collection of skill definitions and instances."""
 
     _slots__ = (
-        "_definitions",
-        "_definition_types",
-        "_skill_instances",
-        "_default_definition_type",
+        "definitions",
+        "definition_types",
+        "default_definition_type",
     )
 
-    _skill_instances: dict[str, GameObject]
-    """Skill IDs mapped to instances of the skill."""
-    _definitions: dict[str, SkillDef]
-    """Skill IDs mapped to skill definition instances."""
-    _definition_types: dict[str, Type[SkillDef]]
-    """String names mapped to skill definition types."""
-    _default_definition_type: str
-    """The name of the default definition type used when loading data from a file."""
+    definitions: dict[str, _T]
+    """IDs mapped to definition instances."""
+    definition_types: dict[str, Type[_T]]
+    """IDs mapped to definition class types."""
+    default_definition_type: str
+    """The type name of the definition to use when importing raw data."""
 
-    def __init__(self, default_definition_type: Type[SkillDef]) -> None:
-        self._skill_instances = {}
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
+    def __init__(self, default_definition_type: Optional[Type[_T]] = None) -> None:
+        self.definitions = {}
+        self.definition_types = {}
+        self.default_definition_type = ""
+
+        if default_definition_type:
+            self.add_definition_type(default_definition_type, set_default=True)
+
+    def get_definition(self, definition_id: str) -> _T:
+        """Get a definition from the library."""
+
+        return self.definitions[definition_id]
+
+    def add_definition(self, definition: _T) -> None:
+        """Add a definition to the library."""
+
+        self.definitions[definition.definition_id] = definition
+
+    def get_definition_with_tags(self, tags: list[str]) -> list[_T]:
+        """Get a definition from the library with the given tags."""
+
+        return get_with_tags(
+            options=[(d, d.tags) for d in self.definitions.values()], tags=tags
+        )
+
+    def add_definition_type(
+        self,
+        definition_type: Type[_T],
+        set_default: bool = False,
+        alias: str = "",
+    ) -> None:
+        """Add a definition type to the library."""
+        definition_key = alias if alias else definition_type.__name__
+
+        self.definition_types[definition_key] = definition_type
+
+        if set_default:
+            self.default_definition_type = definition_key
+
+    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
+        """Parse a definition from a dict and add to the library."""
+
+        definition_type_name: str = obj.get(
+            "definition_type", self.default_definition_type
+        )
+        definition_type = self.definition_types[definition_type_name]
+
+        try:
+            definition = definition_type.model_validate(obj)
+            self.add_definition(definition)
+
+        except pydantic.ValidationError as err:
+            raise RuntimeError(
+                f"Error while parsing definition: {err!r}.\n"
+                f"{json.dumps(obj, indent=2)}"
+            ) from err
+
+        except TypeError as err:
+            raise RuntimeError(
+                f"Error while parsing definition: {err!r}.\n"
+                f"{json.dumps(obj, indent=2)}"
+            ) from err
+
+
+class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
+    """Manages skill definitions and instances."""
+
+    _slots__ = ("instances",)
+
+    instances: dict[str, GameObject]
+    """Definition IDs mapped to skill GameObjects."""
+
+    def __init__(
+        self, default_definition_type: Optional[Type[SkillDef]] = None
+    ) -> None:
+        super().__init__(default_definition_type)
+        self.instances = {}
 
     @property
     def skill_ids(self) -> Iterable[str]:
         """The definition IDs of instantiated skills."""
-        return self._definitions.keys()
+        return self.instances.keys()
 
     def get_skill(self, skill_id: str) -> GameObject:
         """Get a skill instance given an ID."""
-        return self._skill_instances[skill_id]
+        return self.instances[skill_id]
 
     def add_skill(self, skill: GameObject) -> None:
-        """Add a tag instance to the library."""
-        self._skill_instances[skill.get_component(Skill).definition_id] = skill
+        """Add a skill instance to the library."""
+        self.instances[skill.get_component(Skill).definition_id] = skill
 
-    def get_definition(self, definition_id: str) -> SkillDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
 
-    def add_definition(self, skill_def: SkillDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[skill_def.definition_id] = skill_def
+class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
+    """Manages trait definitions and instances."""
 
-    def get_definition_type(self, definition_type_name: str) -> Type[SkillDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
+    _slots__ = ("instances",)
 
-    def add_definition_type(
-        self,
-        definition_type: Type[SkillDef],
-        set_default: bool = False,
-        alias: str = "",
+    instances: dict[str, GameObject]
+    """Definition IDs mapped to trait GameObjects."""
+
+    def __init__(
+        self, default_definition_type: Optional[Type[TraitDef]] = None
     ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
-
-
-class TraitLibrary:
-    """Manages trait definitions and trait instances."""
-
-    _slots__ = (
-        "_definitions",
-        "_definition_types",
-        "_trait_instances",
-        "_default_definition_type",
-    )
-
-    _trait_instances: dict[str, GameObject]
-    """Trait IDs mapped to instances of definitions."""
-    _definitions: dict[str, TraitDef]
-    """Definition instances added to the library."""
-    _definition_types: dict[str, Type[TraitDef]]
-    """Definition types used for loading data from files."""
-    _default_definition_type: str
-    """The default trait definition type to use when loading from data dict."""
-
-    def __init__(self, default_definition_type: Type[TraitDef]) -> None:
-        self._trait_instances = {}
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
+        super().__init__(default_definition_type)
+        self.instances = {}
 
     @property
     def trait_ids(self) -> Iterable[str]:
         """The definition IDs of instantiated traits."""
-        return self._definitions.keys()
+        return self.instances.keys()
 
     def get_trait(self, trait_id: str) -> GameObject:
         """Get a trait instance given an ID."""
-        return self._trait_instances[trait_id]
+        return self.instances[trait_id]
 
     def add_trait(self, trait: GameObject) -> None:
         """Add a trait instance to the library."""
-        self._trait_instances[trait.get_component(Trait).definition_id] = trait
-
-    def get_definition(self, definition_id: str) -> TraitDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
-
-    def add_definition(self, trait_def: TraitDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[trait_def.definition_id] = trait_def
-
-    def get_definition_type(self, definition_type_name: str) -> Type[TraitDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
-
-    def add_definition_type(
-        self,
-        definition_type: Type[TraitDef],
-        set_default: bool = False,
-        alias: str = "",
-    ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
+        self.instances[trait.get_component(Trait).definition_id] = trait
 
 
 class PreconditionLibrary:
@@ -239,368 +235,52 @@ class EffectLibrary:
         return effect
 
 
-class DistrictLibrary:
+class DistrictLibrary(ContentDefinitionLibrary[DistrictDef]):
     """A collection of all district definitions."""
 
-    __slots__ = "_definitions", "_definition_types", "_default_definition_type"
 
-    _definitions: dict[str, DistrictDef]
-    """Definition instances added to the library."""
-    _definition_types: dict[str, Type[DistrictDef]]
-    """SettlementDef types for loading data from config files."""
-    _default_definition_type: str
-    """The default definition type to use when loading from data dict."""
-
-    def __init__(self, default_definition_type: Type[DistrictDef]) -> None:
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
-
-    def get_definition(self, definition_id: str) -> DistrictDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
-
-    def add_definition(self, district_def: DistrictDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[district_def.definition_id] = district_def
-
-    def get_definition_type(self, definition_type_name: str) -> Type[DistrictDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
-
-    def add_definition_type(
-        self,
-        definition_type: Type[DistrictDef],
-        set_default: bool = False,
-        alias: str = "",
-    ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
-
-
-        #begin the search algorithm
-        #return best_district
-        #else []
-    def get_with_tags(self, tags: list[str]) -> list[DistrictDef]:
-        matching_districts: list[DistrictDef] = [] #I want this to contain district defenitions, is that correct
-
-        for district_def in self._definitions.values():
-            mandatory_tags_present = all(tag.strip("~") in district_def.tags for tag in tags if not tag.startswith("~"))
-            optional_tags_present = any(tag.strip("~") in district_def.tags for tag in tags if tag.startswith("~"))
-            optional_tags_count = sum(1 for tag in tags if tag.startswith("~") and tag.strip("~") in district_def.tags)
-
-            if mandatory_tags_present:
-                matching_districts.append((district_def, optional_tags_count))
-            
-
-        #same as in the testing cats
-                
-        if matching_districts: #something exists
-            matching_districts.sort(key=lambda x: x[1], reverse=True)
-            max_optional_tags_count = matching_districts[0][1]
-            best_districts = [district_def for district_def, optional_tags_count in matching_districts if optional_tags_count == max_optional_tags_count]
-            
-            #do we want this to be a random choice I forgot, I believe no, just the full list
-            return best_districts #Is this what we want to return?
-        else:
-            return []
-
-
-
-class SettlementLibrary:
+class SettlementLibrary(ContentDefinitionLibrary[SettlementDef]):
     """A Collection of all the settlement definitions."""
 
-    __slots__ = "_definitions", "_definition_types", "_default_definition_type"
 
-    _definitions: dict[str, SettlementDef]
-    """Definition instances added to the library."""
-    _definition_types: dict[str, Type[SettlementDef]]
-    """SettlementDef types for loading data from config files."""
-    _default_definition_type: str
-    """The default definition type used when loading from a data dict."""
-
-    def __init__(self, default_definition_type: Type[SettlementDef]) -> None:
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
-
-    def get_definition(self, definition_id: str) -> SettlementDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
-
-    def add_definition(self, settlement_def: SettlementDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[settlement_def.definition_id] = settlement_def
-
-    def get_definition_type(self, definition_type_name: str) -> Type[SettlementDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
-
-    def add_definition_type(
-        self,
-        definition_type: Type[SettlementDef],
-        set_default: bool = True,
-        alias: str = "",
-    ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
-
-
-class ResidenceLibrary:
+class ResidenceLibrary(ContentDefinitionLibrary[ResidenceDef]):
     """A collection of all character definitions."""
 
-    __slots__ = "_definitions", "_definition_types", "_default_definition_type"
 
-    _definitions: dict[str, ResidenceDef]
-    """Definition instances added to the library."""
-    _definition_types: dict[str, Type[ResidenceDef]]
-    """SettlementDef types for loading data from config files."""
-    _default_definition_type: str
-    """The default definition type to use when loading from a data dict."""
-
-    def __init__(self, default_definition_type: Type[ResidenceDef]) -> None:
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
-
-    def get_definition(self, definition_id: str) -> ResidenceDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
-
-    def add_definition(self, residence_def: ResidenceDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[residence_def.definition_id] = residence_def
-
-    def get_definition_type(self, definition_type_name: str) -> Type[ResidenceDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
-
-    def add_definition_type(
-        self,
-        definition_type: Type[ResidenceDef],
-        set_default: bool = False,
-        alias: str = "",
-    ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
-
-
-class CharacterLibrary:
+class CharacterLibrary(ContentDefinitionLibrary[CharacterDef]):
     """A collection of all character definitions."""
 
-    __slots__ = "_definitions", "_definition_types", "_default_definition_type"
 
-    _definitions: dict[str, CharacterDef]
-    """Definition instances added to the library."""
-    _definition_types: dict[str, Type[CharacterDef]]
-    """SettlementDef types for loading data from config files."""
-    _default_definition_type: str
-    """The name of the definition type to use when one is not specified."""
+class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
+    """Manages job role definitions and instances."""
 
-    def __init__(self, default_definition_type: Type[CharacterDef]) -> None:
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
+    _slots__ = "instances"
 
-    def get_definition(self, definition_id: str) -> CharacterDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
+    instances: dict[str, GameObject]
+    """Definition IDs mapped to job role GameObjects."""
 
-    def add_definition(self, character_def: CharacterDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[character_def.definition_id] = character_def
-
-    def get_definition_type(self, definition_type_name: str) -> Type[CharacterDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
-
-    def add_definition_type(
-        self,
-        definition_type: Type[CharacterDef],
-        set_default: bool = False,
-        alias: str = "",
+    def __init__(
+        self, default_definition_type: Optional[Type[JobRoleDef]] = None
     ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
-
-
-class JobRoleLibrary:
-    """Manages trait definitions and trait instances."""
-
-    _slots__ = (
-        "_definitions",
-        "_definition_types",
-        "_job_role_instances",
-        "_default_definition_type",
-    )
-
-    _job_role_instances: dict[str, GameObject]
-    """IDs mapped to instances of job roles."""
-    _definitions: dict[str, JobRoleDef]
-    """Definition instances added to the library."""
-    _definition_types: dict[str, Type[JobRoleDef]]
-    """Definition types for loading data from config files."""
-    _default_definition_type: str
-    """The default definition type to use when loading from data dict."""
-
-    def __init__(self, default_definition_type: Type[JobRoleDef]) -> None:
-        self._job_role_instances = {}
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
+        super().__init__(default_definition_type)
+        self.instances = {}
 
     @property
     def job_role_ids(self) -> Iterable[str]:
         """The definition IDs of instantiated job roles."""
-        return self._definitions.keys()
+        return self.definitions.keys()
 
     def get_role(self, job_role_id: str) -> GameObject:
         """Get a job role instance given an ID."""
-        return self._job_role_instances[job_role_id]
+        return self.instances[job_role_id]
 
     def add_role(self, job_role: GameObject) -> None:
         """Add a job role instance to the library."""
-        self._job_role_instances[job_role.get_component(JobRole).definition_id] = (
-            job_role
-        )
-
-    def get_definition(self, definition_id: str) -> JobRoleDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
-
-    def add_definition(self, job_role_def: JobRoleDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[job_role_def.definition_id] = job_role_def
-
-    def get_definition_type(self, definition_type_name: str) -> Type[JobRoleDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
-
-    def add_definition_type(
-        self,
-        definition_type: Type[JobRoleDef],
-        set_default: bool = False,
-        alias: str = "",
-    ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
+        self.instances[job_role.get_component(JobRole).definition_id] = job_role
 
 
-class BusinessLibrary:
+class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
     """A collection of all business definitions."""
-
-    __slots__ = "_definitions", "_definition_types", "_default_definition_type"
-
-    _definitions: dict[str, BusinessDef]
-    """Definition instances added to the library."""
-    _definition_types: dict[str, Type[BusinessDef]]
-    """SettlementDef types for loading data from config files."""
-    _default_definition_type: str
-    """The default definition type to use when loading from a data dict."""
-
-    def __init__(self, default_definition_type: Type[BusinessDef]) -> None:
-        self._definitions = {}
-        self._definition_types = {}
-        self._default_definition_type = ""
-        self.add_definition_type(default_definition_type, set_default=True)
-
-    def get_definition(self, definition_id: str) -> BusinessDef:
-        """Get a definition instance from the library."""
-        return self._definitions[definition_id]
-
-    def add_definition(self, business_def: BusinessDef) -> None:
-        """Add a definition instance to the library."""
-        self._definitions[business_def.definition_id] = business_def
-
-    def get_definition_type(self, definition_type_name: str) -> Type[BusinessDef]:
-        """Get a definition type."""
-        return self._definition_types[definition_type_name]
-
-    def add_definition_type(
-        self,
-        definition_type: Type[BusinessDef],
-        set_default: bool = False,
-        alias: str = "",
-    ) -> None:
-        """Add a definition type for loading objs."""
-        entry_key = alias if alias else definition_type.__name__
-        self._definition_types[entry_key] = definition_type
-        if set_default:
-            self._default_definition_type = entry_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-        definition_type_name: str = obj.get(
-            "definition_type", self._default_definition_type
-        )
-        definition_type = self.get_definition_type(definition_type_name)
-        definition = definition_type.from_obj(obj)
-        self.add_definition(definition)
 
 
 class LifeEventLibrary:

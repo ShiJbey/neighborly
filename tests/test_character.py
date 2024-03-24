@@ -4,6 +4,7 @@ from neighborly.helpers.character import create_character
 from neighborly.loaders import load_characters, load_skills
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
+from neighborly.systems import InitializeSettlementSystem
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 
@@ -15,6 +16,8 @@ def test_create_character() -> None:
     load_skills(sim, _TEST_DATA_DIR / "skills.json")
 
     default_traits.load_plugin(sim)
+
+    sim.world.system_manager.get_system(InitializeSettlementSystem).set_active(False)
 
     sim.initialize()
 

@@ -1002,6 +1002,7 @@
     "adult_age": 30,
     "senior_age": 65,
     "lifespan": 80,
+    "can_physically_age": true,
     "spawn_frequency": 0
   }
 }
