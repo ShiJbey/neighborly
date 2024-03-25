@@ -1,18 +1,30 @@
 {
     "person": {
         "species": "human",
-        "sex": "Male"
+        "variants": [
+            {
+                "name": "male",
+                "sex": "Male"
+            },
+            {
+                "name": "female",
+                "sex": "Female"
+            }
+        ]
     },
     "farmer": {
-        "species": "human",
-        "sex": "Male"
+        "extends": [
+            "person"
+        ]
     },
     "merchant": {
-        "species": "human",
-        "sex": "Male"
+        "extends": [
+            "person"
+        ]
     },
     "nobility": {
-        "species": "human",
-        "sex": "Male"
+        "extends": [
+            "person"
+        ]
     }
 }

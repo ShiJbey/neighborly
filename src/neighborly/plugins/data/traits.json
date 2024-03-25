@@ -13,7 +13,10 @@
         "probability": 0.8
       }
     ],
-    "spawn_frequency": 1
+    "spawn_frequency": 1,
+    "tags": [
+      "incidental"
+    ]
   },
   "skeptical": {
     "display_name": "Skeptical",
@@ -27,7 +30,10 @@
     "conflicts_with": [
       "gullible"
     ],
-    "spawn_frequency": 1
+    "spawn_frequency": 1,
+    "tags": [
+      "incidental"
+    ]
   },
   "gullible": {
     "display_name": "Gullible",
@@ -58,7 +64,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.25,
-    "inheritance_chance_both": 0.5
+    "inheritance_chance_both": 0.5,
+    "tags": [
+      "incidental"
+    ]
   },
   "flirtatious": {
     "display_name": "Flirtatious",
@@ -79,6 +88,9 @@
           }
         ]
       }
+    ],
+    "tags": [
+      "incidental"
     ]
   },
   "loyal": {
@@ -106,7 +118,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.5,
-    "inheritance_chance_both": 0.75
+    "inheritance_chance_both": 0.75,
+    "tags": [
+      "incidental"
+    ]
   },
   "traitorous": {
     "display_name": "Traitorous",
@@ -143,7 +158,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "incidental"
+    ]
   },
   "introverted": {
     "display_name": "Introverted",
@@ -170,7 +188,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "extroverted": {
     "display_name": "Extroverted",
@@ -202,7 +223,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "compassionate": {
     "display_name": "Compassionate",
@@ -229,7 +253,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
-    "inheritance_chance_both": 0.7
+    "inheritance_chance_both": 0.7,
+    "tags": [
+      "incidental"
+    ]
   },
   "callous": {
     "display_name": "Callous",
@@ -258,7 +285,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "incidental"
+    ]
   },
   "adventurous": {
     "display_name": "Adventurous",
@@ -287,7 +317,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "cautious": {
     "display_name": "Cautious",
@@ -316,7 +349,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "charismatic": {
     "display_name": "Charismatic",
@@ -345,7 +381,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "awkward": {
     "display_name": "Awkward",
@@ -374,7 +413,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "incidental"
+    ]
   },
   "ambitious": {
     "display_name": "Ambitious",
@@ -392,7 +434,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "incidental"
+    ]
   },
   "lazy": {
     "display_name": "Lazy",
@@ -410,7 +455,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "incidental"
+    ]
   },
   "hot-headed": {
     "display_name": "Hot-Headed",
@@ -428,7 +476,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "incidental"
+    ]
   },
   "calm": {
     "display_name": "Calm",
@@ -446,7 +497,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "incidental"
+    ]
   },
   "intelligent": {
     "display_name": "Intelligent",
@@ -461,7 +515,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
-    "inheritance_chance_both": 0.7
+    "inheritance_chance_both": 0.7,
+    "tags": [
+      "incidental"
+    ]
   },
   "simpleminded": {
     "display_name": "Simple-Minded",
@@ -476,7 +533,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
-    "inheritance_chance_both": 0.7
+    "inheritance_chance_both": 0.7,
+    "tags": [
+      "incidental"
+    ]
   },
   "charitable": {
     "display_name": "Charitable",
@@ -491,7 +551,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "selfish": {
     "display_name": "Selfish",
@@ -506,7 +569,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "optimistic": {
     "display_name": "Optimistic",
@@ -523,7 +589,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "pessimistic": {
     "display_name": "Pessimistic",
@@ -540,7 +609,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "energetic": {
     "display_name": "Energetic",
@@ -557,7 +629,10 @@
     ],
     "spawn_frequency": 2,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "lethargic": {
     "display_name": "Lethargic",
@@ -574,7 +649,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "confident": {
     "display_name": "Confident",
@@ -589,7 +667,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "insecure": {
     "display_name": "Insecure",
@@ -604,7 +685,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "betraying": {
     "display_name": "Betraying",
@@ -630,7 +714,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "genius": {
     "display_name": "Genius",
@@ -648,7 +735,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "friendly": {
     "display_name": "Friendly",
@@ -669,7 +759,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "lustful": {
     "display_name": "Lustful",
@@ -687,7 +780,10 @@
     ],
     "spawn_frequency": 0,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "incidental"
+    ]
   },
   "immortal": {
     "display_name": "Immortal",
@@ -733,7 +829,10 @@
     "conflicts_with": [
       "attracted_to_women"
     ],
-    "spawn_frequency": 3
+    "spawn_frequency": 3,
+    "tags": [
+      "incidental"
+    ]
   },
   "attracted_to_women": {
     "display_name": "Attracted to Women",
@@ -764,7 +863,10 @@
     "conflicts_with": [
       "attracted_to_men"
     ],
-    "spawn_frequency": 3
+    "spawn_frequency": 3,
+    "tags": [
+      "incidental"
+    ]
   },
   "boss": {
     "display_name": "Boss",

@@ -135,6 +135,7 @@ def destroy_relationship(owner: GameObject, target: GameObject) -> bool:
         relationship = get_relationship(owner, target)
         owner.get_component(Relationships).remove_outgoing_relationship(target)
         target.get_component(Relationships).remove_incoming_relationship(owner)
+        owner.world.rp_db.delete(f"{relationship.uid}")
         relationship.destroy()
         return True
 

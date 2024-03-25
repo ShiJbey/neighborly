@@ -30,7 +30,12 @@ def add_trait(gameobject: GameObject, trait_id: str) -> bool:
     library = world.resource_manager.get_resource(TraitLibrary)
     trait = library.get_trait(trait_id)
 
-    return gameobject.get_component(Traits).add_trait(trait)
+    if gameobject.get_component(Traits).add_trait(trait):
+        world.rp_db.insert(f"{gameobject.uid}.traits.{trait_id}")
+
+        return True
+
+    return False
 
 
 def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
@@ -50,7 +55,13 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
     """
     library = gameobject.world.resource_manager.get_resource(TraitLibrary)
     trait = library.get_trait(trait_id)
-    return gameobject.get_component(Traits).remove_trait(trait)
+
+    if gameobject.get_component(Traits).remove_trait(trait):
+        gameobject.world.rp_db.delete(f"{gameobject.uid}.traits.{trait_id}")
+
+        return True
+
+    return False
 
 
 def has_trait(gameobject: GameObject, trait_id: str) -> bool:

@@ -30,6 +30,9 @@ def add_stat(
         The newly created stat.
     """
     gameobject.get_component(Stats).add_stat(stat_id, stat)
+
+    gameobject.world.rp_db.insert(f"{gameobject.uid}.stats.{stat_id}!{stat.value}")
+
     return stat
 
 
@@ -84,4 +87,10 @@ def remove_stat(gameobject: GameObject, stat_id: str) -> bool:
     bool
         True if the stat was removed successfully. False otherwise.
     """
-    return gameobject.get_component(Stats).remove_stat(stat_id)
+    if gameobject.get_component(Stats).remove_stat(stat_id):
+
+        gameobject.world.rp_db.delete(f"{gameobject.uid}.stats.{stat_id}")
+
+        return True
+
+    return False

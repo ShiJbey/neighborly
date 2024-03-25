@@ -36,6 +36,7 @@ from typing import (
 
 import esper
 from ordered_set import OrderedSet
+from repraxis import RePraxisDatabase
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1353,6 +1354,7 @@ class World:
         "_gameobject_manager",
         "_system_manager",
         "_event_manager",
+        "rp_db",
     )
 
     _gameobject_manager: GameObjectManager
@@ -1363,12 +1365,15 @@ class World:
     """The systems run every simulation step."""
     _event_manager: EventManager
     """Manages event listeners."""
+    rp_db: RePraxisDatabase
+    """Database that holds some easily-queryable data."""
 
     def __init__(self) -> None:
         self._resource_manager = ResourceManager(self)
         self._system_manager = SystemManager(self)
         self._event_manager = EventManager(self)
         self._gameobject_manager = GameObjectManager(self)
+        self.rp_db = RePraxisDatabase()
 
     @property
     def system_manager(self) -> SystemManager:

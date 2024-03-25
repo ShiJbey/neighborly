@@ -23,6 +23,10 @@ def add_skill(gameobject: GameObject, skill_id: str, base_value: float = 0.0) ->
     library = gameobject.world.resource_manager.get_resource(SkillLibrary)
     skill = library.get_skill(skill_id)
     gameobject.get_component(Skills).add_skill(skill, base_value)
+    skill_stat = get_skill(gameobject, skill_id)
+    gameobject.world.rp_db.insert(
+        f"{gameobject.uid}.skills.{skill_id}!{skill_stat.value}"
+    )
 
 
 def has_skill(gameobject: GameObject, skill_id: str) -> bool:

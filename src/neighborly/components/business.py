@@ -60,6 +60,20 @@ class Occupation(Component):
         """The year they started this occupation."""
         return self._start_date
 
+    def on_add(self) -> None:
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.occupation.job_role!{self.job_role.definition_id}"
+        )
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.occupation.business!{self.business.uid}"
+        )
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.occupation.start_date!{self.start_date}"
+        )
+
+    def on_remove(self) -> None:
+        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.occupation")
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "job_role": self.job_role.gameobject.uid,
@@ -136,6 +150,13 @@ class Business(Component):
         self._name = value
         self.gameobject.name = value
 
+        if self._name:
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.business.name!{self._name}"
+            )
+        else:
+            self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.business.name")
+
     @property
     def owner(self) -> Optional[GameObject]:
         """Owner and their job role ID."""
@@ -179,6 +200,10 @@ class Business(Component):
 
         self._employees[employee] = role
 
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.business.employees.{employee.uid}"
+        )
+
     def remove_employee(self, employee: GameObject) -> None:
         """Remove an employee from the business.
 
@@ -196,6 +221,10 @@ class Business(Component):
 
         self._employee_roles[role] += 1
 
+        self.gameobject.world.rp_db.delete(
+            f"{self.gameobject.uid}.business.employees.{employee.uid}"
+        )
+
     def set_owner(self, owner: Optional[GameObject]) -> None:
         """Set the owner of the business.
 
@@ -206,11 +235,27 @@ class Business(Component):
         """
         self._owner = owner
 
+        if owner:
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.business.owner.{owner.uid}"
+            )
+        else:
+            self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.business.owner")
+
     def get_open_positions(self) -> Iterable[JobRole]:
         """Get positions at the business with at least one open slot."""
         return [
             role_name for role_name, count in self._employee_roles.items() if count > 0
         ]
+
+    def on_add(self) -> None:
+
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.business.district!{self.district.uid}"
+        )
+
+    def on_remove(self) -> None:
+        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.business")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -253,6 +298,14 @@ class Unemployed(Component):
     def timestamp(self) -> SimDate:
         """The date the character became unemployed"""
         return self._timestamp
+
+    def on_add(self) -> None:
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.unemployed.timestamp!{self.timestamp}"
+        )
+
+    def on_remove(self) -> None:
+        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.unemployed")
 
     def to_dict(self) -> dict[str, Any]:
         return {"timestamp": str(self.timestamp)}

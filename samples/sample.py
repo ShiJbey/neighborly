@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+# pylint: disable=W0614,W0401,W0621
 """Sample Simulation for Terminal.
 
 """
@@ -9,6 +9,9 @@ import pathlib
 import random
 
 from neighborly.config import LoggingConfig, SimulationConfig
+from neighborly.defs.base_types import CharacterDefTraitEntry
+from neighborly.defs.defaults import DefaultCharacterDef
+from neighborly.helpers.character import register_character_def
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -91,6 +94,23 @@ def main() -> Simulation:
     default_character_names.load_plugin(sim)
     default_settlement_names.load_plugin(sim)
 
+    register_character_def(
+        sim.world,
+        DefaultCharacterDef(
+            definition_id="person",
+            species="human",
+            traits=[
+                CharacterDefTraitEntry(with_tags=["incidental"]),
+                CharacterDefTraitEntry(with_tags=["incidental"]),
+                CharacterDefTraitEntry(with_tags=["incidental"]),
+            ],
+            variants=[
+                {"name": "male", "sex": "Male"},
+                {"name": "female", "sex": "Female"},
+            ],
+        ),
+    )
+
     total_time_steps: int = args.years * 12
 
     for _ in range(total_time_steps):
@@ -112,6 +132,7 @@ def main() -> Simulation:
 
 
 if __name__ == "__main__":
+    from neighborly.helpers.db_helpers import *
     from neighborly.inspection import *
 
     sim = main()
