@@ -62,8 +62,13 @@ from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import (
+    BusinessLibrary,
+    CharacterLibrary,
+    DistrictLibrary,
     JobRoleLibrary,
     LifeEventLibrary,
+    ResidenceLibrary,
+    SettlementLibrary,
     SkillLibrary,
     TraitLibrary,
 )
@@ -403,6 +408,76 @@ class InstantiateJobRolesSystem(System):
             job_role_library.add_definition(role_def)
             job_role = role_def.instantiate(world)
             job_role_library.add_role(job_role)
+
+
+class CompileDistrictDefsSystem(System):
+    """Compile district definitions."""
+
+    def on_update(self, world: World) -> None:
+        library = world.resource_manager.get_resource(DistrictLibrary)
+
+        compiled_defs = compile_definitions(library.definitions.values())
+
+        library.definitions.clear()
+
+        for definition in compiled_defs:
+            library.add_definition(definition)
+
+
+class CompileSettlementDefsSystem(System):
+    """Compile settlement definitions."""
+
+    def on_update(self, world: World) -> None:
+        library = world.resource_manager.get_resource(SettlementLibrary)
+
+        compiled_defs = compile_definitions(library.definitions.values())
+
+        library.definitions.clear()
+
+        for definition in compiled_defs:
+            library.add_definition(definition)
+
+
+class CompileResidenceDefsSystem(System):
+    """Compile residence definitions."""
+
+    def on_update(self, world: World) -> None:
+        library = world.resource_manager.get_resource(ResidenceLibrary)
+
+        compiled_defs = compile_definitions(library.definitions.values())
+
+        library.definitions.clear()
+
+        for definition in compiled_defs:
+            library.add_definition(definition)
+
+
+class CompileCharacterDefsSystem(System):
+    """Compile character definitions."""
+
+    def on_update(self, world: World) -> None:
+        library = world.resource_manager.get_resource(CharacterLibrary)
+
+        compiled_defs = compile_definitions(library.definitions.values())
+
+        library.definitions.clear()
+
+        for definition in compiled_defs:
+            library.add_definition(definition)
+
+
+class CompileBusinessDefsSystem(System):
+    """Compile business definitions."""
+
+    def on_update(self, world: World) -> None:
+        library = world.resource_manager.get_resource(BusinessLibrary)
+
+        compiled_defs = compile_definitions(library.definitions.values())
+
+        library.definitions.clear()
+
+        for definition in compiled_defs:
+            library.add_definition(definition)
 
 
 class UpdateFrequentedLocationSystem(System):

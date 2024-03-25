@@ -9,7 +9,7 @@ into ever Neighborly instance when it is constructed.
 from __future__ import annotations
 
 import random
-from typing import Optional
+from typing import Callable, ClassVar, Optional
 
 from neighborly.components.business import Business, JobRole, OpenToPublic
 from neighborly.components.character import Character, LifeStage, Sex, Species
@@ -49,6 +49,7 @@ from neighborly.defs.base_types import (
 )
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.settlement import create_district
+from neighborly.helpers.skills import add_skill
 from neighborly.helpers.stats import add_stat
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import (
@@ -58,6 +59,7 @@ from neighborly.libraries import (
     EffectLibrary,
     JobRoleLibrary,
     ResidenceLibrary,
+    SkillLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import PersonalEventHistory
@@ -139,8 +141,19 @@ class DefaultSpeciesDef(DefaultTraitDef):
         return trait
 
 
+def default_district_name_factory(world: World, _: DistrictGenOptions) -> str:
+    """Generate a new name"""
+    tracery = world.resource_manager.get_resource(Tracery)
+    name = tracery.generate("#settlement_name#")
+    return name
+
+
 class DefaultDistrictDef(DistrictDef):
     """A definition for a district type specified by the user."""
+
+    name_factories: ClassVar[dict[str, Callable[[World, DistrictGenOptions], str]]] = {
+        "default": default_district_name_factory
+    }
 
     def instantiate(
         self,
@@ -151,36 +164,27 @@ class DefaultDistrictDef(DistrictDef):
         district = world.gameobject_manager.spawn_gameobject()
         district.metadata["definition_id"] = self.definition_id
 
+        name = ""
+
+        if self.name:
+            name = self.name
+        elif self.name_factory:
+            name = self.name_factories[self.name_factory](world, options)
+
         district.add_component(
             District(
-                name="",
-                description="",
+                name=name,
+                description=self.description,
                 settlement=settlement,
                 residential_slots=self.residential_slots,
                 business_slots=self.business_slots,
             )
         )
-
-        self.initialize_name(district)
-        self.initialize_description(district)
         self.initialize_business_spawn_table(district)
         self.initialize_character_spawn_table(district)
         self.initialize_residence_spawn_table(district)
 
         return district
-
-    def initialize_name(self, district: GameObject) -> None:
-        """Generates a name for the district."""
-        tracery = district.world.resource_manager.get_resource(Tracery)
-        name = tracery.generate(self.display_name)
-        district.get_component(District).name = name
-        district.name = name
-
-    def initialize_description(self, district: GameObject) -> None:
-        """Generates a description for the district."""
-        tracery = district.world.resource_manager.get_resource(Tracery)
-        description = tracery.generate(self.description)
-        district.get_component(District).description = description
 
     def initialize_business_spawn_table(self, district: GameObject) -> None:
         """Create the business spawn table for the district."""
@@ -190,7 +194,7 @@ class DefaultDistrictDef(DistrictDef):
 
         table_entries: list[BusinessSpawnTableEntry] = []
 
-        for entry in self.businesses:
+        for entry in self.business_types:
             if entry.with_id:
                 business_def = business_library.get_definition(entry.with_id)
                 table_entries.append(
@@ -233,7 +237,7 @@ class DefaultDistrictDef(DistrictDef):
 
         table_entries: list[CharacterSpawnTableEntry] = []
 
-        for entry in self.characters:
+        for entry in self.character_types:
             if entry.with_id:
 
                 character_def = character_library.get_definition(entry.with_id)
@@ -274,7 +278,7 @@ class DefaultDistrictDef(DistrictDef):
 
         table_entries: list[ResidenceSpawnTableEntry] = []
 
-        for entry in self.residences:
+        for entry in self.residence_types:
             if entry.with_id:
                 residence_def = residence_library.get_definition(entry.with_id)
 
@@ -314,23 +318,35 @@ class DefaultDistrictDef(DistrictDef):
         district.add_component(ResidenceSpawnTable(entries=table_entries))
 
 
+def default_settlement_name_factory(world: World, _: SettlementGenOptions) -> str:
+    """Generate a new name"""
+    tracery = world.resource_manager.get_resource(Tracery)
+    name = tracery.generate("#settlement_name#")
+    return name
+
+
 class DefaultSettlementDef(SettlementDef):
     """A definition for a settlement type specified by the user."""
+
+    name_factories: ClassVar[
+        dict[str, Callable[[World, SettlementGenOptions], str]]
+    ] = {"default": default_settlement_name_factory}
 
     def instantiate(self, world: World, options: SettlementGenOptions) -> GameObject:
         settlement = world.gameobject_manager.spawn_gameobject()
         settlement.metadata["definition_id"] = self.definition_id
-        settlement.add_component(Settlement(name=""))
-        self.initialize_name(settlement)
+
+        name = ""
+
+        if self.display_name:
+            name = self.display_name
+
+        elif self.name_factory:
+            name = self.name_factories[self.name_factory](world, options)
+
+        settlement.add_component(Settlement(name=name))
         self.initialize_districts(settlement)
         return settlement
-
-    def initialize_name(self, settlement: GameObject) -> None:
-        """Generates a name for the settlement."""
-        tracery = settlement.world.resource_manager.get_resource(Tracery)
-        settlement_name = tracery.generate(self.display_name)
-        settlement.get_component(Settlement).name = settlement_name
-        settlement.name = settlement_name
 
     def initialize_districts(self, settlement: GameObject) -> None:
         """Instantiates the settlement's districts."""
@@ -393,8 +409,63 @@ class DefaultResidenceDef(ResidenceDef):
         return residence
 
 
+def generate_any_first_name(world: World, _: CharacterGenOptions) -> str:
+    """Generate a first name for a character"""
+
+    tracery = world.resource_manager.get_resource(Tracery)
+    rng = world.resource_manager.get_resource(random.Random)
+
+    pattern = rng.choice(["#first_name::feminine#", "#first_name::masculine#"])
+
+    name = tracery.generate(pattern)
+
+    return name
+
+
+def generate_masculine_first_name(world: World, _: CharacterGenOptions) -> str:
+    """Generate a masculine first name for a character"""
+
+    tracery = world.resource_manager.get_resource(Tracery)
+
+    name = tracery.generate("#first_name::masculine#")
+
+    return name
+
+
+def generate_feminine_first_name(world: World, _: CharacterGenOptions) -> str:
+    """Generate a feminine first name for a character"""
+
+    tracery = world.resource_manager.get_resource(Tracery)
+
+    name = tracery.generate("#first_name::feminine#")
+
+    return name
+
+
+def generate_last_name(world: World, _: CharacterGenOptions) -> str:
+    """Generate a last_name for a character."""
+
+    tracery = world.resource_manager.get_resource(Tracery)
+
+    name = tracery.generate("#last_name#")
+
+    return name
+
+
 class DefaultCharacterDef(CharacterDef):
     """Default implementation for character definitions."""
+
+    first_name_factories: ClassVar[
+        dict[str, Callable[[World, CharacterGenOptions], str]]
+    ] = {
+        "default": generate_any_first_name,
+        "masculine": generate_masculine_first_name,
+        "feminine": generate_feminine_first_name,
+    }
+
+    last_name_factories: ClassVar[
+        dict[str, Callable[[World, CharacterGenOptions], str]]
+    ] = {"default": generate_last_name}
 
     def instantiate(
         self,
@@ -427,9 +498,7 @@ class DefaultCharacterDef(CharacterDef):
         character.add_component(SocialRules())
         character.add_component(PersonalEventHistory())
 
-        self.initialize_name(
-            character, first_name=options.first_name, last_name=options.last_name
-        )
+        self.initialize_name(character, options)
         self.initialize_character_age(character, options)
         self.initialize_character_stats(character)
         self.initialize_traits(character, options)
@@ -438,10 +507,7 @@ class DefaultCharacterDef(CharacterDef):
         return character
 
     def initialize_name(
-        self,
-        character: GameObject,
-        first_name: str = "#first_name#",
-        last_name: str = "#last_name#",
+        self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Initialize the character's name.
 
@@ -452,8 +518,17 @@ class DefaultCharacterDef(CharacterDef):
         """
         character_comp = character.get_component(Character)
 
-        character_comp.first_name = self.generate_first_name(character, first_name)
-        character_comp.last_name = self.generate_last_name(character, last_name)
+        if options.first_name:
+            character_comp.first_name = options.first_name
+        else:
+            factory = self.first_name_factories[self.first_name_factory]
+            character_comp.first_name = factory(character.world, options)
+
+        if options.last_name:
+            character_comp.last_name = options.last_name
+        else:
+            factory = self.last_name_factories[self.last_name_factory]
+            character_comp.last_name = factory(character.world, options)
 
     def initialize_character_age(
         self, character: GameObject, options: CharacterGenOptions
@@ -502,31 +577,57 @@ class DefaultCharacterDef(CharacterDef):
         rng = character.world.resource_manager.get_resource(random.Random)
         trait_library = character.world.resource_manager.get_resource(TraitLibrary)
 
-        traits: list[str] = []
-        trait_weights: list[int] = []
+        # Loop through the trait entries in the definition and get by ID or select
+        # randomly if using tags
+        for entry in self.traits:
+            if entry.with_id:
+                add_trait(character, entry.with_id)
+            elif entry.with_tags:
+                potential_traits = trait_library.get_definition_with_tags(
+                    entry.with_tags
+                )
 
-        for trait_id in trait_library.trait_ids:
-            trait_def = trait_library.get_definition(trait_id)
-            if trait_def.spawn_frequency >= 1:
-                traits.append(trait_id)
-                trait_weights.append(trait_def.spawn_frequency)
+                traits: list[str] = []
+                trait_weights: list[int] = []
 
-        if len(traits) == 0:
-            return
+                for trait_def in potential_traits:
+                    if trait_def.spawn_frequency >= 1:
+                        traits.append(trait_def.definition_id)
+                        trait_weights.append(trait_def.spawn_frequency)
 
-        max_traits = options.n_traits
+                if len(traits) == 0:
+                    continue
 
-        chosen_traits = rng.choices(traits, trait_weights, k=max_traits)
+                chosen_trait = rng.choices(
+                    population=traits, weights=trait_weights, k=1
+                )[0]
 
-        for trait in chosen_traits:
-            add_trait(character, trait)
+                add_trait(character, chosen_trait)
 
+        # Add traits specified in options
         for trait in options.traits:
             add_trait(character, trait)
 
     def initialize_character_stats(self, character: GameObject) -> None:
         """Initializes a characters stats with random values."""
         rng = character.world.resource_manager.get_resource(random.Random)
+
+        # By adding any stats from the definition
+        for entry in self.stats:
+            base_value = 0
+            if entry.value is not None:
+                base_value = entry.value
+            elif entry.value_range:
+                min_value, max_value = (
+                    int(x.strip()) for x in entry.value_range.split("-")
+                )
+                base_value = rng.randint(min_value, max_value)
+
+            add_stat(
+                character,
+                entry.stat,
+                Stat(base_value=base_value, bounds=(entry.min_value, entry.max_value)),
+            )
 
         character_comp = character.get_component(Character)
         species = character.get_component(Character).species.get_component(Species)
@@ -604,39 +705,33 @@ class DefaultCharacterDef(CharacterDef):
 
     def initialize_character_skills(self, character: GameObject) -> None:
         """Add default skills to the character."""
-        # rng = character.world.resource_manager.get_resource(random.Random)
-        # for entry in self.skills:
+        rng = character.world.resource_manager.get_resource(random.Random)
+        skill_library = character.world.resource_manager.get_resource(SkillLibrary)
 
-        #     value = rng.randint(interval[0], interval[1])
-        #     add_skill(character, entry., value)
+        for entry in self.skills:
+            base_value = 0
+            if entry.value is not None:
+                base_value = entry.value
+            elif entry.value_range:
+                min_value, max_value = (
+                    int(x.strip()) for x in entry.value_range.split("-")
+                )
+                base_value = rng.randint(min_value, max_value)
 
-    @staticmethod
-    def generate_first_name(character: GameObject, pattern: str) -> str:
-        """Generates a first name for the character"""
+            if entry.with_id:
+                add_skill(character, entry.with_id, base_value=base_value)
 
-        tracery = character.world.resource_manager.get_resource(Tracery)
+            elif entry.with_tags:
+                potential_skills = skill_library.get_definition_with_tags(
+                    entry.with_tags
+                )
 
-        if pattern:
-            name = tracery.generate(pattern)
-        elif character.get_component(Character).sex == Sex.MALE:
-            name = tracery.generate("#first_name::masculine#")
-        else:
-            name = tracery.generate("#first_name::feminine#")
+                if not potential_skills:
+                    continue
 
-        return name
+                chosen_skill = rng.choice(potential_skills)
 
-    @staticmethod
-    def generate_last_name(character: GameObject, pattern: str) -> str:
-        """Generates a last_name for the character."""
-
-        tracery = character.world.resource_manager.get_resource(Tracery)
-
-        if pattern:
-            name = tracery.generate(pattern)
-        else:
-            name = tracery.generate("#last_name#")
-
-        return name
+                add_skill(character, chosen_skill.definition_id, base_value=base_value)
 
 
 class DefaultJobRoleDef(JobRoleDef):
@@ -674,6 +769,8 @@ class DefaultJobRoleDef(JobRoleDef):
 class DefaultBusinessDef(BusinessDef):
     """A default implementation of a Business Definition."""
 
+    name_factories: ClassVar[dict[str, Callable[[World, BusinessGenOptions], str]]] = {}
+
     def instantiate(
         self, world: World, district: GameObject, options: BusinessGenOptions
     ) -> GameObject:
@@ -704,7 +801,7 @@ class DefaultBusinessDef(BusinessDef):
         business.add_component(Relationships())
         business.add_component(SocialRules())
 
-        self.initialize_name(business)
+        self.initialize_name(business, options)
 
         if self.open_to_public:
             business.add_component(OpenToPublic())
@@ -714,9 +811,16 @@ class DefaultBusinessDef(BusinessDef):
 
         return business
 
-    def initialize_name(self, business: GameObject) -> None:
+    def initialize_name(
+        self, business: GameObject, options: BusinessGenOptions
+    ) -> None:
         """Generates a name for the business."""
-        tracery = business.world.resource_manager.get_resource(Tracery)
-        name = tracery.generate(self.display_name)
-        business.get_component(Business).name = name
-        business.name = name
+        if options.name:
+            business.get_component(Business).name = options.name
+
+        elif self.name:
+            business.get_component(Business).name = options.name
+
+        elif self.name_factory:
+            name = self.name_factories[self.name_factory](business.world, options)
+            business.get_component(Business).name = name

@@ -59,6 +59,11 @@ from neighborly.preconditions.defaults import (
 from neighborly.systems import (
     AgingSystem,
     ChildBirthSystem,
+    CompileBusinessDefsSystem,
+    CompileCharacterDefsSystem,
+    CompileDistrictDefsSystem,
+    CompileResidenceDefsSystem,
+    CompileSettlementDefsSystem,
     DeathSystem,
     EarlyUpdateSystems,
     HealthDecaySystem,
@@ -158,6 +163,21 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=InstantiateSkillsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileDistrictDefsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileSettlementDefsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileResidenceDefsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileCharacterDefsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileBusinessDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
             system=InitializeSettlementSystem(), system_group=InitializationSystems

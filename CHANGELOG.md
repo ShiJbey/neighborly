@@ -16,7 +16,7 @@ This version introduces minor breaking changes to the content authoring pipeline
 
 ### Added
 
-- Tag-based content selection to all authored content libraries
+- Tag-based content selection to all authored content libraries (special thanks to @Acer-Cristea)
 - Content definition compiler that allows for variants and templates
 - Additional fields to all content definitions
 

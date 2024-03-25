@@ -124,17 +124,23 @@ class DistrictDef(ContentDefinition, ABC):
 
     definition_id: str
     """The name of this definition."""
-    display_name: str = ""
+    name: str = ""
     """The name of the district (overrides name_factory)."""
-    name_factory: str = ""
+    name_factory: str = "default"
     """The name of the factory to use to generate this district's name."""
     description: str = ""
     """A description of the district (Deprecated)."""
-    businesses: list[DistrictDefBusinessEntry] = pydantic.Field(default_factory=list)
+    business_types: list[DistrictDefBusinessEntry] = pydantic.Field(
+        default_factory=list
+    )
     """Settings for spawning businesses within this district type."""
-    residences: list[DistrictDefResidenceEntry] = pydantic.Field(default_factory=list)
+    residence_types: list[DistrictDefResidenceEntry] = pydantic.Field(
+        default_factory=list
+    )
     """Settings for spawning residential buildings within this district type."""
-    characters: list[DistrictDefCharacterEntry] = pydantic.Field(default_factory=list)
+    character_types: list[DistrictDefCharacterEntry] = pydantic.Field(
+        default_factory=list
+    )
     """Settings for spawning characters within this district type."""
     business_slots: int = 0
     """The max number of business buildings that can exist in the district."""
@@ -301,7 +307,7 @@ class SettlementDef(ContentDefinition, ABC):
     """The name of this definition"""
     display_name: str = ""
     """The name of the settlement (overrides name_factory)."""
-    name_factory: str = ""
+    name_factory: str = "default"
     """The name of the factory to use to generate the settlement name."""
     districts: list[SettlementDefDistrictEntry] = pydantic.Field(default_factory=list)
     """The districts to spawn in the settlement."""
@@ -456,8 +462,6 @@ class CharacterGenOptions(pydantic.BaseModel):
     """The life stage of the character."""
     traits: list[str] = pydantic.Field(default_factory=list)
     """Traits that this character should start with."""
-    n_traits: int = 3
-    """Number of traits to add on generation."""
 
 
 class CharacterDef(ContentDefinition, ABC):
@@ -465,9 +469,9 @@ class CharacterDef(ContentDefinition, ABC):
 
     definition_id: str
     """The name of this definition."""
-    first_name_factory: str = ""
+    first_name_factory: str = "default"
     """The factory used to generate first names for this character type."""
-    last_name_factory: str = ""
+    last_name_factory: str = "default"
     """The factory used to generate last names for this character type."""
     sex: str = ""
     """The sex of this character type."""
@@ -573,21 +577,21 @@ class BusinessDef(ContentDefinition, ABC):
     """A definition for a business where characters can work and meet people."""
 
     definition_id: str
-    """The name of this definition"""
-    display_name: str = ""
+    """The name of this definition."""
+    name: str = ""
     """The name for the business type (overrides name_factory)."""
-    name_factory: str = ""
+    name_factory: str = "default"
     """The name of the factory used to generate names for this business type."""
     owner_role: str
     """Parameters for the business owner's job."""
     employee_roles: dict[str, int] = pydantic.Field(default_factory=dict)
     """Parameters gor each job held by employees."""
     traits: list[str] = pydantic.Field(default_factory=list)
-    """Descriptive tags for this business type."""
+    """Traits this business starts with."""
     open_to_public: bool = True
     """Can this business be frequented by the general public."""
     spawn_frequency: int = 1
-    """The frequency of spawning relative to others in the district"""
+    """The frequency of spawning relative to others in the district."""
     min_population: int = 0
     """The minimum number of residents required to spawn the business."""
     max_instances: int = 9999

@@ -7,7 +7,6 @@ import pathlib
 import pytest
 
 from neighborly.components.location import LocationPreferences
-from neighborly.defs.base_types import CharacterGenOptions
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
 from neighborly.helpers.settlement import create_district, create_settlement
@@ -50,7 +49,7 @@ def test_trait_with_location_preferences() -> None:
     cafe = create_business(sim.world, district, "cafe")
     bar = create_business(sim.world, district, "bar")
 
-    farmer = create_character(sim.world, "farmer", CharacterGenOptions(n_traits=0))
+    farmer = create_character(sim.world, "farmer")
 
     farmer_preferences = farmer.get_component(LocationPreferences)
 
