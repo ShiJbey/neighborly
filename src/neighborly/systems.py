@@ -28,11 +28,13 @@ from neighborly.components.location import (
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
+from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
     CharacterSpawnTable,
     ResidenceSpawnTable,
 )
+from neighborly.components.stats import Stats
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.base_types import CharacterGenOptions
@@ -51,16 +53,16 @@ from neighborly.events.defaults import (
 )
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
+from neighborly.helpers.location import score_location
 from neighborly.helpers.relationship import (
     add_relationship,
     get_relationship,
-    get_relationships_with_traits,
     has_relationship,
 )
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait
+from neighborly.helpers.traits import add_trait, get_relationships_with_traits
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
@@ -520,7 +522,6 @@ class UpdateFrequentedLocationSystem(System):
             A list of tuples containing location scores and the location, sorted in
             descending order
         """
-        location_prefs = character.get_component(LocationPreferences)
 
         scores: list[float] = []
         locations: list[GameObject] = []
@@ -528,7 +529,7 @@ class UpdateFrequentedLocationSystem(System):
         for _, (business, _, _) in character.world.get_components(
             (Business, OpenToPublic, Active)
         ):
-            score = location_prefs.score_location(business.gameobject)
+            score = score_location(character, business.gameobject)
             if score >= self.location_score_threshold:
                 scores.append(score)
                 locations.append(business.gameobject)
@@ -580,20 +581,20 @@ class AgingSystem(System):
             character.age = character.age + elapsed_years
             species = character.species.get_component(Species)
 
-            if species.can_physically_age:
-                if character.age >= species.senior_age:
+            if species.definition.can_physically_age:
+                if character.age >= species.definition.senior_age:
                     if character.life_stage != LifeStage.SENIOR:
                         BecomeSeniorEvent(character.gameobject).dispatch()
 
-                elif character.age >= species.adult_age:
+                elif character.age >= species.definition.adult_age:
                     if character.life_stage != LifeStage.ADULT:
                         BecomeAdultEvent(character.gameobject).dispatch()
 
-                elif character.age >= species.young_adult_age:
+                elif character.age >= species.definition.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
                         BecomeYoungAdultEvent(character.gameobject).dispatch()
 
-                elif character.age >= species.adolescent_age:
+                elif character.age >= species.definition.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
                         BecomeAdolescentEvent(character.gameobject).dispatch()
 
@@ -899,8 +900,12 @@ class JobRoleMonthlyEffectsSystem(System):
     """
 
     def on_update(self, world: World) -> None:
-        for _, (character, occupation, _) in world.get_components(
-            (Character, Occupation, Active)
+        for _, (skills, stats, occupation, _) in world.get_components(
+            (Skills, Stats, Occupation, Active)
         ):
-            for effect in occupation.job_role.monthly_effects:
-                effect.apply(character.gameobject)
+
+            for skill_boost in occupation.job_role.definition.periodic_skill_boosts:
+                skills.skills[skill_boost.name].stat.base_value += skill_boost.value
+
+            for stat_boost in occupation.job_role.definition.periodic_stat_boosts:
+                stats.get_stat(stat_boost.name).base_value += stat_boost.value

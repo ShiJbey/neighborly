@@ -26,7 +26,7 @@ def test_trait_instantiation() -> None:
 
     trait = library.get_trait("flirtatious")
 
-    assert trait.get_component(Trait).display_name == "Flirtatious"
+    assert trait.get_component(Trait).definition.display_name == "Flirtatious"
 
 
 def test_add_trait() -> None:

@@ -26,7 +26,7 @@ from neighborly.components.residence import (
     ResidentialUnit,
 )
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.skills import Skill, Skills
+from neighborly.components.skills import SKILL_MAX_VALUE, Skill, Skills
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Trait, Traits
 from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
@@ -160,7 +160,7 @@ def _business_header(business: GameObject) -> str:
     output += f"Status: {activity_status}\n"
     output += f"District: {business_data.district}\n"
     output += f"Owner: {business_data.owner.name if business_data.owner else None}\n"
-    output += f"Owner role: {business_data.owner_role.display_name}\n"
+    output += f"Owner role: {business_data.owner_role.definition.display_name}\n"
     output += "\n"
     output += "=== Employees ===\n"
     output += f"{employee_table}\n"
@@ -289,29 +289,20 @@ def _job_role_section(job_role: GameObject) -> str:
 
     job_role_data = job_role.get_component(JobRole)
 
-    requirements = "\n".join(f"- {p.description}" for p in job_role_data.requirements)
-    effects = "\n".join(f"- {e.description}" for e in job_role_data.effects)
-    monthly_effects = "\n".join(
-        f"- {e.description}" for e in job_role_data.monthly_effects
-    )
+    requirements = "\n".join(job_role_data.definition.requirements)
 
     output = "Job Role\n"
     output += "========\n"
     output += "\n"
     output += f"UID: {job_role.uid}\n"
-    output += f"Name: {job_role_data.display_name}\n"
+    output += f"Name: {job_role_data.definition.display_name}\n"
     output += f"Definition ID: {job_role_data.definition_id}\n"
-    output += f"Description:\n {job_role_data.description}\n"
-    output += f"Job Level:\n {job_role_data.job_level}\n"
+    output += f"Description:\n {job_role_data.definition.description}\n"
+    output += f"Job Level:\n {job_role_data.definition.job_level}\n"
     output += "\n"
     output += "=== Requirements ===\n"
     output += f"{requirements}\n"
     output += "\n"
-    output += "=== Effects ===\n"
-    output += f"{effects}\n"
-    output += "\n"
-    output += "=== Monthly Effects ===\n"
-    output += f"{monthly_effects}\n"
 
     return output
 
@@ -323,22 +314,19 @@ def _trait_section(trait: GameObject) -> str:
 
     trait_data = trait.get_component(Trait)
 
-    effects = "\n".join(f"- {e.description}" for e in trait_data.effects)
-    conflicting_traits = ", ".join(t for t in trait_data.conflicting_traits)
+    conflicting_traits = ", ".join(t for t in trait_data.definition.conflicts_with)
 
     output = "Trait\n"
     output += "=====\n"
     output += "\n"
     output += f"UID: {trait.uid}\n"
-    output += f"Name: {trait_data.display_name}\n"
+    output += f"Name: {trait_data.definition.display_name}\n"
     output += f"Definition ID: {trait_data.definition_id}\n"
-    output += f"Description:\n{trait_data.description}\n"
+    output += f"Description:\n{trait_data.definition.description}\n"
     output += "\n"
     output += "=== Conflicting Trait Definitions ===\n"
     output += f"{conflicting_traits}\n"
     output += "\n"
-    output += "=== Effects ===\n"
-    output += f"{effects}\n"
 
     return output
 
@@ -418,8 +406,8 @@ def _get_traits_table(obj: GameObject) -> str:
 
     output += tabulate.tabulate(
         [
-            (entry.name, entry.get_component(Trait).description)
-            for entry in traits.traits
+            (entry.trait.gameobject.name, entry.trait.definition.description)
+            for entry in traits.traits.values()
         ],
         headers=("Name", "Description"),
     )
@@ -466,7 +454,10 @@ def _get_relationships_table(obj: GameObject) -> str:
         compatibility = get_stat(relationship, "compatibility").value
         romantic_compatibility = get_stat(relationship, "romantic_compatibility").value
         interaction_score = get_stat(relationship, "interaction_score").value
-        traits = ", ".join(t.name for t in relationship.get_component(Traits).traits)
+        traits = ", ".join(
+            t.trait.gameobject.name
+            for t in relationship.get_component(Traits).traits.values()
+        )
 
         relationship_data.append(
             (
@@ -547,11 +538,11 @@ def _get_skills_table(obj: GameObject) -> str:
     output += tabulate.tabulate(
         [
             (
-                skill.name,
-                f"{int(stat.value)}/{int(stat.bounds[1])}",
-                skill.get_component(Skill).description,
+                entry.skill.gameobject.name,
+                f"{int(entry.stat.value)}/{int(SKILL_MAX_VALUE)}",
+                entry.skill.definition.description,
             )
-            for skill, stat in skill_data
+            for entry in skill_data.skills.values()
         ],
         headers=("Name", "Level", "Description"),
     )
@@ -756,7 +747,7 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
                 character.full_name,
                 int(character.age),
                 str(character.sex.name),
-                str(character.species.get_component(Trait).display_name),
+                str(character.species.name),
             )
             for uid, (character,) in sim.world.get_components((Character,))
         ]
@@ -808,7 +799,7 @@ def list_residences(sim: Simulation) -> None:
 def list_job_roles(sim: Simulation) -> None:
     """List job roles instances from the simulation."""
     job_roles = [
-        (uid, role.display_name, role.description)
+        (uid, role.definition.display_name, role.definition.description)
         for uid, (role,) in sim.world.get_components((JobRole,))
     ]
 
@@ -825,7 +816,7 @@ def list_job_roles(sim: Simulation) -> None:
 def list_traits(sim: Simulation) -> None:
     """List the trait instances from the simulation."""
     traits = [
-        (uid, trait.display_name, trait.description)
+        (uid, trait.definition.display_name, trait.definition.description)
         for uid, (trait,) in sim.world.get_components((Trait,))
     ]
 

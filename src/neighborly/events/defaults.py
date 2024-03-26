@@ -25,12 +25,13 @@ from neighborly.helpers.location import (
     remove_all_frequenting_characters,
     remove_frequented_location,
 )
-from neighborly.helpers.relationship import (
-    deactivate_relationships,
-    get_relationship,
+from neighborly.helpers.relationship import deactivate_relationships, get_relationship
+from neighborly.helpers.traits import (
+    add_trait,
     get_relationships_with_traits,
+    has_trait,
+    remove_trait,
 )
-from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import EventRole, LifeEvent
 
 

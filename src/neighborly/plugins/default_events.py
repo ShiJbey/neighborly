@@ -29,12 +29,14 @@ from neighborly.events.defaults import (
     LeaveJob,
 )
 from neighborly.helpers.location import add_frequented_location
-from neighborly.helpers.relationship import (
-    get_relationship,
-    get_relationships_with_traits,
-)
+from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, has_trait, remove_trait
+from neighborly.helpers.traits import (
+    add_trait,
+    get_relationships_with_traits,
+    has_trait,
+    remove_trait,
+)
 from neighborly.life_event import EventRole, LifeEvent, event_consideration
 from neighborly.loaders import register_life_event_type
 from neighborly.simulation import Simulation
@@ -1762,7 +1764,7 @@ class JobPromotion(LifeEvent):
             return None
 
         occupation = subject.get_component(Occupation)
-        current_job_level = occupation.job_role.job_level
+        current_job_level = occupation.job_role.definition.job_level
         business_data = occupation.business.get_component(Business)
         open_positions = business_data.get_open_positions()
 
@@ -1773,7 +1775,10 @@ class JobPromotion(LifeEvent):
         higher_positions = [
             role
             for role in open_positions
-            if (role.job_level > current_job_level and role.check_requirements(subject))
+            if (
+                role.definition.job_level > current_job_level
+                and role.check_requirements(subject)
+            )
         ]
 
         if len(higher_positions) == 0:

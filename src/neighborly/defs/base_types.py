@@ -235,12 +235,14 @@ class TraitDef(ContentDefinition, ABC):
     """The name of this trait printed."""
     description: str = ""
     """A short description of the trait."""
-    effects: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
-    """Legacy trait effects. (Deprecated)"""
     stat_modifiers: list[StatModifierData] = pydantic.Field(default_factory=list)
     """Modifiers applied to the owner's stats."""
     skill_modifiers: list[StatModifierData] = pydantic.Field(default_factory=list)
     """Modifiers applied to the owner's skills."""
+    social_rules: list[str] = pydantic.Field(default_factory=list)
+    """IDs of social rules to apply to the trait owner."""
+    location_preferences: list[str] = pydantic.Field(default_factory=list)
+    """IDs of location preference rules to apply to a character."""
     conflicts_with: set[str] = pydantic.Field(default_factory=set)
     """IDs of traits that this trait conflicts with."""
     spawn_frequency: int = 0
@@ -274,6 +276,23 @@ class TraitDef(ContentDefinition, ABC):
         """
 
         raise NotImplementedError()
+
+
+class SpeciesDef(TraitDef):
+    """A definition for a species type."""
+
+    adolescent_age: int
+    """Age this species reaches adolescence."""
+    young_adult_age: int
+    """Age this species reaches young adulthood."""
+    adult_age: int
+    """Age this species reaches main adulthood."""
+    senior_age: int
+    """Age this species becomes a senior/elder."""
+    lifespan: int
+    """The number of years that this species lives."""
+    can_physically_age: bool
+    """Does this character go through the various life stages."""
 
 
 class SettlementDefDistrictEntry(pydantic.BaseModel):
@@ -527,12 +546,8 @@ class JobRoleDef(ContentDefinition, ABC):
     """A description of the role."""
     job_level: int = 1
     """General level of prestige associated with this role."""
-    requirements: list[dict[str, Any]] = pydantic.Field(default_factory=list)
+    requirements: list[str] = pydantic.Field(default_factory=list)
     """Precondition query statements for this role."""
-    effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    """Legacy effects applied with role (deprecated)."""
-    monthly_effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    """Legacy effects applied every simulation tick (deprecated)."""
     stat_modifiers: list[StatModifierData] = pydantic.Field(default_factory=list)
     """Stat modifiers applied when a character takes on this role."""
     periodic_stat_boosts: list[StatModifierData] = pydantic.Field(default_factory=list)

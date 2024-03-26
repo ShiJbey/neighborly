@@ -7,13 +7,13 @@ characters have the highest likelihood of interacting with during a time step.
 
 """
 
-from typing import Any, Iterator
+from collections import defaultdict
+from typing import Any, Iterable, Iterator
 
-import attrs
+import pydantic
 from ordered_set import OrderedSet
 
 from neighborly.ecs import Component, GameObject
-from neighborly.preconditions.base_types import Precondition
 
 
 class FrequentedBy(Component):
@@ -154,36 +154,15 @@ class FrequentedLocations(Component):
         return f"{self.__class__.__name__}({repr(self._locations)})"
 
 
-@attrs.define
-class LocationPreferenceRule:
+class LocationPreferenceRule(pydantic.BaseModel):
     """A rule that helps characters score how they feel about locations to frequent."""
 
-    preconditions: list[Precondition]
+    rule_id: str
+    """A unique ID for this rule."""
+    preconditions: list[str]
     """Precondition functions to run when scoring a location."""
     probability: float
     """The amount to apply to the score."""
-    source: object
-    """The source of this location."""
-
-    def __call__(self, gameobject: GameObject) -> float:
-        """Check all preconditions and return a weight modifier.
-
-        Parameters
-        ----------
-        gameobject
-            A location to score.
-
-        Returns
-        -------
-        float
-            A probability score from [0.0, 1.0] of the character frequenting the
-            location. Or -1 if it does not pass the preconditions.
-        """
-
-        if all(p(gameobject) for p in self.preconditions):
-            return self.probability
-
-        return -1.0
 
 
 class LocationPreferences(Component):
@@ -191,59 +170,37 @@ class LocationPreferences(Component):
 
     __slots__ = ("_rules",)
 
-    _rules: list[LocationPreferenceRule]
-    """Rules added to the location preferences."""
+    _rules: defaultdict[str, int]
+    """Rules IDs mapped to reference counts."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._rules = []
+        self._rules = defaultdict(lambda: 0)
 
-    def add_rule(self, rule: LocationPreferenceRule) -> None:
-        """Add a location preference rule."""
-        self._rules.append(rule)
+    @property
+    def rules(self) -> Iterable[str]:
+        """Rules applied to the owning GameObject's relationships."""
+        return self._rules
 
-    def remove_rule(self, rule: LocationPreferenceRule) -> None:
-        """Remove a location preference rule."""
-        self._rules.remove(rule)
+    def add_rule(self, rule_id: str) -> None:
+        """Add a rule to the rule collection."""
+        self._rules[rule_id] += 1
 
-    def remove_rules_from_source(self, source: object) -> None:
-        """Remove all preference rules from the given source."""
-        self._rules = [rule for rule in self._rules if rule.source != source]
+    def has_rule(self, rule_id: str) -> bool:
+        """Check if a rule is present."""
+        return rule_id in self._rules
 
-    def score_location(self, location: GameObject) -> float:
-        """Calculate a score for a character choosing to frequent this location.
+    def remove_rule(self, rule_id: str) -> bool:
+        """Remove a rule from the rules collection."""
+        if rule_id in self._rules:
+            self._rules[rule_id] -= 1
 
-        Parameters
-        ----------
-        location
-            A location to score
+            if self._rules[rule_id] <= 0:
+                del self._rules[rule_id]
 
-        Returns
-        -------
-        float
-            A probability score from [0.0, 1.0]
-        """
+            return True
 
-        cumulative_score: float = 0.5
-        consideration_count: int = 1
-
-        for rule in self._rules:
-            consideration_score = rule(location)
-
-            # Scores greater than zero are added to the cumulative score
-            if consideration_score > 0:
-                cumulative_score += consideration_score
-                consideration_count += 1
-
-            # Scores equal to zero make the entire score zero (make zero a veto value)
-            elif consideration_score == 0.0:
-                cumulative_score = 0.0
-                break
-
-        # Scores are averaged using the arithmetic mean
-        final_score = cumulative_score / consideration_count
-
-        return final_score
+        return False
 
     def to_dict(self) -> dict[str, Any]:
-        return {}
+        return {"rules": [r for r in self._rules]}

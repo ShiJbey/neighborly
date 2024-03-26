@@ -15,6 +15,8 @@ import pydantic
 from ordered_set import OrderedSet
 
 from neighborly.components.business import JobRole
+from neighborly.components.location import LocationPreferenceRule
+from neighborly.components.relationship import SocialRule
 from neighborly.components.skills import Skill
 from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
@@ -32,7 +34,6 @@ from neighborly.ecs import GameObject, World
 from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.life_event import LifeEvent
-from neighborly.preconditions.base_types import Precondition
 
 _T = TypeVar("_T", bound=ContentDefinition)
 
@@ -173,37 +174,6 @@ class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
         self.instances[trait.get_component(Trait).definition_id] = trait
 
 
-class PreconditionLibrary:
-    """Manages effect precondition types and constructs them when needed."""
-
-    _slots__ = "_precondition_types"
-
-    _precondition_types: dict[str, Type[Precondition]]
-    """Precondition types for loading data from config files."""
-
-    def __init__(self) -> None:
-        self._precondition_types = {}
-
-    def get_precondition_type(self, precondition_name: str) -> Type[Precondition]:
-        """Get a definition type."""
-        return self._precondition_types[precondition_name]
-
-    def add_precondition_type(self, precondition_type: Type[Precondition]) -> None:
-        """Add a definition type for loading objs."""
-        self._precondition_types[precondition_type.__name__] = precondition_type
-
-    def create_from_obj(self, world: World, obj: dict[str, Any]) -> Precondition:
-        """Parse a definition from a dict and add to the library."""
-        params = {**obj}
-        precondition_name: str = params["type"]
-        del params["type"]
-
-        precondition_type = self.get_precondition_type(precondition_name)
-        precondition = precondition_type.instantiate(world, params)
-
-        return precondition
-
-
 class EffectLibrary:
     """Manages effect types and constructs them when needed."""
 
@@ -300,3 +270,37 @@ class LifeEventLibrary:
 
     def __iter__(self) -> Iterator[Type[LifeEvent]]:
         return iter(self._event_types)
+
+
+class SocialRuleLibrary:
+    """The collection of social rules for relationships."""
+
+    __slots__ = ("rules",)
+
+    rules: dict[str, SocialRule]
+    """Rules applied to the owning GameObject's relationships."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.rules = {}
+
+    def add_rule(self, rule: SocialRule) -> None:
+        """Add a rule to the rule collection."""
+        self.rules[rule.rule_id] = rule
+
+
+class LocationPreferenceLibrary:
+    """The collection of location preference rules."""
+
+    __slots__ = ("rules",)
+
+    rules: dict[str, LocationPreferenceRule]
+    """Rules added to the location preferences."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.rules = {}
+
+    def add_rule(self, rule: LocationPreferenceRule) -> None:
+        """Add a location preference rule."""
+        self.rules[rule.rule_id] = rule

@@ -9,6 +9,7 @@ from typing import Any
 
 from neighborly.components.traits import Trait
 from neighborly.datetime import SimDate
+from neighborly.defs.base_types import SpeciesDef
 from neighborly.ecs import Component, GameObject
 
 
@@ -33,34 +34,23 @@ class Sex(enum.IntEnum):
 class Species(Component):
     """Configuration information about a character's species."""
 
-    __slots__ = (
-        "adolescent_age",
-        "young_adult_age",
-        "adult_age",
-        "senior_age",
-        "lifespan",
-        "can_physically_age",
-    )
+    __slots__ = ("definition",)
 
-    def __init__(
-        self,
-        adolescent_age: int,
-        young_adult_age: int,
-        adult_age: int,
-        senior_age: int,
-        lifespan: int,
-        can_physically_age: bool,
-    ) -> None:
+    definition: SpeciesDef
+    """The definition data for this species"""
+
+    def __init__(self, definition: SpeciesDef) -> None:
         super().__init__()
-        self.adolescent_age = adolescent_age
-        self.young_adult_age = young_adult_age
-        self.adult_age = adult_age
-        self.senior_age = senior_age
-        self.lifespan = lifespan
-        self.can_physically_age = can_physically_age
+        self.definition = definition
+
+    def __str__(self) -> str:
+        return f"Species(definition_id={self.definition.definition_id!r})"
+
+    def __repr__(self) -> str:
+        return f"Species(definition_id={self.definition.definition_id!r})"
 
     def to_dict(self) -> dict[str, Any]:
-        return {}
+        return {"definition_id": self.definition.definition_id}
 
 
 class Character(Component):

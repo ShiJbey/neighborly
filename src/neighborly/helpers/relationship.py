@@ -2,17 +2,20 @@
 
 """
 
+from repraxis.query import DBQuery
+
 from neighborly.components.relationship import (
     Relationship,
     Relationships,
     SocialRule,
+    SocialRuleDirection,
     SocialRules,
 )
-from neighborly.components.stats import Stat, Stats
+from neighborly.components.stats import Stat, StatModifier, StatModifierType, Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import GameObject
-from neighborly.helpers.stats import add_stat
-from neighborly.helpers.traits import has_trait
+from neighborly.helpers.stats import add_stat, get_stat
+from neighborly.libraries import SocialRuleLibrary
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
@@ -54,19 +57,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     owner.get_component(Relationships).add_outgoing_relationship(target, relationship)
     target.get_component(Relationships).add_incoming_relationship(owner, relationship)
 
-    # Apply outgoing social rules from the owner
-    owner_social_rules = owner.get_component(SocialRules).rules
-    for rule in owner_social_rules:
-        if rule.is_outgoing and rule.check_preconditions(relationship):
-            rule.apply(relationship)
-            relationship.get_component(SocialRules).add_rule(rule)
-
-    # Apply incoming social rules from the target
-    target_social_rules = target.get_component(SocialRules).rules
-    for rule in target_social_rules:
-        if rule.is_outgoing is False and rule.check_preconditions(relationship):
-            rule.apply(relationship)
-            relationship.get_component(SocialRules).add_rule(rule)
+    reevaluate_relationship(relationship.get_component(Relationship))
 
     return relationship
 
@@ -142,33 +133,7 @@ def destroy_relationship(owner: GameObject, target: GameObject) -> bool:
     return False
 
 
-def get_relationships_with_traits(
-    gameobject: GameObject, *traits: str
-) -> list[GameObject]:
-    """Get all the relationships with the given tags.
-
-    Parameters
-    ----------
-    gameobject
-        The character to check.
-    *traits
-        The trait IDs to check for on relationships.
-
-    Returns
-    -------
-    list[GameObject]
-        Relationships with the given traits.
-    """
-    matches: list[GameObject] = []
-
-    for _, relationship in gameobject.get_component(Relationships).outgoing.items():
-        if all(has_trait(relationship, trait) for trait in traits):
-            matches.append(relationship)
-
-    return matches
-
-
-def add_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
+def add_social_rule(gameobject: GameObject, rule_id: str) -> None:
     """Add a social rule to a GameObject.
 
     Parameters
@@ -178,23 +143,20 @@ def add_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
     rule
         The rule to add.
     """
-    gameobject.get_component(SocialRules).add_rule(rule)
+    gameobject.get_component(SocialRules).add_rule(rule_id)
 
-    if rule.is_outgoing:
-        # Apply the rule to outgoing relationships
-        relationships = gameobject.get_component(Relationships).outgoing
-    else:
-        # Apply the rule to incoming relationships
-        relationships = gameobject.get_component(Relationships).incoming
+    relationships = gameobject.get_component(Relationships).outgoing
 
-    # Apply this rule to all relationships
     for _, relationship in relationships.items():
-        if rule.check_preconditions(relationship):
-            relationship.get_component(SocialRules).add_rule(rule)
-            rule.apply(relationship)
+        reevaluate_relationship(relationship.get_component(Relationship))
+
+    relationships = gameobject.get_component(Relationships).incoming
+
+    for _, relationship in relationships.items():
+        reevaluate_relationship(relationship.get_component(Relationship))
 
 
-def remove_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
+def remove_social_rule(gameobject: GameObject, rule_id: str) -> None:
     """Remove a social rule from a GameObject.
 
     Parameters
@@ -204,40 +166,93 @@ def remove_social_rule(gameobject: GameObject, rule: SocialRule) -> None:
     rule
         The rule to remove.
     """
-    gameobject.get_component(SocialRules).add_rule(rule)
+    gameobject.get_component(SocialRules).remove_rule(rule_id)
 
-    if rule.is_outgoing:
-        # Remove the rule from outgoing relationships
-        relationships = gameobject.get_component(Relationships).outgoing
-    else:
-        # Remove the rule from incoming relationships
-        relationships = gameobject.get_component(Relationships).incoming
+    relationships = gameobject.get_component(Relationships).outgoing
 
     for _, relationship in relationships.items():
-        relationship_rules = relationship.get_component(SocialRules)
-        if relationship_rules.has_rule(rule):
-            rule.remove(relationship)
-            relationship_rules.remove_rule(rule)
+        reevaluate_relationship(relationship.get_component(Relationship))
 
-    gameobject.get_component(SocialRules).remove_rule(rule)
+    relationships = gameobject.get_component(Relationships).incoming
+
+    for _, relationship in relationships.items():
+        reevaluate_relationship(relationship.get_component(Relationship))
 
 
-def remove_all_social_rules_from_source(gameobject: GameObject, source: object) -> None:
-    """Remove all social rules with a given source.
+def reevaluate_relationship(relationship: Relationship) -> None:
+    """Reevaluate social rules for a given relationship."""
 
-    Parameters
-    ----------
-    gameobject
-        The GameObject modify.
-    source
-        The source object to check for.
-    """
-    # Remove the effects of this social rule from all current relationships.
-    rules = list(gameobject.get_component(SocialRules).rules)
+    library = relationship.gameobject.world.resource_manager.get_resource(
+        SocialRuleLibrary
+    )
 
-    for rule in rules:
-        if rule.source == source:
-            remove_social_rule(gameobject, rule)
+    for rule_id in relationship.active_rules:
+        remove_social_rule_modifiers(library.rules[rule_id], relationship)
+
+    relationship.active_rules.clear()
+
+    owner_rules = relationship.owner.get_component(SocialRules)
+
+    for rule_id in owner_rules.rules:
+        rule = library.rules[rule_id]
+
+        if rule.direction != SocialRuleDirection.OUTGOING:
+            continue
+
+        if rule_id in relationship.active_rules:
+            continue
+
+        if check_social_rule_preconditions(rule, relationship):
+            relationship.active_rules.append(rule_id)
+            apply_social_rule_modifiers(rule, relationship)
+
+    target_rules = relationship.owner.get_component(SocialRules)
+
+    for rule_id in target_rules.rules:
+        rule = library.rules[rule_id]
+
+        if rule.direction != SocialRuleDirection.INCOMING:
+            continue
+
+        if rule_id in relationship.active_rules:
+            continue
+
+        if check_social_rule_preconditions(rule, relationship):
+            relationship.active_rules.append(rule_id)
+            apply_social_rule_modifiers(rule, relationship)
+
+
+def apply_social_rule_modifiers(rule: SocialRule, relationship: Relationship) -> None:
+    """Add stat modifiers to the relationship."""
+    for entry in rule.stat_modifiers:
+        get_stat(relationship.gameobject, entry.name).add_modifier(
+            StatModifier(
+                value=entry.value,
+                modifier_type=StatModifierType[entry.modifier_type],
+                source=rule,
+            )
+        )
+
+
+def remove_social_rule_modifiers(rule: SocialRule, relationship: Relationship) -> None:
+    """Remove stat modifiers from the relationship."""
+    for entry in rule.stat_modifiers:
+        get_stat(relationship.gameobject, entry.name).remove_modifiers_from_source(rule)
+
+
+def check_social_rule_preconditions(
+    rule: SocialRule, relationship: Relationship
+) -> bool:
+    """Check that a relationship passes all the preconditions."""
+    owner = relationship.owner
+    target = relationship.target
+
+    result = DBQuery(rule.preconditions).run(
+        relationship.gameobject.world.rp_db,
+        [{"?owner": owner.uid, "?target": target.uid}],
+    )
+
+    return result.success
 
 
 def deactivate_relationships(gameobject: GameObject) -> None:

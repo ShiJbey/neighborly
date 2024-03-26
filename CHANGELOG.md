@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). However, all releases before 1.0.0 have breaking changes
 between minor-version updates.
 
+## [3.0.0] - Unreleased
+
+### Changed
+
+- Convert Skills and Traits to an instance-style model
+- Refactor social rules and location preferences to be independent from traits
+- Move social rule and location preference calculation functions to helper modules
+
+### Removed
+
+- Remove Precondition API in favor of RePraxis queries
+- Removed data duplication in Trait, JobRole, and Species classes
+
 ## [2.5.0] - 2024-03-24
 
 This version introduces minor breaking changes to the content authoring pipeline. Please check your YAML and JSON files.

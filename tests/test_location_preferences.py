@@ -1,3 +1,4 @@
+# pylint: disable=#C0104
 """Test Location Preference Functionality.
 
 """
@@ -6,9 +7,9 @@ import pathlib
 
 import pytest
 
-from neighborly.components.location import LocationPreferences
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
+from neighborly.helpers.location import score_location
 from neighborly.helpers.settlement import create_district, create_settlement
 from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.loaders import (
@@ -51,16 +52,14 @@ def test_trait_with_location_preferences() -> None:
 
     farmer = create_character(sim.world, "farmer")
 
-    farmer_preferences = farmer.get_component(LocationPreferences)
-
-    assert farmer_preferences.score_location(cafe) == 0.5
-    assert farmer_preferences.score_location(bar) == 0.5
+    assert score_location(farmer, cafe) == 0.5
+    assert score_location(farmer, bar) == 0.5
 
     add_trait(farmer, "drinks_too_much")
 
-    assert farmer_preferences.score_location(cafe) == 0.5
-    assert farmer_preferences.score_location(bar) == pytest.approx(0.65, 0.001)  # type: ignore
+    assert score_location(farmer, cafe) == 0.5
+    assert score_location(farmer, bar) == pytest.approx(0.65, 0.001)  # type: ignore
 
     remove_trait(farmer, "drinks_too_much")
 
-    assert farmer_preferences.score_location(bar) == 0.5
+    assert score_location(farmer, bar) == 0.5

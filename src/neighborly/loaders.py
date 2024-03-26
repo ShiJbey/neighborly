@@ -12,15 +12,19 @@ from typing import Any, Type, Union
 
 import yaml
 
+from neighborly.components.location import LocationPreferenceRule
+from neighborly.components.relationship import SocialRule
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
     JobRoleLibrary,
     LifeEventLibrary,
+    LocationPreferenceLibrary,
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
+    SocialRuleLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import LifeEvent
@@ -224,6 +228,36 @@ def load_skills(
 
     for definition_id, params in data.items():
         library.add_definition_from_obj({"definition_id": definition_id, **params})
+
+
+def load_social_rules(
+    sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
+) -> None:
+    """Load social rules from a file."""
+
+    with open(file_path, "r", encoding="utf8") as file:
+        data: list[dict[str, Any]] = yaml.safe_load(file)
+
+    library = sim.world.resource_manager.get_resource(SocialRuleLibrary)
+
+    for entry in data:
+        rule = SocialRule.model_validate(entry)
+        library.add_rule(rule)
+
+
+def load_location_preferences(
+    sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
+) -> None:
+    """Load location preference rules from a file."""
+
+    with open(file_path, "r", encoding="utf8") as file:
+        data: list[dict[str, Any]] = yaml.safe_load(file)
+
+    library = sim.world.resource_manager.get_resource(LocationPreferenceLibrary)
+
+    for entry in data:
+        rule = LocationPreferenceRule.model_validate(entry)
+        library.add_rule(rule)
 
 
 def register_life_event_type(sim: Simulation, life_event_type: Type[LifeEvent]) -> None:

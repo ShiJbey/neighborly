@@ -45,6 +45,7 @@ from neighborly.defs.base_types import (
     SettlementDef,
     SettlementGenOptions,
     SkillDef,
+    SpeciesDef,
     TraitDef,
 )
 from neighborly.ecs import GameObject, World
@@ -56,7 +57,6 @@ from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
-    EffectLibrary,
     JobRoleLibrary,
     ResidenceLibrary,
     SkillLibrary,
@@ -71,14 +71,7 @@ class DefaultSkillDef(SkillDef):
 
     def instantiate(self, world: World) -> GameObject:
         skill = world.gameobject_manager.spawn_gameobject(name=self.display_name)
-        tracery = skill.world.resource_manager.get_resource(Tracery)
-        skill.add_component(
-            Skill(
-                definition_id=self.definition_id,
-                display_name=tracery.generate(self.display_name),
-                description=tracery.generate(self.description),
-            )
-        )
+        skill.add_component(Skill(definition=self))
         return skill
 
 
@@ -88,27 +81,12 @@ class DefaultTraitDef(TraitDef):
     def instantiate(self, world: World) -> GameObject:
         trait = world.gameobject_manager.spawn_gameobject(name=self.display_name)
 
-        effect_library = trait.world.resource_manager.get_resource(EffectLibrary)
-        tracery = trait.world.resource_manager.get_resource(Tracery)
-
-        effects = [
-            effect_library.create_from_obj(trait.world, entry) for entry in self.effects
-        ]
-
-        trait.add_component(
-            Trait(
-                definition_id=self.definition_id,
-                display_name=tracery.generate(self.display_name),
-                description=tracery.generate(self.description),
-                effects=effects,
-                conflicting_traits=self.conflicts_with,
-            )
-        )
+        trait.add_component(Trait(definition=self))
 
         return trait
 
 
-class DefaultSpeciesDef(DefaultTraitDef):
+class DefaultSpeciesDef(SpeciesDef):
     """A definition for a trait type."""
 
     adolescent_age: int
@@ -125,18 +103,10 @@ class DefaultSpeciesDef(DefaultTraitDef):
     """Does this character go through the various life stages."""
 
     def instantiate(self, world: World) -> GameObject:
-        trait = super().instantiate(world)
+        trait = world.gameobject_manager.spawn_gameobject(name=self.display_name)
 
-        trait.add_component(
-            Species(
-                adolescent_age=self.adolescent_age,
-                young_adult_age=self.young_adult_age,
-                adult_age=self.adult_age,
-                senior_age=self.senior_age,
-                lifespan=self.lifespan,
-                can_physically_age=self.can_physically_age,
-            )
-        )
+        trait.add_component(Trait(definition=self))
+        trait.add_component(Species(definition=self))
 
         return trait
 
@@ -547,26 +517,28 @@ class DefaultCharacterDef(CharacterDef):
 
             # Generate an age for this character
             if life_stage == LifeStage.CHILD:
-                character_comp.age = rng.randint(0, species.adolescent_age - 1)
+                character_comp.age = rng.randint(
+                    0, species.definition.adolescent_age - 1
+                )
             elif life_stage == LifeStage.ADOLESCENT:
                 character_comp.age = rng.randint(
-                    species.adolescent_age,
-                    species.young_adult_age - 1,
+                    species.definition.adolescent_age,
+                    species.definition.young_adult_age - 1,
                 )
             elif life_stage == LifeStage.YOUNG_ADULT:
                 character_comp.age = rng.randint(
-                    species.young_adult_age,
-                    species.adult_age - 1,
+                    species.definition.young_adult_age,
+                    species.definition.adult_age - 1,
                 )
             elif life_stage == LifeStage.ADULT:
                 character_comp.age = rng.randint(
-                    species.adult_age,
-                    species.senior_age - 1,
+                    species.definition.adult_age,
+                    species.definition.senior_age - 1,
                 )
             else:
                 character_comp.age = character_comp.age = rng.randint(
-                    species.senior_age,
-                    species.lifespan - 1,
+                    species.definition.senior_age,
+                    species.definition.lifespan - 1,
                 )
 
     def initialize_traits(
@@ -638,7 +610,7 @@ class DefaultCharacterDef(CharacterDef):
         health_decay = add_stat(
             character,
             "health_decay",
-            Stat(base_value=1000.0 / species.lifespan, bounds=(0, 999_999)),
+            Stat(base_value=1000.0 / species.definition.lifespan, bounds=(0, 999_999)),
         )
         fertility = add_stat(
             character,
@@ -740,28 +712,7 @@ class DefaultJobRoleDef(JobRoleDef):
     def instantiate(self, world: World) -> GameObject:
         role = world.gameobject_manager.spawn_gameobject(name=self.display_name)
 
-        effects_library = world.resource_manager.get_resource(EffectLibrary)
-
-        effect_instances = [
-            effects_library.create_from_obj(world, entry) for entry in self.effects
-        ]
-
-        monthly_effect_instances = [
-            effects_library.create_from_obj(world, entry)
-            for entry in self.monthly_effects
-        ]
-
-        role.add_component(
-            JobRole(
-                definition_id=self.definition_id,
-                display_name=self.display_name,
-                description=self.description,
-                job_level=self.job_level,
-                requirements=[],
-                effects=effect_instances,
-                monthly_effects=monthly_effect_instances,
-            )
-        )
+        role.add_component(JobRole(definition=self))
 
         return role
 

@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping, Optional
 
+from repraxis.query import DBQuery
+
 from neighborly.datetime import SimDate
+from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import Component, GameObject, TagComponent
-from neighborly.effects.base_types import Effect
-from neighborly.preconditions.base_types import Precondition
 
 
 class Occupation(Component):
@@ -84,13 +85,14 @@ class Occupation(Component):
     def __str__(self) -> str:
         return (
             f"{self.__class__.__name__}(business={self.business}, "
-            f"start_date={self.start_date}, role_id={self.job_role.display_name})"
+            f"start_date={self.start_date}, role_id={self.job_role.definition.display_name})"
         )
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(business={self.business}, "
-            f"start_date={self.start_date}, role_id={self.job_role.display_name})"
+            f"start_date={self.start_date!r}, "
+            f"role_id={self.job_role.definition.display_name})"
         )
 
 
@@ -314,58 +316,33 @@ class Unemployed(Component):
 class JobRole(Component):
     """Information about a specific type of job in the world."""
 
-    __slots__ = (
-        "display_name",
-        "description",
-        "job_level",
-        "requirements",
-        "effects",
-        "monthly_effects",
-        "definition_id",
-    )
+    __slots__ = ("definition",)
 
-    display_name: str
-    """The name of the role."""
-    description: str
-    """A description of the role."""
-    job_level: int
-    """General level of prestige associated with this role."""
-    requirements: list[Precondition]
-    """Requirement functions for the role."""
-    effects: list[Effect]
-    """Effects applied when the taking on the role."""
-    monthly_effects: list[Effect]
-    """Effects applied every month the character has the role."""
-    definition_id: str
-    """The ID of this job role."""
+    definition: JobRoleDef
+    """The definition for this role"""
 
-    def __init__(
-        self,
-        display_name: str,
-        description: str,
-        job_level: int,
-        requirements: list[Precondition],
-        effects: list[Effect],
-        monthly_effects: list[Effect],
-        definition_id: str,
-    ) -> None:
+    def __init__(self, definition: JobRoleDef) -> None:
         super().__init__()
-        self.display_name = display_name
-        self.description = description
-        self.job_level = job_level
-        self.requirements = requirements
-        self.effects = effects
-        self.monthly_effects = monthly_effects
-        self.definition_id = definition_id
+        self.definition = definition
+
+    @property
+    def definition_id(self) -> str:
+        """The ID of this JobRole's definition."""
+        return self.definition.definition_id
 
     def check_requirements(self, gameobject: GameObject) -> bool:
         """Check if a character passes all the requirements for this job."""
-        return all([req(gameobject)] for req in self.requirements)
+        result = DBQuery(self.definition.requirements).run(
+            gameobject.world.rp_db, [{"?subject": gameobject.uid}]
+        )
+
+        return result.success
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "display_name": self.display_name,
-            "description": self.description,
-            "job_level": self.job_level,
-            "definition_id": self.definition_id,
-        }
+        return {"definition_id": self.definition_id}
+
+    def __str__(self) -> str:
+        return f"JobRole(definition_id={self.definition_id!r})"
+
+    def __repr__(self) -> str:
+        return f"JobRole(definition_id={self.definition_id!r})"

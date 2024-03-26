@@ -1,17 +1,8 @@
 {
   "drinks_too_much": {
     "display_name": "Drinks too much",
-    "effects": [
-      {
-        "type": "AddLocationPreference",
-        "preconditions": [
-          {
-            "type": "HasTrait",
-            "trait": "serves_alcohol"
-          }
-        ],
-        "probability": 0.8
-      }
+    "location_preferences": [
+      "likes_bars"
     ],
     "spawn_frequency": 1,
     "tags": [
@@ -20,11 +11,10 @@
   },
   "skeptical": {
     "display_name": "Skeptical",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "sociability",
-        "amount": -3
+        "name": "sociability",
+        "value": -3
       }
     ],
     "conflicts_with": [
@@ -37,27 +27,14 @@
   },
   "gullible": {
     "display_name": "Gullible",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "sociability",
-        "amount": 3
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": 5
-          },
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": 3
-          }
-        ]
+        "name": "sociability",
+        "value": 3
       }
+    ],
+    "social_rules": [
+      "believes_in_people"
     ],
     "conflicts_with": [
       "skeptical"
@@ -72,22 +49,8 @@
   "flirtatious": {
     "display_name": "Flirtatious",
     "spawn_frequency": 1,
-    "effects": [
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "romance",
-            "amount": 30
-          },
-          {
-            "type": "StatBuff",
-            "stat": "romantic_compatibility",
-            "amount": 4
-          }
-        ]
-      }
+    "social_rules": [
+      "is_flirtatious"
     ],
     "tags": [
       "incidental"
@@ -96,21 +59,10 @@
   "loyal": {
     "display_name": "Loyal",
     "description": "This character is fiercely loyal to their friends and allies.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "reliability",
-        "amount": 20
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": 3
-          }
-        ]
+        "name": "reliability",
+        "value": 20
       }
     ],
     "conflicts_with": [
@@ -126,33 +78,13 @@
   "traitorous": {
     "display_name": "Traitorous",
     "description": "This character can betray their friends and allies for personal gain.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "reliability",
-        "amount": -3
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": -5
-          },
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": -5
-          },
-          {
-            "type": "StatBuff",
-            "stat": "romantic_compatibility",
-            "amount": -3
-          }
-        ]
+        "name": "reliability",
+        "value": -3
       }
     ],
+    "social_rules": [],
     "conflicts_with": [
       "loyal"
     ],
@@ -166,22 +98,14 @@
   "introverted": {
     "display_name": "Introverted",
     "description": "This character is reserved and prefers solitude.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "sociability",
-        "amount": -3
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": -2
-          }
-        ]
+        "name": "sociability",
+        "value": -3
       }
+    ],
+    "social_rules": [
+      "has_trouble_making_friends"
     ],
     "conflicts_with": [
       "extroverted"
@@ -196,27 +120,14 @@
   "extroverted": {
     "display_name": "Extroverted",
     "description": "This character is outgoing and thrives in social settings.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "sociability",
-        "amount": 20
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": 4
-          },
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": 3
-          }
-        ]
+        "name": "sociability",
+        "value": 20
       }
+    ],
+    "social_rules": [
+      "no_trouble_making_friends"
     ],
     "conflicts_with": [
       "introverted"
@@ -231,22 +142,8 @@
   "compassionate": {
     "display_name": "Compassionate",
     "description": "This character cares deeply for the well-being of others.",
-    "effects": [
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": 5
-          },
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": 4
-          }
-        ]
-      }
+    "social_rules": [
+      "no_trouble_making_friends"
     ],
     "conflicts_with": [
       "callous"
@@ -261,24 +158,8 @@
   "callous": {
     "display_name": "Callous",
     "description": "This character is emotionally detached and unsympathetic.",
-    "effects": [
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": -10,
-            "modifier_type": "Flat"
-          },
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": -3,
-            "modifier_type": "Flat"
-          }
-        ]
-      }
+    "social_rules": [
+      "has_trouble_making_friends"
     ],
     "conflicts_with": [
       "compassionate"
@@ -293,24 +174,14 @@
   "adventurous": {
     "display_name": "Adventurous",
     "description": "This character seeks excitement and enjoys taking risks.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "boldness",
-        "amount": 25,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": 2,
-            "modifier_type": "Flat"
-          }
-        ]
+        "name": "boldness",
+        "value": 25
       }
+    ],
+    "social_rules": [
+      "no_trouble_making_friends"
     ],
     "conflicts_with": [
       "cautious"
@@ -325,24 +196,14 @@
   "cautious": {
     "display_name": "Cautious",
     "description": "This character is risk-averse and avoids dangerous situations.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "boldness",
-        "amount": -15,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "compatibility",
-            "amount": -2,
-            "modifier_type": "Flat"
-          }
-        ]
+        "name": "boldness",
+        "value": -15
       }
+    ],
+    "social_rules": [
+      "has_trouble_making_friends"
     ],
     "conflicts_with": [
       "adventurous"
@@ -357,24 +218,14 @@
   "charismatic": {
     "display_name": "Charismatic",
     "description": "This character has a natural charm that draws others to them.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "attractiveness",
-        "amount": 20,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": 15,
-            "modifier_type": "Flat"
-          }
-        ]
+        "name": "attractiveness",
+        "value": 20
       }
+    ],
+    "social_rules": [
+      "good_at_making_friends"
     ],
     "conflicts_with": [
       "awkward"
@@ -389,24 +240,14 @@
   "awkward": {
     "display_name": "Awkward",
     "description": "This character struggles with social interactions and comes across as clumsy.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "attractiveness",
-        "amount": -3,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": -2,
-            "modifier_type": "Flat"
-          }
-        ]
+        "name": "attractiveness",
+        "value": -3
       }
+    ],
+    "social_rules": [
+      "has_trouble_making_friends"
     ],
     "conflicts_with": [
       "charismatic"
@@ -421,12 +262,10 @@
   "ambitious": {
     "display_name": "Ambitious",
     "description": "This character is driven by ambition and seeks to achieve great success.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "stewardship",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "name": "stewardship",
+        "value": 2
       }
     ],
     "conflicts_with": [
@@ -442,12 +281,10 @@
   "lazy": {
     "display_name": "Lazy",
     "description": "This character tends to avoid hard work and prefers a leisurely lifestyle.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "stewardship",
-        "amount": -3,
-        "modifier_type": "FLAT"
+        "name": "stewardship",
+        "value": -3
       }
     ],
     "conflicts_with": [
@@ -463,12 +300,10 @@
   "hot-headed": {
     "display_name": "Hot-Headed",
     "description": "This character has a short temper and is quick to anger.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "boldness",
-        "amount": 4,
-        "modifier_type": "FLAT"
+        "name": "boldness",
+        "value": 4
       }
     ],
     "conflicts_with": [
@@ -484,12 +319,10 @@
   "calm": {
     "display_name": "Calm",
     "description": "This character remains composed and rarely loses their temper.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "boldness",
-        "amount": -4,
-        "modifier_type": "FLAT"
+        "name": "boldness",
+        "value": -4
       }
     ],
     "conflicts_with": [
@@ -505,12 +338,10 @@
   "intelligent": {
     "display_name": "Intelligent",
     "description": "This character possesses a high level of intelligence and problem-solving abilities.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "intelligence",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "name": "intelligence",
+        "value": 2
       }
     ],
     "spawn_frequency": 1,
@@ -523,12 +354,10 @@
   "simpleminded": {
     "display_name": "Simple-Minded",
     "description": "This character lacks intellectual depth and struggles with complex tasks.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "intelligence",
-        "amount": -3,
-        "modifier_type": "FLAT"
+        "name": "intelligence",
+        "value": -3
       }
     ],
     "spawn_frequency": 1,
@@ -541,12 +370,10 @@
   "charitable": {
     "display_name": "Charitable",
     "description": "This character is generous and often helps others in need.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "reliability",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "name": "reliability",
+        "value": 2
       }
     ],
     "spawn_frequency": 1,
@@ -559,12 +386,10 @@
   "selfish": {
     "display_name": "Selfish",
     "description": "This character prioritizes their own needs and desires over others.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "reliability",
-        "amount": -3,
-        "modifier_type": "FLAT"
+        "name": "reliability",
+        "value": -3
       }
     ],
     "spawn_frequency": 1,
@@ -577,11 +402,10 @@
   "optimistic": {
     "display_name": "Optimistic",
     "description": "This character maintains a positive outlook and believes in a bright future.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "sociability",
-        "amount": 30
+        "name": "sociability",
+        "value": 30
       }
     ],
     "conflicts_with": [
@@ -597,11 +421,10 @@
   "pessimistic": {
     "display_name": "Pessimistic",
     "description": "This character often anticipates negative outcomes and struggles with optimism.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "sociability",
-        "amount": -20
+        "name": "sociability",
+        "value": -20
       }
     ],
     "conflicts_with": [
@@ -617,11 +440,10 @@
   "energetic": {
     "display_name": "Energetic",
     "description": "This character is full of energy and enthusiasm for various activities.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "fertility",
-        "amount": 0.2
+        "name": "fertility",
+        "value": 0.2
       }
     ],
     "conflicts_with": [
@@ -637,11 +459,10 @@
   "lethargic": {
     "display_name": "Lethargic",
     "description": "This character lacks energy and often feels tired or unenthusiastic.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "fertility",
-        "amount": -0.2
+        "name": "fertility",
+        "value": -0.2
       }
     ],
     "conflicts_with": [
@@ -657,12 +478,10 @@
   "confident": {
     "display_name": "Confident",
     "description": "This character is self-assured and has a strong belief in their abilities.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "attractiveness",
-        "amount": 20,
-        "modifier_type": "FLAT"
+        "name": "attractiveness",
+        "value": 20
       }
     ],
     "spawn_frequency": 1,
@@ -675,12 +494,10 @@
   "insecure": {
     "display_name": "Insecure",
     "description": "This character struggles with self-doubt and often feels unattractive or inadequate.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "attractiveness",
-        "amount": -20,
-        "modifier_type": "FLAT"
+        "name": "attractiveness",
+        "value": -20
       }
     ],
     "spawn_frequency": 1,
@@ -693,24 +510,8 @@
   "betraying": {
     "display_name": "Betraying",
     "description": "This character is prone to betrayal and can turn on friends and allies.",
-    "effects": [
-      {
-        "type": "AddSocialRule",
-        "preconditions": [
-          {
-            "type": "HasTrait",
-            "trait": "friendly"
-          }
-        ],
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": -3,
-            "modifier_type": "FLAT"
-          }
-        ]
-      }
+    "social_rules": [
+      "not_trustworthy"
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
@@ -722,12 +523,10 @@
   "genius": {
     "display_name": "Genius",
     "description": "This character possesses exceptional intelligence and problem-solving abilities.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "intelligence",
-        "amount": 40,
-        "modifier_type": "FLAT"
+        "name": "intelligence",
+        "value": 40
       }
     ],
     "conflicts_with": [
@@ -743,19 +542,8 @@
   "friendly": {
     "display_name": "Friendly",
     "description": "This character is amiable and easily forms positive relationships with others.",
-    "effects": [
-      {
-        "type": "AddSocialRule",
-        "preconditions": [],
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "reputation",
-            "amount": 20,
-            "modifier_type": "FLAT"
-          }
-        ]
-      }
+    "social_rules": [
+      "makes_friends_easily"
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
@@ -767,12 +555,10 @@
   "lustful": {
     "display_name": "Lustful",
     "description": "This character has strong sexual desires and is often drawn to romantic encounters.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "fertility",
-        "amount": 0.3,
-        "modifier_type": "FLAT"
+        "name": "fertility",
+        "value": 0.3
       }
     ],
     "conflicts_with": [
@@ -788,12 +574,10 @@
   "immortal": {
     "display_name": "Immortal",
     "description": "This character is immune to death and the passage of time.",
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "health_decay",
-        "amount": -100,
-        "modifier_type": "FLAT"
+        "name": "health_decay",
+        "value": -100
       }
     ],
     "spawn_frequency": 0.0,
@@ -803,28 +587,8 @@
   "attracted_to_men": {
     "display_name": "Attracted to Men",
     "description": "This character experiences romantic attraction primarily to men.",
-    "effects": [
-      {
-        "type": "AddSocialRule",
-        "preconditions": [
-          {
-            "type": "TargetIsSex",
-            "sex": "MALE"
-          }
-        ],
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "romance",
-            "amount": 15
-          },
-          {
-            "type": "StatBuff",
-            "stat": "romantic_compatibility",
-            "amount": 5
-          }
-        ]
-      }
+    "social_rules": [
+      "attracted_to_men"
     ],
     "conflicts_with": [
       "attracted_to_women"
@@ -837,28 +601,8 @@
   "attracted_to_women": {
     "display_name": "Attracted to Women",
     "description": "This character experiences romantic attraction primarily to women.",
-    "effects": [
-      {
-        "type": "AddSocialRule",
-        "preconditions": [
-          {
-            "type": "TargetIsSex",
-            "sex": "FEMALE"
-          }
-        ],
-        "effects": [
-          {
-            "type": "StatBuff",
-            "stat": "romance",
-            "amount": 5
-          },
-          {
-            "type": "StatBuff",
-            "stat": "romantic_compatibility",
-            "amount": 5
-          }
-        ]
-      }
+    "social_rules": [
+      "attracted_to_women"
     ],
     "conflicts_with": [
       "attracted_to_men"
@@ -872,11 +616,10 @@
     "display_name": "Boss",
     "description": "The target of this relationship is the their work boss.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "interaction_score",
-        "amount": 1
+        "name": "interaction_score",
+        "value": 1
       }
     ]
   },
@@ -884,11 +627,10 @@
     "display_name": "Employee",
     "description": "The target of this relationship is an employee.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "interaction_score",
-        "amount": 1
+        "name": "interaction_score",
+        "value": 1
       }
     ]
   },
@@ -896,11 +638,10 @@
     "display_name": "Coworker",
     "description": "The target of this relationship is a coworker.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "interaction_score",
-        "amount": 2
+        "name": "interaction_score",
+        "value": 2
       }
     ]
   },
@@ -923,16 +664,14 @@
     "display_name": "Family",
     "description": "These characters are related",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": -30
+        "name": "romance",
+        "value": -30
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": 10
+        "name": "reputation",
+        "value": 10
       }
     ]
   },
@@ -940,26 +679,22 @@
     "display_name": "Parent",
     "description": "The target of this relationship is the owner's parent",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "interaction_score",
-        "amount": 1
+        "name": "interaction_score",
+        "value": 1
       },
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": -50
+        "name": "romance",
+        "value": -50
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": 10
+        "name": "reputation",
+        "value": 10
       },
       {
-        "type": "StatBuff",
-        "stat": "romantic_compatibility",
-        "amount": -3
+        "name": "romantic_compatibility",
+        "value": -3
       }
     ]
   },
@@ -967,21 +702,18 @@
     "display_name": "Child",
     "description": "The target of this relationship is a child of the owner.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": -50
+        "name": "romance",
+        "value": -50
       },
       {
-        "type": "StatBuff",
-        "stat": "romantic_compatibility",
-        "amount": -5
+        "name": "romantic_compatibility",
+        "value": -5
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": 20
+        "name": "reputation",
+        "value": 20
       }
     ]
   },
@@ -989,16 +721,14 @@
     "display_name": "Sibling",
     "description": "The target of this relationship is a sibling of the owner.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": -50
+        "name": "romance",
+        "value": -50
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": 15
+        "name": "reputation",
+        "value": 15
       }
     ]
   },
@@ -1006,26 +736,22 @@
     "display_name": "Spouse",
     "description": "The target of this relationship is a spouse of the owner.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": 15
+        "name": "romance",
+        "value": 15
       },
       {
-        "type": "StatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 3
+        "name": "romantic_compatibility",
+        "value": 3
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": 20
+        "name": "reputation",
+        "value": 20
       },
       {
-        "type": "StatBuff",
-        "stat": "compatibility",
-        "amount": 4
+        "name": "compatibility",
+        "value": 4
       }
     ]
   },
@@ -1033,26 +759,22 @@
     "display_name": "Dating",
     "description": "The relationship target and owner are dating.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": 10
+        "name": "romance",
+        "value": 10
       },
       {
-        "type": "StatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 2
+        "name": "romantic_compatibility",
+        "value": 2
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": 15
+        "name": "reputation",
+        "value": 15
       },
       {
-        "type": "StatBuff",
-        "stat": "compatibility",
-        "amount": 4
+        "name": "compatibility",
+        "value": 4
       }
     ]
   },
@@ -1065,16 +787,14 @@
     "display_name": "Ex-Spouse",
     "description": "These characters were formerly married",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": -20
+        "name": "romance",
+        "value": -20
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": -8
+        "name": "reputation",
+        "value": -8
       }
     ]
   },
@@ -1082,16 +802,14 @@
     "display_name": "Ex-Partner",
     "description": "These character used to date.",
     "spawn_frequency": 0,
-    "effects": [
+    "stat_modifiers": [
       {
-        "type": "StatBuff",
-        "stat": "romance",
-        "amount": -10
+        "name": "romance",
+        "value": -10
       },
       {
-        "type": "StatBuff",
-        "stat": "reputation",
-        "amount": -5
+        "name": "reputation",
+        "value": -5
       }
     ]
   },
@@ -1105,6 +823,51 @@
     "senior_age": 65,
     "lifespan": 80,
     "can_physically_age": true,
+    "spawn_frequency": 0
+  },
+  "crush": {
+    "display_name": "Crush",
+    "description": "The owner of this relationship has a crush on the target.",
+    "spawn_frequency": 0
+  },
+  "live_together": {
+    "display_name": "Live Together",
+    "description": "The owner of this relationship lives with the target.",
+    "spawn_frequency": 0
+  },
+  "friend": {
+    "display_name": "Friend",
+    "description": "The owner of this relationship is friends with target.",
+    "spawn_frequency": 0
+  },
+  "enemy": {
+    "display_name": "Enemy",
+    "description": "The owner of this relationship is enemies with target.",
+    "spawn_frequency": 0
+  },
+  "widow": {
+    "display_name": "Widow",
+    "description": "The target of the relationship is the widow of the owner.",
+    "spawn_frequency": 0
+  },
+  "step_parent": {
+    "display_name": "Step Parent",
+    "description": "Target is the step parent of the owner.",
+    "spawn_frequency": 0
+  },
+  "step_child": {
+    "display_name": "Step Child",
+    "description": "Target is the step child of the owner.",
+    "spawn_frequency": 0
+  },
+  "step_sibling": {
+    "display_name": "Step Sibling",
+    "description": "Target is the step sibling of the owner.",
+    "spawn_frequency": 0
+  },
+  "biological_parent": {
+    "display_name": "Biological Parent",
+    "description": "Target is the biological parent of the owner.",
     "spawn_frequency": 0
   }
 }

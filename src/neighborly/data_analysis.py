@@ -21,9 +21,9 @@ from neighborly.components.location import FrequentedLocations
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.skills import Skill, Skills
+from neighborly.components.skills import Skills
 from neighborly.components.stats import Stats
-from neighborly.components.traits import Trait, Traits
+from neighborly.components.traits import Traits
 from neighborly.data_collection import DataTables
 from neighborly.ecs import Active, Component
 from neighborly.life_event import GlobalEventHistory
@@ -328,7 +328,7 @@ def _build_characters_table(components: list[Component]) -> pl.DataFrame:
                 "age": int(character.age),
                 "life_stage": character.life_stage.name,
                 "sex": character.sex.name,
-                "species": character.species.get_component(Trait).display_name,
+                "species": character.species.name,
                 "species_uid": character.species.uid,
             }
         )
@@ -373,13 +373,13 @@ def _build_skills_table(components: list[Component]) -> pl.DataFrame:
     data: list[dict[str, Any]] = []
 
     for skills in skills_list:
-        for skill, stat in skills.skills.items():
+        for skill_instance in skills.skills.values():
             data.append(
                 {
                     "gameobject": skills.gameobject.uid,
-                    "skill_uid": skill.uid,
-                    "skill": skill.get_component(Skill).display_name,
-                    "level": stat.value,
+                    "skill_uid": skill_instance.skill.gameobject.uid,
+                    "skill": skill_instance.skill.gameobject.name,
+                    "level": skill_instance.stat.value,
                 }
             )
 
@@ -394,12 +394,12 @@ def _build_traits_table(components: list[Component]) -> pl.DataFrame:
     data: list[dict[str, Any]] = []
 
     for traits in traits_list:
-        for trait in traits.traits:
+        for trait_instance in traits.traits.values():
             data.append(
                 {
                     "gameobject": traits.gameobject.uid,
-                    "trait_uid": trait.uid,
-                    "trait": trait.get_component(Trait).display_name,
+                    "trait_uid": trait_instance.trait.gameobject.uid,
+                    "trait": trait_instance.trait.definition.display_name,
                 }
             )
 
@@ -441,9 +441,9 @@ def _build_job_role_table(components: list[Component]) -> pl.DataFrame:
         data.append(
             {
                 "uid": job_role.gameobject.uid,
-                "name": job_role.display_name,
-                "level": job_role.job_level,
-                "description": job_role.description,
+                "name": job_role.definition.display_name,
+                "level": job_role.definition.job_level,
+                "description": job_role.definition.description,
             }
         )
 
@@ -468,7 +468,7 @@ def _build_occupations_table(components: list[Component]) -> pl.DataFrame:
             {
                 "gameobject": occupation.gameobject.uid,
                 "job_role": occupation.job_role.gameobject.uid,
-                "name": occupation.job_role.display_name,
+                "name": occupation.job_role.definition.display_name,
                 "business": occupation.business.uid,
                 "start_date": str(occupation.start_date),
             }

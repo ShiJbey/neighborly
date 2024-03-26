@@ -8,24 +8,27 @@ graph.
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping, Optional
+import enum
+from collections import defaultdict
+from typing import Any, Iterable, Mapping
 
-import attrs
+import pydantic
 
+from neighborly.defs.base_types import StatModifierData
 from neighborly.ecs import Component, GameObject
-from neighborly.effects.base_types import Effect
-from neighborly.preconditions.base_types import Precondition
 
 
 class Relationship(Component):
     """Tags a GameObject as a relationship and tracks the owner and target."""
 
-    __slots__ = "_target", "_owner"
+    __slots__ = "_target", "_owner", "active_rules"
 
     _owner: GameObject
     """Who owns this relationship."""
     _target: GameObject
     """Who is the relationship directed toward."""
+    active_rules: list[str]
+    """ID of social rules currently applied to this relationship."""
 
     def __init__(
         self,
@@ -35,6 +38,7 @@ class Relationship(Component):
         super().__init__()
         self._owner = owner
         self._target = target
+        self.active_rules = []
 
     @property
     def owner(self) -> GameObject:
@@ -262,44 +266,26 @@ class Relationships(Component):
         )
 
 
-@attrs.define
-class SocialRule:
+class SocialRuleDirection(enum.Enum):
+    """Direction that a social rule is evaluated."""
+
+    OUTGOING = enum.auto()
+    INCOMING = enum.auto()
+
+
+class SocialRule(pydantic.BaseModel):
     """A rule that modifies a relationship depending on some preconditions."""
 
-    preconditions: list[Precondition]
+    rule_id: str
+    """A unique ID for this rule."""
+    direction: SocialRuleDirection = pydantic.Field(
+        default=SocialRuleDirection.OUTGOING
+    )
+    """direction that the rule is evaluated."""
+    preconditions: list[str] = pydantic.Field(default_factory=list)
     """Conditions that need to be met to apply the rule."""
-    effects: list[Effect]
+    stat_modifiers: list[StatModifierData]
     """Side-effects of the rule applied to a relationship."""
-    is_outgoing: bool = True
-    """True if this rule is applied to outgoing relationships."""
-    source: Optional[object] = None
-    """The object responsible for adding this rule."""
-
-    def check_preconditions(self, relationship: GameObject) -> bool:
-        """Check that a relationship passes all the preconditions."""
-        return all(p(relationship) for p in self.preconditions)
-
-    def apply(self, relationship: GameObject) -> None:
-        """Apply the effects of the social rule.
-
-        Parameters
-        ----------
-        relationship
-            The relationship to apply the effects to.
-        """
-        for effect in self.effects:
-            effect.apply(relationship)
-
-    def remove(self, relationship: GameObject) -> None:
-        """Remove the effects of the social rule.
-
-        Parameters
-        ----------
-        relationship
-            The relationship to remove the effects from.
-        """
-        for effect in self.effects:
-            effect.remove(relationship)
 
 
 class SocialRules(Component):
@@ -307,33 +293,37 @@ class SocialRules(Component):
 
     __slots__ = ("_rules",)
 
-    _rules: list[SocialRule]
-    """Rules applied to the owning GameObject's relationships."""
+    _rules: defaultdict[str, int]
+    """Rules IDs mapped to reference counts."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._rules = []
+        self._rules = defaultdict(lambda: 0)
 
     @property
-    def rules(self) -> Iterable[SocialRule]:
+    def rules(self) -> Iterable[str]:
         """Rules applied to the owning GameObject's relationships."""
         return self._rules
 
-    def add_rule(self, rule: SocialRule) -> None:
+    def add_rule(self, rule_id: str) -> None:
         """Add a rule to the rule collection."""
-        self._rules.append(rule)
+        self._rules[rule_id] += 1
 
-    def has_rule(self, rule: SocialRule) -> bool:
+    def has_rule(self, rule_id: str) -> bool:
         """Check if a rule is present."""
-        return rule in self._rules
+        return rule_id in self._rules
 
-    def remove_rule(self, rule: SocialRule) -> bool:
+    def remove_rule(self, rule_id: str) -> bool:
         """Remove a rule from the rules collection."""
-        try:
-            self._rules.remove(rule)
+        if rule_id in self._rules:
+            self._rules[rule_id] -= 1
+
+            if self._rules[rule_id] <= 0:
+                del self._rules[rule_id]
+
             return True
-        except ValueError:
-            return False
+
+        return False
 
     def to_dict(self) -> dict[str, Any]:
-        return {}
+        return {"rules": [r for r in self._rules]}
