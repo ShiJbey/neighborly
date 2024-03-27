@@ -28,6 +28,8 @@ def test_create_settlement() -> None:
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
+    sim.initialize()
+
     settlement = create_settlement(sim.world, "basic_settlement")
 
     assert settlement.metadata["definition_id"] == "basic_settlement"
@@ -58,6 +60,8 @@ def test_required_tags() -> None:
             ],
         )
     )
+
+    sim.initialize()
 
     # it doesn't actually check if the tags match, just if the amount matches
 
@@ -113,6 +117,8 @@ def test_optional_tags() -> None:
             ],
         )
     )
+
+    sim.initialize()
 
     # it doesn't actually check if the tags match, just if the amount matches
 

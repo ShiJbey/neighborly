@@ -52,6 +52,8 @@ dependencies = [
     "tqdm==4.*",
     "pydantic==2.*",
     "repraxis==1.*",
+    "sqlalchemy==2.*",
+    "pandas==2.*",
 ]
 
 [project.optional-dependencies]

@@ -113,6 +113,8 @@ def main() -> Simulation:
 
     total_time_steps: int = args.years * 12
 
+    sim.initialize()
+
     for _ in range(total_time_steps):
         sim.step()
 

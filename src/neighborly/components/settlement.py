@@ -44,13 +44,14 @@ class District(Component):
 
     def __init__(
         self,
+        gameobject: GameObject,
         name: str,
         description: str,
         settlement: GameObject,
         residential_slots: int,
         business_slots: int,
     ) -> None:
-        super().__init__()
+        super().__init__(gameobject)
         self._name = name
         self._description = description
         self._settlement = settlement
@@ -224,8 +225,13 @@ class Settlement(Component):
     _name: str
     """The name of the settlement."""
 
-    def __init__(self, name: str, districts: Optional[list[GameObject]] = None) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+        name: str,
+        districts: Optional[list[GameObject]] = None,
+    ) -> None:
+        super().__init__(gameobject)
         self._name = name
         self._districts = districts.copy() if districts is not None else []
 

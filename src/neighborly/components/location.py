@@ -24,8 +24,11 @@ class FrequentedBy(Component):
     _characters: OrderedSet[GameObject]
     """GameObject IDs of characters that frequent the location."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+    ) -> None:
+        super().__init__(gameobject)
         self._characters = OrderedSet([])
 
     def add_character(self, character: GameObject) -> None:
@@ -92,8 +95,11 @@ class FrequentedLocations(Component):
     _locations: OrderedSet[GameObject]
     """A set of GameObject IDs of locations."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+    ) -> None:
+        super().__init__(gameobject)
         self._locations = OrderedSet([])
 
     def add_location(self, location: GameObject) -> None:
@@ -173,8 +179,11 @@ class LocationPreferences(Component):
     _rules: defaultdict[str, int]
     """Rules IDs mapped to reference counts."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+    ) -> None:
+        super().__init__(gameobject)
         self._rules = defaultdict(lambda: 0)
 
     @property

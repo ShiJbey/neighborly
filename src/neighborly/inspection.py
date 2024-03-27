@@ -320,7 +320,7 @@ def _trait_section(trait: GameObject) -> str:
     output += "=====\n"
     output += "\n"
     output += f"UID: {trait.uid}\n"
-    output += f"Name: {trait_data.definition.display_name}\n"
+    output += f"Name: {trait_data.definition.name}\n"
     output += f"Definition ID: {trait_data.definition_id}\n"
     output += f"Description:\n{trait_data.definition.description}\n"
     output += "\n"
@@ -405,10 +405,7 @@ def _get_traits_table(obj: GameObject) -> str:
     output = "=== Traits ===\n"
 
     output += tabulate.tabulate(
-        [
-            (entry.trait.gameobject.name, entry.trait.definition.description)
-            for entry in traits.traits.values()
-        ],
+        [(entry.trait_id, entry.description) for entry in traits.traits.values()],
         headers=("Name", "Description"),
     )
 
@@ -455,8 +452,7 @@ def _get_relationships_table(obj: GameObject) -> str:
         romantic_compatibility = get_stat(relationship, "romantic_compatibility").value
         interaction_score = get_stat(relationship, "interaction_score").value
         traits = ", ".join(
-            t.trait.gameobject.name
-            for t in relationship.get_component(Traits).traits.values()
+            t.trait_id for t in relationship.get_component(Traits).traits.values()
         )
 
         relationship_data.append(
@@ -816,7 +812,7 @@ def list_job_roles(sim: Simulation) -> None:
 def list_traits(sim: Simulation) -> None:
     """List the trait instances from the simulation."""
     traits = [
-        (uid, trait.definition.display_name, trait.definition.description)
+        (uid, trait.definition.name, trait.definition.description)
         for uid, (trait,) in sim.world.get_components((Trait,))
     ]
 

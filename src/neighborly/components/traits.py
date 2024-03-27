@@ -6,11 +6,12 @@ This module contains class definitions for implementing the trait system.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy.orm import Mapped, mapped_column
+
 from neighborly.defs.base_types import TraitDef
-from neighborly.ecs import Component
+from neighborly.ecs import Component, GameData, GameObject
 
 
 class Trait(Component):
@@ -23,9 +24,10 @@ class Trait(Component):
 
     def __init__(
         self,
+        gameobject: GameObject,
         definition: TraitDef,
     ) -> None:
-        super().__init__()
+        super().__init__(gameobject)
         self.definition = definition
 
     @property
@@ -43,31 +45,34 @@ class Trait(Component):
         return {}
 
 
-@dataclass
-class TraitInstance:
+class TraitInstance(GameData):
     """An instance of a trait being attached to a GameObject."""
 
-    trait: Trait
-    description: str
-    has_duration: bool
-    duration: int
+    __tablename__ = "traits"
+
+    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uid: Mapped[int]
+    trait_id: Mapped[str]
+    description: Mapped[str]
+    has_duration: Mapped[bool]
+    duration: Mapped[int]
 
     def __str__(self) -> str:
         return (
-            f"Trait(trait={self.trait.definition_id!r}, "
+            f"Trait(trait={self.trait_id!r}, "
             f"duration={self.duration!r}, description={self.description!r})"
         )
 
     def __repr__(self) -> str:
         return (
-            f"Trait(trait={self.trait.definition_id!r}, "
+            f"Trait(trait={self.trait_id!r}, "
             f"duration={self.duration!r}, description={self.description!r})"
         )
 
     def to_dict(self) -> dict[str, Any]:
         """Return as serialized dict."""
         return {
-            "trait": self.trait.definition_id,
+            "trait": self.trait_id,
             "description": self.description,
             "has_duration": self.has_duration,
             "duration": self.duration,
@@ -82,65 +87,49 @@ class Traits(Component):
     traits: dict[str, TraitInstance]
     """References to traits attached to the GameObject."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+    ) -> None:
+        super().__init__(gameobject)
         self.traits = {}
 
     def add_trait(
-        self, trait: Trait, duration: int = -1, description: str = ""
-    ) -> bool:
+        self, trait_id: str, duration: int = -1, description: str = ""
+    ) -> None:
         """Add a trait to the tracker.
 
         Parameters
         ----------
         trait
             A trait to add.
-
-        Return
-        ------
-        bool
-            True if the trait was added successfully, False if already present or
-            if the trait conflict with existing traits.
         """
-
-        if trait.definition_id in self.traits:
-            return False
-
-        if self.has_conflicting_trait(trait):
-            return False
-
-        self.traits[trait.definition_id] = TraitInstance(
-            trait=trait,
-            description=description if description else trait.definition.description,
+        instance = TraitInstance(
+            uid=self.gameobject.uid,
+            trait_id=trait_id,
+            description=description,
             has_duration=duration > 0,
             duration=duration,
         )
 
-        return True
+        self.traits[trait_id] = instance
 
-    def has_conflicting_trait(self, trait: Trait) -> bool:
-        """Check if a trait conflicts with current traits.
+        self.gameobject.world.rp_db.insert(f"{self.gameobject.uid}.traits.{trait_id}")
 
-        Parameters
-        ----------
-        trait
-            The trait to check.
+        with self.gameobject.world.session.begin() as session:
+            session.add(instance)
 
-        Returns
-        -------
-        bool
-            True if the trait conflicts with any of the current traits or if any current
-            traits conflict with the given trait. False otherwise.
-        """
-        for instance in self.traits.values():
+    def remove_trait(self, trait_id: str) -> None:
+        """Remove a trait from the tracker."""
 
-            if instance.trait.definition_id in trait.definition.conflicts_with:
-                return True
+        instance = self.traits[trait_id]
 
-            if trait.definition_id in instance.trait.definition.conflicts_with:
-                return True
+        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.traits.{trait_id}")
 
-        return False
+        del self.traits[trait_id]
+
+        with self.gameobject.world.session.begin() as session:
+            session.delete(instance)
 
     def __str__(self) -> str:
         return f"Traits(traits={list(self.traits.keys())!r})"

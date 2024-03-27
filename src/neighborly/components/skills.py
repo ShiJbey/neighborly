@@ -9,7 +9,7 @@ from typing import Any
 
 from neighborly.components.stats import Stat
 from neighborly.defs.base_types import SkillDef
-from neighborly.ecs import Component
+from neighborly.ecs import Component, GameObject
 
 SKILL_MIN_VALUE = 0
 """The lowest value a skill stat can be."""
@@ -26,8 +26,8 @@ class Skill(Component):
     definition: SkillDef
     """The definition for this skill."""
 
-    def __init__(self, definition: SkillDef) -> None:
-        super().__init__()
+    def __init__(self, gameobject: GameObject, definition: SkillDef) -> None:
+        super().__init__(gameobject)
         self.definition = definition
 
     @property
@@ -90,8 +90,11 @@ class Skills(Component):
     skills: dict[str, SkillInstance]
     """Skill names mapped to scores."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+    ) -> None:
+        super().__init__(gameobject)
         self.skills = {}
 
     def add_skill(self, skill: Skill, base_value: float = 0.0) -> bool:

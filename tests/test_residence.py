@@ -26,6 +26,8 @@ def test_create_residence() -> None:
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
+    sim.initialize()
+
     settlement = create_settlement(sim.world, "basic_settlement")
 
     district = create_district(sim.world, settlement, "entertainment_district")

@@ -231,8 +231,8 @@ class TraitDef(ContentDefinition, ABC):
 
     definition_id: str
     """The ID of this trait definition."""
-    display_name: str
-    """The name of this trait printed."""
+    name: str
+    """The name of this trait."""
     description: str = ""
     """A short description of the trait."""
     stat_modifiers: list[StatModifierData] = pydantic.Field(default_factory=list)

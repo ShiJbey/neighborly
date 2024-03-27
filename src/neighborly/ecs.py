@@ -1,3 +1,4 @@
+# pylint: disable=C0302
 """Entity Component System
 
 This ECS implementation blends Unity-style GameObjects with the
@@ -35,8 +36,11 @@ from typing import (
 )
 
 import esper
+import sqlalchemy
+import sqlalchemy.orm
 from ordered_set import OrderedSet
 from repraxis import RePraxisDatabase
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -208,6 +212,20 @@ class Event(ABC):
         return self.event_id > other.event_id
 
 
+class GameData(DeclarativeBase):
+    """Base class required by SQLAlchemy."""
+
+
+class GameObjectData(GameData):
+    """Collects all GameObject table into a single table for joining"""
+
+    __tablename__ = "gameobjects"
+
+    uid: Mapped[int] = mapped_column(primary_key=True, unique=True)
+    name: Mapped[str] = mapped_column(default="")
+    is_active: Mapped[bool] = mapped_column(default=True)
+
+
 class GameObject:
     """A reference to an entity within the world.
 
@@ -216,29 +234,26 @@ class GameObject:
     """
 
     __slots__ = (
-        "_id",
-        "_name",
-        "_world",
+        "data",
+        "world",
         "children",
         "parent",
-        "_metadata",
+        "metadata",
         "_component_types",
         "_component_manager",
     )
 
-    _id: int
-    """A GameObject's unique ID."""
-    _world: World
+    data: GameObjectData
+    """SQL mapped data about this GameObject."""
+    world: World
     """The world instance a GameObject belongs to."""
     _component_manager: esper.World
     """Reference to Esper ECS instance with all the component data."""
-    _name: str
-    """The name of the GameObject."""
     children: list[GameObject]
     """Child GameObjects below this one in the hierarchy."""
     parent: Optional[GameObject]
     """The parent GameObject that this GameObject is a child of."""
-    _metadata: dict[str, Any]
+    metadata: dict[str, Any]
     """Metadata associated with this GameObject."""
     _component_types: list[Type[Component]]
     """Types of the GameObjects components in order of addition."""
@@ -250,24 +265,26 @@ class GameObject:
         component_manager: esper.World,
         name: str = "",
     ) -> None:
-        self._id = unique_id
-        self._world = world
+        self.data = GameObjectData(
+            uid=unique_id,
+            name=name if name else f"GameObject({unique_id})",
+            is_active=True,
+        )
+
+        with world.session.begin() as session:
+            session.add(self.data)
+
+        self.world = world
         self._component_manager = component_manager
         self.parent = None
         self.children = []
-        self._metadata = {}
+        self.metadata = {}
         self._component_types = []
-        self.name = name if name else "GameObject"
 
     @property
     def uid(self) -> int:
         """A GameObject's ID."""
-        return self._id
-
-    @property
-    def world(self) -> World:
-        """The World instance to which a GameObject belongs."""
-        return self._world
+        return self.data.uid
 
     @property
     def exists(self) -> bool:
@@ -283,26 +300,27 @@ class GameObject:
     @property
     def is_active(self) -> bool:
         """Check if a GameObject is active."""
-        return self.has_component(Active)
-
-    @property
-    def metadata(self) -> dict[str, Any]:
-        """Get the metadata associated with this GameObject."""
-        return self._metadata
+        return self.data.is_active
 
     @property
     def name(self) -> str:
         """Get the GameObject's name"""
-        return self._name
+        return self.data.name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set the GameObject's name"""
-        self._name = f"{value}({self.uid})"
+        with self.world.session.begin() as session:
+            self.data.name = f"{value}({self.uid})"
+            session.add(self.data)
 
     def activate(self) -> None:
         """Tag the GameObject as active."""
-        self.add_component(Active())
+        self.add_component(Active(self))
+
+        with self.world.session.begin() as session:
+            self.data.is_active = True
+            session.add(self.data)
 
         for child in self.children:
             child.activate()
@@ -311,6 +329,10 @@ class GameObject:
         """Remove the Active tag from a GameObject."""
 
         self.remove_component(Active)
+
+        with self.world.session.begin() as session:
+            self.data.is_active = False
+            session.add(self.data)
 
         for child in self.children:
             child.deactivate()
@@ -352,7 +374,6 @@ class GameObject:
         _CT
             The added component
         """
-        component.gameobject = self
         self._component_manager.add_component(self.uid, component)
         self._component_types.append(type(component))
         component.on_add()
@@ -591,53 +612,34 @@ class GameObject:
         return False
 
     def __int__(self) -> int:
-        return self._id
+        return self.uid
 
     def __hash__(self) -> int:
-        return self._id
+        return self.uid
 
     def __str__(self) -> str:
         return self.name
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(id={self.uid}, name={self.name})"
+        return f"GameObject(id={self.uid!r}, name={self.name!r})"
 
 
 class Component(ABC):
     """A collection of data attributes associated with a GameObject."""
 
-    __slots__ = ("_gameobject", "_has_gameobject")
+    __slots__ = ("_gameobject",)
 
     _gameobject: GameObject
     """The GameObject the component belongs to."""
-    # We need an additional variable to track if the gameobject has been set because
-    # the variable will be initialized outside the __init__ method, and we need to
-    # ensure that it is not set again
-    _has_gameobject: bool
-    """Is the Component's _gameobject field set."""
 
-    def __init__(self) -> None:
+    def __init__(self, gameobject: GameObject) -> None:
         super().__init__()
-        self._has_gameobject = False
+        self._gameobject = gameobject
 
     @property
     def gameobject(self) -> GameObject:
         """Get the GameObject instance for this component."""
         return self._gameobject
-
-    @gameobject.setter
-    def gameobject(self, value: GameObject) -> None:
-        """Sets the component's gameobject reference.
-
-        Notes
-        -----
-        This setter should only be called internally by the ECS when adding new
-        components to gameobjects. Calling this function twice will result in a
-        RuntimeError.
-        """
-        if self._has_gameobject is True:
-            raise RuntimeError("Cannot reassign a component to another GameObject.")
-        self._gameobject = value
 
     def on_add(self) -> None:
         """Lifecycle method called when the component is added to a GameObject."""
@@ -1321,6 +1323,9 @@ class GameObjectManager:
         for component_type in reversed(gameobject.get_component_types()):
             gameobject.remove_component(component_type)
 
+        with self.world.session() as session:
+            session.delete(gameobject.data)
+
     def clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world."""
         for gameobject_id in self._dead_gameobjects:
@@ -1350,50 +1355,77 @@ class World:
     """Manages Gameobjects, Systems, events, and resources."""
 
     __slots__ = (
-        "_resource_manager",
-        "_gameobject_manager",
-        "_system_manager",
-        "_event_manager",
+        "resources",
+        "gameobjects",
+        "systems",
+        "events",
         "rp_db",
+        "sql_engine",
+        "session",
     )
 
-    _gameobject_manager: GameObjectManager
+    gameobjects: GameObjectManager
     """Manages GameObjects and Component data."""
-    _resource_manager: ResourceManager
+    resources: ResourceManager
     """Global resources shared by systems in the ECS."""
-    _system_manager: SystemManager
+    systems: SystemManager
     """The systems run every simulation step."""
-    _event_manager: EventManager
+    events: EventManager
     """Manages event listeners."""
     rp_db: RePraxisDatabase
     """Database that holds some easily-queryable data."""
+    sql_engine: sqlalchemy.Engine
+    """A reference to the SQL database engine."""
+    session: sessionmaker[Session]
+    """SQL database session factory."""
 
-    def __init__(self) -> None:
-        self._resource_manager = ResourceManager(self)
-        self._system_manager = SystemManager(self)
-        self._event_manager = EventManager(self)
-        self._gameobject_manager = GameObjectManager(self)
+    def __init__(self, db_path: str = ":memory:") -> None:
+        self.resources = ResourceManager(self)
+        self.systems = SystemManager(self)
+        self.events = EventManager(self)
+        self.gameobjects = GameObjectManager(self)
         self.rp_db = RePraxisDatabase()
+        self.sql_engine = sqlalchemy.create_engine(
+            f"sqlite+pysqlite:///{db_path}", echo=False
+        )
+        self.session = sessionmaker(
+            self.sql_engine, expire_on_commit=False, autoflush=True
+        )
+
+    def register_component(self, component_type: Type[Component]) -> None:
+        """Register a component type with the ECS."""
+
+        # This function intentionally does nothing. Currently, its only purpose is to
+        # ensure that all component types that depend on sqlalchemy orm data have their
+        # associated orm mapped classes loaded into memory before initializing the
+        # database tables
+        del component_type
+
+    def initialize_sql_database(self) -> None:
+        """Initialize SQL database tables."""
+
+        GameData.registry.configure()
+        GameData.metadata.create_all(self.sql_engine)
 
     @property
     def system_manager(self) -> SystemManager:
         """Get the world's system manager."""
-        return self._system_manager
+        return self.systems
 
     @property
     def gameobject_manager(self) -> GameObjectManager:
         """Get the world's gameobject manager"""
-        return self._gameobject_manager
+        return self.gameobjects
 
     @property
     def resource_manager(self) -> ResourceManager:
         """Get the world's resource manager"""
-        return self._resource_manager
+        return self.resources
 
     @property
     def event_manager(self) -> EventManager:
         """Get the world's event manager."""
-        return self._event_manager
+        return self.events
 
     def get_component(self, component_type: Type[_CT]) -> list[tuple[int, _CT]]:
         """Get all the GameObjects that have a given component type.
@@ -1409,7 +1441,7 @@ class World:
             A list of tuples containing the ID of a GameObject and its respective
             component instance.
         """
-        return self._gameobject_manager.component_manager.get_component(  # type: ignore
+        return self.gameobjects.component_manager.get_component(  # type: ignore
             component_type
         )
 
@@ -1531,9 +1563,7 @@ class World:
             list of tuples containing a GameObject ID and an additional tuple with
             the instances of the given component types, in-order.
         """
-        ret = self._gameobject_manager.component_manager.get_components(
-            *component_types
-        )
+        ret = self.gameobjects.component_manager.get_components(*component_types)
 
         # We have to ignore the type because of esper's lax type hinting for
         # world.get_components()
@@ -1541,5 +1571,5 @@ class World:
 
     def step(self) -> None:
         """Advance the simulation as single tick and call all the systems."""
-        self._gameobject_manager.clear_dead_gameobjects()
-        self._system_manager.update_systems()
+        self.gameobjects.clear_dead_gameobjects()
+        self.systems.update_systems()

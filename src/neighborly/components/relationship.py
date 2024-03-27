@@ -32,10 +32,11 @@ class Relationship(Component):
 
     def __init__(
         self,
+        gameobject: GameObject,
         owner: GameObject,
         target: GameObject,
     ) -> None:
-        super().__init__()
+        super().__init__(gameobject)
         self._owner = owner
         self._target = target
         self.active_rules = []
@@ -95,8 +96,11 @@ class Relationships(Component):
     _outgoing: dict[GameObject, GameObject]
     """Relationship targets mapped to the Relationship GameObjects."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+    ) -> None:
+        super().__init__(gameobject)
         self._incoming = {}
         self._outgoing = {}
 
@@ -296,8 +300,8 @@ class SocialRules(Component):
     _rules: defaultdict[str, int]
     """Rules IDs mapped to reference counts."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, gameobject: GameObject) -> None:
+        super().__init__(gameobject)
         self._rules = defaultdict(lambda: 0)
 
     @property

@@ -104,6 +104,14 @@ class LateUpdateSystems(SystemGroup):
     """The late phase of the update loop."""
 
 
+class DataCollectionSystems(SystemGroup):
+    """System group for collecting data.
+
+    Any system that collects data during the course of the simulation should
+    belong to this group.
+    """
+
+
 class InitializeSettlementSystem(System):
     """Creates one or more settlement instances using simulation config settings."""
 
@@ -352,7 +360,7 @@ class SpawnNewBusinessesSystem(System):
                 district.gameobject.add_child(business)
                 spawn_table.increment_count(business_id)
 
-                business.add_component(PendingOpening())
+                business.add_component(PendingOpening(business))
 
 
 class InstantiateTraitsSystem(System):

@@ -11,7 +11,7 @@ from typing import Any, TypedDict
 
 import polars as pl
 
-from neighborly.ecs import Component
+from neighborly.ecs import Component, GameObject
 
 
 class CharacterSpawnTableEntry(TypedDict):
@@ -31,14 +31,16 @@ class CharacterSpawnTable(Component):
     _table: pl.DataFrame
     """Column names mapped to column data."""
 
-    def __init__(self, entries: list[CharacterSpawnTableEntry]) -> None:
+    def __init__(
+        self, gameobject: GameObject, entries: list[CharacterSpawnTableEntry]
+    ) -> None:
         """
         Parameters
         ----------
         entries
             Starting entries.
         """
-        super().__init__()
+        super().__init__(gameobject)
         # The following line is type ignored since pl.from_dicts(...) expects a
         # sequence of dict[str, Any]. Typed dict is not a subclass of that type since
         # it does not use arbitrary keys. The Polars maintainers should update the
@@ -82,14 +84,16 @@ class BusinessSpawnTable(Component):
     _table: pl.DataFrame
     """Table data with entries."""
 
-    def __init__(self, entries: list[BusinessSpawnTableEntry]) -> None:
+    def __init__(
+        self, gameobject: GameObject, entries: list[BusinessSpawnTableEntry]
+    ) -> None:
         """
         Parameters
         ----------
         entries
             Starting entries.
         """
-        super().__init__()
+        super().__init__(gameobject)
         # See comment in CharacterSpawnTable.__init__ for why this is type ignored
         self._table = pl.from_dicts(
             entries,  # type: ignore
@@ -167,14 +171,16 @@ class ResidenceSpawnTable(Component):
     _table: pl.DataFrame
     """Column names mapped to column data."""
 
-    def __init__(self, entries: list[ResidenceSpawnTableEntry]) -> None:
+    def __init__(
+        self, gameobject: GameObject, entries: list[ResidenceSpawnTableEntry]
+    ) -> None:
         """
         Parameters
         ----------
         entries
             Starting entries.
         """
-        super().__init__()
+        super().__init__(gameobject)
         # See comment in CharacterSpawnTable.__init__ for why this is type ignored.
         self._table = pl.from_dicts(
             entries,  # type: ignore

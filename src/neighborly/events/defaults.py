@@ -269,7 +269,7 @@ class ChangeResidenceEvent(LifeEvent):
             former_district.population -= 1
 
             if len(former_residence_comp) <= 0:
-                former_residence.add_component(Vacant())
+                former_residence.add_component(Vacant(former_residence))
 
         # Don't add them to a new residence if none is given
         if new_residence is None:
@@ -281,7 +281,7 @@ class ChangeResidenceEvent(LifeEvent):
         if self.data["is_owner"]:
             new_residence.get_component(ResidentialUnit).add_owner(character)
 
-        character.add_component(Resident(residence=new_residence))
+        character.add_component(Resident(character, residence=new_residence))
 
         if new_residence.has_component(Vacant):
             new_residence.remove_component(Vacant)
@@ -428,11 +428,11 @@ class LeaveJob(LifeEvent):
                 remove_trait(get_relationship(subject, employee), "employee")
                 remove_trait(get_relationship(employee, subject), "boss")
 
-            subject.add_component(Unemployed(timestamp=current_date))
+            subject.add_component(Unemployed(subject, timestamp=current_date))
 
             subject.remove_component(Occupation)
 
-            subject.add_component(Unemployed(timestamp=current_date))
+            subject.add_component(Unemployed(subject, timestamp=current_date))
 
         else:
             business_comp.remove_employee(subject)
@@ -451,7 +451,7 @@ class LeaveJob(LifeEvent):
                 remove_trait(get_relationship(subject, other_employee), "coworker")
                 remove_trait(get_relationship(other_employee, subject), "coworker")
 
-        subject.add_component(Unemployed(timestamp=current_date))
+        subject.add_component(Unemployed(subject, timestamp=current_date))
         subject.remove_component(Occupation)
 
     def __str__(self) -> str:
@@ -583,7 +583,7 @@ class LaidOffFromJob(LifeEvent):
             remove_trait(get_relationship(employee, other_employee), "coworker")
             remove_trait(get_relationship(other_employee, employee), "coworker")
 
-        employee.add_component(Unemployed(timestamp=current_date))
+        employee.add_component(Unemployed(employee, timestamp=current_date))
         employee.remove_component(Occupation)
 
     @classmethod
@@ -640,7 +640,7 @@ class BusinessClosedEvent(LifeEvent):
 
         # Update the business as no longer active
         business.remove_component(OpenForBusiness)
-        business.add_component(ClosedForBusiness())
+        business.add_component(ClosedForBusiness(business))
 
         # Remove all the employees
         for employee, role in [*business_comp.employees.items()]:

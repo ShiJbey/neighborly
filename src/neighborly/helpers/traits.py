@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from neighborly.components.relationship import Relationships
 from neighborly.components.stats import StatModifier, StatModifierType
-from neighborly.components.traits import Trait, Traits
+from neighborly.components.traits import Traits
 from neighborly.defs.base_types import TraitDef
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.location import (
@@ -19,7 +19,9 @@ from neighborly.helpers.stats import get_stat
 from neighborly.libraries import TraitLibrary
 
 
-def add_trait(gameobject: GameObject, trait_id: str) -> bool:
+def add_trait(
+    gameobject: GameObject, trait_id: str, duration: int = -1, description: str = ""
+) -> bool:
     """Add a trait to a GameObject.
 
     Parameters
@@ -28,6 +30,10 @@ def add_trait(gameobject: GameObject, trait_id: str) -> bool:
         The gameobject to add the trait to.
     trait_id
         The ID of the trait.
+    duration
+        How long the trait should last.
+    description
+        Override the default trait description.
 
     Return
     ------
@@ -37,41 +43,47 @@ def add_trait(gameobject: GameObject, trait_id: str) -> bool:
     """
     world = gameobject.world
     library = world.resource_manager.get_resource(TraitLibrary)
-    trait = library.get_trait(trait_id).get_component(Trait)
+    trait_def = library.get_definition(trait_id)
 
-    if gameobject.get_component(Traits).add_trait(trait):
+    traits = gameobject.get_component(Traits)
 
-        trait_def = trait.definition
+    if trait_id in traits.traits:
+        return False
 
-        for entry in trait_def.stat_modifiers:
-            get_stat(gameobject, entry.name).add_modifier(
-                StatModifier(
-                    value=entry.value,
-                    modifier_type=StatModifierType[entry.modifier_type],
-                    source=trait,
-                )
+    if has_conflicting_trait(gameobject, trait_id):
+        return False
+
+    for entry in trait_def.stat_modifiers:
+        get_stat(gameobject, entry.name).add_modifier(
+            StatModifier(
+                value=entry.value,
+                modifier_type=StatModifierType[entry.modifier_type],
+                source=trait_def,
             )
+        )
 
-        for entry in trait_def.skill_modifiers:
-            get_skill(gameobject, entry.name).stat.add_modifier(
-                StatModifier(
-                    value=entry.value,
-                    modifier_type=StatModifierType[entry.modifier_type],
-                    source=trait,
-                )
+    for entry in trait_def.skill_modifiers:
+        get_skill(gameobject, entry.name).stat.add_modifier(
+            StatModifier(
+                value=entry.value,
+                modifier_type=StatModifierType[entry.modifier_type],
+                source=trait_def,
             )
+        )
 
-        for rule_id in trait.definition.social_rules:
-            add_social_rule(gameobject, rule_id)
+    for rule_id in trait_def.social_rules:
+        add_social_rule(gameobject, rule_id)
 
-        for rule_id in trait.definition.location_preferences:
-            add_location_preference(gameobject, rule_id)
+    for rule_id in trait_def.location_preferences:
+        add_location_preference(gameobject, rule_id)
 
-        world.rp_db.insert(f"{gameobject.uid}.traits.{trait_id}")
+    traits.add_trait(
+        trait_id,
+        duration=duration,
+        description=description if description else trait_def.description,
+    )
 
-        return True
-
-    return False
+    return True
 
 
 def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
@@ -89,27 +101,27 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
     bool
         True if the trait was removed successfully, False otherwise.
     """
+    world = gameobject.world
+    library = world.resource_manager.get_resource(TraitLibrary)
     traits = gameobject.get_component(Traits)
 
-    if trait_id in gameobject.get_component(Traits).traits:
+    if trait_id in traits.traits:
 
-        trait = traits.traits[trait_id].trait
+        trait = library.get_definition(trait_id)
 
-        for entry in trait.definition.stat_modifiers:
+        for entry in trait.stat_modifiers:
             get_stat(gameobject, entry.name).remove_modifiers_from_source(trait)
 
-        for entry in trait.definition.skill_modifiers:
+        for entry in trait.skill_modifiers:
             get_skill(gameobject, entry.name).stat.remove_modifiers_from_source(trait)
 
-        for rule_id in trait.definition.social_rules:
+        for rule_id in trait.social_rules:
             remove_social_rule(gameobject, rule_id)
 
-        for rule_id in trait.definition.location_preferences:
+        for rule_id in trait.location_preferences:
             remove_location_preference(gameobject, rule_id)
 
-        del traits.traits[trait_id]
-
-        gameobject.world.rp_db.delete(f"{gameobject.uid}.traits.{trait_id}")
+        traits.remove_trait(trait_id)
 
         return True
 
@@ -132,6 +144,39 @@ def has_trait(gameobject: GameObject, trait_id: str) -> bool:
         True if the trait was removed successfully, False otherwise.
     """
     return trait_id in gameobject.get_component(Traits).traits
+
+
+def has_conflicting_trait(gameobject: GameObject, trait_id: str) -> bool:
+    """Check if a trait conflicts with current traits.
+
+    Parameters
+    ----------
+    trait
+        The trait to check.
+
+    Returns
+    -------
+    bool
+        True if the trait conflicts with any of the current traits or if any current
+        traits conflict with the given trait. False otherwise.
+    """
+    world = gameobject.world
+    library = world.resource_manager.get_resource(TraitLibrary)
+    traits = gameobject.get_component(Traits)
+
+    trait = library.get_definition(trait_id)
+
+    for instance in traits.traits.values():
+
+        instance_trait = library.get_definition(instance.trait_id)
+
+        if instance.trait_id in trait.conflicts_with:
+            return True
+
+        if trait_id in instance_trait.conflicts_with:
+            return True
+
+    return False
 
 
 def register_trait_def(world: World, definition: TraitDef) -> None:

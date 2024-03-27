@@ -13,7 +13,6 @@ import random
 from typing import Optional
 
 from neighborly.config import SimulationConfig
-from neighborly.data_collection import DataCollectionSystems, DataTables
 from neighborly.datetime import SimDate
 from neighborly.defs.defaults import (
     DefaultBusinessDef,
@@ -51,6 +50,7 @@ from neighborly.systems import (
     CompileDistrictDefsSystem,
     CompileResidenceDefsSystem,
     CompileSettlementDefsSystem,
+    DataCollectionSystems,
     DeathSystem,
     EarlyUpdateSystems,
     HealthDecaySystem,
@@ -109,7 +109,6 @@ class Simulation:
         self.world.resource_manager.add_resource(self._config)
         self.world.resource_manager.add_resource(random.Random(self._config.seed))
         self.world.resource_manager.add_resource(SimDate())
-        self.world.resource_manager.add_resource(DataTables())
         self.world.resource_manager.add_resource(CharacterLibrary(DefaultCharacterDef))
         self.world.resource_manager.add_resource(JobRoleLibrary(DefaultJobRoleDef))
         self.world.resource_manager.add_resource(BusinessLibrary(DefaultBusinessDef))
@@ -257,6 +256,8 @@ class Simulation:
 
     def initialize(self) -> None:
         """Run initialization systems only."""
+        self.world.initialize_sql_database()
+
         initialization_system_group = self.world.system_manager.get_system(
             InitializationSystems
         )
@@ -291,9 +292,6 @@ class Simulation:
             },
             "events": self.world.resource_manager.get_resource(
                 GlobalEventHistory
-            ).to_dict(),
-            "data_tables": self.world.resource_manager.get_resource(
-                DataTables
             ).to_dict(),
         }
 

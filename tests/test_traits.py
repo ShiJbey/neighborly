@@ -26,7 +26,7 @@ def test_trait_instantiation() -> None:
 
     trait = library.get_trait("flirtatious")
 
-    assert trait.get_component(Trait).definition.display_name == "Flirtatious"
+    assert trait.get_component(Trait).definition.name == "Flirtatious"
 
 
 def test_add_trait() -> None:
@@ -62,7 +62,7 @@ def test_remove_trait() -> None:
     load_skills(sim, _TEST_DATA_DIR / "skills.json")
 
     # Traits are initialized at the start of the simulation
-    sim.step()
+    sim.initialize()
 
     character = create_character(sim.world, "farmer")
 

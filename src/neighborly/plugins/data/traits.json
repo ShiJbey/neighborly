@@ -1,6 +1,6 @@
 {
   "drinks_too_much": {
-    "display_name": "Drinks too much",
+    "name": "Drinks too much",
     "location_preferences": [
       "likes_bars"
     ],
@@ -10,7 +10,7 @@
     ]
   },
   "skeptical": {
-    "display_name": "Skeptical",
+    "name": "Skeptical",
     "stat_modifiers": [
       {
         "name": "sociability",
@@ -26,7 +26,7 @@
     ]
   },
   "gullible": {
-    "display_name": "Gullible",
+    "name": "Gullible",
     "stat_modifiers": [
       {
         "name": "sociability",
@@ -47,7 +47,7 @@
     ]
   },
   "flirtatious": {
-    "display_name": "Flirtatious",
+    "name": "Flirtatious",
     "spawn_frequency": 1,
     "social_rules": [
       "is_flirtatious"
@@ -57,7 +57,7 @@
     ]
   },
   "loyal": {
-    "display_name": "Loyal",
+    "name": "Loyal",
     "description": "This character is fiercely loyal to their friends and allies.",
     "stat_modifiers": [
       {
@@ -76,7 +76,7 @@
     ]
   },
   "traitorous": {
-    "display_name": "Traitorous",
+    "name": "Traitorous",
     "description": "This character can betray their friends and allies for personal gain.",
     "stat_modifiers": [
       {
@@ -96,7 +96,7 @@
     ]
   },
   "introverted": {
-    "display_name": "Introverted",
+    "name": "Introverted",
     "description": "This character is reserved and prefers solitude.",
     "stat_modifiers": [
       {
@@ -118,7 +118,7 @@
     ]
   },
   "extroverted": {
-    "display_name": "Extroverted",
+    "name": "Extroverted",
     "description": "This character is outgoing and thrives in social settings.",
     "stat_modifiers": [
       {
@@ -140,7 +140,7 @@
     ]
   },
   "compassionate": {
-    "display_name": "Compassionate",
+    "name": "Compassionate",
     "description": "This character cares deeply for the well-being of others.",
     "social_rules": [
       "no_trouble_making_friends"
@@ -156,7 +156,7 @@
     ]
   },
   "callous": {
-    "display_name": "Callous",
+    "name": "Callous",
     "description": "This character is emotionally detached and unsympathetic.",
     "social_rules": [
       "has_trouble_making_friends"
@@ -172,7 +172,7 @@
     ]
   },
   "adventurous": {
-    "display_name": "Adventurous",
+    "name": "Adventurous",
     "description": "This character seeks excitement and enjoys taking risks.",
     "stat_modifiers": [
       {
@@ -194,7 +194,7 @@
     ]
   },
   "cautious": {
-    "display_name": "Cautious",
+    "name": "Cautious",
     "description": "This character is risk-averse and avoids dangerous situations.",
     "stat_modifiers": [
       {
@@ -216,7 +216,7 @@
     ]
   },
   "charismatic": {
-    "display_name": "Charismatic",
+    "name": "Charismatic",
     "description": "This character has a natural charm that draws others to them.",
     "stat_modifiers": [
       {
@@ -238,7 +238,7 @@
     ]
   },
   "awkward": {
-    "display_name": "Awkward",
+    "name": "Awkward",
     "description": "This character struggles with social interactions and comes across as clumsy.",
     "stat_modifiers": [
       {
@@ -260,7 +260,7 @@
     ]
   },
   "ambitious": {
-    "display_name": "Ambitious",
+    "name": "Ambitious",
     "description": "This character is driven by ambition and seeks to achieve great success.",
     "stat_modifiers": [
       {
@@ -279,7 +279,7 @@
     ]
   },
   "lazy": {
-    "display_name": "Lazy",
+    "name": "Lazy",
     "description": "This character tends to avoid hard work and prefers a leisurely lifestyle.",
     "stat_modifiers": [
       {
@@ -298,7 +298,7 @@
     ]
   },
   "hot-headed": {
-    "display_name": "Hot-Headed",
+    "name": "Hot-Headed",
     "description": "This character has a short temper and is quick to anger.",
     "stat_modifiers": [
       {
@@ -317,7 +317,7 @@
     ]
   },
   "calm": {
-    "display_name": "Calm",
+    "name": "Calm",
     "description": "This character remains composed and rarely loses their temper.",
     "stat_modifiers": [
       {
@@ -336,7 +336,7 @@
     ]
   },
   "intelligent": {
-    "display_name": "Intelligent",
+    "name": "Intelligent",
     "description": "This character possesses a high level of intelligence and problem-solving abilities.",
     "stat_modifiers": [
       {
@@ -352,7 +352,7 @@
     ]
   },
   "simpleminded": {
-    "display_name": "Simple-Minded",
+    "name": "Simple-Minded",
     "description": "This character lacks intellectual depth and struggles with complex tasks.",
     "stat_modifiers": [
       {
@@ -368,7 +368,7 @@
     ]
   },
   "charitable": {
-    "display_name": "Charitable",
+    "name": "Charitable",
     "description": "This character is generous and often helps others in need.",
     "stat_modifiers": [
       {
@@ -384,7 +384,7 @@
     ]
   },
   "selfish": {
-    "display_name": "Selfish",
+    "name": "Selfish",
     "description": "This character prioritizes their own needs and desires over others.",
     "stat_modifiers": [
       {
@@ -400,7 +400,7 @@
     ]
   },
   "optimistic": {
-    "display_name": "Optimistic",
+    "name": "Optimistic",
     "description": "This character maintains a positive outlook and believes in a bright future.",
     "stat_modifiers": [
       {
@@ -419,7 +419,7 @@
     ]
   },
   "pessimistic": {
-    "display_name": "Pessimistic",
+    "name": "Pessimistic",
     "description": "This character often anticipates negative outcomes and struggles with optimism.",
     "stat_modifiers": [
       {
@@ -438,7 +438,7 @@
     ]
   },
   "energetic": {
-    "display_name": "Energetic",
+    "name": "Energetic",
     "description": "This character is full of energy and enthusiasm for various activities.",
     "stat_modifiers": [
       {
@@ -457,7 +457,7 @@
     ]
   },
   "lethargic": {
-    "display_name": "Lethargic",
+    "name": "Lethargic",
     "description": "This character lacks energy and often feels tired or unenthusiastic.",
     "stat_modifiers": [
       {
@@ -476,7 +476,7 @@
     ]
   },
   "confident": {
-    "display_name": "Confident",
+    "name": "Confident",
     "description": "This character is self-assured and has a strong belief in their abilities.",
     "stat_modifiers": [
       {
@@ -492,7 +492,7 @@
     ]
   },
   "insecure": {
-    "display_name": "Insecure",
+    "name": "Insecure",
     "description": "This character struggles with self-doubt and often feels unattractive or inadequate.",
     "stat_modifiers": [
       {
@@ -508,7 +508,7 @@
     ]
   },
   "betraying": {
-    "display_name": "Betraying",
+    "name": "Betraying",
     "description": "This character is prone to betrayal and can turn on friends and allies.",
     "social_rules": [
       "not_trustworthy"
@@ -521,7 +521,7 @@
     ]
   },
   "genius": {
-    "display_name": "Genius",
+    "name": "Genius",
     "description": "This character possesses exceptional intelligence and problem-solving abilities.",
     "stat_modifiers": [
       {
@@ -540,7 +540,7 @@
     ]
   },
   "friendly": {
-    "display_name": "Friendly",
+    "name": "Friendly",
     "description": "This character is amiable and easily forms positive relationships with others.",
     "social_rules": [
       "makes_friends_easily"
@@ -553,7 +553,7 @@
     ]
   },
   "lustful": {
-    "display_name": "Lustful",
+    "name": "Lustful",
     "description": "This character has strong sexual desires and is often drawn to romantic encounters.",
     "stat_modifiers": [
       {
@@ -572,7 +572,7 @@
     ]
   },
   "immortal": {
-    "display_name": "Immortal",
+    "name": "Immortal",
     "description": "This character is immune to death and the passage of time.",
     "stat_modifiers": [
       {
@@ -585,7 +585,7 @@
     "inheritance_chance_both": 0.9
   },
   "attracted_to_men": {
-    "display_name": "Attracted to Men",
+    "name": "Attracted to Men",
     "description": "This character experiences romantic attraction primarily to men.",
     "social_rules": [
       "attracted_to_men"
@@ -599,7 +599,7 @@
     ]
   },
   "attracted_to_women": {
-    "display_name": "Attracted to Women",
+    "name": "Attracted to Women",
     "description": "This character experiences romantic attraction primarily to women.",
     "social_rules": [
       "attracted_to_women"
@@ -613,7 +613,7 @@
     ]
   },
   "boss": {
-    "display_name": "Boss",
+    "name": "Boss",
     "description": "The target of this relationship is the their work boss.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -624,7 +624,7 @@
     ]
   },
   "employee": {
-    "display_name": "Employee",
+    "name": "Employee",
     "description": "The target of this relationship is an employee.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -635,7 +635,7 @@
     ]
   },
   "coworker": {
-    "display_name": "Coworker",
+    "name": "Coworker",
     "description": "The target of this relationship is a coworker.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -646,22 +646,22 @@
     ]
   },
   "departed": {
-    "display_name": "Departed",
+    "name": "Departed",
     "description": "The character has departed the simulation.",
     "spawn_frequency": 0
   },
   "deceased": {
-    "display_name": "Deceased",
+    "name": "Deceased",
     "description": "The character is deceased.",
     "spawn_frequency": 0
   },
   "retired": {
-    "display_name": "Retired",
+    "name": "Retired",
     "description": "The character has retired from working.",
     "spawn_frequency": 0
   },
   "family": {
-    "display_name": "Family",
+    "name": "Family",
     "description": "These characters are related",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -676,7 +676,7 @@
     ]
   },
   "parent": {
-    "display_name": "Parent",
+    "name": "Parent",
     "description": "The target of this relationship is the owner's parent",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -699,7 +699,7 @@
     ]
   },
   "child": {
-    "display_name": "Child",
+    "name": "Child",
     "description": "The target of this relationship is a child of the owner.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -718,7 +718,7 @@
     ]
   },
   "sibling": {
-    "display_name": "Sibling",
+    "name": "Sibling",
     "description": "The target of this relationship is a sibling of the owner.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -733,7 +733,7 @@
     ]
   },
   "spouse": {
-    "display_name": "Spouse",
+    "name": "Spouse",
     "description": "The target of this relationship is a spouse of the owner.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -756,7 +756,7 @@
     ]
   },
   "dating": {
-    "display_name": "Dating",
+    "name": "Dating",
     "description": "The relationship target and owner are dating.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -779,12 +779,12 @@
     ]
   },
   "serves_alcohol": {
-    "display_name": "Serves Alcohol",
+    "name": "Serves Alcohol",
     "description": "This establishment serves alcohol.",
     "spawn_frequency": 0
   },
   "ex_spouse": {
-    "display_name": "Ex-Spouse",
+    "name": "Ex-Spouse",
     "description": "These characters were formerly married",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -799,7 +799,7 @@
     ]
   },
   "ex_partner": {
-    "display_name": "Ex-Partner",
+    "name": "Ex-Partner",
     "description": "These character used to date.",
     "spawn_frequency": 0,
     "stat_modifiers": [
@@ -815,7 +815,7 @@
   },
   "human": {
     "definition_type": "DefaultSpeciesDef",
-    "display_name": "Human",
+    "name": "Human",
     "description": "A plain ol' human being.",
     "adolescent_age": 13,
     "young_adult_age": 20,
@@ -826,47 +826,47 @@
     "spawn_frequency": 0
   },
   "crush": {
-    "display_name": "Crush",
+    "name": "Crush",
     "description": "The owner of this relationship has a crush on the target.",
     "spawn_frequency": 0
   },
   "live_together": {
-    "display_name": "Live Together",
+    "name": "Live Together",
     "description": "The owner of this relationship lives with the target.",
     "spawn_frequency": 0
   },
   "friend": {
-    "display_name": "Friend",
+    "name": "Friend",
     "description": "The owner of this relationship is friends with target.",
     "spawn_frequency": 0
   },
   "enemy": {
-    "display_name": "Enemy",
+    "name": "Enemy",
     "description": "The owner of this relationship is enemies with target.",
     "spawn_frequency": 0
   },
   "widow": {
-    "display_name": "Widow",
+    "name": "Widow",
     "description": "The target of the relationship is the widow of the owner.",
     "spawn_frequency": 0
   },
   "step_parent": {
-    "display_name": "Step Parent",
+    "name": "Step Parent",
     "description": "Target is the step parent of the owner.",
     "spawn_frequency": 0
   },
   "step_child": {
-    "display_name": "Step Child",
+    "name": "Step Child",
     "description": "Target is the step child of the owner.",
     "spawn_frequency": 0
   },
   "step_sibling": {
-    "display_name": "Step Sibling",
+    "name": "Step Sibling",
     "description": "Target is the step sibling of the owner.",
     "spawn_frequency": 0
   },
   "biological_parent": {
-    "display_name": "Biological Parent",
+    "name": "Biological Parent",
     "description": "Target is the biological parent of the owner.",
     "spawn_frequency": 0
   }

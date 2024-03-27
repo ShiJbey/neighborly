@@ -37,14 +37,11 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     if has_relationship(owner, target):
         return get_relationship(owner, target)
 
-    relationship = owner.world.gameobject_manager.spawn_gameobject(
-        components=[
-            Relationship(owner=owner, target=target),
-            Stats(),
-            SocialRules(),
-            Traits(),
-        ],
-    )
+    relationship = owner.world.gameobject_manager.spawn_gameobject()
+
+    relationship.add_component(Relationship(relationship, owner=owner, target=target))
+    relationship.add_component(Stats(relationship))
+    relationship.add_component(Traits(relationship))
 
     add_stat(relationship, "reputation", Stat(base_value=0, bounds=(-100, 100)))
     add_stat(relationship, "romance", Stat(base_value=0, bounds=(-100, 100)))

@@ -18,7 +18,7 @@ from typing import Any, Iterator, Optional
 
 import attrs
 
-from neighborly.ecs import Component
+from neighborly.ecs import Component, GameObject
 
 
 class Stat:
@@ -274,8 +274,11 @@ class Stats(Component):
     _stats: dict[str, Stat]
     """Map of Stat IDs to Stat instances."""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        gameobject: GameObject,
+    ) -> None:
+        super().__init__(gameobject)
         self._stats = {}
 
     def add_stat(self, stat_id: str, stat: Stat) -> None:

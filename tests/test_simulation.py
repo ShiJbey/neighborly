@@ -79,6 +79,8 @@ def test_simulation_to_json() -> None:
     default_character_names.load_plugin(sim)
     default_settlement_names.load_plugin(sim)
 
+    sim.initialize()
+
     # Run the simulation for one year (12 months) of simulated time
     for _ in range(12):
         sim.step()

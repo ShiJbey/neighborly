@@ -8,16 +8,25 @@ between minor-version updates.
 
 ## [3.0.0] - Unreleased
 
+Neighborly version 3.0 focuses on agent-based modeling, data analysis, and data querying. It boasts a new action system and two database instances (RePraxis and SQL) that help users easily query data for analysis or simulation mechanics. It also consolidates many of the public APIs to shorten code lines. To support this, 3.0 introduces breaking changes to the ECS, content definitions, social rules, location preferences, the life event system, and a few others.
+
 ### Changed
 
 - Convert Skills and Traits to an instance-style model
 - Refactor social rules and location preferences to be independent from traits
 - Move social rule and location preference calculation functions to helper modules
+- Component constructors can no longer be called directly as we need to inject the gameobject directly into the `__init__()`.
+
+### Added
+
+- Added SQLAlchemy back-end to replace the manual table construction in the `data_analysis` module
 
 ### Removed
 
 - Remove Precondition API in favor of RePraxis queries
-- Removed data duplication in Trait, JobRole, and Species classes
+- Remove data duplication in Trait, JobRole, and Species classes
+- Remove polars sql context building code from `data_analysis` module
+- Remove `data_collection` module. Users can leverage new SQL database.
 
 ## [2.5.0] - 2024-03-24
 
@@ -381,6 +390,7 @@ Below is a non-exhaustive list of changes.
 
 _Initial Release._
 
+[3.0.0]: https://github.com/ShiJbey/neighborly/releases/tag/v3.0.0
 [2.5.0]: https://github.com/ShiJbey/neighborly/releases/tag/v2.5.0
 [2.4.1]: https://github.com/ShiJbey/neighborly/releases/tag/v2.4.1
 [2.1.1]: https://github.com/ShiJbey/neighborly/releases/tag/v2.1.1

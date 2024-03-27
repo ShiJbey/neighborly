@@ -10,10 +10,23 @@ from __future__ import annotations
 from typing import Any, Iterable, Mapping, Optional
 
 from repraxis.query import DBQuery
+from sqlalchemy import delete
+from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.datetime import SimDate
 from neighborly.defs.base_types import JobRoleDef
-from neighborly.ecs import Component, GameObject, TagComponent
+from neighborly.ecs import Component, GameData, GameObject, TagComponent
+
+
+class OccupationData(GameData):
+    """SQL Data for an occupation."""
+
+    __tablename__ = "occupations"
+
+    uid: Mapped[int] = mapped_column(primary_key=True, unique=True)
+    role_id: Mapped[int]
+    business_id: Mapped[int]
+    start_date: Mapped[int]
 
 
 class Occupation(Component):
@@ -29,7 +42,11 @@ class Occupation(Component):
     """The year they started this occupation."""
 
     def __init__(
-        self, job_role: JobRole, business: GameObject, start_date: SimDate
+        self,
+        gameobject: GameObject,
+        job_role: JobRole,
+        business: GameObject,
+        start_date: SimDate,
     ) -> None:
         """
         Parameters
@@ -41,7 +58,7 @@ class Occupation(Component):
         start_date
             The date they started this occupation.
         """
-        super().__init__()
+        super().__init__(gameobject)
         self._job_role = job_role
         self._business = business
         self._start_date = start_date
@@ -62,6 +79,16 @@ class Occupation(Component):
         return self._start_date
 
     def on_add(self) -> None:
+        with self.gameobject.world.session() as session:
+            session.add(
+                OccupationData(
+                    uid=self.gameobject.uid,
+                    role_id=self.job_role.definition_id,
+                    business_id=self.business.uid,
+                    start_date=self.start_date.to_iso_str(),
+                )
+            )
+
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.occupation.job_role!{self.job_role.definition_id}"
         )
@@ -73,6 +100,11 @@ class Occupation(Component):
         )
 
     def on_remove(self) -> None:
+        with self.gameobject.world.session() as session:
+            session.execute(
+                delete(OccupationData).where(OccupationData.uid == self.gameobject.uid)
+            )
+
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.occupation")
 
     def to_dict(self) -> dict[str, Any]:
@@ -123,12 +155,13 @@ class Business(Component):
 
     def __init__(
         self,
+        gameobject: GameObject,
         district: GameObject,
         name: str,
         owner_role: JobRole,
         employee_roles: dict[JobRole, int],
     ) -> None:
-        super().__init__()
+        super().__init__(gameobject)
         self._district = district
         self._name = name
         self._owner_role = owner_role
@@ -292,8 +325,8 @@ class Unemployed(Component):
     _timestamp: SimDate
     """The date the character became unemployed."""
 
-    def __init__(self, timestamp: SimDate) -> None:
-        super().__init__()
+    def __init__(self, gameobject: GameObject, timestamp: SimDate) -> None:
+        super().__init__(gameobject)
         self._timestamp = timestamp
 
     @property
@@ -321,8 +354,8 @@ class JobRole(Component):
     definition: JobRoleDef
     """The definition for this role"""
 
-    def __init__(self, definition: JobRoleDef) -> None:
-        super().__init__()
+    def __init__(self, gameobject: GameObject, definition: JobRoleDef) -> None:
+        super().__init__(gameobject)
         self.definition = definition
 
     @property

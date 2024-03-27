@@ -150,6 +150,7 @@ class StartANewJob(LifeEvent):
 
         character.add_component(
             Occupation(
+                character,
                 business=business,
                 start_date=current_date,
                 job_role=job_role.get_component(JobRole),
@@ -274,7 +275,9 @@ class StartBusiness(LifeEvent):
         current_date = self.world.resource_manager.get_resource(SimDate)
 
         character.add_component(
-            Occupation(business=business, start_date=current_date, job_role=job_role)
+            Occupation(
+                character, business=business, start_date=current_date, job_role=job_role
+            )
         )
 
         add_frequented_location(character, business)
@@ -282,8 +285,8 @@ class StartBusiness(LifeEvent):
         business_comp.set_owner(character)
 
         business.remove_component(PendingOpening)
-        business.add_component(OpenForBusiness())
-        business.add_component(OpenToPublic())
+        business.add_component(OpenForBusiness(business))
+        business.add_component(OpenToPublic(business))
 
         if character.has_component(Unemployed):
             character.remove_component(Unemployed)
@@ -819,7 +822,7 @@ class GetPregnant(LifeEvent):
         due_date = self.world.resource_manager.get_resource(SimDate).copy()
         due_date.increment(months=9)
 
-        subject.add_component(Pregnant(partner=partner, due_date=due_date))
+        subject.add_component(Pregnant(subject, partner=partner, due_date=due_date))
 
     def __str__(self) -> str:
         subject = self.roles["subject"]
@@ -1658,6 +1661,7 @@ class PromotedToBusinessOwner(LifeEvent):
 
         subject.add_component(
             Occupation(
+                subject,
                 business=business,
                 start_date=current_date,
                 job_role=business_data.owner_role,
@@ -1748,6 +1752,7 @@ class JobPromotion(LifeEvent):
         # Add the new occupation
         character.add_component(
             Occupation(
+                character,
                 business=business,
                 start_date=self.world.resource_manager.get_resource(SimDate),
                 job_role=new_role.get_component(JobRole),

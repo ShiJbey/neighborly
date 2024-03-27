@@ -71,7 +71,7 @@ class DefaultSkillDef(SkillDef):
 
     def instantiate(self, world: World) -> GameObject:
         skill = world.gameobject_manager.spawn_gameobject(name=self.display_name)
-        skill.add_component(Skill(definition=self))
+        skill.add_component(Skill(skill, definition=self))
         return skill
 
 
@@ -79,9 +79,9 @@ class DefaultTraitDef(TraitDef):
     """A definition for a trait type."""
 
     def instantiate(self, world: World) -> GameObject:
-        trait = world.gameobject_manager.spawn_gameobject(name=self.display_name)
+        trait = world.gameobject_manager.spawn_gameobject(name=self.name)
 
-        trait.add_component(Trait(definition=self))
+        trait.add_component(Trait(trait, definition=self))
 
         return trait
 
@@ -103,10 +103,10 @@ class DefaultSpeciesDef(SpeciesDef):
     """Does this character go through the various life stages."""
 
     def instantiate(self, world: World) -> GameObject:
-        trait = world.gameobject_manager.spawn_gameobject(name=self.display_name)
+        trait = world.gameobject_manager.spawn_gameobject(name=self.name)
 
-        trait.add_component(Trait(definition=self))
-        trait.add_component(Species(definition=self))
+        trait.add_component(Trait(trait, definition=self))
+        trait.add_component(Species(trait, definition=self))
 
         return trait
 
@@ -143,6 +143,7 @@ class DefaultDistrictDef(DistrictDef):
 
         district.add_component(
             District(
+                gameobject=district,
                 name=name,
                 description=self.description,
                 settlement=settlement,
@@ -196,7 +197,7 @@ class DefaultDistrictDef(DistrictDef):
                     )
                 )
 
-        district.add_component(BusinessSpawnTable(entries=table_entries))
+        district.add_component(BusinessSpawnTable(district, entries=table_entries))
 
     def initialize_character_spawn_table(self, district: GameObject) -> None:
         """Create the character spawn table for the district."""
@@ -237,7 +238,7 @@ class DefaultDistrictDef(DistrictDef):
                     )
                 )
 
-        district.add_component(CharacterSpawnTable(entries=table_entries))
+        district.add_component(CharacterSpawnTable(district, entries=table_entries))
 
     def initialize_residence_spawn_table(self, district: GameObject) -> None:
         """Create the residence spawn table for the district."""
@@ -285,7 +286,7 @@ class DefaultDistrictDef(DistrictDef):
                     )
                 )
 
-        district.add_component(ResidenceSpawnTable(entries=table_entries))
+        district.add_component(ResidenceSpawnTable(district, entries=table_entries))
 
 
 def default_settlement_name_factory(world: World, _: SettlementGenOptions) -> str:
@@ -314,7 +315,7 @@ class DefaultSettlementDef(SettlementDef):
         elif self.name_factory:
             name = self.name_factories[self.name_factory](world, options)
 
-        settlement.add_component(Settlement(name=name))
+        settlement.add_component(Settlement(settlement, name=name))
         self.initialize_districts(settlement)
         return settlement
 
@@ -359,22 +360,25 @@ class DefaultResidenceDef(ResidenceDef):
 
         world = residence.world
 
-        building = residence.add_component(ResidentialBuilding(district=district))
-        residence.add_component(Traits())
-        residence.add_component(Stats())
+        building = residence.add_component(
+            ResidentialBuilding(residence, district=district)
+        )
+        residence.add_component(Traits(residence))
+        residence.add_component(Stats(residence))
 
         residence.name = self.display_name
 
         for _ in range(self.residential_units):
             residential_unit = world.gameobject_manager.spawn_gameobject(
-                components=[Traits()], name="ResidentialUnit"
+                name="ResidentialUnit"
             )
+            residential_unit.add_component(Traits(residential_unit))
             residence.add_child(residential_unit)
             residential_unit.add_component(
-                ResidentialUnit(building=residence, district=district)
+                ResidentialUnit(residential_unit, building=residence, district=district)
             )
             building.add_residential_unit(residential_unit)
-            residential_unit.add_component(Vacant())
+            residential_unit.add_component(Vacant(residential_unit))
 
         return residence
 
@@ -453,20 +457,21 @@ class DefaultCharacterDef(CharacterDef):
 
         character.add_component(
             Character(
+                character,
                 first_name="",
                 last_name="",
                 sex=rng.choice((Sex.MALE, Sex.FEMALE)),
                 species=species,
             )
         )
-        character.add_component(Traits())
-        character.add_component(Skills())
-        character.add_component(Stats())
-        character.add_component(FrequentedLocations())
-        character.add_component(Relationships())
-        character.add_component(LocationPreferences())
-        character.add_component(SocialRules())
-        character.add_component(PersonalEventHistory())
+        character.add_component(Traits(character))
+        character.add_component(Skills(character))
+        character.add_component(Stats(character))
+        character.add_component(FrequentedLocations(character))
+        character.add_component(Relationships(character))
+        character.add_component(LocationPreferences(character))
+        character.add_component(SocialRules(character))
+        character.add_component(PersonalEventHistory(character))
 
         self.initialize_name(character, options)
         self.initialize_character_age(character, options)
@@ -545,9 +550,11 @@ class DefaultCharacterDef(CharacterDef):
         self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Set the traits for a character."""
-        character.add_component(Traits())
+        character.add_component(Traits(character))
         rng = character.world.resource_manager.get_resource(random.Random)
         trait_library = character.world.resource_manager.get_resource(TraitLibrary)
+
+        add_trait(character, self.species)
 
         # Loop through the trait entries in the definition and get by ID or select
         # randomly if using tags
@@ -712,7 +719,7 @@ class DefaultJobRoleDef(JobRoleDef):
     def instantiate(self, world: World) -> GameObject:
         role = world.gameobject_manager.spawn_gameobject(name=self.display_name)
 
-        role.add_component(JobRole(definition=self))
+        role.add_component(JobRole(role, definition=self))
 
         return role
 
@@ -733,6 +740,7 @@ class DefaultBusinessDef(BusinessDef):
 
         business.add_component(
             Business(
+                business,
                 name="",
                 owner_role=job_role_library.get_role(self.owner_role).get_component(
                     JobRole
@@ -745,17 +753,17 @@ class DefaultBusinessDef(BusinessDef):
             )
         )
 
-        business.add_component(Traits())
-        business.add_component(FrequentedBy())
-        business.add_component(PersonalEventHistory())
-        business.add_component(Stats())
-        business.add_component(Relationships())
-        business.add_component(SocialRules())
+        business.add_component(Traits(business))
+        business.add_component(FrequentedBy(business))
+        business.add_component(PersonalEventHistory(business))
+        business.add_component(Stats(business))
+        business.add_component(Relationships(business))
+        business.add_component(SocialRules(business))
 
         self.initialize_name(business, options)
 
         if self.open_to_public:
-            business.add_component(OpenToPublic())
+            business.add_component(OpenToPublic(business))
 
         for trait in self.traits:
             add_trait(business, trait)
