@@ -16,17 +16,24 @@ Neighborly version 3.0 focuses on agent-based modeling, data analysis, and data 
 - Refactor social rules and location preferences to be independent from traits
 - Move social rule and location preference calculation functions to helper modules
 - Component constructors can no longer be called directly as we need to inject the gameobject directly into the `__init__()`.
+- Rename `display_name` attribute for content to `name`.
+- Move version information to top-level `__init__.py` as `__version__` to comply with Python conventions
+- Replace `FrequentedBy` component with `Location` component
+- Convert
 
 ### Added
 
-- Added SQLAlchemy back-end to replace the manual table construction in the `data_analysis` module
+- Add SQLAlchemy back-end to replace the manual table construction in the `data_analysis` module
+- Add `lifespan` option to business definitions
 
 ### Removed
 
-- Remove Precondition API in favor of RePraxis queries
-- Remove data duplication in Trait, JobRole, and Species classes
-- Remove polars sql context building code from `data_analysis` module
-- Remove `data_collection` module. Users can leverage new SQL database.
+- Precondition API in favor of RePraxis queries
+- Data duplication in Trait, JobRole, and Species classes
+- Polars sql context building code from `data_analysis` module
+- `data_collection` module. Users can leverage new SQL database.
+- `OpenToPublic` component
+- `health` and `health_decay` stats in favor of life span system.
 
 ## [2.5.0] - 2024-03-24
 

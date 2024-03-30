@@ -11,14 +11,39 @@ https://www.youtube.com/watch?v=SH25f3cXBVc.
 
 from __future__ import annotations
 
+import dataclasses
 import enum
 import math
 import sys
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator, Optional, cast
 
 import attrs
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component, EventEmitter, GameData, GameObject
+
+
+class StatData(GameData):
+    """Manages SQL queryable data about a stat."""
+
+    __tablename__ = "stats"
+
+    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    name: Mapped[str]
+    """The name of the state"""
+    value: Mapped[float]
+    """The final score of the stat"""
+    base_value: Mapped[float]
+    """The base score for this stat used by modifiers."""
+
+
+@dataclasses.dataclass
+class StatValueChangeEvent:
+    """An even triggered when a stats value changes."""
+
+    value: float
 
 
 class Stat:
@@ -57,6 +82,8 @@ class Stat:
     """The maximum score the overall stat is clamped to."""
     _is_discrete: bool
     """Should the final calculated stat value be converted to an int."""
+    on_value_changed: EventEmitter[StatValueChangeEvent] = EventEmitter()
+    """Emits events when the value of a stat changes."""
 
     def __init__(
         self,
@@ -88,6 +115,7 @@ class Stat:
         """Set the base value of the relationship stat."""
         self._base_value = value
         self._is_dirty = True
+        self.on_value_changed.dispatch(self, StatValueChangeEvent(value=self.value))
 
     @property
     def value(self) -> float:
@@ -209,13 +237,17 @@ class Stat:
         raise ValueError("Cannot calculate normalized value of an unbound stat.")
 
     def __str__(self) -> str:
-        return str(self.value)
+        return (
+            f"Stat(value={self.value!r}, base={self.base_value!r}, "
+            f"max={self._max_value!r}, min={self._min_value!r}, "
+            f"modifiers={self._modifiers!r})"
+        )
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(value={self.value}, base={self.base_value}, "
-            f"max={self._max_value}, min={self._min_value}, "
-            f"modifiers={self._modifiers})"
+            f"Stat(value={self.value!r}, base={self.base_value!r}, "
+            f"max={self._max_value!r}, min={self._min_value!r}, "
+            f"modifiers={self._modifiers!r})"
         )
 
 
@@ -281,7 +313,13 @@ class Stats(Component):
         super().__init__(gameobject)
         self._stats = {}
 
-    def add_stat(self, stat_id: str, stat: Stat) -> None:
+    def add_stat(
+        self,
+        stat_id: str,
+        base_value: float,
+        bounds: Optional[tuple[float, float]] = None,
+        is_discrete: bool = False,
+    ) -> Stat:
         """Add a new stat.
 
         Parameters
@@ -291,7 +329,27 @@ class Stats(Component):
         stat
             A stat instance.
         """
+        stat = Stat(base_value=base_value, bounds=bounds, is_discrete=is_discrete)
+
         self._stats[stat_id] = stat
+
+        stat.on_value_changed.add_listener(self.handle_stat_value_change(stat_id))
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(
+                StatData(
+                    uid=self.gameobject.uid,
+                    name=stat_id,
+                    value=stat.value,
+                    base_value=stat.base_value,
+                )
+            )
+
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.stats.{stat_id}!{stat.value}"
+        )
+
+        return stat
 
     def has_stat(self, stat_id: str) -> bool:
         """Check if a stat exists.
@@ -323,27 +381,31 @@ class Stats(Component):
         """
         return self._stats[stat_id]
 
-    def remove_stat(self, stat_id: str) -> bool:
-        """Remove a stat.
-
-        Parameters
-        ----------
-        stat_id
-            A string ID associated with a stat
-
-        Returns
-        -------
-        bool
-            True if the stat was removed successfully, False otherwise.
-        """
-        if stat_id in self._stats:
-            del self._stats[stat_id]
-            return True
-
-        return False
-
     def __iter__(self) -> Iterator[tuple[str, Stat]]:
         return iter(self._stats.items())
 
     def to_dict(self) -> dict[str, Any]:
         return {stat_id: stat.value for stat_id, stat in self._stats.items()}
+
+    def handle_stat_value_change(self, stat_id: str):
+        """Wraps a listener function for stat value change events."""
+
+        # this is necessary to capture the stat ID in a closure
+        def handler(source: object, event: StatValueChangeEvent) -> None:
+            source = cast(Stat, source)
+
+            with self.gameobject.world.session.begin() as session:
+                session.add(
+                    StatData(
+                        uid=self.gameobject.uid,
+                        name=stat_id,
+                        value=event.value,
+                        base_value=source.base_value,
+                    )
+                )
+
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.stats.{stat_id}!{event.value}"
+            )
+
+        return handler

@@ -61,7 +61,7 @@
     "description": "This character is fiercely loyal to their friends and allies.",
     "stat_modifiers": [
       {
-        "name": "reliability",
+        "name": "discipline",
         "value": 20
       }
     ],
@@ -80,7 +80,7 @@
     "description": "This character can betray their friends and allies for personal gain.",
     "stat_modifiers": [
       {
-        "name": "reliability",
+        "name": "discipline",
         "value": -3
       }
     ],
@@ -176,7 +176,7 @@
     "description": "This character seeks excitement and enjoys taking risks.",
     "stat_modifiers": [
       {
-        "name": "boldness",
+        "name": "courage",
         "value": 25
       }
     ],
@@ -198,7 +198,7 @@
     "description": "This character is risk-averse and avoids dangerous situations.",
     "stat_modifiers": [
       {
-        "name": "boldness",
+        "name": "courage",
         "value": -15
       }
     ],
@@ -220,7 +220,7 @@
     "description": "This character has a natural charm that draws others to them.",
     "stat_modifiers": [
       {
-        "name": "attractiveness",
+        "name": "charm",
         "value": 20
       }
     ],
@@ -242,7 +242,7 @@
     "description": "This character struggles with social interactions and comes across as clumsy.",
     "stat_modifiers": [
       {
-        "name": "attractiveness",
+        "name": "charm",
         "value": -3
       }
     ],
@@ -302,7 +302,7 @@
     "description": "This character has a short temper and is quick to anger.",
     "stat_modifiers": [
       {
-        "name": "boldness",
+        "name": "courage",
         "value": 4
       }
     ],
@@ -321,7 +321,7 @@
     "description": "This character remains composed and rarely loses their temper.",
     "stat_modifiers": [
       {
-        "name": "boldness",
+        "name": "courage",
         "value": -4
       }
     ],
@@ -372,7 +372,7 @@
     "description": "This character is generous and often helps others in need.",
     "stat_modifiers": [
       {
-        "name": "reliability",
+        "name": "discipline",
         "value": 2
       }
     ],
@@ -388,7 +388,7 @@
     "description": "This character prioritizes their own needs and desires over others.",
     "stat_modifiers": [
       {
-        "name": "reliability",
+        "name": "discipline",
         "value": -3
       }
     ],
@@ -480,7 +480,11 @@
     "description": "This character is self-assured and has a strong belief in their abilities.",
     "stat_modifiers": [
       {
-        "name": "attractiveness",
+        "name": "courage",
+        "value": 20
+      },
+      {
+        "name": "charm",
         "value": 20
       }
     ],
@@ -496,7 +500,7 @@
     "description": "This character struggles with self-doubt and often feels unattractive or inadequate.",
     "stat_modifiers": [
       {
-        "name": "attractiveness",
+        "name": "charm",
         "value": -20
       }
     ],
@@ -813,18 +817,6 @@
       }
     ]
   },
-  "human": {
-    "definition_type": "DefaultSpeciesDef",
-    "name": "Human",
-    "description": "A plain ol' human being.",
-    "adolescent_age": 13,
-    "young_adult_age": 20,
-    "adult_age": 30,
-    "senior_age": 65,
-    "lifespan": 80,
-    "can_physically_age": true,
-    "spawn_frequency": 0
-  },
   "crush": {
     "name": "Crush",
     "description": "The owner of this relationship has a crush on the target.",
@@ -868,6 +860,18 @@
   "biological_parent": {
     "name": "Biological Parent",
     "description": "Target is the biological parent of the owner.",
+    "spawn_frequency": 0
+  },
+  "human": {
+    "definition_type": "DefaultSpeciesDef",
+    "name": "Human",
+    "description": "A plain ol' human being.",
+    "adolescent_age": 13,
+    "young_adult_age": 20,
+    "adult_age": 30,
+    "senior_age": 65,
+    "lifespan": "70 - 80",
+    "can_physically_age": true,
     "spawn_frequency": 0
   }
 }

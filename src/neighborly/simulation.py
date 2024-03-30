@@ -44,24 +44,25 @@ from neighborly.libraries import (
 from neighborly.life_event import EventConsiderations, GlobalEventHistory
 from neighborly.systems import (
     AgingSystem,
+    BusinessLifespanSystem,
+    CharacterLifespanSystem,
     ChildBirthSystem,
     CompileBusinessDefsSystem,
     CompileCharacterDefsSystem,
     CompileDistrictDefsSystem,
+    CompileJobRoleDefsSystem,
     CompileResidenceDefsSystem,
     CompileSettlementDefsSystem,
+    CompileSkillDefsSystem,
+    CompileTraitDefsSystem,
     DataCollectionSystems,
-    DeathSystem,
     EarlyUpdateSystems,
-    HealthDecaySystem,
     InitializationSystems,
     InitializeSettlementSystem,
-    InstantiateJobRolesSystem,
-    InstantiateSkillsSystem,
-    InstantiateTraitsSystem,
     JobRoleMonthlyEffectsSystem,
     LateUpdateSystems,
     LifeEventSystem,
+    LifeStageSystem,
     MeetNewPeopleSystem,
     PassiveReputationChange,
     PassiveRomanceChange,
@@ -141,13 +142,13 @@ class Simulation:
 
         # Add content initialization systems
         self.world.system_manager.add_system(
-            system=InstantiateTraitsSystem(), system_group=InitializationSystems
+            system=CompileTraitDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
-            system=InstantiateJobRolesSystem(), system_group=InitializationSystems
+            system=CompileJobRoleDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
-            system=InstantiateSkillsSystem(), system_group=InitializationSystems
+            system=CompileSkillDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
             system=CompileDistrictDefsSystem(), system_group=InitializationSystems
@@ -185,7 +186,7 @@ class Simulation:
             system=AgingSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
-            system=HealthDecaySystem(), system_group=UpdateSystems
+            system=LifeStageSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
             system=ChildBirthSystem(), system_group=UpdateSystems
@@ -206,7 +207,10 @@ class Simulation:
             system=JobRoleMonthlyEffectsSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
-            system=DeathSystem(), system_group=UpdateSystems
+            system=CharacterLifespanSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=BusinessLifespanSystem(), system_group=UpdateSystems
         )
 
     def _init_effects(self) -> None:

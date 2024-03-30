@@ -7,29 +7,34 @@ the simulation.
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any
 
-import polars as pl
+from sqlalchemy import ForeignKey, select
+from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component, GameData, GameObject
 
 
-class CharacterSpawnTableEntry(TypedDict):
+class CharacterSpawnTableEntry(GameData):
     """Data for a single row in a CharacterSpawnTable."""
 
-    name: str
+    __tablename__ = "character_spawn_table"
+
+    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    name: Mapped[str]
     """The name of an entry."""
-    spawn_frequency: int
+    spawn_frequency: Mapped[int]
     """The relative frequency that this entry should spawn relative to others."""
 
 
 class CharacterSpawnTable(Component):
     """Manages the frequency that character defs are spawned."""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
-    """Column names mapped to column data."""
+    table: dict[str, CharacterSpawnTableEntry]
+    """Spawn table data."""
 
     def __init__(
         self, gameobject: GameObject, entries: list[CharacterSpawnTableEntry]
@@ -41,47 +46,46 @@ class CharacterSpawnTable(Component):
             Starting entries.
         """
         super().__init__(gameobject)
-        # The following line is type ignored since pl.from_dicts(...) expects a
-        # sequence of dict[str, Any]. Typed dict is not a subclass of that type since
-        # it does not use arbitrary keys. The Polars maintainers should update the
-        # type hints for Mapping[str, Any] to allow TypeDict usage.
-        self._table = pl.from_dicts(
-            entries, schema=[("name", str), ("spawn_frequency", int)]  # type: ignore
-        )
+        self.table = {}
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
+        with gameobject.world.session.begin() as session:
+            for entry in entries:
+                entry.uid = gameobject.uid
+                self.table[entry.name] = entry
+                session.add(entry)
 
     def __len__(self) -> int:
-        return len(self._table)
+        return len(self.table)
 
     def to_dict(self) -> dict[str, Any]:
         return {}
 
 
-class BusinessSpawnTableEntry(TypedDict):
+class BusinessSpawnTableEntry(GameData):
     """A single row of data from a BusinessSpawnTable."""
 
-    name: str
+    __tablename__ = "business_spawn_table"
+
+    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    name: Mapped[str]
     """The name of an entry."""
-    spawn_frequency: int
+    spawn_frequency: Mapped[int]
     """The relative frequency that this entry should spawn relative to others."""
-    max_instances: int
+    max_instances: Mapped[int]
     """Max number of instances of the business that may exist."""
-    min_population: int
+    min_population: Mapped[int]
     """The minimum settlement population required to spawn."""
-    instances: int
+    instances: Mapped[int]
     """The current number of active instances."""
 
 
 class BusinessSpawnTable(Component):
     """Manages the frequency that business types are spawned"""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
+    table: dict[str, BusinessSpawnTableEntry]
     """Table data with entries."""
 
     def __init__(
@@ -94,22 +98,13 @@ class BusinessSpawnTable(Component):
             Starting entries.
         """
         super().__init__(gameobject)
-        # See comment in CharacterSpawnTable.__init__ for why this is type ignored
-        self._table = pl.from_dicts(
-            entries,  # type: ignore
-            schema=[
-                ("name", str),
-                ("spawn_frequency", int),
-                ("max_instances", int),
-                ("min_population", int),
-                ("instances", int),
-            ],
-        )
+        self.table = {}
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
+        with gameobject.world.session.begin() as session:
+            for entry in entries:
+                entry.uid = gameobject.uid
+                self.table[entry.name] = entry
+                session.add(entry)
 
     def increment_count(self, name: str) -> None:
         """Increment the instance count for an entry.
@@ -119,11 +114,16 @@ class BusinessSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") + 1)
-            .otherwise(pl.col("instances"))
-        )
+        with self.gameobject.world.session.begin() as session:
+            entry = session.scalar(
+                select(BusinessSpawnTableEntry)
+                .where(BusinessSpawnTableEntry.uid == self.gameobject.uid)
+                .where(BusinessSpawnTableEntry.name == name)
+            )
+
+            if entry:
+                entry.instances += 1
+                session.add(entry)
 
     def decrement_count(self, name: str) -> None:
         """Increment the instance count for an entry.
@@ -133,42 +133,51 @@ class BusinessSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") - 1)
-            .otherwise(pl.col("instances"))
-        )
+        with self.gameobject.world.session.begin() as session:
+            entry = session.scalar(
+                select(BusinessSpawnTableEntry)
+                .where(BusinessSpawnTableEntry.uid == self.gameobject.uid)
+                .where(BusinessSpawnTableEntry.name == name)
+            )
+
+            if entry:
+                entry.instances -= 1
+                session.add(entry)
 
     def to_dict(self) -> dict[str, Any]:
         return {}
 
     def __len__(self) -> int:
-        return len(self._table)
+        return len(self.table)
 
 
-class ResidenceSpawnTableEntry(TypedDict):
+class ResidenceSpawnTableEntry(GameData):
     """Data for a single row in a ResidenceSpawnTable."""
 
-    name: str
+    __tablename__ = "residence_spawn_table"
+
+    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    name: Mapped[str]
     """The name of an entry."""
-    spawn_frequency: int
+    spawn_frequency: Mapped[int]
     """The relative frequency that this entry should spawn relative to others."""
-    required_population: int
+    required_population: Mapped[int]
     """The number of people that need to live in the district."""
-    is_multifamily: bool
+    is_multifamily: Mapped[bool]
     """Is this a multifamily residential building."""
-    instances: int
+    instances: Mapped[int]
     """The number of instances of this residence type"""
-    max_instances: int
+    max_instances: Mapped[int]
     """Max number of instances of the business that may exist."""
 
 
 class ResidenceSpawnTable(Component):
     """Manages the frequency that residence types are spawned"""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
+    table: dict[str, ResidenceSpawnTableEntry]
     """Column names mapped to column data."""
 
     def __init__(
@@ -181,23 +190,13 @@ class ResidenceSpawnTable(Component):
             Starting entries.
         """
         super().__init__(gameobject)
-        # See comment in CharacterSpawnTable.__init__ for why this is type ignored.
-        self._table = pl.from_dicts(
-            entries,  # type: ignore
-            schema=[
-                ("name", str),
-                ("spawn_frequency", int),
-                ("required_population", int),
-                ("is_multifamily", bool),
-                ("instances", int),
-                ("max_instances", int),
-            ],
-        )
+        self.table = {}
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
+        with gameobject.world.session.begin() as session:
+            for entry in entries:
+                entry.uid = gameobject.uid
+                self.table[entry.name] = entry
+                session.add(entry)
 
     def increment_count(self, name: str) -> None:
         """Increment the instance count for an entry.
@@ -207,11 +206,16 @@ class ResidenceSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") + 1)
-            .otherwise(pl.col("instances"))
-        )
+        with self.gameobject.world.session.begin() as session:
+            entry = session.scalar(
+                select(ResidenceSpawnTableEntry)
+                .where(ResidenceSpawnTableEntry.uid == self.gameobject.uid)
+                .where(ResidenceSpawnTableEntry.name == name)
+            )
+
+            if entry:
+                entry.instances += 1
+                session.add(entry)
 
     def decrement_count(self, name: str) -> None:
         """Increment the instance count for an entry.
@@ -221,14 +225,19 @@ class ResidenceSpawnTable(Component):
         name
             The name of entry to update
         """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") - 1)
-            .otherwise(pl.col("instances"))
-        )
+        with self.gameobject.world.session.begin() as session:
+            entry = session.scalar(
+                select(ResidenceSpawnTableEntry)
+                .where(ResidenceSpawnTableEntry.uid == self.gameobject.uid)
+                .where(ResidenceSpawnTableEntry.name == name)
+            )
+
+            if entry:
+                entry.instances -= 1
+                session.add(entry)
 
     def __len__(self) -> int:
-        return len(self._table)
+        return len(self.table)
 
     def to_dict(self) -> dict[str, Any]:
         return {}

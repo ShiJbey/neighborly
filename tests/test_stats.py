@@ -6,9 +6,8 @@ from __future__ import annotations
 
 import pathlib
 
-from neighborly.components.stats import Stat
 from neighborly.helpers.character import create_character
-from neighborly.helpers.stats import add_stat, get_stat, has_stat, remove_stat
+from neighborly.helpers.stats import add_stat, get_stat, has_stat
 from neighborly.loaders import load_characters, load_skills
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
@@ -29,9 +28,11 @@ def test_has_stat() -> None:
 
     character = create_character(sim.world, "farmer")
 
-    assert has_stat(character, "hunger") is False
+    add_stat(character, "hunger", base_value=0, bounds=(0, 255))
 
-    assert has_stat(character, "health") is True
+    assert has_stat(character, "hunger") is True
+
+    assert has_stat(character, "health") is False
 
 
 def test_get_stat() -> None:
@@ -47,15 +48,17 @@ def test_get_stat() -> None:
 
     character = create_character(sim.world, "farmer")
 
-    health = get_stat(character, "health")
-    health.base_value = 10
+    add_stat(character, "hunger", base_value=0, bounds=(0, 255))
 
-    assert health.base_value == 10
+    hunger = get_stat(character, "hunger")
+    hunger.base_value = 10
 
-    health.base_value += 100
+    assert hunger.base_value == 10
 
-    assert health.base_value == 110
-    assert health.value == 110
+    hunger.base_value += 100
+
+    assert hunger.base_value == 110
+    assert hunger.value == 110
 
 
 def test_add_stat() -> None:
@@ -72,29 +75,6 @@ def test_add_stat() -> None:
 
     character = create_character(sim.world, "farmer")
 
-    hunger = add_stat(character, "hunger", Stat(base_value=100, bounds=(0, 255)))
+    hunger = add_stat(character, "hunger", base_value=100, bounds=(0, 255))
 
     assert hunger.base_value == 100
-
-
-def test_remove_stat() -> None:
-    """Test removing stats."""
-
-    sim = Simulation()
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    default_traits.load_plugin(sim)
-
-    sim.initialize()
-
-    character = create_character(sim.world, "farmer")
-
-    add_stat(character, "hunger", Stat(base_value=0, bounds=(0, 255)))
-
-    assert has_stat(character, "hunger")
-
-    remove_stat(character, "hunger")
-
-    assert has_stat(character, "hunger") is False

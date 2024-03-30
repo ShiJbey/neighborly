@@ -8,41 +8,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.defs.base_types import TraitDef
 from neighborly.ecs import Component, GameData, GameObject
-
-
-class Trait(Component):
-    """Marks a GameObject as being a TraitGameObject."""
-
-    __slots__ = ("definition",)
-
-    definition: TraitDef
-    """This trait's definition."""
-
-    def __init__(
-        self,
-        gameobject: GameObject,
-        definition: TraitDef,
-    ) -> None:
-        super().__init__(gameobject)
-        self.definition = definition
-
-    @property
-    def definition_id(self) -> str:
-        """The definition ID of this trait."""
-        return self.definition.definition_id
-
-    def __str__(self) -> str:
-        return f"Trait(definition={self.definition.definition_id!r})"
-
-    def __repr__(self) -> str:
-        return f"Trait(definition={self.definition.definition_id!r})"
-
-    def to_dict(self) -> dict[str, Any]:
-        return {}
 
 
 class TraitInstance(GameData):
@@ -51,7 +20,7 @@ class TraitInstance(GameData):
     __tablename__ = "traits"
 
     key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uid: Mapped[int]
+    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     trait_id: Mapped[str]
     description: Mapped[str]
     has_duration: Mapped[bool]
@@ -130,6 +99,28 @@ class Traits(Component):
 
         with self.gameobject.world.session.begin() as session:
             session.delete(instance)
+
+    def tick_traits(self) -> None:
+        """Tick the durations for the trait instances."""
+
+        traits_to_remove: list[str] = []
+
+        with self.gameobject.world.session.begin() as session:
+
+            for trait_instance in self.traits.values():
+                if not trait_instance.has_duration:
+                    continue
+
+                trait_instance.duration -= 1
+
+                if trait_instance.duration <= 0:
+                    session.delete(trait_instance)
+                    traits_to_remove.append(trait_instance.trait_id)
+                else:
+                    session.add(trait_instance)
+
+        for trait_id in traits_to_remove:
+            self.remove_trait(trait_id)
 
     def __str__(self) -> str:
         return f"Traits(traits={list(self.traits.keys())!r})"

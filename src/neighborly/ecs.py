@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 from typing import (
     Any,
     Callable,
+    Generic,
     Iterable,
     Iterator,
     Optional,
@@ -1100,6 +1101,71 @@ class ResourceManager:
             The instance of the resource.
         """
         return self._resources.get(resource_type)
+
+
+_T = TypeVar("_T")
+
+
+class EventEmitter(Generic[_T]):
+    """Emits events that observers can listen for."""
+
+    __slots__ = ("listeners",)
+
+    listeners: list[Callable[[object, _T], None]]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.listeners = []
+
+    def add_listener(
+        self,
+        listener: Callable[[object, _T], None],
+    ) -> None:
+        """Register a listener function to a specific event type.
+
+        Parameters
+        ----------
+        listener
+            A function to be called when the given event type fires.
+        """
+        self.listeners.append(listener)
+
+    def remove_listener(
+        self,
+        listener: Callable[[object, _T], None],
+    ) -> None:
+        """Remove a listener from an event type.
+
+        Parameters
+        ----------
+        listener
+            A listener callback.
+        """
+        self.listeners.remove(listener)
+
+    def remove_all_listeners(self) -> None:
+        """Remove all listeners from an event.
+
+        Parameters
+        ----------
+        event_name
+            The name of the event.
+        """
+        self.listeners.clear()
+
+    def dispatch(self, source: object, event: _T) -> None:
+        """Fire an event and trigger associated event listeners.
+
+        Parameters
+        ----------
+        source
+            The source of the event
+        event
+            The event to fire
+        """
+
+        for callback_fn in self.listeners:
+            callback_fn(source, event)
 
 
 class EventManager:

@@ -46,7 +46,6 @@ dependencies = [
     "esper==2.*",
     "ordered-set==4.*",
     "tracery3==1.*",
-    "polars==0.19.*",
     "tabulate==0.9.*",
     "PyYAML==6.0.*",
     "tqdm==4.*",
@@ -78,7 +77,7 @@ development = [
 "Documentation" = "https://neighborly.readthedocs.io/en/latest/"
 
 [tool.setuptools.dynamic]
-version = { attr = "neighborly.__version__.VERSION" }
+version = { attr = "neighborly.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

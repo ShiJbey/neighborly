@@ -2,9 +2,7 @@
   {
     "rule_id": "attracted_to_men",
     "description": "Attracted to men",
-    "preconditions": [
-      "?target.character.sex!MALE"
-    ],
+    "preconditions": "?target.character.sex!MALE",
     "stat_modifiers": [
       {
         "name": "romance",
@@ -19,9 +17,7 @@
   {
     "rule_id": "attracted_to_women",
     "description": "Attracted to women",
-    "preconditions": [
-      "?target.character.sex!FEMALE"
-    ],
+    "preconditions": "?target.character.sex!FEMALE",
     "stat_modifiers": [
       {
         "name": "romance",
@@ -35,7 +31,6 @@
   },
   {
     "rule_id": "makes_friends_easily",
-    "preconditions": [],
     "stat_modifiers": [
       {
         "name": "reputation",

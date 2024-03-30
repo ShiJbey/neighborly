@@ -90,7 +90,7 @@ class IncreaseSkill(Effect):
     def apply(self, target: GameObject) -> None:
         if not has_skill(target, self.skill_name):
             add_skill(target, self.skill_name)
-        get_skill(target, self.skill_name).stat.base_value += self.amount
+        get_skill(target, self.skill_name).base_value += self.amount
 
     def remove(self, target: GameObject) -> None:
         # Skill increases the skill stat. Cannot be removed.

@@ -1,3 +1,5 @@
+# pylint: disable=C0121
+
 """Built-in Systems.
 
 This module contains built-in systems that help simulations function.
@@ -6,35 +8,34 @@ This module contains built-in systems that help simulations function.
 
 from __future__ import annotations
 
-import logging
 import random
 from collections import defaultdict
 from typing import ClassVar, Optional
 
-import polars as pl
+from sqlalchemy import select
 
-from neighborly.components.business import (
-    Business,
-    Occupation,
-    OpenToPublic,
-    PendingOpening,
-)
-from neighborly.components.character import Character, LifeStage, Pregnant, Species
+from neighborly.components.business import Business, BusinessStatus, Occupation
+from neighborly.components.character import Character, LifeStage, Pregnant
 from neighborly.components.location import (
-    FrequentedBy,
     FrequentedLocations,
+    Location,
     LocationPreferences,
 )
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
+from neighborly.components.shared import Age
 from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
+    BusinessSpawnTableEntry,
     CharacterSpawnTable,
+    CharacterSpawnTableEntry,
     ResidenceSpawnTable,
+    ResidenceSpawnTableEntry,
 )
 from neighborly.components.stats import Stats
+from neighborly.components.traits import Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.base_types import CharacterGenOptions
@@ -46,6 +47,7 @@ from neighborly.events.defaults import (
     BecomeSeniorEvent,
     BecomeYoungAdultEvent,
     BirthEvent,
+    BusinessClosedEvent,
     ChangeResidenceEvent,
     Death,
     HaveChildEvent,
@@ -75,8 +77,6 @@ from neighborly.libraries import (
     TraitLibrary,
 )
 from neighborly.life_event import LifeEvent
-
-_logger = logging.getLogger(__name__)
 
 
 class InitializationSystems(SystemGroup):
@@ -134,9 +134,7 @@ class SpawnResidentialBuildingsSystem(System):
     """Attempt to build new residential buildings in all districts."""
 
     @staticmethod
-    def get_random_single_family_building(
-        district: District, spawn_table: ResidenceSpawnTable
-    ) -> Optional[str]:
+    def get_random_single_family_building(district: District) -> Optional[str]:
         """Attempt to randomly select a single-family building from the spawn table.
 
         Parameters
@@ -151,27 +149,38 @@ class SpawnResidentialBuildingsSystem(System):
         str or None
             The definition ID of a selected residence, or None if no eligible entries.
         """
-        eligible_entries: pl.DataFrame = spawn_table.table.filter(  # type: ignore
-            (pl.col("instances") < pl.col("max_instances"))
-            & (pl.col("required_population") <= district.population)
-            & (pl.col("is_multifamily") == False)  # pylint: disable=C0121
-        )
+        with district.gameobject.world.session.begin() as session:
+            eligible_entries = session.scalars(
+                select(ResidenceSpawnTableEntry)
+                .where(
+                    ResidenceSpawnTableEntry.instances
+                    < ResidenceSpawnTableEntry.max_instances
+                )
+                .where(
+                    ResidenceSpawnTableEntry.required_population <= district.population
+                )
+                .where(ResidenceSpawnTableEntry.uid == district.gameobject.uid)
+                .where(
+                    ResidenceSpawnTableEntry.is_multifamily == False
+                )  # pylint: disable=C0121
+            ).all()
 
         if len(eligible_entries) == 0:
             return None
 
         rng = district.gameobject.world.resource_manager.get_resource(random.Random)
 
+        population = [e.name for e in eligible_entries]
+        weights = [e.spawn_frequency for e in eligible_entries]
+
         return rng.choices(
-            population=eligible_entries["name"].to_list(),
-            weights=eligible_entries["spawn_frequency"].to_list(),
+            population=population,
+            weights=weights,
             k=1,
         )[0]
 
     @staticmethod
-    def get_random_multifamily_building(
-        district: District, spawn_table: ResidenceSpawnTable
-    ) -> Optional[str]:
+    def get_random_multifamily_building(district: District) -> Optional[str]:
         """Attempt to randomly select a multifamily building from the spawn table.
 
         Parameters
@@ -186,20 +195,34 @@ class SpawnResidentialBuildingsSystem(System):
         str or None
             The definition ID of a selected residence, or None if no eligible entries.
         """
-        eligible_entries: pl.DataFrame = spawn_table.table.filter(  # type: ignore
-            (pl.col("instances") < pl.col("max_instances"))
-            & (pl.col("required_population") <= district.population)
-            & (pl.col("is_multifamily") == True)  # pylint: disable=C0121
-        )
+        with district.gameobject.world.session.begin() as session:
+            eligible_entries = session.scalars(
+                select(ResidenceSpawnTableEntry)
+                .where(
+                    ResidenceSpawnTableEntry.instances
+                    < ResidenceSpawnTableEntry.max_instances
+                )
+                .where(
+                    ResidenceSpawnTableEntry.required_population <= district.population
+                )
+                .where(ResidenceSpawnTableEntry.uid == district.gameobject.uid)
+                .where(
+                    ResidenceSpawnTableEntry.is_multifamily
+                    == True  # pylint: disable=C0121
+                )
+            ).all()
 
         if len(eligible_entries) == 0:
             return None
 
         rng = district.gameobject.world.resource_manager.get_resource(random.Random)
 
+        population = [e.name for e in eligible_entries]
+        weights = [e.spawn_frequency for e in eligible_entries]
+
         return rng.choices(
-            population=eligible_entries["name"].to_list(),
-            weights=eligible_entries["spawn_frequency"].to_list(),
+            population=population,
+            weights=weights,
             k=1,
         )[0]
 
@@ -214,7 +237,7 @@ class SpawnResidentialBuildingsSystem(System):
             # Try to build a multifamily residential building
             multifamily_building = (
                 SpawnResidentialBuildingsSystem.get_random_multifamily_building(
-                    district=district, spawn_table=spawn_table
+                    district=district
                 )
             )
 
@@ -232,7 +255,7 @@ class SpawnResidentialBuildingsSystem(System):
             # Try to build a single-family residential building
             single_family_building = (
                 SpawnResidentialBuildingsSystem.get_random_single_family_building(
-                    district=district, spawn_table=spawn_table
+                    district=district
                 )
             )
 
@@ -268,12 +291,21 @@ class SpawnNewResidentSystem(System):
             if rng.random() > SpawnNewResidentSystem.CHANCE_NEW_RESIDENT:
                 continue
 
-            # Weighted random selection on the characters in the table
-            characters = spawn_table.table["name"].to_list()
-            weights = spawn_table.table["spawn_frequency"].to_list()
+            with world.session.begin() as session:
+                eligible_entries = session.scalars(
+                    select(CharacterSpawnTableEntry).where(
+                        CharacterSpawnTableEntry.uid == residence.district.uid
+                    )
+                ).all()
 
-            character_definition_id: str = rng.choices(
-                population=characters, weights=weights, k=1
+            # Weighted random selection on the characters in the table
+            population = [e.name for e in eligible_entries]
+            weights = [e.spawn_frequency for e in eligible_entries]
+
+            character_definition_id = rng.choices(
+                population=population,
+                weights=weights,
+                k=1,
             )[0]
 
             character_life_stage = rng.choices(
@@ -305,9 +337,7 @@ class SpawnNewBusinessesSystem(System):
     """Spawns new businesses for characters to open."""
 
     @staticmethod
-    def get_random_business(
-        district: District, spawn_table: BusinessSpawnTable
-    ) -> Optional[str]:
+    def get_random_business(district: District) -> Optional[str]:
         """Attempt to randomly select a business from the spawn table.
 
         Parameters
@@ -322,19 +352,24 @@ class SpawnNewBusinessesSystem(System):
         str or None
             The definition ID of a selected business, or None if no eligible entries.
         """
-        eligible_entries: pl.DataFrame = spawn_table.table.filter(  # type: ignore
-            (pl.col("instances") < pl.col("max_instances"))
-            & (pl.col("min_population") <= district.population)
-        )
+        with district.gameobject.world.session.begin() as session:
+            eligible_entries = session.scalars(
+                select(BusinessSpawnTableEntry).where(
+                    BusinessSpawnTableEntry.uid == district.gameobject.uid
+                )
+            ).all()
 
         if len(eligible_entries) == 0:
             return None
 
         rng = district.gameobject.world.resource_manager.get_resource(random.Random)
 
+        population = [e.name for e in eligible_entries]
+        weights = [e.spawn_frequency for e in eligible_entries]
+
         return rng.choices(
-            population=eligible_entries["name"].to_list(),
-            weights=eligible_entries["spawn_frequency"].to_list(),
+            population=population,
+            weights=weights,
             k=1,
         )[0]
 
@@ -347,7 +382,7 @@ class SpawnNewBusinessesSystem(System):
                 continue
 
             business_id = SpawnNewBusinessesSystem.get_random_business(
-                district=district, spawn_table=spawn_table
+                district=district
             )
 
             if business_id is not None:
@@ -360,10 +395,8 @@ class SpawnNewBusinessesSystem(System):
                 district.gameobject.add_child(business)
                 spawn_table.increment_count(business_id)
 
-                business.add_component(PendingOpening(business))
 
-
-class InstantiateTraitsSystem(System):
+class CompileTraitDefsSystem(System):
     """Instantiates all the trait definitions within the TraitLibrary."""
 
     def on_update(self, world: World) -> None:
@@ -378,11 +411,9 @@ class InstantiateTraitsSystem(System):
         # Add the new definitions and instances to the library.
         for trait_def in compiled_defs:
             trait_library.add_definition(trait_def)
-            trait = trait_def.instantiate(world)
-            trait_library.add_trait(trait)
 
 
-class InstantiateSkillsSystem(System):
+class CompileSkillDefsSystem(System):
     """Instantiates all the skill definitions within the SkillLibrary."""
 
     def on_update(self, world: World) -> None:
@@ -397,11 +428,9 @@ class InstantiateSkillsSystem(System):
         # Add the new definitions and instances to the library.
         for skill_def in compiled_defs:
             skill_library.add_definition(skill_def)
-            skill = skill_def.instantiate(world)
-            skill_library.add_skill(skill)
 
 
-class InstantiateJobRolesSystem(System):
+class CompileJobRoleDefsSystem(System):
     """Instantiates all the job role definitions within the TraitLibrary."""
 
     def on_update(self, world: World) -> None:
@@ -416,8 +445,6 @@ class InstantiateJobRolesSystem(System):
         # Add the new definitions and instances to the library.
         for role_def in compiled_defs:
             job_role_library.add_definition(role_def)
-            job_role = role_def.instantiate(world)
-            job_role_library.add_role(job_role)
 
 
 class CompileDistrictDefsSystem(System):
@@ -534,9 +561,15 @@ class UpdateFrequentedLocationSystem(System):
         scores: list[float] = []
         locations: list[GameObject] = []
 
-        for _, (business, _, _) in character.world.get_components(
-            (Business, OpenToPublic, Active)
+        for _, (business, location, _) in character.world.get_components(
+            (Business, Location, Active)
         ):
+            if business.status != BusinessStatus.OPEN:
+                continue
+
+            if location.is_private:
+                continue
+
             score = score_location(character, business.gameobject)
             if score >= self.location_score_threshold:
                 scores.append(score)
@@ -585,46 +618,38 @@ class AgingSystem(System):
         # This system runs every simulated month
         elapsed_years: float = 1.0 / MONTHS_PER_YEAR
 
-        for _, (character, _) in world.get_components((Character, Active)):
-            character.age = character.age + elapsed_years
-            species = character.species.get_component(Species)
+        for _, (age, _) in world.get_components((Age, Active)):
+            age.value += elapsed_years
 
-            if species.definition.can_physically_age:
-                if character.age >= species.definition.senior_age:
+
+class LifeStageSystem(System):
+    """Updates the life stage of all characters to reflect their current age."""
+
+    def on_update(self, world: World) -> None:
+
+        for _, (character, age, _) in world.get_components((Character, Age, Active)):
+            species = character.species
+
+            if species.can_physically_age:
+                if age.value >= species.senior_age:
                     if character.life_stage != LifeStage.SENIOR:
                         BecomeSeniorEvent(character.gameobject).dispatch()
 
-                elif character.age >= species.definition.adult_age:
+                elif age.value >= species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
                         BecomeAdultEvent(character.gameobject).dispatch()
 
-                elif character.age >= species.definition.young_adult_age:
+                elif age.value >= species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
                         BecomeYoungAdultEvent(character.gameobject).dispatch()
 
-                elif character.age >= species.definition.adolescent_age:
+                elif age.value >= species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
                         BecomeAdolescentEvent(character.gameobject).dispatch()
 
                 else:
                     if character.life_stage != LifeStage.CHILD:
                         character.life_stage = LifeStage.CHILD
-
-
-class HealthDecaySystem(System):
-    """Decay the health points of characters as they get older."""
-
-    def on_update(self, world: World) -> None:
-        # This system runs every simulated month
-        elapsed_time: float = 1.0 / MONTHS_PER_YEAR
-
-        for _, (
-            _,
-            character,
-        ) in world.get_components((Active, Character)):
-            get_stat(character.gameobject, "health").base_value -= (
-                get_stat(character.gameobject, "health_decay").value * elapsed_time
-            )
 
 
 class PassiveReputationChange(System):
@@ -681,13 +706,26 @@ class PassiveRomanceChange(System):
                 )
 
 
-class DeathSystem(System):
-    """Characters die when their health hits zero."""
+class CharacterLifespanSystem(System):
+    """Kills of characters who have reached their lifespan."""
 
     def on_update(self, world: World) -> None:
-        for _, (_, character) in world.get_components((Active, Character)):
-            if get_stat(character.gameobject, "health").value <= 0:
-                Death(character.gameobject).dispatch()
+        for _, (_, age, _) in world.get_components((Character, Age, Active)):
+            life_span = get_stat(age.gameobject, "lifespan").value
+
+            if age.value >= life_span:
+                Death(age.gameobject).dispatch()
+
+
+class BusinessLifespanSystem(System):
+    """Kills of business that have reached their lifespan."""
+
+    def on_update(self, world: World) -> None:
+        for _, (business, age, _) in world.get_components((Business, Age, Active)):
+            life_span = get_stat(age.gameobject, "lifespan").value
+
+            if age.value >= life_span and business.owner:
+                BusinessClosedEvent(business.owner, business.gameobject)
 
 
 class ChildBirthSystem(System):
@@ -868,7 +906,7 @@ class MeetNewPeopleSystem(System):
                 candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
 
                 for loc in frequented_locs:
-                    for other in loc.get_component(FrequentedBy):
+                    for other in loc.get_component(Location):
                         if other != character.gameobject and not has_relationship(
                             character.gameobject, other
                         ):
@@ -912,8 +950,16 @@ class JobRoleMonthlyEffectsSystem(System):
             (Skills, Stats, Occupation, Active)
         ):
 
-            for skill_boost in occupation.job_role.definition.periodic_skill_boosts:
-                skills.skills[skill_boost.name].stat.base_value += skill_boost.value
+            for skill_boost in occupation.job_role.periodic_skill_boosts:
+                skills.skills[skill_boost.name].base_value += skill_boost.value
 
-            for stat_boost in occupation.job_role.definition.periodic_stat_boosts:
+            for stat_boost in occupation.job_role.periodic_stat_boosts:
                 stats.get_stat(stat_boost.name).base_value += stat_boost.value
+
+
+class TickTraitsSystem(System):
+    """Update trait durations."""
+
+    def on_update(self, world: World) -> None:
+        for _, (traits,) in world.get_components((Traits,)):
+            traits.tick_traits()

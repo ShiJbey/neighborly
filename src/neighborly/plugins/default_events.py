@@ -7,13 +7,12 @@ from __future__ import annotations
 import random
 from typing import Any, Optional
 
+from repraxis.query import DBQuery
+
 from neighborly.components.business import (
     Business,
-    JobRole,
+    BusinessStatus,
     Occupation,
-    OpenForBusiness,
-    OpenToPublic,
-    PendingOpening,
     Unemployed,
 )
 from neighborly.components.character import Character, LifeStage, Pregnant, Sex
@@ -21,6 +20,7 @@ from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.datetime import SimDate
+from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import Active, GameObject
 from neighborly.events.defaults import (
     BusinessClosedEvent,
@@ -37,6 +37,7 @@ from neighborly.helpers.traits import (
     has_trait,
     remove_trait,
 )
+from neighborly.libraries import JobRoleLibrary
 from neighborly.life_event import EventRole, LifeEvent, event_consideration
 from neighborly.loaders import register_life_event_type
 from neighborly.simulation import Simulation
@@ -47,17 +48,22 @@ class StartANewJob(LifeEvent):
 
     base_probability = 0.7
 
+    __slots__ = ("job_role",)
+
+    job_role: JobRoleDef
+    """The job they are starting."""
+
     def __init__(
-        self, subject: GameObject, business: GameObject, job_role: GameObject
+        self, subject: GameObject, business: GameObject, job_role: JobRoleDef
     ) -> None:
         super().__init__(
             world=subject.world,
             roles=(
                 EventRole("subject", subject, True),
                 EventRole("business", business, log_event=True),
-                EventRole("job_role", job_role),
             ),
         )
+        self.job_role = job_role
 
     @staticmethod
     @event_consideration
@@ -73,15 +79,15 @@ class StartANewJob(LifeEvent):
 
     @staticmethod
     @event_consideration
-    def boldness_consideration(event: StartANewJob) -> float:
-        """Considers the subject's boldness stat."""
-        return get_stat(event.roles["subject"], "boldness").normalized
+    def courage_consideration(event: StartANewJob) -> float:
+        """Considers the subject's courage stat."""
+        return get_stat(event.roles["subject"], "courage").normalized
 
     @staticmethod
     @event_consideration
-    def reliability_consideration(event: StartANewJob) -> float:
-        """Considers the subjects reliability stat."""
-        return get_stat(event.roles["subject"], "reliability").normalized
+    def discipline_consideration(event: StartANewJob) -> float:
+        """Considers the subjects discipline stat."""
+        return get_stat(event.roles["subject"], "discipline").normalized
 
     @staticmethod
     @event_consideration
@@ -143,7 +149,6 @@ class StartANewJob(LifeEvent):
     def execute(self) -> None:
         character = self.roles["subject"]
         business = self.roles["business"]
-        job_role = self.roles["job_role"]
 
         business_comp = business.get_component(Business)
         current_date = self.world.resource_manager.get_resource(SimDate)
@@ -153,7 +158,7 @@ class StartANewJob(LifeEvent):
                 character,
                 business=business,
                 start_date=current_date,
-                job_role=job_role.get_component(JobRole),
+                job_role=self.job_role,
             )
         )
 
@@ -172,7 +177,7 @@ class StartANewJob(LifeEvent):
             add_trait(get_relationship(character, employee), "coworker")
             add_trait(get_relationship(employee, character), "coworker")
 
-        business_comp.add_employee(character, job_role.get_component(JobRole))
+        business_comp.add_employee(character, self.job_role)
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
@@ -181,22 +186,31 @@ class StartANewJob(LifeEvent):
 
         rng = subject.world.resource_manager.get_resource(random.Random)
 
-        active_businesses = subject.world.get_components(
-            (Business, OpenForBusiness, Active)
-        )
+        active_businesses = [
+            business
+            for _, (business, _) in subject.world.get_components((Business, Active))
+            if business.status == BusinessStatus.OPEN
+        ]
 
         rng.shuffle(active_businesses)
 
-        for _, (business, _, _) in active_businesses:
+        library = subject.world.resources.get_resource(JobRoleLibrary)
+
+        for business in active_businesses:
             open_positions = business.get_open_positions()
 
-            for job_role in open_positions:
-                if job_role.check_requirements(subject):
-                    return StartANewJob(
-                        subject=subject,
-                        business=business.gameobject,
-                        job_role=job_role.gameobject,
+            for role_id in open_positions:
+                job_role = library.get_definition(role_id)
+                for rule in job_role.requirements:
+                    result = DBQuery(rule.split("\n")).run(
+                        subject.world.rp_db, bindings=[{"?subject": subject.uid}]
                     )
+                    if result.success:
+                        return StartANewJob(
+                            subject=subject,
+                            business=business.gameobject,
+                            job_role=job_role,
+                        )
 
         return None
 
@@ -242,15 +256,15 @@ class StartBusiness(LifeEvent):
 
     @staticmethod
     @event_consideration
-    def boldness_consideration(event: StartBusiness) -> float:
-        """Considers the subject's boldness stat."""
-        return get_stat(event.roles["subject"], "boldness").normalized
+    def courage_consideration(event: StartBusiness) -> float:
+        """Considers the subject's courage stat."""
+        return get_stat(event.roles["subject"], "courage").normalized
 
     @staticmethod
     @event_consideration
-    def reliability_consideration(event: StartBusiness) -> float:
-        """Considers the subjects reliability stat."""
-        return get_stat(event.roles["subject"], "reliability").normalized
+    def discipline_consideration(event: StartBusiness) -> float:
+        """Considers the subjects discipline stat."""
+        return get_stat(event.roles["subject"], "discipline").normalized
 
     @staticmethod
     @event_consideration
@@ -284,9 +298,7 @@ class StartBusiness(LifeEvent):
 
         business_comp.set_owner(character)
 
-        business.remove_component(PendingOpening)
-        business.add_component(OpenForBusiness(business))
-        business.add_component(OpenToPublic(business))
+        business_comp.status = BusinessStatus.OPEN
 
         if character.has_component(Unemployed):
             character.remove_component(Unemployed)
@@ -300,20 +312,25 @@ class StartBusiness(LifeEvent):
 
         pending_businesses: list[Business] = [
             business
-            for _, (business, _, _) in world.get_components(
-                (Business, Active, PendingOpening)
-            )
+            for _, (business, _) in world.get_components((Business, Active))
+            if business.status == BusinessStatus.PENDING
         ]
 
         rng = world.resource_manager.get_resource(random.Random)
 
-        eligible_businesses: list[tuple[Business, JobRole]] = []
+        eligible_businesses: list[tuple[Business, JobRoleDef]] = []
 
         for business in pending_businesses:
             owner_role = business.owner_role
 
-            if owner_role.check_requirements(subject):
-                eligible_businesses.append((business, owner_role))
+            for rule in owner_role.requirements:
+                result = DBQuery(rule.split("\n")).run(
+                    subject.world.rp_db, bindings=[{"?subject": subject.uid}]
+                )
+
+                if result.success:
+                    eligible_businesses.append((business, owner_role))
+                    break
 
         if eligible_businesses:
             chosen_business, owner_role = rng.choice(eligible_businesses)
@@ -848,16 +865,16 @@ class Retire(LifeEvent):
         self,
         subject: GameObject,
         business: GameObject,
-        job_role: GameObject,
+        job_role: JobRoleDef,
     ) -> None:
         super().__init__(
             world=subject.world,
             roles=[
                 EventRole("subject", subject, log_event=True),
                 EventRole("business", business, log_event=True),
-                EventRole("job_role", job_role),
             ],
         )
+        self.job_role = job_role
 
     @staticmethod
     @event_consideration
@@ -878,7 +895,7 @@ class Retire(LifeEvent):
             return Retire(
                 subject=subject,
                 business=occupation.business,
-                job_role=occupation.job_role.gameobject,
+                job_role=occupation.job_role,
             )
 
         return None
@@ -886,7 +903,6 @@ class Retire(LifeEvent):
     def execute(self) -> None:
         subject = self.roles["subject"]
         business = self.roles["business"]
-        job_role = self.roles["job_role"]
 
         add_trait(subject, "retired")
 
@@ -916,7 +932,7 @@ class Retire(LifeEvent):
                 LeaveJob(
                     subject=subject,
                     business=business,
-                    job_role=job_role,
+                    job_role=self.job_role,
                     reason="retired",
                 ).dispatch()
                 chosen_succession.dispatch()
@@ -926,14 +942,14 @@ class Retire(LifeEvent):
             LeaveJob(
                 subject=subject,
                 business=business,
-                job_role=job_role,
+                job_role=self.job_role,
                 reason="retired",
             ).dispatch()
             BusinessClosedEvent(subject, business, "owner retired").dispatch()
             return
 
         # This is an employee. Keep the business running as usual
-        LeaveJob(subject=subject, business=business, job_role=job_role).dispatch()
+        LeaveJob(subject=subject, business=business, job_role=self.job_role).dispatch()
 
     def __str__(self) -> str:
         character = self.roles["subject"]
@@ -994,9 +1010,9 @@ class DepartDueToUnemployment(LifeEvent):
 
     @staticmethod
     @event_consideration
-    def reliability_consideration(event: DepartDueToUnemployment) -> float:
-        """Calculate consideration score for a character's reliability"""
-        return get_stat(event.roles["subject"], "reliability").normalized
+    def discipline_consideration(event: DepartDueToUnemployment) -> float:
+        """Calculate consideration score for a character's discipline"""
+        return get_stat(event.roles["subject"], "discipline").normalized
 
     @staticmethod
     @event_consideration
@@ -1538,15 +1554,15 @@ class TryFindOwnPlace(LifeEvent):
 
     @staticmethod
     @event_consideration
-    def boldness_consideration(event: StartANewJob) -> float:
-        """Considers the subject's boldness stat."""
-        return get_stat(event.roles["subject"], "boldness").normalized
+    def courage_consideration(event: StartANewJob) -> float:
+        """Considers the subject's courage stat."""
+        return get_stat(event.roles["subject"], "courage").normalized
 
     @staticmethod
     @event_consideration
-    def reliability_consideration(event: StartANewJob) -> float:
-        """Considers the subjects reliability stat."""
-        return get_stat(event.roles["subject"], "reliability").normalized
+    def discipline_consideration(event: StartANewJob) -> float:
+        """Considers the subjects discipline stat."""
+        return get_stat(event.roles["subject"], "discipline").normalized
 
     def execute(self) -> None:
         subject = self.roles["subject"]
@@ -1628,15 +1644,15 @@ class PromotedToBusinessOwner(LifeEvent):
 
     @staticmethod
     @event_consideration
-    def boldness_consideration(event: LifeEvent) -> float:
-        """Considers the subject's boldness stat."""
-        return get_stat(event.roles["subject"], "boldness").normalized ** 3
+    def courage_consideration(event: LifeEvent) -> float:
+        """Considers the subject's courage stat."""
+        return get_stat(event.roles["subject"], "courage").normalized ** 3
 
     @staticmethod
     @event_consideration
-    def reliability_consideration(event: LifeEvent) -> float:
-        """Considers the subjects reliability stat."""
-        return get_stat(event.roles["subject"], "reliability").normalized ** 2
+    def discipline_consideration(event: LifeEvent) -> float:
+        """Considers the subjects discipline stat."""
+        return get_stat(event.roles["subject"], "discipline").normalized ** 2
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> Optional[LifeEvent]:
@@ -1651,7 +1667,7 @@ class PromotedToBusinessOwner(LifeEvent):
             LeaveJob(
                 subject=subject,
                 business=business,
-                job_role=occupation.job_role.gameobject,
+                job_role=occupation.job_role,
                 reason="Promoted to business owner",
             ).dispatch()
 
@@ -1697,18 +1713,18 @@ class JobPromotion(LifeEvent):
         self,
         subject: GameObject,
         business: GameObject,
-        old_role: GameObject,
-        new_role: GameObject,
+        old_role: JobRoleDef,
+        new_role: JobRoleDef,
     ) -> None:
         super().__init__(
             world=subject.world,
             roles=(
                 EventRole("subject", subject, True),
                 EventRole("business", business, True),
-                EventRole("old_role", old_role),
-                EventRole("new_role", new_role),
             ),
         )
+        self.old_role = old_role
+        self.new_role = new_role
 
     @staticmethod
     @event_consideration
@@ -1727,20 +1743,19 @@ class JobPromotion(LifeEvent):
 
     @staticmethod
     @event_consideration
-    def boldness_consideration(event: LifeEvent) -> float:
-        """Considers the subject's boldness stat."""
-        return get_stat(event.roles["subject"], "boldness").normalized
+    def courage_consideration(event: LifeEvent) -> float:
+        """Considers the subject's courage stat."""
+        return get_stat(event.roles["subject"], "courage").normalized
 
     @staticmethod
     @event_consideration
-    def reliability_consideration(event: LifeEvent) -> float:
-        """Considers the subjects reliability stat."""
-        return get_stat(event.roles["subject"], "reliability").normalized
+    def discipline_consideration(event: LifeEvent) -> float:
+        """Considers the subjects discipline stat."""
+        return get_stat(event.roles["subject"], "discipline").normalized
 
     def execute(self) -> None:
         character = self.roles["subject"]
         business = self.roles["business"]
-        new_role = self.roles["new_role"]
 
         business_data = business.get_component(Business)
 
@@ -1755,11 +1770,11 @@ class JobPromotion(LifeEvent):
                 character,
                 business=business,
                 start_date=self.world.resource_manager.get_resource(SimDate),
-                job_role=new_role.get_component(JobRole),
+                job_role=self.new_role,
             )
         )
 
-        business_data.add_employee(character, new_role.get_component(JobRole))
+        business_data.add_employee(character, self.new_role)
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
@@ -1769,7 +1784,7 @@ class JobPromotion(LifeEvent):
             return None
 
         occupation = subject.get_component(Occupation)
-        current_job_level = occupation.job_role.definition.job_level
+        current_job_level = occupation.job_role.job_level
         business_data = occupation.business.get_component(Business)
         open_positions = business_data.get_open_positions()
 
@@ -1777,14 +1792,24 @@ class JobPromotion(LifeEvent):
         if business_data.owner == subject:
             return None
 
-        higher_positions = [
-            role
-            for role in open_positions
-            if (
-                role.definition.job_level > current_job_level
-                and role.check_requirements(subject)
-            )
-        ]
+        higher_positions: list[JobRoleDef] = []
+
+        library = subject.world.resources.get_resource(JobRoleLibrary)
+
+        for role_id in open_positions:
+            role = library.get_definition(role_id)
+
+            if current_job_level >= role.job_level:
+                continue
+
+            for rule in role.requirements:
+
+                result = DBQuery(rule.split("\n")).run(
+                    subject.world.rp_db, bindings=[{"?subject": subject.uid}]
+                )
+                if result.success:
+                    higher_positions.append(role)
+                    break
 
         if len(higher_positions) == 0:
             return None
@@ -1797,8 +1822,8 @@ class JobPromotion(LifeEvent):
         return JobPromotion(
             subject=subject,
             business=business_data.gameobject,
-            old_role=occupation.job_role.gameobject,
-            new_role=chosen_role.gameobject,
+            old_role=occupation.job_role,
+            new_role=chosen_role,
         )
 
     def __str__(self) -> str:
@@ -1819,16 +1844,16 @@ class FiredFromJob(LifeEvent):
     base_probability = 0.1
 
     def __init__(
-        self, subject: GameObject, business: GameObject, job_role: GameObject
+        self, subject: GameObject, business: GameObject, job_role: JobRoleDef
     ) -> None:
         super().__init__(
             world=subject.world,
             roles=(
                 EventRole("subject", subject, True),
                 EventRole("business", business),
-                EventRole("job_role", job_role),
             ),
         )
+        self.job_role = job_role
 
     # @staticmethod
     # @event_consideration
@@ -1852,23 +1877,22 @@ class FiredFromJob(LifeEvent):
     @staticmethod
     @event_consideration
     def stewardship_consideration(event: LifeEvent) -> float:
-        """Considers the subjects reliability stat."""
+        """Considers the subjects discipline stat."""
         return 1 - get_stat(event.roles["subject"], "stewardship").normalized
 
     @staticmethod
     @event_consideration
-    def reliability_consideration(event: LifeEvent) -> float:
-        """Considers the subjects reliability stat."""
-        return 1 - get_stat(event.roles["subject"], "reliability").normalized ** 2
+    def discipline_consideration(event: LifeEvent) -> float:
+        """Considers the subjects discipline stat."""
+        return 1 - get_stat(event.roles["subject"], "discipline").normalized ** 2
 
     def execute(self) -> None:
         subject = self.roles["subject"]
         business = self.roles["business"]
-        job_role = self.roles["job_role"]
 
         # Events can dispatch other events
         LeaveJob(
-            subject=subject, business=business, job_role=job_role, reason="fired"
+            subject=subject, business=business, job_role=self.job_role, reason="fired"
         ).dispatch()
 
         business_data = business.get_component(Business)
@@ -1893,7 +1917,7 @@ class FiredFromJob(LifeEvent):
         return FiredFromJob(
             subject=subject,
             business=occupation.business,
-            job_role=occupation.job_role.gameobject,
+            job_role=occupation.job_role,
         )
 
     def __str__(self) -> str:

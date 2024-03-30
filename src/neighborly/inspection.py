@@ -8,17 +8,10 @@ from typing import Callable, Union
 
 import tabulate
 
-from neighborly.__version__ import VERSION
-from neighborly.components.business import (
-    Business,
-    ClosedForBusiness,
-    JobRole,
-    Occupation,
-    OpenForBusiness,
-    PendingOpening,
-)
+from neighborly import __version__
+from neighborly.components.business import Business, BusinessStatus, Occupation
 from neighborly.components.character import Character
-from neighborly.components.location import FrequentedBy, FrequentedLocations
+from neighborly.components.location import FrequentedLocations, Location
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.residence import (
     Resident,
@@ -26,11 +19,13 @@ from neighborly.components.residence import (
     ResidentialUnit,
 )
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.skills import SKILL_MAX_VALUE, Skill, Skills
+from neighborly.components.shared import Age
+from neighborly.components.skills import SKILL_MAX_VALUE, Skills
 from neighborly.components.stats import Stats
-from neighborly.components.traits import Trait, Traits
+from neighborly.components.traits import Traits
 from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
 from neighborly.helpers.stats import get_stat
+from neighborly.libraries import JobRoleLibrary, SkillLibrary
 from neighborly.life_event import PersonalEventHistory
 from neighborly.simulation import Simulation
 
@@ -138,19 +133,13 @@ def _business_header(business: GameObject) -> str:
 
     employee_table = tabulate.tabulate(
         [
-            (employee.name, role.gameobject.name)
+            (employee.name, role.name)
             for employee, role in business_data.employees.items()
         ],
         headers=("Employee", "Role"),
     )
 
-    activity_status = "inactive"
-    if business.has_component(OpenForBusiness):
-        activity_status = "open-for-business"
-    elif business.has_component(PendingOpening):
-        activity_status = "looking for owner"
-    elif business.has_component(ClosedForBusiness):
-        activity_status = "closed-for-business"
+    activity_status = business_data.status.name
 
     output = "Business\n"
     output += "========\n"
@@ -160,7 +149,7 @@ def _business_header(business: GameObject) -> str:
     output += f"Status: {activity_status}\n"
     output += f"District: {business_data.district}\n"
     output += f"Owner: {business_data.owner.name if business_data.owner else None}\n"
-    output += f"Owner role: {business_data.owner_role.definition.display_name}\n"
+    output += f"Owner role: {business_data.owner_role.name}\n"
     output += "\n"
     output += "=== Employees ===\n"
     output += f"{employee_table}\n"
@@ -245,13 +234,15 @@ def _character_header(character: GameObject) -> str:
     if occupation := character.try_component(Occupation):
         works_at = occupation.business.name
 
+    age = character.get_component(Age).value
+
     output = "Character\n"
     output += "=========\n"
     output += "\n"
     output += f"UID: {character.uid}\n"
     output += f"Name: {character_data.full_name}\n"
     output += f"Status: {activity_status}\n"
-    output += f"Age: {int(character_data.age)} ({character_data.life_stage.name})\n"
+    output += f"Age: {int(age)} ({character_data.life_stage.name})\n"
     output += f"Sex: {character_data.sex.name}\n"
     output += f"Species: {character_data.species.name}\n"
     output += "\n"
@@ -278,73 +269,6 @@ def _relationship_header(relationship: GameObject) -> str:
     output += "\n"
     output += f"Owner: {relationship_data.owner.name}\n"
     output += f"Target: {relationship_data.target.name}\n"
-
-    return output
-
-
-def _job_role_section(job_role: GameObject) -> str:
-    """Print information about a job role."""
-    if job_role.has_component(JobRole) is False:
-        return ""
-
-    job_role_data = job_role.get_component(JobRole)
-
-    requirements = "\n".join(job_role_data.definition.requirements)
-
-    output = "Job Role\n"
-    output += "========\n"
-    output += "\n"
-    output += f"UID: {job_role.uid}\n"
-    output += f"Name: {job_role_data.definition.display_name}\n"
-    output += f"Definition ID: {job_role_data.definition_id}\n"
-    output += f"Description:\n {job_role_data.definition.description}\n"
-    output += f"Job Level:\n {job_role_data.definition.job_level}\n"
-    output += "\n"
-    output += "=== Requirements ===\n"
-    output += f"{requirements}\n"
-    output += "\n"
-
-    return output
-
-
-def _trait_section(trait: GameObject) -> str:
-    """Print information about a trait."""
-    if trait.has_component(Trait) is False:
-        return ""
-
-    trait_data = trait.get_component(Trait)
-
-    conflicting_traits = ", ".join(t for t in trait_data.definition.conflicts_with)
-
-    output = "Trait\n"
-    output += "=====\n"
-    output += "\n"
-    output += f"UID: {trait.uid}\n"
-    output += f"Name: {trait_data.definition.name}\n"
-    output += f"Definition ID: {trait_data.definition_id}\n"
-    output += f"Description:\n{trait_data.definition.description}\n"
-    output += "\n"
-    output += "=== Conflicting Trait Definitions ===\n"
-    output += f"{conflicting_traits}\n"
-    output += "\n"
-
-    return output
-
-
-def _skill_section(obj: GameObject) -> str:
-    """Print information about a skill."""
-    if obj.has_component(Skill) is False:
-        return ""
-
-    skill_data = obj.get_component(Skill)
-
-    output = "Skill\n"
-    output += "=====\n"
-    output += "\n"
-    output += f"UID: {obj.uid}\n"
-    output += f"Name: {skill_data.display_name}\n"
-    output += f"Definition ID: {skill_data.definition_id}\n"
-    output += f"Description:\n{skill_data.description}\n"
 
     return output
 
@@ -381,7 +305,7 @@ def get_settlement_description(settlement: Settlement) -> str:
 
 def _get_frequented_by_table(obj: GameObject) -> str:
     """Generate a string table for a FrequentedBy component."""
-    frequented_by = obj.try_component(FrequentedBy)
+    frequented_by = obj.try_component(Location)
 
     if frequented_by is None:
         return ""
@@ -527,6 +451,8 @@ def _get_stats_table(obj: GameObject) -> str:
 def _get_skills_table(obj: GameObject) -> str:
     skill_data = obj.try_component(Skills)
 
+    library = obj.world.resources.get_resource(SkillLibrary)
+
     if skill_data is None:
         return ""
 
@@ -534,11 +460,11 @@ def _get_skills_table(obj: GameObject) -> str:
     output += tabulate.tabulate(
         [
             (
-                entry.skill.gameobject.name,
-                f"{int(entry.stat.value)}/{int(SKILL_MAX_VALUE)}",
-                entry.skill.definition.description,
+                skill_id,
+                f"{int(stat.value)}/{int(SKILL_MAX_VALUE)}",
+                library.get_definition(skill_id).description,
             )
-            for entry in skill_data.skills.values()
+            for skill_id, stat in skill_data.skills.items()
         ],
         headers=("Name", "Level", "Description"),
     )
@@ -567,13 +493,10 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("title", _title_section),
     ("settlement", _settlement_section),
     ("district", _district_header),
-    ("skill", _skill_section),
-    ("trait", _trait_section),
     ("relationship", _relationship_header),
     ("residential_building", _residential_building_header),
     ("residential_unit", _residential_unit_header),
     ("business", _business_header),
-    ("job_role", _job_role_section),
     ("character", _character_header),
     ("stats", _get_stats_table),
     ("traits", _get_traits_table),
@@ -622,7 +545,7 @@ def print_sim_status(sim: Simulation) -> None:
     output += "\n"
     output += f"World seed: {sim.config.seed}\n"
     output += f"World date: month {sim.date.month} of year {sim.date.year}\n"
-    output += f"Simulation Version: {VERSION}\n"
+    output += f"Simulation Version: {__version__}\n"
 
     print(output)
 
@@ -703,15 +626,9 @@ def list_businesses(sim: Simulation, inactive_ok: bool = False) -> None:
     businesses: list[tuple[str, ...]] = []
 
     for uid, (business,) in sim.world.get_components((Business,)):
-        activity_status = "inactive"
-        if business.gameobject.has_component(OpenForBusiness):
-            activity_status = "open-for-business"
-        elif business.gameobject.has_component(PendingOpening):
-            activity_status = "looking for owner"
-        elif business.gameobject.has_component(ClosedForBusiness):
-            activity_status = "closed-for-business"
+        activity_status = business.status.name
 
-        if business.gameobject.has_component(OpenForBusiness) or inactive_ok:
+        if business.status == BusinessStatus.OPEN or inactive_ok:
             businesses.append(
                 (
                     str(uid),
@@ -741,22 +658,24 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
             (
                 uid,
                 character.full_name,
-                int(character.age),
+                int(age.value),
                 str(character.sex.name),
                 str(character.species.name),
             )
-            for uid, (character,) in sim.world.get_components((Character,))
+            for uid, (character, age) in sim.world.get_components((Character, Age))
         ]
     else:
         characters = [
             (
                 uid,
                 character.full_name,
-                int(character.age),
+                int(age.value),
                 str(character.sex),
                 str(character.species),
             )
-            for uid, (character, _) in sim.world.get_components((Character, Active))
+            for uid, (character, age, _) in sim.world.get_components(
+                (Character, Age, Active)
+            )
         ]
 
     table = tabulate.tabulate(
@@ -794,12 +713,15 @@ def list_residences(sim: Simulation) -> None:
 
 def list_job_roles(sim: Simulation) -> None:
     """List job roles instances from the simulation."""
+
+    job_role_library = sim.world.resources.get_resource(JobRoleLibrary)
+
     job_roles = [
-        (uid, role.definition.display_name, role.definition.description)
-        for uid, (role,) in sim.world.get_components((JobRole,))
+        (role_def.definition_id, role_def.name, role_def.description)
+        for role_def in job_role_library.definitions.values()
     ]
 
-    table = tabulate.tabulate(job_roles, headers=["UID", "Name", "Description"])
+    table = tabulate.tabulate(job_roles, headers=["Role ID", "Name", "Description"])
 
     # Display as a table the object ID, Display Name, Description
     output = "=== Job Roles ===\n"
@@ -811,12 +733,15 @@ def list_job_roles(sim: Simulation) -> None:
 
 def list_traits(sim: Simulation) -> None:
     """List the trait instances from the simulation."""
+
+    trait_library = sim.world.resources.get_resource(SkillLibrary)
+
     traits = [
-        (uid, trait.definition.name, trait.definition.description)
-        for uid, (trait,) in sim.world.get_components((Trait,))
+        (trait_def.definition_id, trait_def.name, trait_def.description)
+        for trait_def in trait_library.definitions.values()
     ]
 
-    table = tabulate.tabulate(traits, headers=["UID", "Name", "Description"])
+    table = tabulate.tabulate(traits, headers=["Trait ID", "Name", "Description"])
 
     # Display as a table the object ID, Display Name, Description
     output = "=== Traits ===\n"
@@ -829,12 +754,14 @@ def list_traits(sim: Simulation) -> None:
 def list_skills(sim: Simulation) -> None:
     """List all the potential skills in the simulation."""
 
+    skill_library = sim.world.resources.get_resource(SkillLibrary)
+
     skills = [
-        (uid, skill.display_name, skill.description)
-        for uid, (skill,) in sim.world.get_components((Skill,))
+        (skill_def.definition_id, skill_def.name, skill_def.description)
+        for skill_def in skill_library.definitions.values()
     ]
 
-    table = tabulate.tabulate(skills, headers=["UID", "Name", "Description"])
+    table = tabulate.tabulate(skills, headers=["Skill ID", "Name", "Description"])
 
     # Display as a table the object ID, Display Name, Description
     output = "=== Skills ===\n"

@@ -11,7 +11,7 @@ from neighborly.components.relationship import (
     SocialRuleDirection,
     SocialRules,
 )
-from neighborly.components.stats import Stat, StatModifier, StatModifierType, Stats
+from neighborly.components.stats import StatModifier, StatModifierType, Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import GameObject
 from neighborly.helpers.stats import add_stat, get_stat
@@ -43,11 +43,11 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Stats(relationship))
     relationship.add_component(Traits(relationship))
 
-    add_stat(relationship, "reputation", Stat(base_value=0, bounds=(-100, 100)))
-    add_stat(relationship, "romance", Stat(base_value=0, bounds=(-100, 100)))
-    add_stat(relationship, "compatibility", Stat(base_value=0))
-    add_stat(relationship, "romantic_compatibility", Stat(base_value=0))
-    add_stat(relationship, "interaction_score", Stat(base_value=0, bounds=(0, 10)))
+    add_stat(relationship, "reputation", base_value=0, bounds=(-100, 100))
+    add_stat(relationship, "romance", base_value=0, bounds=(-100, 100))
+    add_stat(relationship, "compatibility", base_value=0)
+    add_stat(relationship, "romantic_compatibility", base_value=0)
+    add_stat(relationship, "interaction_score", base_value=0, bounds=(0, 10))
 
     relationship.name = f"{owner.name} -> {target.name}"
 

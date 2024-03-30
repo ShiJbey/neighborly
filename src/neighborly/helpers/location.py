@@ -5,8 +5,8 @@
 from repraxis.query import DBQuery
 
 from neighborly.components.location import (
-    FrequentedBy,
     FrequentedLocations,
+    Location,
     LocationPreferenceRule,
     LocationPreferences,
 )
@@ -25,7 +25,7 @@ def add_frequented_location(character: GameObject, location: GameObject) -> None
         A location.
     """
     character.get_component(FrequentedLocations).add_location(location)
-    location.get_component(FrequentedBy).add_character(character)
+    location.get_component(Location).add_character(character)
 
 
 def remove_frequented_location(character: GameObject, location: GameObject) -> None:
@@ -39,7 +39,7 @@ def remove_frequented_location(character: GameObject, location: GameObject) -> N
         A location.
     """
     character.get_component(FrequentedLocations).remove_location(location)
-    location.get_component(FrequentedBy).remove_character(character)
+    location.get_component(Location).remove_character(character)
 
 
 def remove_all_frequented_locations(character: GameObject) -> None:
@@ -53,7 +53,7 @@ def remove_all_frequented_locations(character: GameObject) -> None:
     frequented_locations_data = character.get_component(FrequentedLocations)
     locations = list(frequented_locations_data)
     for location in locations:
-        location.get_component(FrequentedBy).remove_character(character)
+        location.get_component(Location).remove_character(character)
         frequented_locations_data.remove_location(location)
 
 
@@ -65,7 +65,7 @@ def remove_all_frequenting_characters(location: GameObject) -> None:
     location
         A location.
     """
-    frequented_by_data = location.get_component(FrequentedBy)
+    frequented_by_data = location.get_component(Location)
     characters = list(frequented_by_data)
     for character in characters:
         character.get_component(FrequentedLocations).remove_location(location)
@@ -89,7 +89,7 @@ def check_location_preference_preconditions(
         location. Or -1 if it does not pass the preconditions.
     """
 
-    result = DBQuery(rule.preconditions).run(
+    result = DBQuery([rule.preconditions]).run(
         character.world.rp_db, [{"?location": location.uid, "?subject": character.uid}]
     )
 

@@ -9,16 +9,13 @@ ID.
 from __future__ import annotations
 
 import json
-from typing import Any, Generic, Iterable, Iterator, Optional, Type, TypeVar
+from typing import Any, Generic, Iterator, Optional, Type, TypeVar
 
 import pydantic
 from ordered_set import OrderedSet
 
-from neighborly.components.business import JobRole
 from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
-from neighborly.components.skills import Skill
-from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
     BusinessDef,
     CharacterDef,
@@ -30,7 +27,7 @@ from neighborly.defs.base_types import (
     SkillDef,
     TraitDef,
 )
-from neighborly.ecs import GameObject, World
+from neighborly.ecs import World
 from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.life_event import LifeEvent
@@ -121,57 +118,9 @@ class ContentDefinitionLibrary(Generic[_T]):
 class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
     """Manages skill definitions and instances."""
 
-    _slots__ = ("instances",)
-
-    instances: dict[str, GameObject]
-    """Definition IDs mapped to skill GameObjects."""
-
-    def __init__(
-        self, default_definition_type: Optional[Type[SkillDef]] = None
-    ) -> None:
-        super().__init__(default_definition_type)
-        self.instances = {}
-
-    @property
-    def skill_ids(self) -> Iterable[str]:
-        """The definition IDs of instantiated skills."""
-        return self.instances.keys()
-
-    def get_skill(self, skill_id: str) -> GameObject:
-        """Get a skill instance given an ID."""
-        return self.instances[skill_id]
-
-    def add_skill(self, skill: GameObject) -> None:
-        """Add a skill instance to the library."""
-        self.instances[skill.get_component(Skill).definition_id] = skill
-
 
 class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
     """Manages trait definitions and instances."""
-
-    _slots__ = ("instances",)
-
-    instances: dict[str, GameObject]
-    """Definition IDs mapped to trait GameObjects."""
-
-    def __init__(
-        self, default_definition_type: Optional[Type[TraitDef]] = None
-    ) -> None:
-        super().__init__(default_definition_type)
-        self.instances = {}
-
-    @property
-    def trait_ids(self) -> Iterable[str]:
-        """The definition IDs of instantiated traits."""
-        return self.instances.keys()
-
-    def get_trait(self, trait_id: str) -> GameObject:
-        """Get a trait instance given an ID."""
-        return self.instances[trait_id]
-
-    def add_trait(self, trait: GameObject) -> None:
-        """Add a trait instance to the library."""
-        self.instances[trait.get_component(Trait).definition_id] = trait
 
 
 class EffectLibrary:
@@ -223,30 +172,6 @@ class CharacterLibrary(ContentDefinitionLibrary[CharacterDef]):
 
 class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
     """Manages job role definitions and instances."""
-
-    _slots__ = "instances"
-
-    instances: dict[str, GameObject]
-    """Definition IDs mapped to job role GameObjects."""
-
-    def __init__(
-        self, default_definition_type: Optional[Type[JobRoleDef]] = None
-    ) -> None:
-        super().__init__(default_definition_type)
-        self.instances = {}
-
-    @property
-    def job_role_ids(self) -> Iterable[str]:
-        """The definition IDs of instantiated job roles."""
-        return self.definitions.keys()
-
-    def get_role(self, job_role_id: str) -> GameObject:
-        """Get a job role instance given an ID."""
-        return self.instances[job_role_id]
-
-    def add_role(self, job_role: GameObject) -> None:
-        """Add a job role instance to the library."""
-        self.instances[job_role.get_component(JobRole).definition_id] = job_role
 
 
 class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):

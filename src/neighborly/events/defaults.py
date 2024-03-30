@@ -8,9 +8,8 @@ from typing import Any, Optional
 
 from neighborly.components.business import (
     Business,
-    ClosedForBusiness,
+    BusinessStatus,
     Occupation,
-    OpenForBusiness,
     Unemployed,
 )
 from neighborly.components.character import Character, LifeStage
@@ -19,6 +18,7 @@ from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
+from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import GameObject
 from neighborly.helpers.location import (
     remove_all_frequented_locations,
@@ -92,7 +92,7 @@ class Death(LifeEvent):
             LeaveJob(
                 subject=character,
                 business=occupation.business,
-                job_role=occupation.job_role.gameobject,
+                job_role=occupation.job_role,
                 reason="died",
             ).dispatch()
 
@@ -386,7 +386,7 @@ class LeaveJob(LifeEvent):
         self,
         subject: GameObject,
         business: GameObject,
-        job_role: GameObject,
+        job_role: JobRoleDef,
         reason: str = "",
     ) -> None:
         super().__init__(
@@ -394,8 +394,8 @@ class LeaveJob(LifeEvent):
             roles=[
                 EventRole("subject", subject, log_event=True),
                 EventRole("business", business, log_event=True),
-                EventRole("job_role", job_role),
             ],
+            job_role=job_role,
             reason=reason,
         )
 
@@ -405,7 +405,7 @@ class LeaveJob(LifeEvent):
             return LeaveJob(
                 subject=subject,
                 business=occupation.business,
-                job_role=occupation.job_role.gameobject,
+                job_role=occupation.job_role,
             )
 
         return None
@@ -503,7 +503,7 @@ class DepartSettlement(LifeEvent):
                 LeaveJob(
                     subject=character,
                     business=occupation.business,
-                    job_role=occupation.job_role.gameobject,
+                    job_role=occupation.job_role,
                     reason="departed settlement",
                 ).dispatch()
 
@@ -544,7 +544,7 @@ class LaidOffFromJob(LifeEvent):
         self,
         subject: GameObject,
         business: GameObject,
-        job_role: GameObject,
+        job_role: JobRoleDef,
         reason: str = "",
     ) -> None:
         super().__init__(
@@ -552,8 +552,8 @@ class LaidOffFromJob(LifeEvent):
             roles=[
                 EventRole("subject", subject, log_event=True),
                 EventRole("business", business),
-                EventRole("job_role", job_role),
             ],
+            job_role=job_role,
             reason=reason,
         )
 
@@ -592,7 +592,7 @@ class LaidOffFromJob(LifeEvent):
             return LaidOffFromJob(
                 subject=subject,
                 business=occupation.business,
-                job_role=occupation.job_role.gameobject,
+                job_role=occupation.job_role,
             )
 
         return None
@@ -639,15 +639,14 @@ class BusinessClosedEvent(LifeEvent):
         business_comp = business.get_component(Business)
 
         # Update the business as no longer active
-        business.remove_component(OpenForBusiness)
-        business.add_component(ClosedForBusiness(business))
+        business_comp.status = BusinessStatus.CLOSED
 
         # Remove all the employees
         for employee, role in [*business_comp.employees.items()]:
             LaidOffFromJob(
                 subject=employee,
                 business=business,
-                job_role=role.gameobject,
+                job_role=role,
             ).dispatch()
 
         # Remove the owner if applicable
@@ -655,7 +654,7 @@ class BusinessClosedEvent(LifeEvent):
             LeaveJob(
                 business=business,
                 subject=business_comp.owner,
-                job_role=business_comp.owner_role.gameobject,
+                job_role=business_comp.owner_role,
                 reason="business closed",
             ).dispatch()
 

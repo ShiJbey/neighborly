@@ -2,9 +2,7 @@
   {
     "rule_id": "likes_bars",
     "description": "Like places that serve alcohol",
-    "preconditions": [
-      "?location.traits.serves_alcohol"
-    ],
+    "preconditions": "?location.traits.serves_alcohol",
     "probability": 0.8
   }
 ]

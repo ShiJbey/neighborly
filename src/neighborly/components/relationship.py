@@ -13,9 +13,23 @@ from collections import defaultdict
 from typing import Any, Iterable, Mapping
 
 import pydantic
+from sqlalchemy import ForeignKey, delete
+from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.defs.base_types import StatModifierData
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component, GameData, GameObject
+
+
+class RelationshipData(GameData):
+    """Queryable relationship data."""
+
+    __tablename__ = "relationships"
+
+    uid: Mapped[int] = mapped_column(
+        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
+    )
+    owner_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    target_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
 
 
 class Relationship(Component):
@@ -52,6 +66,15 @@ class Relationship(Component):
         return self._target
 
     def on_add(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.add(
+                RelationshipData(
+                    uid=self.gameobject.uid,
+                    owner_id=self.owner.uid,
+                    target_id=self.target.uid,
+                )
+            )
+
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.relationship.owner!{self.owner.uid}"
         )
@@ -60,6 +83,13 @@ class Relationship(Component):
         )
 
     def on_remove(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.execute(
+                delete(RelationshipData)
+                .where(RelationshipData.owner_id == self.owner.uid)
+                .where(RelationshipData.target_id == self.target.uid)
+            )
+
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.relationship")
 
     def to_dict(self) -> dict[str, Any]:
@@ -286,7 +316,7 @@ class SocialRule(pydantic.BaseModel):
         default=SocialRuleDirection.OUTGOING
     )
     """direction that the rule is evaluated."""
-    preconditions: list[str] = pydantic.Field(default_factory=list)
+    preconditions: str = pydantic.Field(default="")
     """Conditions that need to be met to apply the rule."""
     stat_modifiers: list[StatModifierData]
     """Side-effects of the rule applied to a relationship."""

@@ -7,6 +7,7 @@ from __future__ import annotations
 import enum
 from typing import Any
 
+from sqlalchemy import ForeignKey, delete
 from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.datetime import SimDate
@@ -32,45 +33,19 @@ class Sex(enum.IntEnum):
     NOT_SPECIFIED = enum.auto()
 
 
-class Species(Component):
-    """Configuration information about a character's species."""
-
-    __slots__ = ("definition",)
-
-    definition: SpeciesDef
-    """The definition data for this species"""
-
-    def __init__(self, gameobject: GameObject, definition: SpeciesDef) -> None:
-        super().__init__(gameobject)
-        self.definition = definition
-
-    @property
-    def definition_id(self) -> str:
-        """The definition ID of this species."""
-        return self.definition.definition_id
-
-    def __str__(self) -> str:
-        return f"Species(definition_id={self.definition.definition_id!r})"
-
-    def __repr__(self) -> str:
-        return f"Species(definition_id={self.definition.definition_id!r})"
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"definition_id": self.definition.definition_id}
-
-
 class CharacterData(GameData):
     """Data associated with a character component."""
 
     __tablename__ = "characters"
 
-    uid: Mapped[int] = mapped_column(primary_key=True, unique=True)
+    uid: Mapped[int] = mapped_column(
+        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
+    )
     first_name: Mapped[str] = mapped_column(default="")
     last_name: Mapped[str] = mapped_column(default="")
-    age: Mapped[float] = mapped_column(default=0)
     sex: Mapped[Sex] = mapped_column(default=Sex.NOT_SPECIFIED)
     life_stage: Mapped[LifeStage] = mapped_column(default=LifeStage.CHILD)
-    species: Mapped[int]
+    species: Mapped[str]
 
 
 class Character(Component):
@@ -83,7 +58,7 @@ class Character(Component):
 
     data: CharacterData
     """SQL queryable component data."""
-    species: GameObject
+    species: SpeciesDef
     """The character's species"""
 
     def __init__(
@@ -92,16 +67,15 @@ class Character(Component):
         first_name: str,
         last_name: str,
         sex: Sex,
-        species: GameObject,
+        species: SpeciesDef,
     ) -> None:
         super().__init__(gameobject)
         self.data = CharacterData(
             uid=gameobject.uid,
             first_name=first_name,
             last_name=last_name,
-            age=0,
             sex=sex,
-            species=species.uid,
+            species=species.definition_id,
             life_stage=LifeStage.CHILD,
         )
         self.species = species
@@ -152,25 +126,6 @@ class Character(Component):
         return f"{self.first_name} {self.data.last_name}"
 
     @property
-    def age(self) -> float:
-        """Get the character's age."""
-        return self.data.age
-
-    @age.setter
-    def age(self, value: float) -> None:
-        """Set the character's age."""
-
-        with self.gameobject.world.session.begin() as session:
-            self.data.age = value
-            session.add(self.data)
-
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.character.age")
-
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.character.age!{self.age}"
-        )
-
-    @property
     def sex(self) -> Sex:
         """Get the characters sex."""
         return self.data.sex
@@ -209,14 +164,11 @@ class Character(Component):
             f"{self.gameobject.uid}.character.sex!{self.sex.name}"
         )
         self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.character.age!{self.age}"
-        )
-        self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.character.life_stage!{self.life_stage.name}"
         )
 
         if self.species:
-            species_id = self.species.get_component(Species).definition_id
+            species_id = self.species.definition_id
             self.gameobject.world.rp_db.insert(
                 f"{self.gameobject.uid}.character.species!{species_id}"
             )
@@ -232,19 +184,30 @@ class Character(Component):
             "first_name": self.first_name,
             "last_name": self.last_name,
             "sex": self.sex.name,
-            "age": int(self.age),
             "life_stage": self.life_stage.name,
-            "species": self.species.get_component(Species).definition_id,
+            "species": self.species.definition_id,
         }
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(name={self.full_name}, sex={self.sex}, "
-            f"age={self.age}({self.life_stage}), species={self.species.name})"
+            f"Character(name={self.full_name!r}, sex={self.sex!r}, "
+            f"life_stage={self.life_stage!r}, species={self.species.name!r})"
         )
 
     def __str__(self) -> str:
         return self.full_name
+
+
+class PregnancyData(GameData):
+    """SQL Queryable data about a pregnancy."""
+
+    __tablename__ = "pregnancy"
+
+    uid: Mapped[int] = mapped_column(
+        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
+    )
+    first_name: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    due_date: Mapped[str]
 
 
 class Pregnant(Component):
@@ -265,6 +228,15 @@ class Pregnant(Component):
         self.due_date = due_date.copy()
 
     def on_add(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.add(
+                PregnancyData(
+                    uid=self.gameobject.uid,
+                    partner_id=self.partner.uid,
+                    due_date=self.due_date.to_iso_str(),
+                )
+            )
+
         if self.partner:
             self.gameobject.world.rp_db.insert(
                 f"{self.gameobject.uid}.pregnant.partner!{self.partner.uid}"
@@ -275,17 +247,21 @@ class Pregnant(Component):
             )
 
     def on_remove(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.execute(
+                delete(PregnancyData).where(PregnancyData.uid == self.gameobject.uid)
+            )
+
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.pregnant")
 
     def __str__(self) -> str:
-        return f"{type(self).__name__}(partner={self.partner.name})"
+        return f"Pregnant(partner={self.partner.name!r}, due_date={self.due_date})"
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}(partner={self.partner.name})"
+        return f"Pregnant(partner={self.partner.name!r}, due_date={self.due_date})"
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            **super().to_dict(),
             "partner": self.partner.uid,
             "due_date": str(self.due_date),
         }

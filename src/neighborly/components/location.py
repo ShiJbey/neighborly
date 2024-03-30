@@ -12,24 +12,41 @@ from typing import Any, Iterable, Iterator
 
 import pydantic
 from ordered_set import OrderedSet
+from sqlalchemy import ForeignKey, delete
+from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component, GameData, GameObject
 
 
-class FrequentedBy(Component):
+class LocationData(GameData):
+    """Queryable data about a location."""
+
+    __tablename__ = "locations"
+
+    uid: Mapped[int] = mapped_column(
+        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
+    )
+    is_private: Mapped[bool]
+
+
+class Location(Component):
     """Tracks the characters that frequent a location."""
 
-    __slots__ = ("_characters",)
+    __slots__ = ("frequented_by", "is_private")
 
-    _characters: OrderedSet[GameObject]
+    is_private: bool
+    """Can this location be frequented by any character."""
+    frequented_by: OrderedSet[GameObject]
     """GameObject IDs of characters that frequent the location."""
 
     def __init__(
         self,
         gameobject: GameObject,
+        is_private: bool = False,
     ) -> None:
         super().__init__(gameobject)
-        self._characters = OrderedSet([])
+        self.is_private = is_private
+        self.frequented_by = OrderedSet([])
 
     def add_character(self, character: GameObject) -> None:
         """Add a character.
@@ -39,9 +56,9 @@ class FrequentedBy(Component):
         character
             The GameObject reference to a character.
         """
-        self._characters.add(character)
+        self.frequented_by.add(character)
         self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.frequented_by.{character.uid}"
+            f"{self.gameobject.uid}.location.frequented_by.{character.uid}"
         )
 
     def remove_character(self, character: GameObject) -> bool:
@@ -57,34 +74,59 @@ class FrequentedBy(Component):
         bool
             Returns True if a character was removed. False otherwise.
         """
-        if character in self._characters:
-            self._characters.remove(character)
+        if character in self.frequented_by:
+            self.frequented_by.remove(character)
             self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.frequented_by.{character.uid}"
+                f"{self.gameobject.uid}.location.frequented_by.{character.uid}"
             )
             return True
 
         return False
 
+    def on_add(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.add(
+                LocationData(uid=self.gameobject.uid, is_private=self.is_private)
+            )
+
+        self.gameobject.world.rp_db.delete(
+            f"{self.gameobject.uid}.location.is_private!{self.is_private}"
+        )
+
     def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.frequented_by")
+        with self.gameobject.world.session.begin() as session:
+            session.execute(
+                delete(LocationData).where(LocationData.uid == self.gameobject.uid)
+            )
+
+        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.location")
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "characters": [entry.uid for entry in self._characters],
+            "frequented_by": [entry.uid for entry in self.frequented_by],
         }
 
     def __contains__(self, item: GameObject) -> bool:
-        return item in self._characters
+        return item in self.frequented_by
 
     def __iter__(self) -> Iterator[GameObject]:
-        return iter(self._characters)
+        return iter(self.frequented_by)
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._characters})"
+        return f"Location({self.frequented_by!r})"
+
+
+class FrequentedLocationData(GameData):
+    """Queryable data about locations characters frequent."""
+
+    __tablename__ = "frequented_locations"
+
+    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    location_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
 
 
 class FrequentedLocations(Component):
@@ -111,6 +153,14 @@ class FrequentedLocations(Component):
            A GameObject reference to a location.
         """
         self._locations.add(location)
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(
+                FrequentedLocationData(
+                    character_id=self.gameobject.uid, location_id=location.uid
+                )
+            )
+
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.frequented_locations.{location.uid}"
         )
@@ -130,6 +180,14 @@ class FrequentedLocations(Component):
         """
         if location in self._locations:
             self._locations.remove(location)
+
+            with self.gameobject.world.session.begin() as session:
+                session.execute(
+                    delete(FrequentedLocationData)
+                    .where(FrequentedLocationData.character_id == self.gameobject.uid)
+                    .where(FrequentedLocationData.location_id == location.uid)
+                )
+
             self.gameobject.world.rp_db.delete(
                 f"{self.gameobject.uid}.frequented_locations.{location.uid}"
             )
@@ -165,8 +223,8 @@ class LocationPreferenceRule(pydantic.BaseModel):
 
     rule_id: str
     """A unique ID for this rule."""
-    preconditions: list[str]
-    """Precondition functions to run when scoring a location."""
+    preconditions: str = pydantic.Field(default="")
+    """Precondition to run when scoring a location."""
     probability: float
     """The amount to apply to the score."""
 

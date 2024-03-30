@@ -1,10 +1,10 @@
 {
     "blacksmithing": {
-        "display_name": "Blacksmithing",
+        "name": "Blacksmithing",
         "description": "A character's skill at forging metal objects."
     },
     "farming": {
-        "display_name": "Farming",
+        "name": "Farming",
         "description": "A measure of a character's ability to plat and harvest crops."
     }
 }

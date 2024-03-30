@@ -4,11 +4,13 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, cast
 
-from neighborly.defs.base_types import CharacterDef, CharacterGenOptions
+from neighborly.components.character import Character
+from neighborly.defs.base_types import CharacterDef, CharacterGenOptions, SpeciesDef
 from neighborly.ecs import GameObject, World
-from neighborly.libraries import CharacterLibrary
+from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.libraries import CharacterLibrary, TraitLibrary
 
 
 def create_character(
@@ -39,6 +41,37 @@ def create_character(
     character = character_def.instantiate(world, options)
 
     return character
+
+
+def set_species(gameobject: GameObject, species_id: str) -> bool:
+    """the species of the character.
+
+    Parameters
+    ----------
+    gameobject
+        The gameobject to add the trait to.
+    species
+        The ID of the species.
+
+    Return
+    ------
+    bool
+        True if the trait was added successfully, False if already present or
+        if the trait conflict with existing traits.
+    """
+    world = gameobject.world
+
+    character = gameobject.get_component(Character)
+
+    if character.species:
+        remove_trait(gameobject, character.species.definition_id)
+
+    if add_trait(gameobject, species_id):
+        library = world.resources.get_resource(TraitLibrary)
+        character.species = cast(SpeciesDef, library.get_definition(species_id))
+        return True
+
+    return False
 
 
 def register_character_def(world: World, definition: CharacterDef) -> None:

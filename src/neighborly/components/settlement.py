@@ -8,31 +8,44 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
-from neighborly.ecs import Component, GameObject
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from neighborly.ecs import Component, GameData, GameObject
+
+
+class DistrictData(GameData):
+    """SQL queryable district component data."""
+
+    __tablename__ = "districts"
+
+    uid: Mapped[int] = mapped_column(
+        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
+    )
+    name: Mapped[str]
+    settlement_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    population: Mapped[int]
 
 
 class District(Component):
     """A subsection of a settlement."""
 
     __slots__ = (
-        "_name",
+        "data",
         "_description",
         "_settlement",
-        "_population",
         "_residential_slots",
         "_business_slots",
         "_businesses",
         "_residences",
     )
 
-    _name: str
-    """The name of the district."""
+    data: DistrictData
+    """District"""
     _description: str
     """A short description of the district."""
     _settlement: GameObject
     """The settlement the district belongs to."""
-    _population: int
-    """The number of characters that live in this district."""
     _residential_slots: int
     """The number of residential slots the district can build on."""
     _business_slots: int
@@ -52,28 +65,37 @@ class District(Component):
         business_slots: int,
     ) -> None:
         super().__init__(gameobject)
-        self._name = name
+        self.data = DistrictData(
+            uid=gameobject.uid, name=name, population=0, settlement_id=settlement.uid
+        )
         self._description = description
         self._settlement = settlement
         self._residential_slots = residential_slots
         self._business_slots = business_slots
-        self._population = 0
         self._businesses = []
         self._residences = []
 
     @property
     def name(self) -> str:
         """The name of the settlement."""
-        return self._name
+        return self.data.name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set the name of the settlement"""
-        self._name = value
-        self._gameobject.name = value
+
+        self.data.name = value
+        self.gameobject.name = value
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(self.data)
 
         if value:
             self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.district.name!{value}"
+            )
+        else:
+            self.gameobject.world.rp_db.delete(
                 f"{self.gameobject.uid}.district.name!{value}"
             )
 
@@ -90,12 +112,15 @@ class District(Component):
     @property
     def population(self) -> int:
         """The number of characters that live in this district."""
-        return self._population
+        return self.data.population
 
     @population.setter
     def population(self, value: int) -> None:
         """Set the number of characters that live in this district."""
-        self._population = value
+        self.data.population = value
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(self.data)
 
     @property
     def settlement(self) -> GameObject:
@@ -202,6 +227,18 @@ class District(Component):
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.district.settlement!{self.settlement.uid}"
         )
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.district.name!{self.name}"
+        )
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.district.population!{self.population}"
+        )
+
+    def on_remove(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.delete(self.data)
+
+        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.district")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -214,16 +251,26 @@ class District(Component):
         }
 
 
+class SettlementData(GameData):
+    """SQL queryable settlement component data."""
+
+    __tablename__ = "settlements"
+
+    uid: Mapped[int] = mapped_column(
+        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
+    )
+    name: Mapped[str]
+
+
 class Settlement(Component):
     """A town, city, or village where characters live."""
 
-    __slots__ = "_name", "_districts"
+    __slots__ = ("data", "_districts")
 
+    data: SettlementData
+    """Queryable settlement data."""
     _districts: list[GameObject]
     """References to districts within this settlement."""
-
-    _name: str
-    """The name of the settlement."""
 
     def __init__(
         self,
@@ -232,19 +279,22 @@ class Settlement(Component):
         districts: Optional[list[GameObject]] = None,
     ) -> None:
         super().__init__(gameobject)
-        self._name = name
+        self.data = SettlementData(uid=gameobject.uid, name=name)
         self._districts = districts.copy() if districts is not None else []
 
     @property
     def name(self) -> str:
         """The name of the settlement."""
-        return self._name
+        return self.data.name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set the name of the settlement"""
-        self._name = value
-        self._gameobject.name = value
+        self.data.name = value
+        self.gameobject.name = value
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(self.data)
 
         if value:
             self.gameobject.world.rp_db.insert(
@@ -302,7 +352,19 @@ class Settlement(Component):
             # The district was not present
             return False
 
+    def on_add(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.add(self.data)
+
+        if self.name:
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.settlement.name!{self.name}"
+            )
+
     def on_remove(self) -> None:
+        with self.gameobject.world.session.begin() as session:
+            session.delete(self.data)
+
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.settlement")
 
     def to_dict(self) -> dict[str, Any]:

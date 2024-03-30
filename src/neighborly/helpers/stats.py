@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from neighborly.components.stats import Stat, Stats
 from neighborly.ecs import GameObject
 
@@ -11,7 +13,9 @@ from neighborly.ecs import GameObject
 def add_stat(
     gameobject: GameObject,
     stat_id: str,
-    stat: Stat,
+    base_value: float,
+    bounds: Optional[tuple[float, float]] = None,
+    is_discrete: bool = False,
 ) -> Stat:
     """Add a new stat to the gameobject.
 
@@ -29,11 +33,9 @@ def add_stat(
     Stat
         The newly created stat.
     """
-    gameobject.get_component(Stats).add_stat(stat_id, stat)
-
-    gameobject.world.rp_db.insert(f"{gameobject.uid}.stats.{stat_id}!{stat.value}")
-
-    return stat
+    return gameobject.get_component(Stats).add_stat(
+        stat_id, base_value=base_value, bounds=bounds, is_discrete=is_discrete
+    )
 
 
 def has_stat(gameobject: GameObject, stat_id: str) -> bool:
@@ -70,27 +72,3 @@ def get_stat(gameobject: GameObject, stat_id: str) -> Stat:
         The stat.
     """
     return gameobject.get_component(Stats).get_stat(stat_id)
-
-
-def remove_stat(gameobject: GameObject, stat_id: str) -> bool:
-    """Remove a stat from a GameObject.
-
-    Parameters
-    ----------
-    gameobject
-        A GameObject.
-    stat_id
-        The definition ID of a stat to remove.
-
-    Returns
-    -------
-    bool
-        True if the stat was removed successfully. False otherwise.
-    """
-    if gameobject.get_component(Stats).remove_stat(stat_id):
-
-        gameobject.world.rp_db.delete(f"{gameobject.uid}.stats.{stat_id}")
-
-        return True
-
-    return False

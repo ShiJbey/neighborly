@@ -1,32 +1,17 @@
+"""Test for Neighborly's Trait System.
+
+"""
+
 import pathlib
 
-from neighborly.components.traits import Trait
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
-from neighborly.libraries import TraitLibrary
 from neighborly.loaders import load_characters, load_skills
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
-
-
-def test_trait_instantiation() -> None:
-    """Test that traits are properly initialized by the simulation."""
-
-    sim = Simulation()
-
-    default_traits.load_plugin(sim)
-
-    # Traits are initialized at the start of the simulation
-    sim.initialize()
-
-    library = sim.world.resource_manager.get_resource(TraitLibrary)
-
-    trait = library.get_trait("flirtatious")
-
-    assert trait.get_component(Trait).definition.name == "Flirtatious"
 
 
 def test_add_trait() -> None:

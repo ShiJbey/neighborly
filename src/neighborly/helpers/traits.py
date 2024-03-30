@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from typing import Union
+
 from neighborly.components.relationship import Relationships
 from neighborly.components.stats import StatModifier, StatModifierType
 from neighborly.components.traits import Traits
@@ -20,7 +22,10 @@ from neighborly.libraries import TraitLibrary
 
 
 def add_trait(
-    gameobject: GameObject, trait_id: str, duration: int = -1, description: str = ""
+    gameobject: GameObject,
+    trait: Union[str, TraitDef],
+    duration: int = -1,
+    description: str = "",
 ) -> bool:
     """Add a trait to a GameObject.
 
@@ -28,7 +33,7 @@ def add_trait(
     ----------
     gameobject
         The gameobject to add the trait to.
-    trait_id
+    trait
         The ID of the trait.
     duration
         How long the trait should last.
@@ -42,15 +47,19 @@ def add_trait(
         if the trait conflict with existing traits.
     """
     world = gameobject.world
-    library = world.resource_manager.get_resource(TraitLibrary)
-    trait_def = library.get_definition(trait_id)
+
+    if isinstance(trait, str):
+        library = world.resource_manager.get_resource(TraitLibrary)
+        trait_def = library.get_definition(trait)
+    else:
+        trait_def = trait
 
     traits = gameobject.get_component(Traits)
 
-    if trait_id in traits.traits:
+    if trait_def.definition_id in traits.traits:
         return False
 
-    if has_conflicting_trait(gameobject, trait_id):
+    if has_conflicting_trait(gameobject, trait_def):
         return False
 
     for entry in trait_def.stat_modifiers:
@@ -63,7 +72,7 @@ def add_trait(
         )
 
     for entry in trait_def.skill_modifiers:
-        get_skill(gameobject, entry.name).stat.add_modifier(
+        get_skill(gameobject, entry.name).add_modifier(
             StatModifier(
                 value=entry.value,
                 modifier_type=StatModifierType[entry.modifier_type],
@@ -78,7 +87,7 @@ def add_trait(
         add_location_preference(gameobject, rule_id)
 
     traits.add_trait(
-        trait_id,
+        trait_def.definition_id,
         duration=duration,
         description=description if description else trait_def.description,
     )
@@ -113,7 +122,7 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
             get_stat(gameobject, entry.name).remove_modifiers_from_source(trait)
 
         for entry in trait.skill_modifiers:
-            get_skill(gameobject, entry.name).stat.remove_modifiers_from_source(trait)
+            get_skill(gameobject, entry.name).remove_modifiers_from_source(trait)
 
         for rule_id in trait.social_rules:
             remove_social_rule(gameobject, rule_id)
@@ -146,7 +155,7 @@ def has_trait(gameobject: GameObject, trait_id: str) -> bool:
     return trait_id in gameobject.get_component(Traits).traits
 
 
-def has_conflicting_trait(gameobject: GameObject, trait_id: str) -> bool:
+def has_conflicting_trait(gameobject: GameObject, trait: Union[str, TraitDef]) -> bool:
     """Check if a trait conflicts with current traits.
 
     Parameters
@@ -162,18 +171,22 @@ def has_conflicting_trait(gameobject: GameObject, trait_id: str) -> bool:
     """
     world = gameobject.world
     library = world.resource_manager.get_resource(TraitLibrary)
-    traits = gameobject.get_component(Traits)
 
-    trait = library.get_definition(trait_id)
+    if isinstance(trait, str):
+        trait_def = library.get_definition(trait)
+    else:
+        trait_def = trait
+
+    traits = gameobject.get_component(Traits)
 
     for instance in traits.traits.values():
 
         instance_trait = library.get_definition(instance.trait_id)
 
-        if instance.trait_id in trait.conflicts_with:
+        if instance.trait_id in trait_def.conflicts_with:
             return True
 
-        if trait_id in instance_trait.conflicts_with:
+        if trait_def.definition_id in instance_trait.conflicts_with:
             return True
 
     return False

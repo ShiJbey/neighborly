@@ -4,12 +4,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
-from neighborly.components.stats import Stat
-from neighborly.defs.base_types import SkillDef
-from neighborly.ecs import Component, GameObject
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+
+from neighborly.components.stats import Stat, StatValueChangeEvent
+from neighborly.ecs import Component, GameData, GameObject
 
 SKILL_MIN_VALUE = 0
 """The lowest value a skill stat can be."""
@@ -18,68 +19,32 @@ SKILL_MAX_VALUE = 255
 """The highest value a skill stat can be."""
 
 
-class Skill(Component):
-    """A skill that a character can have and improve."""
+class SkillInstance(GameData):
+    """Manages SQL queryable data about a stat."""
 
-    __slots__ = ("definition",)
+    __tablename__ = "skills"
 
-    definition: SkillDef
-    """The definition for this skill."""
-
-    def __init__(self, gameobject: GameObject, definition: SkillDef) -> None:
-        super().__init__(gameobject)
-        self.definition = definition
-
-    @property
-    def definition_id(self) -> str:
-        """The ID of this skill's definition."""
-        return self.definition.definition_id
-
-    @property
-    def display_name(self) -> str:
-        """The name of this skill."""
-        return self.definition.display_name
-
-    @property
-    def description(self) -> str:
-        """A short description of the skill."""
-        return self.definition.description
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"definition_id": self.definition_id}
-
-    def __str__(self) -> str:
-        return f"Skill(definition_id={self.definition_id!r})"
-
-    def __repr__(self) -> str:
-        return f"Skill(definition_id={self.definition_id!r})"
-
-
-@dataclass
-class SkillInstance:
-    """An instance of a skill being attached to a GameObject."""
-
-    skill: Skill
-    stat: Stat
+    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    skill_id: Mapped[str]
+    value: Mapped[float]
+    base_value: Mapped[float]
 
     def __str__(self) -> str:
         return (
-            f"SkillInstance(skill={self.skill.definition_id!r}, "
-            f"value={self.stat.value!r})"
+            f"SkillInstance(skill={self.skill_id!r}, "
+            f"value={self.value!r}, base_value={self.base_value!r})"
         )
 
     def __repr__(self) -> str:
         return (
-            f"SkillInstance(skill={self.skill.definition_id!r}, "
-            f"value={self.stat.value!r})"
+            f"SkillInstance(skill={self.skill_id!r}, "
+            f"value={self.value!r}, base_value={self.base_value!r})"
         )
 
     def to_dict(self) -> dict[str, Any]:
         """Return as serialized dict."""
-        return {
-            "skill": self.skill.definition_id,
-            "stat": self.stat.to_dict(),
-        }
+        return {"skill": self.skill_id, "value": self.value}
 
 
 class Skills(Component):
@@ -87,7 +52,7 @@ class Skills(Component):
 
     __slots__ = ("skills",)
 
-    skills: dict[str, SkillInstance]
+    skills: dict[str, Stat]
     """Skill names mapped to scores."""
 
     def __init__(
@@ -97,15 +62,32 @@ class Skills(Component):
         super().__init__(gameobject)
         self.skills = {}
 
-    def add_skill(self, skill: Skill, base_value: float = 0.0) -> bool:
+    def add_skill(self, skill: str, base_value: float = 0.0) -> bool:
         """Add a new skill to the skill tracker."""
-        if skill.definition_id not in self.skills:
+        if skill not in self.skills:
 
-            self.skills[skill.definition_id] = SkillInstance(
-                skill=skill,
-                stat=Stat(
-                    base_value=base_value, bounds=(SKILL_MIN_VALUE, SKILL_MAX_VALUE)
-                ),
+            skill_stat = Stat(
+                base_value=base_value, bounds=(SKILL_MIN_VALUE, SKILL_MAX_VALUE)
+            )
+
+            self.skills[skill] = skill_stat
+
+            skill_stat.on_value_changed.add_listener(
+                self.handle_stat_value_change(skill)
+            )
+
+            with self.gameobject.world.session.begin() as session:
+                session.add(
+                    SkillInstance(
+                        uid=self.gameobject.uid,
+                        name=skill,
+                        value=skill_stat.value,
+                        base_value=skill_stat.base_value,
+                    )
+                )
+
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.skills.{skill}!{skill_stat.value}"
             )
 
             return True
@@ -114,17 +96,38 @@ class Skills(Component):
 
     def __str__(self) -> str:
         skill_value_pairs = {
-            skill_id: skill_instance.stat.value
-            for skill_id, skill_instance in self.skills.items()
+            skill_id: stat.value for skill_id, stat in self.skills.items()
         }
         return f"Skills({repr(skill_value_pairs)})"
 
     def __repr__(self) -> str:
         skill_value_pairs = {
-            skill_id: skill_instance.stat.value
-            for skill_id, skill_instance in self.skills.items()
+            skill_id: stat.value for skill_id, stat in self.skills.items()
         }
         return f"Skills({repr(skill_value_pairs)})"
 
     def to_dict(self) -> dict[str, Any]:
         return {"skills": [s.to_dict() for s in self.skills.values()]}
+
+    def handle_stat_value_change(self, skill_id: str):
+        """Wraps a listener function for stat value change events."""
+
+        # this is necessary to capture the stat ID in a closure
+        def handler(source: object, event: StatValueChangeEvent) -> None:
+            source = cast(Stat, source)
+
+            with self.gameobject.world.session.begin() as session:
+                session.add(
+                    SkillInstance(
+                        uid=self.gameobject.uid,
+                        name=skill_id,
+                        value=event.value,
+                        base_value=source.base_value,
+                    )
+                )
+
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.skills.{skill_id}!{event.value}"
+            )
+
+        return handler

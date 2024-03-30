@@ -187,7 +187,7 @@ class SkillDef(ContentDefinition, ABC):
 
     definition_id: str
     """A unique ID for this skill, relative to the other skills."""
-    display_name: str = ""
+    name: str = ""
     """The skill's name."""
     description: str = ""
     """A short description of the skill."""
@@ -289,8 +289,8 @@ class SpeciesDef(TraitDef):
     """Age this species reaches main adulthood."""
     senior_age: int
     """Age this species becomes a senior/elder."""
-    lifespan: int
-    """The number of years that this species lives."""
+    lifespan: str
+    """A range of of years that this species lives (e.g. 'MIN - MAX')."""
     can_physically_age: bool
     """Does this character go through the various life stages."""
 
@@ -324,7 +324,7 @@ class SettlementDef(ContentDefinition, ABC):
 
     definition_id: str
     """The name of this definition"""
-    display_name: str = ""
+    name: str = ""
     """The name of the settlement (overrides name_factory)."""
     name_factory: str = "default"
     """The name of the factory to use to generate the settlement name."""
@@ -367,7 +367,7 @@ class ResidenceDef(ContentDefinition, ABC):
 
     definition_id: str
     """The name of this definition"""
-    display_name: str
+    name: str
     """String displayed describing the building"""
     spawn_frequency: int = 1
     """The frequency of spawning relative to others in the district."""
@@ -540,7 +540,7 @@ class JobRoleDef(ContentDefinition, ABC):
 
     definition_id: str
     """The name of this definition."""
-    display_name: str
+    name: str
     """The name of the role."""
     description: str = ""
     """A description of the role."""
@@ -599,6 +599,8 @@ class BusinessDef(ContentDefinition, ABC):
     """The name of the factory used to generate names for this business type."""
     owner_role: str
     """Parameters for the business owner's job."""
+    lifespan: str = "5 - 10"
+    """A range of the base number of years businesses of this type last for."""
     employee_roles: dict[str, int] = pydantic.Field(default_factory=dict)
     """Parameters gor each job held by employees."""
     traits: list[str] = pydantic.Field(default_factory=list)

@@ -53,7 +53,7 @@ def test_required_tags() -> None:
     sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
         DefaultSettlementDef(
             definition_id="basic_settlement",
-            display_name="Settlement",
+            name="Settlement",
             districts=[
                 SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
                 SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
@@ -68,7 +68,7 @@ def test_required_tags() -> None:
     # sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
     #     DefaultSettlementDef(
     #         definition_id = "basic_settlement2",
-    #         display_name="Settlement",
+    #         name="Settlement",
     #         districts = [
     #             SettlementDefDistrictEntry(
     #                 tags=["commercial", "suburban"]
@@ -106,7 +106,7 @@ def test_optional_tags() -> None:
     sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
         DefaultSettlementDef(
             definition_id="basic_settlement",
-            display_name="Settlement",
+            name="Settlement",
             districts=[
                 SettlementDefDistrictEntry(
                     with_tags=["urban", "suburban", "~hot", "~heat"]
@@ -125,7 +125,7 @@ def test_optional_tags() -> None:
     # sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
     #     DefaultSettlementDef(
     #         definition_id = "basic_settlement2",
-    #         display_name="Settlement",
+    #         name="Settlement",
     #         districts = [
     #             SettlementDefDistrictEntry(
     #                 tags=["commercial", "suburban"]
