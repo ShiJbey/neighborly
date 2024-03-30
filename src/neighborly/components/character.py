@@ -79,6 +79,7 @@ class Character(Component):
             life_stage=LifeStage.CHILD,
         )
         self.species = species
+        gameobject.name = self.full_name
 
     @property
     def first_name(self) -> str:

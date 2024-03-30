@@ -586,7 +586,7 @@ class DefaultCharacterDef(CharacterDef):
         add_stat(
             character,
             "fertility",
-            base_value=round(rng.uniform(0, self.STAT_MAX_VALUE)),
+            base_value=float(rng.uniform(0, self.STAT_MAX_VALUE)),
             bounds=(0, self.STAT_MAX_VALUE),
         )
 
@@ -749,22 +749,20 @@ class DefaultBusinessDef(BusinessDef):
         base_lifespan = rng.randint(min_value, max_value)
         add_stat(business, "lifespan", base_value=base_lifespan, is_discrete=True)
 
-        self.initialize_name(business, options)
+        self.generate_name(business, options)
 
         for trait in self.traits:
             add_trait(business, trait)
 
         return business
 
-    def initialize_name(
-        self, business: GameObject, options: BusinessGenOptions
-    ) -> None:
+    def generate_name(self, business: GameObject, options: BusinessGenOptions) -> None:
         """Generates a name for the business."""
         if options.name:
             business.get_component(Business).name = options.name
 
         elif self.name:
-            business.get_component(Business).name = options.name
+            business.get_component(Business).name = self.name
 
         elif self.name_factory:
             name = self.name_factories[self.name_factory](business.world, options)

@@ -212,6 +212,7 @@ class Business(Component):
         self._employee_roles = employee_roles
         self._owner = None
         self._employees = {}
+        gameobject.name = name
 
     @property
     def district(self) -> GameObject:

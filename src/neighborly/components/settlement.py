@@ -74,6 +74,7 @@ class District(Component):
         self._business_slots = business_slots
         self._businesses = []
         self._residences = []
+        gameobject.name = name
 
     @property
     def name(self) -> str:
@@ -281,6 +282,7 @@ class Settlement(Component):
         super().__init__(gameobject)
         self.data = SettlementData(uid=gameobject.uid, name=name)
         self._districts = districts.copy() if districts is not None else []
+        gameobject.name = name
 
     @property
     def name(self) -> str:

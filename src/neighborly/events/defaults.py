@@ -21,6 +21,7 @@ from neighborly.datetime import SimDate
 from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import GameObject
 from neighborly.helpers.location import (
+    add_frequented_location,
     remove_all_frequented_locations,
     remove_all_frequenting_characters,
     remove_frequented_location,
@@ -263,6 +264,8 @@ class ChangeResidenceEvent(LifeEvent):
             former_residence_comp.remove_resident(character)
             character.remove_component(Resident)
 
+            remove_frequented_location(character, former_residence)
+
             former_district = former_residence.get_component(
                 ResidentialUnit
             ).district.get_component(District)
@@ -282,6 +285,8 @@ class ChangeResidenceEvent(LifeEvent):
             new_residence.get_component(ResidentialUnit).add_owner(character)
 
         character.add_component(Resident(character, residence=new_residence))
+
+        add_frequented_location(character, new_residence)
 
         if new_residence.has_component(Vacant):
             new_residence.remove_component(Vacant)
