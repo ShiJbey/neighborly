@@ -1146,13 +1146,7 @@ class EventEmitter(Generic[_T]):
         self.listeners.remove(listener)
 
     def remove_all_listeners(self) -> None:
-        """Remove all listeners from an event.
-
-        Parameters
-        ----------
-        event_name
-            The name of the event.
-        """
+        """Remove all listeners from an emitter."""
         self.listeners.clear()
 
     def dispatch(self, source: object, event: _T) -> None:

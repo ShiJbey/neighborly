@@ -490,9 +490,9 @@ class CharacterDef(ContentDefinition, ABC):
 
     definition_id: str
     """The name of this definition."""
-    first_name_factory: str = "default"
+    first_name_factory: str = "default-first"
     """The factory used to generate first names for this character type."""
-    last_name_factory: str = "default"
+    last_name_factory: str = "default-last"
     """The factory used to generate last names for this character type."""
     sex: str = ""
     """The sex of this character type."""

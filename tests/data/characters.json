@@ -1,30 +1,32 @@
 {
-    "person": {
-        "species": "human",
-        "variants": [
-            {
-                "name": "male",
-                "sex": "Male"
-            },
-            {
-                "name": "female",
-                "sex": "Female"
-            }
-        ]
-    },
-    "farmer": {
-        "extends": [
-            "person"
-        ]
-    },
-    "merchant": {
-        "extends": [
-            "person"
-        ]
-    },
-    "nobility": {
-        "extends": [
-            "person"
-        ]
-    }
+  "person": {
+    "species": "human",
+    "variants": [
+      {
+        "variant_name": "male",
+        "sex": "Male",
+        "name_factory": "masculine-first"
+      },
+      {
+        "variant_name": "female",
+        "sex": "Female",
+        "name_factory": "feminine-first"
+      }
+    ]
+  },
+  "farmer": {
+    "extends": [
+      "person"
+    ]
+  },
+  "merchant": {
+    "extends": [
+      "person"
+    ]
+  },
+  "nobility": {
+    "extends": [
+      "person"
+    ]
+  }
 }

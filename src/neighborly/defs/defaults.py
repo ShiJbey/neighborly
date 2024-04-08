@@ -63,9 +63,15 @@ from neighborly.libraries import (
     ResidenceLibrary,
     SkillLibrary,
     TraitLibrary,
+    DistrictNameFactories,
+    SettlementNameFactories,
+    BusinessNameFactories,
+    CharacterNameFactories,
 )
 from neighborly.life_event import PersonalEventHistory
 from neighborly.tracery import Tracery
+
+STAT_MAX_VALUE: int = 100
 
 
 class DefaultSkillDef(SkillDef):
@@ -99,10 +105,6 @@ def default_district_name_factory(world: World, _: DistrictGenOptions) -> str:
 class DefaultDistrictDef(DistrictDef):
     """A definition for a district type specified by the user."""
 
-    name_factories: ClassVar[dict[str, Callable[[World, DistrictGenOptions], str]]] = {
-        "default": default_district_name_factory
-    }
-
     def instantiate(
         self,
         world: World,
@@ -117,7 +119,8 @@ class DefaultDistrictDef(DistrictDef):
         if self.name:
             name = self.name
         elif self.name_factory:
-            name = self.name_factories[self.name_factory](world, options)
+            factories = world.resource_manager.get_resource(DistrictNameFactories)
+            name = factories.get_factory(self.name_factory)(world, options)
 
         district.add_component(
             District(
@@ -279,10 +282,6 @@ def default_settlement_name_factory(world: World, _: SettlementGenOptions) -> st
 class DefaultSettlementDef(SettlementDef):
     """A definition for a settlement type specified by the user."""
 
-    name_factories: ClassVar[
-        dict[str, Callable[[World, SettlementGenOptions], str]]
-    ] = {"default": default_settlement_name_factory}
-
     def instantiate(self, world: World, options: SettlementGenOptions) -> GameObject:
         settlement = world.gameobject_manager.spawn_gameobject()
         settlement.metadata["definition_id"] = self.definition_id
@@ -293,7 +292,8 @@ class DefaultSettlementDef(SettlementDef):
             name = self.name
 
         elif self.name_factory:
-            name = self.name_factories[self.name_factory](world, options)
+            factories = world.resource_manager.get_resource(SettlementNameFactories)
+            name = factories.get_factory(self.name_factory)(world, options)
 
         settlement.add_component(Settlement(settlement, name=name))
         settlement.add_component(
@@ -418,20 +418,6 @@ def generate_last_name(world: World, _: CharacterGenOptions) -> str:
 class DefaultCharacterDef(CharacterDef):
     """Default implementation for character definitions."""
 
-    first_name_factories: ClassVar[
-        dict[str, Callable[[World, CharacterGenOptions], str]]
-    ] = {
-        "default": generate_any_first_name,
-        "masculine": generate_masculine_first_name,
-        "feminine": generate_feminine_first_name,
-    }
-
-    last_name_factories: ClassVar[
-        dict[str, Callable[[World, CharacterGenOptions], str]]
-    ] = {"default": generate_last_name}
-
-    STAT_MAX_VALUE: ClassVar[int] = 100
-
     def instantiate(
         self,
         world: World,
@@ -483,19 +469,22 @@ class DefaultCharacterDef(CharacterDef):
         ----------
         character
             The character to initialize.
+        options
+            Generation options.
         """
         character_comp = character.get_component(Character)
+        factories = character.world.resources.get_resource(CharacterNameFactories)
 
         if options.first_name:
             character_comp.first_name = options.first_name
         else:
-            factory = self.first_name_factories[self.first_name_factory]
+            factory = factories.get_factory(self.first_name_factory)
             character_comp.first_name = factory(character.world, options)
 
         if options.last_name:
             character_comp.last_name = options.last_name
         else:
-            factory = self.last_name_factories[self.last_name_factory]
+            factory = factories.get_factory(self.last_name_factory)
             character_comp.last_name = factory(character.world, options)
 
     def initialize_character_age(
@@ -578,7 +567,6 @@ class DefaultCharacterDef(CharacterDef):
 
     def initialize_character_stats(self, character: GameObject) -> None:
         """Initializes a characters stats with random values."""
-        rng = character.world.resource_manager.get_resource(random.Random)
 
         # Initialize the life span
         species = character.get_component(Character).species
@@ -597,63 +585,63 @@ class DefaultCharacterDef(CharacterDef):
         add_stat(
             character,
             "fertility",
-            base_value=float(rng.uniform(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.uniform(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
         )
 
         add_stat(
             character,
             "kindness",
-            base_value=float(rng.randint(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
             is_discrete=True,
         )
 
         add_stat(
             character,
             "courage",
-            base_value=float(rng.randint(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
             is_discrete=True,
         )
 
         add_stat(
             character,
             "stewardship",
-            base_value=float(rng.randint(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
             is_discrete=True,
         )
 
         add_stat(
             character,
             "sociability",
-            base_value=float(rng.randint(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
             is_discrete=True,
         )
 
         add_stat(
             character,
             "intelligence",
-            base_value=float(rng.randint(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
             is_discrete=True,
         )
 
         add_stat(
             character,
             "discipline",
-            base_value=float(rng.randint(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
             is_discrete=True,
         )
 
         add_stat(
             character,
             "charm",
-            base_value=float(rng.randint(0, self.STAT_MAX_VALUE)),
-            bounds=(0, self.STAT_MAX_VALUE),
+            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
+            bounds=(0, STAT_MAX_VALUE),
             is_discrete=True,
         )
 
@@ -777,5 +765,8 @@ class DefaultBusinessDef(BusinessDef):
             business.get_component(Business).name = self.name
 
         elif self.name_factory:
-            name = self.name_factories[self.name_factory](business.world, options)
+            factories = business.world.resource_manager.get_resource(
+                BusinessNameFactories
+            )
+            name = factories.get_factory(self.name_factory)(business.world, options)
             business.get_component(Business).name = name

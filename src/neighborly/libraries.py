@@ -9,7 +9,8 @@ ID.
 from __future__ import annotations
 
 import json
-from typing import Any, Generic, Iterable, Optional, Type, TypeVar
+from abc import abstractmethod
+from typing import Any, Generic, Iterable, Optional, Type, TypeVar, Protocol
 
 import pydantic
 
@@ -24,8 +25,9 @@ from neighborly.defs.base_types import (
     ResidenceDef,
     SettlementDef,
     SkillDef,
-    TraitDef,
+    TraitDef, DistrictGenOptions, CharacterGenOptions, BusinessGenOptions, SettlementGenOptions,
 )
+from neighborly.ecs import World
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.life_event import LifeEvent
 
@@ -216,3 +218,119 @@ class LocationPreferenceLibrary:
     def add_rule(self, rule: LocationPreferenceRule) -> None:
         """Add a location preference rule."""
         self.rules[rule.rule_id] = rule
+
+
+class ICharacterNameFactory(Protocol):
+    """Generates a character name."""
+
+    @abstractmethod
+    def __call__(self, world: World, options: CharacterGenOptions) -> str:
+        """Generate a new name."""
+        raise NotImplementedError()
+
+
+class CharacterNameFactories:
+    """A Collection of factories that generate character names."""
+
+    __slots__ = ("factories",)
+
+    factories: dict[str, ICharacterNameFactory]
+    """Factories indexed by name."""
+
+    def __init__(self) -> None:
+        self.factories = {}
+
+    def add_factory(self, name: str, factory: ICharacterNameFactory) -> None:
+        """Add a factory."""
+        self.factories[name] = factory
+
+    def get_factory(self, name: str) -> ICharacterNameFactory:
+        """Get a factory by name."""
+        return self.factories[name]
+
+
+class IBusinessNameFactory(Protocol):
+    """Generates business names."""
+
+    @abstractmethod
+    def __call__(self, world: World, options: BusinessGenOptions) -> str:
+        """Generate a new name."""
+        raise NotImplementedError()
+
+
+class BusinessNameFactories:
+    """A collection of factories that generate business names."""
+
+    __slots__ = ("factories",)
+
+    factories: dict[str, IBusinessNameFactory]
+    """Factories indexed by name."""
+
+    def __init__(self) -> None:
+        self.factories = {}
+
+    def add_factory(self, name: str, factory: IBusinessNameFactory) -> None:
+        """Add a factory."""
+        self.factories[name] = factory
+
+    def get_factory(self, name: str) -> IBusinessNameFactory:
+        """Get a factory by name."""
+        return self.factories[name]
+
+
+class IDistrictNameFactory(Protocol):
+    """Generates district names."""
+
+    @abstractmethod
+    def __call__(self, world: World, options: DistrictGenOptions) -> str:
+        """Generate a new name."""
+        raise NotImplementedError()
+
+
+class DistrictNameFactories:
+    """A collection of factories that generate district names."""
+
+    __slots__ = ("factories",)
+
+    factories: dict[str, IDistrictNameFactory]
+    """Factories indexed by name."""
+
+    def __init__(self) -> None:
+        self.factories = {}
+
+    def add_factory(self, name: str, factory: IDistrictNameFactory) -> None:
+        """Add a factory."""
+        self.factories[name] = factory
+
+    def get_factory(self, name: str) -> IDistrictNameFactory:
+        """Get a factory by name."""
+        return self.factories[name]
+
+
+class ISettlementNameFactory(Protocol):
+    """Generates settlement names."""
+
+    @abstractmethod
+    def __call__(self, world: World, options: SettlementGenOptions) -> str:
+        """Generate a new name."""
+        raise NotImplementedError()
+
+
+class SettlementNameFactories:
+    """A collection of factories that generate settlement names."""
+
+    __slots__ = ("factories",)
+
+    factories: dict[str, ISettlementNameFactory]
+    """Factories indexed by name."""
+
+    def __init__(self) -> None:
+        self.factories = {}
+
+    def add_factory(self, name: str, factory: ISettlementNameFactory) -> None:
+        """Add a factory."""
+        self.factories[name] = factory
+
+    def get_factory(self, name: str) -> ISettlementNameFactory:
+        """Get a factory by name."""
+        return self.factories[name]

@@ -95,12 +95,12 @@ def _process_definition(
     for variant_def in final_definition.variants:
         # We have to do the following to ensure that 'is_template' has the
         # 'set' flag and is not excluded from model_dump(...)
-        if "name" not in variant_def:
+        if "variant_name" not in variant_def:
             raise ValueError(
                 f"{final_definition.definition_id} has variant that is missing a name."
             )
 
-        variant_name = variant_def["name"]
+        variant_name = variant_def["variant_name"]
         variant_tags: set[str] = set(variant_def.get("tags", []))
 
         variant_definition_data: dict[str, Any] = {}
