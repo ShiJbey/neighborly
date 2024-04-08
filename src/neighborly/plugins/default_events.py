@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from repraxis.query import DBQuery
 
@@ -28,6 +28,7 @@ from neighborly.events.defaults import (
     DepartSettlement,
     LeaveJob,
 )
+from neighborly.helpers.db_helpers import preprocess_query_string
 from neighborly.helpers.location import add_frequented_location
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.stats import get_stat
@@ -45,6 +46,8 @@ from neighborly.simulation import Simulation
 
 class StartANewJob(LifeEvent):
     """A character will attempt to find a job."""
+
+    __event_id__ = "new_job"
 
     base_probability = 0.7
 
@@ -202,7 +205,8 @@ class StartANewJob(LifeEvent):
             for role_id in open_positions:
                 job_role = library.get_definition(role_id)
                 for rule in job_role.requirements:
-                    result = DBQuery(rule.split("\n")).run(
+                    query_lines = preprocess_query_string(rule)
+                    result = DBQuery(query_lines).run(
                         subject.world.rp_db, bindings=[{"?subject": subject.uid}]
                     )
                     if result.success:
@@ -227,6 +231,8 @@ class StartANewJob(LifeEvent):
 
 class StartBusiness(LifeEvent):
     """Character starts a specific business."""
+
+    __event_id__ = "start-business"
 
     def __init__(
         self,
@@ -324,7 +330,8 @@ class StartBusiness(LifeEvent):
             owner_role = business.owner_role
 
             for rule in owner_role.requirements:
-                result = DBQuery(rule.split("\n")).run(
+                query_lines = preprocess_query_string(rule)
+                result = DBQuery(query_lines).run(
                     subject.world.rp_db, bindings=[{"?subject": subject.uid}]
                 )
 
@@ -359,6 +366,8 @@ class StartBusiness(LifeEvent):
 
 class StartDating(LifeEvent):
     """Event dispatched when two characters start dating."""
+
+    __event_id__ = "start-dating"
 
     base_probability = 0.5
 
@@ -486,6 +495,8 @@ class StartDating(LifeEvent):
 
 class GetMarried(LifeEvent):
     """Event dispatched when two characters get married."""
+
+    __event_id__ = "get-married"
 
     def __init__(self, subject: GameObject, partner: GameObject) -> None:
         super().__init__(
@@ -629,6 +640,8 @@ class GetMarried(LifeEvent):
 class GetDivorced(LifeEvent):
     """Dispatched to officially divorce two married characters."""
 
+    __event_id__ = "get-divorced"
+
     def __init__(self, subject: GameObject, ex_spouse: GameObject) -> None:
         super().__init__(
             world=subject.world,
@@ -706,6 +719,8 @@ class GetDivorced(LifeEvent):
 class BreakUp(LifeEvent):
     """Dispatched to officially break up a dating relationship between characters."""
 
+    __event_id__ = "break-up"
+
     def __init__(self, subject: GameObject, ex_partner: GameObject) -> None:
         super().__init__(
             world=subject.world,
@@ -767,6 +782,8 @@ class BreakUp(LifeEvent):
 
 class GetPregnant(LifeEvent):
     """Characters have a chance of getting pregnant while in romantic relationships."""
+
+    __event_id__ = "pregnant"
 
     base_probability = 0.5
 
@@ -858,6 +875,8 @@ class Retire(LifeEvent):
     If the retiree is an employee, they are just removed from their role and business
     continues as usual.
     """
+
+    __event_id__ = "retire"
 
     base_probability = 0.4
 
@@ -965,6 +984,8 @@ class Retire(LifeEvent):
 class DepartDueToUnemployment(LifeEvent):
     """Character leave the settlement and the simulation."""
 
+    __event_id__ = "depart"
+
     base_probability = 0.3
 
     def __init__(self, subject: GameObject, reason: str = "") -> None:
@@ -1058,7 +1079,9 @@ class DepartDueToUnemployment(LifeEvent):
 class BecomeFriends(LifeEvent):
     """Two characters become friends."""
 
-    base_probability = 0.0
+    __event_id__ = "become-friends"
+
+    __is_hidden__ = True
 
     def __init__(self, subject: GameObject, other: GameObject) -> None:
         super().__init__(
@@ -1182,7 +1205,9 @@ class BecomeFriends(LifeEvent):
 class DissolveFriendship(LifeEvent):
     """Two characters stop being friends."""
 
-    base_probability = 0.0
+    __event_id__ = "dissolve-friendship"
+
+    __is_hidden__ = True
 
     def __init__(self, subject: GameObject, other: GameObject) -> None:
         super().__init__(
@@ -1269,6 +1294,8 @@ class DissolveFriendship(LifeEvent):
 class BecomeEnemies(LifeEvent):
     """Two characters become enemies."""
 
+    __event_id__ = "become-enemies"
+
     base_probability = 0.5
 
     def __init__(self, subject: GameObject, other: GameObject) -> None:
@@ -1316,41 +1343,33 @@ class BecomeEnemies(LifeEvent):
 
     @classmethod
     def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        if not subject.has_component(Character):
-            # Enmity can only form between people. This is here for future proofing
-            # incase life events can ever be triggers by more than characters
-            return None
+        world = subject.world
 
-        options: list[GameObject] = []
-        scores: list[float] = []
+        query = """
+        ?rel.relationship.owner!?subject
+        ?rel.relationship.target!?target
+        not ?rel.traits.enemy
+        ?target.active
+        ?rel.stats.reputation!?rep_val
+        lt ?rep_val 0
+        """
 
-        for target, rel in subject.get_component(Relationships).outgoing.items():
-            # Only allow enmity between characters
-            if not target.has_component(Character):
-                continue
+        query_lines = preprocess_query_string(query)
 
-            if target.is_active is False:
-                continue
+        result = DBQuery(query_lines).run(
+            world.rp_db, bindings=[{"?subject": subject.uid}]
+        )
 
-            if has_trait(rel, "enemy"):
-                continue
-
-            if get_stat(rel, "reputation").value >= 0:
-                continue
-
-            score = 1 - get_stat(rel, "reputation").normalized
-            if score > 0:
-                options.append(target)
-                scores.append(score)
-
-        if not options:
+        if not result.success:
             return None
 
         rng = subject.world.resource_manager.get_resource(random.Random)
 
-        choice = rng.choices(options, weights=scores, k=1)[0]
+        choice = rng.choice(result.bindings)
 
-        return BecomeEnemies(subject, choice)
+        return BecomeEnemies(
+            subject, world.gameobjects.get_gameobject(cast(int, choice["target"]))
+        )
 
     def execute(self) -> None:
         subject = self.roles["subject"]
@@ -1366,6 +1385,8 @@ class BecomeEnemies(LifeEvent):
 
 class DissolveEnmity(LifeEvent):
     """Two characters stop being enemies."""
+
+    __event_id__ = "dissolve-enmity"
 
     base_probability = 0.2
 
@@ -1451,6 +1472,8 @@ class DissolveEnmity(LifeEvent):
 
 class FormCrush(LifeEvent):
     """A character forms a new crush on someone."""
+
+    __event_id__ = "form-crush"
 
     base_probability = 0.2
 
@@ -1544,6 +1567,8 @@ class FormCrush(LifeEvent):
 class TryFindOwnPlace(LifeEvent):
     """Adults living with parents will try to find their own residence."""
 
+    __event_id__ = "try-find-own-place"
+
     base_probability = 0.4
 
     def __init__(self, subject: GameObject) -> None:
@@ -1606,6 +1631,8 @@ class TryFindOwnPlace(LifeEvent):
 
 class PromotedToBusinessOwner(LifeEvent):
     """Simulate a character being promoted to the owner of a business."""
+
+    __event_id__ = "job-promotion"
 
     base_probability = 0.4
 
@@ -1707,6 +1734,8 @@ class PromotedToBusinessOwner(LifeEvent):
 class JobPromotion(LifeEvent):
     """The character is promoted at their job from a lower role to a higher role."""
 
+    __event_id__ = "job-promotion"
+
     base_probability = 0.4
 
     def __init__(
@@ -1804,7 +1833,9 @@ class JobPromotion(LifeEvent):
 
             for rule in role.requirements:
 
-                result = DBQuery(rule.split("\n")).run(
+                query_lines = preprocess_query_string(rule)
+
+                result = DBQuery(query_lines).run(
                     subject.world.rp_db, bindings=[{"?subject": subject.uid}]
                 )
                 if result.success:
@@ -1840,6 +1871,8 @@ class JobPromotion(LifeEvent):
 
 class FiredFromJob(LifeEvent):
     """The character is fired from their job."""
+
+    __event_id__ = "fired"
 
     base_probability = 0.1
 
@@ -1934,20 +1967,20 @@ class FiredFromJob(LifeEvent):
 def load_plugin(sim: Simulation) -> None:
     """Load plugin content."""
 
-    register_life_event_type(sim, StartANewJob)
-    register_life_event_type(sim, StartBusiness)
-    register_life_event_type(sim, StartDating)
-    register_life_event_type(sim, GetMarried)
-    register_life_event_type(sim, GetDivorced)
-    register_life_event_type(sim, BreakUp)
-    register_life_event_type(sim, GetPregnant)
-    register_life_event_type(sim, Retire)
-    register_life_event_type(sim, DepartDueToUnemployment)
-    register_life_event_type(sim, BecomeFriends)
-    register_life_event_type(sim, DissolveFriendship)
-    register_life_event_type(sim, BecomeEnemies)
-    register_life_event_type(sim, DissolveEnmity)
-    register_life_event_type(sim, FormCrush)
-    register_life_event_type(sim, TryFindOwnPlace)
-    register_life_event_type(sim, FiredFromJob)
-    register_life_event_type(sim, JobPromotion)
+    register_life_event_type(sim, "character", StartANewJob)
+    register_life_event_type(sim, "character", StartBusiness)
+    register_life_event_type(sim, "character", StartDating)
+    register_life_event_type(sim, "character", GetMarried)
+    register_life_event_type(sim, "character", GetDivorced)
+    register_life_event_type(sim, "character", BreakUp)
+    register_life_event_type(sim, "character", GetPregnant)
+    register_life_event_type(sim, "character", Retire)
+    register_life_event_type(sim, "character", DepartDueToUnemployment)
+    register_life_event_type(sim, "character", BecomeFriends)
+    register_life_event_type(sim, "character", DissolveFriendship)
+    register_life_event_type(sim, "character", BecomeEnemies)
+    register_life_event_type(sim, "character", DissolveEnmity)
+    register_life_event_type(sim, "character", FormCrush)
+    register_life_event_type(sim, "character", TryFindOwnPlace)
+    register_life_event_type(sim, "character", FiredFromJob)
+    register_life_event_type(sim, "character", JobPromotion)

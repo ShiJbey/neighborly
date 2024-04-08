@@ -14,6 +14,7 @@ from neighborly.components.relationship import (
 from neighborly.components.stats import StatModifier, StatModifierType, Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import GameObject
+from neighborly.helpers.db_helpers import preprocess_query_string
 from neighborly.helpers.stats import add_stat, get_stat
 from neighborly.libraries import SocialRuleLibrary
 
@@ -244,7 +245,9 @@ def check_social_rule_preconditions(
     owner = relationship.owner
     target = relationship.target
 
-    result = DBQuery(rule.preconditions).run(
+    query_lines = preprocess_query_string(rule.preconditions)
+
+    result = DBQuery(query_lines).run(
         relationship.gameobject.world.rp_db,
         [{"?owner": owner.uid, "?target": target.uid}],
     )

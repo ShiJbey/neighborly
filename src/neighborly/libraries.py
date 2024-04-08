@@ -9,10 +9,9 @@ ID.
 from __future__ import annotations
 
 import json
-from typing import Any, Generic, Iterator, Optional, Type, TypeVar
+from typing import Any, Generic, Iterable, Optional, Type, TypeVar
 
 import pydantic
-from ordered_set import OrderedSet
 
 from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
@@ -27,8 +26,6 @@ from neighborly.defs.base_types import (
     SkillDef,
     TraitDef,
 )
-from neighborly.ecs import World
-from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.life_event import LifeEvent
 
@@ -123,37 +120,6 @@ class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
     """Manages trait definitions and instances."""
 
 
-class EffectLibrary:
-    """Manages effect types and constructs them when needed."""
-
-    _slots__ = "_effect_types"
-
-    _effect_types: dict[str, Type[Effect]]
-    """SettlementDef types for loading data from config files."""
-
-    def __init__(self) -> None:
-        self._effect_types = {}
-
-    def get_effect_type(self, effect_name: str) -> Type[Effect]:
-        """Get a definition type."""
-        return self._effect_types[effect_name]
-
-    def add_effect_type(self, effect_type: Type[Effect]) -> None:
-        """Add a definition type for loading objs."""
-        self._effect_types[effect_type.__name__] = effect_type
-
-    def create_from_obj(self, world: World, obj: dict[str, Any]) -> Effect:
-        """Parse a definition from a dict and add to the library."""
-        params = {**obj}
-        effect_name: str = params["type"]
-        del params["type"]
-
-        effect_type = self.get_effect_type(effect_name)
-        effect = effect_type.instantiate(world, params)
-
-        return effect
-
-
 class DistrictLibrary(ContentDefinitionLibrary[DistrictDef]):
     """A collection of all district definitions."""
 
@@ -181,20 +147,41 @@ class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
 class LifeEventLibrary:
     """Manages the collection of LifeEvents that characters choose from for behavior."""
 
-    __slots__ = ("_event_types",)
+    __slots__ = ("event_types",)
 
-    _event_types: OrderedSet[Type[LifeEvent]]
-    """Collection of all LifeEvent subtypes that have been added to the library."""
+    event_types: dict[str, dict[str, Type[LifeEvent]]]
+    """Life event types organized by agent type and event id."""
 
     def __init__(self) -> None:
-        self._event_types = OrderedSet([])
+        self.event_types = {}
 
-    def add_event_type(self, event_type: Type[LifeEvent]) -> None:
-        """Add a LifeEvent subtype to the library."""
-        self._event_types.add(event_type)
+    def add_event_type(self, agent_type: str, event_type: Type[LifeEvent]) -> None:
+        """Add an action to the library."""
+        event_id = event_type.__event_id__
 
-    def __iter__(self) -> Iterator[Type[LifeEvent]]:
-        return iter(self._event_types)
+        if event_id not in self.event_types:
+            self.event_types[agent_type] = {}
+
+        self.event_types[agent_type][event_id] = event_type
+
+    def get_event_type(self, agent_type: str, event_id: str) -> Type[LifeEvent]:
+        """Get an action from teh library."""
+        if agent_type not in self.event_types:
+            raise KeyError(f"Could not find action entries for {agent_type!r}")
+
+        action_subset = self.event_types[agent_type]
+
+        if event_id not in action_subset:
+            raise KeyError(f"Could not find {event_id!r} event for {agent_type!r}")
+
+        return action_subset[event_id]
+
+    def get_all_event_types(self, agent_type: str) -> Iterable[Type[LifeEvent]]:
+        """Get an action from teh library."""
+        if agent_type not in self.event_types:
+            return []
+
+        return self.event_types[agent_type].values()
 
 
 class SocialRuleLibrary:

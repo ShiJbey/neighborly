@@ -18,7 +18,6 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
-    Mapping,
     Optional,
     Type,
     TypeVar,
@@ -223,19 +222,22 @@ class LifeEventMeta(ABCMeta):
 class LifeEvent(Event, metaclass=LifeEventMeta):
     """An event of significant importance in a GameObject's life"""
 
+    __event_id__: str = ""
+    """ID used to map the event to considerations and listeners"""
+    __is_hidden__: bool = False
+    """Is this event available by default during event selection."""
+
     base_probability: ClassVar[float] = 0.5
     """The probability of the event happening, independent of considerations."""
     _considerations: tuple[_EventConsiderationWrapper[LifeEvent], ...]
     """Consideration functions for calculating an event's probability of occurring."""
 
-    __slots__ = ("_timestamp", "_roles", "_data")
+    __slots__ = ("_timestamp", "_roles")
 
     _timestamp: SimDate
     """The date when this event occurred."""
     _roles: EventRoleList
     """The bound roles for this life event."""
-    _data: dict[str, Any]
-    """Event data aside from roles."""
 
     def __init__(
         self,
@@ -243,10 +245,21 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
         roles: Iterable[EventRole],
         **kwargs: Any,
     ) -> None:
-        super().__init__(world)
+        super().__init__(self.__event_id__, world, **kwargs)
+        if not self.__event_id__:
+            raise ValueError(f"Please specify __event_id__ for class {self.__class__}")
         self._timestamp = world.resource_manager.get_resource(SimDate).copy()
         self._roles = EventRoleList(roles)
-        self._data = {**kwargs}
+
+    @classmethod
+    def is_hidden(cls) -> bool:
+        """Is this event type available by default during event selection."""
+        return cls.__is_hidden__
+
+    @classmethod
+    def get_event_id(cls) -> str:
+        """Get the event ID for this event type."""
+        return cls.__event_id__
 
     @property
     def timestamp(self) -> SimDate:
@@ -257,11 +270,6 @@ class LifeEvent(Event, metaclass=LifeEventMeta):
     def roles(self) -> EventRoleList:
         """Get the list of the event's roles."""
         return self._roles
-
-    @property
-    def data(self) -> Mapping[str, Any]:
-        """Get data dict."""
-        return self._data
 
     @abstractmethod
     def execute(self) -> None:
@@ -444,13 +452,13 @@ class EventConsiderations:
 class GlobalEventHistory:
     """Stores a record of all past life events."""
 
-    __slots__ = ("_history",)
+    __slots__ = ("history",)
 
-    _history: dict[int, LifeEvent]
+    history: list[LifeEvent]
     """All recorded life events mapped to their event ID."""
 
     def __init__(self) -> None:
-        self._history = {}
+        self.history = []
 
     def append(self, event: LifeEvent) -> None:
         """Record a new life event.
@@ -460,14 +468,8 @@ class GlobalEventHistory:
         event
             The event to record.
         """
-        self._history[event.event_id] = event
+        self.history.append(event)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize object into JSON-serializable dict."""
-        return {str(key): entry.to_dict() for key, entry in self._history.items()}
-
-    def __iter__(self) -> Iterator[LifeEvent]:
-        return self._history.values().__iter__()
-
-    def __getitem__(self, key: int) -> LifeEvent:
-        return self._history[key]
+        return {"events": [e.to_dict() for e in self.history]}

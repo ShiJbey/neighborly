@@ -26,12 +26,10 @@ from neighborly.defs.defaults import (
     DefaultTraitDef,
 )
 from neighborly.ecs import World
-from neighborly.effects.effects import IncreaseSkill, StatBuff
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
-    EffectLibrary,
     JobRoleLibrary,
     LifeEventLibrary,
     LocationPreferenceLibrary,
@@ -63,7 +61,6 @@ from neighborly.systems import (
     LateUpdateSystems,
     LifeEventSystem,
     LifeStageSystem,
-    MeetNewPeopleSystem,
     PassiveReputationChange,
     PassiveRomanceChange,
     SpawnNewBusinessesSystem,
@@ -102,7 +99,6 @@ class Simulation:
 
         self._init_resources()
         self._init_systems()
-        self._init_effects()
         self._init_logging()
 
     def _init_resources(self) -> None:
@@ -122,7 +118,6 @@ class Simulation:
         self.world.resource_manager.get_resource(TraitLibrary).add_definition_type(
             DefaultSpeciesDef
         )
-        self.world.resource_manager.add_resource(EffectLibrary())
         self.world.resource_manager.add_resource(SkillLibrary(DefaultSkillDef))
         self.world.resource_manager.add_resource(LifeEventLibrary())
         self.world.resource_manager.add_resource(SocialRuleLibrary())
@@ -192,9 +187,6 @@ class Simulation:
             system=ChildBirthSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
-            system=MeetNewPeopleSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
             system=LifeEventSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
@@ -211,15 +203,6 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=BusinessLifespanSystem(), system_group=UpdateSystems
-        )
-
-    def _init_effects(self) -> None:
-        """Initialize built-in Effect definitions."""
-        self._world.resource_manager.get_resource(EffectLibrary).add_effect_type(
-            StatBuff
-        )
-        self._world.resource_manager.get_resource(EffectLibrary).add_effect_type(
-            IncreaseSkill
         )
 
     def _init_logging(self) -> None:

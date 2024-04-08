@@ -39,7 +39,8 @@ from neighborly.life_event import EventRole, LifeEvent
 class Death(LifeEvent):
     """Event emitted when a character passes away."""
 
-    base_probability = 0.0
+    __event_id__ = "death"
+    __is_hidden__ = True
 
     def __init__(self, subject: GameObject) -> None:
         super().__init__(
@@ -109,6 +110,8 @@ class Death(LifeEvent):
 class JoinSettlementEvent(LifeEvent):
     """Dispatched when a character joins a settlement."""
 
+    __event_id__ = "join-settlement"
+
     def __init__(self, subject: GameObject, settlement: GameObject) -> None:
         super().__init__(
             world=subject.world,
@@ -135,6 +138,8 @@ class JoinSettlementEvent(LifeEvent):
 class BecomeAdolescentEvent(LifeEvent):
     """Event dispatched when a character becomes an adolescent."""
 
+    __event_id__ = "become-adolescent"
+
     def __init__(self, subject: GameObject) -> None:
         super().__init__(
             world=subject.world, roles=[EventRole("subject", subject, True)]
@@ -157,6 +162,8 @@ class BecomeAdolescentEvent(LifeEvent):
 
 class BecomeYoungAdultEvent(LifeEvent):
     """Event dispatched when a character becomes a young adult."""
+
+    __event_id__ = "become-young-adult"
 
     def __init__(self, subject: GameObject) -> None:
         super().__init__(
@@ -181,6 +188,8 @@ class BecomeYoungAdultEvent(LifeEvent):
 class BecomeAdultEvent(LifeEvent):
     """Event dispatched when a character becomes an adult."""
 
+    __event_id__ = "become-adult"
+
     def __init__(self, subject: GameObject) -> None:
         super().__init__(
             world=subject.world, roles=[EventRole("subject", subject, True)]
@@ -204,6 +213,8 @@ class BecomeAdultEvent(LifeEvent):
 class BecomeSeniorEvent(LifeEvent):
     """Event dispatched when a character becomes a senior."""
 
+    __event_id__ = "become-senior"
+
     def __init__(self, subject: GameObject) -> None:
         super().__init__(
             world=subject.world, roles=[EventRole("subject", subject, True)]
@@ -226,6 +237,8 @@ class BecomeSeniorEvent(LifeEvent):
 
 class ChangeResidenceEvent(LifeEvent):
     """Sets the characters current residence."""
+
+    __event_id__ = "change-residence"
 
     def __init__(
         self,
@@ -327,7 +340,9 @@ class ChangeResidenceEvent(LifeEvent):
 class BirthEvent(LifeEvent):
     """Event dispatched when a child is born."""
 
-    base_probability = 0.0
+    __event_id__ = "birth"
+
+    __is_hidden__ = True
 
     def __init__(
         self,
@@ -350,6 +365,8 @@ class BirthEvent(LifeEvent):
 
 class HaveChildEvent(LifeEvent):
     """Event dispatched when a character has a child."""
+
+    __event_id__ = "have-child"
 
     base_probability = 0
 
@@ -386,6 +403,8 @@ class HaveChildEvent(LifeEvent):
 
 class LeaveJob(LifeEvent):
     """Character leaves job of their own will."""
+
+    __event_id__ = "leave-job"
 
     def __init__(
         self,
@@ -480,6 +499,8 @@ class LeaveJob(LifeEvent):
 class DepartSettlement(LifeEvent):
     """Character leave the settlement and the simulation."""
 
+    __event_id__ = "depart"
+
     def __init__(self, subject: GameObject, reason: str = "") -> None:
         super().__init__(
             world=subject.world, roles=[EventRole("subject", subject)], reason=reason
@@ -544,6 +565,8 @@ class DepartSettlement(LifeEvent):
 
 class LaidOffFromJob(LifeEvent):
     """The character is laid off from their job."""
+
+    __event_id__ = "laid-off"
 
     def __init__(
         self,
@@ -615,6 +638,8 @@ class LaidOffFromJob(LifeEvent):
 class BusinessClosedEvent(LifeEvent):
     """Event emitted when a business closes."""
 
+    __event_id__ = "business-closed"
+
     def __init__(
         self, subject: GameObject, business: GameObject, reason: str = ""
     ) -> None:
@@ -679,3 +704,29 @@ class BusinessClosedEvent(LifeEvent):
         subject = self.roles["subject"]
         business = self.roles["business"]
         return f"{subject.name}'s business {business.name} has closed for business."
+
+
+class NewSettlementEvent(LifeEvent):
+    """Event dispatched when a settlement is created."""
+
+    __event_id__ = "new-settlement"
+
+    __is_hidden__ = True
+
+    def __init__(
+        self,
+        subject: GameObject,
+    ) -> None:
+        super().__init__(
+            world=subject.world, roles=(EventRole("settlement", subject, True),)
+        )
+
+    def execute(self) -> None:
+        return
+
+    @classmethod
+    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
+        return None
+
+    def __str__(self) -> str:
+        return f"Founded new settlement, {self.roles['settlement'].name}."

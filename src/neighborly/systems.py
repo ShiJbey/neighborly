@@ -9,7 +9,6 @@ This module contains built-in systems that help simulations function.
 from __future__ import annotations
 
 import random
-from collections import defaultdict
 from typing import ClassVar, Optional
 
 from sqlalchemy import select
@@ -24,7 +23,7 @@ from neighborly.components.location import (
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
-from neighborly.components.shared import Age
+from neighborly.components.shared import Age, Agent
 from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
@@ -52,15 +51,12 @@ from neighborly.events.defaults import (
     Death,
     HaveChildEvent,
     JoinSettlementEvent,
+    NewSettlementEvent,
 )
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
 from neighborly.helpers.location import score_location
-from neighborly.helpers.relationship import (
-    add_relationship,
-    get_relationship,
-    has_relationship,
-)
+from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
@@ -124,10 +120,12 @@ class InitializeSettlementSystem(System):
 
         if isinstance(definition_ids, str):
             if definition_ids:
-                create_settlement(world, definition_ids)
+                settlement = create_settlement(world, definition_ids)
+                NewSettlementEvent(settlement).dispatch()
         elif len(definition_ids) > 0:
             choice = rng.choice(definition_ids)
-            create_settlement(world, choice)
+            settlement = create_settlement(world, choice)
+            NewSettlementEvent(settlement).dispatch()
 
 
 class SpawnResidentialBuildingsSystem(System):
@@ -843,97 +841,34 @@ class LifeEventSystem(System):
     """The minimum required probability for an event to be considered for execution."""
 
     def on_update(self, world: World) -> None:
-        life_event_library = world.resource_manager.get_resource(LifeEventLibrary)
+        event_library = world.resource_manager.get_resource(LifeEventLibrary)
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, _) in world.get_components((Character, Active)):
+        agents = [agent for _, (agent, _) in world.get_components((Agent, Active))]
+
+        for agent in agents:
+
             life_event_choices: list[LifeEvent] = []
             life_event_probabilities: list[float] = []
 
-            for event_type in life_event_library:
-                # Skip event types that with base probability zero
-                # these are most likely events that require more than one
-                # role and are triggered by other events/systems.
-                # if event_type.base_probability == 0.0:
-                #     continue
+            all_event_types = event_library.get_all_event_types(agent.agent_type)
+            for event_type in all_event_types:
+                if not event_type.is_hidden():
+                    event_instance = event_type.instantiate(agent.gameobject)
+                    if event_instance is not None:
+                        event_probability = event_instance.get_probability()
+                        if event_probability >= self.EVENT_PROBABILITY_THRESHOLD:
+                            life_event_choices.append(event_instance)
+                            life_event_probabilities.append(event_probability)
 
-                event_instance = event_type.instantiate(character.gameobject)
-                if event_instance is not None:
-                    event_probability = event_instance.get_probability()
-                    if event_probability >= self.EVENT_PROBABILITY_THRESHOLD:
-                        life_event_choices.append(event_instance)
-                        life_event_probabilities.append(event_probability)
+            if not life_event_choices:
+                continue
 
-            # _logger.debug(
-            #     list(
-            #         zip(
-            #             [f.__class__.__name__ for f in life_event_choices],
-            #             life_event_probabilities,
-            #         )
-            #     )
-            # )
+            chosen_event = rng.choices(
+                population=life_event_choices, weights=life_event_probabilities, k=1
+            )[0]
 
-            if life_event_choices:
-                chosen_event = rng.choices(
-                    population=life_event_choices, weights=life_event_probabilities, k=1
-                )[0]
-
-                # if rng.random() < chosen_event.get_probability():
-                chosen_event.dispatch()
-
-
-class MeetNewPeopleSystem(System):
-    """Characters introduce themselves to new people that frequent the same places.
-
-    Notes
-    -----
-    This system uses a character's sociability stat score to determine the probability
-    of them introducing themselves to someone else. The goal is for characters with
-    higher sociability scores to form more relationships over the course of their lives.
-    """
-
-    def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for _, (character, _, frequented_locs) in world.get_components(
-            (Character, Active, FrequentedLocations)
-        ):
-            probability_meet_someone = get_stat(
-                character.gameobject, "sociability"
-            ).normalized
-
-            if rng.random() < probability_meet_someone:
-                candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
-
-                for loc in frequented_locs:
-                    for other in loc.get_component(Location):
-                        if other != character.gameobject and not has_relationship(
-                            character.gameobject, other
-                        ):
-                            candidate_scores[other] += 1
-
-                if candidate_scores:
-                    rng = world.resource_manager.get_resource(random.Random)
-
-                    acquaintance = rng.choices(
-                        list(candidate_scores.keys()),
-                        weights=list(candidate_scores.values()),
-                        k=1,
-                    )[0]
-
-                    add_relationship(character.gameobject, acquaintance)
-                    add_relationship(acquaintance, character.gameobject)
-
-                    # Calculate interaction scores
-                    get_stat(
-                        get_relationship(character.gameobject, acquaintance),
-                        "interaction_score",
-                    ).base_value += candidate_scores[acquaintance]
-
-                    get_stat(
-                        get_relationship(acquaintance, character.gameobject),
-                        "interaction_score",
-                    ).base_value += candidate_scores[acquaintance]
+            chosen_event.dispatch()
 
 
 class JobRoleMonthlyEffectsSystem(System):

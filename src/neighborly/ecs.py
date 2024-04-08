@@ -29,10 +29,10 @@ from typing import (
     Iterable,
     Iterator,
     Optional,
+    Protocol,
     Type,
     TypeVar,
     Union,
-    cast,
     overload,
 )
 
@@ -48,7 +48,6 @@ _LOGGER = logging.getLogger(__name__)
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
 _ST = TypeVar("_ST", bound="ISystem")
-_ET_contra = TypeVar("_ET_contra", bound="Event", contravariant=True)
 
 
 class ResourceNotFoundError(Exception):
@@ -163,19 +162,38 @@ class ComponentNotFoundError(Exception):
         return f"{self.__class__.__name__}(component={self.component_type.__name__})"
 
 
-class Event(ABC):
+class IEvent(Protocol):
+    """Interface implemented by any class that can be emitted as an event."""
+
+    @property
+    @abstractmethod
+    def event_id(self) -> str:
+        """A unique ordinal ID for this event."""
+
+        raise NotImplementedError()
+
+    @abstractmethod
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the event to a JSON-compliant dict."""
+
+        raise NotImplementedError()
+
+
+class Event:
     """Events signal when things happen in the simulation."""
 
-    __slots__ = ("_world", "_event_id")
+    __slots__ = ("_world", "_event_id", "data")
 
-    _event_id: int
-    """A unique ordinal ID for this event."""
     _world: World
     """The world instance to fire this event on."""
+    _event_id: str
+    """The ID of this event."""
+    data: dict[str, Any]
 
-    def __init__(self, world: World) -> None:
+    def __init__(self, event_id: str, world: World, **kwargs: Any) -> None:
         self._world = world
-        self._event_id = world.event_manager.get_next_event_id()
+        self._event_id = event_id
+        self.data = {**kwargs}
 
     @property
     def world(self) -> World:
@@ -183,7 +201,7 @@ class Event(ABC):
         return self._world
 
     @property
-    def event_id(self) -> int:
+    def event_id(self) -> str:
         """A unique ordinal ID for this event."""
         return self._event_id
 
@@ -191,26 +209,10 @@ class Event(ABC):
         """Dispatch the event to registered event listeners."""
         self.world.event_manager.dispatch_event(self)
 
+    @abstractmethod
     def to_dict(self) -> dict[str, Any]:
         """Serialize the event to a JSON-compliant dict."""
-        return {"event_id": self.event_id, "event_type": self.__class__.__name__}
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, Event):
-            return self.event_id == __o.event_id
-        raise TypeError(f"Expected type Event, but was {type(__o)}")
-
-    def __le__(self, other: Event) -> bool:
-        return self.event_id <= other.event_id
-
-    def __lt__(self, other: Event) -> bool:
-        return self.event_id < other.event_id
-
-    def __ge__(self, other: Event) -> bool:
-        return self.event_id >= other.event_id
-
-    def __gt__(self, other: Event) -> bool:
-        return self.event_id > other.event_id
+        return {"event_id": self.event_id, "data": self.data}
 
 
 class GameData(DeclarativeBase):
@@ -1175,28 +1177,24 @@ class EventManager:
         "_general_event_listeners",
         "_event_listeners_by_type",
         "_world",
-        "_next_event_id",
     )
 
     _world: World
     """The world instance associated with the SystemManager."""
-    _next_event_id: int
-    """The ID number to be given to the next constructed event."""
-    _general_event_listeners: OrderedSet[Callable[[Event], None]]
+    _general_event_listeners: OrderedSet[Callable[[IEvent], None]]
     """Event listeners that are called when any event fires."""
-    _event_listeners_by_type: dict[Type[Event], OrderedSet[Callable[[Event], None]]]
+    _event_listeners_by_type: dict[str, OrderedSet[Callable[[IEvent], None]]]
     """Event listeners that are only called when a specific type of event fires."""
 
     def __init__(self, world: World) -> None:
         self._world = world
         self._general_event_listeners = OrderedSet([])
         self._event_listeners_by_type = {}
-        self._next_event_id = 0
 
     def on_event(
         self,
-        event_type: Type[_ET_contra],
-        listener: Callable[[_ET_contra], None],
+        event_type: str,
+        listener: Callable[[IEvent], None],
     ) -> None:
         """Register a listener function to a specific event type.
 
@@ -1209,13 +1207,10 @@ class EventManager:
         """
         if event_type not in self._event_listeners_by_type:
             self._event_listeners_by_type[event_type] = OrderedSet([])
-        listener_set = cast(
-            OrderedSet[Callable[[_ET_contra], None]],
-            self._event_listeners_by_type[event_type],
-        )
+        listener_set = self._event_listeners_by_type[event_type]
         listener_set.add(listener)
 
-    def on_any_event(self, listener: Callable[[Event], None]) -> None:
+    def on_any_event(self, listener: Callable[[IEvent], None]) -> None:
         """Register a listener function to all event types.
 
         Parameters
@@ -1225,7 +1220,7 @@ class EventManager:
         """
         self._general_event_listeners.append(listener)
 
-    def dispatch_event(self, event: Event) -> None:
+    def dispatch_event(self, event: IEvent) -> None:
         """Fire an event and trigger associated event listeners.
 
         Parameters
@@ -1235,18 +1230,12 @@ class EventManager:
         """
 
         for callback_fn in self._event_listeners_by_type.get(
-            type(event), OrderedSet([])
+            event.event_id, OrderedSet([])
         ):
             callback_fn(event)
 
         for callback_fn in self._general_event_listeners:
             callback_fn(event)
-
-    def get_next_event_id(self) -> int:
-        """Get an ID number for a new event instance."""
-        event_id = self._next_event_id
-        self._next_event_id += 1
-        return event_id
 
 
 class GameObjectManager:

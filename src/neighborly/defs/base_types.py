@@ -14,7 +14,7 @@ is for people that want to:
 3) Change how existing fields are processed during construction
 4) Add additional fields to the generation options
 
-The abstract classed are kept separate from the built-in concrete definitions to
+The abstract classed are kept separate from the built-in concrete definitions
 to avoid circular imports.
 
 We chose Pydantic as the base class for all definitions to offload the data parsing and
@@ -278,7 +278,7 @@ class TraitDef(ContentDefinition, ABC):
         raise NotImplementedError()
 
 
-class SpeciesDef(TraitDef):
+class SpeciesDef(TraitDef, ABC):
     """A definition for a species type."""
 
     adolescent_age: int
@@ -403,6 +403,8 @@ class ResidenceDef(ContentDefinition, ABC):
             The simulation's World instance.
         district
             The district the building will belong to.
+        options
+            Generation options.
 
         Returns
         -------

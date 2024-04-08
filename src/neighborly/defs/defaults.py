@@ -21,7 +21,7 @@ from neighborly.components.location import (
 from neighborly.components.relationship import Relationships, SocialRules
 from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.shared import Age
+from neighborly.components.shared import Age, Agent
 from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
@@ -129,6 +129,8 @@ class DefaultDistrictDef(DistrictDef):
                 business_slots=self.business_slots,
             )
         )
+        district.add_component(Agent(gameobject=district, agent_type="district"))
+
         self.initialize_business_spawn_table(district)
         self.initialize_character_spawn_table(district)
         self.initialize_residence_spawn_table(district)
@@ -294,6 +296,14 @@ class DefaultSettlementDef(SettlementDef):
             name = self.name_factories[self.name_factory](world, options)
 
         settlement.add_component(Settlement(settlement, name=name))
+        settlement.add_component(
+            Agent(
+                gameobject=settlement,
+                agent_type="settlement",
+            )
+        )
+        settlement.add_component(PersonalEventHistory(settlement))
+
         self.initialize_districts(settlement)
         return settlement
 
@@ -445,6 +455,7 @@ class DefaultCharacterDef(CharacterDef):
                 species=cast(SpeciesDef, species),
             )
         )
+        character.add_component(Agent(gameobject=character, agent_type="character"))
         character.add_component(Age(character))
         character.add_component(Traits(character))
         character.add_component(Skills(character))
@@ -735,6 +746,7 @@ class DefaultBusinessDef(BusinessDef):
                 district=district,
             )
         )
+        business.add_component(Agent(gameobject=business, agent_type="business"))
         business.add_component(Traits(business))
         business.add_component(Location(business, is_private=not self.open_to_public))
         business.add_component(PersonalEventHistory(business))

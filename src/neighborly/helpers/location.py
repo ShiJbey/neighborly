@@ -11,6 +11,7 @@ from neighborly.components.location import (
     LocationPreferences,
 )
 from neighborly.ecs import GameObject
+from neighborly.helpers.db_helpers import preprocess_query_string
 from neighborly.libraries import LocationPreferenceLibrary
 
 
@@ -89,7 +90,9 @@ def check_location_preference_preconditions(
         location. Or -1 if it does not pass the preconditions.
     """
 
-    result = DBQuery([rule.preconditions]).run(
+    query_lines = preprocess_query_string(rule.preconditions)
+
+    result = DBQuery(query_lines).run(
         character.world.rp_db, [{"?location": location.uid, "?subject": character.uid}]
     )
 

@@ -22,6 +22,7 @@ from neighborly.loaders import (
     load_skills,
 )
 from neighborly.plugins import (
+    default_actions,
     default_character_names,
     default_events,
     default_settlement_names,
@@ -93,6 +94,7 @@ def main() -> Simulation:
     default_traits.load_plugin(sim)
     default_character_names.load_plugin(sim)
     default_settlement_names.load_plugin(sim)
+    default_actions.load_plugin(sim)
 
     register_character_def(
         sim.world,

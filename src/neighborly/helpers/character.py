@@ -7,8 +7,11 @@ from __future__ import annotations
 from typing import Optional, cast
 
 from neighborly.components.character import Character
+from neighborly.components.residence import Resident
 from neighborly.defs.base_types import CharacterDef, CharacterGenOptions, SpeciesDef
 from neighborly.ecs import GameObject, World
+from neighborly.helpers.location import remove_all_frequented_locations
+from neighborly.helpers.relationship import deactivate_relationships
 from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.libraries import CharacterLibrary, TraitLibrary
 
@@ -72,6 +75,38 @@ def set_species(gameobject: GameObject, species_id: str) -> bool:
         return True
 
     return False
+
+
+def die(character: GameObject) -> None:
+    """Have a character die."""
+
+    character.deactivate()
+
+    remove_all_frequented_locations(character)
+
+    add_trait(character, "deceased")
+
+    deactivate_relationships(character)
+
+    move_out_of_residence(character)
+
+
+def move_out_of_residence(character: GameObject) -> None:
+    """Have the character move out of their current residence."""
+
+    if not character.has_component(Resident):
+        return
+
+    # ChangeResidenceEvent(subject=character, new_residence=None).dispatch()
+
+
+def move_into_residence(character: GameObject) -> None:
+    """Have the character move into a new residence."""
+
+    # if not character.has_component(Resident):
+    #     return
+
+    # ChangeResidenceEvent(subject=character, new_residence=None).dispatch()
 
 
 def register_character_def(world: World, definition: CharacterDef) -> None:
