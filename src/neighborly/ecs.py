@@ -167,8 +167,8 @@ class IEvent(Protocol):
 
     @property
     @abstractmethod
-    def event_id(self) -> str:
-        """A unique ordinal ID for this event."""
+    def event_type(self) -> str:
+        """A type name for the event."""
 
         raise NotImplementedError()
 
@@ -182,17 +182,18 @@ class IEvent(Protocol):
 class Event:
     """Events signal when things happen in the simulation."""
 
-    __slots__ = ("_world", "_event_id", "data")
+    __slots__ = ("_world", "_event_type", "data")
 
     _world: World
     """The world instance to fire this event on."""
-    _event_id: str
+    _event_type: str
     """The ID of this event."""
     data: dict[str, Any]
+    """General metadata."""
 
     def __init__(self, event_id: str, world: World, **kwargs: Any) -> None:
         self._world = world
-        self._event_id = event_id
+        self._event_type = event_id
         self.data = {**kwargs}
 
     @property
@@ -201,18 +202,14 @@ class Event:
         return self._world
 
     @property
-    def event_id(self) -> str:
-        """A unique ordinal ID for this event."""
-        return self._event_id
-
-    def dispatch(self) -> None:
-        """Dispatch the event to registered event listeners."""
-        self.world.event_manager.dispatch_event(self)
+    def event_type(self) -> str:
+        """The type name for the event."""
+        return self._event_type
 
     @abstractmethod
     def to_dict(self) -> dict[str, Any]:
         """Serialize the event to a JSON-compliant dict."""
-        return {"event_id": self.event_id, "data": self.data}
+        return {"event_id": self.event_type, "data": self.data}
 
 
 class GameData(DeclarativeBase):
@@ -1224,7 +1221,7 @@ class EventManager:
         """
 
         for callback_fn in self._event_listeners_by_type.get(
-            event.event_id, OrderedSet([])
+            event.event_type, OrderedSet([])
         ):
             callback_fn(event)
 

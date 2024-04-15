@@ -23,7 +23,7 @@ from neighborly.components.location import (
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
-from neighborly.components.shared import Age, Agent
+from neighborly.components.shared import Age
 from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
@@ -46,15 +46,12 @@ from neighborly.events.defaults import (
     BecomeSeniorEvent,
     BecomeYoungAdultEvent,
     BirthEvent,
-    BusinessClosedEvent,
-    ChangeResidenceEvent,
-    Death,
     HaveChildEvent,
     JoinSettlementEvent,
     NewSettlementEvent,
 )
-from neighborly.helpers.business import create_business
-from neighborly.helpers.character import create_character
+from neighborly.helpers.business import close_business, create_business
+from neighborly.helpers.character import create_character, die, move_into_residence
 from neighborly.helpers.location import score_location
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.residence import create_residence
@@ -66,13 +63,12 @@ from neighborly.libraries import (
     CharacterLibrary,
     DistrictLibrary,
     JobRoleLibrary,
-    LifeEventLibrary,
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import LifeEvent
+from neighborly.life_event import add_to_personal_history, dispatch_life_event
 
 
 class InitializationSystems(SystemGroup):
@@ -121,11 +117,16 @@ class InitializeSettlementSystem(System):
         if isinstance(definition_ids, str):
             if definition_ids:
                 settlement = create_settlement(world, definition_ids)
-                NewSettlementEvent(settlement).dispatch()
+                event = NewSettlementEvent(settlement)
+                dispatch_life_event(world, event)
+                add_to_personal_history(settlement, event)
+
         elif len(definition_ids) > 0:
             choice = rng.choice(definition_ids)
             settlement = create_settlement(world, choice)
-            NewSettlementEvent(settlement).dispatch()
+            event = NewSettlementEvent(settlement)
+            dispatch_life_event(world, event)
+            add_to_personal_history(settlement, event)
 
 
 class SpawnResidentialBuildingsSystem(System):
@@ -320,15 +321,16 @@ class SpawnNewResidentSystem(System):
                 ),
             )
 
-            JoinSettlementEvent(
-                subject=character,
-                settlement=residence.district.get_component(District).settlement,
-            ).dispatch()
+            event = JoinSettlementEvent(
+                character,
+                residence.district.get_component(District).settlement,
+            )
+
+            dispatch_life_event(world, event)
+            add_to_personal_history(character, event)
 
             # Add the character as the owner of the home and a resident
-            ChangeResidenceEvent(
-                subject=character, new_residence=residence.gameobject, is_owner=True
-            ).dispatch()
+            move_into_residence(character, residence.gameobject, is_owner=True)
 
 
 class SpawnNewBusinessesSystem(System):
@@ -631,19 +633,31 @@ class LifeStageSystem(System):
             if species.can_physically_age:
                 if age.value >= species.senior_age:
                     if character.life_stage != LifeStage.SENIOR:
-                        BecomeSeniorEvent(character.gameobject).dispatch()
+                        evt = BecomeSeniorEvent(character.gameobject)
+                        character.life_stage = LifeStage.SENIOR
+                        dispatch_life_event(world, evt)
+                        add_to_personal_history(character.gameobject, evt)
 
                 elif age.value >= species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
-                        BecomeAdultEvent(character.gameobject).dispatch()
+                        evt = BecomeAdultEvent(character.gameobject)
+                        character.life_stage = LifeStage.ADULT
+                        dispatch_life_event(world, evt)
+                        add_to_personal_history(character.gameobject, evt)
 
                 elif age.value >= species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
-                        BecomeYoungAdultEvent(character.gameobject).dispatch()
+                        evt = BecomeYoungAdultEvent(character.gameobject)
+                        character.life_stage = LifeStage.YOUNG_ADULT
+                        dispatch_life_event(world, evt)
+                        add_to_personal_history(character.gameobject, evt)
 
                 elif age.value >= species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
-                        BecomeAdolescentEvent(character.gameobject).dispatch()
+                        evt = BecomeAdolescentEvent(character.gameobject)
+                        character.life_stage = LifeStage.ADOLESCENT
+                        dispatch_life_event(world, evt)
+                        add_to_personal_history(character.gameobject, evt)
 
                 else:
                     if character.life_stage != LifeStage.CHILD:
@@ -708,11 +722,11 @@ class CharacterLifespanSystem(System):
     """Kills of characters who have reached their lifespan."""
 
     def on_update(self, world: World) -> None:
-        for _, (_, age, _) in world.get_components((Character, Age, Active)):
+        for _, (character, age, _) in world.get_components((Character, Age, Active)):
             life_span = get_stat(age.gameobject, "lifespan").value
 
             if age.value >= life_span:
-                Death(age.gameobject).dispatch()
+                die(character.gameobject)
 
 
 class BusinessLifespanSystem(System):
@@ -723,7 +737,7 @@ class BusinessLifespanSystem(System):
             life_span = get_stat(age.gameobject, "lifespan").value
 
             if age.value >= life_span and business.owner:
-                BusinessClosedEvent(business.owner, business.gameobject)
+                close_business(business.gameobject)
 
 
 class ChildBirthSystem(System):
@@ -748,11 +762,11 @@ class ChildBirthSystem(System):
                 ),
             )
 
-            ChangeResidenceEvent(
+            move_into_residence(
                 baby,
-                new_residence=character.gameobject.get_component(Resident).residence,
+                character.gameobject.get_component(Resident).residence,
                 is_owner=False,
-            ).dispatch()
+            )
 
             # Birthing parent to child
             add_trait(get_relationship(character.gameobject, baby), "child")
@@ -815,60 +829,18 @@ class ChildBirthSystem(System):
             character.gameobject.remove_component(Pregnant)
             get_stat(character.gameobject, "fertility").base_value -= 0.2
 
-            HaveChildEvent(
-                parent_0=character.gameobject,
-                parent_1=other_parent,
-                child=baby,
-            ).dispatch()
+            have_child_evt = HaveChildEvent(
+                character.gameobject,
+                other_parent,
+                baby,
+            )
+            dispatch_life_event(world, have_child_evt)
+            add_to_personal_history(character.gameobject, have_child_evt)
+            add_to_personal_history(other_parent, have_child_evt)
 
-            BirthEvent(baby).dispatch()
-
-
-class LifeEventSystem(System):
-    """Simulate life events/character behavior.
-
-    This system is the core of character behavior for the Simulation. Each time step,
-    characters probabilistically select a life event to execute from a shared collection
-    of LifeEvent types. Life events are how we represent character behaviors and track
-    the various narrative-relevant events that happen in the simulation. Every life
-    event has a 'subject' (the character who the event happens to).
-
-    To add a new life event to this system, create a new LifeEvent subclass and add it
-    to the LifeEventLibrary instance within the simulation world's resource manager.
-    """
-
-    EVENT_PROBABILITY_THRESHOLD: ClassVar[float] = 0.5
-    """The minimum required probability for an event to be considered for execution."""
-
-    def on_update(self, world: World) -> None:
-        event_library = world.resource_manager.get_resource(LifeEventLibrary)
-        rng = world.resource_manager.get_resource(random.Random)
-
-        agents = [agent for _, (agent, _) in world.get_components((Agent, Active))]
-
-        for agent in agents:
-
-            life_event_choices: list[LifeEvent] = []
-            life_event_probabilities: list[float] = []
-
-            all_event_types = event_library.get_all_event_types(agent.agent_type)
-            for event_type in all_event_types:
-                if not event_type.is_hidden():
-                    event_instance = event_type.instantiate(agent.gameobject)
-                    if event_instance is not None:
-                        event_probability = event_instance.get_probability()
-                        if event_probability >= self.EVENT_PROBABILITY_THRESHOLD:
-                            life_event_choices.append(event_instance)
-                            life_event_probabilities.append(event_probability)
-
-            if not life_event_choices:
-                continue
-
-            chosen_event = rng.choices(
-                population=life_event_choices, weights=life_event_probabilities, k=1
-            )[0]
-
-            chosen_event.dispatch()
+            birth_evt = BirthEvent(baby)
+            dispatch_life_event(world, birth_evt)
+            add_to_personal_history(baby, birth_evt)
 
 
 class JobRoleMonthlyEffectsSystem(System):

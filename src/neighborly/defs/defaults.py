@@ -57,16 +57,16 @@ from neighborly.helpers.stats import add_stat, get_stat, has_stat
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import (
     BusinessLibrary,
+    BusinessNameFactories,
     CharacterLibrary,
+    CharacterNameFactories,
     DistrictLibrary,
+    DistrictNameFactories,
     JobRoleLibrary,
     ResidenceLibrary,
+    SettlementNameFactories,
     SkillLibrary,
     TraitLibrary,
-    DistrictNameFactories,
-    SettlementNameFactories,
-    BusinessNameFactories,
-    CharacterNameFactories,
 )
 from neighborly.life_event import PersonalEventHistory
 from neighborly.tracery import Tracery
@@ -95,7 +95,7 @@ class DefaultSpeciesDef(SpeciesDef):
         raise NotImplementedError()
 
 
-def default_district_name_factory(world: World, _: DistrictGenOptions) -> str:
+def default_district_name_factory(world: World, options: DistrictGenOptions) -> str:
     """Generate a new name"""
     tracery = world.resource_manager.get_resource(Tracery)
     name = tracery.generate("#settlement_name#")
@@ -272,7 +272,7 @@ class DefaultDistrictDef(DistrictDef):
         district.add_component(ResidenceSpawnTable(district, entries=table_entries))
 
 
-def default_settlement_name_factory(world: World, _: SettlementGenOptions) -> str:
+def default_settlement_name_factory(world: World, options: SettlementGenOptions) -> str:
     """Generate a new name"""
     tracery = world.resource_manager.get_resource(Tracery)
     name = tracery.generate("#settlement_name#")
@@ -372,7 +372,7 @@ class DefaultResidenceDef(ResidenceDef):
         return residence
 
 
-def generate_any_first_name(world: World, _: CharacterGenOptions) -> str:
+def generate_any_first_name(world: World, options: CharacterGenOptions) -> str:
     """Generate a first name for a character"""
 
     tracery = world.resource_manager.get_resource(Tracery)
@@ -385,7 +385,7 @@ def generate_any_first_name(world: World, _: CharacterGenOptions) -> str:
     return name
 
 
-def generate_masculine_first_name(world: World, _: CharacterGenOptions) -> str:
+def generate_masculine_first_name(world: World, options: CharacterGenOptions) -> str:
     """Generate a masculine first name for a character"""
 
     tracery = world.resource_manager.get_resource(Tracery)
@@ -395,7 +395,7 @@ def generate_masculine_first_name(world: World, _: CharacterGenOptions) -> str:
     return name
 
 
-def generate_feminine_first_name(world: World, _: CharacterGenOptions) -> str:
+def generate_feminine_first_name(world: World, options: CharacterGenOptions) -> str:
     """Generate a feminine first name for a character"""
 
     tracery = world.resource_manager.get_resource(Tracery)
@@ -405,7 +405,7 @@ def generate_feminine_first_name(world: World, _: CharacterGenOptions) -> str:
     return name
 
 
-def generate_last_name(world: World, _: CharacterGenOptions) -> str:
+def generate_last_name(world: World, options: CharacterGenOptions) -> str:
     """Generate a last_name for a character."""
 
     tracery = world.resource_manager.get_resource(Tracery)

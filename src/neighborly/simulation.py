@@ -23,24 +23,32 @@ from neighborly.defs.defaults import (
     DefaultSettlementDef,
     DefaultSkillDef,
     DefaultSpeciesDef,
-    DefaultTraitDef, default_district_name_factory, default_settlement_name_factory, generate_last_name,
-    generate_feminine_first_name, generate_masculine_first_name, generate_any_first_name,
+    DefaultTraitDef,
+    default_district_name_factory,
+    default_settlement_name_factory,
+    generate_any_first_name,
+    generate_feminine_first_name,
+    generate_last_name,
+    generate_masculine_first_name,
 )
 from neighborly.ecs import World
 from neighborly.libraries import (
     BusinessLibrary,
+    BusinessNameFactories,
     CharacterLibrary,
+    CharacterNameFactories,
     DistrictLibrary,
+    DistrictNameFactories,
     JobRoleLibrary,
-    LifeEventLibrary,
     LocationPreferenceLibrary,
     ResidenceLibrary,
     SettlementLibrary,
+    SettlementNameFactories,
     SkillLibrary,
     SocialRuleLibrary,
-    TraitLibrary, SettlementNameFactories, DistrictNameFactories, CharacterNameFactories, BusinessNameFactories,
+    TraitLibrary,
 )
-from neighborly.life_event import EventConsiderations, GlobalEventHistory
+from neighborly.life_event import GlobalEventHistory
 from neighborly.systems import (
     AgingSystem,
     BusinessLifespanSystem,
@@ -60,7 +68,6 @@ from neighborly.systems import (
     InitializeSettlementSystem,
     JobRoleMonthlyEffectsSystem,
     LateUpdateSystems,
-    LifeEventSystem,
     LifeStageSystem,
     PassiveReputationChange,
     PassiveRomanceChange,
@@ -120,7 +127,6 @@ class Simulation:
             DefaultSpeciesDef
         )
         self.world.resource_manager.add_resource(SkillLibrary(DefaultSkillDef))
-        self.world.resource_manager.add_resource(LifeEventLibrary())
         self.world.resource_manager.add_resource(SocialRuleLibrary())
         self.world.resource_manager.add_resource(LocationPreferenceLibrary())
         self.world.resource_manager.add_resource(SettlementNameFactories())
@@ -147,7 +153,6 @@ class Simulation:
         self.world.resource_manager.add_resource(BusinessNameFactories())
         self.world.resource_manager.add_resource(Tracery(self._config.seed))
         self.world.resource_manager.add_resource(GlobalEventHistory())
-        self.world.resource_manager.add_resource(EventConsiderations())
 
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
@@ -208,9 +213,6 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=ChildBirthSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=LifeEventSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
             system=PassiveReputationChange(), system_group=UpdateSystems

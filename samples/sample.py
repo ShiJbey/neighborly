@@ -22,9 +22,7 @@ from neighborly.loaders import (
     load_skills,
 )
 from neighborly.plugins import (
-    default_actions,
     default_character_names,
-    default_events,
     default_settlement_names,
     default_traits,
 )
@@ -55,7 +53,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "-y",
         "--years",
-        default=50,
+        default=150,
         type=int,
         help="The number of years to simulate.",
     )
@@ -90,11 +88,9 @@ def main() -> Simulation:
     load_job_roles(sim, TEST_DATA_DIR / "job_roles.json")
     load_skills(sim, TEST_DATA_DIR / "skills.json")
 
-    default_events.load_plugin(sim)
     default_traits.load_plugin(sim)
     default_character_names.load_plugin(sim)
     default_settlement_names.load_plugin(sim)
-    default_actions.load_plugin(sim)
 
     register_character_def(
         sim.world,
@@ -107,8 +103,8 @@ def main() -> Simulation:
                 CharacterDefTraitEntry(with_tags=["incidental"]),
             ],
             variants=[
-                {"name": "male", "sex": "Male"},
-                {"name": "female", "sex": "Female"},
+                {"variant_name": "male", "sex": "Male"},
+                {"variant_name": "female", "sex": "Female"},
             ],
         ),
     )

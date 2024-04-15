@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from abc import abstractmethod
-from typing import Any, Generic, Iterable, Optional, Type, TypeVar, Protocol
+from typing import Any, Generic, Optional, Protocol, Type, TypeVar
 
 import pydantic
 
@@ -18,18 +18,21 @@ from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
 from neighborly.defs.base_types import (
     BusinessDef,
+    BusinessGenOptions,
     CharacterDef,
+    CharacterGenOptions,
     ContentDefinition,
     DistrictDef,
+    DistrictGenOptions,
     JobRoleDef,
     ResidenceDef,
     SettlementDef,
+    SettlementGenOptions,
     SkillDef,
-    TraitDef, DistrictGenOptions, CharacterGenOptions, BusinessGenOptions, SettlementGenOptions,
+    TraitDef,
 )
 from neighborly.ecs import World
 from neighborly.helpers.content_selection import get_with_tags
-from neighborly.life_event import LifeEvent
 
 _T = TypeVar("_T", bound=ContentDefinition)
 
@@ -144,46 +147,6 @@ class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
 
 class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
     """A collection of all business definitions."""
-
-
-class LifeEventLibrary:
-    """Manages the collection of LifeEvents that characters choose from for behavior."""
-
-    __slots__ = ("event_types",)
-
-    event_types: dict[str, dict[str, Type[LifeEvent]]]
-    """Life event types organized by agent type and event id."""
-
-    def __init__(self) -> None:
-        self.event_types = {}
-
-    def add_event_type(self, agent_type: str, event_type: Type[LifeEvent]) -> None:
-        """Add an action to the library."""
-        event_id = event_type.__event_id__
-
-        if event_id not in self.event_types:
-            self.event_types[agent_type] = {}
-
-        self.event_types[agent_type][event_id] = event_type
-
-    def get_event_type(self, agent_type: str, event_id: str) -> Type[LifeEvent]:
-        """Get an action from teh library."""
-        if agent_type not in self.event_types:
-            raise KeyError(f"Could not find action entries for {agent_type!r}")
-
-        action_subset = self.event_types[agent_type]
-
-        if event_id not in action_subset:
-            raise KeyError(f"Could not find {event_id!r} event for {agent_type!r}")
-
-        return action_subset[event_id]
-
-    def get_all_event_types(self, agent_type: str) -> Iterable[Type[LifeEvent]]:
-        """Get an action from teh library."""
-        if agent_type not in self.event_types:
-            return []
-
-        return self.event_types[agent_type].values()
 
 
 class SocialRuleLibrary:

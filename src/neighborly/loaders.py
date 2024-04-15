@@ -8,7 +8,7 @@ simulation data into a simulation.
 from __future__ import annotations
 
 import os
-from typing import Any, Type, Union
+from typing import Any, Union
 
 import yaml
 
@@ -19,7 +19,6 @@ from neighborly.libraries import (
     CharacterLibrary,
     DistrictLibrary,
     JobRoleLibrary,
-    LifeEventLibrary,
     LocationPreferenceLibrary,
     ResidenceLibrary,
     SettlementLibrary,
@@ -27,7 +26,6 @@ from neighborly.libraries import (
     SocialRuleLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import LifeEvent
 from neighborly.simulation import Simulation
 from neighborly.tracery import Tracery
 
@@ -258,12 +256,3 @@ def load_location_preferences(
     for entry in data:
         rule = LocationPreferenceRule.model_validate(entry)
         library.add_rule(rule)
-
-
-def register_life_event_type(
-    sim: Simulation, agent_type: str, life_event_type: Type[LifeEvent]
-) -> None:
-    """Register a LifeEvent subtype with the simulation's library."""
-    sim.world.resource_manager.get_resource(LifeEventLibrary).add_event_type(
-        agent_type, life_event_type
-    )

@@ -4,634 +4,409 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.components.business import (
-    Business,
-    BusinessStatus,
-    Occupation,
-    Unemployed,
-)
-from neighborly.components.character import Character, LifeStage
-from neighborly.components.relationship import Relationship
-from neighborly.components.residence import Resident, ResidentialUnit, Vacant
-from neighborly.components.settlement import District
-from neighborly.components.spawn_table import BusinessSpawnTable
-from neighborly.datetime import SimDate
 from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import GameObject
-from neighborly.helpers.location import (
-    add_frequented_location,
-    remove_all_frequented_locations,
-    remove_all_frequenting_characters,
-    remove_frequented_location,
-)
-from neighborly.helpers.relationship import deactivate_relationships, get_relationship
-from neighborly.helpers.traits import (
-    add_trait,
-    get_relationships_with_traits,
-    has_trait,
-    remove_trait,
-)
-from neighborly.life_event import EventRole, LifeEvent
+from neighborly.life_event import LifeEvent
 
 
-class Death(LifeEvent):
+class DeathEvent(LifeEvent):
     """Event emitted when a character passes away."""
 
     __event_id__ = "death"
-    __is_hidden__ = True
+    __tablename__ = "death_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "death",
+    }
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
+
+    def __init__(self, character: GameObject) -> None:
+        super().__init__(world=character.world)
+        self.character_id = character.uid
+        self.character = character
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(id={self.event_id}, "
+            f"event_type={self.event_type!r}, timestamp={self.timestamp!r}, "
+            f"character={self.character.name!r})"
         )
 
-    def execute(self) -> None:
-        character = self.roles["subject"]
-        remove_all_frequented_locations(character)
-        character.deactivate()
-        add_trait(character, "deceased")
-
-        deactivate_relationships(character)
-
-        # Remove the character from their residence
-        if resident_data := character.try_component(Resident):
-            residence = resident_data.residence
-            ChangeResidenceEvent(subject=character, new_residence=None).dispatch()
-
-            # If there are no-more residents that are owner's remove everyone from
-            # the residence and have them depart the simulation.
-            residence_data = residence.get_component(ResidentialUnit)
-            if len(list(residence_data.owners)) == 0:
-                residents = list(residence_data.residents)
-                for resident in residents:
-                    DepartSettlement(resident, "death in family")
-
-        # Adjust relationships
-        for rel in get_relationships_with_traits(character, "dating"):
-            target = rel.get_component(Relationship).target
-
-            remove_trait(rel, "dating")
-            remove_trait(get_relationship(target, character), "dating")
-
-            add_trait(rel, "ex_partner")
-            add_trait(get_relationship(target, character), "ex_partner")
-
-        for rel in get_relationships_with_traits(character, "spouse"):
-            target = rel.get_component(Relationship).target
-
-            remove_trait(rel, "spouse")
-            remove_trait(get_relationship(target, character), "spouse")
-
-            add_trait(rel, "ex_spouse")
-            add_trait(get_relationship(target, character), "ex_spouse")
-
-            add_trait(rel, "widow")
-
-        # Remove the character from their occupation
-        if occupation := character.try_component(Occupation):
-            LeaveJob(
-                subject=character,
-                business=occupation.business,
-                job_role=occupation.job_role,
-                reason="died",
-            ).dispatch()
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
     def __str__(self) -> str:
-        character = self.roles["subject"]
-        return f"{character.name} died."
+        return f"{self.character.name} died."
 
 
 class JoinSettlementEvent(LifeEvent):
     """Dispatched when a character joins a settlement."""
 
     __event_id__ = "join-settlement"
+    __tablename__ = "join_settlement_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "join_settlement",
+    }
 
-    def __init__(self, subject: GameObject, settlement: GameObject) -> None:
-        super().__init__(
-            world=subject.world,
-            roles=[
-                EventRole("subject", subject, True),
-                EventRole("settlement", settlement),
-            ],
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    settlement_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    settlement: GameObject
+    character: GameObject
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        return
+    def __init__(self, character: GameObject, settlement: GameObject) -> None:
+        super().__init__(character.world)
+        self.character = character
+        self.settlement = settlement
+        self.character_id = character.uid
+        self.settlement_id = settlement.uid
 
     def __str__(self) -> str:
-        character = self.roles["subject"]
-        settlement = self.roles["settlement"]
-
-        return f"{character.name} immigrated to {settlement.name}."
+        return f"{self.character.name} joined settlement, {self.settlement.name}."
 
 
 class BecomeAdolescentEvent(LifeEvent):
     """Event dispatched when a character becomes an adolescent."""
 
     __event_id__ = "become-adolescent"
+    __tablename__ = "become_adolescent_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "become_adolescent",
+    }
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.ADOLESCENT
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
+    def __init__(self, character: GameObject) -> None:
+        super().__init__(world=character.world)
+        self.character_id = character.uid
+        self.character = character
 
     def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became an adolescent."
+        return f"{self.character.name} became an adolescent."
 
 
 class BecomeYoungAdultEvent(LifeEvent):
     """Event dispatched when a character becomes a young adult."""
 
     __event_id__ = "become-young-adult"
+    __tablename__ = "become_young_adult_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "become-young-adult",
+    }
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.YOUNG_ADULT
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
+    def __init__(self, character: GameObject) -> None:
+        super().__init__(world=character.world)
+        self.character_id = character.uid
+        self.character = character
 
     def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became a young adult."
+        return f"{self.character.name} became a young adult."
 
 
 class BecomeAdultEvent(LifeEvent):
     """Event dispatched when a character becomes an adult."""
 
     __event_id__ = "become-adult"
+    __tablename__ = "become_adult_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "become-adult",
+    }
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.ADULT
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
+    def __init__(self, character: GameObject) -> None:
+        super().__init__(world=character.world)
+        self.character_id = character.uid
+        self.character = character
 
     def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became an adult."
+        return f"{self.character.name} became an adult."
 
 
 class BecomeSeniorEvent(LifeEvent):
     """Event dispatched when a character becomes a senior."""
 
     __event_id__ = "become-senior"
+    __tablename__ = "become_senior_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "become_senior",
+    }
 
-    def __init__(self, subject: GameObject) -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject, True)]
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
-
-    def execute(self) -> None:
-        subject = self.roles["subject"]
-        subject.get_component(Character).life_stage = LifeStage.SENIOR
-
-    def to_dict(self) -> dict[str, Any]:
-        return {**super().to_dict(), "character": self.roles["subject"].uid}
+    def __init__(self, character: GameObject) -> None:
+        super().__init__(world=character.world)
+        self.character_id = character.uid
+        self.character = character
 
     def __str__(self) -> str:
-        return f"{self.roles['subject'].name} became a senior."
+        return f"{self.character.name} became a senior."
 
 
-class ChangeResidenceEvent(LifeEvent):
+class MoveOutOfResidenceEvent(LifeEvent):
     """Sets the characters current residence."""
 
-    __event_id__ = "change-residence"
+    __event_id__ = "move-out-residence"
+    __tablename__ = "move_out_residence_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "move-out-residence",
+    }
 
-    def __init__(
-        self,
-        subject: GameObject,
-        new_residence: Optional[GameObject],
-        is_owner: bool = False,
-    ) -> None:
-        super().__init__(
-            world=subject.world,
-            roles=(EventRole("subject", subject),),
-            is_owner=is_owner,
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
+    residence_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    residence: GameObject
 
-        if new_residence is not None:
-            self.roles.add_role(EventRole("new_residence", new_residence))
-
-    def execute(self) -> None:
-        character = self.roles["subject"]
-        new_residence = self.roles.get_first_or_none("new_residence")
-
-        if resident := character.try_component(Resident):
-            # This character is currently a resident at another location
-            former_residence = resident.residence
-            former_residence_comp = former_residence.get_component(ResidentialUnit)
-
-            for resident in former_residence_comp.residents:
-                if resident == character:
-                    continue
-
-                remove_trait(get_relationship(character, resident), "live_together")
-                remove_trait(get_relationship(resident, character), "live_together")
-
-            if former_residence_comp.is_owner(character):
-                former_residence_comp.remove_owner(character)
-
-            former_residence_comp.remove_resident(character)
-            character.remove_component(Resident)
-
-            remove_frequented_location(character, former_residence)
-
-            former_district = former_residence.get_component(
-                ResidentialUnit
-            ).district.get_component(District)
-            former_district.population -= 1
-
-            if len(former_residence_comp) <= 0:
-                former_residence.add_component(Vacant(former_residence))
-
-        # Don't add them to a new residence if none is given
-        if new_residence is None:
-            return
-
-        # Move into new residence
-        new_residence.get_component(ResidentialUnit).add_resident(character)
-
-        if self.data["is_owner"]:
-            new_residence.get_component(ResidentialUnit).add_owner(character)
-
-        character.add_component(Resident(character, residence=new_residence))
-
-        add_frequented_location(character, new_residence)
-
-        if new_residence.has_component(Vacant):
-            new_residence.remove_component(Vacant)
-
-        for resident in new_residence.get_component(ResidentialUnit).residents:
-            if resident == character:
-                continue
-
-            add_trait(get_relationship(character, resident), "live_together")
-            add_trait(get_relationship(resident, character), "live_together")
-
-        new_district = new_residence.get_component(
-            ResidentialUnit
-        ).district.get_component(District)
-        new_district.population += 1
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
+    def __init__(self, character: GameObject, residence: GameObject) -> None:
+        super().__init__(character.world)
+        self.character = character
+        self.character_id = character.uid
+        self.residence = residence
+        self.residence_id = residence.uid
 
     def __str__(self) -> str:
-        subject = self.roles["subject"]
-        new_residence = self.roles.get_first_or_none("new_residence")
+        return f"{self.character.name} moved out of their residence, {self.residence.name}."
 
-        if new_residence is not None:
-            district = new_residence.get_component(ResidentialUnit).district
-            settlement = district.get_component(District).settlement
 
-            return (
-                f"{subject.name} moved into a new residence "
-                f"({new_residence.name}) in the {district.name} district of "
-                f"{settlement.name}."
-            )
+class MoveIntoResidenceEvent(LifeEvent):
+    """Sets the characters current residence."""
 
-        return f"{subject.name} moved out of their residence."
+    __event_id__ = "move-into-residence"
+    __tablename__ = "move_into_residence_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "move-into-residence",
+    }
+
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
+    residence_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    residence: GameObject
+
+    def __init__(self, character: GameObject, residence: GameObject) -> None:
+        super().__init__(character.world)
+        self.character = character
+        self.character_id = character.uid
+        self.residence = residence
+        self.residence_id = residence.uid
+
+    def __str__(self) -> str:
+        return (
+            f"{self.character.name} moved into a new residence, {self.residence.name}"
+        )
 
 
 class BirthEvent(LifeEvent):
     """Event dispatched when a child is born."""
 
     __event_id__ = "birth"
+    __tablename__ = "birth_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "birth",
+    }
 
-    __is_hidden__ = True
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
 
     def __init__(
         self,
-        subject: GameObject,
+        character: GameObject,
     ) -> None:
-        super().__init__(
-            world=subject.world, roles=(EventRole("subject", subject, True),)
-        )
-
-    def execute(self) -> None:
-        return
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
+        super().__init__(character.world)
+        self.character = character
+        self.character_id = character.uid
 
     def __str__(self) -> str:
-        return f"{self.roles['subject'].name} was born."
+        return f"{self.character.name} was born."
 
 
 class HaveChildEvent(LifeEvent):
     """Event dispatched when a character has a child."""
 
-    __event_id__ = "have-child"
+    __event_id__ = "have_child"
+    __tablename__ = "have_child_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "have_child",
+    }
 
-    base_probability = 0
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    child_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    child: GameObject
+    birthing_parent_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    birthing_parent: GameObject
+    other_parent_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    other_parent: GameObject
 
     def __init__(
         self,
-        parent_0: GameObject,
-        parent_1: GameObject,
+        birthing_parent: GameObject,
+        other_parent: GameObject,
         child: GameObject,
     ) -> None:
-        super().__init__(
-            world=parent_0.world,
-            roles=(
-                EventRole("subject", parent_0, True),
-                EventRole("subject", parent_1, True),
-                EventRole("child", child),
-            ),
-        )
-
-    def execute(self) -> None:
-        return
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
+        super().__init__(child.world)
+        self.child = child
+        self.child_id = child.uid
+        self.birthing_parent = birthing_parent
+        self.birthing_parent_id = birthing_parent.uid
+        self.other_parent = other_parent
+        self.other_parent_id = other_parent.uid
 
     def __str__(self) -> str:
-        parent_0, parent_1 = self.roles.get_all("subject")
-        child = self.roles["child"]
         return (
-            f"{parent_0.name} and "
-            f"{parent_1.name} welcomed a new child, {child.name}."
+            f"{self.birthing_parent.name} and "
+            f"{self.other_parent.name} welcomed a new child, {self.child.name}."
         )
 
 
-class LeaveJob(LifeEvent):
+class LeaveJobEvent(LifeEvent):
     """Character leaves job of their own will."""
 
     __event_id__ = "leave-job"
+    __tablename__ = "leave_job_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "leave-job",
+    }
+
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    role_id: Mapped[str]
+    reason: Mapped[str] = mapped_column(default="")
+    business: GameObject
+    job_role: JobRoleDef
+    character: GameObject
 
     def __init__(
         self,
-        subject: GameObject,
+        character: GameObject,
         business: GameObject,
         job_role: JobRoleDef,
         reason: str = "",
     ) -> None:
-        super().__init__(
-            world=subject.world,
-            roles=[
-                EventRole("subject", subject, log_event=True),
-                EventRole("business", business, log_event=True),
-            ],
-            job_role=job_role,
-            reason=reason,
-        )
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        if occupation := subject.try_component(Occupation):
-            return LeaveJob(
-                subject=subject,
-                business=occupation.business,
-                job_role=occupation.job_role,
-            )
-
-        return None
-
-    def execute(self) -> None:
-        business = self.roles["business"]
-        subject = self.roles["subject"]
-
-        current_date = self.world.resource_manager.get_resource(SimDate)
-
-        business_comp = business.get_component(Business)
-
-        remove_frequented_location(subject, business)
-
-        if subject == business_comp.owner:
-            business_comp.set_owner(None)
-
-            # Update relationships boss/employee relationships
-            for employee, _ in business_comp.employees.items():
-                remove_trait(get_relationship(subject, employee), "employee")
-                remove_trait(get_relationship(employee, subject), "boss")
-
-            subject.add_component(Unemployed(subject, timestamp=current_date))
-
-            subject.remove_component(Occupation)
-
-            subject.add_component(Unemployed(subject, timestamp=current_date))
-
-        else:
-            business_comp.remove_employee(subject)
-
-            # Update boss/employee relationships if needed
-            owner = business_comp.owner
-            if owner is not None:
-                remove_trait(get_relationship(subject, owner), "boss")
-                remove_trait(get_relationship(owner, subject), "employee")
-
-            # Update coworker relationships
-            for other_employee, _ in business_comp.employees.items():
-                if other_employee == subject:
-                    continue
-
-                remove_trait(get_relationship(subject, other_employee), "coworker")
-                remove_trait(get_relationship(other_employee, subject), "coworker")
-
-        subject.add_component(Unemployed(subject, timestamp=current_date))
-        subject.remove_component(Occupation)
+        super().__init__(character.world)
+        self.character = character
+        self.business = business
+        self.character_id = character.uid
+        self.business_id = business.uid
+        self.role_id = job_role.definition_id
+        self.job_role = job_role
+        self.reason = reason
 
     def __str__(self) -> str:
-        subject = self.roles["subject"]
-        reason = self.data["reason"]
-        business = self.roles["business"]
-        job_role = self.roles["job_role"]
-
-        if reason:
+        if self.reason:
             return (
-                f"{subject.name} left their job as a "
-                f"{job_role.name} at {business.name} due to {reason}."
+                f"{self.character.name} left their job as a "
+                f"{self.job_role.name} at {self.business.name} due to {self.reason}."
             )
 
         return (
-            f"{subject.name} left their job as a "
-            f"{job_role.name} at {business.name}."
+            f"{self.character.name} left their job as a "
+            f"{self.job_role.name} at {self.business.name}."
         )
 
 
-class DepartSettlement(LifeEvent):
+class DepartSettlementEvent(LifeEvent):
     """Character leave the settlement and the simulation."""
 
     __event_id__ = "depart"
+    __tablename__ = "depart_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "depart",
+    }
 
-    def __init__(self, subject: GameObject, reason: str = "") -> None:
-        super().__init__(
-            world=subject.world, roles=[EventRole("subject", subject)], reason=reason
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    character: GameObject
+    reason: Mapped[str] = mapped_column(default="")
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return DepartSettlement(subject)
-
-    def execute(self) -> None:
-        character = self.roles["subject"]
-
-        remove_all_frequented_locations(character)
-        add_trait(character, "departed")
-        character.deactivate()
-
-        deactivate_relationships(character)
-
-        # Have the character leave their job
-        if occupation := character.try_component(Occupation):
-            if occupation.business.get_component(Business).owner == character:
-                BusinessClosedEvent(
-                    subject=character, business=occupation.business
-                ).dispatch()
-            else:
-                LeaveJob(
-                    subject=character,
-                    business=occupation.business,
-                    job_role=occupation.job_role,
-                    reason="departed settlement",
-                ).dispatch()
-
-        # Have the character leave their residence
-        if resident_data := character.try_component(Resident):
-            residence_data = resident_data.residence.get_component(ResidentialUnit)
-            ChangeResidenceEvent(subject=character, new_residence=None).dispatch()
-
-            # Get people that this character lives with and have them depart with their
-            # spouse(s) and children. This function may need to be refactored in the future
-            # to perform BFS on the relationship tree when moving out extended families
-            # living within the same residence
-            for resident in list(residence_data.residents):
-                if resident == character:
-                    continue
-
-                rel_to_resident = get_relationship(character, resident)
-
-                if has_trait(rel_to_resident, "spouse") and not has_trait(
-                    resident, "departed"
-                ):
-                    DepartSettlement(resident).dispatch()
-
-                elif has_trait(rel_to_resident, "child") and not has_trait(
-                    resident, "departed"
-                ):
-                    DepartSettlement(resident).dispatch()
+    def __init__(self, character: GameObject, reason: str = "") -> None:
+        super().__init__(character.world)
+        self.character = character
+        self.character_id = character.uid
+        self.reason = reason
 
     def __str__(self):
-        subject = self.roles["subject"]
-        return f"{subject.name} departed from the settlement."
+        return f"{self.character.name} departed from the settlement."
 
 
-class LaidOffFromJob(LifeEvent):
+class LayOffEvent(LifeEvent):
     """The character is laid off from their job."""
 
-    __event_id__ = "laid-off"
+    __event_id__ = "lay-off"
+    __tablename__ = "lay_off_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "lay-off",
+    }
+
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    role_id: Mapped[str]
+    reason: Mapped[str] = mapped_column(default="")
+    business: GameObject
+    job_role: JobRoleDef
+    character: GameObject
 
     def __init__(
         self,
-        subject: GameObject,
+        character: GameObject,
         business: GameObject,
         job_role: JobRoleDef,
         reason: str = "",
     ) -> None:
-        super().__init__(
-            world=subject.world,
-            roles=[
-                EventRole("subject", subject, log_event=True),
-                EventRole("business", business),
-            ],
-            job_role=job_role,
-            reason=reason,
-        )
-
-    def execute(self) -> None:
-        business = self.roles["business"]
-        employee = self.roles["subject"]
-
-        current_date = self.world.resource_manager.get_resource(SimDate)
-
-        business_comp = business.get_component(Business)
-
-        remove_frequented_location(employee, business)
-
-        business_comp.remove_employee(employee)
-
-        # Update boss/employee relationships if needed
-        owner = business_comp.owner
-        if owner is not None:
-            remove_trait(get_relationship(employee, owner), "boss")
-            remove_trait(get_relationship(owner, employee), "employee")
-
-        # Update coworker relationships
-        for other_employee, _ in business_comp.employees.items():
-            if other_employee == employee:
-                continue
-
-            remove_trait(get_relationship(employee, other_employee), "coworker")
-            remove_trait(get_relationship(other_employee, employee), "coworker")
-
-        employee.add_component(Unemployed(employee, timestamp=current_date))
-        employee.remove_component(Occupation)
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        if occupation := subject.try_component(Occupation):
-            return LaidOffFromJob(
-                subject=subject,
-                business=occupation.business,
-                job_role=occupation.job_role,
-            )
-
-        return None
+        super().__init__(self.world)
+        self.character = character
+        self.business = business
+        self.character_id = character.uid
+        self.business_id = business.uid
+        self.role_id = job_role.definition_id
+        self.job_role = job_role
+        self.reason = reason
 
     def __str__(self):
-        subject = self.roles["subject"]
-        business = self.roles["business"]
-        job_role = self.roles["job_role"]
         return (
-            f"{subject.name} was laid off from their job as a {job_role.name} "
-            f"at {business.name}"
+            f"{self.character.name} was laid off from their job as a {self.job_role.name} "
+            f"at {self.business.name}."
         )
 
 
@@ -639,94 +414,45 @@ class BusinessClosedEvent(LifeEvent):
     """Event emitted when a business closes."""
 
     __event_id__ = "business-closed"
+    __tablename__ = "business_closed_event"
+    __mapper_args__ = {"polymorphic_identity": "business-closed"}
 
-    def __init__(
-        self, subject: GameObject, business: GameObject, reason: str = ""
-    ) -> None:
-        super().__init__(
-            world=subject.world,
-            roles=[
-                EventRole("subject", subject, True),
-                EventRole("business", business, True),
-            ],
-            reason=reason,
-        )
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    reason: Mapped[str] = mapped_column(default="")
+    business: GameObject
 
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        if occupation := subject.get_component(Occupation):
-            business_data = occupation.business.get_component(Business)
-
-            if business_data.owner == subject:
-                return BusinessClosedEvent(
-                    subject=subject, business=business_data.gameobject
-                )
-
-        return None
-
-    def execute(self) -> None:
-        business = self.roles["business"]
-        business_comp = business.get_component(Business)
-
-        # Update the business as no longer active
-        business_comp.status = BusinessStatus.CLOSED
-
-        # Remove all the employees
-        for employee, role in [*business_comp.employees.items()]:
-            LaidOffFromJob(
-                subject=employee,
-                business=business,
-                job_role=role,
-            ).dispatch()
-
-        # Remove the owner if applicable
-        if business_comp.owner is not None:
-            LeaveJob(
-                business=business,
-                subject=business_comp.owner,
-                job_role=business_comp.owner_role,
-                reason="business closed",
-            ).dispatch()
-
-        # Decrement the number of this type
-        business_comp.district.get_component(BusinessSpawnTable).decrement_count(
-            business.metadata["definition_id"]
-        )
-        business_comp.district.get_component(District).remove_business(business)
-
-        # Remove any other characters that frequent the location
-        remove_all_frequenting_characters(business)
-
-        # Un-mark the business as active so it doesn't appear in queries
-        business.deactivate()
+    def __init__(self, business: GameObject, reason: str = "") -> None:
+        super().__init__(business.world)
+        self.business_id = business.uid
+        self.business = business
+        self.reason = reason
 
     def __str__(self) -> str:
-        subject = self.roles["subject"]
-        business = self.roles["business"]
-        return f"{subject.name}'s business {business.name} has closed for business."
+        return f"{self.business.name} has closed for business."
 
 
 class NewSettlementEvent(LifeEvent):
     """Event dispatched when a settlement is created."""
 
-    __event_id__ = "new-settlement"
+    __event_id__ = "settlement-added"
+    __tablename__ = "settlement_added_event"
+    __mapper_args__ = {
+        "polymorphic_identity": "settlement-added",
+    }
 
-    __is_hidden__ = True
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
+    )
+    settlement_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    settlement: GameObject
 
-    def __init__(
-        self,
-        subject: GameObject,
-    ) -> None:
-        super().__init__(
-            world=subject.world, roles=(EventRole("settlement", subject, True),)
-        )
-
-    def execute(self) -> None:
-        return
-
-    @classmethod
-    def instantiate(cls, subject: GameObject, **kwargs: Any) -> LifeEvent | None:
-        return None
+    def __init__(self, settlement: GameObject) -> None:
+        super().__init__(settlement.world)
+        self.settlement_id = settlement.uid
+        self.settlement = settlement
 
     def __str__(self) -> str:
-        return f"Founded new settlement, {self.roles['settlement'].name}."
+        return f"Created new settlement, {self.settlement.name}."
