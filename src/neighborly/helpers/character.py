@@ -186,6 +186,9 @@ def move_into_residence(
 ) -> None:
     """Have the character move into a new residence."""
 
+    if character.has_component(Resident):
+        move_out_of_residence(character)
+
     new_residence.get_component(ResidentialUnit).add_resident(character)
 
     if is_owner:

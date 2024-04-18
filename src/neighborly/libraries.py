@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import json
 from abc import abstractmethod
-from typing import Any, Generic, Optional, Protocol, Type, TypeVar
+from collections import defaultdict
+from typing import Any, Generic, Iterable, Optional, Protocol, Type, TypeVar
 
 import pydantic
+from ordered_set import OrderedSet
 
+from neighborly.action import ActionConsideration
 from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
 from neighborly.defs.base_types import (
@@ -297,3 +300,67 @@ class SettlementNameFactories:
     def get_factory(self, name: str) -> ISettlementNameFactory:
         """Get a factory by name."""
         return self.factories[name]
+
+
+class ActionConsiderationLibrary:
+    """Manages all considerations that calculate the probability of a potential action.
+
+    All considerations are grouped by action ID. End-users are responsible for casting
+    the action instance if they care about type hints and such.
+    """
+
+    __slots__ = ("success_considerations", "utility_considerations")
+
+    success_considerations: defaultdict[str, OrderedSet[ActionConsideration]]
+    """Considerations for calculating success probabilities."""
+
+    utility_considerations: defaultdict[str, OrderedSet[ActionConsideration]]
+    """Considerations for calculating utility scores."""
+
+    def __init__(self) -> None:
+        self.success_considerations = defaultdict(OrderedSet)
+        self.utility_considerations = defaultdict(OrderedSet)
+
+    def add_success_consideration(
+        self, action_id: str, consideration: ActionConsideration
+    ) -> None:
+        """Add a success consideration to the library."""
+        self.success_considerations[action_id].add(consideration)
+
+    def add_utility_consideration(
+        self, action_id: str, consideration: ActionConsideration
+    ) -> None:
+        """Add a utility consideration to the library."""
+        self.utility_considerations[action_id].add(consideration)
+
+    def remove_success_consideration(
+        self, action_id: str, consideration: ActionConsideration
+    ) -> None:
+        """Remove a success consideration from the library."""
+        self.success_considerations[action_id].remove(consideration)
+
+    def remove_utility_consideration(
+        self, action_id: str, consideration: ActionConsideration
+    ) -> None:
+        """Remove a utility consideration from the library."""
+        self.utility_considerations[action_id].remove(consideration)
+
+    def remove_all_success_considerations(self, action_id: str) -> None:
+        """Add a success consideration to the library."""
+        del self.success_considerations[action_id]
+
+    def remove_all_utility_considerations(self, action_id: str) -> None:
+        """Add a utility consideration to the library."""
+        del self.utility_considerations[action_id]
+
+    def get_success_considerations(
+        self, action_id: str
+    ) -> Iterable[ActionConsideration]:
+        """Get all success considerations for an action."""
+        return self.success_considerations[action_id]
+
+    def get_utility_considerations(
+        self, action_id: str
+    ) -> Iterable[ActionConsideration]:
+        """Get all utility considerations for an action."""
+        return self.utility_considerations[action_id]

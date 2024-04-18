@@ -374,6 +374,13 @@ class GameObject:
         _CT
             The added component
         """
+
+        if self.has_component(type(component)):
+            raise TypeError(
+                "Cannot have multiple components of same type. "
+                f"Attempted to add {type(component)}."
+            )
+
         self._component_manager.add_component(self.uid, component)
         self._component_types.append(type(component))
         component.on_add()

@@ -413,7 +413,11 @@ class Unemployed(Component):
 
     def on_add(self) -> None:
         with self.gameobject.world.session.begin() as session:
-            session.add(UnemployedData(timestamp=self.timestamp.to_iso_str()))
+            session.add(
+                UnemployedData(
+                    uid=self.gameobject.uid, timestamp=self.timestamp.to_iso_str()
+                )
+            )
 
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.unemployed.timestamp!{self.timestamp}"

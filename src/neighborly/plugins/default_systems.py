@@ -7,46 +7,34 @@ from typing import cast
 
 from repraxis.query import DBQuery
 
-from neighborly.components.business import (
-    Business,
-    BusinessStatus,
-    Occupation,
-    Unemployed,
-)
-from neighborly.components.character import Character, LifeStage
-from neighborly.components.relationship import Relationship
+from neighborly.components.business import Business, BusinessStatus, Occupation
+from neighborly.components.character import Character, LifeStage, Pregnant, Sex
+from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
-from neighborly.datetime import SimDate
-from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import Active, System, World
 from neighborly.events.defaults import LeaveJobEvent
-from neighborly.helpers.business import add_employee, close_business, fire_employee
-from neighborly.helpers.character import (
-    depart_settlement,
-    move_into_residence,
-    move_out_of_residence,
-)
+from neighborly.helpers.action import get_action_success_probability, get_action_utility
+from neighborly.helpers.business import add_employee, close_business
+from neighborly.helpers.character import move_into_residence
 from neighborly.helpers.db_helpers import preprocess_query_string
-from neighborly.helpers.location import add_frequented_location
-from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import (
-    add_trait,
-    get_relationships_with_traits,
-    has_trait,
-    remove_trait,
-)
+from neighborly.helpers.traits import get_relationships_with_traits
 from neighborly.libraries import JobRoleLibrary
-from neighborly.life_event import (
-    LifeEvent,
-    add_to_personal_history,
-    dispatch_life_event,
+from neighborly.life_event import LifeEvent
+from neighborly.plugins.actions import (
+    BecomeBusinessOwner,
+    BreakUp,
+    Divorce,
+    FireEmployee,
+    FormCrush,
+    GetMarried,
+    GetPregnant,
+    PromoteEmployee,
+    Retire,
+    StartDating,
 )
-from neighborly.plugins.default_events import (
-    FiredFromJobEvent,
-    JobPromotionEvent,
-    StartBusinessEvent,
-)
+from neighborly.simulation import Simulation
+from neighborly.systems import UpdateSystems
 
 
 class FindJobSystem(System):
@@ -98,20 +86,30 @@ class FiredFromJobSystem(System):
 
         rng = world.resources.get_resource(random.Random)
 
-        for _, (_, occupation, _) in world.get_components(
-            (Character, Occupation, Active)
-        ):
-            # Characters can't fire themselves
-            if (
-                occupation.business.get_component(Business).owner
-                == occupation.gameobject
-            ):
+        for _, (business, _) in world.get_components((Business, Active)):
+            if business.status != BusinessStatus.OPEN:
                 continue
 
-            # Lets just say there is a 20% chance a character gets fired.
-            # TODO: Add considerations to modify this probability.
-            if rng.random() < 0.2:
-                fire_employee(occupation.business, occupation.gameobject)
+            business_owner = business.owner
+
+            if business_owner is None:
+                continue
+
+            # Evaluate firing each employee
+            for employee, _ in business.employees.items():
+
+                action = FireEmployee(business_owner, employee)
+
+                utility_score = get_action_utility(action)
+
+                if rng.random() < utility_score:
+
+                    probability_success = get_action_success_probability(action)
+
+                    if rng.random() < probability_success:
+                        action.on_success()
+                    else:
+                        action.on_failure()
 
 
 class JobPromotionSystem(System):
@@ -122,53 +120,52 @@ class JobPromotionSystem(System):
         rng = world.resources.get_resource(random.Random)
         job_role_library = world.resources.get_resource(JobRoleLibrary)
 
-        for _, (_, occupation, _) in world.get_components(
-            (Character, Occupation, Active)
-        ):
-            character = occupation.gameobject
+        for _, (business, _) in world.get_components((Business, Active)):
+            if business.status != BusinessStatus.OPEN:
+                continue
 
-            current_job_level = occupation.job_role.job_level
-            business_data = occupation.business.get_component(Business)
-            open_positions = business_data.get_open_positions()
+            business_owner = business.owner
 
-            # Business owners can't promote themselves
-            if business_data.owner == character:
-                return None
+            if business_owner is None:
+                continue
 
-            higher_positions: list[JobRoleDef] = []
+            # Evaluate promoting each employee
+            for employee, current_role in business.employees.items():
 
-            for role_id in open_positions:
-                role = job_role_library.get_definition(role_id)
+                current_job_level = current_role.job_level
 
-                if current_job_level >= role.job_level:
-                    continue
+                open_positions = business.get_open_positions()
 
-                for rule in role.requirements:
+                potential_promotions: list[PromoteEmployee] = []
+                potential_promotion_scores: list[float] = []
 
-                    query_lines = preprocess_query_string(rule)
+                for role_id in open_positions:
+                    role = job_role_library.get_definition(role_id)
 
-                    result = DBQuery(query_lines).run(
-                        world.rp_db, bindings=[{"?character": character.uid}]
-                    )
-                    if result.success:
-                        higher_positions.append(role)
-                        break
+                    if current_job_level >= role.job_level:
+                        continue
 
-            if len(higher_positions) == 0:
-                return None
+                    action = PromoteEmployee(business_owner, employee, role)
+                    utility = get_action_utility(action)
 
-            chosen_role = rng.choice(higher_positions)
+                    if utility > 0:
+                        potential_promotions.append(action)
+                        potential_promotion_scores.append(utility)
 
-            return JobPromotionEvent(
-                character=character,
-                business=business_data.gameobject,
-                old_role=occupation.job_role,
-                new_role=chosen_role,
-            )
+                action = rng.choices(
+                    potential_promotions, potential_promotion_scores, k=1
+                )[0]
+
+                probability_success = get_action_success_probability(action)
+
+                if rng.random() < probability_success:
+                    action.on_success()
+                else:
+                    action.on_failure()
 
 
-class StartBusinessSystem(System):
-    """Characters have a chance of starting a business on a given timestep."""
+class BecomeBusinessOwnerSystem(System):
+    """Characters have a chance of becoming a business owner."""
 
     def on_update(self, world: World) -> None:
 
@@ -182,15 +179,8 @@ class StartBusinessSystem(System):
 
         for _, (character, _) in world.get_components((Character, Active)):
 
-            # Only adults can start businesses
-            if character.life_stage < LifeStage.ADOLESCENT:
-                continue
-
-            # Only unemployed characters can start businesses
-            if character.gameobject.has_component(Occupation):
-                continue
-
-            eligible_businesses: list[tuple[Business, JobRoleDef]] = []
+            actions: list[BecomeBusinessOwner] = []
+            action_utilities: list[float] = []
 
             for business in pending_businesses:
                 if business.owner is not None:
@@ -198,47 +188,49 @@ class StartBusinessSystem(System):
 
                 owner_role = business.owner_role
 
-                for rule in owner_role.requirements:
-                    query_lines = preprocess_query_string(rule)
-                    result = DBQuery(query_lines).run(
+                if not owner_role.requirements:
+                    action = BecomeBusinessOwner(
+                        character.gameobject, business.gameobject
+                    )
+                    utility_score = get_action_utility(action)
+
+                    if utility_score > 0:
+                        actions.append(action)
+                        action_utilities.append(utility_score)
+
+                else:
+                    result = DBQuery(owner_role.requirements).run(
                         world.rp_db, bindings=[{"?character": character.gameobject.uid}]
                     )
 
                     if result.success:
-                        eligible_businesses.append((business, owner_role))
-                        break
+                        action = BecomeBusinessOwner(
+                            character.gameobject, business.gameobject
+                        )
+                        utility_score = get_action_utility(action)
 
-            if not eligible_businesses:
+                        if utility_score > 0:
+                            actions.append(action)
+                            action_utilities.append(utility_score)
+
+            if not actions:
                 continue
 
-            chosen_business, owner_role = rng.choice(eligible_businesses)
+            chosen_action = rng.choices(actions, action_utilities, k=1)[0]
 
-            character.gameobject.add_component(
-                Occupation(
-                    character.gameobject,
-                    business=chosen_business.gameobject,
-                    start_date=world.resources.get_resource(SimDate).copy(),
-                    job_role=owner_role,
-                )
-            )
+            utility_score = get_action_utility(chosen_action)
 
-            add_frequented_location(character.gameobject, chosen_business.gameobject)
+            if rng.random() < utility_score:
 
-            chosen_business.set_owner(character.gameobject)
+                probability_success = get_action_success_probability(chosen_action)
 
-            chosen_business.status = BusinessStatus.OPEN
-
-            if character.gameobject.has_component(Unemployed):
-                character.gameobject.remove_component(Unemployed)
-
-            start_business_event = StartBusinessEvent(
-                character=character.gameobject,
-                business=chosen_business.gameobject,
-            )
-
-            add_to_personal_history(character.gameobject, start_business_event)
-            add_to_personal_history(chosen_business.gameobject, start_business_event)
-            dispatch_life_event(world, start_business_event)
+                if rng.random() < probability_success:
+                    pending_businesses.remove(
+                        chosen_action.business.get_component(Business)
+                    )
+                    chosen_action.on_success()
+                else:
+                    chosen_action.on_failure()
 
     def handle_owner_leaving(self, event: LifeEvent) -> None:
         """Event listener placed on the business owners to track when they leave."""
@@ -248,230 +240,218 @@ class StartBusinessSystem(System):
 
 
 class CharacterDatingSystem(System):
+    """Characters have a chance of dating their crush."""
 
     def on_update(self, world: World) -> None:
-        if character.get_component(Character).life_stage <= LifeStage.ADOLESCENT:
-            return None
+        rng = world.resource_manager.get_resource(random.Random)
 
-        if len(get_relationships_with_traits(character, "dating")) > 0:
-            return None
+        for _, (character, _) in world.get_components((Character, Active)):
 
-        relationships = list(character.get_component(Relationships).outgoing.items())
+            relationships = get_relationships_with_traits(character.gameobject, "crush")
 
-        potential_partners: list[GameObject] = []
-        partner_weights: list[float] = []
+            potential_romances: list[StartDating] = []
+            potential_romance_scores: list[float] = []
 
-        for target, relationship in relationships:
-            if target.get_component(Character).life_stage <= LifeStage.ADOLESCENT:
+            for relationship in relationships:
+                partner = relationship.get_component(Relationship).target
+
+                if partner.is_active is False:
+                    continue
+
+                action = StartDating(character.gameobject, partner)
+                utility = get_action_utility(action)
+
+                if utility > 0:
+                    potential_romances.append(action)
+                    potential_romance_scores.append(utility)
+
+            if not potential_romances:
                 continue
 
-            if target.is_active is False:
-                continue
+            action = rng.choices(potential_romances, potential_romance_scores, k=1)[0]
 
-            romance = get_stat(relationship, "romance").normalized
+            probability_success = get_action_success_probability(action)
 
-            if romance > 0:
-                potential_partners.append(target)
-                partner_weights.append(romance)
-
-        if potential_partners:
-            rng = character.world.resource_manager.get_resource(random.Random)
-
-            chosen_partner = rng.choices(
-                potential_partners, weights=partner_weights, k=1
-            )[0]
-
-            return StartDating(
-                character=character,
-                partner=chosen_partner,
-            )
-
-        add_trait(get_relationship(character_0, partner), "dating")
-        add_trait(get_relationship(partner, character_0), "dating")
-
-        return None
+            if rng.random() < probability_success:
+                action.on_success()
+            else:
+                action.on_failure()
 
 
 class CharacterMarriageSystem(System):
+    """Characters have a chance to get married"""
 
     def on_update(self, world: World) -> None:
-        character_life_stage = character.get_component(Character).life_stage
+        rng = world.resource_manager.get_resource(random.Random)
 
-        if character_life_stage < LifeStage.YOUNG_ADULT:
-            return None
+        for _, (character, _) in world.get_components((Character, Active)):
 
-        if len(get_relationships_with_traits(character, "spouse")) > 0:
-            return None
+            relationships = get_relationships_with_traits(
+                character.gameobject, "dating"
+            )
 
-        dating_relationships = get_relationships_with_traits(character, "dating")
+            potential_marriages: list[GetMarried] = []
+            potential_marriage_scores: list[float] = []
 
-        rng = character.world.resource_manager.get_resource(random.Random)
-        rng.shuffle(dating_relationships)
+            for relationship in relationships:
+                partner = relationship.get_component(Relationship).target
 
-        for relationship in dating_relationships:
-            partner = relationship.get_component(Relationship).target
-
-            if partner.get_component(Character).life_stage < LifeStage.YOUNG_ADULT:
-                continue
-
-            if partner.is_active is False:
-                continue
-
-            return GetMarried(character=character, partner=partner)
-
-        # Code executed on success
-        character_0, character_1 = self.roles.get_all("character")
-
-        remove_trait(get_relationship(character_0, character_1), "dating")
-        remove_trait(get_relationship(character_1, character_0), "dating")
-
-        add_trait(get_relationship(character_0, character_1), "spouse")
-        add_trait(get_relationship(character_1, character_0), "spouse")
-
-        # Update residences
-        shared_residence = character_0.get_component(Resident).residence
-
-        ChangeResidenceEvent(character_1, new_residence=shared_residence, is_owner=True)
-
-        for rel in get_relationships_with_traits(character_1, "child", "live_together"):
-            target = rel.get_component(Relationship).target
-            ChangeResidenceEvent(target, new_residence=shared_residence)
-
-        # Update step sibling relationships
-        for rel_0 in get_relationships_with_traits(character_0, "child"):
-            if not rel_0.is_active:
-                continue
-
-            child_0 = rel_0.get_component(Relationship).target
-
-            for rel_1 in get_relationships_with_traits(character_1, "child"):
-                if not rel_1.is_active:
+                if partner.is_active is False:
                     continue
 
-                child_1 = rel_1.get_component(Relationship).target
+                action = GetMarried(character.gameobject, partner)
+                utility = get_action_utility(action)
 
-                add_trait(get_relationship(child_0, child_1), "step_sibling")
-                add_trait(get_relationship(child_0, child_1), "sibling")
-                add_trait(get_relationship(child_1, child_0), "step_sibling")
-                add_trait(get_relationship(child_1, child_0), "sibling")
+                if utility > 0:
+                    potential_marriages.append(action)
+                    potential_marriage_scores.append(utility)
 
-        # Update relationships parent/child relationships
-        for rel in get_relationships_with_traits(character_0, "child"):
-            if rel.is_active:
-                child = rel.get_component(Relationship).target
-                if not has_trait(get_relationship(character_1, child), "child"):
-                    add_trait(get_relationship(character_1, child), "child")
-                    add_trait(get_relationship(character_1, child), "step_child")
-                    add_trait(get_relationship(child, character_1), "parent")
-                    add_trait(get_relationship(child, character_1), "step_parent")
+            if not potential_marriages:
+                continue
 
-        for rel in get_relationships_with_traits(character_1, "child"):
-            if rel.is_active:
-                child = rel.get_component(Relationship).target
-                if not has_trait(get_relationship(character_0, child), "child"):
-                    add_trait(get_relationship(character_0, child), "child")
-                    add_trait(get_relationship(character_0, child), "step_child")
-                    add_trait(get_relationship(child, character_0), "parent")
-                    add_trait(get_relationship(child, character_0), "step_parent")
+            action = rng.choices(potential_marriages, potential_marriage_scores, k=1)[0]
+
+            probability_success = get_action_success_probability(action)
+
+            if rng.random() < probability_success:
+                action.on_success()
+            else:
+                action.on_failure()
 
 
 class CharacterDivorceSystem(System):
+    """Characters in marriages may choose to divorce their spouse."""
 
     def on_update(self, world: World) -> None:
-        spousal_relationships = get_relationships_with_traits(character, "spouse")
 
-        rng = character.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
-        rng.shuffle(spousal_relationships)
+        for _, (character, _) in world.get_components((Character, Active)):
 
-        for relationship in spousal_relationships:
-            if not relationship.has_component(Active):
+            marriages = get_relationships_with_traits(character.gameobject, "spouse")
+
+            potential_divorces: list[Divorce] = []
+            potential_divorce_scores: list[float] = []
+
+            for relationship in marriages:
+                partner = relationship.get_component(Relationship).target
+
+                if partner.is_active is False:
+                    continue
+
+                action = Divorce(character.gameobject, partner)
+                utility = get_action_utility(action)
+
+                if utility > 0:
+                    potential_divorces.append(action)
+                    potential_divorce_scores.append(utility)
+
+            if not potential_divorces:
                 continue
 
-            partner = relationship.get_component(Relationship).target
+            action = rng.choices(potential_divorces, potential_divorce_scores, k=1)[0]
 
-            if partner.is_active is False:
-                continue
+            probability_success = get_action_success_probability(action)
 
-            return GetDivorced(character=character, ex_spouse=partner)
-
-        # Code executed on success
-        initiator = self.roles["character"]
-        ex_spouse = self.roles["ex_spouse"]
-
-        remove_trait(get_relationship(initiator, ex_spouse), "spouse")
-        remove_trait(get_relationship(ex_spouse, initiator), "spouse")
-
-        add_trait(get_relationship(initiator, ex_spouse), "ex_spouse")
-        add_trait(get_relationship(ex_spouse, initiator), "ex_spouse")
-
-        get_stat(get_relationship(ex_spouse, initiator), "romance").base_value -= 25
-
-        # initiator finds new place to live or departs
-        vacant_housing = initiator.world.get_components((ResidentialUnit, Vacant))
-
-        if vacant_housing:
-            _, (residence, _) = vacant_housing[0]
-            ChangeResidenceEvent(
-                initiator, new_residence=residence.gameobject, is_owner=True
-            )
-
-        else:
-            ChangeResidenceEvent(initiator, new_residence=None)
-            DepartSettlementEvent(initiator)
+            if rng.random() < probability_success:
+                action.on_success()
+            else:
+                action.on_failure()
 
 
 class DatingBreakUpSystem(System):
+    """Characters in dating relationships may choose to break-up with their partner."""
 
     def on_update(self, world: World) -> None:
-        dating_relationships = get_relationships_with_traits(character, "dating")
 
-        rng = character.world.resource_manager.get_resource(random.Random)
+        rng = world.resources.get_resource(random.Random)
 
-        if dating_relationships:
-            relationship = rng.choice(dating_relationships)
+        for _, (character, _) in world.get_components((Character, Active)):
 
-            if relationship.is_active is False:
-                return None
-
-            return BreakUp(
-                character=character,
-                ex_partner=relationship.get_component(Relationship).target,
+            dating_relationships = get_relationships_with_traits(
+                character.gameobject, "dating"
             )
 
-        # Success Code
-        initiator = self.roles["character"]
-        ex_partner = self.roles["ex_partner"]
+            potential_break_ups: list[BreakUp] = []
+            potential_break_up_scores: list[float] = []
 
-        remove_trait(get_relationship(initiator, ex_partner), "dating")
-        remove_trait(get_relationship(ex_partner, initiator), "dating")
+            if dating_relationships:
+                relationship = rng.choice(dating_relationships)
 
-        add_trait(get_relationship(initiator, ex_partner), "ex_partner")
-        add_trait(get_relationship(ex_partner, initiator), "ex_partner")
+                if relationship.is_active is False:
+                    return None
 
-        get_stat(get_relationship(ex_partner, initiator), "romance").base_value -= 15
+                action = BreakUp(
+                    character.gameobject,
+                    relationship.get_component(Relationship).target,
+                )
+                utility = get_action_utility(action)
+
+                if utility > 0:
+                    potential_break_ups.append(action)
+                    potential_break_up_scores.append(utility)
+
+            if not potential_break_ups:
+                continue
+
+            action = rng.choices(potential_break_ups, potential_break_up_scores, k=1)[0]
+
+            probability_success = get_action_success_probability(action)
+
+            if rng.random() < probability_success:
+                action.on_success()
+            else:
+                action.on_failure()
 
 
 class PregnancySystem(System):
+    """Female characters in marriages have a chance of getting pregnant."""
 
     def on_update(self, world: World) -> None:
-        marriages = get_relationships_with_traits(character, "spouse")
 
-        for relationship in marriages:
-            partner = relationship.get_component(Relationship).target
+        rng = world.resources.get_resource(random.Random)
 
-            if partner.get_component(Character).sex != Sex.MALE:
+        for _, (character, _) in world.get_components((Character, Active)):
+            if character.sex != Sex.FEMALE:
                 continue
 
-            if partner.is_active is False:
+            if character.gameobject.has_component(Pregnant):
                 continue
 
-            return PregnancyEvent(character=character, partner=partner)
+            marriages = get_relationships_with_traits(character.gameobject, "spouse")
 
-        due_date = self.world.resource_manager.get_resource(SimDate).copy()
-        due_date.increment(months=9)
+            potential_pregnancies: list[GetPregnant] = []
+            potential_pregnancy_scores: list[float] = []
 
-        character.add_component(Pregnant(character, partner=partner, due_date=due_date))
+            for relationship in marriages:
+                partner = relationship.get_component(Relationship).target
+
+                if partner.get_component(Character).sex != Sex.MALE:
+                    continue
+
+                if partner.is_active is False:
+                    continue
+
+                action = GetPregnant(character.gameobject, partner)
+                utility = get_action_utility(action)
+
+                if utility > 0:
+                    potential_pregnancies.append(action)
+                    potential_pregnancy_scores.append(utility)
+
+            if not potential_pregnancies:
+                continue
+
+            action = rng.choices(
+                potential_pregnancies, potential_pregnancy_scores, k=1
+            )[0]
+
+            probability_success = get_action_success_probability(action)
+
+            if rng.random() < probability_success:
+                action.on_success()
+            else:
+                action.on_failure()
 
 
 class RetirementSystem(System):
@@ -481,93 +461,45 @@ class RetirementSystem(System):
 
         rng = world.resources.get_resource(random.Random)
 
-        for _, (character, occupation, _) in world.get_components(
+        for _, (character, _, _) in world.get_components(
             (Character, Occupation, Active)
         ):
-
             if character.life_stage < LifeStage.SENIOR:
                 continue
 
-            if rng.random() > 0.4:
-                continue
+            action = Retire(character.gameobject)
 
-            add_trait(character.gameobject, "retired")
+            utility_score = get_action_utility(action)
 
-            business = occupation.business
+            if rng.random() < utility_score:
 
-            if business.get_component(Business).owner == character:
-                # Try to find a successor
-                business_data = business.get_component(Business)
+                probability_success = get_action_success_probability(action)
 
-                potential_successions: list[PromotedToBusinessOwner] = []
-                succession_scores: list[float] = []
-
-                for employee, _ in business_data.employees.items():
-                    succession = PromotedToBusinessOwner(
-                        character=employee, business=business, former_owner=character
-                    )
-                    succession_score = succession.get_probability()
-
-                    if succession_score >= 0.6:
-                        potential_successions.append(succession)
-                        succession_scores.append(succession_score)
-
-                if potential_successions:
-                    rng = character.world.resource_manager.get_resource(random.Random)
-                    chosen_succession = rng.choices(
-                        population=potential_successions, weights=succession_scores, k=1
-                    )[0]
-
-                    LeaveJobEvent(
-                        character=character,
-                        business=business,
-                        job_role=self.job_role,
-                        reason="retired",
-                    )
-                    chosen_succession
-                    return
-
-                # Could not find suitable successors. Just leave and lay people off.
-                LeaveJobEvent(
-                    character=character,
-                    business=business,
-                    job_role=self.job_role,
-                    reason="retired",
-                )
-                BusinessClosedEvent(character, business, "owner retired")
-                return
-
-            # This is an employee. Keep the business running as usual
-            LeaveJobEvent(
-                character=character, business=business, job_role=self.job_role
-            )
-
-            return RetirementEvent(
-                character=character,
-                business=occupation.business,
-                job_role=occupation.job_role,
-            )
+                if rng.random() < probability_success:
+                    action.on_success()
+                else:
+                    action.on_failure()
 
 
-class ChildMoveOutSystem(System):
+class AdultsFindOwnResidenceSystem(System):
+    """Adult characters who do not own their residence will attempt to find a new one.
+
+    This system is mainly used for ensuring that children leave the residence when they
+    become adults.
+    """
 
     def on_update(self, world: World) -> None:
-        for _, (character, _) in world.get_components((Character, Active)):
-
+        for _, (character, resident, _) in world.get_components(
+            (Character, Resident, Active)
+        ):
             if character.life_stage < LifeStage.YOUNG_ADULT:
-                return None
+                continue
 
-            parents_they_live_with = get_relationships_with_traits(
-                character.gameobject, "parent", "live_together"
+            owns_home = resident.residence.get_component(ResidentialUnit).is_owner(
+                character.gameobject
             )
-            owns_home = False
 
-            if resident := character.gameobject.try_component(Resident):
-                owns_home = resident.residence.get_component(ResidentialUnit).is_owner(
-                    character.gameobject
-                )
-
-            if len(parents_they_live_with) > 0 and owns_home is False:
+            if owns_home is False:
                 vacant_housing = world.get_components((ResidentialUnit, Vacant))
 
                 if vacant_housing:
@@ -576,40 +508,74 @@ class ChildMoveOutSystem(System):
                         character.gameobject, residence.gameobject, is_owner=True
                     )
 
-                else:
-                    move_out_of_residence(character.gameobject)
-                    depart_settlement(character.gameobject)
-
 
 class CrushFormationSystem(System):
+    """Every timestep there is a possibility that a character might form a new crush.
+
+    This system is intended to assist with romantic depth within the simulation. It adds
+    an additional layer of nuance to relationships since characters might form crushes
+    on characters that they are not currently in a romantic relationship with.
+    """
 
     def on_update(self, world: World) -> None:
-        for _, (relationship, _) in world.get_components((Relationship, Active)):
-            owner = relationship.owner
-            target = relationship.target
+        # 1) Loop through all the active characters
+        # 2) Get their outgoing relationships
+        # 3) Find the person that they have the highest romantic attraction to
+        # 4) Run a probability check
+        # 5) If successful, add a crush trait to the relationship and remove any
+        #    existing crushes.
 
-            if not target.has_component(Character):
+        rng = world.resources.get_resource(random.Random)
+
+        for _, (_, relationships, _) in world.get_components(
+            (Character, Relationships, Active)
+        ):
+            potential_crushes = sorted(
+                [
+                    (target, get_stat(rel, "romance").value)
+                    for target, rel in relationships.outgoing.items()
+                    if rel.get_component(Relationship).target.has_component(Character)
+                ],
+                key=lambda entry: entry[1],
+            )
+
+            if len(potential_crushes) == 0:
                 continue
 
-            if not owner.has_component(Character):
-                continue
+            # The person they are most attracted to is the last one in the sorted list
+            crush = potential_crushes[-1][0]
+            character = relationships.gameobject
 
-            rng = world.resources.get_resource(random.Random)
+            action = FormCrush(character, crush)
 
-            romance = get_stat(relationship.gameobject, "romance")
+            utility_score = get_action_utility(action)
 
-            probability = 0
-            if romance.value > 90:
-                probability = 0.9
-            elif romance.value > 70:
-                probability = 0.7
-            elif romance.value > 50:
-                probability = 0.5
+            if rng.random() < utility_score:
 
-            # TODO: This calculation should take other factors into consideration.
-            if rng.random() < probability:
+                probability_success = get_action_success_probability(action)
 
-                for rel in get_relationships_with_traits(owner, "crush"):
-                    remove_trait(rel, "crush")
+                if rng.random() < probability_success:
+                    action.on_success()
+                else:
+                    action.on_failure()
 
-                add_trait(get_relationship(owner, target), "crush")
+
+def load_plugin(sim: Simulation) -> None:
+    """Load systems into the simulation."""
+
+    sim.world.systems.add_system(FindJobSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(FiredFromJobSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(JobPromotionSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(
+        BecomeBusinessOwnerSystem(), system_group=UpdateSystems
+    )
+    sim.world.systems.add_system(CharacterDatingSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(CharacterMarriageSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(CharacterDivorceSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(DatingBreakUpSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(PregnancySystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(RetirementSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(
+        AdultsFindOwnResidenceSystem(), system_group=UpdateSystems
+    )
+    sim.world.systems.add_system(CrushFormationSystem(), system_group=UpdateSystems)

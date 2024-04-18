@@ -8,10 +8,14 @@ import argparse
 import pathlib
 import random
 
+from neighborly.action import Action
+from neighborly.components.business import Occupation
+from neighborly.components.character import Character, LifeStage
 from neighborly.config import LoggingConfig, SimulationConfig
 from neighborly.defs.base_types import CharacterDefTraitEntry
 from neighborly.defs.defaults import DefaultCharacterDef
 from neighborly.helpers.character import register_character_def
+from neighborly.libraries import ActionConsiderationLibrary
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -24,8 +28,10 @@ from neighborly.loaders import (
 from neighborly.plugins import (
     default_character_names,
     default_settlement_names,
+    default_systems,
     default_traits,
 )
+from neighborly.plugins.actions import BecomeBusinessOwner
 from neighborly.simulation import Simulation
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent.parent / "tests" / "data"
@@ -68,6 +74,34 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def has_occupation_consideration(action: Action) -> float:
+    """Characters with occupations are not eligible to become business owners."""
+
+    if isinstance(action, BecomeBusinessOwner):
+        if action.character.has_component(Occupation):
+            return 0
+
+    return -1
+
+
+def life_stage_consideration(action: Action) -> float:
+    """Characters with occupations are not eligible to become business owners."""
+
+    if isinstance(action, BecomeBusinessOwner):
+        life_stage = action.character.get_component(Character).life_stage
+
+        if life_stage < LifeStage.ADULT:
+            return 0
+
+        if life_stage < LifeStage.SENIOR:
+            return 0.5
+
+        # Seniors
+        return 0.3
+
+    return -1
+
+
 def main() -> Simulation:
     """Main program entry point."""
     args = get_args()
@@ -91,6 +125,7 @@ def main() -> Simulation:
     default_traits.load_plugin(sim)
     default_character_names.load_plugin(sim)
     default_settlement_names.load_plugin(sim)
+    default_systems.load_plugin(sim)
 
     register_character_def(
         sim.world,
@@ -108,6 +143,16 @@ def main() -> Simulation:
             ],
         ),
     )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_utility_consideration("become-business-owner", lambda action: 0.5)
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration("become-business-owner", has_occupation_consideration)
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration("become-business-owner", life_stage_consideration)
 
     total_time_steps: int = args.years * 12
 

@@ -528,7 +528,6 @@ class DefaultCharacterDef(CharacterDef):
         self, character: GameObject, options: CharacterGenOptions
     ) -> None:
         """Set the traits for a character."""
-        character.add_component(Traits(character))
         rng = character.world.resource_manager.get_resource(random.Random)
         trait_library = character.world.resource_manager.get_resource(TraitLibrary)
 

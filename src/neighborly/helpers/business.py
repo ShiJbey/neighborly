@@ -167,12 +167,6 @@ def leave_job(business: GameObject, character: GameObject) -> None:
             remove_trait(get_relationship(character, employee), "employee")
             remove_trait(get_relationship(employee, character), "boss")
 
-        character.add_component(Unemployed(character, timestamp=current_date))
-
-        character.remove_component(Occupation)
-
-        character.add_component(Unemployed(character, timestamp=current_date))
-
     else:
         business_comp.remove_employee(character)
 

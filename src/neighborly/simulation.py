@@ -33,6 +33,7 @@ from neighborly.defs.defaults import (
 )
 from neighborly.ecs import World
 from neighborly.libraries import (
+    ActionConsiderationLibrary,
     BusinessLibrary,
     BusinessNameFactories,
     CharacterLibrary,
@@ -153,6 +154,7 @@ class Simulation:
         self.world.resource_manager.add_resource(BusinessNameFactories())
         self.world.resource_manager.add_resource(Tracery(self._config.seed))
         self.world.resource_manager.add_resource(GlobalEventHistory())
+        self.world.resource_manager.add_resource(ActionConsiderationLibrary())
 
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
