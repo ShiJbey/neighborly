@@ -8,21 +8,21 @@
   Neighborly
 </h1>
 
-<div align="center" style="margin-bottom: 1rem; font-weight: bold; font-size: 1.1rem">
+<p align="center">
   <a href="https://neighborly.readthedocs.io/en/latest/index.html">Documentation</a> |
   <a href="https://pypi.org/project/neighborly">PyPI</a> | <a href="https://github.com/ShiJbey/neighborly">GitHub</a>
-</div>
+</p>
 
-<div align="center" style="margin-bottom: 1rem;">
+<p align="center">
   <img src="https://img.shields.io/pypi/v/neighborly" alt="PyPI version badge">
   <img src="https://img.shields.io/pypi/pyversions/neighborly" alt="Supported Python Versions badge">
   <img src="https://img.shields.io/pypi/l/neighborly" alt="MIT License badge">
   <img src="https://img.shields.io/pypi/dm/neighborly" alt="PyPI downloads badge">
   <img src="https://img.shields.io/badge/code%20style-black-black" alt="Black formatter badge">
   <img src="https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336" alt="ISort badge">
-</div>
+</p>
 
-Neighborly is a agent-based settlement simulation that generates backstory data for characters living in a procedurally-generated settlement. It was built to be a tool for emergent narrative storytelling research. Neighborly models the characters' traits, statuses, relationships, occupations, life events, etc. over decades of simulated time. The entire history of the settlement and its generations of characters is made available for data analysis and exporting. Neighborly aims to be an easily customizable simulation that can adapt to various narrative settings and support research or entertainment projects.
+Neighborly is an agent-based settlement simulation that generates backstory data for characters living in a procedurally generated settlement. It was built to be a tool for emergent narrative storytelling research. Neighborly models the characters' traits, statuses, relationships, occupations, life events, etc. over decades of simulated time. The entire history of the settlement and its generations of characters is made available for data analysis and exporting. Neighborly aims to be an easily customizable simulation that can adapt to various narrative settings and support research or entertainment projects.
 
 Neighborly's was inspired [_Talk of the Town_](https://github.com/james-owen-ryan/talktown), another settlement simulation for emergent narrative storytelling research. It also draws inspiration from commercial world-simulation games like _Caves of Qud_, _Dwarf Fortress_, _Crusader Kings_, _RimWorld_, and _WorldBox_.
 
@@ -60,7 +60,7 @@ Neighborly is available to use within this [sample Google Colab notebook](https:
 
 ### Installing for Local Development
 
-If you wish to download a Neighborly for local development or want to play around with any of the samples, you need to clone or download this repository and install using the _editable_ flag (-e). Please see the instructions below. This command will install a Neighborly into the virtual environment along with all its dependencies and a few additional development and testing dependencies such as _black_, _isort_, and _pytest_.
+To download a Neighborly for local development or play around with any of the samples, you need to clone or download this repository and install it using the _editable_ flag (-e). Please see the instructions below. This command will install a Neighborly into the virtual environment along with all its dependencies and a few additional development and testing dependencies such as _black_, _isort_, and _pytest_.
 
 ```bash
 # Step 1: Clone Repository and change into project directory
@@ -83,7 +83,7 @@ python -m pip install -e ".[development]"
 
 Example simulations can be found in the `samples` directory. These demonstrate how to create simulations and collect and visualize data. We provide command line scripts and interactive IPython notebooks.
 
-First, follow the [Installing for Local Development](#installing-for-local-development) instructions provided above.Then the commands below will get you started with running the sample simulations.
+First, follow the [Installing for Local Development](#installing-for-local-development) instructions provided above. Then the commands below will get you started with running the sample simulations.
 
 ```bash
 # Step 1: Install neighborly locally and all the dependencies needed to run the sample content.
@@ -125,14 +125,14 @@ This project is licensed under the [MIT License](./LICENSE).
 
 ## ℹ️ Differences from the Paper
 
-- **Directed relationships only** -  Neighborly only support directed relationships that track how one character feels about another. Support for reciprocal relationships was removed because it complicated the simulation by forcing users to check multiple locations for relationship data.
-- **No activity/service system** - The activity system was introduced to help characters decide where they would frequent outside of work/home. This system was replaced with _location preferences_, which are more flexible. The activity system can be emulated by associating certain traits with locations.
-- **No 7-day weekly routines** - Routines were tedious to author for and became irrelevant when Neighborly's time step scale changed from incrementing the date by a few hours to incrementing by a single month.
-- **No direct support for differing AI strategies** - We intended to support various character decision-making algorithms, but made behavior authoring too tedious, and took emphasis away from the content authoring and data generation aspects of Neighborly.
-- **Event system replaced with action objects and utility scores** - Since Neighborly does not need to support user-supplied character decision-making logic, it allowed behavior modeling to be much simpler. The old life event system required users to specify event effects for each different type of agent, and this naturally complicated things. Currently, agent behavior is implemented using a combination of Systems, actions, and life events.
-- **No behavior trees** - Behavior trees added an addition layer of complexity to the system. It was removed to simplify things.
-- **No character values** - Over time, the character value system and personality models were combined into a single stat system. This simplified much of the agent modeling and allowed for the most flexibility.
-- **No character movement** - Characters do not move between locations. This added additional processing overhead, and became unnecessary when moving to a one-month time steps.
+- **Directed relationships only** -  Neighborly only supports directed relationships that track how one character feels about another. Support for reciprocal relationships was removed because it complicated the simulation by forcing users to check multiple locations for relationship data.
+- **No activity/service system** - The activity system was introduced to help characters decide where to frequent outside of work/home. This system was replaced with _location preferences_, which are more flexible. The activity system can be emulated by associating certain traits with locations.
+- **No 7-day weekly routines** - Routines were tedious to create and became irrelevant when Neighborly's time step scale changed from incrementing the date by a few hours to incrementing by a single month.
+- **No direct support for differing AI strategies** - We intended to support various character decision-making algorithms but made behavior authoring too tedious and took emphasis away from the content authoring and data generation aspects of Neighborly.
+- **Event system replaced with action objects and utility scores** - Since Neighborly does not need to support user-supplied character decision-making logic, it made behavior modeling much simpler. The old life event system required users to specify event effects for each different type of agent, and this naturally complicated things. Currently, agent behavior is implemented using a combination of Systems, actions, and life events.
+- **No behavior trees** - Behavior trees added complexity to the system. It was removed to simplify things.
+- **No character values** - Over time, the character value system and personality models were combined into a single stat system. Removing them simplified much of the agent modeling and allowed for the most flexibility.
+- **No character movement** - Characters do not move between locations. This added additional processing overhead and became unnecessary when moving to a one-month time steps.
 
 ## ©️ DMCA Statement
 
