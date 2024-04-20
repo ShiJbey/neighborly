@@ -321,9 +321,12 @@ class SpawnNewResidentSystem(System):
                 ),
             )
 
+            settlement = residence.district.get_component(District).settlement
+            assert settlement is not None
+
             event = JoinSettlementEvent(
                 character,
-                residence.district.get_component(District).settlement,
+                settlement,
             )
 
             dispatch_life_event(world, event)

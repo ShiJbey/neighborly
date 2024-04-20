@@ -604,13 +604,11 @@ def list_settlements(sim: Simulation) -> None:
 def list_districts(sim: Simulation) -> None:
     """Prints the list of districts in the simulation."""
     districts = [
-        (uid, district.name, district.settlement.name, district.population)
+        (uid, district.name, district.population)
         for uid, (district, _) in sim.world.get_components((District, Active))
     ]
 
-    table = tabulate.tabulate(
-        districts, headers=["UID", "Name", "Settlement", "Population"]
-    )
+    table = tabulate.tabulate(districts, headers=["UID", "Name", "Population"])
 
     # Display as a table the object ID, Display Name, Description
     output = "=== Districts ===\n"

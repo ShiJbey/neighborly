@@ -127,7 +127,6 @@ class DefaultDistrictDef(DistrictDef):
                 gameobject=district,
                 name=name,
                 description=self.description,
-                settlement=settlement,
                 residential_slots=self.residential_slots,
                 business_slots=self.business_slots,
             )
@@ -333,6 +332,7 @@ class DefaultSettlementDef(SettlementDef):
                         settlement,
                         chosen_district.definition_id,
                     )
+                    district.get_component(District).settlement = settlement
                     settlement.add_child(district)
 
 

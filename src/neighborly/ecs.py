@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 from typing import (
     Any,
     Callable,
+    ClassVar,
     Generic,
     Iterable,
     Iterator,
@@ -1236,11 +1237,36 @@ class EventManager:
             callback_fn(event)
 
 
+class ComponentFactory(ABC):
+    """Creates instances of a component class."""
+
+    __component__: ClassVar[str] = ""
+
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.__component__:
+            raise ValueError(
+                f"Missing '__component__' class attribute for {type(self)}."
+            )
+
+    @property
+    def component_type(self) -> str:
+        """The class name of the component this constructs"""
+        return self.__component__
+
+    @abstractmethod
+    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+        """Create an instance of the component."""
+
+        raise NotImplementedError()
+
+
 class GameObjectManager:
     """Manages GameObject and Component Data for a single World instance."""
 
     __slots__ = (
         "world",
+        "component_factories",
         "_component_manager",
         "_gameobjects",
         "_dead_gameobjects",
@@ -1248,6 +1274,8 @@ class GameObjectManager:
 
     world: World
     """The manager's associated World instance."""
+    component_factories: dict[str, ComponentFactory]
+    """Component class names mapped to factory instances."""
     _component_manager: esper.World
     """Esper ECS instance used for efficiency."""
     _gameobjects: dict[int, GameObject]
@@ -1260,6 +1288,7 @@ class GameObjectManager:
         self._gameobjects = {}
         self._component_manager = esper.World()
         self._dead_gameobjects = OrderedSet([])
+        self.component_factories = {}
 
     @property
     def component_manager(self) -> esper.World:
@@ -1277,9 +1306,14 @@ class GameObjectManager:
         """
         return self._gameobjects.values()
 
+    def add_component_factory(self, factory: ComponentFactory) -> None:
+        """Register a component type with the ECS."""
+
+        self.component_factories[factory.component_type] = factory
+
     def spawn_gameobject(
         self,
-        components: Optional[list[Component]] = None,
+        components: Optional[dict[Type[Component], dict[str, Any]]] = None,
         name: str = "",
     ) -> GameObject:
         """Create a new GameObject and add it to the world.
@@ -1308,7 +1342,12 @@ class GameObjectManager:
         self._gameobjects[gameobject.uid] = gameobject
 
         if components:
-            for component in components:
+            for component_type, factory_args in components.items():
+
+                component = self.world.gameobjects.component_factories[
+                    component_type.__name__
+                ].instantiate(gameobject, **factory_args)
+
                 gameobject.add_component(component)
 
         gameobject.activate()
@@ -1444,15 +1483,6 @@ class World:
         self.session = sessionmaker(
             self.sql_engine, expire_on_commit=False, autoflush=True
         )
-
-    def register_component(self, component_type: Type[Component]) -> None:
-        """Register a component type with the ECS."""
-
-        # This function intentionally does nothing. Currently, its only purpose is to
-        # ensure that all component types that depend on sqlalchemy orm data have their
-        # associated orm mapped classes loaded into memory before initializing the
-        # database tables
-        del component_type
 
     def initialize_sql_database(self) -> None:
         """Initialize SQL database tables."""

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from neighborly.components.settlement import Settlement
+from neighborly.components.settlement import District, Settlement
 from neighborly.defs.base_types import (
     DistrictDef,
     DistrictGenOptions,
@@ -80,6 +80,7 @@ def create_district(
     district = district_def.instantiate(world, settlement, options)
 
     settlement.get_component(Settlement).add_district(district)
+    district.get_component(District).settlement = settlement
 
     return district
 

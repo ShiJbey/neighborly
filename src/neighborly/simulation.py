@@ -32,6 +32,23 @@ from neighborly.defs.defaults import (
     generate_masculine_first_name,
 )
 from neighborly.ecs import World
+from neighborly.factories.business import BusinessFactory
+from neighborly.factories.character import CharacterFactory
+from neighborly.factories.location import (
+    FrequentedLocationsFactory,
+    LocationFactory,
+    LocationPreferencesFactory,
+)
+from neighborly.factories.settlement import DistrictFactory, SettlementFactory
+from neighborly.factories.shared import AgeFactory, AgentFactory
+from neighborly.factories.skills import SkillsFactory
+from neighborly.factories.spawn_table import (
+    BusinessSpawnTableFactory,
+    CharacterSpawnTableFactory,
+    ResidenceSpawnTableFactory,
+)
+from neighborly.factories.stats import StatsFactory
+from neighborly.factories.traits import TraitsFactory
 from neighborly.libraries import (
     ActionConsiderationLibrary,
     BusinessLibrary,
@@ -109,6 +126,7 @@ class Simulation:
         self._init_resources()
         self._init_systems()
         self._init_logging()
+        self._init_component_factories()
 
     def _init_resources(self) -> None:
         """Initialize built-in resources."""
@@ -231,6 +249,24 @@ class Simulation:
         self.world.system_manager.add_system(
             system=BusinessLifespanSystem(), system_group=UpdateSystems
         )
+
+    def _init_component_factories(self) -> None:
+        """Initialize built-in component factories."""
+        self.world.gameobjects.add_component_factory(CharacterFactory())
+        self.world.gameobjects.add_component_factory(BusinessFactory())
+        self.world.gameobjects.add_component_factory(LocationFactory())
+        self.world.gameobjects.add_component_factory(LocationPreferencesFactory())
+        self.world.gameobjects.add_component_factory(FrequentedLocationsFactory())
+        self.world.gameobjects.add_component_factory(SettlementFactory())
+        self.world.gameobjects.add_component_factory(DistrictFactory())
+        self.world.gameobjects.add_component_factory(AgeFactory())
+        self.world.gameobjects.add_component_factory(AgentFactory())
+        self.world.gameobjects.add_component_factory(SkillsFactory())
+        self.world.gameobjects.add_component_factory(TraitsFactory())
+        self.world.gameobjects.add_component_factory(StatsFactory())
+        self.world.gameobjects.add_component_factory(CharacterSpawnTableFactory())
+        self.world.gameobjects.add_component_factory(BusinessSpawnTableFactory())
+        self.world.gameobjects.add_component_factory(ResidenceSpawnTableFactory())
 
     def _init_logging(self) -> None:
         """Initialize simulation logging."""

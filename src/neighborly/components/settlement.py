@@ -23,7 +23,9 @@ class DistrictData(GameData):
         ForeignKey("gameobjects.uid"), primary_key=True, unique=True
     )
     name: Mapped[str]
-    settlement_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    settlement_id: Mapped[int] = mapped_column(
+        ForeignKey("gameobjects.uid"), nullable=True
+    )
     population: Mapped[int]
 
 
@@ -44,7 +46,7 @@ class District(Component):
     """District"""
     _description: str
     """A short description of the district."""
-    _settlement: GameObject
+    _settlement: Optional[GameObject]
     """The settlement the district belongs to."""
     _residential_slots: int
     """The number of residential slots the district can build on."""
@@ -60,16 +62,13 @@ class District(Component):
         gameobject: GameObject,
         name: str,
         description: str,
-        settlement: GameObject,
         residential_slots: int,
         business_slots: int,
     ) -> None:
         super().__init__(gameobject)
-        self.data = DistrictData(
-            uid=gameobject.uid, name=name, population=0, settlement_id=settlement.uid
-        )
+        self.data = DistrictData(uid=gameobject.uid, name=name, population=0)
         self._description = description
-        self._settlement = settlement
+        self._settlement = None
         self._residential_slots = residential_slots
         self._business_slots = business_slots
         self._businesses = []
@@ -124,9 +123,22 @@ class District(Component):
             session.add(self.data)
 
     @property
-    def settlement(self) -> GameObject:
+    def settlement(self) -> Optional[GameObject]:
         """The settlement the district belongs to."""
         return self._settlement
+
+    @settlement.setter
+    def settlement(self, value: GameObject) -> Optional[GameObject]:
+        """The settlement the district belongs to."""
+        self._settlement = value
+        self.data.settlement_id = value.uid
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(self.data)
+
+        self.gameobject.world.rp_db.insert(
+            f"{self.gameobject.uid}.district.settlement!{value.uid}"
+        )
 
     @property
     def residential_slots(self) -> int:
@@ -226,9 +238,6 @@ class District(Component):
 
     def on_add(self) -> None:
         self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.district.settlement!{self.settlement.uid}"
-        )
-        self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.district.name!{self.name}"
         )
         self.gameobject.world.rp_db.insert(
@@ -245,7 +254,7 @@ class District(Component):
         return {
             "name": self.name,
             "description": self._description,
-            "settlement": self._settlement.uid,
+            "settlement": self._settlement.uid if self._settlement else -1,
             "residences": [r.uid for r in self.residences],
             "businesses": [b.uid for b in self.businesses],
             "population": self.population,
