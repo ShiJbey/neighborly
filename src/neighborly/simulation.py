@@ -14,16 +14,13 @@ from typing import Optional
 
 from neighborly.config import SimulationConfig
 from neighborly.datetime import SimDate
+from neighborly.defs.base_types import JobRoleDef, SkillDef, SpeciesDef, TraitDef
 from neighborly.defs.defaults import (
     DefaultBusinessDef,
     DefaultCharacterDef,
     DefaultDistrictDef,
-    DefaultJobRoleDef,
     DefaultResidenceDef,
     DefaultSettlementDef,
-    DefaultSkillDef,
-    DefaultSpeciesDef,
-    DefaultTraitDef,
     default_district_name_factory,
     default_settlement_name_factory,
     generate_any_first_name,
@@ -134,18 +131,18 @@ class Simulation:
         self.world.resource_manager.add_resource(random.Random(self._config.seed))
         self.world.resource_manager.add_resource(SimDate())
         self.world.resource_manager.add_resource(CharacterLibrary(DefaultCharacterDef))
-        self.world.resource_manager.add_resource(JobRoleLibrary(DefaultJobRoleDef))
+        self.world.resource_manager.add_resource(JobRoleLibrary(JobRoleDef))
         self.world.resource_manager.add_resource(BusinessLibrary(DefaultBusinessDef))
         self.world.resource_manager.add_resource(ResidenceLibrary(DefaultResidenceDef))
         self.world.resource_manager.add_resource(DistrictLibrary(DefaultDistrictDef))
         self.world.resource_manager.add_resource(
             SettlementLibrary(DefaultSettlementDef)
         )
-        self.world.resource_manager.add_resource(TraitLibrary(DefaultTraitDef))
+        self.world.resource_manager.add_resource(TraitLibrary(TraitDef))
         self.world.resource_manager.get_resource(TraitLibrary).add_definition_type(
-            DefaultSpeciesDef
+            SpeciesDef
         )
-        self.world.resource_manager.add_resource(SkillLibrary(DefaultSkillDef))
+        self.world.resource_manager.add_resource(SkillLibrary(SkillDef))
         self.world.resource_manager.add_resource(SocialRuleLibrary())
         self.world.resource_manager.add_resource(LocationPreferenceLibrary())
         self.world.resource_manager.add_resource(SettlementNameFactories())

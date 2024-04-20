@@ -40,14 +40,11 @@ from neighborly.defs.base_types import (
     CharacterGenOptions,
     DistrictDef,
     DistrictGenOptions,
-    JobRoleDef,
     ResidenceDef,
     ResidenceGenOptions,
     SettlementDef,
     SettlementGenOptions,
-    SkillDef,
     SpeciesDef,
-    TraitDef,
 )
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.character import set_species
@@ -72,27 +69,6 @@ from neighborly.life_event import PersonalEventHistory
 from neighborly.tracery import Tracery
 
 STAT_MAX_VALUE: int = 100
-
-
-class DefaultSkillDef(SkillDef):
-    """The default implementation of a skill definition."""
-
-    def instantiate(self, world: World) -> GameObject:
-        raise NotImplementedError()
-
-
-class DefaultTraitDef(TraitDef):
-    """A definition for a trait type."""
-
-    def instantiate(self, world: World) -> GameObject:
-        raise NotImplementedError()
-
-
-class DefaultSpeciesDef(SpeciesDef):
-    """A definition for a trait type."""
-
-    def instantiate(self, world: World) -> GameObject:
-        raise NotImplementedError()
 
 
 def default_district_name_factory(world: World, options: DistrictGenOptions) -> str:
@@ -694,13 +670,6 @@ class DefaultCharacterDef(CharacterDef):
                 chosen_skill = rng.choice(potential_skills)
 
                 add_skill(character, chosen_skill.definition_id, base_value=base_value)
-
-
-class DefaultJobRoleDef(JobRoleDef):
-    """A default implementation of a Job Role Definition."""
-
-    def instantiate(self, world: World) -> GameObject:
-        raise NotImplementedError()
 
 
 class DefaultBusinessDef(BusinessDef):
