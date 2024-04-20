@@ -182,7 +182,7 @@ class DistrictDef(ContentDefinition, ABC):
         raise NotImplementedError()
 
 
-class SkillDef(ContentDefinition, ABC):
+class SkillDef(ContentDefinition):
     """A definition for a skill."""
 
     definition_id: str
@@ -200,23 +200,6 @@ class SkillDef(ContentDefinition, ABC):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
-    @abstractmethod
-    def instantiate(self, world: World) -> GameObject:
-        """Create a new skill using the definition's data.
-
-        Parameters
-        ----------
-        world
-            The simulation's World instance.
-
-        Returns
-        -------
-        GameObject
-            The instantiated skill.
-        """
-
-        raise NotImplementedError()
-
 
 class StatModifierData(pydantic.BaseModel):
     """Configuration data for a stat modifier in a definition."""
@@ -226,7 +209,7 @@ class StatModifierData(pydantic.BaseModel):
     modifier_type: str = "FLAT"
 
 
-class TraitDef(ContentDefinition, ABC):
+class TraitDef(ContentDefinition):
     """A definition for a trait."""
 
     definition_id: str
@@ -260,25 +243,8 @@ class TraitDef(ContentDefinition, ABC):
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
 
-    @abstractmethod
-    def instantiate(self, world: World) -> GameObject:
-        """Create a new trait using the definition's data.
 
-        Parameters
-        ----------
-        world
-            The simulation's World instance.
-
-        Returns
-        -------
-        GameObject
-            The instantiated trait.
-        """
-
-        raise NotImplementedError()
-
-
-class SpeciesDef(TraitDef, ABC):
+class SpeciesDef(TraitDef):
     """A definition for a species type."""
 
     adolescent_age: int
@@ -537,7 +503,7 @@ class CharacterDef(ContentDefinition, ABC):
         raise NotImplementedError()
 
 
-class JobRoleDef(ContentDefinition, ABC):
+class JobRoleDef(ContentDefinition):
     """A definition of a type of job characters can work at a business."""
 
     definition_id: str
@@ -564,23 +530,6 @@ class JobRoleDef(ContentDefinition, ABC):
     """Is this definition a template for creating other definitions."""
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
-
-    @abstractmethod
-    def instantiate(self, world: World) -> GameObject:
-        """Create a job role using the definition's data.
-
-        Parameters
-        ----------
-        world
-            The simulation's World instance.
-
-        Returns
-        -------
-        GameObject
-            The instantiated job role.
-        """
-
-        raise NotImplementedError()
 
 
 class BusinessGenOptions(pydantic.BaseModel):
