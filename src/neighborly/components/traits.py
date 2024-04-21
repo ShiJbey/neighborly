@@ -70,8 +70,12 @@ class Traits(Component):
 
         Parameters
         ----------
-        trait
-            A trait to add.
+        trait_id
+            A ID of the trait to add.
+        duration
+            How long to add the trait.
+        description
+            A string description to about the trait.
         """
         instance = TraitInstance(
             uid=self.gameobject.uid,

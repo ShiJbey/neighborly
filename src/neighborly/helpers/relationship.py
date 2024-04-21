@@ -142,7 +142,7 @@ def add_social_rule(gameobject: GameObject, rule_id: str) -> None:
     ----------
     gameobject
         The GameObject to add the social rule to.
-    rule
+    rule_id
         The rule to add.
     """
     gameobject.get_component(SocialRules).add_rule(rule_id)
@@ -165,7 +165,7 @@ def remove_social_rule(gameobject: GameObject, rule_id: str) -> None:
     ----------
     gameobject
         The GameObject to remove the social rule from.
-    rule
+    rule_id
         The rule to remove.
     """
     gameobject.get_component(SocialRules).remove_rule(rule_id)

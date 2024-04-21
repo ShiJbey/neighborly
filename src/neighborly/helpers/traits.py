@@ -160,6 +160,8 @@ def has_conflicting_trait(gameobject: GameObject, trait: Union[str, TraitDef]) -
 
     Parameters
     ----------
+    gameobject
+        The gameobject to check.
     trait
         The trait to check.
 

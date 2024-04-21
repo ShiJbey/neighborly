@@ -369,8 +369,6 @@ class Stats(Component):
 
         Parameters
         ----------
-        stat_id
-            A string ID to associate with the stat.
         stat
             A stat component instance.
         """

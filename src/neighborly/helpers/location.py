@@ -80,8 +80,12 @@ def check_location_preference_preconditions(
 
     Parameters
     ----------
-    gameobject
-        A location to score.
+    rule
+        The rule to evaluate.
+    character
+        The character we are evaluating the rule for.
+    location
+        The location to be scored.
 
     Returns
     -------
@@ -104,13 +108,15 @@ def score_location(character: GameObject, location: GameObject) -> float:
 
     Parameters
     ----------
+    character
+        The character scoring the location.
     location
-        A location to score
+        A location to score.
 
     Returns
     -------
     float
-        A probability score from [0.0, 1.0]
+        A probability score from [0.0, 1.0].
     """
 
     library = character.world.resource_manager.get_resource(LocationPreferenceLibrary)

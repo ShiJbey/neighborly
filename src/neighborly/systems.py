@@ -150,8 +150,6 @@ class SpawnResidentialBuildingsSystem(System):
         ----------
         district
             The district where the residential building will be built.
-        spawn_table
-            The spawn table where buildings are sampled from.
 
         Returns
         -------
@@ -196,8 +194,6 @@ class SpawnResidentialBuildingsSystem(System):
         ----------
         district
             The district where the residential building will be built.
-        spawn_table
-            The spawn table where buildings are sampled from.
 
         Returns
         -------
@@ -361,8 +357,6 @@ class SpawnNewBusinessesSystem(System):
         ----------
         district
             The district where the business will be built.
-        spawn_table
-            The spawn table where businesses are sampled from.
 
         Returns
         -------

@@ -365,7 +365,7 @@ class SocialRules(Component):
 
 
 class Reputation(StatComponent):
-    """Tracks a relationships's reputations stat."""
+    """Tracks a relationship's reputations stat."""
 
     __stat_name__ = "reputation"
 
@@ -395,7 +395,7 @@ class Romance(StatComponent):
 
 
 class Compatibility(StatComponent):
-    """Tracks a relationships's compatibility stat."""
+    """Tracks a relationship's compatibility stat."""
 
     __stat_name__ = "compatibility"
 
@@ -410,7 +410,7 @@ class Compatibility(StatComponent):
 
 
 class RomanticCompatibility(StatComponent):
-    """Tracks a relationships's romantic compatibility stat."""
+    """Tracks a relationship's romantic compatibility stat."""
 
     __stat_name__ = "romantic_compatibility"
 
@@ -425,7 +425,7 @@ class RomanticCompatibility(StatComponent):
 
 
 class InteractionScore(StatComponent):
-    """Tracks a relationships's interaction score stat."""
+    """Tracks a relationship's interaction score stat."""
 
     __stat_name__ = "interaction_score"
 

@@ -128,7 +128,7 @@ class District(Component):
         return self._settlement
 
     @settlement.setter
-    def settlement(self, value: GameObject) -> Optional[GameObject]:
+    def settlement(self, value: GameObject) -> None:
         """The settlement the district belongs to."""
         self._settlement = value
         self.data.settlement_id = value.uid
