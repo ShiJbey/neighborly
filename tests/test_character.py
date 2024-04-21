@@ -1,7 +1,7 @@
 import pathlib
 
 from neighborly.helpers.character import create_character
-from neighborly.loaders import load_characters, load_skills
+from neighborly.loaders import load_characters, load_skills, load_species
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
 from neighborly.systems import InitializeSettlementSystem
@@ -14,6 +14,7 @@ def test_create_character() -> None:
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     load_skills(sim, _TEST_DATA_DIR / "skills.json")
+    load_species(sim, _TEST_DATA_DIR / "species.json")
 
     default_traits.load_plugin(sim)
 

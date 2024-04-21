@@ -8,12 +8,10 @@ ID.
 
 from __future__ import annotations
 
-import json
 from abc import abstractmethod
 from collections import defaultdict
-from typing import Any, Generic, Iterable, Optional, Protocol, Type, TypeVar
+from typing import Generic, Iterable, Protocol, TypeVar
 
-import pydantic
 from ordered_set import OrderedSet
 
 from neighborly.action import ActionConsideration
@@ -21,20 +19,17 @@ from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
 from neighborly.defs.base_types import (
     BusinessDef,
-    BusinessGenOptions,
     CharacterDef,
-    CharacterGenOptions,
     ContentDefinition,
     DistrictDef,
-    DistrictGenOptions,
     JobRoleDef,
     ResidenceDef,
     SettlementDef,
-    SettlementGenOptions,
     SkillDef,
+    SpeciesDef,
     TraitDef,
 )
-from neighborly.ecs import World
+from neighborly.ecs import GameObject
 from neighborly.helpers.content_selection import get_with_tags
 
 _T = TypeVar("_T", bound=ContentDefinition)
@@ -51,18 +46,9 @@ class ContentDefinitionLibrary(Generic[_T]):
 
     definitions: dict[str, _T]
     """IDs mapped to definition instances."""
-    definition_types: dict[str, Type[_T]]
-    """IDs mapped to definition class types."""
-    default_definition_type: str
-    """The type name of the definition to use when importing raw data."""
 
-    def __init__(self, default_definition_type: Optional[Type[_T]] = None) -> None:
+    def __init__(self) -> None:
         self.definitions = {}
-        self.definition_types = {}
-        self.default_definition_type = ""
-
-        if default_definition_type:
-            self.add_definition_type(default_definition_type, set_default=True)
 
     def get_definition(self, definition_id: str) -> _T:
         """Get a definition from the library."""
@@ -81,50 +67,16 @@ class ContentDefinitionLibrary(Generic[_T]):
             options=[(d, d.tags) for d in self.definitions.values()], tags=tags
         )
 
-    def add_definition_type(
-        self,
-        definition_type: Type[_T],
-        set_default: bool = False,
-        alias: str = "",
-    ) -> None:
-        """Add a definition type to the library."""
-        definition_key = alias if alias else definition_type.__name__
-
-        self.definition_types[definition_key] = definition_type
-
-        if set_default:
-            self.default_definition_type = definition_key
-
-    def add_definition_from_obj(self, obj: dict[str, Any]) -> None:
-        """Parse a definition from a dict and add to the library."""
-
-        definition_type_name: str = obj.get(
-            "definition_type", self.default_definition_type
-        )
-        definition_type = self.definition_types[definition_type_name]
-
-        try:
-            definition = definition_type.model_validate(obj)
-            self.add_definition(definition)
-
-        except pydantic.ValidationError as err:
-            raise RuntimeError(
-                f"Error while parsing definition: {err!r}.\n"
-                f"{json.dumps(obj, indent=2)}"
-            ) from err
-
-        except TypeError as err:
-            raise RuntimeError(
-                f"Error while parsing definition: {err!r}.\n"
-                f"{json.dumps(obj, indent=2)}"
-            ) from err
-
 
 class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
     """Manages skill definitions and instances."""
 
 
 class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
+    """Manages trait definitions and instances."""
+
+
+class SpeciesLibrary(ContentDefinitionLibrary[SpeciesDef]):
     """Manages trait definitions and instances."""
 
 
@@ -190,7 +142,7 @@ class ICharacterNameFactory(Protocol):
     """Generates a character name."""
 
     @abstractmethod
-    def __call__(self, world: World, options: CharacterGenOptions) -> str:
+    def __call__(self, gameobject: GameObject) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 
@@ -219,7 +171,7 @@ class IBusinessNameFactory(Protocol):
     """Generates business names."""
 
     @abstractmethod
-    def __call__(self, world: World, options: BusinessGenOptions) -> str:
+    def __call__(self, gameobject: GameObject) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 
@@ -248,7 +200,7 @@ class IDistrictNameFactory(Protocol):
     """Generates district names."""
 
     @abstractmethod
-    def __call__(self, world: World, options: DistrictGenOptions) -> str:
+    def __call__(self, gameobject: GameObject) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 
@@ -277,7 +229,7 @@ class ISettlementNameFactory(Protocol):
     """Generates settlement names."""
 
     @abstractmethod
-    def __call__(self, world: World, options: SettlementGenOptions) -> str:
+    def __call__(self, gameobject: GameObject) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 

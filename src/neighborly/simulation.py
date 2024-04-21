@@ -14,23 +14,15 @@ from typing import Optional
 
 from neighborly.config import SimulationConfig
 from neighborly.datetime import SimDate
-from neighborly.defs.base_types import JobRoleDef, SkillDef, SpeciesDef, TraitDef
-from neighborly.defs.defaults import (
-    DefaultBusinessDef,
-    DefaultCharacterDef,
-    DefaultDistrictDef,
-    DefaultResidenceDef,
-    DefaultSettlementDef,
-    default_district_name_factory,
-    default_settlement_name_factory,
+from neighborly.ecs import World
+from neighborly.factories.business import BusinessFactory
+from neighborly.factories.character import (
+    CharacterFactory,
     generate_any_first_name,
     generate_feminine_first_name,
     generate_last_name,
     generate_masculine_first_name,
 )
-from neighborly.ecs import World
-from neighborly.factories.business import BusinessFactory
-from neighborly.factories.character import CharacterFactory
 from neighborly.factories.location import (
     FrequentedLocationsFactory,
     LocationFactory,
@@ -38,7 +30,12 @@ from neighborly.factories.location import (
 )
 from neighborly.factories.relationships import RelationshipsFactory, SocialRulesFactory
 from neighborly.factories.residence import ResidentialBuildingFactory
-from neighborly.factories.settlement import DistrictFactory, SettlementFactory
+from neighborly.factories.settlement import (
+    DistrictFactory,
+    SettlementFactory,
+    default_district_name_factory,
+    default_settlement_name_factory,
+)
 from neighborly.factories.shared import (
     AgeFactory,
     AgentFactory,
@@ -78,6 +75,7 @@ from neighborly.libraries import (
     SettlementNameFactories,
     SkillLibrary,
     SocialRuleLibrary,
+    SpeciesLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import GlobalEventHistory
@@ -93,6 +91,7 @@ from neighborly.systems import (
     CompileResidenceDefsSystem,
     CompileSettlementDefsSystem,
     CompileSkillDefsSystem,
+    CompileSpeciesDefsSystem,
     CompileTraitDefsSystem,
     DataCollectionSystems,
     EarlyUpdateSystems,
@@ -147,19 +146,15 @@ class Simulation:
         self.world.resource_manager.add_resource(self._config)
         self.world.resource_manager.add_resource(random.Random(self._config.seed))
         self.world.resource_manager.add_resource(SimDate())
-        self.world.resource_manager.add_resource(CharacterLibrary(DefaultCharacterDef))
-        self.world.resource_manager.add_resource(JobRoleLibrary(JobRoleDef))
-        self.world.resource_manager.add_resource(BusinessLibrary(DefaultBusinessDef))
-        self.world.resource_manager.add_resource(ResidenceLibrary(DefaultResidenceDef))
-        self.world.resource_manager.add_resource(DistrictLibrary(DefaultDistrictDef))
-        self.world.resource_manager.add_resource(
-            SettlementLibrary(DefaultSettlementDef)
-        )
-        self.world.resource_manager.add_resource(TraitLibrary(TraitDef))
-        self.world.resource_manager.get_resource(TraitLibrary).add_definition_type(
-            SpeciesDef
-        )
-        self.world.resource_manager.add_resource(SkillLibrary(SkillDef))
+        self.world.resource_manager.add_resource(CharacterLibrary())
+        self.world.resource_manager.add_resource(JobRoleLibrary())
+        self.world.resource_manager.add_resource(BusinessLibrary())
+        self.world.resource_manager.add_resource(ResidenceLibrary())
+        self.world.resource_manager.add_resource(DistrictLibrary())
+        self.world.resource_manager.add_resource(SettlementLibrary())
+        self.world.resource_manager.add_resource(TraitLibrary())
+        self.world.resource_manager.add_resource(SpeciesLibrary())
+        self.world.resource_manager.add_resource(SkillLibrary())
         self.world.resource_manager.add_resource(SocialRuleLibrary())
         self.world.resource_manager.add_resource(LocationPreferenceLibrary())
         self.world.resource_manager.add_resource(SettlementNameFactories())
@@ -200,6 +195,9 @@ class Simulation:
         # Add content initialization systems
         self.world.system_manager.add_system(
             system=CompileTraitDefsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileSpeciesDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
             system=CompileJobRoleDefsSystem(), system_group=InitializationSystems

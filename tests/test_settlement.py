@@ -1,8 +1,7 @@
 import pathlib
 
 from neighborly.components.settlement import Settlement
-from neighborly.defs.base_types import SettlementDefDistrictEntry
-from neighborly.defs.defaults import DefaultSettlementDef
+from neighborly.defs.base_types import SettlementDef, SettlementDefDistrictEntry
 from neighborly.helpers.settlement import create_settlement
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 from neighborly.loaders import (
@@ -51,9 +50,8 @@ def test_required_tags() -> None:
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
     sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
-        DefaultSettlementDef(
+        SettlementDef(
             definition_id="basic_settlement",
-            name="Settlement",
             districts=[
                 SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
                 SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
@@ -105,9 +103,8 @@ def test_optional_tags() -> None:
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
 
     sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
-        DefaultSettlementDef(
+        SettlementDef(
             definition_id="basic_settlement",
-            name="Settlement",
             districts=[
                 SettlementDefDistrictEntry(
                     with_tags=["urban", "suburban", "~hot", "~heat"]

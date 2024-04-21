@@ -2,7 +2,6 @@ import pathlib
 
 from neighborly.components.business import Business
 from neighborly.helpers.business import create_business
-from neighborly.helpers.settlement import create_district, create_settlement
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -28,11 +27,6 @@ def test_create_business() -> None:
 
     sim.initialize()
 
-    settlement = create_settlement(sim.world, "basic_settlement")
-
-    district = create_district(sim.world, settlement, "entertainment_district")
-
-    business = create_business(sim.world, district, "blacksmith_shop")
+    business = create_business(sim.world, "blacksmith_shop")
 
     assert business.get_component(Business).owner_role is not None
-    # assert business.get_component(Business).district == district

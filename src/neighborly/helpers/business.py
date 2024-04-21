@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from neighborly.components.business import (
     Business,
     BusinessStatus,
@@ -15,7 +13,7 @@ from neighborly.components.business import (
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
-from neighborly.defs.base_types import BusinessDef, BusinessGenOptions, JobRoleDef
+from neighborly.defs.base_types import BusinessDef, JobRoleDef
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.location import (
     add_frequented_location,
@@ -32,9 +30,7 @@ from neighborly.plugins.default_events import FiredFromJobEvent
 
 def create_business(
     world: World,
-    district: GameObject,
     definition_id: str,
-    options: Optional[BusinessGenOptions] = None,
 ) -> GameObject:
     """Create a new business instance.
 
@@ -42,12 +38,8 @@ def create_business(
     ----------
     world
         The World instance to spawn the business into.
-    district
-        The district where the business resides.
     definition_id
         The ID of the business definition to instantiate
-    options
-        Generation options.
 
     Returns
     -------
@@ -58,9 +50,13 @@ def create_business(
 
     business_def = library.get_definition(definition_id)
 
-    options = options if options else BusinessGenOptions()
+    business = world.gameobject_manager.spawn_gameobject(
+        components=business_def.components
+    )
+    business.metadata["definition_id"] = definition_id
 
-    business = business_def.instantiate(world, district, options)
+    for trait in business_def.traits:
+        add_trait(business, trait)
 
     return business
 

@@ -1,3 +1,4 @@
+# pylint: disable=W0621
 """Stat System Unit Tests.
 
 """
@@ -6,11 +7,13 @@ from __future__ import annotations
 
 import pathlib
 
+import pytest
+
 from neighborly.components.stats import StatComponent
 from neighborly.ecs import GameObject
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat, has_stat
-from neighborly.loaders import load_characters, load_skills
+from neighborly.loaders import load_characters, load_skills, load_species
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
 
@@ -32,18 +35,27 @@ class Hunger(StatComponent):
         super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
 
 
-def test_has_stat() -> None:
-    """Test checking for stats."""
-    sim = Simulation()
+@pytest.fixture
+def test_sim() -> Simulation:
+    """Create a simulation instance for tests."""
 
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
+    sim = Simulation()
 
     default_traits.load_plugin(sim)
 
+    load_characters(sim, _TEST_DATA_DIR / "characters.json")
+    load_skills(sim, _TEST_DATA_DIR / "skills.json")
+    load_species(sim, _TEST_DATA_DIR / "species.json")
+
     sim.initialize()
 
-    character = create_character(sim.world, "farmer.female")
+    return sim
+
+
+def test_has_stat(test_sim: Simulation) -> None:
+    """Test checking for stats."""
+
+    character = create_character(test_sim.world, "farmer.female")
 
     character.add_component(Hunger(character, 0))
 
@@ -52,18 +64,10 @@ def test_has_stat() -> None:
     assert has_stat(character, "health") is False
 
 
-def test_get_stat() -> None:
+def test_get_stat(test_sim: Simulation) -> None:
     """Test stat retrieval."""
-    sim = Simulation()
 
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    default_traits.load_plugin(sim)
-
-    sim.initialize()
-
-    character = create_character(sim.world, "farmer.female")
+    character = create_character(test_sim.world, "farmer.female")
 
     character.add_component(Hunger(character, 0))
 

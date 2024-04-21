@@ -10,7 +10,6 @@ from neighborly.components.business import (
     Occupation,
     Unemployed,
 )
-from neighborly.defs.base_types import BusinessGenOptions
 from neighborly.ecs import Component, ComponentFactory, GameObject
 from neighborly.libraries import BusinessNameFactories, JobRoleLibrary
 
@@ -38,9 +37,7 @@ class BusinessFactory(ComponentFactory):
             factories = gameobject.world.resource_manager.get_resource(
                 BusinessNameFactories
             )
-            name = factories.get_factory(name_factory)(
-                gameobject.world, BusinessGenOptions()
-            )
+            name = factories.get_factory(name_factory)(gameobject)
 
         job_role_library = gameobject.world.resource_manager.get_resource(
             JobRoleLibrary

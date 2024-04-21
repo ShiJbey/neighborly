@@ -2,7 +2,6 @@ import pathlib
 
 from neighborly.components.residence import ResidentialBuilding
 from neighborly.helpers.residence import create_residence
-from neighborly.helpers.settlement import create_district, create_settlement
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -28,14 +27,10 @@ def test_create_residence() -> None:
 
     sim.initialize()
 
-    settlement = create_settlement(sim.world, "basic_settlement")
-
-    district = create_district(sim.world, settlement, "entertainment_district")
-
-    r0 = create_residence(sim.world, district, "house")
+    r0 = create_residence(sim.world, "house")
     r0_units = list(r0.get_component(ResidentialBuilding).units)
     assert len(r0_units) == 1
 
-    r1 = create_residence(sim.world, district, "large_apartment_building")
+    r1 = create_residence(sim.world, "large_apartment_building")
     r1_units = list(r1.get_component(ResidentialBuilding).units)
     assert len(r1_units) == 10

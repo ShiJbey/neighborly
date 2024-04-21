@@ -4,22 +4,15 @@
 
 from __future__ import annotations
 
-from typing import Optional
+import random
 
 from neighborly.components.settlement import District, Settlement
-from neighborly.defs.base_types import (
-    DistrictDef,
-    DistrictGenOptions,
-    SettlementDef,
-    SettlementGenOptions,
-)
+from neighborly.defs.base_types import DistrictDef, SettlementDef
 from neighborly.ecs import GameObject, World
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 
 
-def create_settlement(
-    world: World, definition_id: str, options: Optional[SettlementGenOptions] = None
-) -> GameObject:
+def create_settlement(world: World, definition_id: str) -> GameObject:
     """Create a new settlement.
 
     Parameters
@@ -28,9 +21,6 @@ def create_settlement(
         The world instance to spawn the settlement in.
     definition_id
         The ID of the definition to instantiate.
-    options
-        Generation options.
-
     Returns
     -------
     GameObject
@@ -40,18 +30,46 @@ def create_settlement(
 
     settlement_def = library.get_definition(definition_id)
 
-    options = options if options else SettlementGenOptions()
+    settlement = world.gameobject_manager.spawn_gameobject(
+        components=settlement_def.components
+    )
+    settlement.metadata["definition_id"] = definition_id
 
-    settlement = settlement_def.instantiate(world, options)
+    library = settlement.world.resource_manager.get_resource(DistrictLibrary)
+    rng = settlement.world.resource_manager.get_resource(random.Random)
+
+    for district_entry in settlement_def.districts:
+        if district_entry.with_id:
+
+            district = create_district(
+                settlement.world,
+                district_entry.with_id,
+            )
+
+            add_district_to_settlement(settlement, district)
+
+        elif district_entry.with_tags:
+
+            matching_districts = library.get_definition_with_tags(
+                district_entry.with_tags
+            )
+
+            if matching_districts:
+                chosen_district = rng.choice(matching_districts)
+
+                district = create_district(
+                    settlement.world,
+                    chosen_district.definition_id,
+                )
+
+                add_district_to_settlement(settlement, district)
 
     return settlement
 
 
 def create_district(
     world: World,
-    settlement: GameObject,
     definition_id: str,
-    options: Optional[DistrictGenOptions] = None,
 ) -> GameObject:
     """Create a new district GameObject.
 
@@ -59,12 +77,8 @@ def create_district(
     ----------
     world
         The world instance spawn the district in.
-    settlement
-        The settlement that owns district belongs to.
     definition_id
         The ID of the definition to instantiate.
-    options
-        Generation options.
 
     Returns
     -------
@@ -75,14 +89,19 @@ def create_district(
 
     district_def = library.get_definition(definition_id)
 
-    options = options if options else DistrictGenOptions()
-
-    district = district_def.instantiate(world, settlement, options)
-
-    settlement.get_component(Settlement).add_district(district)
-    district.get_component(District).settlement = settlement
+    district = world.gameobject_manager.spawn_gameobject(
+        components=district_def.components
+    )
+    district.metadata["definition_id"] = definition_id
 
     return district
+
+
+def add_district_to_settlement(settlement: GameObject, district: GameObject) -> None:
+    """Add a district to a settlement."""
+    settlement.get_component(Settlement).add_district(district)
+    district.get_component(District).settlement = settlement
+    settlement.add_child(district)
 
 
 def register_settlement_def(world: World, definition: SettlementDef) -> None:

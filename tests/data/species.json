@@ -1,0 +1,13 @@
+{
+  "human": {
+    "name": "Human",
+    "description": "A plain ol' human being.",
+    "adolescent_age": 13,
+    "young_adult_age": 20,
+    "adult_age": 30,
+    "senior_age": 65,
+    "lifespan": "70 - 80",
+    "can_physically_age": true,
+    "spawn_frequency": 0
+  }
+}

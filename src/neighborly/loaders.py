@@ -14,6 +14,17 @@ import yaml
 
 from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
+from neighborly.defs.base_types import (
+    BusinessDef,
+    CharacterDef,
+    DistrictDef,
+    JobRoleDef,
+    ResidenceDef,
+    SettlementDef,
+    SkillDef,
+    SpeciesDef,
+    TraitDef,
+)
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
@@ -24,6 +35,7 @@ from neighborly.libraries import (
     SettlementLibrary,
     SkillLibrary,
     SocialRuleLibrary,
+    SpeciesLibrary,
     TraitLibrary,
 )
 from neighborly.simulation import Simulation
@@ -48,8 +60,8 @@ def load_districts(
     district_library = sim.world.resource_manager.get_resource(DistrictLibrary)
 
     for district_id, params in data.items():
-        district_library.add_definition_from_obj(
-            {"definition_id": district_id, **params}
+        district_library.add_definition(
+            DistrictDef.model_validate({"definition_id": district_id, **params})
         )
 
 
@@ -71,8 +83,8 @@ def load_residences(
     residence_library = sim.world.resource_manager.get_resource(ResidenceLibrary)
 
     for residence_id, params in data.items():
-        residence_library.add_definition_from_obj(
-            {"definition_id": residence_id, **params}
+        residence_library.add_definition(
+            ResidenceDef.model_validate({"definition_id": residence_id, **params})
         )
 
 
@@ -94,8 +106,8 @@ def load_settlements(
     settlement_library = sim.world.resource_manager.get_resource(SettlementLibrary)
 
     for settlement_id, params in data.items():
-        settlement_library.add_definition_from_obj(
-            {"definition_id": settlement_id, **params}
+        settlement_library.add_definition(
+            SettlementDef.model_validate({"definition_id": settlement_id, **params})
         )
 
 
@@ -117,8 +129,8 @@ def load_businesses(
     business_library = sim.world.resource_manager.get_resource(BusinessLibrary)
 
     for business_id, params in data.items():
-        business_library.add_definition_from_obj(
-            {"definition_id": business_id, **params}
+        business_library.add_definition(
+            BusinessDef.model_validate({"definition_id": business_id, **params})
         )
 
 
@@ -140,7 +152,9 @@ def load_job_roles(
     job_role_library = sim.world.resource_manager.get_resource(JobRoleLibrary)
 
     for entry_id, params in data.items():
-        job_role_library.add_definition_from_obj({"definition_id": entry_id, **params})
+        job_role_library.add_definition(
+            JobRoleDef.model_validate({"definition_id": entry_id, **params})
+        )
 
 
 def load_characters(
@@ -162,8 +176,8 @@ def load_characters(
     character_library = sim.world.resource_manager.get_resource(CharacterLibrary)
 
     for character_id, params in data.items():
-        character_library.add_definition_from_obj(
-            {"definition_id": character_id, **params}
+        character_library.add_definition(
+            CharacterDef.model_validate({"definition_id": character_id, **params})
         )
 
 
@@ -186,7 +200,33 @@ def load_traits(
     trait_library = sim.world.resource_manager.get_resource(TraitLibrary)
 
     for trait_id, params in data.items():
-        trait_library.add_definition_from_obj({"definition_id": trait_id, **params})
+        trait_library.add_definition(
+            TraitDef.model_validate({"definition_id": trait_id, **params})
+        )
+
+
+def load_species(
+    sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
+) -> None:
+    """Load species definition data from a data file.
+
+    Parameters
+    ----------
+    sim
+        The simulation instance to load the data into
+    file_path
+        The path to the data file.
+    """
+
+    with open(file_path, "r", encoding="utf8") as file:
+        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
+
+    library = sim.world.resource_manager.get_resource(SpeciesLibrary)
+
+    for definition_id, params in data.items():
+        library.add_definition(
+            SpeciesDef.model_validate({"definition_id": definition_id, **params})
+        )
 
 
 def load_tracery(
@@ -225,7 +265,9 @@ def load_skills(
     library = sim.world.resource_manager.get_resource(SkillLibrary)
 
     for definition_id, params in data.items():
-        library.add_definition_from_obj({"definition_id": definition_id, **params})
+        library.add_definition(
+            SkillDef.model_validate({"definition_id": definition_id, **params})
+        )
 
 
 def load_social_rules(

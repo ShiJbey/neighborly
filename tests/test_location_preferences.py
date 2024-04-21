@@ -10,7 +10,6 @@ import pytest
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
 from neighborly.helpers.location import score_location
-from neighborly.helpers.settlement import create_district, create_settlement
 from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.loaders import (
     load_businesses,
@@ -20,6 +19,7 @@ from neighborly.loaders import (
     load_residences,
     load_settlements,
     load_skills,
+    load_species,
 )
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
@@ -38,17 +38,14 @@ def test_trait_with_location_preferences() -> None:
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
     load_skills(sim, _TEST_DATA_DIR / "skills.json")
+    load_species(sim, _TEST_DATA_DIR / "species.json")
 
     default_traits.load_plugin(sim)
 
     sim.initialize()
 
-    settlement = create_settlement(sim.world, "basic_settlement")
-
-    district = create_district(sim.world, settlement, "entertainment_district")
-
-    cafe = create_business(sim.world, district, "cafe")
-    bar = create_business(sim.world, district, "bar")
+    cafe = create_business(sim.world, "cafe")
+    bar = create_business(sim.world, "bar")
 
     farmer = create_character(sim.world, "farmer.female")
 

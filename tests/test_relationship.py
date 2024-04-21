@@ -1,4 +1,4 @@
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, disable=W0621
 """Test Relationship Components, Systems, and Helper Functions.
 
 """
@@ -23,6 +23,7 @@ from neighborly.loaders import (
     load_residences,
     load_settlements,
     load_skills,
+    load_species,
 )
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
@@ -42,6 +43,8 @@ def sim() -> Simulation:
     load_residences(simulation, _TEST_DATA_DIR / "residences.json")
     load_job_roles(simulation, _TEST_DATA_DIR / "job_roles.json")
     load_skills(simulation, _TEST_DATA_DIR / "skills.json")
+    load_species(simulation, _TEST_DATA_DIR / "species.json")
+
     default_traits.load_plugin(simulation)
 
     simulation.initialize()

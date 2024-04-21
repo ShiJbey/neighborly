@@ -1,8 +1,6 @@
 {
   "base_district": {
     "is_template": true,
-    "name": "",
-    "description": "",
     "components": {
       "Agent": {
         "agent_type": "district"
@@ -18,12 +16,12 @@
     "extends": [
       "base_district"
     ],
-    "name": "Farming District",
-    "description": "Where the animals and farmers are.",
     "components": {
       "District": {
         "name": "Farming District",
-        "description": "Where the animals and farmers are."
+        "description": "Where the animals and farmers are.",
+        "residential_slots": 3,
+        "business_slots": 3
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -54,8 +52,6 @@
         ]
       }
     },
-    "residential_slots": 3,
-    "business_slots": 3,
     "tags": [
       "lazy",
       "rural",
@@ -68,12 +64,12 @@
     "extends": [
       "base_district"
     ],
-    "name": "Market District",
-    "description": "Where people are always selling things.",
     "components": {
       "District": {
         "name": "Market District",
-        "description": "Where people are always selling things."
+        "description": "Where people are always selling things.",
+        "business_slots": 5,
+        "residential_slots": 2
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -108,8 +104,6 @@
         ]
       }
     },
-    "business_slots": 5,
-    "residential_slots": 2,
     "tags": [
       "lazy",
       "rural",
@@ -123,12 +117,11 @@
     "extends": [
       "base_district"
     ],
-    "name": "Entertainment District",
-    "description": "Where characters go to have 'fun'.",
     "components": {
       "District": {
         "name": "Market District",
-        "description": "Where people are always selling things."
+        "description": "Where people are always selling things.",
+        "business_slots": 3
       },
       "CharacterSpawnTable": {},
       "BusinessSpawnTable": {
@@ -149,19 +142,18 @@
         ]
       }
     },
-    "business_slots": 3,
     "tags": []
   },
   "upper_class_residences": {
     "extends": [
       "base_district"
     ],
-    "name": "Upper Class Residences",
-    "description": "Where the nobility live.",
     "components": {
       "District": {
         "name": "Upper Class Residences",
-        "description": "Where the nobility live."
+        "description": "Where the nobility live.",
+        "business_slots": 3,
+        "residential_slots": 3
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -181,8 +173,6 @@
         ]
       }
     },
-    "business_slots": 3,
-    "residential_slots": 3,
     "tags": []
   }
 }

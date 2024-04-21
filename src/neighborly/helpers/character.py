@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Optional, cast
+import random
 
 from neighborly.components.business import Business, Occupation
-from neighborly.components.character import Character
+from neighborly.components.character import Character, LifeStage
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import (
     Resident,
@@ -16,7 +16,9 @@ from neighborly.components.residence import (
     Vacant,
 )
 from neighborly.components.settlement import District
-from neighborly.defs.base_types import CharacterDef, CharacterGenOptions, SpeciesDef
+from neighborly.components.shared import Age
+from neighborly.components.stats import Lifespan
+from neighborly.defs.base_types import CharacterDef
 from neighborly.ecs import GameObject, World
 from neighborly.events.defaults import DeathEvent
 from neighborly.helpers.business import close_business, leave_job
@@ -36,9 +38,7 @@ from neighborly.libraries import CharacterLibrary, TraitLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 
 
-def create_character(
-    world: World, definition_id: str, options: Optional[CharacterGenOptions] = None
-) -> GameObject:
+def create_character(world: World, definition_id: str) -> GameObject:
     """Create a new character instance.
 
     Parameters
@@ -47,8 +47,6 @@ def create_character(
         The simulation's World instance.
     definition_id
         The ID of the definition to instantiate.
-    options
-        Generation parameters.
 
     Returns
     -------
@@ -59,42 +57,117 @@ def create_character(
 
     character_def = character_library.get_definition(definition_id)
 
-    options = options if options else CharacterGenOptions()
+    character = world.gameobject_manager.spawn_gameobject(
+        components=character_def.components
+    )
+    character.metadata["definition_id"] = definition_id
 
-    character = character_def.instantiate(world, options)
+    # Initialize the life span
+    species = character.get_component(Character).species
+    rng = character.world.resource_manager.get_resource(random.Random)
+    min_value, max_value = (int(x.strip()) for x in species.lifespan.split("-"))
+    base_lifespan = rng.randint(min_value, max_value)
+    character.get_component(Lifespan).stat.base_value = base_lifespan
+
+    _initialize_traits(character, character_def)
 
     return character
 
 
-def set_species(gameobject: GameObject, species_id: str) -> bool:
-    """the species of the character.
+# def set_species(gameobject: GameObject, species: SpeciesDef) -> bool:
+#     """the species of the character.
 
-    Parameters
-    ----------
-    gameobject
-        The gameobject to add the trait to.
-    species
-        The ID of the species.
+#     Parameters
+#     ----------
+#     gameobject
+#         The gameobject to add the trait to.
+#     species
+#         The species.
 
-    Return
-    ------
-    bool
-        True if the trait was added successfully, False if already present or
-        if the trait conflict with existing traits.
-    """
-    world = gameobject.world
+#     Return
+#     ------
+#     bool
+#         True if the trait was added successfully, False if already present or
+#         if the trait conflict with existing traits.
+#     """
+#     world = gameobject.world
 
-    character = gameobject.get_component(Character)
+#     character = gameobject.get_component(Character)
 
-    if character.species:
-        remove_trait(gameobject, character.species.definition_id)
+#     if character.species:
+#         remove_trait(gameobject, character.species.definition_id)
 
-    if add_trait(gameobject, species_id):
-        library = world.resources.get_resource(TraitLibrary)
-        character.species = cast(SpeciesDef, library.get_definition(species_id))
-        return True
+#     if add_trait(gameobject, species_id):
+#         library = world.resources.get_resource(TraitLibrary)
+#         character.species = cast(SpeciesDef, library.get_definition(species_id))
+#         return True
 
-    return False
+#     return False
+
+
+def set_rand_age(character: GameObject, life_stage: LifeStage) -> None:
+    """Initializes the characters age."""
+    rng = character.world.resource_manager.get_resource(random.Random)
+
+    character_comp = character.get_component(Character)
+    age = character.get_component(Age)
+    species = character.get_component(Character).species
+
+    character_comp.life_stage = life_stage
+
+    # Generate an age for this character
+    if life_stage == LifeStage.CHILD:
+        age.value = rng.randint(0, species.adolescent_age - 1)
+    elif life_stage == LifeStage.ADOLESCENT:
+        age.value = rng.randint(
+            species.adolescent_age,
+            species.young_adult_age - 1,
+        )
+    elif life_stage == LifeStage.YOUNG_ADULT:
+        age.value = rng.randint(
+            species.young_adult_age,
+            species.adult_age - 1,
+        )
+    elif life_stage == LifeStage.ADULT:
+        age.value = rng.randint(
+            species.adult_age,
+            species.senior_age - 1,
+        )
+    else:
+        age.value = species.senior_age
+
+
+def _initialize_traits(character: GameObject, definition: CharacterDef) -> None:
+    """Set the traits for a character."""
+    rng = character.world.resource_manager.get_resource(random.Random)
+    trait_library = character.world.resource_manager.get_resource(TraitLibrary)
+
+    # species = character.get_component(Character).species
+
+    # set_species(character, species.definition_id)
+
+    # Loop through the trait entries in the definition and get by ID or select
+    # randomly if using tags
+    for entry in definition.traits:
+        if entry.with_id:
+            add_trait(character, entry.with_id)
+        elif entry.with_tags:
+            potential_traits = trait_library.get_definition_with_tags(entry.with_tags)
+
+            traits: list[str] = []
+            trait_weights: list[int] = []
+
+            for trait_def in potential_traits:
+                if trait_def.spawn_frequency >= 1:
+                    traits.append(trait_def.definition_id)
+                    trait_weights.append(trait_def.spawn_frequency)
+
+            if len(traits) == 0:
+                continue
+
+            chosen_trait = rng.choices(population=traits, weights=trait_weights, k=1)[0]
+
+            add_trait(character, chosen_trait)
 
 
 def die(character: GameObject) -> None:

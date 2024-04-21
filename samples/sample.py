@@ -21,6 +21,7 @@ from neighborly.loaders import (
     load_residences,
     load_settlements,
     load_skills,
+    load_species,
 )
 from neighborly.plugins import (
     default_character_names,
@@ -118,6 +119,7 @@ def main() -> Simulation:
     load_residences(sim, TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, TEST_DATA_DIR / "job_roles.json")
     load_skills(sim, TEST_DATA_DIR / "skills.json")
+    load_species(sim, TEST_DATA_DIR / "species.json")
 
     default_traits.load_plugin(sim)
     default_character_names.load_plugin(sim)

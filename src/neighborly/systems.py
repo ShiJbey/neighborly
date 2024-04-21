@@ -42,7 +42,6 @@ from neighborly.components.stats import Lifespan, Stats
 from neighborly.components.traits import Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
-from neighborly.defs.base_types import CharacterGenOptions
 from neighborly.defs.definition_compiler import compile_definitions
 from neighborly.ecs import Active, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
@@ -56,7 +55,12 @@ from neighborly.events.defaults import (
     NewSettlementEvent,
 )
 from neighborly.helpers.business import close_business, create_business
-from neighborly.helpers.character import create_character, die, move_into_residence
+from neighborly.helpers.character import (
+    create_character,
+    die,
+    move_into_residence,
+    set_rand_age,
+)
 from neighborly.helpers.location import score_location
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.residence import create_residence
@@ -71,6 +75,7 @@ from neighborly.libraries import (
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
+    SpeciesLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
@@ -248,7 +253,6 @@ class SpawnResidentialBuildingsSystem(System):
             if multifamily_building is not None:
                 residence = create_residence(
                     world,
-                    district.gameobject,
                     multifamily_building,
                 )
                 residence.get_component(ResidentialBuilding).district = (
@@ -269,7 +273,6 @@ class SpawnResidentialBuildingsSystem(System):
             if single_family_building is not None:
                 residence = create_residence(
                     world,
-                    district.gameobject,
                     single_family_building,
                 )
                 residence.get_component(ResidentialBuilding).district = (
@@ -328,13 +331,9 @@ class SpawnNewResidentSystem(System):
                 k=1,
             )[0]
 
-            character = create_character(
-                world,
-                character_definition_id,
-                CharacterGenOptions(
-                    life_stage=character_life_stage.name,
-                ),
-            )
+            character = create_character(world, character_definition_id)
+
+            set_rand_age(character, character_life_stage)
 
             settlement = district.get_component(District).settlement
             assert settlement is not None
@@ -404,11 +403,7 @@ class SpawnNewBusinessesSystem(System):
             )
 
             if business_id is not None:
-                business = create_business(
-                    world,
-                    district.gameobject,
-                    business_id,
-                )
+                business = create_business(world, business_id)
                 business.get_component(Business).district = district.gameobject
                 district.add_business(business)
                 district.gameobject.add_child(business)
@@ -431,6 +426,21 @@ class CompileTraitDefsSystem(System):
         for trait_def in compiled_defs:
             if not trait_def.is_template:
                 trait_library.add_definition(trait_def)
+
+
+class CompileSpeciesDefsSystem(System):
+    """Instantiates all the species definitions within the SpeciesLibrary."""
+
+    def on_update(self, world: World) -> None:
+        library = world.resource_manager.get_resource(SpeciesLibrary)
+
+        compiled_defs = compile_definitions(library.definitions.values())
+
+        library.definitions.clear()
+
+        for definition in compiled_defs:
+            if not definition.is_template:
+                library.add_definition(definition)
 
 
 class CompileSkillDefsSystem(System):
@@ -785,10 +795,9 @@ class ChildBirthSystem(System):
             baby = create_character(
                 character.gameobject.world,
                 character.gameobject.metadata["definition_id"],
-                CharacterGenOptions(
-                    last_name=character.last_name,
-                ),
             )
+
+            baby.get_component(Character).last_name = character.last_name
 
             move_into_residence(
                 baby,

@@ -5,9 +5,9 @@
 from typing import Any
 
 from neighborly.components.settlement import District, Settlement
-from neighborly.defs.base_types import DistrictGenOptions, SettlementGenOptions
 from neighborly.ecs import Component, ComponentFactory, GameObject
 from neighborly.libraries import DistrictNameFactories, SettlementNameFactories
+from neighborly.tracery import Tracery
 
 
 class SettlementFactory(ComponentFactory):
@@ -24,9 +24,7 @@ class SettlementFactory(ComponentFactory):
         name = kwargs.get("name", "")
 
         if name_factory := kwargs.get("name_factory", ""):
-            name = name_factories.get_factory(name_factory)(
-                world, SettlementGenOptions()
-            )
+            name = name_factories.get_factory(name_factory)(gameobject)
 
         return Settlement(gameobject, name=name)
 
@@ -47,7 +45,7 @@ class DistrictFactory(ComponentFactory):
         residential_slots: int = kwargs.get("residential_slots", 0)
 
         if name_factory := kwargs.get("name_factory", ""):
-            name = name_factories.get_factory(name_factory)(world, DistrictGenOptions())
+            name = name_factories.get_factory(name_factory)(gameobject)
 
         return District(
             gameobject,
@@ -56,3 +54,17 @@ class DistrictFactory(ComponentFactory):
             residential_slots=residential_slots,
             business_slots=business_slots,
         )
+
+
+def default_district_name_factory(gameobject: GameObject) -> str:
+    """Generate a new name"""
+    tracery = gameobject.world.resource_manager.get_resource(Tracery)
+    name = tracery.generate("#settlement_name#")
+    return name
+
+
+def default_settlement_name_factory(gameobject: GameObject) -> str:
+    """Generate a new name"""
+    tracery = gameobject.world.resource_manager.get_resource(Tracery)
+    name = tracery.generate("#settlement_name#")
+    return name

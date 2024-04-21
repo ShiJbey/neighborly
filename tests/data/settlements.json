@@ -1,7 +1,6 @@
 {
   "base_settlement": {
     "is_template": true,
-    "name": "",
     "components": {
       "Agent": {
         "agent_type": "settlement"
