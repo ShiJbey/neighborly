@@ -16,6 +16,7 @@ from neighborly.components.location import Location
 from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.components.shared import Age
+from neighborly.components.stats import Lifespan
 from neighborly.components.traits import Traits
 from neighborly.defs.base_types import (
     BusinessDef,
@@ -32,12 +33,9 @@ from neighborly.defs.base_types import (
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.character import set_species
 from neighborly.helpers.settlement import create_district
-from neighborly.helpers.stats import add_stat, get_stat, has_stat
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import DistrictLibrary, DistrictNameFactories, TraitLibrary
 from neighborly.tracery import Tracery
-
-STAT_MAX_VALUE: int = 100
 
 
 def default_district_name_factory(world: World, options: DistrictGenOptions) -> str:
@@ -252,8 +250,14 @@ class DefaultCharacterDef(CharacterDef):
 
             character.add_component(component)
 
+        # Initialize the life span
+        species = character.get_component(Character).species
+        rng = character.world.resource_manager.get_resource(random.Random)
+        min_value, max_value = (int(x.strip()) for x in species.lifespan.split("-"))
+        base_lifespan = rng.randint(min_value, max_value)
+        character.get_component(Lifespan).stat.base_value = base_lifespan
+
         self.initialize_character_age(character, options)
-        self.initialize_character_stats(character)
         self.initialize_traits(character, options)
 
         return character
@@ -335,107 +339,6 @@ class DefaultCharacterDef(CharacterDef):
         for trait in options.traits:
             add_trait(character, trait)
 
-    def initialize_character_stats(self, character: GameObject) -> None:
-        """Initializes a characters stats with random values."""
-
-        # Initialize the life span
-        species = character.get_component(Character).species
-        rng = character.world.resource_manager.get_resource(random.Random)
-        min_value, max_value = (int(x.strip()) for x in species.lifespan.split("-"))
-        base_lifespan = rng.randint(min_value, max_value)
-
-        add_stat(
-            character,
-            "lifespan",
-            base_value=base_lifespan,
-            bounds=(0, 999_999),
-            is_discrete=True,
-        )
-
-        add_stat(
-            character,
-            "fertility",
-            base_value=float(rng.uniform(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-        )
-
-        add_stat(
-            character,
-            "kindness",
-            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-            is_discrete=True,
-        )
-
-        add_stat(
-            character,
-            "courage",
-            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-            is_discrete=True,
-        )
-
-        add_stat(
-            character,
-            "stewardship",
-            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-            is_discrete=True,
-        )
-
-        add_stat(
-            character,
-            "sociability",
-            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-            is_discrete=True,
-        )
-
-        add_stat(
-            character,
-            "intelligence",
-            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-            is_discrete=True,
-        )
-
-        add_stat(
-            character,
-            "discipline",
-            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-            is_discrete=True,
-        )
-
-        add_stat(
-            character,
-            "charm",
-            base_value=float(rng.randint(0, STAT_MAX_VALUE)),
-            bounds=(0, STAT_MAX_VALUE),
-            is_discrete=True,
-        )
-
-        # Override the default stat base values.
-        for entry in self.stats:
-            base_value = 0
-
-            if entry.value is not None:
-                base_value = entry.value
-
-            elif entry.value_range:
-                min_value, max_value = (
-                    int(x.strip()) for x in entry.value_range.split("-")
-                )
-                base_value = rng.randint(min_value, max_value)
-
-            if not has_stat(character, entry.stat):
-                raise ValueError(
-                    f"[def ({self.definition_id})] Character does not have "
-                    f"{entry.stat!r} stat."
-                )
-
-            get_stat(character, entry.stat).base_value = base_value
-
 
 class DefaultBusinessDef(BusinessDef):
     """A default implementation of a Business Definition."""
@@ -458,12 +361,6 @@ class DefaultBusinessDef(BusinessDef):
             ].instantiate(business, **component_args)
 
             business.add_component(component)
-
-        # Initialize the life span
-        rng = world.resource_manager.get_resource(random.Random)
-        min_value, max_value = (int(x.strip()) for x in self.lifespan.split("-"))
-        base_lifespan = rng.randint(min_value, max_value)
-        add_stat(business, "lifespan", base_value=base_lifespan, is_discrete=True)
 
         for trait in self.traits:
             add_trait(business, trait)

@@ -421,7 +421,8 @@ def _get_stats_table(obj: GameObject) -> str:
 
     stats_table_data: list[tuple[str, str, str]] = []
 
-    for stat_id, stat in stats:
+    for stat_component in stats.stats:
+        stat = stat_component.stat
         if stat.is_discrete:
             value_label = f"{int(stat.value)}"
         else:
@@ -436,7 +437,7 @@ def _get_stats_table(obj: GameObject) -> str:
         else:
             min_max_label = "N/A"
 
-        stats_table_data.append((stat_id, value_label, min_max_label))
+        stats_table_data.append((stat_component.stat_name, value_label, min_max_label))
 
     output = "=== Stats ===\n"
     output += tabulate.tabulate(

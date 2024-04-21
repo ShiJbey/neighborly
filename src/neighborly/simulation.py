@@ -50,7 +50,18 @@ from neighborly.factories.spawn_table import (
     CharacterSpawnTableFactory,
     ResidenceSpawnTableFactory,
 )
-from neighborly.factories.stats import StatsFactory
+from neighborly.factories.stats import (
+    CharmFactory,
+    CourageFactory,
+    DisciplineFactory,
+    FertilityFactory,
+    IntelligenceFactory,
+    KindnessFactory,
+    LifespanFactory,
+    SociabilityFactory,
+    StatsFactory,
+    StewardshipFactory,
+)
 from neighborly.factories.traits import TraitsFactory
 from neighborly.libraries import (
     ActionConsiderationLibrary,
@@ -274,6 +285,15 @@ class Simulation:
         self.world.gameobjects.add_component_factory(RelationshipsFactory())
         self.world.gameobjects.add_component_factory(PersonalEventHistoryFactory())
         self.world.gameobjects.add_component_factory(ResidentialBuildingFactory())
+        self.world.gameobjects.add_component_factory(LifespanFactory())
+        self.world.gameobjects.add_component_factory(FertilityFactory())
+        self.world.gameobjects.add_component_factory(KindnessFactory())
+        self.world.gameobjects.add_component_factory(CourageFactory())
+        self.world.gameobjects.add_component_factory(StewardshipFactory())
+        self.world.gameobjects.add_component_factory(SociabilityFactory())
+        self.world.gameobjects.add_component_factory(IntelligenceFactory())
+        self.world.gameobjects.add_component_factory(DisciplineFactory())
+        self.world.gameobjects.add_component_factory(CharmFactory())
 
     def _init_logging(self) -> None:
         """Initialize simulation logging."""

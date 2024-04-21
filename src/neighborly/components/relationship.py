@@ -16,6 +16,7 @@ import pydantic
 from sqlalchemy import ForeignKey, delete
 from sqlalchemy.orm import Mapped, mapped_column
 
+from neighborly.components.stats import StatComponent
 from neighborly.defs.base_types import StatModifierData
 from neighborly.ecs import Component, GameData, GameObject
 
@@ -361,3 +362,78 @@ class SocialRules(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {"rules": [r for r in self._rules]}
+
+
+class Reputation(StatComponent):
+    """Tracks a relationships's reputations stat."""
+
+    __stat_name__ = "reputation"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Romance(StatComponent):
+    """Tracks a relationship's romance stat."""
+
+    __stat_name__ = "romance"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Compatibility(StatComponent):
+    """Tracks a relationships's compatibility stat."""
+
+    __stat_name__ = "compatibility"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class RomanticCompatibility(StatComponent):
+    """Tracks a relationships's romantic compatibility stat."""
+
+    __stat_name__ = "romantic_compatibility"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class InteractionScore(StatComponent):
+    """Tracks a relationships's interaction score stat."""
+
+    __stat_name__ = "interaction_score"
+
+    MAX_VALUE: int = 10
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)

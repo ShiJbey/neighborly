@@ -38,7 +38,7 @@ from neighborly.components.spawn_table import (
     ResidenceSpawnTable,
     ResidenceSpawnTableEntry,
 )
-from neighborly.components.stats import Stats
+from neighborly.components.stats import Lifespan, Stats
 from neighborly.components.traits import Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
@@ -749,10 +749,11 @@ class CharacterLifespanSystem(System):
     """Kills of characters who have reached their lifespan."""
 
     def on_update(self, world: World) -> None:
-        for _, (character, age, _) in world.get_components((Character, Age, Active)):
-            life_span = get_stat(age.gameobject, "lifespan").value
+        for _, (character, age, life_span, _) in world.get_components(
+            (Character, Age, Lifespan, Active)
+        ):
 
-            if age.value >= life_span:
+            if age.value >= life_span.stat.value:
                 die(character.gameobject)
 
 
@@ -760,10 +761,10 @@ class BusinessLifespanSystem(System):
     """Kills of business that have reached their lifespan."""
 
     def on_update(self, world: World) -> None:
-        for _, (business, age, _) in world.get_components((Business, Age, Active)):
-            life_span = get_stat(age.gameobject, "lifespan").value
-
-            if age.value >= life_span and business.owner:
+        for _, (business, age, lifespan, _) in world.get_components(
+            (Business, Age, Lifespan, Active)
+        ):
+            if age.value >= lifespan.stat.value and business.owner:
                 close_business(business.gameobject)
 
 

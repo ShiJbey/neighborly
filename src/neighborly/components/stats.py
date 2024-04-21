@@ -15,10 +15,11 @@ import dataclasses
 import enum
 import math
 import sys
-from typing import Any, Iterator, Optional, cast
+from abc import ABC
+from typing import Any, ClassVar, Iterable, Optional, cast
 
 import attrs
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, delete, update
 from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.ecs import Component, EventEmitter, GameData, GameObject
@@ -87,7 +88,7 @@ class Stat:
 
     def __init__(
         self,
-        base_value: float,
+        base_value: float = 0,
         bounds: Optional[tuple[float, float]] = None,
         is_discrete: bool = False,
     ) -> None:
@@ -298,13 +299,55 @@ class StatModifier:
         }
 
 
+class StatComponent(Component, ABC):
+    """A component that represents a numerical stat associated with a GameObject."""
+
+    __stat_name__: ClassVar[str] = ""
+
+    __slots__ = ("stat",)
+
+    stat: Stat
+    """stat data"""
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+        bounds: Optional[tuple[float, float]] = None,
+        is_discrete: bool = False,
+    ) -> None:
+        super().__init__(gameobject)
+
+        if not self.__stat_name__:
+            raise ValueError(
+                f"Please specify __stat_name__ class attribute for {type(self)}."
+            )
+
+        self.stat = Stat(base_value=base_value, bounds=bounds, is_discrete=is_discrete)
+
+    @property
+    def stat_name(self) -> str:
+        """The name associated with this stat."""
+        return self.__stat_name__
+
+    def on_add(self) -> None:
+        self.gameobject.get_component(Stats).add_stat(self)
+
+    def on_remove(self) -> None:
+        if stats_comp := self.gameobject.try_component(Stats):
+            stats_comp.remove_stat(self.stat_name)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"value": self.stat.value}
+
+
 class Stats(Component):
     """Tracks all the various stats for a GameObject."""
 
     __slots__ = ("_stats",)
 
-    _stats: dict[str, Stat]
-    """Map of Stat IDs to Stat instances."""
+    _stats: dict[str, StatComponent]
+    """Map of Stat IDs to Stat components."""
 
     def __init__(
         self,
@@ -313,13 +356,15 @@ class Stats(Component):
         super().__init__(gameobject)
         self._stats = {}
 
+    @property
+    def stats(self) -> Iterable[StatComponent]:
+        """Stat instances."""
+        return self._stats.values()
+
     def add_stat(
         self,
-        stat_id: str,
-        base_value: float,
-        bounds: Optional[tuple[float, float]] = None,
-        is_discrete: bool = False,
-    ) -> Stat:
+        stat: StatComponent,
+    ) -> None:
         """Add a new stat.
 
         Parameters
@@ -327,29 +372,26 @@ class Stats(Component):
         stat_id
             A string ID to associate with the stat.
         stat
-            A stat instance.
+            A stat component instance.
         """
-        stat = Stat(base_value=base_value, bounds=bounds, is_discrete=is_discrete)
-
+        stat_id = stat.stat_name
         self._stats[stat_id] = stat
 
-        stat.on_value_changed.add_listener(self.handle_stat_value_change(stat_id))
+        stat.stat.on_value_changed.add_listener(self.handle_stat_value_change(stat_id))
 
         with self.gameobject.world.session.begin() as session:
             session.add(
                 StatData(
                     uid=self.gameobject.uid,
                     name=stat_id,
-                    value=stat.value,
-                    base_value=stat.base_value,
+                    value=stat.stat.value,
+                    base_value=stat.stat.base_value,
                 )
             )
 
         self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.stats.{stat_id}!{stat.value}"
+            f"{self.gameobject.uid}.stats.{stat_id}!{stat.stat.value}"
         )
-
-        return stat
 
     def has_stat(self, stat_id: str) -> bool:
         """Check if a stat exists.
@@ -379,13 +421,42 @@ class Stats(Component):
         Stat
             The Stat instance associated with the given ID.
         """
-        return self._stats[stat_id]
+        return self._stats[stat_id].stat
 
-    def __iter__(self) -> Iterator[tuple[str, Stat]]:
-        return iter(self._stats.items())
+    def remove_stat(self, stat_id: str) -> bool:
+        """Remove a stat.
+
+        Parameters
+        ----------
+        stat_id
+            A string ID associated with a stat.
+
+        Returns
+        -------
+        bool
+            True is successful, False otherwise.
+        """
+        if stat_comp := self._stats.get(stat_id):
+
+            stat_comp.stat.on_value_changed.remove_all_listeners()
+
+            with self.gameobject.world.session.begin() as session:
+                session.execute(
+                    delete(StatData)
+                    .where(StatData.uid == self.gameobject.uid)
+                    .where(StatData.name == stat_id)
+                )
+
+            self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.stats.{stat_id}")
+
+            del self._stats[stat_id]
+
+            return True
+
+        return False
 
     def to_dict(self) -> dict[str, Any]:
-        return {stat_id: stat.value for stat_id, stat in self._stats.items()}
+        return {}
 
     def handle_stat_value_change(self, stat_id: str):
         """Wraps a listener function for stat value change events."""
@@ -395,10 +466,11 @@ class Stats(Component):
             source = cast(Stat, source)
 
             with self.gameobject.world.session.begin() as session:
-                session.add(
-                    StatData(
-                        uid=self.gameobject.uid,
-                        name=stat_id,
+                session.execute(
+                    update(StatData)
+                    .where(StatData.uid == self.gameobject.uid)
+                    .where(StatData.name == stat_id)
+                    .values(
                         value=event.value,
                         base_value=source.base_value,
                     )
@@ -409,3 +481,134 @@ class Stats(Component):
             )
 
         return handler
+
+
+class Lifespan(StatComponent):
+    """Tracks a GameObject's lifespan."""
+
+    __stat_name__ = "lifespan"
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, 999_999), True)
+
+
+class Fertility(StatComponent):
+    """Tracks a GameObject's fertility."""
+
+    __stat_name__ = "fertility"
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, 1.0), False)
+
+
+class Kindness(StatComponent):
+    """Tracks a GameObject's kindness."""
+
+    __stat_name__ = "kindness"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Courage(StatComponent):
+    """Tracks a GameObject's courage."""
+
+    __stat_name__ = "courage"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Stewardship(StatComponent):
+    """Tracks a GameObject's stewardship."""
+
+    __stat_name__ = "stewardship"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Sociability(StatComponent):
+    """Tracks a GameObject's sociability."""
+
+    __stat_name__ = "sociability"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Intelligence(StatComponent):
+    """Tracks a GameObject's intelligence."""
+
+    __stat_name__ = "intelligence"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Discipline(StatComponent):
+    """Tracks a GameObject's discipline."""
+
+    __stat_name__ = "discipline"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+
+
+class Charm(StatComponent):
+    """Tracks a GameObject's charm."""
+
+    __stat_name__ = "charm"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        gameobject: GameObject,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)

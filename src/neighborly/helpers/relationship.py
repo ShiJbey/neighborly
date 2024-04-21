@@ -5,8 +5,13 @@
 from repraxis.query import DBQuery
 
 from neighborly.components.relationship import (
+    Compatibility,
+    InteractionScore,
     Relationship,
     Relationships,
+    Reputation,
+    Romance,
+    RomanticCompatibility,
     SocialRule,
     SocialRuleDirection,
     SocialRules,
@@ -15,7 +20,7 @@ from neighborly.components.stats import StatModifier, StatModifierType, Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import GameObject
 from neighborly.helpers.db_helpers import preprocess_query_string
-from neighborly.helpers.stats import add_stat, get_stat
+from neighborly.helpers.stats import get_stat
 from neighborly.libraries import SocialRuleLibrary
 
 
@@ -43,12 +48,11 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Relationship(relationship, owner=owner, target=target))
     relationship.add_component(Stats(relationship))
     relationship.add_component(Traits(relationship))
-
-    add_stat(relationship, "reputation", base_value=0, bounds=(-100, 100))
-    add_stat(relationship, "romance", base_value=0, bounds=(-100, 100))
-    add_stat(relationship, "compatibility", base_value=0)
-    add_stat(relationship, "romantic_compatibility", base_value=0)
-    add_stat(relationship, "interaction_score", base_value=0, bounds=(0, 10))
+    relationship.add_component(Reputation(relationship))
+    relationship.add_component(Romance(relationship))
+    relationship.add_component(Compatibility(relationship))
+    relationship.add_component(RomanticCompatibility(relationship))
+    relationship.add_component(InteractionScore(relationship))
 
     relationship.name = f"{owner.name} -> {target.name}"
 
