@@ -1,32 +1,78 @@
 {
   "person": {
     "species": "human",
+    "is_template": true,
+    "components": {
+      "Agent": {
+        "agent_type": "Character"
+      },
+      "Stats": {},
+      "Skills": {},
+      "Age": {},
+      "FrequentedLocations": {},
+      "LocationPreferences": {},
+      "PersonalEventHistory": {},
+      "SocialRules": {},
+      "Relationships": {},
+      "Traits": {},
+      "Character": {}
+    },
     "variants": [
       {
         "variant_name": "male",
         "sex": "Male",
-        "name_factory": "masculine-first"
+        "name_factory": "masculine-first",
+        "is_template": false,
+        "components": {
+          "Character": {
+            "first_name_factory": "default-first",
+            "last_name_factory": "default-last",
+            "sex": "MALE",
+            "species": "human"
+          }
+        }
       },
       {
         "variant_name": "female",
         "sex": "Female",
-        "name_factory": "feminine-first"
+        "name_factory": "feminine-first",
+        "is_template": false,
+        "components": {
+          "Character": {
+            "first_name_factory": "default-first",
+            "last_name_factory": "default-last",
+            "sex": "MALE",
+            "species": "human"
+          }
+        }
       }
     ]
   },
   "farmer": {
+    "is_template": true,
     "extends": [
       "person"
+    ],
+    "tags": [
+      "farmer"
     ]
   },
   "merchant": {
+    "is_template": true,
     "extends": [
       "person"
+    ],
+    "tags": [
+      "merchant"
     ]
   },
   "nobility": {
+    "is_template": true,
     "extends": [
       "person"
+    ],
+    "tags": [
+      "nobility"
     ]
   }
 }

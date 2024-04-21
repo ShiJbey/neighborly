@@ -1,109 +1,171 @@
 {
-    "farming_district": {
-        "name": "Farming District",
-        "description": "Where the animals and farmers are.",
-        "business_types": [
-            {
-                "with_id": "dairy_farm"
-            },
-            {
-                "with_id": "farm",
-                "max_instances": 2,
-                "spawn_frequency": 2
-            }
-        ],
-        "character_types": [
-            {
-                "with_id": "farmer"
-            }
-        ],
-        "residence_types": [
-            {
-                "with_id": "house"
-            }
-        ],
-        "residential_slots": 3,
-        "business_slots": 3,
-        "tags": [
-            "lazy",
-            "rural",
-            "urban",
-            "suburban",
-            "hot"
-        ]
-    },
-    "market_district": {
-        "name": "Market District",
-        "description": "Where people are always selling things.",
-        "business_types": [
-            {
-                "with_id": "shop"
-            },
-            {
-                "with_id": "cafe"
-            }
-        ],
-        "character_types": [
-            {
-                "with_id": "merchant"
-            }
-        ],
-        "residence_types": [
-            {
-                "with_id": "small_apartment_building"
-            },
-            {
-                "with_id": "medium_apartment_building"
-            },
-            {
-                "with_id": "large_apartment_building"
-            }
-        ],
-        "business_slots": 5,
-        "residential_slots": 2,
-        "tags": [
-            "lazy",
-            "rural",
-            "urban",
-            "suburban",
-            "hot",
-            "heat"
-        ]
-    },
-    "entertainment_district": {
-        "name": "Entertainment District",
-        "description": "Where characters go to have 'fun'.",
-        "residence_types": [
-            {
-                "with_id": "small_apartment_building"
-            }
-        ],
-        "business_types": [
-            {
-                "with_id": "theatre"
-            },
-            {
-                "with_id": "bar"
-            }
-        ],
-        "business_slots": 3,
-        "tags": []
-    },
-    "upper_class_residences": {
-        "name": "Upper Class Residences",
-        "description": "Where the nobility live.",
-        "residence_types": [
-            {
-                "with_id": "mansion"
-            }
-        ],
-        "character_types": [
-            {
-                "with_id": "nobility"
-            }
-        ],
-        "business_slots": 3,
-        "residential_slots": 3,
-        "tags": []
+  "base_district": {
+    "is_template": true,
+    "name": "",
+    "description": "",
+    "components": {
+      "Agent": {
+        "agent_type": "district"
+      },
+      "PersonalEventHistory": {},
+      "CharacterSpawnTable": {},
+      "BusinessSpawnTable": {},
+      "ResidenceSpawnTable": {}
     }
+  },
+  "farming_district": {
+    "extends": [
+      "base_district"
+    ],
+    "name": "Farming District",
+    "description": "Where the animals and farmers are.",
+    "components": {
+      "CharacterSpawnTable": {
+        "character_types": [
+          {
+            "with_tags": [
+              "farmer"
+            ]
+          }
+        ]
+      },
+      "BusinessSpawnTable": {
+        "business_types": [
+          {
+            "with_id": "dairy_farm"
+          },
+          {
+            "with_id": "farm",
+            "max_instances": 2,
+            "spawn_frequency": 2
+          }
+        ]
+      },
+      "ResidenceSpawnTable": {
+        "residence_types": [
+          {
+            "with_id": "house"
+          }
+        ]
+      }
+    },
+    "residential_slots": 3,
+    "business_slots": 3,
+    "tags": [
+      "lazy",
+      "rural",
+      "urban",
+      "suburban",
+      "hot"
+    ]
+  },
+  "market_district": {
+    "extends": [
+      "base_district"
+    ],
+    "name": "Market District",
+    "description": "Where people are always selling things.",
+    "components": {
+      "CharacterSpawnTable": {
+        "character_types": [
+          {
+            "with_tags": [
+              "merchant"
+            ]
+          }
+        ]
+      },
+      "BusinessSpawnTable": {
+        "business_types": [
+          {
+            "with_id": "shop"
+          },
+          {
+            "with_id": "cafe"
+          }
+        ]
+      },
+      "ResidenceSpawnTable": {
+        "residence_types": [
+          {
+            "with_id": "small_apartment_building"
+          },
+          {
+            "with_id": "medium_apartment_building"
+          },
+          {
+            "with_id": "large_apartment_building"
+          }
+        ]
+      }
+    },
+    "business_slots": 5,
+    "residential_slots": 2,
+    "tags": [
+      "lazy",
+      "rural",
+      "urban",
+      "suburban",
+      "hot",
+      "heat"
+    ]
+  },
+  "entertainment_district": {
+    "extends": [
+      "base_district"
+    ],
+    "name": "Entertainment District",
+    "description": "Where characters go to have 'fun'.",
+    "components": {
+      "CharacterSpawnTable": {},
+      "BusinessSpawnTable": {
+        "business_types": [
+          {
+            "with_id": "theatre"
+          },
+          {
+            "with_id": "bar"
+          }
+        ]
+      },
+      "ResidenceSpawnTable": {
+        "residence_types": [
+          {
+            "with_id": "small_apartment_building"
+          }
+        ]
+      }
+    },
+    "business_slots": 3,
+    "tags": []
+  },
+  "upper_class_residences": {
+    "extends": [
+      "base_district"
+    ],
+    "name": "Upper Class Residences",
+    "description": "Where the nobility live.",
+    "components": {
+      "CharacterSpawnTable": {
+        "character_types": [
+          {
+            "with_tags": [
+              "nobility"
+            ]
+          }
+        ]
+      },
+      "BusinessSpawnTable": {},
+      "ResidenceSpawnTable": {
+        "residence_types": [
+          {
+            "with_id": "mansion"
+          }
+        ]
+      }
+    },
+    "business_slots": 3,
+    "residential_slots": 3,
+    "tags": []
+  }
 }

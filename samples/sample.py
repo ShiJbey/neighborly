@@ -12,9 +12,6 @@ from neighborly.action import Action
 from neighborly.components.business import Occupation
 from neighborly.components.character import Character, LifeStage
 from neighborly.config import LoggingConfig, SimulationConfig
-from neighborly.defs.base_types import CharacterDefTraitEntry
-from neighborly.defs.defaults import DefaultCharacterDef
-from neighborly.helpers.character import register_character_def
 from neighborly.libraries import ActionConsiderationLibrary
 from neighborly.loaders import (
     load_businesses,
@@ -126,23 +123,6 @@ def main() -> Simulation:
     default_character_names.load_plugin(sim)
     default_settlement_names.load_plugin(sim)
     default_systems.load_plugin(sim)
-
-    register_character_def(
-        sim.world,
-        DefaultCharacterDef(
-            definition_id="person",
-            species="human",
-            traits=[
-                CharacterDefTraitEntry(with_tags=["incidental"]),
-                CharacterDefTraitEntry(with_tags=["incidental"]),
-                CharacterDefTraitEntry(with_tags=["incidental"]),
-            ],
-            variants=[
-                {"variant_name": "male", "sex": "Male"},
-                {"variant_name": "female", "sex": "Female"},
-            ],
-        ),
-    )
 
     sim.world.resources.get_resource(
         ActionConsiderationLibrary

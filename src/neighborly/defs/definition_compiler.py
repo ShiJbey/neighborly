@@ -66,6 +66,7 @@ def _process_definition(
     # Variables to hold cumulative definition data
     final_definition_data: dict[str, Any] = {}
     final_definition_tags: set[str] = set()
+    final_definition_components: dict[str, dict[str, Any]] = {}
 
     # Update the final definition data with all the parents data
     for parent_def_id in definition.extends:
@@ -80,11 +81,18 @@ def _process_definition(
         parent_def = processed_defs[parent_def_id]
 
         # Update cumulative variables with parent data
-        final_definition_data.update(parent_def.model_dump(exclude_unset=True))
+        parent_def_raw = parent_def.model_dump(exclude_unset=True)
+        final_definition_data.update(parent_def_raw)
         final_definition_tags = final_definition_tags.union(parent_def.tags)
+        if "components" in parent_def_raw:
+            final_definition_components.update(parent_def_raw["components"])
 
     # Lastly update cumulative variables with the current definition's data
-    final_definition_data.update(definition.model_dump(exclude_unset=True))
+    raw_definition = definition.model_dump(exclude_unset=True)
+    final_definition_data.update(raw_definition)
+    if "components" in raw_definition:
+        final_definition_components.update(raw_definition["components"])
+    final_definition_data["components"] = final_definition_components
     final_definition_data["tags"] = final_definition_tags.union(definition.tags)
 
     # This definition has been processed.
@@ -112,6 +120,10 @@ def _process_definition(
         variant_id = f"{final_definition.definition_id}.{variant_name}"
         variant_definition_data["definition_id"] = variant_id
         variant_definition_data["tags"] = final_definition.tags.union(variant_tags)
+        variant_definition_data["components"] = {
+            **final_definition_data.get("components", {}),
+            **variant_definition_data.get("components", {}),
+        }
 
         processed_defs[variant_id] = definition_type.model_validate(
             variant_definition_data

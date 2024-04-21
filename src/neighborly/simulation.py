@@ -36,8 +36,13 @@ from neighborly.factories.location import (
     LocationFactory,
     LocationPreferencesFactory,
 )
+from neighborly.factories.relationships import RelationshipsFactory, SocialRulesFactory
 from neighborly.factories.settlement import DistrictFactory, SettlementFactory
-from neighborly.factories.shared import AgeFactory, AgentFactory
+from neighborly.factories.shared import (
+    AgeFactory,
+    AgentFactory,
+    PersonalEventHistoryFactory,
+)
 from neighborly.factories.skills import SkillsFactory
 from neighborly.factories.spawn_table import (
     BusinessSpawnTableFactory,
@@ -264,6 +269,9 @@ class Simulation:
         self.world.gameobjects.add_component_factory(CharacterSpawnTableFactory())
         self.world.gameobjects.add_component_factory(BusinessSpawnTableFactory())
         self.world.gameobjects.add_component_factory(ResidenceSpawnTableFactory())
+        self.world.gameobjects.add_component_factory(SocialRulesFactory())
+        self.world.gameobjects.add_component_factory(RelationshipsFactory())
+        self.world.gameobjects.add_component_factory(PersonalEventHistoryFactory())
 
     def _init_logging(self) -> None:
         """Initialize simulation logging."""

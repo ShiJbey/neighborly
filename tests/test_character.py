@@ -21,6 +21,6 @@ def test_create_character() -> None:
 
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(sim.world, "farmer.female")
 
     assert character is not None

@@ -34,9 +34,9 @@ class CharacterSpawnTableFactory(ComponentFactory):
         character_types: list[dict[str, Any]] = kwargs.get("character_types", [])
 
         for entry in character_types:
-            if entry["with_id"]:
+            if definition_id := entry.get("with_id", ""):
 
-                character_def = character_library.get_definition(entry["with_id"])
+                character_def = character_library.get_definition(definition_id)
 
                 table_entries.append(
                     CharacterSpawnTableEntry(
@@ -45,10 +45,10 @@ class CharacterSpawnTableFactory(ComponentFactory):
                     )
                 )
 
-            elif entry["with_tags"]:
+            elif definition_tags := entry.get("with_tags", []):
 
                 potential_defs = character_library.get_definition_with_tags(
-                    entry["with_tags"]
+                    definition_tags
                 )
 
                 if not potential_defs:
@@ -80,11 +80,11 @@ class BusinessSpawnTableFactory(ComponentFactory):
         business_types: list[dict[str, Any]] = kwargs.get("business_types", [])
 
         for entry in business_types:
-            if entry["with_id"]:
-                business_def = business_library.get_definition(entry["with_id"])
+            if definition_id := entry.get("with_id", ""):
+                business_def = business_library.get_definition(definition_id)
                 table_entries.append(
                     BusinessSpawnTableEntry(
-                        name=entry["with_id"],
+                        name=definition_id,
                         spawn_frequency=entry.get(
                             "spawn_frequency", business_def.spawn_frequency
                         ),
@@ -97,9 +97,9 @@ class BusinessSpawnTableFactory(ComponentFactory):
                         instances=0,
                     )
                 )
-            elif entry["with_tags"]:
+            elif definition_tags := entry.get("with_tags", []):
                 potential_defs = business_library.get_definition_with_tags(
-                    entry["with_tags"]
+                    definition_tags
                 )
 
                 if not potential_defs:
@@ -136,13 +136,13 @@ class ResidenceSpawnTableFactory(ComponentFactory):
         rng = world.resource_manager.get_resource(random.Random)
 
         residence_library = world.resource_manager.get_resource(ResidenceLibrary)
-        residence_types: list[dict[str, Any]] = kwargs.get("business_types", [])
+        residence_types: list[dict[str, Any]] = kwargs.get("residence_types", [])
 
         table_entries: list[ResidenceSpawnTableEntry] = []
 
         for entry in residence_types:
-            if entry["with_id"]:
-                residence_def = residence_library.get_definition(entry["with_id"])
+            if definition_id := entry.get("with_id", ""):
+                residence_def = residence_library.get_definition(definition_id)
 
                 table_entries.append(
                     ResidenceSpawnTableEntry(
@@ -161,10 +161,10 @@ class ResidenceSpawnTableFactory(ComponentFactory):
                     )
                 )
 
-            elif entry["with_tags"]:
+            elif definition_tags := entry.get("with_tags", []):
 
                 potential_defs = residence_library.get_definition_with_tags(
-                    entry["with_tags"]
+                    definition_tags
                 )
 
                 if not potential_defs:

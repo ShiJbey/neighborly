@@ -50,7 +50,7 @@ def test_trait_with_location_preferences() -> None:
     cafe = create_business(sim.world, district, "cafe")
     bar = create_business(sim.world, district, "bar")
 
-    farmer = create_character(sim.world, "farmer")
+    farmer = create_character(sim.world, "farmer.female")
 
     assert score_location(farmer, cafe) == 0.5
     assert score_location(farmer, bar) == 0.5

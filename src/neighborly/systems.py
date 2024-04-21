@@ -413,7 +413,8 @@ class CompileTraitDefsSystem(System):
 
         # Add the new definitions and instances to the library.
         for trait_def in compiled_defs:
-            trait_library.add_definition(trait_def)
+            if not trait_def.is_template:
+                trait_library.add_definition(trait_def)
 
 
 class CompileSkillDefsSystem(System):
@@ -430,7 +431,8 @@ class CompileSkillDefsSystem(System):
 
         # Add the new definitions and instances to the library.
         for skill_def in compiled_defs:
-            skill_library.add_definition(skill_def)
+            if not skill_def.is_template:
+                skill_library.add_definition(skill_def)
 
 
 class CompileJobRoleDefsSystem(System):
@@ -447,7 +449,8 @@ class CompileJobRoleDefsSystem(System):
 
         # Add the new definitions and instances to the library.
         for role_def in compiled_defs:
-            job_role_library.add_definition(role_def)
+            if not role_def.is_template:
+                job_role_library.add_definition(role_def)
 
 
 class CompileDistrictDefsSystem(System):
@@ -461,7 +464,8 @@ class CompileDistrictDefsSystem(System):
         library.definitions.clear()
 
         for definition in compiled_defs:
-            library.add_definition(definition)
+            if not definition.is_template:
+                library.add_definition(definition)
 
 
 class CompileSettlementDefsSystem(System):
@@ -475,7 +479,8 @@ class CompileSettlementDefsSystem(System):
         library.definitions.clear()
 
         for definition in compiled_defs:
-            library.add_definition(definition)
+            if not definition.is_template:
+                library.add_definition(definition)
 
 
 class CompileResidenceDefsSystem(System):
@@ -489,7 +494,8 @@ class CompileResidenceDefsSystem(System):
         library.definitions.clear()
 
         for definition in compiled_defs:
-            library.add_definition(definition)
+            if not definition.is_template:
+                library.add_definition(definition)
 
 
 class CompileCharacterDefsSystem(System):
@@ -503,7 +509,8 @@ class CompileCharacterDefsSystem(System):
         library.definitions.clear()
 
         for definition in compiled_defs:
-            library.add_definition(definition)
+            if not definition.is_template:
+                library.add_definition(definition)
 
 
 class CompileBusinessDefsSystem(System):
@@ -517,7 +524,8 @@ class CompileBusinessDefsSystem(System):
         library.definitions.clear()
 
         for definition in compiled_defs:
-            library.add_definition(definition)
+            if not definition.is_template:
+                library.add_definition(definition)
 
 
 class UpdateFrequentedLocationSystem(System):

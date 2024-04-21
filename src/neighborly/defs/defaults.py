@@ -9,29 +9,14 @@ into ever Neighborly instance when it is constructed.
 from __future__ import annotations
 
 import random
-from typing import Callable, ClassVar, Optional, cast
+from typing import Callable, ClassVar, Optional
 
 from neighborly.components.business import Business, JobOpeningData
-from neighborly.components.character import Character, LifeStage, Sex
-from neighborly.components.location import (
-    FrequentedLocations,
-    Location,
-    LocationPreferences,
-)
-from neighborly.components.relationship import Relationships, SocialRules
+from neighborly.components.character import Character, LifeStage
+from neighborly.components.location import Location
 from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
-from neighborly.components.settlement import District, Settlement
-from neighborly.components.shared import Age, Agent
-from neighborly.components.skills import Skills
-from neighborly.components.spawn_table import (
-    BusinessSpawnTable,
-    BusinessSpawnTableEntry,
-    CharacterSpawnTable,
-    CharacterSpawnTableEntry,
-    ResidenceSpawnTable,
-    ResidenceSpawnTableEntry,
-)
-from neighborly.components.stats import Stats
+from neighborly.components.settlement import District
+from neighborly.components.shared import Age
 from neighborly.components.traits import Traits
 from neighborly.defs.base_types import (
     BusinessDef,
@@ -44,28 +29,19 @@ from neighborly.defs.base_types import (
     ResidenceGenOptions,
     SettlementDef,
     SettlementGenOptions,
-    SpeciesDef,
 )
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.character import set_species
 from neighborly.helpers.settlement import create_district
-from neighborly.helpers.skills import add_skill
 from neighborly.helpers.stats import add_stat, get_stat, has_stat
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import (
-    BusinessLibrary,
     BusinessNameFactories,
-    CharacterLibrary,
-    CharacterNameFactories,
     DistrictLibrary,
     DistrictNameFactories,
     JobRoleLibrary,
-    ResidenceLibrary,
-    SettlementNameFactories,
-    SkillLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import PersonalEventHistory
 from neighborly.tracery import Tracery
 
 STAT_MAX_VALUE: int = 100
@@ -107,144 +83,18 @@ class DefaultDistrictDef(DistrictDef):
                 business_slots=self.business_slots,
             )
         )
-        district.add_component(Agent(gameobject=district, agent_type="district"))
 
-        self.initialize_business_spawn_table(district)
-        self.initialize_character_spawn_table(district)
-        self.initialize_residence_spawn_table(district)
+        for (
+            component_name,
+            component_args,
+        ) in self.components.items():  # pylint: disable=E1101
+            component = world.gameobjects.component_factories[
+                component_name
+            ].instantiate(district, **component_args)
+
+            district.add_component(component)
 
         return district
-
-    def initialize_business_spawn_table(self, district: GameObject) -> None:
-        """Create the business spawn table for the district."""
-        world = district.world
-        rng = world.resource_manager.get_resource(random.Random)
-        business_library = world.resource_manager.get_resource(BusinessLibrary)
-
-        table_entries: list[BusinessSpawnTableEntry] = []
-
-        for entry in self.business_types:
-            if entry.with_id:
-                business_def = business_library.get_definition(entry.with_id)
-                table_entries.append(
-                    BusinessSpawnTableEntry(
-                        name=entry.with_id,
-                        spawn_frequency=business_def.spawn_frequency,
-                        max_instances=business_def.max_instances,
-                        min_population=business_def.min_population,
-                        instances=0,
-                    )
-                )
-            elif entry.with_tags:
-                potential_defs = business_library.get_definition_with_tags(
-                    entry.with_tags
-                )
-
-                if not potential_defs:
-                    continue
-
-                business_def = rng.choice(potential_defs)
-
-                table_entries.append(
-                    BusinessSpawnTableEntry(
-                        name=business_def.definition_id,
-                        spawn_frequency=entry.spawn_frequency,
-                        max_instances=entry.max_instances,
-                        min_population=entry.min_population,
-                        instances=0,
-                    )
-                )
-
-        district.add_component(BusinessSpawnTable(district, entries=table_entries))
-
-    def initialize_character_spawn_table(self, district: GameObject) -> None:
-        """Create the character spawn table for the district."""
-        world = district.world
-        rng = world.resource_manager.get_resource(random.Random)
-
-        character_library = world.resource_manager.get_resource(CharacterLibrary)
-
-        table_entries: list[CharacterSpawnTableEntry] = []
-
-        for entry in self.character_types:
-            if entry.with_id:
-
-                character_def = character_library.get_definition(entry.with_id)
-
-                table_entries.append(
-                    CharacterSpawnTableEntry(
-                        name=character_def.definition_id,
-                        spawn_frequency=entry.spawn_frequency,
-                    )
-                )
-
-            elif entry.with_id:
-
-                potential_defs = character_library.get_definition_with_tags(
-                    entry.with_tags
-                )
-
-                if not potential_defs:
-                    continue
-
-                character_def = rng.choice(potential_defs)
-
-                table_entries.append(
-                    CharacterSpawnTableEntry(
-                        name=character_def.definition_id,
-                        spawn_frequency=entry.spawn_frequency,
-                    )
-                )
-
-        district.add_component(CharacterSpawnTable(district, entries=table_entries))
-
-    def initialize_residence_spawn_table(self, district: GameObject) -> None:
-        """Create the residence spawn table for the district."""
-        world = district.world
-        rng = world.resource_manager.get_resource(random.Random)
-
-        residence_library = world.resource_manager.get_resource(ResidenceLibrary)
-
-        table_entries: list[ResidenceSpawnTableEntry] = []
-
-        for entry in self.residence_types:
-            if entry.with_id:
-                residence_def = residence_library.get_definition(entry.with_id)
-
-                table_entries.append(
-                    ResidenceSpawnTableEntry(
-                        name=residence_def.definition_id,
-                        spawn_frequency=residence_def.spawn_frequency,
-                        instances=0,
-                        required_population=residence_def.required_population,
-                        max_instances=residence_def.max_instances,
-                        is_multifamily=residence_def.is_multifamily,
-                    )
-                )
-
-            elif entry.with_tags:
-
-                potential_defs = residence_library.get_definition_with_tags(
-                    entry.with_tags
-                )
-
-                if not potential_defs:
-                    continue
-
-                residence_def = rng.choice(potential_defs)
-
-                table_entries.append(
-                    ResidenceSpawnTableEntry(
-                        name=residence_def.definition_id,
-                        spawn_frequency=residence_def.spawn_frequency,
-                        instances=0,
-                        required_population=residence_def.required_population,
-                        max_instances=residence_def.max_instances,
-                        is_multifamily=residence_def.is_multifamily,
-                    )
-                )
-
-        district.add_component(ResidenceSpawnTable(district, entries=table_entries))
 
 
 def default_settlement_name_factory(world: World, options: SettlementGenOptions) -> str:
@@ -261,23 +111,15 @@ class DefaultSettlementDef(SettlementDef):
         settlement = world.gameobject_manager.spawn_gameobject()
         settlement.metadata["definition_id"] = self.definition_id
 
-        name = ""
+        for (
+            component_name,
+            component_args,
+        ) in self.components.items():  # pylint: disable=E1101
+            component = world.gameobjects.component_factories[
+                component_name
+            ].instantiate(settlement, **component_args)
 
-        if self.name:
-            name = self.name
-
-        elif self.name_factory:
-            factories = world.resource_manager.get_resource(SettlementNameFactories)
-            name = factories.get_factory(self.name_factory)(world, options)
-
-        settlement.add_component(Settlement(settlement, name=name))
-        settlement.add_component(
-            Agent(
-                gameobject=settlement,
-                agent_type="settlement",
-            )
-        )
-        settlement.add_component(PersonalEventHistory(settlement))
+            settlement.add_component(component)
 
         self.initialize_districts(settlement)
         return settlement
@@ -327,10 +169,16 @@ class DefaultResidenceDef(ResidenceDef):
         building = residence.add_component(
             ResidentialBuilding(residence, district=district)
         )
-        residence.add_component(Traits(residence))
-        residence.add_component(Stats(residence))
 
-        residence.name = self.name
+        for (
+            component_name,
+            component_args,
+        ) in self.components.items():  # pylint: disable=E1101
+            component = world.gameobjects.component_factories[
+                component_name
+            ].instantiate(residence, **component_args)
+
+            residence.add_component(component)
 
         for _ in range(self.residential_units):
             residential_unit = world.gameobject_manager.spawn_gameobject(
@@ -403,65 +251,21 @@ class DefaultCharacterDef(CharacterDef):
         character = world.gameobject_manager.spawn_gameobject()
         character.metadata["definition_id"] = self.definition_id
 
-        rng = world.resource_manager.get_resource(random.Random)
+        for (
+            component_name,
+            component_args,
+        ) in self.components.items():  # pylint: disable=E1101
+            component = world.gameobjects.component_factories[
+                component_name
+            ].instantiate(character, **component_args)
 
-        library = character.world.resource_manager.get_resource(TraitLibrary)
-        species = library.get_definition(self.species)
+            character.add_component(component)
 
-        character.add_component(
-            Character(
-                character,
-                first_name="",
-                last_name="",
-                sex=rng.choice((Sex.MALE, Sex.FEMALE)),
-                species=cast(SpeciesDef, species),
-            )
-        )
-        character.add_component(Agent(gameobject=character, agent_type="character"))
-        character.add_component(Age(character))
-        character.add_component(Traits(character))
-        character.add_component(Skills(character))
-        character.add_component(Stats(character))
-        character.add_component(FrequentedLocations(character))
-        character.add_component(Relationships(character))
-        character.add_component(LocationPreferences(character))
-        character.add_component(SocialRules(character))
-        character.add_component(PersonalEventHistory(character))
-
-        self.initialize_name(character, options)
         self.initialize_character_age(character, options)
         self.initialize_character_stats(character)
         self.initialize_traits(character, options)
-        self.initialize_character_skills(character)
 
         return character
-
-    def initialize_name(
-        self, character: GameObject, options: CharacterGenOptions
-    ) -> None:
-        """Initialize the character's name.
-
-        Parameters
-        ----------
-        character
-            The character to initialize.
-        options
-            Generation options.
-        """
-        character_comp = character.get_component(Character)
-        factories = character.world.resources.get_resource(CharacterNameFactories)
-
-        if options.first_name:
-            character_comp.first_name = options.first_name
-        else:
-            factory = factories.get_factory(self.first_name_factory)
-            character_comp.first_name = factory(character.world, options)
-
-        if options.last_name:
-            character_comp.last_name = options.last_name
-        else:
-            factory = factories.get_factory(self.last_name_factory)
-            character_comp.last_name = factory(character.world, options)
 
     def initialize_character_age(
         self, character: GameObject, options: CharacterGenOptions
@@ -473,7 +277,7 @@ class DefaultCharacterDef(CharacterDef):
         age = character.get_component(Age)
         species = character.get_component(Character).species
 
-        if options.life_stage is not "":
+        if options.life_stage:
 
             life_stage: Optional[LifeStage] = LifeStage[options.life_stage]
 
@@ -641,36 +445,6 @@ class DefaultCharacterDef(CharacterDef):
 
             get_stat(character, entry.stat).base_value = base_value
 
-    def initialize_character_skills(self, character: GameObject) -> None:
-        """Add default skills to the character."""
-        rng = character.world.resource_manager.get_resource(random.Random)
-        skill_library = character.world.resource_manager.get_resource(SkillLibrary)
-
-        for entry in self.skills:
-            base_value = 0
-            if entry.value is not None:
-                base_value = entry.value
-            elif entry.value_range:
-                min_value, max_value = (
-                    int(x.strip()) for x in entry.value_range.split("-")
-                )
-                base_value = rng.randint(min_value, max_value)
-
-            if entry.with_id:
-                add_skill(character, entry.with_id, base_value=base_value)
-
-            elif entry.with_tags:
-                potential_skills = skill_library.get_definition_with_tags(
-                    entry.with_tags
-                )
-
-                if not potential_skills:
-                    continue
-
-                chosen_skill = rng.choice(potential_skills)
-
-                add_skill(character, chosen_skill.definition_id, base_value=base_value)
-
 
 class DefaultBusinessDef(BusinessDef):
     """A default implementation of a Business Definition."""
@@ -702,14 +476,16 @@ class DefaultBusinessDef(BusinessDef):
                 district=district,
             )
         )
-        business.add_component(Agent(gameobject=business, agent_type="business"))
-        business.add_component(Traits(business))
-        business.add_component(Location(business, is_private=not self.open_to_public))
-        business.add_component(PersonalEventHistory(business))
-        business.add_component(Stats(business))
-        business.add_component(Relationships(business))
-        business.add_component(SocialRules(business))
-        business.add_component(Age(business))
+
+        for (
+            component_name,
+            component_args,
+        ) in self.components.items():  # pylint: disable=E1101
+            component = world.gameobjects.component_factories[
+                component_name
+            ].instantiate(business, **component_args)
+
+            business.add_component(component)
 
         # Initialize the life span
         rng = world.resource_manager.get_resource(random.Random)

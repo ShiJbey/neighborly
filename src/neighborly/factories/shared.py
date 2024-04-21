@@ -7,6 +7,7 @@ from typing import Any
 
 from neighborly.components.shared import Age, Agent
 from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.life_event import PersonalEventHistory
 
 
 class AgeFactory(ComponentFactory):
@@ -33,3 +34,12 @@ class AgentFactory(ComponentFactory):
 
     def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
         return Agent(gameobject, agent_type=kwargs["agent_type"])
+
+
+class PersonalEventHistoryFactory(ComponentFactory):
+    """Creates PersonalEventHistory component instances."""
+
+    __component__ = "PersonalEventHistory"
+
+    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+        return PersonalEventHistory(gameobject)

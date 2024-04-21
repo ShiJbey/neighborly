@@ -863,7 +863,7 @@
     "spawn_frequency": 0
   },
   "human": {
-    "definition_type": "DefaultSpeciesDef",
+    "definition_type": "SpeciesDef",
     "name": "Human",
     "description": "A plain ol' human being.",
     "adolescent_age": 13,

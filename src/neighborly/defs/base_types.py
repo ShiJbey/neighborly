@@ -154,6 +154,8 @@ class DistrictDef(ContentDefinition, ABC):
     """Is this definition a template for creating other definitions."""
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
+    components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
+    """Information about components."""
 
     @abstractmethod
     def instantiate(
@@ -304,6 +306,8 @@ class SettlementDef(ContentDefinition, ABC):
     """Is this definition a template for creating other definitions."""
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
+    components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
+    """Information about components."""
 
     @abstractmethod
     def instantiate(self, world: World, options: SettlementGenOptions) -> GameObject:
@@ -351,6 +355,8 @@ class ResidenceDef(ContentDefinition, ABC):
     """Is this definition a template for creating other definitions."""
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
+    components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
+    """Information about components."""
 
     @property
     def is_multifamily(self) -> bool:
@@ -478,6 +484,8 @@ class CharacterDef(ContentDefinition, ABC):
     """Is this definition a template for creating other definitions."""
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
+    components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
+    """Information about components."""
 
     @abstractmethod
     def instantiate(
@@ -572,6 +580,8 @@ class BusinessDef(ContentDefinition, ABC):
     """Is this definition a template for creating other definitions."""
     tags: set[str] = pydantic.Field(default_factory=set)
     """Tags describing this definition."""
+    components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
+    """Information about components."""
 
     @abstractmethod
     def instantiate(

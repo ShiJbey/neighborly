@@ -26,7 +26,7 @@ def test_has_stat() -> None:
 
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(sim.world, "farmer.female")
 
     add_stat(character, "hunger", base_value=0, bounds=(0, 255))
 
@@ -46,7 +46,7 @@ def test_get_stat() -> None:
 
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(sim.world, "farmer.female")
 
     add_stat(character, "hunger", base_value=0, bounds=(0, 255))
 
@@ -73,7 +73,7 @@ def test_add_stat() -> None:
 
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(sim.world, "farmer.female")
 
     hunger = add_stat(character, "hunger", base_value=100, bounds=(0, 255))
 

@@ -58,6 +58,7 @@ def test_required_tags() -> None:
                 SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
                 SettlementDefDistrictEntry(with_tags=["urban", "suburban"]),
             ],
+            components={"Settlement": {}, "PersonalEventHistory": {}},
         )
     )
 
@@ -115,6 +116,7 @@ def test_optional_tags() -> None:
                     with_tags=["urban", "suburban", "~hot", "~heat"]
                 ),
             ],
+            components={"Settlement": {}, "PersonalEventHistory": {}},
         )
     )
 

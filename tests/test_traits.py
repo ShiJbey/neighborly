@@ -27,7 +27,7 @@ def test_add_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(sim.world, "farmer.female")
 
     assert has_trait(character, "flirtatious") is False
 
@@ -49,7 +49,7 @@ def test_remove_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(sim.world, "farmer.female")
 
     assert has_trait(character, "flirtatious") is False
 
@@ -75,7 +75,7 @@ def test_add_remove_trait_effects() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    farmer = create_character(sim.world, "farmer")
+    farmer = create_character(sim.world, "farmer.female")
 
     get_stat(farmer, "sociability").base_value = 0
 
@@ -103,7 +103,7 @@ def test_try_add_conflicting_trait() -> None:
     # Traits are initialized at the start of the simulation
     sim.initialize()
 
-    character = create_character(sim.world, "farmer")
+    character = create_character(sim.world, "farmer.female")
 
     success = add_trait(character, "skeptical")
 
