@@ -54,18 +54,8 @@ class DefaultDistrictDef(DistrictDef):
         settlement: GameObject,
         options: DistrictGenOptions,
     ) -> GameObject:
-        district = world.gameobject_manager.spawn_gameobject()
+        district = world.gameobject_manager.spawn_gameobject(components=self.components)
         district.metadata["definition_id"] = self.definition_id
-
-        for (
-            component_name,
-            component_args,
-        ) in self.components.items():  # pylint: disable=E1101
-            component = world.gameobjects.component_factories[
-                component_name
-            ].instantiate(district, **component_args)
-
-            district.add_component(component)
 
         return district
 
@@ -81,18 +71,10 @@ class DefaultSettlementDef(SettlementDef):
     """A definition for a settlement type specified by the user."""
 
     def instantiate(self, world: World, options: SettlementGenOptions) -> GameObject:
-        settlement = world.gameobject_manager.spawn_gameobject()
+        settlement = world.gameobject_manager.spawn_gameobject(
+            components=self.components
+        )
         settlement.metadata["definition_id"] = self.definition_id
-
-        for (
-            component_name,
-            component_args,
-        ) in self.components.items():  # pylint: disable=E1101
-            component = world.gameobjects.component_factories[
-                component_name
-            ].instantiate(settlement, **component_args)
-
-            settlement.add_component(component)
 
         self.initialize_districts(settlement)
         return settlement
@@ -134,21 +116,12 @@ class DefaultResidenceDef(ResidenceDef):
         self, world: World, district: GameObject, options: ResidenceGenOptions
     ) -> GameObject:
 
-        residence = world.gameobject_manager.spawn_gameobject()
+        residence = world.gameobject_manager.spawn_gameobject(
+            components=self.components
+        )
         residence.metadata["definition_id"] = self.definition_id
 
         world = residence.world
-
-        for (
-            component_name,
-            component_args,
-        ) in self.components.items():  # pylint: disable=E1101
-            component = world.gameobjects.component_factories[
-                component_name
-            ].instantiate(residence, **component_args)
-
-            residence.add_component(component)
-
         building = residence.get_component(ResidentialBuilding)
 
         for _ in range(self.residential_units):
@@ -219,18 +192,10 @@ class DefaultCharacterDef(CharacterDef):
         options: CharacterGenOptions,
     ) -> GameObject:
 
-        character = world.gameobject_manager.spawn_gameobject()
+        character = world.gameobject_manager.spawn_gameobject(
+            components=self.components
+        )
         character.metadata["definition_id"] = self.definition_id
-
-        for (
-            component_name,
-            component_args,
-        ) in self.components.items():  # pylint: disable=E1101
-            component = world.gameobjects.component_factories[
-                component_name
-            ].instantiate(character, **component_args)
-
-            character.add_component(component)
 
         # Initialize the life span
         species = character.get_component(Character).species
@@ -331,18 +296,8 @@ class DefaultBusinessDef(BusinessDef):
         self, world: World, district: GameObject, options: BusinessGenOptions
     ) -> GameObject:
 
-        business = world.gameobject_manager.spawn_gameobject()
+        business = world.gameobject_manager.spawn_gameobject(components=self.components)
         business.metadata["definition_id"] = self.definition_id
-
-        for (
-            component_name,
-            component_args,
-        ) in self.components.items():  # pylint: disable=E1101
-            component = world.gameobjects.component_factories[
-                component_name
-            ].instantiate(business, **component_args)
-
-            business.add_component(component)
 
         for trait in self.traits:
             add_trait(business, trait)

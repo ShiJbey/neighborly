@@ -1313,7 +1313,7 @@ class GameObjectManager:
 
     def spawn_gameobject(
         self,
-        components: Optional[dict[Type[Component], dict[str, Any]]] = None,
+        components: Optional[dict[str, dict[str, Any]]] = None,
         name: str = "",
     ) -> GameObject:
         """Create a new GameObject and add it to the world.
@@ -1345,7 +1345,7 @@ class GameObjectManager:
             for component_type, factory_args in components.items():
 
                 component = self.world.gameobjects.component_factories[
-                    component_type.__name__
+                    component_type
                 ].instantiate(gameobject, **factory_args)
 
                 gameobject.add_component(component)
