@@ -21,7 +21,12 @@ from neighborly.components.location import (
     LocationPreferences,
 )
 from neighborly.components.relationship import Relationship
-from neighborly.components.residence import Resident, ResidentialUnit, Vacant
+from neighborly.components.residence import (
+    Resident,
+    ResidentialBuilding,
+    ResidentialUnit,
+    Vacant,
+)
 from neighborly.components.settlement import District
 from neighborly.components.shared import Age
 from neighborly.components.skills import Skills
@@ -246,6 +251,9 @@ class SpawnResidentialBuildingsSystem(System):
                     district.gameobject,
                     multifamily_building,
                 )
+                residence.get_component(ResidentialBuilding).district = (
+                    district.gameobject
+                )
                 district.add_residence(residence)
                 district.gameobject.add_child(residence)
                 spawn_table.increment_count(multifamily_building)
@@ -263,6 +271,9 @@ class SpawnResidentialBuildingsSystem(System):
                     world,
                     district.gameobject,
                     single_family_building,
+                )
+                residence.get_component(ResidentialBuilding).district = (
+                    district.gameobject
                 )
                 district.add_residence(residence)
                 district.gameobject.add_child(residence)
@@ -282,7 +293,11 @@ class SpawnNewResidentSystem(System):
             (Active, ResidentialUnit, Vacant)
         ):
             # Get the spawn table of district the residence belongs to
-            spawn_table = residence.district.get_component(CharacterSpawnTable)
+            district = residence.building.get_component(ResidentialBuilding).district
+
+            assert district is not None
+
+            spawn_table = district.get_component(CharacterSpawnTable)
 
             if len(spawn_table) == 0:
                 continue
@@ -293,7 +308,7 @@ class SpawnNewResidentSystem(System):
             with world.session.begin() as session:
                 eligible_entries = session.scalars(
                     select(CharacterSpawnTableEntry).where(
-                        CharacterSpawnTableEntry.uid == residence.district.uid
+                        CharacterSpawnTableEntry.uid == district.uid
                     )
                 ).all()
 
@@ -321,7 +336,7 @@ class SpawnNewResidentSystem(System):
                 ),
             )
 
-            settlement = residence.district.get_component(District).settlement
+            settlement = district.get_component(District).settlement
             assert settlement is not None
 
             event = JoinSettlementEvent(

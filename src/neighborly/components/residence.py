@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 from ordered_set import OrderedSet
-from sqlalchemy import ForeignKey, delete
+from sqlalchemy import ForeignKey, delete, update
 from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.ecs import Component, GameData, GameObject, TagComponent
@@ -21,30 +21,24 @@ class ResidentialUnitData(GameData):
     uid: Mapped[int] = mapped_column(
         ForeignKey("gameobjects.uid"), primary_key=True, unique=True
     )
-    district_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     building_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
 
 
 class ResidentialUnit(Component):
     """A Residence is a place where characters live."""
 
-    __slots__ = "_owners", "_residents", "_district", "_building"
+    __slots__ = "_owners", "_residents", "_building"
 
     _building: GameObject
     """The building this unit is in."""
-    _district: GameObject
-    """The district the residence is in."""
     _owners: OrderedSet[GameObject]
     """Characters that currently own the residence."""
     _residents: OrderedSet[GameObject]
     """All the characters who live at the residence (including non-owners)."""
 
-    def __init__(
-        self, gameobject: GameObject, building: GameObject, district: GameObject
-    ) -> None:
+    def __init__(self, gameobject: GameObject, building: GameObject) -> None:
         super().__init__(gameobject)
         self._building = building
-        self._district = district
         self._owners = OrderedSet([])
         self._residents = OrderedSet([])
 
@@ -52,11 +46,6 @@ class ResidentialUnit(Component):
     def building(self) -> GameObject:
         """Get the building the residential unit is in."""
         return self._building
-
-    @property
-    def district(self) -> GameObject:
-        """Get the district the residence is in."""
-        return self._district
 
     @property
     def owners(self) -> Iterable[GameObject]:
@@ -70,7 +59,7 @@ class ResidentialUnit(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "district": self.district.uid,
+            "building": self.building.uid,
             "owners": [entry.uid for entry in self.owners],
             "residents": [entry.uid for entry in self.residents],
         }
@@ -152,13 +141,12 @@ class ResidentialUnit(Component):
             session.add(
                 ResidentialUnitData(
                     uid=self.gameobject.uid,
-                    district_id=self.district.uid,
                     building_id=self.building.uid,
                 )
             )
 
         self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.residence.district!{self.district.uid}"
+            f"{self.gameobject.uid}.residence.building!{self.building.uid}"
         )
 
     def on_remove(self) -> None:
@@ -197,20 +185,42 @@ class ResidentialBuilding(Component):
 
     __slots__ = "_residential_units", "_district"
 
-    _district: GameObject
+    _district: Optional[GameObject]
     """The district the residence is in."""
     _residential_units: list[GameObject]
     """The residential units that belong to this building."""
 
-    def __init__(self, gameobject: GameObject, district: GameObject) -> None:
+    def __init__(self, gameobject: GameObject) -> None:
         super().__init__(gameobject)
-        self._district = district
+        self._district = None
         self._residential_units = []
 
     @property
-    def district(self) -> GameObject:
+    def district(self) -> Optional[GameObject]:
         """Get the district the residential building belongs to."""
         return self._district
+
+    @district.setter
+    def district(self, value: Optional[GameObject]):
+        """Set the district of a residential building."""
+        self._district = value
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(
+                ResidentialBuildingData(
+                    uid=self.gameobject.uid,
+                    district_id=self.district.uid if self.district else -1,
+                )
+            )
+
+        if self.district:
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.residential_building.district!{self.district.uid}"
+            )
+        else:
+            self.gameobject.world.rp_db.delete(
+                f"{self.gameobject.uid}.residential_building.district"
+            )
 
     @property
     def units(self) -> Iterable[GameObject]:
@@ -233,15 +243,16 @@ class ResidentialBuilding(Component):
 
     def on_add(self) -> None:
         with self.gameobject.world.session.begin() as session:
-            session.add(
-                ResidentialBuildingData(
-                    uid=self.gameobject.uid, district_id=self.district.uid
-                )
+            session.execute(
+                update(ResidentialBuildingData)
+                .where(ResidentialBuildingData.uid == self.gameobject.uid)
+                .values(district_id=self.district.uid if self.district else -1)
             )
 
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.residential_building.district!{self.district.uid}"
-        )
+        if self.district:
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.residential_building.district!{self.district.uid}"
+            )
 
     def on_remove(self) -> None:
         with self.gameobject.world.session.begin() as session:
@@ -257,7 +268,7 @@ class ResidentialBuilding(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "district": self.district.uid,
+            "district": self.district.uid if self.district else -1,
             "units": [u.uid for u in self._residential_units],
         }
 

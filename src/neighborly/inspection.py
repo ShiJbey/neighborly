@@ -210,7 +210,6 @@ def _residential_unit_header(residential_unit: GameObject) -> str:
     output += f"UID: {residential_unit.uid}\n"
     output += f"Name: {residential_unit.name}\n"
     output += f"Building: {unit_data.building.name}\n"
-    output += f"District: {unit_data.district.name}\n"
     output += f"Residents: {residents}\n"
     output += "\n"
 
@@ -691,7 +690,11 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
 def list_residences(sim: Simulation) -> None:
     """Print active residential buildings in the simulation."""
     residential_buildings = [
-        (uid, building.gameobject.name, building.district.name)
+        (
+            uid,
+            building.gameobject.name,
+            building.district.name if building.district else "",
+        )
         for uid, (building, _) in sim.world.get_components(
             (ResidentialBuilding, Active)
         )

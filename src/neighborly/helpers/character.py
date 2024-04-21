@@ -9,7 +9,12 @@ from typing import Optional, cast
 from neighborly.components.business import Business, Occupation
 from neighborly.components.character import Character
 from neighborly.components.relationship import Relationship
-from neighborly.components.residence import Resident, ResidentialUnit, Vacant
+from neighborly.components.residence import (
+    Resident,
+    ResidentialBuilding,
+    ResidentialUnit,
+    Vacant,
+)
 from neighborly.components.settlement import District
 from neighborly.defs.base_types import CharacterDef, CharacterGenOptions, SpeciesDef
 from neighborly.ecs import GameObject, World
@@ -172,10 +177,14 @@ def move_out_of_residence(character: GameObject) -> None:
 
         remove_frequented_location(character, former_residence)
 
-        former_district = former_residence.get_component(
-            ResidentialUnit
-        ).district.get_component(District)
-        former_district.population -= 1
+        former_district = (
+            former_residence.get_component(ResidentialUnit)
+            .building.get_component(ResidentialBuilding)
+            .district
+        )
+
+        if former_district:
+            former_district.get_component(District).population -= 1
 
         if len(former_residence_comp) <= 0:
             former_residence.add_component(Vacant(former_residence))
@@ -208,10 +217,16 @@ def move_into_residence(
         add_trait(get_relationship(character, resident), "live_together")
         add_trait(get_relationship(resident, character), "live_together")
 
-    new_district = new_residence.get_component(ResidentialUnit).district.get_component(
-        District
+    new_district = (
+        new_residence.get_component(ResidentialUnit)
+        .building.get_component(ResidentialBuilding)
+        .district
     )
-    new_district.population += 1
+
+    if new_district:
+        new_district.get_component(District).population += 1
+    else:
+        raise RuntimeError("Residential building is missing district.")
 
 
 def depart_settlement(character: GameObject) -> None:

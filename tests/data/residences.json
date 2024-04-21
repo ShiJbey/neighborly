@@ -4,7 +4,8 @@
     "name": "",
     "components": {
       "Stats": {},
-      "Traits": {}
+      "Traits": {},
+      "ResidentialBuilding": {}
     }
   },
   "house": {

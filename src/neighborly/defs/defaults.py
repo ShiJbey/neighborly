@@ -159,10 +159,6 @@ class DefaultResidenceDef(ResidenceDef):
 
         world = residence.world
 
-        building = residence.add_component(
-            ResidentialBuilding(residence, district=district)
-        )
-
         for (
             component_name,
             component_args,
@@ -173,6 +169,8 @@ class DefaultResidenceDef(ResidenceDef):
 
             residence.add_component(component)
 
+        building = residence.get_component(ResidentialBuilding)
+
         for _ in range(self.residential_units):
             residential_unit = world.gameobject_manager.spawn_gameobject(
                 name="ResidentialUnit"
@@ -180,7 +178,7 @@ class DefaultResidenceDef(ResidenceDef):
             residential_unit.add_component(Traits(residential_unit))
             residence.add_child(residential_unit)
             residential_unit.add_component(
-                ResidentialUnit(residential_unit, building=residence, district=district)
+                ResidentialUnit(residential_unit, building=residence)
             )
             residential_unit.add_component(Location(residential_unit, is_private=True))
             building.add_residential_unit(residential_unit)
