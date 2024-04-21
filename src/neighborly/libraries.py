@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections import defaultdict
-from typing import Generic, Iterable, Protocol, TypeVar
+from typing import Generic, Iterable, Protocol, TypeVar, Type
 
 from ordered_set import OrderedSet
 
@@ -30,7 +30,9 @@ from neighborly.defs.base_types import (
     TraitDef,
 )
 from neighborly.ecs import GameObject
+from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
+from neighborly.preconditions.base_types import Precondition
 
 _T = TypeVar("_T", bound=ContentDefinition)
 
@@ -316,3 +318,44 @@ class ActionConsiderationLibrary:
     ) -> Iterable[ActionConsideration]:
         """Get all utility considerations for an action."""
         return self.utility_considerations[action_id]
+
+
+
+class PreconditionLibrary:
+    """Manages effect precondition types and constructs them when needed."""
+
+    _slots__ = "_precondition_types"
+
+    _precondition_types: dict[str, Type[Precondition]]
+    """Precondition types for loading data from config files."""
+
+    def __init__(self) -> None:
+        self._precondition_types = {}
+
+    def get_precondition_type(self, precondition_name: str) -> Type[Precondition]:
+        """Get a definition type."""
+        return self._precondition_types[precondition_name]
+
+    def add_precondition_type(self, precondition_type: Type[Precondition]) -> None:
+        """Add a definition type for loading objs."""
+        self._precondition_types[precondition_type.__name__] = precondition_type
+
+
+class EffectLibrary:
+    """Manages effect types and constructs them when needed."""
+
+    _slots__ = "_effect_types"
+
+    _effect_types: dict[str, Type[Effect]]
+    """SettlementDef types for loading data from config files."""
+
+    def __init__(self) -> None:
+        self._effect_types = {}
+
+    def get_effect_type(self, effect_name: str) -> Type[Effect]:
+        """Get a definition type."""
+        return self._effect_types[effect_name]
+
+    def add_effect_type(self, effect_type: Type[Effect]) -> None:
+        """Add a definition type for loading objs."""
+        self._effect_types[effect_type.__name__] = effect_type
