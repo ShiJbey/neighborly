@@ -34,7 +34,7 @@ from neighborly.ecs import GameObject, World
 from neighborly.helpers.character import set_species
 from neighborly.helpers.settlement import create_district
 from neighborly.helpers.traits import add_trait
-from neighborly.libraries import DistrictLibrary, DistrictNameFactories, TraitLibrary
+from neighborly.libraries import DistrictLibrary, TraitLibrary
 from neighborly.tracery import Tracery
 
 
@@ -56,24 +56,6 @@ class DefaultDistrictDef(DistrictDef):
     ) -> GameObject:
         district = world.gameobject_manager.spawn_gameobject()
         district.metadata["definition_id"] = self.definition_id
-
-        name = ""
-
-        if self.name:
-            name = self.name
-        elif self.name_factory:
-            factories = world.resource_manager.get_resource(DistrictNameFactories)
-            name = factories.get_factory(self.name_factory)(world, options)
-
-        district.add_component(
-            District(
-                gameobject=district,
-                name=name,
-                description=self.description,
-                residential_slots=self.residential_slots,
-                business_slots=self.business_slots,
-            )
-        )
 
         for (
             component_name,
