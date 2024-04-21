@@ -11,7 +11,6 @@ from __future__ import annotations
 import random
 from typing import Callable, ClassVar, Optional
 
-from neighborly.components.business import Business, JobOpeningData
 from neighborly.components.character import Character, LifeStage
 from neighborly.components.location import Location
 from neighborly.components.residence import ResidentialBuilding, ResidentialUnit, Vacant
@@ -35,13 +34,7 @@ from neighborly.helpers.character import set_species
 from neighborly.helpers.settlement import create_district
 from neighborly.helpers.stats import add_stat, get_stat, has_stat
 from neighborly.helpers.traits import add_trait
-from neighborly.libraries import (
-    BusinessNameFactories,
-    DistrictLibrary,
-    DistrictNameFactories,
-    JobRoleLibrary,
-    TraitLibrary,
-)
+from neighborly.libraries import DistrictLibrary, DistrictNameFactories, TraitLibrary
 from neighborly.tracery import Tracery
 
 STAT_MAX_VALUE: int = 100
@@ -458,25 +451,6 @@ class DefaultBusinessDef(BusinessDef):
         business = world.gameobject_manager.spawn_gameobject()
         business.metadata["definition_id"] = self.definition_id
 
-        job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
-
-        business.add_component(
-            Business(
-                business,
-                name="",
-                owner_role=job_role_library.get_definition(self.owner_role),
-                employee_roles={
-                    role: JobOpeningData(
-                        role_id=role,
-                        business_id=business.uid,
-                        count=count,
-                    )
-                    for role, count in self.employee_roles.items()  # pylint: disable=E1101
-                },
-                district=district,
-            )
-        )
-
         for (
             component_name,
             component_args,
@@ -493,24 +467,7 @@ class DefaultBusinessDef(BusinessDef):
         base_lifespan = rng.randint(min_value, max_value)
         add_stat(business, "lifespan", base_value=base_lifespan, is_discrete=True)
 
-        self.generate_name(business, options)
-
         for trait in self.traits:
             add_trait(business, trait)
 
         return business
-
-    def generate_name(self, business: GameObject, options: BusinessGenOptions) -> None:
-        """Generates a name for the business."""
-        if options.name:
-            business.get_component(Business).name = options.name
-
-        elif self.name:
-            business.get_component(Business).name = self.name
-
-        elif self.name_factory:
-            factories = business.world.resource_manager.get_resource(
-                BusinessNameFactories
-            )
-            name = factories.get_factory(self.name_factory)(business.world, options)
-            business.get_component(Business).name = name

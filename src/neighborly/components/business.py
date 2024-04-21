@@ -184,7 +184,7 @@ class Business(Component):
     """The role of the business' owner."""
     _employee_roles: dict[str, JobOpeningData]
     """The roles of employees."""
-    _district: GameObject
+    _district: Optional[GameObject]
     """The district the residence is in."""
     _owner: Optional[GameObject]
     """Owner and their job role ID."""
@@ -194,7 +194,6 @@ class Business(Component):
     def __init__(
         self,
         gameobject: GameObject,
-        district: GameObject,
         name: str,
         owner_role: JobRoleDef,
         employee_roles: dict[str, JobOpeningData],
@@ -204,10 +203,10 @@ class Business(Component):
             uid=gameobject.uid,
             name=name,
             owner_id=None,
-            district_id=district.uid,
+            district_id=-1,
             status=BusinessStatus.PENDING,
         )
-        self._district = district
+        self._district = None
         self._owner_role = owner_role
         self._employee_roles = employee_roles
         self._owner = None
@@ -215,9 +214,27 @@ class Business(Component):
         gameobject.name = name
 
     @property
-    def district(self) -> GameObject:
+    def district(self) -> Optional[GameObject]:
         """The district the residence is in."""
         return self._district
+
+    @district.setter
+    def district(self, value: Optional[GameObject]) -> None:
+        """Set the district property."""
+        self._district = value
+        self.data.district_id = value.uid if value else -1
+
+        with self.gameobject.world.session.begin() as session:
+            session.add(self.data)
+
+        if value:
+            self.gameobject.world.rp_db.insert(
+                f"{self.gameobject.uid}.business.district!{value.uid}"
+            )
+        else:
+            self.gameobject.world.rp_db.delete(
+                f"{self.gameobject.uid}.business.district"
+            )
 
     @property
     def name(self) -> str:
@@ -364,10 +381,6 @@ class Business(Component):
         with self.gameobject.world.session.begin() as session:
             session.add(self.data)
 
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.business.district!{self.district.uid}"
-        )
-
     def on_remove(self) -> None:
         with self.gameobject.world.session.begin() as session:
             session.delete(self.data)
@@ -379,7 +392,7 @@ class Business(Component):
             "name": self.name,
             "employees": [employee.uid for employee, _ in self._employees.items()],
             "owner": self._owner.uid if self._owner else -1,
-            "district": self._district.uid,
+            "district": self._district.uid if self._district else -1,
         }
 
 

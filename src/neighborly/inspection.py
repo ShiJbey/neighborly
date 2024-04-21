@@ -633,7 +633,7 @@ def list_businesses(sim: Simulation, inactive_ok: bool = False) -> None:
                     business.name,
                     str(business.owner),
                     activity_status,
-                    business.district.name,
+                    business.district.name if business.district else "",
                 )
             )
 

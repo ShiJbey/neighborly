@@ -107,10 +107,11 @@ def close_business(business: GameObject) -> None:
         leave_job(business, business_comp.owner)
 
     # Decrement the number of this type
-    business_comp.district.get_component(BusinessSpawnTable).decrement_count(
-        business.metadata["definition_id"]
-    )
-    business_comp.district.get_component(District).remove_business(business)
+    if business_comp.district:
+        business_comp.district.get_component(BusinessSpawnTable).decrement_count(
+            business.metadata["definition_id"]
+        )
+        business_comp.district.get_component(District).remove_business(business)
 
     # Remove any other characters that frequent the location
     remove_all_frequenting_characters(business)

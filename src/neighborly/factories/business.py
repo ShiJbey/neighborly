@@ -4,10 +4,15 @@
 
 from typing import Any
 
-from neighborly.components.business import Business, Occupation, Unemployed
+from neighborly.components.business import (
+    Business,
+    JobOpeningData,
+    Occupation,
+    Unemployed,
+)
 from neighborly.defs.base_types import BusinessGenOptions
 from neighborly.ecs import Component, ComponentFactory, GameObject
-from neighborly.libraries import BusinessNameFactories
+from neighborly.libraries import BusinessNameFactories, JobRoleLibrary
 
 
 class OccupationFactory(ComponentFactory):
@@ -37,25 +42,26 @@ class BusinessFactory(ComponentFactory):
                 gameobject.world, BusinessGenOptions()
             )
 
-        # job_role_library = gameobject.world.resource_manager.get_resource(
-        #     JobRoleLibrary
-        # )
+        job_role_library = gameobject.world.resource_manager.get_resource(
+            JobRoleLibrary
+        )
+
+        owner_role_id: str = kwargs["owner_role"]
+        owner_role = job_role_library.get_definition(owner_role_id)
+        employee_roles: dict[str, int] = kwargs.get("employee_roles", {})
 
         business = Business(
             gameobject,
             name=name,
-            **kwargs,
-            # name=name,
-            # owner_role=job_role_library.get_definition(self.owner_role),
-            # employee_roles={
-            #     role: JobOpeningData(
-            #         role_id=role,
-            #         business_id=business.uid,
-            #         count=count,
-            #     )
-            #     for role, count in self.employee_roles.items()  # pylint: disable=E1101
-            # },
-            # district=district,
+            owner_role=owner_role,
+            employee_roles={
+                role: JobOpeningData(
+                    role_id=role,
+                    business_id=gameobject.uid,
+                    count=count,
+                )
+                for role, count in employee_roles.items()
+            },
         )
 
         return business

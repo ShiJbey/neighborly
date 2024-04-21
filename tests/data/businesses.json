@@ -12,7 +12,8 @@
       "Stats": {},
       "PersonalEventHistory": {},
       "Location": {},
-      "Traits": {}
+      "Traits": {},
+      "Business": {}
     }
   },
   "cafe": {
@@ -22,8 +23,14 @@
     ],
     "spawn_frequency": 1,
     "owner_role": "cafe_owner",
-    "employee_roles": {
-      "barista": 2
+    "components": {
+      "Business": {
+        "name": "Cafe",
+        "owner_role": "cafe_owner",
+        "employee_roles": {
+          "barista": 2
+        }
+      }
     }
   },
   "farm": {
@@ -35,6 +42,15 @@
     "owner_role": "farmer",
     "employee_roles": {
       "farmhand": 2
+    },
+    "components": {
+      "Business": {
+        "name": "Farm",
+        "owner_role": "farmer",
+        "employee_roles": {
+          "farmhand": 2
+        }
+      }
     }
   },
   "dairy_farm": {
@@ -46,6 +62,15 @@
     "owner_role": "farmer",
     "employee_roles": {
       "farmhand": 2
+    },
+    "components": {
+      "Business": {
+        "name": "Dairy Farm",
+        "owner_role": "farmer",
+        "employee_roles": {
+          "farmhand": 2
+        }
+      }
     }
   },
   "shop": {
@@ -57,6 +82,15 @@
     "owner_role": "shopkeeper",
     "employee_roles": {
       "cashier": 1
+    },
+    "components": {
+      "Business": {
+        "name": "Shop",
+        "owner_role": "shopkeeper",
+        "employee_roles": {
+          "cashier": 1
+        }
+      }
     }
   },
   "theatre": {
@@ -68,6 +102,15 @@
     "owner_role": "theatre_owner",
     "employee_roles": {
       "actor": 3
+    },
+    "components": {
+      "Business": {
+        "name": "Theatre",
+        "owner_role": "theatre_owner",
+        "employee_roles": {
+          "actor": 3
+        }
+      }
     }
   },
   "bar": {
@@ -82,7 +125,16 @@
     },
     "traits": [
       "serves_alcohol"
-    ]
+    ],
+    "components": {
+      "Business": {
+        "name": "Bar",
+        "owner_role": "bar_owner",
+        "employee_roles": {
+          "bartender": 2
+        }
+      }
+    }
   },
   "blacksmith_shop": {
     "name": "Blacksmith Shop",
@@ -95,6 +147,15 @@
     "owner_role": "blacksmith",
     "employee_roles": {
       "blacksmith_apprentice": 1
+    },
+    "components": {
+      "Business": {
+        "name": "Blacksmith Shop",
+        "owner_role": "blacksmith",
+        "employee_roles": {
+          "blacksmith_apprentice": 1
+        }
+      }
     }
   }
 }

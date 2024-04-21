@@ -394,6 +394,7 @@ class SpawnNewBusinessesSystem(System):
                     district.gameobject,
                     business_id,
                 )
+                business.get_component(Business).district = district.gameobject
                 district.add_business(business)
                 district.gameobject.add_child(business)
                 spawn_table.increment_count(business_id)
