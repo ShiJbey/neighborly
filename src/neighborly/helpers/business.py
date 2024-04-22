@@ -7,6 +7,7 @@ from __future__ import annotations
 from neighborly.components.business import (
     Business,
     BusinessStatus,
+    JobRole,
     Occupation,
     Unemployed,
 )
@@ -207,7 +208,7 @@ def fire_employee(business: GameObject, character: GameObject) -> None:
 
 
 def add_employee(
-    business: GameObject, character: GameObject, job_role: JobRoleDef
+    business: GameObject, character: GameObject, job_role: JobRole
 ) -> None:
     """Add an employee to the business."""
     world = business.world
@@ -243,7 +244,7 @@ def add_employee(
 
 
 def promote_employee(
-    business: GameObject, character: GameObject, job_role: JobRoleDef
+    business: GameObject, character: GameObject, job_role: JobRole
 ) -> None:
     """Promote a character to a higher position."""
 

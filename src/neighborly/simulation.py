@@ -15,6 +15,17 @@ from typing import Optional
 from neighborly.config import SimulationConfig
 from neighborly.datetime import SimDate
 from neighborly.ecs import World
+from neighborly.effects.effects import (
+    AddLocationPreference,
+    AddSkillBuff,
+    AddSkillDebuff,
+    AddStatBuff,
+    AddStatDebuff,
+    DecreaseBaseSkill,
+    DecreaseBaseStat,
+    IncreaseBaseSkill,
+    IncreaseBaseStat,
+)
 from neighborly.factories.business import BusinessFactory
 from neighborly.factories.character import (
     CharacterFactory,
@@ -68,8 +79,10 @@ from neighborly.libraries import (
     CharacterNameFactories,
     DistrictLibrary,
     DistrictNameFactories,
+    EffectLibrary,
     JobRoleLibrary,
     LocationPreferenceLibrary,
+    PreconditionLibrary,
     ResidenceLibrary,
     SettlementLibrary,
     SettlementNameFactories,
@@ -79,6 +92,14 @@ from neighborly.libraries import (
     TraitLibrary,
 )
 from neighborly.life_event import GlobalEventHistory
+from neighborly.preconditions.defaults import (
+    AtLeastLifeStage,
+    HasTrait,
+    RePraxisPrecondition,
+    SkillRequirement,
+    StatRequirement,
+    TargetHasTrait,
+)
 from neighborly.systems import (
     AgingSystem,
     BusinessLifespanSystem,
@@ -140,6 +161,7 @@ class Simulation:
         self._init_systems()
         self._init_logging()
         self._init_component_factories()
+        self._init_effect_precondition_factories()
 
     def _init_resources(self) -> None:
         """Initialize built-in resources."""
@@ -158,6 +180,8 @@ class Simulation:
         self.world.resource_manager.add_resource(SocialRuleLibrary())
         self.world.resource_manager.add_resource(LocationPreferenceLibrary())
         self.world.resource_manager.add_resource(SettlementNameFactories())
+        self.world.resource_manager.add_resource(EffectLibrary())
+        self.world.resource_manager.add_resource(PreconditionLibrary())
         self.world.resources.get_resource(SettlementNameFactories).add_factory(
             "default", default_settlement_name_factory
         )
@@ -292,6 +316,31 @@ class Simulation:
         self.world.gameobjects.add_component_factory(IntelligenceFactory())
         self.world.gameobjects.add_component_factory(DisciplineFactory())
         self.world.gameobjects.add_component_factory(CharmFactory())
+
+    def _init_effect_precondition_factories(self) -> None:
+        """Add effect factories to the library."""
+
+        effect_library = self.world.resources.get_resource(EffectLibrary)
+
+        effect_library.add_effect_type(AddStatBuff)
+        effect_library.add_effect_type(AddStatDebuff)
+        effect_library.add_effect_type(IncreaseBaseStat)
+        effect_library.add_effect_type(DecreaseBaseStat)
+        effect_library.add_effect_type(AddSkillBuff)
+        effect_library.add_effect_type(AddSkillDebuff)
+        effect_library.add_effect_type(DecreaseBaseSkill)
+        effect_library.add_effect_type(IncreaseBaseSkill)
+        effect_library.add_effect_type(AddLocationPreference)
+        effect_library.add_effect_type(AddLocationPreference)
+
+        precondition_library = self.world.resources.get_resource(PreconditionLibrary)
+
+        precondition_library.add_precondition_type(HasTrait)
+        precondition_library.add_precondition_type(TargetHasTrait)
+        precondition_library.add_precondition_type(SkillRequirement)
+        precondition_library.add_precondition_type(StatRequirement)
+        precondition_library.add_precondition_type(AtLeastLifeStage)
+        precondition_library.add_precondition_type(RePraxisPrecondition)
 
     def _init_logging(self) -> None:
         """Initialize simulation logging."""

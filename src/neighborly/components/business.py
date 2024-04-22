@@ -14,8 +14,9 @@ from sqlalchemy import ForeignKey, delete
 from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.datetime import SimDate
-from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import Component, GameData, GameObject
+from neighborly.effects.base_types import Effect
+from neighborly.preconditions.base_types import Precondition
 
 
 class OccupationData(GameData):
@@ -36,7 +37,7 @@ class Occupation(Component):
 
     __slots__ = "_start_date", "_business", "_job_role"
 
-    _job_role: JobRoleDef
+    _job_role: JobRole
     """The job role."""
     _business: GameObject
     """The business they work for."""
@@ -46,7 +47,7 @@ class Occupation(Component):
     def __init__(
         self,
         gameobject: GameObject,
-        job_role: JobRoleDef,
+        job_role: JobRole,
         business: GameObject,
         start_date: SimDate,
     ) -> None:
@@ -66,7 +67,7 @@ class Occupation(Component):
         self._start_date = start_date
 
     @property
-    def job_role(self) -> JobRoleDef:
+    def job_role(self) -> JobRole:
         """The job role."""
         return self._job_role
 
@@ -180,7 +181,7 @@ class Business(Component):
 
     data: BusinessData
     """SQl-queryable data about the business."""
-    _owner_role: JobRoleDef
+    _owner_role: JobRole
     """The role of the business' owner."""
     _employee_roles: dict[str, JobOpeningData]
     """The roles of employees."""
@@ -188,14 +189,14 @@ class Business(Component):
     """The district the residence is in."""
     _owner: Optional[GameObject]
     """Owner and their job role ID."""
-    _employees: dict[GameObject, JobRoleDef]
+    _employees: dict[GameObject, JobRole]
     """Employees mapped to their job role ID."""
 
     def __init__(
         self,
         gameobject: GameObject,
         name: str,
-        owner_role: JobRoleDef,
+        owner_role: JobRole,
         employee_roles: dict[str, JobOpeningData],
     ) -> None:
         super().__init__(gameobject)
@@ -263,12 +264,12 @@ class Business(Component):
         return self._owner
 
     @property
-    def owner_role(self) -> JobRoleDef:
+    def owner_role(self) -> JobRole:
         """The role of the business' owner."""
         return self._owner_role
 
     @property
-    def employees(self) -> Mapping[GameObject, JobRoleDef]:
+    def employees(self) -> Mapping[GameObject, JobRole]:
         """Employees mapped to their job role ID."""
         return self._employees
 
@@ -288,7 +289,7 @@ class Business(Component):
             f"{self.gameobject.uid}.business.status!{self.data.status.name}"
         )
 
-    def add_employee(self, employee: GameObject, role: JobRoleDef) -> None:
+    def add_employee(self, employee: GameObject, role: JobRole) -> None:
         """Add an employee to the business.
 
         Parameters
@@ -446,3 +447,54 @@ class Unemployed(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {"timestamp": str(self.timestamp)}
+
+
+class JobRole:
+    """Information about a specific type of job in the world."""
+
+    __slots__ = (
+        "name",
+        "description",
+        "job_level",
+        "requirements",
+        "effects",
+        "recurring_effects",
+        "definition_id",
+    )
+
+    name: str
+    """The name of the role."""
+    description: str
+    """A description of the role."""
+    job_level: int
+    """General level of prestige associated with this role."""
+    requirements: list[Precondition]
+    """Requirement functions for the role."""
+    effects: list[Effect]
+    """Effects applied when the taking on the role."""
+    recurring_effects: list[Effect]
+    """Effects applied every month the character has the role."""
+    definition_id: str
+    """The ID of this job role."""
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        job_level: int,
+        requirements: list[Precondition],
+        effects: list[Effect],
+        recurring_effects: list[Effect],
+        definition_id: str,
+    ) -> None:
+        self.name = name
+        self.description = description
+        self.job_level = job_level
+        self.requirements = requirements
+        self.effects = effects
+        self.recurring_effects = recurring_effects
+        self.definition_id = definition_id
+
+    def check_requirements(self, gameobject: GameObject) -> bool:
+        """Check if a character passes all the requirements for this job."""
+        return all([req.check(gameobject)] for req in self.requirements)

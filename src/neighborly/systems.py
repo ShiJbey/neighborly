@@ -13,8 +13,8 @@ from typing import ClassVar, Optional
 
 from sqlalchemy import select
 
-from neighborly.components.business import Business, BusinessStatus, Occupation
-from neighborly.components.character import Character, LifeStage, Pregnant
+from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
+from neighborly.components.character import Character, LifeStage, Pregnant, Species
 from neighborly.components.location import (
     FrequentedLocations,
     Location,
@@ -29,7 +29,6 @@ from neighborly.components.residence import (
 )
 from neighborly.components.settlement import District
 from neighborly.components.shared import Age
-from neighborly.components.skills import Skills
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
     BusinessSpawnTableEntry,
@@ -38,8 +37,8 @@ from neighborly.components.spawn_table import (
     ResidenceSpawnTable,
     ResidenceSpawnTableEntry,
 )
-from neighborly.components.stats import Lifespan, Stats
-from neighborly.components.traits import Traits
+from neighborly.components.stats import Lifespan
+from neighborly.components.traits import Trait, Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.definition_compiler import compile_definitions
@@ -71,7 +70,9 @@ from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
+    EffectLibrary,
     JobRoleLibrary,
+    PreconditionLibrary,
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
@@ -409,6 +410,7 @@ class CompileTraitDefsSystem(System):
 
     def on_update(self, world: World) -> None:
         trait_library = world.resource_manager.get_resource(TraitLibrary)
+        effect_library = world.resource_manager.get_resource(EffectLibrary)
 
         # Compile the loaded definitions
         compiled_defs = compile_definitions(trait_library.definitions.values())
@@ -421,12 +423,26 @@ class CompileTraitDefsSystem(System):
             if not trait_def.is_template:
                 trait_library.add_definition(trait_def)
 
+                trait_library.add_trait(
+                    Trait(
+                        definition_id=trait_def.definition_id,
+                        name=trait_def.name,
+                        description=trait_def.description,
+                        effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in trait_def.effects
+                        ],
+                        conflicting_traits=trait_def.conflicts_with,
+                    )
+                )
+
 
 class CompileSpeciesDefsSystem(System):
     """Instantiates all the species definitions within the SpeciesLibrary."""
 
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(SpeciesLibrary)
+        effect_library = world.resource_manager.get_resource(EffectLibrary)
 
         compiled_defs = compile_definitions(library.definitions.values())
 
@@ -435,6 +451,25 @@ class CompileSpeciesDefsSystem(System):
         for definition in compiled_defs:
             if not definition.is_template:
                 library.add_definition(definition)
+
+                library.add_species(
+                    Species(
+                        definition_id=definition.definition_id,
+                        name=definition.name,
+                        description=definition.description,
+                        effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in definition.effects
+                        ],
+                        conflicting_traits=definition.conflicts_with,
+                        adolescent_age=definition.adolescent_age,
+                        young_adult_age=definition.young_adult_age,
+                        adult_age=definition.adult_age,
+                        senior_age=definition.senior_age,
+                        lifespan=definition.lifespan,
+                        can_physically_age=definition.can_physically_age,
+                    )
+                )
 
 
 class CompileSkillDefsSystem(System):
@@ -460,6 +495,8 @@ class CompileJobRoleDefsSystem(System):
 
     def on_update(self, world: World) -> None:
         job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
+        effect_library = world.resource_manager.get_resource(EffectLibrary)
+        precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
 
         # Compile the loaded definitions
         compiled_defs = compile_definitions(job_role_library.definitions.values())
@@ -471,6 +508,27 @@ class CompileJobRoleDefsSystem(System):
         for role_def in compiled_defs:
             if not role_def.is_template:
                 job_role_library.add_definition(role_def)
+
+                job_role_library.add_role(
+                    JobRole(
+                        definition_id=role_def.definition_id,
+                        name=role_def.name,
+                        job_level=role_def.job_level,
+                        description=role_def.description,
+                        requirements=[
+                            precondition_library.create_from_obj(world, entry)
+                            for entry in role_def.requirements
+                        ],
+                        effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in role_def.effects
+                        ],
+                        recurring_effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in role_def.recurring_effects
+                        ],
+                    )
+                )
 
 
 class CompileDistrictDefsSystem(System):
@@ -884,15 +942,9 @@ class JobRoleMonthlyEffectsSystem(System):
     """
 
     def on_update(self, world: World) -> None:
-        for _, (skills, stats, occupation, _) in world.get_components(
-            (Skills, Stats, Occupation, Active)
-        ):
-
-            for skill_boost in occupation.job_role.periodic_skill_boosts:
-                skills.skills[skill_boost.name].base_value += skill_boost.value
-
-            for stat_boost in occupation.job_role.periodic_stat_boosts:
-                stats.get_stat(stat_boost.name).base_value += stat_boost.value
+        for _, (occupation, _) in world.get_components((Occupation, Active)):
+            for effect in occupation.job_role.recurring_effects:
+                effect.apply(occupation.gameobject)
 
 
 class TickTraitsSystem(System):

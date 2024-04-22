@@ -1,56 +1,60 @@
 {
-    "blacksmith": {
-        "name": "Blacksmith",
-        "job_level": 2,
-        "requirements": [
-            "?subject.skills.blacksmithing!?val",
-            "gte ?val 50"
-        ],
-        "periodic_skill_boosts": [
-            {
-                "name": "blacksmithing",
-                "value": 0.2
-            }
-        ]
-    },
-    "blacksmith_apprentice": {
-        "name": "Blacksmith Apprentice",
-        "job_level": 1,
-        "periodic_skill_boosts": [
-            {
-                "name": "blacksmithing",
-                "value": 3
-            }
-        ]
-    },
-    "cafe_owner": {
-        "name": "Cafe Owner"
-    },
-    "barista": {
-        "name": "Barista"
-    },
-    "farmer": {
-        "name": "Farmer"
-    },
-    "farmhand": {
-        "name": "Farmhand"
-    },
-    "shopkeeper": {
-        "name": "Shopkeeper"
-    },
-    "cashier": {
-        "name": "Cashier"
-    },
-    "theatre_owner": {
-        "name": "Theatre Owner"
-    },
-    "actor": {
-        "name": "Actor"
-    },
-    "bartender": {
-        "name": "Bartender"
-    },
-    "bar_owner": {
-        "name": "Bar Owner"
-    }
+  "blacksmith": {
+    "name": "Blacksmith",
+    "job_level": 2,
+    "requirements": [
+      {
+        "type": "RePraxisQuery",
+        "query": "?subject.skills.blacksmithing!?val\ngte ?val 50"
+      }
+    ],
+    "recurring_effects": [
+      {
+        "type": "IncreaseBaseSkill",
+        "skill": "blacksmithing",
+        "amount": 0.2
+      }
+    ]
+  },
+  "blacksmith_apprentice": {
+    "name": "Blacksmith Apprentice",
+    "job_level": 1,
+    "recurring_effects": [
+      {
+        "type": "IncreaseBaseSkill",
+        "skill": "blacksmithing",
+        "amount": 3
+      }
+    ]
+  },
+  "cafe_owner": {
+    "name": "Cafe Owner"
+  },
+  "barista": {
+    "name": "Barista"
+  },
+  "farmer": {
+    "name": "Farmer"
+  },
+  "farmhand": {
+    "name": "Farmhand"
+  },
+  "shopkeeper": {
+    "name": "Shopkeeper"
+  },
+  "cashier": {
+    "name": "Cashier"
+  },
+  "theatre_owner": {
+    "name": "Theatre Owner"
+  },
+  "actor": {
+    "name": "Actor"
+  },
+  "bartender": {
+    "name": "Bartender"
+  },
+  "bar_owner": {
+    "name": "Bar Owner"
+  }
 }

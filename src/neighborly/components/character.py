@@ -5,14 +5,16 @@
 from __future__ import annotations
 
 import enum
-from typing import Any
+from typing import Any, Iterable
 
 from sqlalchemy import ForeignKey, delete
 from sqlalchemy.orm import Mapped, mapped_column
 
+from neighborly.components.traits import Trait
 from neighborly.datetime import SimDate
 from neighborly.defs.base_types import SpeciesDef
 from neighborly.ecs import Component, GameData, GameObject
+from neighborly.effects.base_types import Effect
 
 
 class LifeStage(enum.IntEnum):
@@ -31,6 +33,55 @@ class Sex(enum.IntEnum):
     MALE = enum.auto()
     FEMALE = enum.auto()
     NOT_SPECIFIED = enum.auto()
+
+
+class Species(Trait):
+    """Configuration information about a character's species."""
+
+    __slots__ = (
+        "adolescent_age",
+        "young_adult_age",
+        "adult_age",
+        "senior_age",
+        "lifespan",
+        "can_physically_age",
+    )
+
+    definition_id: str
+    adolescent_age: int
+    young_adult_age: int
+    adult_age: int
+    senior_age: int
+    lifespan: str
+    can_physically_age: bool
+
+    def __init__(
+        self,
+        definition_id: str,
+        name: str,
+        description: str,
+        effects: list[Effect],
+        conflicting_traits: Iterable[str],
+        adolescent_age: int,
+        young_adult_age: int,
+        adult_age: int,
+        senior_age: int,
+        lifespan: str,
+        can_physically_age: bool,
+    ) -> None:
+        super().__init__(
+            definition_id=definition_id,
+            name=name,
+            description=description,
+            effects=effects,
+            conflicting_traits=conflicting_traits,
+        )
+        self.adolescent_age = adolescent_age
+        self.young_adult_age = young_adult_age
+        self.adult_age = adult_age
+        self.senior_age = senior_age
+        self.lifespan = lifespan
+        self.can_physically_age = can_physically_age
 
 
 class CharacterData(GameData):

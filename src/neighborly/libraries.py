@@ -10,13 +10,16 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections import defaultdict
-from typing import Generic, Iterable, Protocol, TypeVar, Type
+from typing import Any, Generic, Iterable, Protocol, Type, TypeVar
 
 from ordered_set import OrderedSet
 
 from neighborly.action import ActionConsideration
+from neighborly.components.business import JobRole
+from neighborly.components.character import Species
 from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.relationship import SocialRule
+from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
     BusinessDef,
     CharacterDef,
@@ -29,7 +32,7 @@ from neighborly.defs.base_types import (
     SpeciesDef,
     TraitDef,
 )
-from neighborly.ecs import GameObject
+from neighborly.ecs import GameObject, World
 from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.preconditions.base_types import Precondition
@@ -40,11 +43,7 @@ _T = TypeVar("_T", bound=ContentDefinition)
 class ContentDefinitionLibrary(Generic[_T]):
     """The collection of skill definitions and instances."""
 
-    _slots__ = (
-        "definitions",
-        "definition_types",
-        "default_definition_type",
-    )
+    _slots__ = ("definitions",)
 
     definitions: dict[str, _T]
     """IDs mapped to definition instances."""
@@ -77,9 +76,43 @@ class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
 class TraitLibrary(ContentDefinitionLibrary[TraitDef]):
     """Manages trait definitions and instances."""
 
+    _slots__ = ("instances",)
+
+    instances: dict[str, Trait]
+    """Trait instances."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.instances = {}
+
+    def add_trait(self, trait: Trait) -> None:
+        """Add trait to the library."""
+        self.instances[trait.definition_id] = trait
+
+    def get_trait(self, definition_id: str) -> Trait:
+        """Get a trait instance."""
+        return self.instances[definition_id]
+
 
 class SpeciesLibrary(ContentDefinitionLibrary[SpeciesDef]):
-    """Manages trait definitions and instances."""
+    """Manages species definitions and instances."""
+
+    _slots__ = ("instances",)
+
+    instances: dict[str, Species]
+    """Species instances."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.instances = {}
+
+    def add_species(self, species: Species) -> None:
+        """Add species to the library."""
+        self.instances[species.definition_id] = species
+
+    def get_species(self, definition_id: str) -> Species:
+        """Get a species instance."""
+        return self.instances[definition_id]
 
 
 class DistrictLibrary(ContentDefinitionLibrary[DistrictDef]):
@@ -100,6 +133,23 @@ class CharacterLibrary(ContentDefinitionLibrary[CharacterDef]):
 
 class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
     """Manages job role definitions and instances."""
+
+    _slots__ = ("instances",)
+
+    instances: dict[str, JobRole]
+    """Job role instances."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.instances = {}
+
+    def add_role(self, role: JobRole) -> None:
+        """Add job role to the library."""
+        self.instances[role.definition_id] = role
+
+    def get_role(self, definition_id: str) -> JobRole:
+        """Get a job role instance."""
+        return self.instances[definition_id]
 
 
 class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
@@ -320,7 +370,6 @@ class ActionConsiderationLibrary:
         return self.utility_considerations[action_id]
 
 
-
 class PreconditionLibrary:
     """Manages effect precondition types and constructs them when needed."""
 
@@ -338,7 +387,20 @@ class PreconditionLibrary:
 
     def add_precondition_type(self, precondition_type: Type[Precondition]) -> None:
         """Add a definition type for loading objs."""
-        self._precondition_types[precondition_type.__name__] = precondition_type
+        self._precondition_types[precondition_type.precondition_name()] = (
+            precondition_type
+        )
+
+    def create_from_obj(self, world: World, obj: dict[str, Any]) -> Precondition:
+        """Parse a definition from a dict and add to the library."""
+        params = {**obj}
+        precondition_name: str = params["type"]
+        del params["type"]
+
+        precondition_type = self.get_precondition_type(precondition_name)
+        precondition = precondition_type.instantiate(world, params)
+
+        return precondition
 
 
 class EffectLibrary:
@@ -358,4 +420,15 @@ class EffectLibrary:
 
     def add_effect_type(self, effect_type: Type[Effect]) -> None:
         """Add a definition type for loading objs."""
-        self._effect_types[effect_type.__name__] = effect_type
+        self._effect_types[effect_type.effect_name()] = effect_type
+
+    def create_from_obj(self, world: World, obj: dict[str, Any]) -> Effect:
+        """Parse a definition from a dict and add to the library."""
+        params = {**obj}
+        effect_name: str = params["type"]
+        del params["type"]
+
+        effect_type = self.get_effect_type(effect_name)
+        effect = effect_type.instantiate(world, params)
+
+        return effect

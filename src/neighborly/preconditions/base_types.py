@@ -5,13 +5,22 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 
 from neighborly.ecs import GameObject, World
 
 
 class Precondition(ABC):
     """Abstract base class for all precondition objects."""
+
+    __precondition_name__: ClassVar[str] = ""
+
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.__precondition_name__:
+            raise ValueError(
+                f"Please specify __precondition_name__ class attribute for {type(self)}"
+            )
 
     @property
     @abstractmethod
@@ -48,6 +57,11 @@ class Precondition(ABC):
             Keyword parameters to pass to the precondition.
         """
         raise NotImplementedError()
+
+    @classmethod
+    def precondition_name(cls) -> str:
+        """Get the precondition name used in data files."""
+        return cls.__precondition_name__
 
     def __str__(self) -> str:
         return self.description

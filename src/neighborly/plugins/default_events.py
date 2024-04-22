@@ -7,7 +7,7 @@ from __future__ import annotations
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.defs.base_types import JobRoleDef
+from neighborly.components.business import JobRole
 from neighborly.ecs import GameObject
 from neighborly.life_event import LifeEvent
 
@@ -28,11 +28,11 @@ class StartNewJobEvent(LifeEvent):
     character: GameObject
     business: GameObject
     business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    job_role: JobRoleDef
+    job_role: JobRole
     job_role_id: Mapped[str]
 
     def __init__(
-        self, character: GameObject, business: GameObject, job_role: JobRoleDef
+        self, character: GameObject, business: GameObject, job_role: JobRole
     ) -> None:
         super().__init__(character.world)
         self.character = character
@@ -249,14 +249,14 @@ class RetirementEvent(LifeEvent):
     character: GameObject
     business: GameObject
     business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    job_role: JobRoleDef
+    job_role: JobRole
     job_role_id: Mapped[str]
 
     def __init__(
         self,
         character: GameObject,
         business: GameObject,
-        job_role: JobRoleDef,
+        job_role: JobRole,
     ) -> None:
         super().__init__(character.world)
         self.character = character
@@ -289,14 +289,14 @@ class JobPromotionEvent(LifeEvent):
     character: GameObject
     business: GameObject
     business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    job_role: JobRoleDef
+    job_role: JobRole
     job_role_id: Mapped[str]
 
     def __init__(
         self,
         character: GameObject,
         business: GameObject,
-        job_role: JobRoleDef,
+        job_role: JobRole,
     ) -> None:
         super().__init__(character.world)
         self.character = character
@@ -329,11 +329,11 @@ class FiredFromJobEvent(LifeEvent):
     character: GameObject
     business: GameObject
     business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    job_role: JobRoleDef
+    job_role: JobRole
     job_role_id: Mapped[str]
 
     def __init__(
-        self, character: GameObject, business: GameObject, job_role: JobRoleDef
+        self, character: GameObject, business: GameObject, job_role: JobRole
     ) -> None:
         super().__init__(character.world)
         self.character = character

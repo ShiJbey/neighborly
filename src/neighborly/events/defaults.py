@@ -7,7 +7,7 @@ from __future__ import annotations
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.defs.base_types import JobRoleDef
+from neighborly.components.business import JobRole
 from neighborly.ecs import GameObject
 from neighborly.life_event import LifeEvent
 
@@ -309,14 +309,14 @@ class LeaveJobEvent(LifeEvent):
     role_id: Mapped[str]
     reason: Mapped[str] = mapped_column(default="")
     business: GameObject
-    job_role: JobRoleDef
+    job_role: JobRole
     character: GameObject
 
     def __init__(
         self,
         character: GameObject,
         business: GameObject,
-        job_role: JobRoleDef,
+        job_role: JobRole,
         reason: str = "",
     ) -> None:
         super().__init__(character.world)
@@ -384,14 +384,14 @@ class LayOffEvent(LifeEvent):
     role_id: Mapped[str]
     reason: Mapped[str] = mapped_column(default="")
     business: GameObject
-    job_role: JobRoleDef
+    job_role: JobRole
     character: GameObject
 
     def __init__(
         self,
         character: GameObject,
         business: GameObject,
-        job_role: JobRoleDef,
+        job_role: JobRole,
         reason: str = "",
     ) -> None:
         super().__init__(self.world)

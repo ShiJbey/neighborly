@@ -5,8 +5,6 @@
 import random
 from typing import cast
 
-from repraxis.query import DBQuery
-
 from neighborly.components.business import Business, BusinessStatus, Occupation
 from neighborly.components.character import Character, LifeStage, Pregnant, Sex
 from neighborly.components.relationship import Relationship, Relationships
@@ -16,7 +14,6 @@ from neighborly.events.defaults import LeaveJobEvent
 from neighborly.helpers.action import get_action_success_probability, get_action_utility
 from neighborly.helpers.business import add_employee, close_business
 from neighborly.helpers.character import move_into_residence
-from neighborly.helpers.db_helpers import preprocess_query_string
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import get_relationships_with_traits
 from neighborly.libraries import JobRoleLibrary
@@ -64,19 +61,10 @@ class FindJobSystem(System):
                 open_positions = business.get_open_positions()
 
                 for role_id in open_positions:
-                    job_role = library.get_definition(role_id)
+                    job_role = library.get_role(role_id)
 
-                    for rule in job_role.requirements:
-
-                        query_lines = preprocess_query_string(rule)
-
-                        result = DBQuery(query_lines).run(
-                            character.world.rp_db,
-                            bindings=[{"?character": character.uid}],
-                        )
-
-                        if result.success:
-                            add_employee(business.gameobject, character, job_role)
+                    if job_role.check_requirements(character):
+                        add_employee(business.gameobject, character, job_role)
 
 
 class FiredFromJobSystem(System):
@@ -140,7 +128,7 @@ class JobPromotionSystem(System):
                 potential_promotion_scores: list[float] = []
 
                 for role_id in open_positions:
-                    role = job_role_library.get_definition(role_id)
+                    role = job_role_library.get_role(role_id)
 
                     if current_job_level >= role.job_level:
                         continue
@@ -199,11 +187,7 @@ class BecomeBusinessOwnerSystem(System):
                         action_utilities.append(utility_score)
 
                 else:
-                    result = DBQuery(owner_role.requirements).run(
-                        world.rp_db, bindings=[{"?character": character.gameobject.uid}]
-                    )
-
-                    if result.success:
+                    if owner_role.check_requirements(character.gameobject):
                         action = BecomeBusinessOwner(
                             character.gameobject, business.gameobject
                         )

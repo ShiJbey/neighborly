@@ -11,13 +11,15 @@ from neighborly.components.relationship import Relationship
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.db_helpers import preprocess_query_string
 from neighborly.helpers.skills import get_skill, has_skill
-from neighborly.helpers.stats import has_stat, get_stat
+from neighborly.helpers.stats import get_stat, has_stat
 from neighborly.helpers.traits import has_trait
 from neighborly.preconditions.base_types import Precondition
 
 
 class HasTrait(Precondition):
     """A precondition that check if a GameObject has a given trait."""
+
+    __precondition_name__ = "HasTrait"
 
     __slots__ = ("trait_id",)
 
@@ -44,6 +46,8 @@ class HasTrait(Precondition):
 class TargetHasTrait(Precondition):
     """A precondition that checks if a relationship's target has a given trait."""
 
+    __precondition_name__ = "TargetHasTrait"
+
     __slots__ = ("trait_id",)
 
     trait_id: str
@@ -68,6 +72,8 @@ class TargetHasTrait(Precondition):
 
 class SkillRequirement(Precondition):
     """A precondition that requires a GameObject to have a certain level skill."""
+
+    __precondition_name__ = "SkillRequirement"
 
     __slots__ = "skill_id", "skill_level"
 
@@ -103,6 +109,8 @@ class SkillRequirement(Precondition):
 class StatRequirement(Precondition):
     """A precondition that requires a GameObject to have a certain stat value."""
 
+    __precondition_name__ = "StatRequirement"
+
     __slots__ = "stat_name", "required_value"
 
     stat_name: str
@@ -137,6 +145,8 @@ class StatRequirement(Precondition):
 class AtLeastLifeStage(Precondition):
     """A precondition that requires a character to be at least a given life stage."""
 
+    __precondition_name__ = "AtLeaseLifeStage"
+
     __slots__ = ("life_stage",)
 
     life_stage: LifeStage
@@ -165,6 +175,8 @@ class AtLeastLifeStage(Precondition):
 
 class RePraxisPrecondition(Precondition):
     """Requires that a given RePraxis query succeeds."""
+
+    __precondition_name__ = "RePraxisQuery"
 
     __slots__ = ("query", "_description")
 

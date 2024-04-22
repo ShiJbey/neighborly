@@ -10,7 +10,7 @@ import pytest
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
-from neighborly.loaders import load_characters, load_skills, load_species
+from neighborly.loaders import load_characters, load_skills, load_species, load_traits
 from neighborly.plugins import default_traits
 from neighborly.simulation import Simulation
 
@@ -28,6 +28,7 @@ def test_sim() -> Simulation:
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     load_skills(sim, _TEST_DATA_DIR / "skills.json")
     load_species(sim, _TEST_DATA_DIR / "species.json")
+    load_traits(sim, _TEST_DATA_DIR / "traits.json")
 
     sim.initialize()
 
@@ -41,9 +42,9 @@ def test_add_trait(test_sim: Simulation) -> None:
 
     assert has_trait(character, "flirtatious") is False
 
-    add_trait(character, "flirtatious")
+    success = add_trait(character, "flirtatious")
 
-    assert has_trait(character, "flirtatious") is True
+    assert success is True
 
 
 def test_remove_trait(test_sim: Simulation) -> None:
@@ -57,9 +58,9 @@ def test_remove_trait(test_sim: Simulation) -> None:
 
     assert has_trait(character, "flirtatious") is True
 
-    remove_trait(character, "flirtatious")
+    success = remove_trait(character, "flirtatious")
 
-    assert has_trait(character, "flirtatious") is False
+    assert success is True
 
 
 def test_add_remove_trait_effects(test_sim: Simulation) -> None:

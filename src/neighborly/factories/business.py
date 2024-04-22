@@ -44,7 +44,7 @@ class BusinessFactory(ComponentFactory):
         )
 
         owner_role_id: str = kwargs["owner_role"]
-        owner_role = job_role_library.get_definition(owner_role_id)
+        owner_role = job_role_library.get_role(owner_role_id)
         employee_roles: dict[str, int] = kwargs.get("employee_roles", {})
 
         business = Business(

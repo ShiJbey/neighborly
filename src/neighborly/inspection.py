@@ -328,7 +328,7 @@ def _get_traits_table(obj: GameObject) -> str:
     output = "=== Traits ===\n"
 
     output += tabulate.tabulate(
-        [(entry.trait_id, entry.description) for entry in traits.traits.values()],
+        [(entry.trait.name, entry.description) for entry in traits.traits.values()],
         headers=("Name", "Description"),
     )
 
@@ -375,7 +375,7 @@ def _get_relationships_table(obj: GameObject) -> str:
         romantic_compatibility = get_stat(relationship, "romantic_compatibility").value
         interaction_score = get_stat(relationship, "interaction_score").value
         traits = ", ".join(
-            t.trait_id for t in relationship.get_component(Traits).traits.values()
+            t.trait.name for t in relationship.get_component(Traits).traits.values()
         )
 
         relationship_data.append(

@@ -21,6 +21,8 @@ from neighborly.helpers.stats import get_stat
 class AddStatBuff(Effect):
     """Add a buff to a stat."""
 
+    __effect_name__ = "AddStatBuff"
+
     __slots__ = ("modifier_type", "amount", "stat_id")
 
     modifier_type: StatModifierType
@@ -70,6 +72,8 @@ class AddStatBuff(Effect):
 
 class AddStatDebuff(Effect):
     """Add a debuff to a stat."""
+
+    __effect_name__ = "AddStatDebuff"
 
     __slots__ = "modifier_type", "amount", "stat_id"
 
@@ -121,6 +125,8 @@ class AddStatDebuff(Effect):
 class IncreaseBaseStat(Effect):
     """Permanently increase the base value of a stat."""
 
+    __effect_name__ = "IncreaseBaseStat"
+
     __slots__ = ("amount", "stat_id")
 
     amount: float
@@ -158,6 +164,8 @@ class IncreaseBaseStat(Effect):
 class DecreaseBaseStat(Effect):
     """Permanently decrease the base value of a stat."""
 
+    __effect_name__ = "DecreaseBaseStat"
+
     __slots__ = ("amount", "stat_id")
 
     amount: float
@@ -194,6 +202,8 @@ class DecreaseBaseStat(Effect):
 
 class AddSkillDebuff(Effect):
     """Adds a debuff modifier to a skill."""
+
+    __effect_name__ = "AddSkillDebuff"
 
     __slots__ = ("skill_name", "amount")
 
@@ -237,6 +247,8 @@ class AddSkillDebuff(Effect):
 class AddSkillBuff(Effect):
     """Adds a stat buff modifier to a skill."""
 
+    __effect_name__ = "AddSkillBuff"
+
     __slots__ = ("skill_name", "amount")
 
     skill_name: str
@@ -279,6 +291,8 @@ class AddSkillBuff(Effect):
 class DecreaseBaseSkill(Effect):
     """Permanently decreases the base value of a skill."""
 
+    __effect_name__ = "DecreaseBaseSkill"
+
     __slots__ = ("skill_name", "amount")
 
     skill_name: str
@@ -317,6 +331,8 @@ class DecreaseBaseSkill(Effect):
 
 class IncreaseBaseSkill(Effect):
     """Permanently increases the base value of a skill."""
+
+    __effect_name__ = "IncreaseBaseSkill"
 
     __slots__ = ("skill_name", "amount")
 
@@ -357,6 +373,8 @@ class IncreaseBaseSkill(Effect):
 class AddLocationPreference(Effect):
     """Add a new location preference rule."""
 
+    __effect_name__ = "AddLocationPreference"
+
     __slots__ = ("rule_id",)
 
     rule_id: str
@@ -384,6 +402,8 @@ class AddLocationPreference(Effect):
 
 class AddSocialRule(Effect):
     """Add a new social rule."""
+
+    __effect_name__ = "AddSocialRule"
 
     __slots__ = ("rule_id",)
 

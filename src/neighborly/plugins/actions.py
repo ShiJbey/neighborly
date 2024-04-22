@@ -8,6 +8,7 @@ from neighborly.action import Action
 from neighborly.components.business import (
     Business,
     BusinessStatus,
+    JobRole,
     Occupation,
     Unemployed,
 )
@@ -15,7 +16,6 @@ from neighborly.components.character import Pregnant
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.datetime import SimDate
-from neighborly.defs.base_types import JobRoleDef
 from neighborly.ecs import GameObject
 from neighborly.helpers.action import get_action_success_probability, get_action_utility
 from neighborly.helpers.business import close_business, fire_employee, leave_job
@@ -420,10 +420,10 @@ class PromoteEmployee(Action):
 
     character: GameObject
     employee: GameObject
-    role: JobRoleDef
+    role: JobRole
 
     def __init__(
-        self, character: GameObject, employee: GameObject, role: JobRoleDef
+        self, character: GameObject, employee: GameObject, role: JobRole
     ) -> None:
         super().__init__(character.world)
         self.character = character
