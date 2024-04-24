@@ -39,7 +39,6 @@ from neighborly.libraries import (
     TraitLibrary,
 )
 from neighborly.simulation import Simulation
-from neighborly.tracery import Tracery
 
 
 def load_districts(
@@ -227,23 +226,6 @@ def load_species(
         library.add_definition(
             SpeciesDef.model_validate({"definition_id": definition_id, **params})
         )
-
-
-def load_tracery(
-    sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
-) -> None:
-    """Loads Tracery rules from a JSON file.
-
-    Parameters
-    ----------
-    sim
-        The simulation instance.
-    file_path
-        The path of the data file to load.
-    """
-    with open(file_path, "r", encoding="utf8") as file:
-        rule_data: dict[str, list[str]] = yaml.safe_load(file)
-        sim.world.resource_manager.get_resource(Tracery).add_rules(rule_data)
 
 
 def load_skills(

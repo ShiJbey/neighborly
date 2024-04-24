@@ -22,11 +22,9 @@ from neighborly.loaders import (
     load_residences,
     load_settlements,
     load_skills,
-    load_tracery,
     load_traits,
 )
 from neighborly.simulation import Simulation
-from neighborly.tracery import Tracery
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 
@@ -99,18 +97,6 @@ def test_load_job_roles() -> None:
     trait_def = library.get_definition("blacksmith")
 
     assert trait_def.definition_id == "blacksmith"
-
-
-def test_load_names() -> None:
-    sim = Simulation()
-
-    load_tracery(sim, _TEST_DATA_DIR / "sample.tracery.json")
-
-    tracery = sim.world.resource_manager.get_resource(Tracery)
-
-    generated_name = tracery.generate("#simpsons_name#")
-
-    assert generated_name in {"Homer", "Marge", "Maggie", "Lisa", "Bart"}
 
 
 def test_load_skills() -> None:

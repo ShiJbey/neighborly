@@ -27,13 +27,7 @@ from neighborly.effects.effects import (
     IncreaseBaseStat,
 )
 from neighborly.factories.business import BusinessFactory
-from neighborly.factories.character import (
-    CharacterFactory,
-    generate_any_first_name,
-    generate_feminine_first_name,
-    generate_last_name,
-    generate_masculine_first_name,
-)
+from neighborly.factories.character import CharacterFactory
 from neighborly.factories.location import (
     FrequentedLocationsFactory,
     LocationFactory,
@@ -41,12 +35,7 @@ from neighborly.factories.location import (
 )
 from neighborly.factories.relationships import RelationshipsFactory, SocialRulesFactory
 from neighborly.factories.residence import ResidentialBuildingFactory
-from neighborly.factories.settlement import (
-    DistrictFactory,
-    SettlementFactory,
-    default_district_name_factory,
-    default_settlement_name_factory,
-)
+from neighborly.factories.settlement import DistrictFactory, SettlementFactory
 from neighborly.factories.shared import (
     AgeFactory,
     AgentFactory,
@@ -129,7 +118,6 @@ from neighborly.systems import (
     UpdateFrequentedLocationSystem,
     UpdateSystems,
 )
-from neighborly.tracery import Tracery
 
 
 class Simulation:
@@ -182,28 +170,9 @@ class Simulation:
         self.world.resource_manager.add_resource(SettlementNameFactories())
         self.world.resource_manager.add_resource(EffectLibrary())
         self.world.resource_manager.add_resource(PreconditionLibrary())
-        self.world.resources.get_resource(SettlementNameFactories).add_factory(
-            "default", default_settlement_name_factory
-        )
         self.world.resource_manager.add_resource(DistrictNameFactories())
-        self.world.resources.get_resource(DistrictNameFactories).add_factory(
-            "default", default_district_name_factory
-        )
         self.world.resource_manager.add_resource(CharacterNameFactories())
-        self.world.resources.get_resource(CharacterNameFactories).add_factory(
-            "default-first", generate_any_first_name
-        )
-        self.world.resources.get_resource(CharacterNameFactories).add_factory(
-            "masculine-first", generate_masculine_first_name
-        )
-        self.world.resources.get_resource(CharacterNameFactories).add_factory(
-            "feminine-first", generate_feminine_first_name
-        )
-        self.world.resources.get_resource(CharacterNameFactories).add_factory(
-            "default-last", generate_last_name
-        )
         self.world.resource_manager.add_resource(BusinessNameFactories())
-        self.world.resource_manager.add_resource(Tracery(self._config.seed))
         self.world.resource_manager.add_resource(GlobalEventHistory())
         self.world.resource_manager.add_resource(ActionConsiderationLibrary())
 

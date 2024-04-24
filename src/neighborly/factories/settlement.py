@@ -7,7 +7,6 @@ from typing import Any
 from neighborly.components.settlement import District, Settlement
 from neighborly.ecs import Component, ComponentFactory, GameObject
 from neighborly.libraries import DistrictNameFactories, SettlementNameFactories
-from neighborly.tracery import Tracery
 
 
 class SettlementFactory(ComponentFactory):
@@ -54,17 +53,3 @@ class DistrictFactory(ComponentFactory):
             residential_slots=residential_slots,
             business_slots=business_slots,
         )
-
-
-def default_district_name_factory(gameobject: GameObject) -> str:
-    """Generate a new name"""
-    tracery = gameobject.world.resource_manager.get_resource(Tracery)
-    name = tracery.generate("#settlement_name#")
-    return name
-
-
-def default_settlement_name_factory(gameobject: GameObject) -> str:
-    """Generate a new name"""
-    tracery = gameobject.world.resource_manager.get_resource(Tracery)
-    name = tracery.generate("#settlement_name#")
-    return name

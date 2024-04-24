@@ -45,7 +45,6 @@ classifiers = [
 dependencies = [
     "esper==2.*",
     "ordered-set==4.*",
-    "tracery3==1.*",
     "tabulate==0.9.*",
     "PyYAML==6.0.*",
     "tqdm==4.*",
