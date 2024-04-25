@@ -342,17 +342,3 @@ def depart_settlement(character: GameObject) -> None:
                 resident, "departed"
             ):
                 depart_settlement(resident)
-
-
-def register_character_def(world: World, definition: CharacterDef) -> None:
-    """Add a new character definition for the CharacterLibrary.
-
-    Parameters
-    ----------
-    world
-        The world instance containing the character library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(CharacterLibrary).add_definition(definition)
-    world.resource_manager.get_resource(CharacterLibrary).add_definition(definition)

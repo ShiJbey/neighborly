@@ -14,7 +14,6 @@ from neighborly.components.business import (
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
-from neighborly.defs.base_types import BusinessDef, JobRoleDef
 from neighborly.ecs import GameObject, World
 from neighborly.helpers.location import (
     add_frequented_location,
@@ -24,7 +23,7 @@ from neighborly.helpers.location import (
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, remove_trait
-from neighborly.libraries import BusinessLibrary, JobRoleLibrary
+from neighborly.libraries import BusinessLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 from neighborly.plugins.default_events import FiredFromJobEvent
 
@@ -60,33 +59,6 @@ def create_business(
         add_trait(business, trait)
 
     return business
-
-
-def register_business_def(world: World, definition: BusinessDef) -> None:
-    """Add a new business definition for the BusinessLibrary.
-
-    Parameters
-    ----------
-    world
-        The world instance containing the business library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(BusinessLibrary).add_definition(definition)
-
-
-def register_job_role_def(world: World, definition: JobRoleDef) -> None:
-    """Add a new job role definition for the JobRoleLibrary.
-
-    Parameters
-    ----------
-    world
-        The world instance containing the job role library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(JobRoleLibrary).add_definition(definition)
-    world.resource_manager.get_resource(JobRoleLibrary).add_definition(definition)
 
 
 def close_business(business: GameObject) -> None:

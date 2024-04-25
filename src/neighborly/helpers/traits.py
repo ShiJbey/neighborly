@@ -8,8 +8,7 @@ from typing import Union
 
 from neighborly.components.relationship import Relationships
 from neighborly.components.traits import Trait, Traits
-from neighborly.defs.base_types import TraitDef
-from neighborly.ecs import GameObject, World
+from neighborly.ecs import GameObject
 from neighborly.libraries import TraitLibrary
 
 
@@ -95,19 +94,6 @@ def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
         return gameobject.get_component(Traits).has_trait(library.get_trait(trait))
 
     return gameobject.get_component(Traits).has_trait(trait)
-
-
-def register_trait_def(world: World, definition: TraitDef) -> None:
-    """Add a new trait definition for the TraitLibrary.
-
-    Parameters
-    ----------
-    world
-        The world instance containing the trait library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(TraitLibrary).add_definition(definition)
 
 
 def get_relationships_with_traits(
