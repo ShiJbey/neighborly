@@ -117,15 +117,15 @@ class JobPromotionSystem(System):
             if business_owner is None:
                 continue
 
+            potential_promotions: list[PromoteEmployee] = []
+            potential_promotion_scores: list[float] = []
+
             # Evaluate promoting each employee
             for employee, current_role in business.employees.items():
 
                 current_job_level = current_role.job_level
 
                 open_positions = business.get_open_positions()
-
-                potential_promotions: list[PromoteEmployee] = []
-                potential_promotion_scores: list[float] = []
 
                 for role_id in open_positions:
                     role = job_role_library.get_role(role_id)
@@ -140,16 +140,19 @@ class JobPromotionSystem(System):
                         potential_promotions.append(action)
                         potential_promotion_scores.append(utility)
 
-                action = rng.choices(
-                    potential_promotions, potential_promotion_scores, k=1
-                )[0]
+            if not potential_promotions:
+                continue
 
-                probability_success = get_action_success_probability(action)
+            action = rng.choices(potential_promotions, potential_promotion_scores, k=1)[
+                0
+            ]
 
-                if rng.random() < probability_success:
-                    action.on_success()
-                else:
-                    action.on_failure()
+            probability_success = get_action_success_probability(action)
+
+            if rng.random() < probability_success:
+                action.on_success()
+            else:
+                action.on_failure()
 
 
 class BecomeBusinessOwnerSystem(System):
