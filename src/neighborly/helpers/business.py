@@ -22,7 +22,11 @@ from neighborly.helpers.location import (
 )
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.helpers.traits import (
+    add_relationship_trait,
+    add_trait,
+    remove_relationship_trait,
+)
 from neighborly.libraries import BusinessLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 from neighborly.plugins.default_events import FiredFromJobEvent
@@ -104,16 +108,16 @@ def lay_off_employee(business: GameObject, employee: GameObject) -> None:
     # Update boss/employee relationships if needed
     owner = business_comp.owner
     if owner is not None:
-        remove_trait(get_relationship(employee, owner), "boss")
-        remove_trait(get_relationship(owner, employee), "employee")
+        remove_relationship_trait(employee, owner, "boss")
+        remove_relationship_trait(owner, employee, "employee")
 
     # Update coworker relationships
     for other_employee, _ in business_comp.employees.items():
         if other_employee == employee:
             continue
 
-        remove_trait(get_relationship(employee, other_employee), "coworker")
-        remove_trait(get_relationship(other_employee, employee), "coworker")
+        remove_relationship_trait(employee, other_employee, "coworker")
+        remove_relationship_trait(other_employee, employee, "coworker")
 
     employee.add_component(Unemployed(employee, timestamp=current_date))
     employee.remove_component(Occupation)
@@ -134,8 +138,8 @@ def leave_job(business: GameObject, character: GameObject) -> None:
 
         # Update relationships boss/employee relationships
         for employee, _ in business_comp.employees.items():
-            remove_trait(get_relationship(character, employee), "employee")
-            remove_trait(get_relationship(employee, character), "boss")
+            remove_relationship_trait(character, employee, "employee")
+            remove_relationship_trait(employee, character, "boss")
 
     else:
         business_comp.remove_employee(character)
@@ -143,16 +147,16 @@ def leave_job(business: GameObject, character: GameObject) -> None:
         # Update boss/employee relationships if needed
         owner = business_comp.owner
         if owner is not None:
-            remove_trait(get_relationship(character, owner), "boss")
-            remove_trait(get_relationship(owner, character), "employee")
+            remove_relationship_trait(character, owner, "boss")
+            remove_relationship_trait(owner, character, "employee")
 
         # Update coworker relationships
         for other_employee, _ in business_comp.employees.items():
             if other_employee == character:
                 continue
 
-            remove_trait(get_relationship(character, other_employee), "coworker")
-            remove_trait(get_relationship(other_employee, character), "coworker")
+            remove_relationship_trait(character, other_employee, "coworker")
+            remove_relationship_trait(other_employee, character, "coworker")
 
     character.add_component(Unemployed(character, timestamp=current_date))
     character.remove_component(Occupation)
@@ -204,13 +208,13 @@ def add_employee(
 
     # Update boss/employee relationships if needed
     if business_comp.owner is not None:
-        add_trait(get_relationship(character, business_comp.owner), "boss")
-        add_trait(get_relationship(business_comp.owner, character), "employee")
+        add_relationship_trait(character, business_comp.owner, "boss")
+        add_relationship_trait(business_comp.owner, character, "employee")
 
     # Update employee/employee relationships
     for employee, _ in business_comp.employees.items():
-        add_trait(get_relationship(character, employee), "coworker")
-        add_trait(get_relationship(employee, character), "coworker")
+        add_relationship_trait(character, employee, "coworker")
+        add_relationship_trait(employee, character, "coworker")
 
     business_comp.add_employee(character, job_role)
 

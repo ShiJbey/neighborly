@@ -29,10 +29,11 @@ from neighborly.helpers.location import (
 )
 from neighborly.helpers.relationship import deactivate_relationships, get_relationship
 from neighborly.helpers.traits import (
+    add_relationship_trait,
     add_trait,
     get_relationships_with_traits,
     has_trait,
-    remove_trait,
+    remove_relationship_trait,
 )
 from neighborly.libraries import CharacterLibrary, TraitLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
@@ -205,22 +206,19 @@ def die(character: GameObject) -> None:
     for rel in get_relationships_with_traits(character, "dating"):
         target = rel.get_component(Relationship).target
 
-        remove_trait(rel, "dating")
-        remove_trait(get_relationship(target, character), "dating")
-
-        add_trait(rel, "ex_partner")
-        add_trait(get_relationship(target, character), "ex_partner")
+        remove_relationship_trait(target, character, "dating")
+        remove_relationship_trait(character, target, "dating")
+        add_relationship_trait(target, character, "ex_partner")
+        add_relationship_trait(character, target, "ex_partner")
 
     for rel in get_relationships_with_traits(character, "spouse"):
         target = rel.get_component(Relationship).target
 
-        remove_trait(rel, "spouse")
-        remove_trait(get_relationship(target, character), "spouse")
-
-        add_trait(rel, "ex_spouse")
-        add_trait(get_relationship(target, character), "ex_spouse")
-
-        add_trait(rel, "widow")
+        remove_relationship_trait(character, target, "spouse")
+        remove_relationship_trait(target, character, "spouse")
+        add_relationship_trait(target, character, "ex_spouse")
+        add_relationship_trait(character, target, "ex_spouse")
+        add_relationship_trait(target, character, "widow")
 
     # Remove the character from their occupation
     if occupation := character.try_component(Occupation):
@@ -239,8 +237,8 @@ def move_out_of_residence(character: GameObject) -> None:
             if resident == character:
                 continue
 
-            remove_trait(get_relationship(character, resident), "live_together")
-            remove_trait(get_relationship(resident, character), "live_together")
+            add_relationship_trait(character, resident, "live_together")
+            add_relationship_trait(resident, character, "live_together")
 
         if former_residence_comp.is_owner(character):
             former_residence_comp.remove_owner(character)
@@ -287,8 +285,8 @@ def move_into_residence(
         if resident == character:
             continue
 
-        add_trait(get_relationship(character, resident), "live_together")
-        add_trait(get_relationship(resident, character), "live_together")
+        add_relationship_trait(character, resident, "live_together")
+        add_relationship_trait(resident, character, "live_together")
 
     new_district = (
         new_residence.get_component(ResidentialUnit)

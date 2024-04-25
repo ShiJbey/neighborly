@@ -1,6 +1,6 @@
 [
   {
-    "belief_id": "attracted_to_men",
+    "belief_id": "men_are_attractive",
     "description": "Men are attractive",
     "preconditions": "?target.character.sex!MALE",
     "effects": [
@@ -17,14 +17,31 @@
     ]
   },
   {
-    "belief_id": "attracted_to_women",
+    "belief_id": "men_are_not_attractive",
+    "description": "Men are not attractive",
+    "preconditions": "?target.character.sex!MALE",
+    "effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "value": -15
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "value": -5
+      }
+    ]
+  },
+  {
+    "belief_id": "women_are_attractive",
     "description": "Women are attractive.",
     "preconditions": "?target.character.sex!FEMALE",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "romance",
-        "value": 5
+        "value": 15
       },
       {
         "type": "AddStatBuff",
@@ -34,82 +51,19 @@
     ]
   },
   {
-    "belief_id": "makes_friends_easily",
+    "belief_id": "women_are_not_attractive",
+    "description": "Women are not attractive.",
+    "preconditions": "?target.character.sex!FEMALE",
     "effects": [
       {
-        "name": "reputation",
-        "value": 20,
-        "modifier_type": "FLAT"
-      }
-    ]
-  },
-  {
-    "belief_id": "believes_in_people",
-    "effects": [
-      {
-        "name": "reputation",
-        "value": 5
-      },
-      {
-        "name": "compatibility",
-        "value": 3
-      }
-    ]
-  },
-  {
-    "belief_id": "is_flirtatious",
-    "effects": [
-      {
-        "name": "romance",
-        "value": 30
-      },
-      {
-        "name": "romantic_compatibility",
-        "value": 4
-      }
-    ]
-  },
-  {
-    "belief_id": "not_trustworthy",
-    "effects": [
-      {
-        "name": "reputation",
-        "value": -5
-      },
-      {
-        "name": "compatibility",
-        "value": -5
-      },
-      {
-        "name": "romantic_compatibility",
-        "value": -3
-      }
-    ]
-  },
-  {
-    "belief_id": "has_trouble_making_friends",
-    "effects": [
-      {
-        "name": "reputation",
-        "value": -2
-      }
-    ]
-  },
-  {
-    "belief_id": "no_trouble_making_friends",
-    "effects": [
-      {
-        "name": "compatibility",
-        "value": 2
-      }
-    ]
-  },
-  {
-    "belief_id": "good_at_making_friends",
-    "effects": [
-      {
-        "name": "reputation",
+        "type": "AddStatBuff",
+        "stat": "romance",
         "value": 15
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "value": 5
       }
     ]
   }

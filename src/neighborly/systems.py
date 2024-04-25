@@ -40,7 +40,7 @@ from neighborly.components.spawn_table import (
     ResidenceSpawnTableEntry,
 )
 from neighborly.components.stats import Lifespan
-from neighborly.components.traits import Trait, Traits
+from neighborly.components.traits import Trait, TraitType, Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.definition_compiler import compile_definitions
@@ -63,11 +63,13 @@ from neighborly.helpers.character import (
     set_rand_age,
 )
 from neighborly.helpers.location import score_location
-from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, get_relationships_with_traits
+from neighborly.helpers.traits import (
+    add_relationship_trait,
+    get_relationships_with_traits,
+)
 from neighborly.libraries import (
     BeliefLibrary,
     BusinessLibrary,
@@ -431,12 +433,29 @@ class CompileTraitDefsSystem(System):
                     Trait(
                         definition_id=trait_def.definition_id,
                         name=trait_def.name,
+                        trait_type=TraitType[trait_def.trait_type.upper()],
                         description=trait_def.description,
                         effects=[
                             effect_library.create_from_obj(world, entry)
                             for entry in trait_def.effects
                         ],
                         conflicting_traits=trait_def.conflicts_with,
+                        target_effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in trait_def.target_effects
+                        ],
+                        owner_effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in trait_def.owner_effects
+                        ],
+                        outgoing_relationship_effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in trait_def.outgoing_relationship_effects
+                        ],
+                        incoming_relationship_effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in trait_def.incoming_relationship_effects
+                        ],
                     )
                 )
 
@@ -922,14 +941,14 @@ class ChildBirthSystem(System):
             )
 
             # Birthing parent to child
-            add_trait(get_relationship(character.gameobject, baby), "child")
-            add_trait(get_relationship(baby, character.gameobject), "parent")
-            add_trait(get_relationship(baby, character.gameobject), "biological_parent")
+            add_relationship_trait(character.gameobject, baby, "child")
+            add_relationship_trait(baby, character.gameobject, "parent")
+            add_relationship_trait(baby, character.gameobject, "biological_parent")
 
             # Other parent to child
-            add_trait(get_relationship(other_parent, baby), "child")
-            add_trait(get_relationship(baby, other_parent), "parent")
-            add_trait(get_relationship(baby, other_parent), "biological_parent")
+            add_relationship_trait(other_parent, baby, "child")
+            add_relationship_trait(baby, other_parent, "parent")
+            add_relationship_trait(baby, other_parent, "biological_parent")
 
             # Create relationships with children of birthing parent
             for relationship in get_relationships_with_traits(
@@ -943,8 +962,8 @@ class ChildBirthSystem(System):
                 sibling = rel.target
 
                 # Baby to sibling
-                add_trait(get_relationship(baby, sibling), "sibling")
-                add_trait(get_relationship(sibling, baby), "sibling")
+                add_relationship_trait(baby, sibling, "sibling")
+                add_relationship_trait(sibling, baby, "sibling")
 
             # Create relationships with children of the birthing parent's spouses
             for spousal_rel in get_relationships_with_traits(
@@ -953,8 +972,8 @@ class ChildBirthSystem(System):
                 spouse = spousal_rel.get_component(Relationship).target
 
                 if spousal_rel.is_active:
-                    add_trait(get_relationship(spouse, baby), "child")
-                    add_trait(get_relationship(baby, spouse), "parent")
+                    add_relationship_trait(spouse, baby, "child")
+                    add_relationship_trait(baby, spouse, "parent")
 
                 for child_rel in get_relationships_with_traits(spouse, "child"):
                     rel = child_rel.get_component(Relationship)
@@ -964,8 +983,8 @@ class ChildBirthSystem(System):
                     sibling = rel.target
 
                     # Baby to sibling
-                    add_trait(get_relationship(baby, sibling), "sibling")
-                    add_trait(get_relationship(sibling, baby), "sibling")
+                    add_relationship_trait(baby, sibling, "sibling")
+                    add_relationship_trait(sibling, baby, "sibling")
 
             # Create relationships with children of other parent
             for relationship in get_relationships_with_traits(other_parent, "child"):
@@ -976,8 +995,8 @@ class ChildBirthSystem(System):
                 sibling = rel.target
 
                 # Baby to sibling
-                add_trait(get_relationship(baby, sibling), "sibling")
-                add_trait(get_relationship(sibling, baby), "sibling")
+                add_relationship_trait(baby, sibling, "sibling")
+                add_relationship_trait(sibling, baby, "sibling")
 
             character.gameobject.remove_component(Pregnant)
             get_stat(character.gameobject, "fertility").base_value -= 0.2
@@ -1016,4 +1035,21 @@ class TickTraitsSystem(System):
 
     def on_update(self, world: World) -> None:
         for _, (traits,) in world.get_components((Traits,)):
-            traits.tick_traits()
+            traits_to_remove: list[Trait] = []
+
+            with world.session.begin() as session:
+
+                for trait_instance in traits.traits.values():
+                    if not trait_instance.has_duration:
+                        continue
+
+                    trait_instance.duration -= 1
+
+                    if trait_instance.duration <= 0:
+                        session.delete(trait_instance)
+                        traits_to_remove.append(trait_instance.trait)
+                    else:
+                        session.add(trait_instance)
+
+            for trait_id in traits_to_remove:
+                traits.remove_trait(trait_id)
