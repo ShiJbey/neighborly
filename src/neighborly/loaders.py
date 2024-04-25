@@ -12,7 +12,6 @@ from typing import Any, Union
 
 import yaml
 
-from neighborly.components.location import LocationPreferenceRule
 from neighborly.defs.base_types import (
     BeliefDef,
     BusinessDef,
@@ -24,6 +23,7 @@ from neighborly.defs.base_types import (
     SkillDef,
     SpeciesDef,
     TraitDef,
+    LocationPreferenceDef,
 )
 from neighborly.libraries import (
     BeliefLibrary,
@@ -277,5 +277,4 @@ def load_location_preferences(
     library = sim.world.resource_manager.get_resource(LocationPreferenceLibrary)
 
     for entry in data:
-        rule = LocationPreferenceRule.model_validate(entry)
-        library.add_rule(rule)
+        library.add_definition(LocationPreferenceDef.model_validate(entry))

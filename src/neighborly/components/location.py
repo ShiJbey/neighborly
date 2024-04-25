@@ -10,12 +10,12 @@ characters have the highest likelihood of interacting with during a time step.
 from collections import defaultdict
 from typing import Any, Iterable, Iterator
 
-import pydantic
 from ordered_set import OrderedSet
 from sqlalchemy import ForeignKey, delete
 from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.ecs import Component, GameData, GameObject
+from neighborly.preconditions.base_types import Precondition
 
 
 class LocationData(GameData):
@@ -218,15 +218,33 @@ class FrequentedLocations(Component):
         return f"{self.__class__.__name__}({repr(self._locations)})"
 
 
-class LocationPreferenceRule(pydantic.BaseModel):
+class LocationPreferenceRule:
     """A rule that helps characters score how they feel about locations to frequent."""
+
+    __slots__ = ("rule_id", "preconditions", "probability")
 
     rule_id: str
     """A unique ID for this rule."""
-    preconditions: str = pydantic.Field(default="")
+    preconditions: list[Precondition]
     """Precondition to run when scoring a location."""
     probability: float
     """The amount to apply to the score."""
+
+    def __init__(
+        self, rule_id: str, preconditions: list[Precondition], probability: float
+    ) -> None:
+        self.rule_id = rule_id
+        self.preconditions = preconditions
+        self.probability = probability
+
+    def check_preconditions(self, location: GameObject) -> bool:
+        """Check the preconditions against the given location."""
+
+        for precondition in self.preconditions:
+            if precondition.check(location) is False:
+                return False
+
+        return True
 
 
 class LocationPreferences(Component):

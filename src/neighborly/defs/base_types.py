@@ -324,3 +324,14 @@ class BeliefDef(ContentDefinition):
     """Effects applied to a relationship by the belief."""
     is_global: bool = False
     """Is this belief held by all agents."""
+
+
+class LocationPreferenceDef(ContentDefinition):
+    """A rule that helps characters score how they feel about locations to frequent."""
+
+    rule_id: str
+    """A unique ID for this rule."""
+    preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
+    """Precondition to run when scoring a location."""
+    probability: float
+    """The amount to apply to the score."""

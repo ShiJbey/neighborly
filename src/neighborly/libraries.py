@@ -27,6 +27,7 @@ from neighborly.defs.base_types import (
     ContentDefinition,
     DistrictDef,
     JobRoleDef,
+    LocationPreferenceDef,
     ResidenceDef,
     SettlementDef,
     SkillDef,
@@ -186,7 +187,7 @@ class BeliefLibrary(ContentDefinitionLibrary[BeliefDef]):
         return self.beliefs[belief_id]
 
 
-class LocationPreferenceLibrary:
+class LocationPreferenceLibrary(ContentDefinitionLibrary[LocationPreferenceDef]):
     """The collection of location preference rules."""
 
     __slots__ = ("rules",)
