@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Union
 
 from neighborly.components.relationship import Relationship, Relationships
-from neighborly.components.traits import Trait, TraitType, Traits
+from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.ecs import GameObject
 from neighborly.libraries import TraitLibrary
 
@@ -58,12 +58,12 @@ def add_trait(
         effect.apply(gameobject)
 
     outgoing_relationships = gameobject.get_component(Relationships).outgoing
-    for relationship in outgoing_relationships:
+    for relationship in outgoing_relationships.values():
         for effect in trait_obj.outgoing_relationship_effects:
             effect.apply(relationship)
 
-    incoming_relationships = gameobject.get_component(Relationships).outgoing
-    for relationship in incoming_relationships:
+    incoming_relationships = gameobject.get_component(Relationships).incoming
+    for relationship in incoming_relationships.values():
         for effect in trait_obj.outgoing_relationship_effects:
             effect.apply(relationship)
 
@@ -162,12 +162,12 @@ def remove_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
         effect.remove(gameobject)
 
     outgoing_relationships = gameobject.get_component(Relationships).outgoing
-    for relationship in outgoing_relationships:
+    for relationship in outgoing_relationships.values():
         for effect in trait_obj.outgoing_relationship_effects:
             effect.remove(relationship)
 
-    incoming_relationships = gameobject.get_component(Relationships).outgoing
-    for relationship in incoming_relationships:
+    incoming_relationships = gameobject.get_component(Relationships).incoming
+    for relationship in incoming_relationships.values():
         for effect in trait_obj.outgoing_relationship_effects:
             effect.remove(relationship)
 

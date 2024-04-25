@@ -47,11 +47,22 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Compatibility(relationship))
     relationship.add_component(RomanticCompatibility(relationship))
     relationship.add_component(InteractionScore(relationship))
+    relationship.add_component(AppliedBeliefs(relationship))
 
     relationship.name = f"{owner.name} -> {target.name}"
 
     owner.get_component(Relationships).add_outgoing_relationship(target, relationship)
     target.get_component(Relationships).add_incoming_relationship(owner, relationship)
+
+    # Add outgoing relationship effects from owner
+    for trait_instance in owner.get_component(Traits).traits.values():
+        for effect in trait_instance.trait.outgoing_relationship_effects:
+            effect.apply(relationship)
+
+    # Add incoming relationship effects from target
+    for trait_instance in target.get_component(Traits).traits.values():
+        for effect in trait_instance.trait.incoming_relationship_effects:
+            effect.apply(relationship)
 
     reevaluate_relationship(relationship.get_component(Relationship))
 
@@ -202,14 +213,22 @@ def reevaluate_relationship(relationship: Relationship) -> None:
 
     applied_beliefs = relationship.gameobject.get_component(AppliedBeliefs)
 
+    held_beliefs = relationship.owner.get_component(AgentBeliefs)
+
     # Check that existing rules still pass their preconditions
 
     beliefs_to_remove: list[Belief] = []
 
-    for belief_id in applied_beliefs.beliefs:
+    for belief_id in held_beliefs.get_all():
         belief = library.get_belief(belief_id)
-        if belief.check_preconditions(relationship.gameobject) is False:
-            beliefs_to_remove.append(belief)
+
+        if belief.check_preconditions(relationship.gameobject):
+            if not applied_beliefs.has_belief(belief_id):
+                applied_beliefs.add_belief(belief_id)
+                belief.apply_effects(relationship.gameobject)
+        else:
+            if applied_beliefs.has_belief(belief_id):
+                beliefs_to_remove.append(belief)
 
     for belief in beliefs_to_remove:
         applied_beliefs.remove_belief(belief.belief_id)

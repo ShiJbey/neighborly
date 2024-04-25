@@ -320,8 +320,6 @@ class BusinessDef(ContentDefinition):
 class BeliefDef(ContentDefinition):
     """A definition for a belief held by an agent."""
 
-    belief_id: str
-    """The belief's unique ID."""
     description: str
     """A text description of the belief."""
     preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
@@ -335,8 +333,6 @@ class BeliefDef(ContentDefinition):
 class LocationPreferenceDef(ContentDefinition):
     """A rule that helps characters score how they feel about locations to frequent."""
 
-    rule_id: str
-    """A unique ID for this rule."""
     preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
     """Precondition to run when scoring a location."""
     probability: float

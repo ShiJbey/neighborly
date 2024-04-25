@@ -1,8 +1,14 @@
 [
   {
-    "rule_id": "likes_bars",
+    "definition_id": "likes_bars",
     "description": "Like places that serve alcohol",
-    "preconditions": "?location.traits.serves_alcohol",
+    "preconditions": [
+      {
+        "type": "RePraxisQuery",
+        "query": "?target.traits.serves_alcohol",
+        "description": "The location serves alcohol."
+      }
+    ],
     "probability": 0.8
   }
 ]

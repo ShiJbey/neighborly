@@ -7,7 +7,6 @@
         "agent_type": "business"
       },
       "Age": {},
-      "SocialRules": {},
       "Relationships": {},
       "Stats": {},
       "Lifespan": {
@@ -21,9 +20,7 @@
   },
   "cafe": {
     "name": "Cafe",
-    "extends": [
-      "base_business"
-    ],
+    "extends": ["base_business"],
     "spawn_frequency": 1,
     "owner_role": "cafe_owner",
     "components": {
@@ -38,9 +35,7 @@
   },
   "farm": {
     "name": "Farm",
-    "extends": [
-      "base_business"
-    ],
+    "extends": ["base_business"],
     "spawn_frequency": 1,
     "owner_role": "farmer",
     "employee_roles": {
@@ -58,9 +53,7 @@
   },
   "dairy_farm": {
     "name": "Dairy Farm",
-    "extends": [
-      "base_business"
-    ],
+    "extends": ["base_business"],
     "spawn_frequency": 1,
     "owner_role": "farmer",
     "employee_roles": {
@@ -78,9 +71,7 @@
   },
   "shop": {
     "name": "Shop",
-    "extends": [
-      "base_business"
-    ],
+    "extends": ["base_business"],
     "spawn_frequency": 1,
     "owner_role": "shopkeeper",
     "employee_roles": {
@@ -98,9 +89,7 @@
   },
   "theatre": {
     "name": "Theatre",
-    "extends": [
-      "base_business"
-    ],
+    "extends": ["base_business"],
     "spawn_frequency": 1,
     "owner_role": "theatre_owner",
     "employee_roles": {
@@ -118,17 +107,13 @@
   },
   "bar": {
     "name": "Bar",
-    "extends": [
-      "base_business"
-    ],
+    "extends": ["base_business"],
     "spawn_frequency": 1,
     "owner_role": "bar_owner",
     "employee_roles": {
       "bartender": 2
     },
-    "traits": [
-      "serves_alcohol"
-    ],
+    "traits": ["serves_alcohol"],
     "components": {
       "Business": {
         "name": "Bar",
@@ -141,9 +126,7 @@
   },
   "blacksmith_shop": {
     "name": "Blacksmith Shop",
-    "extends": [
-      "base_business"
-    ],
+    "extends": ["base_business"],
     "spawn_frequency": 1,
     "max_instances": 2,
     "min_population": 10,

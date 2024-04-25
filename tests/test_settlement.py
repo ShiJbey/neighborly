@@ -12,6 +12,7 @@ from neighborly.loaders import (
     load_residences,
     load_settlements,
 )
+from neighborly.plugins import default_settlement_names
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -26,6 +27,8 @@ def test_create_settlement() -> None:
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
+
+    default_settlement_names.load_plugin(sim)
 
     sim.initialize()
 
@@ -48,6 +51,8 @@ def test_required_tags() -> None:
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     load_residences(sim, _TEST_DATA_DIR / "residences.json")
     load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
+
+    default_settlement_names.load_plugin(sim)
 
     sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(
         SettlementDef(

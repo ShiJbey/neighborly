@@ -16,6 +16,7 @@ from neighborly.config import SimulationConfig
 from neighborly.datetime import SimDate
 from neighborly.ecs import World
 from neighborly.effects.effects import (
+    AddBelief,
     AddLocationPreference,
     AddSkillBuff,
     AddSkillDebuff,
@@ -100,6 +101,7 @@ from neighborly.systems import (
     CompileCharacterDefsSystem,
     CompileDistrictDefsSystem,
     CompileJobRoleDefsSystem,
+    CompileLocationPreferenceDefsSystem,
     CompileResidenceDefsSystem,
     CompileSettlementDefsSystem,
     CompileSkillDefsSystem,
@@ -196,6 +198,10 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=CompileBeliefDefsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileLocationPreferenceDefsSystem(),
+            system_group=InitializationSystems,
         )
         self.world.system_manager.add_system(
             system=CompileJobRoleDefsSystem(), system_group=InitializationSystems
@@ -305,7 +311,7 @@ class Simulation:
         effect_library.add_effect_type(AddSkillDebuff)
         effect_library.add_effect_type(DecreaseBaseSkill)
         effect_library.add_effect_type(IncreaseBaseSkill)
-        effect_library.add_effect_type(AddLocationPreference)
+        effect_library.add_effect_type(AddBelief)
         effect_library.add_effect_type(AddLocationPreference)
 
         precondition_library = self.world.resources.get_resource(PreconditionLibrary)

@@ -40,7 +40,7 @@ from neighborly.components.spawn_table import (
     ResidenceSpawnTableEntry,
 )
 from neighborly.components.stats import Lifespan
-from neighborly.components.traits import Trait, TraitType, Traits
+from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.definition_compiler import compile_definitions
@@ -586,7 +586,7 @@ class CompileLocationPreferenceDefsSystem(System):
 
                 library.add_rule(
                     LocationPreferenceRule(
-                        rule_id=definition.rule_id,
+                        rule_id=definition.definition_id,
                         preconditions=[
                             precondition_library.create_from_obj(world, entry)
                             for entry in definition.preconditions
@@ -614,7 +614,7 @@ class CompileBeliefDefsSystem(System):
 
                 library.add_belief(
                     Belief(
-                        belief_id=definition.belief_id,
+                        belief_id=definition.definition_id,
                         description=definition.description,
                         preconditions=[
                             precondition_library.create_from_obj(world, entry)
