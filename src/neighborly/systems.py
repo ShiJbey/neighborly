@@ -13,6 +13,7 @@ from typing import ClassVar, Optional
 
 from sqlalchemy import select
 
+from neighborly.components.beliefs import Belief
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import Character, LifeStage, Pregnant, Species
 from neighborly.components.location import (
@@ -67,6 +68,7 @@ from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, get_relationships_with_traits
 from neighborly.libraries import (
+    BeliefLibrary,
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
@@ -544,6 +546,39 @@ class CompileDistrictDefsSystem(System):
         for definition in compiled_defs:
             if not definition.is_template:
                 library.add_definition(definition)
+
+
+class CompileBeliefDefsSystem(System):
+    """Compile belief definitions."""
+
+    def on_update(self, world: World) -> None:
+        library = world.resource_manager.get_resource(BeliefLibrary)
+        effect_library = world.resource_manager.get_resource(EffectLibrary)
+        precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
+
+        compiled_defs = compile_definitions(library.definitions.values())
+
+        library.definitions.clear()
+
+        for definition in compiled_defs:
+            if not definition.is_template:
+                library.add_definition(definition)
+
+                library.add_belief(
+                    Belief(
+                        belief_id=definition.belief_id,
+                        description=definition.description,
+                        preconditions=[
+                            precondition_library.create_from_obj(world, entry)
+                            for entry in definition.preconditions
+                        ],
+                        effects=[
+                            effect_library.create_from_obj(world, entry)
+                            for entry in definition.effects
+                        ],
+                        is_global=definition.is_global,
+                    )
+                )
 
 
 class CompileSettlementDefsSystem(System):

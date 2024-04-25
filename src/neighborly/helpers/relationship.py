@@ -2,8 +2,7 @@
 
 """
 
-from repraxis.query import DBQuery
-
+from neighborly.components.beliefs import AgentBeliefs, AppliedBeliefs, Belief
 from neighborly.components.relationship import (
     Compatibility,
     InteractionScore,
@@ -12,16 +11,11 @@ from neighborly.components.relationship import (
     Reputation,
     Romance,
     RomanticCompatibility,
-    SocialRule,
-    SocialRuleDirection,
-    SocialRules,
 )
-from neighborly.components.stats import StatModifier, StatModifierType, Stats
+from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import GameObject
-from neighborly.helpers.db_helpers import preprocess_query_string
-from neighborly.helpers.stats import get_stat
-from neighborly.libraries import SocialRuleLibrary
+from neighborly.libraries import BeliefLibrary
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
@@ -135,128 +129,99 @@ def destroy_relationship(owner: GameObject, target: GameObject) -> bool:
     return False
 
 
-def add_social_rule(gameobject: GameObject, rule_id: str) -> None:
-    """Add a social rule to a GameObject.
+def add_belief(agent: GameObject, belief_id: str) -> None:
+    """Add a belief to an agent.
 
     Parameters
     ----------
-    gameobject
-        The GameObject to add the social rule to.
-    rule_id
-        The rule to add.
+    agent
+        The agent that will hold the belief.
+    belief_id
+        The ID of the belief to add.
     """
-    gameobject.get_component(SocialRules).add_rule(rule_id)
+    library = agent.world.resource_manager.get_resource(BeliefLibrary)
+    held_beliefs = agent.get_component(AgentBeliefs)
 
-    relationships = gameobject.get_component(Relationships).outgoing
+    if held_beliefs.has_belief(belief_id):
+        # Add the belief to increment the internal belief reference counter.
+        held_beliefs.add_belief(belief_id)
+        return
+
+    belief = library.get_belief(belief_id)
+    held_beliefs.add_belief(belief_id)
+
+    relationships = agent.get_component(Relationships).outgoing
 
     for _, relationship in relationships.items():
-        reevaluate_relationship(relationship.get_component(Relationship))
-
-    relationships = gameobject.get_component(Relationships).incoming
-
-    for _, relationship in relationships.items():
-        reevaluate_relationship(relationship.get_component(Relationship))
+        if belief.check_preconditions(relationship):
+            belief.apply_effects(relationship)
 
 
-def remove_social_rule(gameobject: GameObject, rule_id: str) -> None:
-    """Remove a social rule from a GameObject.
+def remove_belief(agent: GameObject, belief_id: str) -> None:
+    """Remove a belief from an agent.
 
     Parameters
     ----------
-    gameobject
-        The GameObject to remove the social rule from.
-    rule_id
-        The rule to remove.
+    agent
+        The agent to modify.
+    belief_id
+        The ID of the belief to remove.
     """
-    gameobject.get_component(SocialRules).remove_rule(rule_id)
+    library = agent.world.resource_manager.get_resource(BeliefLibrary)
+    held_beliefs = agent.get_component(AgentBeliefs)
 
-    relationships = gameobject.get_component(Relationships).outgoing
+    if not held_beliefs.has_belief(belief_id):
+        return
+
+    held_beliefs.remove_belief(belief_id)
+
+    # If the agent still has the belief, then there is something else like a trait
+    # that still requires this belief to be present.
+    if held_beliefs.has_belief(belief_id):
+        return
+
+    # If the belief is no longer held by the agent, remove the effects from all
+    # outgoing relationships.
+
+    belief = library.get_belief(belief_id)
+
+    relationships = agent.get_component(Relationships).outgoing
 
     for _, relationship in relationships.items():
-        reevaluate_relationship(relationship.get_component(Relationship))
+        applied_beliefs = relationship.get_component(AppliedBeliefs)
 
-    relationships = gameobject.get_component(Relationships).incoming
-
-    for _, relationship in relationships.items():
-        reevaluate_relationship(relationship.get_component(Relationship))
+        if applied_beliefs.has_belief(belief_id):
+            applied_beliefs.remove_belief(belief_id)
+            belief.remove_effects(relationship)
 
 
 def reevaluate_relationship(relationship: Relationship) -> None:
-    """Reevaluate social rules for a given relationship."""
+    """Reevaluate beliefs for a given relationship."""
 
-    library = relationship.gameobject.world.resource_manager.get_resource(
-        SocialRuleLibrary
-    )
+    library = relationship.gameobject.world.resource_manager.get_resource(BeliefLibrary)
 
-    for rule_id in relationship.active_rules:
-        remove_social_rule_modifiers(library.rules[rule_id], relationship)
+    applied_beliefs = relationship.gameobject.get_component(AppliedBeliefs)
 
-    relationship.active_rules.clear()
+    # Check that existing rules still pass their preconditions
 
-    owner_rules = relationship.owner.get_component(SocialRules)
+    beliefs_to_remove: list[Belief] = []
 
-    for rule_id in owner_rules.rules:
-        rule = library.rules[rule_id]
+    for belief_id in applied_beliefs.beliefs:
+        belief = library.get_belief(belief_id)
+        if belief.check_preconditions(relationship.gameobject) is False:
+            beliefs_to_remove.append(belief)
 
-        if rule.direction != SocialRuleDirection.OUTGOING:
-            continue
+    for belief in beliefs_to_remove:
+        applied_beliefs.remove_belief(belief.belief_id)
+        belief.remove_effects(relationship.gameobject)
 
-        if rule_id in relationship.active_rules:
-            continue
+    # Check if any global beliefs should be applied
 
-        if check_social_rule_preconditions(rule, relationship):
-            relationship.active_rules.append(rule_id)
-            apply_social_rule_modifiers(rule, relationship)
-
-    target_rules = relationship.owner.get_component(SocialRules)
-
-    for rule_id in target_rules.rules:
-        rule = library.rules[rule_id]
-
-        if rule.direction != SocialRuleDirection.INCOMING:
-            continue
-
-        if rule_id in relationship.active_rules:
-            continue
-
-        if check_social_rule_preconditions(rule, relationship):
-            relationship.active_rules.append(rule_id)
-            apply_social_rule_modifiers(rule, relationship)
-
-
-def apply_social_rule_modifiers(rule: SocialRule, relationship: Relationship) -> None:
-    """Add stat modifiers to the relationship."""
-    for entry in rule.stat_modifiers:
-        get_stat(relationship.gameobject, entry.name).add_modifier(
-            StatModifier(
-                value=entry.value,
-                modifier_type=StatModifierType[entry.modifier_type],
-                source=rule,
-            )
-        )
-
-
-def remove_social_rule_modifiers(rule: SocialRule, relationship: Relationship) -> None:
-    """Remove stat modifiers from the relationship."""
-    for entry in rule.stat_modifiers:
-        get_stat(relationship.gameobject, entry.name).remove_modifiers_from_source(rule)
-
-
-def check_social_rule_preconditions(
-    rule: SocialRule, relationship: Relationship
-) -> bool:
-    """Check that a relationship passes all the preconditions."""
-    owner = relationship.owner
-    target = relationship.target
-
-    query_lines = preprocess_query_string(rule.preconditions)
-
-    result = DBQuery(query_lines).run(
-        relationship.gameobject.world.rp_db,
-        [{"?owner": owner.uid, "?target": target.uid}],
-    )
-
-    return result.success
+    for belief_id in library.global_beliefs:
+        belief = library.get_belief(belief_id)
+        if belief.check_preconditions(relationship.gameobject):
+            applied_beliefs.add_belief(belief_id)
+            belief.apply_effects(relationship.gameobject)
 
 
 def deactivate_relationships(gameobject: GameObject) -> None:

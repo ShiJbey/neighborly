@@ -26,6 +26,7 @@ from neighborly.effects.effects import (
     IncreaseBaseSkill,
     IncreaseBaseStat,
 )
+from neighborly.factories.beliefs import AgentBeliefsFactory, AppliedBeliefsFactory
 from neighborly.factories.business import BusinessFactory
 from neighborly.factories.character import CharacterFactory
 from neighborly.factories.location import (
@@ -33,7 +34,7 @@ from neighborly.factories.location import (
     LocationFactory,
     LocationPreferencesFactory,
 )
-from neighborly.factories.relationships import RelationshipsFactory, SocialRulesFactory
+from neighborly.factories.relationships import RelationshipsFactory
 from neighborly.factories.residence import ResidentialBuildingFactory
 from neighborly.factories.settlement import DistrictFactory, SettlementFactory
 from neighborly.factories.shared import (
@@ -62,6 +63,7 @@ from neighborly.factories.stats import (
 from neighborly.factories.traits import TraitsFactory
 from neighborly.libraries import (
     ActionConsiderationLibrary,
+    BeliefLibrary,
     BusinessLibrary,
     BusinessNameFactories,
     CharacterLibrary,
@@ -76,7 +78,6 @@ from neighborly.libraries import (
     SettlementLibrary,
     SettlementNameFactories,
     SkillLibrary,
-    SocialRuleLibrary,
     SpeciesLibrary,
     TraitLibrary,
 )
@@ -94,6 +95,7 @@ from neighborly.systems import (
     BusinessLifespanSystem,
     CharacterLifespanSystem,
     ChildBirthSystem,
+    CompileBeliefDefsSystem,
     CompileBusinessDefsSystem,
     CompileCharacterDefsSystem,
     CompileDistrictDefsSystem,
@@ -165,7 +167,7 @@ class Simulation:
         self.world.resource_manager.add_resource(TraitLibrary())
         self.world.resource_manager.add_resource(SpeciesLibrary())
         self.world.resource_manager.add_resource(SkillLibrary())
-        self.world.resource_manager.add_resource(SocialRuleLibrary())
+        self.world.resource_manager.add_resource(BeliefLibrary())
         self.world.resource_manager.add_resource(LocationPreferenceLibrary())
         self.world.resource_manager.add_resource(SettlementNameFactories())
         self.world.resource_manager.add_resource(EffectLibrary())
@@ -191,6 +193,9 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=CompileSpeciesDefsSystem(), system_group=InitializationSystems
+        )
+        self.world.system_manager.add_system(
+            system=CompileBeliefDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
             system=CompileJobRoleDefsSystem(), system_group=InitializationSystems
@@ -272,7 +277,6 @@ class Simulation:
         self.world.gameobjects.add_component_factory(CharacterSpawnTableFactory())
         self.world.gameobjects.add_component_factory(BusinessSpawnTableFactory())
         self.world.gameobjects.add_component_factory(ResidenceSpawnTableFactory())
-        self.world.gameobjects.add_component_factory(SocialRulesFactory())
         self.world.gameobjects.add_component_factory(RelationshipsFactory())
         self.world.gameobjects.add_component_factory(PersonalEventHistoryFactory())
         self.world.gameobjects.add_component_factory(ResidentialBuildingFactory())
@@ -285,6 +289,8 @@ class Simulation:
         self.world.gameobjects.add_component_factory(IntelligenceFactory())
         self.world.gameobjects.add_component_factory(DisciplineFactory())
         self.world.gameobjects.add_component_factory(CharmFactory())
+        self.world.gameobjects.add_component_factory(AgentBeliefsFactory())
+        self.world.gameobjects.add_component_factory(AppliedBeliefsFactory())
 
     def _init_effect_precondition_factories(self) -> None:
         """Add effect factories to the library."""

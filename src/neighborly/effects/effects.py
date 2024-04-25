@@ -10,10 +10,10 @@ from __future__ import annotations
 from typing import Any
 
 from neighborly.components.location import LocationPreferences
-from neighborly.components.relationship import SocialRules
 from neighborly.components.stats import StatModifier, StatModifierType
 from neighborly.ecs import GameObject, World
 from neighborly.effects.base_types import Effect
+from neighborly.helpers.relationship import add_belief, remove_belief
 from neighborly.helpers.skills import add_skill, get_skill, has_skill
 from neighborly.helpers.stats import get_stat
 
@@ -400,31 +400,31 @@ class AddLocationPreference(Effect):
         return cls(rule_id=rule_id)
 
 
-class AddSocialRule(Effect):
-    """Add a new social rule."""
+class AddBelief(Effect):
+    """Add a belief to an agent."""
 
-    __effect_name__ = "AddSocialRule"
+    __effect_name__ = "AddBelief"
 
-    __slots__ = ("rule_id",)
+    __slots__ = ("belief_id",)
 
-    rule_id: str
-    """The ID of a social rule."""
+    belief_id: str
+    """The ID of a belief."""
 
     def __init__(self, rule_id: str) -> None:
         super().__init__()
-        self.rule_id = rule_id
+        self.belief_id = rule_id
 
     @property
     def description(self) -> str:
-        return f"Gains social rule {self.rule_id!r}"
+        return f"Gains belief: {self.belief_id!r}"
 
     def apply(self, target: GameObject) -> None:
-        target.get_component(SocialRules).add_rule(self.rule_id)
+        add_belief(target, self.belief_id)
 
     def remove(self, target: GameObject) -> None:
-        target.get_component(SocialRules).remove_rule(self.rule_id)
+        remove_belief(target, self.belief_id)
 
     @classmethod
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        rule_id = params["rule_id"]
-        return cls(rule_id=rule_id)
+        belief_id = params["belief_id"]
+        return cls(rule_id=belief_id)

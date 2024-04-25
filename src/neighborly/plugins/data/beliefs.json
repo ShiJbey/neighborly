@@ -1,37 +1,41 @@
 [
   {
-    "rule_id": "attracted_to_men",
-    "description": "Attracted to men",
+    "belief_id": "attracted_to_men",
+    "description": "Men are attractive",
     "preconditions": "?target.character.sex!MALE",
-    "stat_modifiers": [
+    "effects": [
       {
-        "name": "romance",
+        "type": "AddStatBuff",
+        "stat": "romance",
         "value": 15
       },
       {
-        "name": "romantic_compatibility",
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
         "value": 5
       }
     ]
   },
   {
-    "rule_id": "attracted_to_women",
-    "description": "Attracted to women",
+    "belief_id": "attracted_to_women",
+    "description": "Women are attractive.",
     "preconditions": "?target.character.sex!FEMALE",
-    "stat_modifiers": [
+    "effects": [
       {
-        "name": "romance",
+        "type": "AddStatBuff",
+        "stat": "romance",
         "value": 5
       },
       {
-        "name": "romantic_compatibility",
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
         "value": 5
       }
     ]
   },
   {
-    "rule_id": "makes_friends_easily",
-    "stat_modifiers": [
+    "belief_id": "makes_friends_easily",
+    "effects": [
       {
         "name": "reputation",
         "value": 20,
@@ -40,8 +44,8 @@
     ]
   },
   {
-    "rule_id": "believes_in_people",
-    "stat_modifiers": [
+    "belief_id": "believes_in_people",
+    "effects": [
       {
         "name": "reputation",
         "value": 5
@@ -53,8 +57,8 @@
     ]
   },
   {
-    "rule_id": "is_flirtatious",
-    "stat_modifiers": [
+    "belief_id": "is_flirtatious",
+    "effects": [
       {
         "name": "romance",
         "value": 30
@@ -66,8 +70,8 @@
     ]
   },
   {
-    "rule_id": "not_trustworthy",
-    "stat_modifiers": [
+    "belief_id": "not_trustworthy",
+    "effects": [
       {
         "name": "reputation",
         "value": -5
@@ -83,8 +87,8 @@
     ]
   },
   {
-    "rule_id": "has_trouble_making_friends",
-    "stat_modifiers": [
+    "belief_id": "has_trouble_making_friends",
+    "effects": [
       {
         "name": "reputation",
         "value": -2
@@ -92,8 +96,8 @@
     ]
   },
   {
-    "rule_id": "no_trouble_making_friends",
-    "stat_modifiers": [
+    "belief_id": "no_trouble_making_friends",
+    "effects": [
       {
         "name": "compatibility",
         "value": 2
@@ -101,8 +105,8 @@
     ]
   },
   {
-    "rule_id": "good_at_making_friends",
-    "stat_modifiers": [
+    "belief_id": "good_at_making_friends",
+    "effects": [
       {
         "name": "reputation",
         "value": 15
