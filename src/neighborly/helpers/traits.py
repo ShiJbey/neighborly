@@ -9,6 +9,7 @@ from typing import Union
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.ecs import GameObject
+from neighborly.helpers.relationship import get_relationship
 from neighborly.libraries import TraitLibrary
 
 
@@ -98,7 +99,7 @@ def add_relationship_trait(
         True if the trait was added successfully, False if already present or
         if the trait conflict with existing traits.
     """
-    relationship = owner.get_component(Relationships).get_outgoing_relationship(target)
+    relationship = get_relationship(owner, target)
 
     if isinstance(trait, str):
         library = relationship.world.resource_manager.get_resource(TraitLibrary)
@@ -202,7 +203,7 @@ def remove_relationship_trait(
         True if the trait was added successfully, False if already present or
         if the trait conflict with existing traits.
     """
-    relationship = owner.get_component(Relationships).get_outgoing_relationship(target)
+    relationship = get_relationship(owner, target)
 
     if isinstance(trait, str):
         library = relationship.world.resource_manager.get_resource(TraitLibrary)
