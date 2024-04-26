@@ -29,7 +29,7 @@ from neighborly.helpers.traits import (
 )
 from neighborly.libraries import BusinessLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
-from neighborly.plugins.default_events import FiredFromJobEvent
+from neighborly.plugins.default_events import FiredFromJobEvent, StartNewJobEvent
 
 
 def create_business(
@@ -217,6 +217,11 @@ def add_employee(
         add_relationship_trait(employee, character, "coworker")
 
     business_comp.add_employee(character, job_role)
+
+    event = StartNewJobEvent(character, business, job_role)
+
+    add_to_personal_history(character, event)
+    dispatch_life_event(character.world, event)
 
 
 def promote_employee(

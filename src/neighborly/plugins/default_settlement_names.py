@@ -21,7 +21,7 @@ class SimpleNameFactory(ISettlementNameFactory):
 
     def __init__(self, name_file: Union[str, pathlib.Path]) -> None:
         with open(name_file, "r", encoding="utf8") as f:
-            self.names = f.readlines()
+            self.names = f.read().splitlines()
 
     def __call__(self, gameobject: GameObject) -> str:
         rng = gameobject.world.resources.get_resource(random.Random)

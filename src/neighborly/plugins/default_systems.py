@@ -12,7 +12,7 @@ from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.ecs import Active, System, World
 from neighborly.events.defaults import LeaveJobEvent
 from neighborly.helpers.action import get_action_success_probability, get_action_utility
-from neighborly.helpers.business import add_employee, close_business
+from neighborly.helpers.business import close_business
 from neighborly.helpers.character import move_into_residence
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import get_relationships_with_traits
@@ -26,6 +26,7 @@ from neighborly.plugins.actions import (
     FormCrush,
     GetMarried,
     GetPregnant,
+    HireEmployee,
     PromoteEmployee,
     Retire,
     StartDating,
@@ -55,7 +56,10 @@ class FindJobSystem(System):
             character = character_comp.gameobject
 
             if character.has_component(Occupation):
-                return None
+                continue
+
+            potential_hirings: list[HireEmployee] = []
+            hiring_utilities: list[float] = []
 
             for business in active_businesses:
                 open_positions = business.get_open_positions()
@@ -64,7 +68,21 @@ class FindJobSystem(System):
                     job_role = library.get_role(role_id)
 
                     if job_role.check_requirements(character):
-                        add_employee(business.gameobject, character, job_role)
+                        action = HireEmployee(business.gameobject, character, job_role)
+                        potential_hirings.append(action)
+                        hiring_utilities.append(1)
+
+            if not potential_hirings:
+                continue
+
+            action = rng.choices(potential_hirings, hiring_utilities, k=1)[0]
+
+            probability_success = get_action_success_probability(action)
+
+            if rng.random() < probability_success:
+                action.on_success()
+            else:
+                action.on_failure()
 
 
 class FiredFromJobSystem(System):

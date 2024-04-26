@@ -18,7 +18,12 @@ from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.datetime import SimDate
 from neighborly.ecs import GameObject
 from neighborly.helpers.action import get_action_success_probability, get_action_utility
-from neighborly.helpers.business import close_business, fire_employee, leave_job
+from neighborly.helpers.business import (
+    add_employee,
+    close_business,
+    fire_employee,
+    leave_job,
+)
 from neighborly.helpers.character import (
     depart_settlement,
     move_into_residence,
@@ -385,6 +390,32 @@ class StartDating(Action):
     def on_success(self) -> None:
         add_relationship_trait(self.character, self.partner, "dating")
         add_relationship_trait(self.partner, self.character, "dating")
+
+    def on_failure(self) -> None:
+        return
+
+
+class HireEmployee(Action):
+    """A business hires an employee."""
+
+    __action_id__ = "fire-employee"
+
+    __slots__ = ("business", "employee", "role")
+
+    business: GameObject
+    employee: GameObject
+    role: JobRole
+
+    def __init__(
+        self, business: GameObject, employee: GameObject, role: JobRole
+    ) -> None:
+        super().__init__(business.world)
+        self.business = business
+        self.employee = employee
+        self.role = role
+
+    def on_success(self) -> None:
+        add_employee(self.business, self.employee, self.role)
 
     def on_failure(self) -> None:
         return
