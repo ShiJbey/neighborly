@@ -410,7 +410,7 @@ class SpawnNewBusinessesSystem(System):
             #Need to know the uid for the district that the business should be built in use 
             #.where( BusinessSpawnTableEntry.uid == district.gameobject.uid)
 
-            if character.get_component(Age) >= 18 and character.get_component(Occupation) is None:
+            if character.gameobject.get_component(Age).value >= 18 and character.gameobject.has_component(Occupation):
                 spawn_entry = SpawnNewBusinessesSystem.get_random_business(settlement)
 
                 if spawn_entry is None:
