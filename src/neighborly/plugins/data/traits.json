@@ -1,6 +1,18 @@
 {
+  "drinks_too_much": {
+    "name": "Drinks too much",
+    "trait_type": "agent",
+    "effects": [
+      {
+        "type": "AddLocationPreference",
+        "rule_id": "likes_bars"
+      }
+    ],
+    "spawn_frequency": 1
+  },
   "skeptical": {
     "name": "Skeptical",
+    "trait_type": "agent",
     "effects": [
       {
         "type": "AddStatDebuff",
@@ -8,13 +20,19 @@
         "amount": 3
       }
     ],
-    "conflicts_with": [
-      "gullible"
+    "outgoing_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": -5
+      }
     ],
+    "conflicts_with": ["gullible"],
     "spawn_frequency": 1
   },
   "gullible": {
     "name": "Gullible",
+    "trait_type": "agent",
     "effects": [
       {
         "type": "AddStatBuff",
@@ -22,410 +40,352 @@
         "amount": 3
       }
     ],
-    "conflicts_with": [
-      "skeptical"
+    "outgoing_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": 10
+      }
     ],
+    "conflicts_with": ["skeptical"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.25,
     "inheritance_chance_both": 0.5
   },
   "flirtatious": {
     "name": "Flirtatious",
+    "trait_type": "agent",
     "spawn_frequency": 1,
-    "effects": [
+    "outgoing_relationship_effects": [
       {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "romance",
-            "amount": 30
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "romantic_compatibility",
-            "amount": 4
-          }
-        ]
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "amount": 30
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "amount": 4
       }
     ]
   },
   "loyal": {
     "name": "Loyal",
+    "trait_type": "agent",
     "description": "This character is fiercely loyal to their friends and allies.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "reliability",
+        "stat": "discipline",
         "amount": 20
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "compatibility",
-            "amount": 3
-          }
-        ]
       }
     ],
-    "conflicts_with": [
-      "traitorous"
+    "incoming_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": 5
+      }
     ],
+    "conflicts_with": ["traitorous"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.5,
     "inheritance_chance_both": 0.75
   },
   "traitorous": {
     "name": "Traitorous",
+    "trait_type": "agent",
     "description": "This character can betray their friends and allies for personal gain.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "reliability",
+        "stat": "kindness",
         "amount": -3
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": -5
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "compatibility",
-            "amount": -5
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "romantic_compatibility",
-            "amount": -3
-          }
-        ]
       }
     ],
-    "conflicts_with": [
-      "loyal"
+    "outgoing_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": -5
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "compatibility",
+        "amount": -5
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "amount": -3
+      }
     ],
+    "conflicts_with": ["loyal"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
   },
   "introverted": {
     "name": "Introverted",
+    "trait_type": "agent",
     "description": "This character is reserved and prefers solitude.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "sociability",
         "amount": -3
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": -2
-          }
-        ]
       }
     ],
-    "conflicts_with": [
-      "extroverted"
-    ],
+    "conflicts_with": ["extroverted"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "extroverted": {
     "name": "Extroverted",
+    "trait_type": "agent",
     "description": "This character is outgoing and thrives in social settings.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "sociability",
         "amount": 20
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": 4
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "compatibility",
-            "amount": 3
-          }
-        ]
       }
     ],
-    "conflicts_with": [
-      "introverted"
-    ],
+    "conflicts_with": ["introverted"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "compassionate": {
     "name": "Compassionate",
+    "trait_type": "agent",
     "description": "This character cares deeply for the well-being of others.",
     "effects": [
       {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": 5
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "compatibility",
-            "amount": 4
-          }
-        ]
+        "type": "AddStatBuff",
+        "stat": "kindness",
+        "amount": 20
       }
     ],
-    "conflicts_with": [
-      "callous"
+    "outgoing_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": 5
+      }
     ],
+    "incoming_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": 5
+      }
+    ],
+    "conflicts_with": ["callous"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
     "inheritance_chance_both": 0.7
   },
   "callous": {
     "name": "Callous",
+    "trait_type": "agent",
     "description": "This character is emotionally detached and unsympathetic.",
     "effects": [
       {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": -10,
-            "modifier_type": "Flat"
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "compatibility",
-            "amount": -3,
-            "modifier_type": "Flat"
-          }
-        ]
+        "type": "AddStatBuff",
+        "stat": "kindness",
+        "amount": -20
       }
     ],
-    "conflicts_with": [
-      "compassionate"
+    "outgoing_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": -5
+      }
     ],
+    "incoming_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": -5
+      }
+    ],
+    "conflicts_with": ["compassionate"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
   },
   "adventurous": {
     "name": "Adventurous",
+    "trait_type": "agent",
     "description": "This character seeks excitement and enjoys taking risks.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "boldness",
-        "amount": 25,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "compatibility",
-            "amount": 2,
-            "modifier_type": "Flat"
-          }
-        ]
+        "stat": "courage",
+        "amount": 25
       }
     ],
-    "conflicts_with": [
-      "cautious"
-    ],
+    "conflicts_with": ["cautious"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "cautious": {
     "name": "Cautious",
+    "trait_type": "agent",
     "description": "This character is risk-averse and avoids dangerous situations.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "boldness",
-        "amount": -15,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "compatibility",
-            "amount": -2,
-            "modifier_type": "Flat"
-          }
-        ]
+        "stat": "courage",
+        "amount": -15
       }
     ],
-    "conflicts_with": [
-      "adventurous"
-    ],
+    "conflicts_with": ["adventurous"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "charismatic": {
     "name": "Charismatic",
+    "trait_type": "agent",
     "description": "This character has a natural charm that draws others to them.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "attractiveness",
-        "amount": 20,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": 15,
-            "modifier_type": "Flat"
-          }
-        ]
+        "stat": "charm",
+        "amount": 20
       }
     ],
-    "conflicts_with": [
-      "awkward"
+    "incoming_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": 15
+      }
     ],
+    "conflicts_with": ["awkward"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "awkward": {
     "name": "Awkward",
+    "trait_type": "agent",
     "description": "This character struggles with social interactions and comes across as clumsy.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "attractiveness",
-        "amount": -3,
-        "modifier_type": "Flat"
-      },
-      {
-        "type": "AddSocialRule",
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": -2,
-            "modifier_type": "Flat"
-          }
-        ]
+        "stat": "sociability",
+        "amount": -5
       }
     ],
-    "conflicts_with": [
-      "charismatic"
-    ],
+    "conflicts_with": ["charismatic"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
   },
   "ambitious": {
     "name": "Ambitious",
+    "trait_type": "agent",
     "description": "This character is driven by ambition and seeks to achieve great success.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "stewardship",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "amount": 5
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "courage",
+        "amount": 5
       }
     ],
-    "conflicts_with": [
-      "lazy"
-    ],
+    "conflicts_with": ["lazy"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
   },
   "lazy": {
     "name": "Lazy",
+    "trait_type": "agent",
     "description": "This character tends to avoid hard work and prefers a leisurely lifestyle.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "stewardship",
-        "amount": -3,
-        "modifier_type": "FLAT"
+        "amount": -5
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "courage",
+        "amount": -5
       }
     ],
-    "conflicts_with": [
-      "ambitious"
-    ],
+    "conflicts_with": ["ambitious"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
   },
   "hot-headed": {
     "name": "Hot-Headed",
+    "trait_type": "agent",
     "description": "This character has a short temper and is quick to anger.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "boldness",
-        "amount": 4,
-        "modifier_type": "FLAT"
+        "stat": "courage",
+        "amount": 10
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "charm",
+        "amount": -10
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "discipline",
+        "amount": -15
       }
     ],
-    "conflicts_with": [
-      "calm"
-    ],
+    "conflicts_with": ["calm"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
   },
   "calm": {
     "name": "Calm",
+    "trait_type": "agent",
     "description": "This character remains composed and rarely loses their temper.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "boldness",
-        "amount": -4,
-        "modifier_type": "FLAT"
+        "stat": "charm",
+        "amount": 10
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "discipline",
+        "amount": 15
       }
     ],
-    "conflicts_with": [
-      "hot-headed"
-    ],
+    "conflicts_with": ["hot-headed"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
   },
   "intelligent": {
     "name": "Intelligent",
+    "trait_type": "agent",
     "description": "This character possesses a high level of intelligence and problem-solving abilities.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "intelligence",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "amount": 15
       }
     ],
     "spawn_frequency": 1,
@@ -434,13 +394,13 @@
   },
   "simpleminded": {
     "name": "Simple-Minded",
+    "trait_type": "agent",
     "description": "This character lacks intellectual depth and struggles with complex tasks.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "intelligence",
-        "amount": -3,
-        "modifier_type": "FLAT"
+        "amount": -10
       }
     ],
     "spawn_frequency": 1,
@@ -449,13 +409,13 @@
   },
   "charitable": {
     "name": "Charitable",
+    "trait_type": "agent",
     "description": "This character is generous and often helps others in need.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "reliability",
-        "amount": 2,
-        "modifier_type": "FLAT"
+        "stat": "kindness",
+        "amount": 10
       }
     ],
     "spawn_frequency": 1,
@@ -464,13 +424,18 @@
   },
   "selfish": {
     "name": "Selfish",
+    "trait_type": "agent",
     "description": "This character prioritizes their own needs and desires over others.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "reliability",
-        "amount": -3,
-        "modifier_type": "FLAT"
+        "stat": "kindness",
+        "amount": -15
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "charm",
+        "amount": -5
       }
     ],
     "spawn_frequency": 1,
@@ -479,6 +444,7 @@
   },
   "optimistic": {
     "name": "Optimistic",
+    "trait_type": "agent",
     "description": "This character maintains a positive outlook and believes in a bright future.",
     "effects": [
       {
@@ -487,15 +453,14 @@
         "amount": 30
       }
     ],
-    "conflicts_with": [
-      "pessimistic"
-    ],
+    "conflicts_with": ["pessimistic"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "pessimistic": {
     "name": "Pessimistic",
+    "trait_type": "agent",
     "description": "This character often anticipates negative outcomes and struggles with optimism.",
     "effects": [
       {
@@ -504,15 +469,14 @@
         "amount": -20
       }
     ],
-    "conflicts_with": [
-      "optimistic"
-    ],
+    "conflicts_with": ["optimistic"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "energetic": {
     "name": "Energetic",
+    "trait_type": "agent",
     "description": "This character is full of energy and enthusiasm for various activities.",
     "effects": [
       {
@@ -521,15 +485,14 @@
         "amount": 0.2
       }
     ],
-    "conflicts_with": [
-      "lethargic"
-    ],
+    "conflicts_with": ["lethargic"],
     "spawn_frequency": 2,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "lethargic": {
     "name": "Lethargic",
+    "trait_type": "agent",
     "description": "This character lacks energy and often feels tired or unenthusiastic.",
     "effects": [
       {
@@ -538,22 +501,20 @@
         "amount": -0.2
       }
     ],
-    "conflicts_with": [
-      "energetic"
-    ],
+    "conflicts_with": ["energetic"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "confident": {
     "name": "Confident",
+    "trait_type": "agent",
     "description": "This character is self-assured and has a strong belief in their abilities.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "attractiveness",
-        "amount": 20,
-        "modifier_type": "FLAT"
+        "stat": "charm",
+        "amount": 20
       }
     ],
     "spawn_frequency": 1,
@@ -562,13 +523,13 @@
   },
   "insecure": {
     "name": "Insecure",
+    "trait_type": "agent",
     "description": "This character struggles with self-doubt and often feels unattractive or inadequate.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "attractiveness",
-        "amount": -20,
-        "modifier_type": "FLAT"
+        "stat": "charm",
+        "amount": -10
       }
     ],
     "spawn_frequency": 1,
@@ -577,24 +538,13 @@
   },
   "betraying": {
     "name": "Betraying",
+    "trait_type": "agent",
     "description": "This character is prone to betrayal and can turn on friends and allies.",
-    "effects": [
+    "outgoing_relationship_effects": [
       {
-        "type": "AddSocialRule",
-        "preconditions": [
-          {
-            "type": "HasTrait",
-            "trait": "friendly"
-          }
-        ],
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": -3,
-            "modifier_type": "FLAT"
-          }
-        ]
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": -10
       }
     ],
     "spawn_frequency": 1,
@@ -603,37 +553,36 @@
   },
   "genius": {
     "name": "Genius",
+    "trait_type": "agent",
     "description": "This character possesses exceptional intelligence and problem-solving abilities.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "intelligence",
-        "amount": 40,
-        "modifier_type": "FLAT"
+        "amount": 40
       }
     ],
-    "conflicts_with": [
-      "simpleminded"
-    ],
+    "conflicts_with": ["simpleminded"],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "friendly": {
     "name": "Friendly",
+    "trait_type": "agent",
     "description": "This character is amiable and easily forms positive relationships with others.",
-    "effects": [
+    "incoming_relationship_effects": [
       {
-        "type": "AddSocialRule",
-        "preconditions": [],
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "reputation",
-            "amount": 20,
-            "modifier_type": "FLAT"
-          }
-        ]
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": 10
+      }
+    ],
+    "outgoing_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "reputation",
+        "amount": 20
       }
     ],
     "spawn_frequency": 1,
@@ -642,369 +591,88 @@
   },
   "lustful": {
     "name": "Lustful",
+    "trait_type": "agent",
     "description": "This character has strong sexual desires and is often drawn to romantic encounters.",
     "effects": [
       {
         "type": "AddStatBuff",
         "stat": "fertility",
-        "amount": 0.3,
-        "modifier_type": "FLAT"
+        "amount": 0.3
       }
     ],
-    "conflicts_with": [
-      "chaste"
+    "outgoing_relationship_effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "amount": 10
+      }
     ],
-    "spawn_frequency": 0,
+    "conflicts_with": ["chaste"],
+    "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
   },
   "immortal": {
     "name": "Immortal",
+    "trait_type": "agent",
     "description": "This character is immune to death and the passage of time.",
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "health_decay",
-        "amount": -100,
-        "modifier_type": "FLAT"
+        "stat": "lifespan",
+        "amount": 999999
       }
     ],
-    "spawn_frequency": 0.0,
     "inheritance_chance_single": 0.0,
     "inheritance_chance_both": 0.9
   },
   "attracted_to_men": {
     "name": "Attracted to Men",
+    "trait_type": "agent",
     "description": "This character experiences romantic attraction primarily to men.",
     "effects": [
       {
-        "type": "AddSocialRule",
-        "preconditions": [
-          {
-            "type": "TargetIsSex",
-            "sex": "MALE"
-          }
-        ],
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "romance",
-            "amount": 15
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "romantic_compatibility",
-            "amount": 5
-          }
-        ]
+        "type": "AddBelief",
+        "belief_id": "men_are_attractive."
+      },
+      {
+        "type": "AddBelief",
+        "belief_id": "women_are_not_attractive"
       }
     ],
-    "conflicts_with": [
-      "attracted_to_women"
-    ],
+    "conflicts_with": ["attracted_to_women"],
     "spawn_frequency": 3
   },
   "attracted_to_women": {
     "name": "Attracted to Women",
+    "trait_type": "agent",
     "description": "This character experiences romantic attraction primarily to women.",
     "effects": [
       {
-        "type": "AddSocialRule",
-        "preconditions": [
-          {
-            "type": "TargetIsSex",
-            "sex": "FEMALE"
-          }
-        ],
-        "effects": [
-          {
-            "type": "AddStatBuff",
-            "stat": "romance",
-            "amount": 5
-          },
-          {
-            "type": "AddStatBuff",
-            "stat": "romantic_compatibility",
-            "amount": 5
-          }
-        ]
+        "type": "AddBelief",
+        "belief_id": "women_are_attractive"
+      },
+      {
+        "type": "AddBelief",
+        "belief_id": "men_are_not_attractive"
       }
     ],
-    "conflicts_with": [
-      "attracted_to_men"
-    ],
+    "conflicts_with": ["attracted_to_men"],
     "spawn_frequency": 3
-  },
-  "boss": {
-    "name": "Boss",
-    "description": "The target of this relationship is the their work boss.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 1
-      }
-    ]
-  },
-  "employee": {
-    "name": "Employee",
-    "description": "The target of this relationship is an employee.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 1
-      }
-    ]
-  },
-  "coworker": {
-    "name": "Coworker",
-    "description": "The target of this relationship is a coworker.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 2
-      }
-    ]
   },
   "departed": {
     "name": "Departed",
-    "description": "The character has departed the simulation.",
-    "spawn_frequency": 0
+    "trait_type": "agent",
+    "description": "The character has departed the simulation."
   },
   "deceased": {
     "name": "Deceased",
-    "description": "The character is deceased.",
-    "spawn_frequency": 0
+    "trait_type": "agent",
+    "description": "The character is deceased."
   },
   "retired": {
     "name": "Retired",
-    "description": "The character has retired from working.",
-    "spawn_frequency": 0
-  },
-  "family": {
-    "name": "Family",
-    "description": "These characters are related",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": -30
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": 10
-      }
-    ]
-  },
-  "parent": {
-    "name": "Parent",
-    "description": "The target of this relationship is the owner's parent",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 1
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": -50
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": 10
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": -3
-      }
-    ]
-  },
-  "child": {
-    "name": "Child",
-    "description": "The target of this relationship is a child of the owner.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": -50
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": -5
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": 20
-      }
-    ]
-  },
-  "sibling": {
-    "name": "Sibling",
-    "description": "The target of this relationship is a sibling of the owner.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": -50
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": 15
-      }
-    ]
-  },
-  "spouse": {
-    "name": "Spouse",
-    "description": "The target of this relationship is a spouse of the owner.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": 15
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 3
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": 20
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "compatibility",
-        "amount": 4
-      }
-    ]
-  },
-  "dating": {
-    "name": "Dating",
-    "description": "The relationship target and owner are dating.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": 10
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 2
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": 15
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "compatibility",
-        "amount": 4
-      }
-    ]
-  },
-  "serves_alcohol": {
-    "name": "Serves Alcohol",
-    "description": "This establishment serves alcohol.",
-    "spawn_frequency": 0
-  },
-  "ex_spouse": {
-    "name": "Ex-Spouse",
-    "description": "These characters were formerly married",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": -20
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": -8
-      }
-    ]
-  },
-  "ex_partner": {
-    "name": "Ex-Partner",
-    "description": "These character used to date.",
-    "spawn_frequency": 0,
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "romance",
-        "amount": -10
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "reputation",
-        "amount": -5
-      }
-    ]
-  },
-  "crush": {
-    "name": "Crush",
-    "description": "The owner of this relationship has a crush on the target.",
-    "spawn_frequency": 0
-  },
-  "live_together": {
-    "name": "Live Together",
-    "description": "The owner of this relationship lives with the target.",
-    "spawn_frequency": 0
-  },
-  "friend": {
-    "name": "Friend",
-    "description": "The owner of this relationship is friends with target.",
-    "spawn_frequency": 0
-  },
-  "enemy": {
-    "name": "Enemy",
-    "description": "The owner of this relationship is enemies with target.",
-    "spawn_frequency": 0
-  },
-  "widow": {
-    "name": "Widow",
-    "description": "The target of the relationship is the widow of the owner.",
-    "spawn_frequency": 0
-  },
-  "step_parent": {
-    "name": "Step Parent",
-    "description": "Target is the step parent of the owner.",
-    "spawn_frequency": 0
-  },
-  "step_child": {
-    "name": "Step Child",
-    "description": "Target is the step child of the owner.",
-    "spawn_frequency": 0
-  },
-  "step_sibling": {
-    "name": "Step Sibling",
-    "description": "Target is the step sibling of the owner.",
-    "spawn_frequency": 0
-  },
-  "biological_parent": {
-    "name": "Biological Parent",
-    "description": "Target is the biological parent of the owner.",
-    "spawn_frequency": 0
+    "trait_type": "agent",
+    "description": "The character has retired from working."
   }
 }

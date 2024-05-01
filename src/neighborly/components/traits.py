@@ -6,6 +6,7 @@ This module contains class definitions for implementing the trait system.
 
 from __future__ import annotations
 
+import enum
 from typing import Any, Iterable
 
 from sqlalchemy import ForeignKey, delete
@@ -15,6 +16,13 @@ from neighborly.ecs import Component, GameData, GameObject
 from neighborly.effects.base_types import Effect
 
 
+class TraitType(enum.Enum):
+    """Enumeration of all possible trait types."""
+
+    AGENT = enum.auto()
+    RELATIONSHIP = enum.auto()
+
+
 class Trait:
     """Additional state associated with characters, businesses, and other GameObjects."""
 
@@ -22,8 +30,13 @@ class Trait:
         "definition_id",
         "description",
         "name",
+        "trait_type",
         "effects",
         "conflicting_traits",
+        "incoming_relationship_effects",
+        "outgoing_relationship_effects",
+        "owner_effects",
+        "target_effects",
     )
 
     definition_id: str
@@ -32,46 +45,44 @@ class Trait:
     """A short description of the tag."""
     name: str
     """The name of this tag printed."""
+    trait_type: TraitType
+    """The kind of GameObject the trait can attach to."""
     effects: list[Effect]
     """Effects to apply when the tag is added."""
     conflicting_traits: set[str]
     """traits that this trait conflicts with."""
+    incoming_relationship_effects: list[Effect]
+    """(Agents only) Effects to incoming relationships."""
+    outgoing_relationship_effects: list[Effect]
+    """(Agents only) Effects to outgoing relationships."""
+    owner_effects: list[Effect]
+    """(Relationships only) Effects to the owner of a relationship."""
+    target_effects: list[Effect]
+    """(Relationships only) Effects to the target of a relationship."""
 
     def __init__(
         self,
         definition_id: str,
         name: str,
+        trait_type: TraitType,
         description: str,
         effects: list[Effect],
+        incoming_relationship_effects: list[Effect],
+        outgoing_relationship_effects: list[Effect],
+        owner_effects: list[Effect],
+        target_effects: list[Effect],
         conflicting_traits: Iterable[str],
     ) -> None:
         self.definition_id = definition_id
         self.name = name
+        self.trait_type = trait_type
         self.description = description
         self.effects = effects
         self.conflicting_traits = set(conflicting_traits)
-
-    def apply_effects(self, target: GameObject) -> None:
-        """Callback method executed when the trait is added.
-
-        Parameters
-        ----------
-        target
-            The gameobject with the trait
-        """
-        for effect in self.effects:
-            effect.apply(target)
-
-    def remove_effects(self, target: GameObject) -> None:
-        """Callback method executed when the trait is removed.
-
-        Parameters
-        ----------
-        target
-            The gameobject with the trait
-        """
-        for effect in self.effects:
-            effect.remove(target)
+        self.incoming_relationship_effects = incoming_relationship_effects
+        self.outgoing_relationship_effects = outgoing_relationship_effects
+        self.owner_effects = owner_effects
+        self.target_effects = target_effects
 
     def __str__(self) -> str:
         return self.name
@@ -195,9 +206,6 @@ class Traits(Component):
                 TraitInstanceData(uid=self.gameobject.uid, trait_id=trait.definition_id)
             )
 
-        # Apply the effects of the trait
-        trait.apply_effects(self.gameobject)
-
         return True
 
     def remove_trait(self, trait: Trait) -> bool:
@@ -217,8 +225,6 @@ class Traits(Component):
                     .where(TraitInstanceData.uid == self.gameobject.uid)
                     .where(TraitInstanceData.trait_id == trait.definition_id)
                 )
-
-            trait.remove_effects(self.gameobject)
 
             return True
 
@@ -252,28 +258,6 @@ class Traits(Component):
                 return True
 
         return False
-
-    def tick_traits(self) -> None:
-        """Tick the durations for the trait instances."""
-
-        traits_to_remove: list[Trait] = []
-
-        with self.gameobject.world.session.begin() as session:
-
-            for trait_instance in self.traits.values():
-                if not trait_instance.has_duration:
-                    continue
-
-                trait_instance.duration -= 1
-
-                if trait_instance.duration <= 0:
-                    session.delete(trait_instance)
-                    traits_to_remove.append(trait_instance.trait)
-                else:
-                    session.add(trait_instance)
-
-        for trait_id in traits_to_remove:
-            self.remove_trait(trait_id)
 
     def __str__(self) -> str:
         return f"Traits(traits={list(self.traits.keys())!r})"

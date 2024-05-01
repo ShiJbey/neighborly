@@ -7,7 +7,6 @@ from __future__ import annotations
 import random
 
 from neighborly.components.settlement import District, Settlement
-from neighborly.defs.base_types import DistrictDef, SettlementDef
 from neighborly.ecs import GameObject, World
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 
@@ -102,30 +101,3 @@ def add_district_to_settlement(settlement: GameObject, district: GameObject) -> 
     settlement.get_component(Settlement).add_district(district)
     district.get_component(District).settlement = settlement
     settlement.add_child(district)
-
-
-def register_settlement_def(world: World, definition: SettlementDef) -> None:
-    """Add a new settlement definition for the SettlementLibrary.
-
-    Parameters
-    ----------
-    world
-        The world instance containing the settlement library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(SettlementLibrary).add_definition(definition)
-
-
-def register_district_def(world: World, definition: DistrictDef) -> None:
-    """Add a new district definition for the DistrictLibrary.
-
-    Parameters
-    ----------
-    world
-        The world instance containing the district library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(DistrictLibrary).add_definition(definition)
-    world.resource_manager.get_resource(DistrictLibrary).add_definition(definition)

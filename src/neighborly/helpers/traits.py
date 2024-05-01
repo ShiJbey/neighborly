@@ -6,10 +6,10 @@ from __future__ import annotations
 
 from typing import Union
 
-from neighborly.components.relationship import Relationships
-from neighborly.components.traits import Trait, Traits
-from neighborly.defs.base_types import TraitDef
-from neighborly.ecs import GameObject, World
+from neighborly.components.relationship import Relationship, Relationships
+from neighborly.components.traits import Trait, Traits, TraitType
+from neighborly.ecs import GameObject
+from neighborly.helpers.relationship import get_relationship
 from neighborly.libraries import TraitLibrary
 
 
@@ -41,13 +41,95 @@ def add_trait(
 
     if isinstance(trait, str):
         library = gameobject.world.resource_manager.get_resource(TraitLibrary)
-        return gameobject.get_component(Traits).add_trait(
-            library.get_trait(trait), description=description, duration=duration
-        )
+        trait_obj = library.get_trait(trait)
+    else:
+        trait_obj = trait
 
-    return gameobject.get_component(Traits).add_trait(
-        trait, description=description, duration=duration
+    if trait_obj.trait_type != TraitType.AGENT:
+        raise TypeError(f"{trait_obj.definition_id} is not an agent trait.")
+
+    success = gameobject.get_component(Traits).add_trait(
+        trait_obj, description=description, duration=duration
     )
+
+    if success is False:
+        return False
+
+    for effect in trait_obj.effects:
+        effect.apply(gameobject)
+
+    outgoing_relationships = gameobject.get_component(Relationships).outgoing
+    for relationship in outgoing_relationships.values():
+        for effect in trait_obj.outgoing_relationship_effects:
+            effect.apply(relationship)
+
+    incoming_relationships = gameobject.get_component(Relationships).incoming
+    for relationship in incoming_relationships.values():
+        for effect in trait_obj.outgoing_relationship_effects:
+            effect.apply(relationship)
+
+    return True
+
+
+def add_relationship_trait(
+    owner: GameObject,
+    target: GameObject,
+    trait: Union[str, Trait],
+    duration: int = -1,
+    description: str = "",
+) -> bool:
+    """Add a trait to a relationship.
+
+    Parameters
+    ----------
+    owner
+        The owner of the relationship.
+    target
+        The target of the relationship.
+    trait
+        The trait.
+    duration
+        How long the trait should last.
+    description
+        Override the default trait description.
+
+    Return
+    ------
+    bool
+        True if the trait was added successfully, False if already present or
+        if the trait conflict with existing traits.
+    """
+    relationship = get_relationship(owner, target)
+
+    if isinstance(trait, str):
+        library = relationship.world.resource_manager.get_resource(TraitLibrary)
+        trait_obj = library.get_trait(trait)
+    else:
+        trait_obj = trait
+
+    if trait_obj.trait_type != TraitType.RELATIONSHIP:
+        raise TypeError(f"{trait_obj.definition_id} is not a relationship trait.")
+
+    success = relationship.get_component(Traits).add_trait(
+        trait_obj, description=description, duration=duration
+    )
+
+    if success is False:
+        return False
+
+    relationship_owner = relationship.get_component(Relationship).owner
+    relationship_target = relationship.get_component(Relationship).target
+
+    for effect in trait_obj.effects:
+        effect.apply(relationship)
+
+    for effect in trait_obj.owner_effects:
+        effect.apply(relationship_owner)
+
+    for effect in trait_obj.outgoing_relationship_effects:
+        effect.apply(relationship_target)
+
+    return True
 
 
 def remove_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
@@ -68,10 +150,87 @@ def remove_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
 
     if isinstance(trait, str):
         library = gameobject.world.resource_manager.get_resource(TraitLibrary)
+        trait_obj = library.get_trait(trait)
+    else:
+        trait_obj = trait
 
-        return gameobject.get_component(Traits).remove_trait(library.get_trait(trait))
+    success = gameobject.get_component(Traits).remove_trait(trait_obj)
 
-    return gameobject.get_component(Traits).remove_trait(trait)
+    if success is False:
+        return False
+
+    for effect in trait_obj.effects:
+        effect.remove(gameobject)
+
+    outgoing_relationships = gameobject.get_component(Relationships).outgoing
+    for relationship in outgoing_relationships.values():
+        for effect in trait_obj.outgoing_relationship_effects:
+            effect.remove(relationship)
+
+    incoming_relationships = gameobject.get_component(Relationships).incoming
+    for relationship in incoming_relationships.values():
+        for effect in trait_obj.outgoing_relationship_effects:
+            effect.remove(relationship)
+
+    return True
+
+
+def remove_relationship_trait(
+    owner: GameObject,
+    target: GameObject,
+    trait: Union[str, Trait],
+    duration: int = -1,
+    description: str = "",
+) -> bool:
+    """Remove a trait from a relationship.
+
+    Parameters
+    ----------
+    owner
+        The owner of the relationship.
+    target
+        The target of the relationship.
+    trait
+        The trait.
+    duration
+        How long the trait should last.
+    description
+        Override the default trait description.
+
+    Return
+    ------
+    bool
+        True if the trait was added successfully, False if already present or
+        if the trait conflict with existing traits.
+    """
+    relationship = get_relationship(owner, target)
+
+    if isinstance(trait, str):
+        library = relationship.world.resource_manager.get_resource(TraitLibrary)
+        trait_obj = library.get_trait(trait)
+    else:
+        trait_obj = trait
+
+    success = relationship.get_component(Traits).add_trait(
+        trait_obj, description=description, duration=duration
+    )
+
+    if success is False:
+        return False
+
+    relationship_owner = relationship.get_component(Relationship).owner
+    relationship_target = relationship.get_component(Relationship).target
+
+    for effect in trait_obj.effects:
+        effect.remove(relationship)
+
+    for effect in trait_obj.owner_effects:
+        effect.remove(relationship_owner)
+
+    for effect in trait_obj.outgoing_relationship_effects:
+        effect.remove(relationship_target)
+
+    return True
 
 
 def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
@@ -95,19 +254,6 @@ def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
         return gameobject.get_component(Traits).has_trait(library.get_trait(trait))
 
     return gameobject.get_component(Traits).has_trait(trait)
-
-
-def register_trait_def(world: World, definition: TraitDef) -> None:
-    """Add a new trait definition for the TraitLibrary.
-
-    Parameters
-    ----------
-    world
-        The world instance containing the trait library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(TraitLibrary).add_definition(definition)
 
 
 def get_relationships_with_traits(

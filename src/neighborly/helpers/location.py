@@ -2,16 +2,12 @@
 
 """
 
-from repraxis.query import DBQuery
-
 from neighborly.components.location import (
     FrequentedLocations,
     Location,
-    LocationPreferenceRule,
     LocationPreferences,
 )
 from neighborly.ecs import GameObject
-from neighborly.helpers.db_helpers import preprocess_query_string
 from neighborly.libraries import LocationPreferenceLibrary
 
 
@@ -73,36 +69,6 @@ def remove_all_frequenting_characters(location: GameObject) -> None:
         frequented_by_data.remove_character(character)
 
 
-def check_location_preference_preconditions(
-    rule: LocationPreferenceRule, character: GameObject, location: GameObject
-) -> float:
-    """Check all preconditions and return a weight modifier.
-
-    Parameters
-    ----------
-    rule
-        The rule to evaluate.
-    character
-        The character we are evaluating the rule for.
-    location
-        The location to be scored.
-
-    Returns
-    -------
-    float
-        A probability score from [0.0, 1.0] of the character frequenting the
-        location. Or -1 if it does not pass the preconditions.
-    """
-
-    query_lines = preprocess_query_string(rule.preconditions)
-
-    result = DBQuery(query_lines).run(
-        character.world.rp_db, [{"?location": location.uid, "?subject": character.uid}]
-    )
-
-    return result.success
-
-
 def score_location(character: GameObject, location: GameObject) -> float:
     """Calculate a score for a character choosing to frequent this location.
 
@@ -127,7 +93,7 @@ def score_location(character: GameObject, location: GameObject) -> float:
 
     for rule_id in rules:
         rule = library.rules[rule_id]
-        if check_location_preference_preconditions(rule, character, location):
+        if rule.check_preconditions(location):
             consideration_score = rule.probability
         else:
             consideration_score = -1

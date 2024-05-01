@@ -21,10 +21,10 @@
       "FrequentedLocations": {},
       "LocationPreferences": {},
       "PersonalEventHistory": {},
-      "SocialRules": {},
       "Relationships": {},
       "Traits": {},
-      "Character": {}
+      "Character": {},
+      "AgentBeliefs": {}
     },
     "variants": [
       {
@@ -34,7 +34,7 @@
         "is_template": false,
         "components": {
           "Character": {
-            "first_name_factory": "default-first",
+            "first_name_factory": "masculine-first",
             "last_name_factory": "default-last",
             "sex": "MALE",
             "species": "human"
@@ -48,7 +48,7 @@
         "is_template": false,
         "components": {
           "Character": {
-            "first_name_factory": "default-first",
+            "first_name_factory": "feminine-first",
             "last_name_factory": "default-last",
             "sex": "MALE",
             "species": "human"
@@ -59,29 +59,17 @@
   },
   "farmer": {
     "is_template": true,
-    "extends": [
-      "person"
-    ],
-    "tags": [
-      "farmer"
-    ]
+    "extends": ["person"],
+    "tags": ["farmer"]
   },
   "merchant": {
     "is_template": true,
-    "extends": [
-      "person"
-    ],
-    "tags": [
-      "merchant"
-    ]
+    "extends": ["person"],
+    "tags": ["merchant"]
   },
   "nobility": {
     "is_template": true,
-    "extends": [
-      "person"
-    ],
-    "tags": [
-      "nobility"
-    ]
+    "extends": ["person"],
+    "tags": ["nobility"]
   }
 }

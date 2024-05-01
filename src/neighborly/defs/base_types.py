@@ -80,14 +80,6 @@ class SkillDef(ContentDefinition):
     """Tags describing this definition."""
 
 
-class StatModifierData(pydantic.BaseModel):
-    """Configuration data for a stat modifier in a definition."""
-
-    name: str
-    value: float
-    modifier_type: str = "FLAT"
-
-
 class TraitDef(ContentDefinition):
     """A definition for a trait."""
 
@@ -95,18 +87,32 @@ class TraitDef(ContentDefinition):
     """The ID of this trait definition."""
     name: str
     """The name of this trait."""
+    trait_type: str
+    """The kind of GameObject the trait can attach to."""
     description: str = ""
     """A short description of the trait."""
     effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
     """Effects applied when a GameObject has this trait."""
+    incoming_relationship_effects: list[dict[str, Any]] = pydantic.Field(
+        default_factory=list
+    )
+    """(Agents only) Effects to incoming relationships."""
+    outgoing_relationship_effects: list[dict[str, Any]] = pydantic.Field(
+        default_factory=list
+    )
+    """(Agents only) Effects to outgoing relationships."""
+    owner_effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
+    """(Relationships only) Effects to the owner of a relationship."""
+    target_effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
+    """(Relationships only) Effects to the target of a relationship."""
     conflicts_with: set[str] = pydantic.Field(default_factory=set)
     """IDs of traits that this trait conflicts with."""
     spawn_frequency: int = 0
-    """The relative frequency of this trait being chosen relative to others."""
+    """(Agents only) The relative frequency of an agent spawning with this trait."""
     inheritance_chance_single: float = 0.0
-    """The probability of inheriting this trait if one parent has it."""
+    """(Agents only) The probability of inheriting this trait if one parent has it."""
     inheritance_chance_both: float = 0.0
-    """The probability of inheriting this trait if both parents have it."""
+    """(Agents only) The probability of inheriting this trait if both parents have it."""
     variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)
@@ -309,3 +315,25 @@ class BusinessDef(ContentDefinition):
     """Tags describing this definition."""
     components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Information about components."""
+
+
+class BeliefDef(ContentDefinition):
+    """A definition for a belief held by an agent."""
+
+    description: str
+    """A text description of the belief."""
+    preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
+    """Relationship preconditions for the belief to take effect."""
+    effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
+    """Effects applied to a relationship by the belief."""
+    is_global: bool = False
+    """Is this belief held by all agents."""
+
+
+class LocationPreferenceDef(ContentDefinition):
+    """A rule that helps characters score how they feel about locations to frequent."""
+
+    preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
+    """Precondition to run when scoring a location."""
+    probability: float
+    """The amount to apply to the score."""

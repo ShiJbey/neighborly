@@ -25,7 +25,7 @@ from neighborly.loaders import (
     load_skills,
     load_species,
 )
-from neighborly.plugins import default_traits
+from neighborly.plugins import default_character_names, default_traits
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -46,6 +46,7 @@ def sim() -> Simulation:
     load_species(simulation, _TEST_DATA_DIR / "species.json")
 
     default_traits.load_plugin(simulation)
+    default_character_names.load_plugin(simulation)
 
     simulation.initialize()
 
@@ -106,11 +107,11 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     add_trait(farmer, "gullible")
 
-    assert get_stat(rel_to_noble, "reputation").value == 5
+    assert get_stat(rel_to_noble, "reputation").value == 10
 
     rel = add_relationship(farmer, merchant)
 
-    assert get_stat(rel, "reputation").value == 5
+    assert get_stat(rel, "reputation").value == 10
 
     remove_trait(farmer, "gullible")
 

@@ -12,9 +12,8 @@ from typing import Any, Union
 
 import yaml
 
-from neighborly.components.location import LocationPreferenceRule
-from neighborly.components.relationship import SocialRule
 from neighborly.defs.base_types import (
+    BeliefDef,
     BusinessDef,
     CharacterDef,
     DistrictDef,
@@ -24,8 +23,10 @@ from neighborly.defs.base_types import (
     SkillDef,
     SpeciesDef,
     TraitDef,
+    LocationPreferenceDef,
 )
 from neighborly.libraries import (
+    BeliefLibrary,
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
@@ -34,7 +35,6 @@ from neighborly.libraries import (
     ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
-    SocialRuleLibrary,
     SpeciesLibrary,
     TraitLibrary,
 )
@@ -252,19 +252,18 @@ def load_skills(
         )
 
 
-def load_social_rules(
+def load_beliefs(
     sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
 ) -> None:
-    """Load social rules from a file."""
+    """Load beliefs from a file."""
 
     with open(file_path, "r", encoding="utf8") as file:
         data: list[dict[str, Any]] = yaml.safe_load(file)
 
-    library = sim.world.resource_manager.get_resource(SocialRuleLibrary)
+    library = sim.world.resource_manager.get_resource(BeliefLibrary)
 
     for entry in data:
-        rule = SocialRule.model_validate(entry)
-        library.add_rule(rule)
+        library.add_definition(BeliefDef.model_validate(entry))
 
 
 def load_location_preferences(
@@ -278,5 +277,4 @@ def load_location_preferences(
     library = sim.world.resource_manager.get_resource(LocationPreferenceLibrary)
 
     for entry in data:
-        rule = LocationPreferenceRule.model_validate(entry)
-        library.add_rule(rule)
+        library.add_definition(LocationPreferenceDef.model_validate(entry))

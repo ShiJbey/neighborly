@@ -8,16 +8,12 @@ graph.
 
 from __future__ import annotations
 
-import enum
-from collections import defaultdict
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
-import pydantic
 from sqlalchemy import ForeignKey, delete
 from sqlalchemy.orm import Mapped, mapped_column
 
 from neighborly.components.stats import StatComponent
-from neighborly.defs.base_types import StatModifierData
 from neighborly.ecs import Component, GameData, GameObject
 
 
@@ -42,8 +38,6 @@ class Relationship(Component):
     """Who owns this relationship."""
     _target: GameObject
     """Who is the relationship directed toward."""
-    active_rules: list[str]
-    """ID of social rules currently applied to this relationship."""
 
     def __init__(
         self,
@@ -54,7 +48,6 @@ class Relationship(Component):
         super().__init__(gameobject)
         self._owner = owner
         self._target = target
-        self.active_rules = []
 
     @property
     def owner(self) -> GameObject:
@@ -299,69 +292,6 @@ class Relationships(Component):
             f"{self.__class__.__name__}(outgoing={self._outgoing}, "
             f"incoming={self._incoming})"
         )
-
-
-class SocialRuleDirection(enum.Enum):
-    """Direction that a social rule is evaluated."""
-
-    OUTGOING = enum.auto()
-    INCOMING = enum.auto()
-
-
-class SocialRule(pydantic.BaseModel):
-    """A rule that modifies a relationship depending on some preconditions."""
-
-    rule_id: str
-    """A unique ID for this rule."""
-    direction: SocialRuleDirection = pydantic.Field(
-        default=SocialRuleDirection.OUTGOING
-    )
-    """direction that the rule is evaluated."""
-    preconditions: str = pydantic.Field(default="")
-    """Conditions that need to be met to apply the rule."""
-    stat_modifiers: list[StatModifierData]
-    """Side-effects of the rule applied to a relationship."""
-
-
-class SocialRules(Component):
-    """Tracks all the social rules that a GameObject abides by."""
-
-    __slots__ = ("_rules",)
-
-    _rules: defaultdict[str, int]
-    """Rules IDs mapped to reference counts."""
-
-    def __init__(self, gameobject: GameObject) -> None:
-        super().__init__(gameobject)
-        self._rules = defaultdict(lambda: 0)
-
-    @property
-    def rules(self) -> Iterable[str]:
-        """Rules applied to the owning GameObject's relationships."""
-        return self._rules
-
-    def add_rule(self, rule_id: str) -> None:
-        """Add a rule to the rule collection."""
-        self._rules[rule_id] += 1
-
-    def has_rule(self, rule_id: str) -> bool:
-        """Check if a rule is present."""
-        return rule_id in self._rules
-
-    def remove_rule(self, rule_id: str) -> bool:
-        """Remove a rule from the rules collection."""
-        if rule_id in self._rules:
-            self._rules[rule_id] -= 1
-
-            if self._rules[rule_id] <= 0:
-                del self._rules[rule_id]
-
-            return True
-
-        return False
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"rules": [r for r in self._rules]}
 
 
 class Reputation(StatComponent):

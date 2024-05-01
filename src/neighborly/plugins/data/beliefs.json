@@ -1,0 +1,94 @@
+[
+  {
+    "definition_id": "men_are_attractive",
+    "description": "Men are attractive",
+    "preconditions": [
+      {
+        "type": "RePraxisQuery",
+        "query": "?target.relationship.owner!?target\n?target.character.sex!MALE",
+        "description": "Relationship target is male"
+      }
+    ],
+    "effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "amount": 15
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "amount": 5
+      }
+    ]
+  },
+  {
+    "definition_id": "men_are_not_attractive",
+    "description": "Men are not attractive",
+    "preconditions": [
+      {
+        "type": "RePraxisQuery",
+        "query": "?target.relationship.owner!?target\n?target.character.sex!MALE",
+        "description": "Relationship target is male"
+      }
+    ],
+    "effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "amount": -15
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "amount": -5
+      }
+    ]
+  },
+  {
+    "definition_id": "women_are_attractive",
+    "description": "Women are attractive.",
+    "preconditions": [
+      {
+        "type": "RePraxisQuery",
+        "query": "?target.relationship.owner!?target\n?target.character.sex!FEMALE",
+        "description": "Relationship target is female"
+      }
+    ],
+    "effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "amount": 15
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "amount": 5
+      }
+    ]
+  },
+  {
+    "definition_id": "women_are_not_attractive",
+    "description": "Women are not attractive.",
+    "preconditions": [
+      {
+        "type": "RePraxisQuery",
+        "query": "?target.relationship.owner!?target\n?target.character.sex!FEMALE",
+        "description": "Relationship target is female"
+      }
+    ],
+    "effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "amount": 15
+      },
+      {
+        "type": "AddStatBuff",
+        "stat": "romantic_compatibility",
+        "amount": 5
+      }
+    ]
+  }
+]

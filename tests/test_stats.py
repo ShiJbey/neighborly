@@ -14,7 +14,7 @@ from neighborly.ecs import GameObject
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat, has_stat
 from neighborly.loaders import load_characters, load_skills, load_species
-from neighborly.plugins import default_traits
+from neighborly.plugins import default_character_names, default_traits
 from neighborly.simulation import Simulation
 
 _TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -42,6 +42,7 @@ def test_sim() -> Simulation:
     sim = Simulation()
 
     default_traits.load_plugin(sim)
+    default_character_names.load_plugin(sim)
 
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     load_skills(sim, _TEST_DATA_DIR / "skills.json")

@@ -1,5 +1,6 @@
 {
   "flirtatious": {
-    "name": "Flirtatious"
+    "name": "Flirtatious",
+    "trait_type": "agent"
   }
 }

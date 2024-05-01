@@ -10,7 +10,7 @@ from typing import Any, Iterable
 from sqlalchemy import ForeignKey, delete
 from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.components.traits import Trait
+from neighborly.components.traits import Trait, TraitType
 from neighborly.datetime import SimDate
 from neighborly.defs.base_types import SpeciesDef
 from neighborly.ecs import Component, GameData, GameObject
@@ -72,9 +72,14 @@ class Species(Trait):
         super().__init__(
             definition_id=definition_id,
             name=name,
+            trait_type=TraitType.AGENT,
             description=description,
             effects=effects,
             conflicting_traits=conflicting_traits,
+            target_effects=[],
+            owner_effects=[],
+            outgoing_relationship_effects=[],
+            incoming_relationship_effects=[],
         )
         self.adolescent_age = adolescent_age
         self.young_adult_age = young_adult_age

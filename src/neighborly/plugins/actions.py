@@ -18,7 +18,12 @@ from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.datetime import SimDate
 from neighborly.ecs import GameObject
 from neighborly.helpers.action import get_action_success_probability, get_action_utility
-from neighborly.helpers.business import close_business, fire_employee, leave_job
+from neighborly.helpers.business import (
+    add_employee,
+    close_business,
+    fire_employee,
+    leave_job,
+)
 from neighborly.helpers.character import (
     depart_settlement,
     move_into_residence,
@@ -28,9 +33,11 @@ from neighborly.helpers.location import add_frequented_location
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import (
+    add_relationship_trait,
     add_trait,
     get_relationships_with_traits,
     has_trait,
+    remove_relationship_trait,
     remove_trait,
 )
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
@@ -111,7 +118,7 @@ class FormCrush(Action):
         for rel in get_relationships_with_traits(self.character, "crush"):
             remove_trait(rel, "crush")
 
-        add_trait(get_relationship(self.character, self.crush), "crush")
+        add_relationship_trait(self.character, self.crush, "crush")
 
     def on_failure(self) -> None:
         return
@@ -228,11 +235,11 @@ class BreakUp(Action):
         self.partner = partner
 
     def on_success(self) -> None:
-        remove_trait(get_relationship(self.character, self.partner), "dating")
-        remove_trait(get_relationship(self.partner, self.character), "dating")
+        remove_relationship_trait(self.character, self.partner, "dating")
+        remove_relationship_trait(self.partner, self.character, "dating")
 
-        add_trait(get_relationship(self.character, self.partner), "ex_partner")
-        add_trait(get_relationship(self.partner, self.character), "ex_partner")
+        add_relationship_trait(self.character, self.partner, "ex_partner")
+        add_relationship_trait(self.partner, self.character, "ex_partner")
 
         get_stat(
             get_relationship(self.partner, self.character), "romance"
@@ -262,11 +269,11 @@ class Divorce(Action):
         self.partner = partner
 
     def on_success(self) -> None:
-        remove_trait(get_relationship(self.character, self.partner), "spouse")
-        remove_trait(get_relationship(self.partner, self.character), "spouse")
+        remove_relationship_trait(self.character, self.partner, "spouse")
+        remove_relationship_trait(self.partner, self.character, "spouse")
 
-        add_trait(get_relationship(self.character, self.partner), "ex_spouse")
-        add_trait(get_relationship(self.partner, self.character), "ex_spouse")
+        add_relationship_trait(self.character, self.partner, "ex_spouse")
+        add_relationship_trait(self.partner, self.character, "ex_spouse")
 
         get_stat(
             get_relationship(self.partner, self.character), "romance"
@@ -307,11 +314,11 @@ class GetMarried(Action):
         self.partner = partner
 
     def on_success(self) -> None:
-        remove_trait(get_relationship(self.character, self.partner), "dating")
-        remove_trait(get_relationship(self.partner, self.character), "dating")
+        remove_relationship_trait(self.character, self.partner, "dating")
+        remove_relationship_trait(self.partner, self.character, "dating")
 
-        add_trait(get_relationship(self.character, self.partner), "spouse")
-        add_trait(get_relationship(self.partner, self.character), "spouse")
+        add_relationship_trait(self.character, self.partner, "spouse")
+        add_relationship_trait(self.partner, self.character, "spouse")
 
         # Update residences
         shared_residence = self.character.get_component(Resident).residence
@@ -337,29 +344,29 @@ class GetMarried(Action):
 
                 child_1 = rel_1.get_component(Relationship).target
 
-                add_trait(get_relationship(child_0, child_1), "step_sibling")
-                add_trait(get_relationship(child_0, child_1), "sibling")
-                add_trait(get_relationship(child_1, child_0), "step_sibling")
-                add_trait(get_relationship(child_1, child_0), "sibling")
+                add_relationship_trait(child_0, child_1, "step_sibling")
+                add_relationship_trait(child_0, child_1, "sibling")
+                add_relationship_trait(child_1, child_0, "step_sibling")
+                add_relationship_trait(child_1, child_0, "sibling")
 
         # Update relationships parent/child relationships
         for rel in get_relationships_with_traits(self.character, "child"):
             if rel.is_active:
                 child = rel.get_component(Relationship).target
                 if not has_trait(get_relationship(self.partner, child), "child"):
-                    add_trait(get_relationship(self.partner, child), "child")
-                    add_trait(get_relationship(self.partner, child), "step_child")
-                    add_trait(get_relationship(child, self.partner), "parent")
-                    add_trait(get_relationship(child, self.partner), "step_parent")
+                    add_relationship_trait(self.partner, child, "child")
+                    add_relationship_trait(self.partner, child, "step_child")
+                    add_relationship_trait(child, self.partner, "parent")
+                    add_relationship_trait(child, self.partner, "step_parent")
 
         for rel in get_relationships_with_traits(self.partner, "child"):
             if rel.is_active:
                 child = rel.get_component(Relationship).target
                 if not has_trait(get_relationship(self.character, child), "child"):
-                    add_trait(get_relationship(self.character, child), "child")
-                    add_trait(get_relationship(self.character, child), "step_child")
-                    add_trait(get_relationship(child, self.character), "parent")
-                    add_trait(get_relationship(child, self.character), "step_parent")
+                    add_relationship_trait(self.character, child, "child")
+                    add_relationship_trait(self.character, child, "step_child")
+                    add_relationship_trait(child, self.character, "parent")
+                    add_relationship_trait(child, self.character, "step_parent")
 
     def on_failure(self) -> None:
         return
@@ -381,8 +388,34 @@ class StartDating(Action):
         self.partner = partner
 
     def on_success(self) -> None:
-        add_trait(get_relationship(self.character, self.partner), "dating")
-        add_trait(get_relationship(self.partner, self.character), "dating")
+        add_relationship_trait(self.character, self.partner, "dating")
+        add_relationship_trait(self.partner, self.character, "dating")
+
+    def on_failure(self) -> None:
+        return
+
+
+class HireEmployee(Action):
+    """A business hires an employee."""
+
+    __action_id__ = "fire-employee"
+
+    __slots__ = ("business", "employee", "role")
+
+    business: GameObject
+    employee: GameObject
+    role: JobRole
+
+    def __init__(
+        self, business: GameObject, employee: GameObject, role: JobRole
+    ) -> None:
+        super().__init__(business.world)
+        self.business = business
+        self.employee = employee
+        self.role = role
+
+    def on_success(self) -> None:
+        add_employee(self.business, self.employee, self.role)
 
     def on_failure(self) -> None:
         return

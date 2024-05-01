@@ -15,17 +15,19 @@ from typing import Any, Generic, Iterable, Protocol, Type, TypeVar
 from ordered_set import OrderedSet
 
 from neighborly.action import ActionConsideration
+from neighborly.components.beliefs import Belief
 from neighborly.components.business import JobRole
 from neighborly.components.character import Species
 from neighborly.components.location import LocationPreferenceRule
-from neighborly.components.relationship import SocialRule
 from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
+    BeliefDef,
     BusinessDef,
     CharacterDef,
     ContentDefinition,
     DistrictDef,
     JobRoleDef,
+    LocationPreferenceDef,
     ResidenceDef,
     SettlementDef,
     SkillDef,
@@ -156,24 +158,36 @@ class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
     """A collection of all business definitions."""
 
 
-class SocialRuleLibrary:
-    """The collection of social rules for relationships."""
+class BeliefLibrary(ContentDefinitionLibrary[BeliefDef]):
+    """The collection of all potential agent beliefs."""
 
-    __slots__ = ("rules",)
+    __slots__ = ("beliefs", "global_beliefs")
 
-    rules: dict[str, SocialRule]
-    """Rules applied to the owning GameObject's relationships."""
+    beliefs: dict[str, Belief]
+    """All potential beliefs."""
+    global_beliefs: OrderedSet[str]
+    """IDs of all beliefs that are held globally by all characters."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.rules = {}
+        self.beliefs = {}
+        self.global_beliefs = OrderedSet([])
 
-    def add_rule(self, rule: SocialRule) -> None:
-        """Add a rule to the rule collection."""
-        self.rules[rule.rule_id] = rule
+    def add_belief(self, belief: Belief) -> None:
+        """Add a belief to the library."""
+
+        self.beliefs[belief.belief_id] = belief
+
+        if belief.is_global:
+            self.global_beliefs.add(belief.belief_id)
+
+    def get_belief(self, belief_id: str) -> Belief:
+        """Get a belief from the library using its ID."""
+
+        return self.beliefs[belief_id]
 
 
-class LocationPreferenceLibrary:
+class LocationPreferenceLibrary(ContentDefinitionLibrary[LocationPreferenceDef]):
     """The collection of location preference rules."""
 
     __slots__ = ("rules",)
