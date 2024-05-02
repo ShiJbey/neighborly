@@ -272,7 +272,7 @@ class GameObject:
             is_active=True,
         )
 
-        with world.session.begin() as session:
+        with world.session() as session:
             session.add(self.data)
 
         self.world = world
@@ -311,7 +311,7 @@ class GameObject:
     @name.setter
     def name(self, value: str) -> None:
         """Set the GameObject's name"""
-        with self.world.session.begin() as session:
+        with self.world.session() as session:
             self.data.name = f"{value}({self.uid})"
             session.add(self.data)
 
@@ -319,7 +319,7 @@ class GameObject:
         """Tag the GameObject as active."""
         self.add_component(Active(self))
 
-        with self.world.session.begin() as session:
+        with self.world.session() as session:
             self.data.is_active = True
             session.add(self.data)
 
@@ -331,7 +331,7 @@ class GameObject:
 
         self.remove_component(Active)
 
-        with self.world.session.begin() as session:
+        with self.world.session() as session:
             self.data.is_active = False
             session.add(self.data)
 

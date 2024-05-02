@@ -149,7 +149,7 @@ def dispatch_life_event(world: World, event: LifeEvent) -> None:
 
     # This needs to be called before we do anything because adding it to the session
     # assigns the "event_id" attribute.
-    with world.session.begin() as session:
+    with world.session() as session:
         session.add(event)
 
     world.resources.get_resource(GlobalEventHistory).append(event)
