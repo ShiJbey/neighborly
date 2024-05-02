@@ -4,12 +4,7 @@
 
 from typing import Any
 
-from neighborly.components.business import (
-    Business,
-    JobOpeningData,
-    Occupation,
-    Unemployed,
-)
+from neighborly.components.business import Business, Occupation, Unemployed
 from neighborly.ecs import Component, ComponentFactory, GameObject
 from neighborly.libraries import BusinessNameFactories, JobRoleLibrary
 
@@ -52,11 +47,7 @@ class BusinessFactory(ComponentFactory):
             name=name,
             owner_role=owner_role,
             employee_roles={
-                role: JobOpeningData(
-                    role_id=role,
-                    business_id=gameobject.uid,
-                    count=count,
-                )
+                job_role_library.get_role(role): count
                 for role, count in employee_roles.items()
             },
         )

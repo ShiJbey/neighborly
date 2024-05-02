@@ -11,22 +11,9 @@ from collections import defaultdict
 from typing import Any, Iterable, Iterator
 
 from ordered_set import OrderedSet
-from sqlalchemy import ForeignKey, delete
-from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.ecs import Component, GameData, GameObject
+from neighborly.ecs import Component, GameObject
 from neighborly.preconditions.base_types import Precondition
-
-
-class LocationData(GameData):
-    """Queryable data about a location."""
-
-    __tablename__ = "locations"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    is_private: Mapped[bool]
 
 
 class Location(Component):
@@ -84,21 +71,11 @@ class Location(Component):
         return False
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                LocationData(uid=self.gameobject.uid, is_private=self.is_private)
-            )
-
         self.gameobject.world.rp_db.delete(
             f"{self.gameobject.uid}.location.is_private!{self.is_private}"
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(LocationData).where(LocationData.uid == self.gameobject.uid)
-            )
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.location")
 
     def to_dict(self) -> dict[str, Any]:
@@ -117,16 +94,6 @@ class Location(Component):
 
     def __repr__(self):
         return f"Location({self.frequented_by!r})"
-
-
-class FrequentedLocationData(GameData):
-    """Queryable data about locations characters frequent."""
-
-    __tablename__ = "frequented_locations"
-
-    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    location_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
 
 
 class FrequentedLocations(Component):
@@ -154,13 +121,6 @@ class FrequentedLocations(Component):
         """
         self._locations.add(location)
 
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                FrequentedLocationData(
-                    character_id=self.gameobject.uid, location_id=location.uid
-                )
-            )
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.frequented_locations.{location.uid}"
         )
@@ -180,13 +140,6 @@ class FrequentedLocations(Component):
         """
         if location in self._locations:
             self._locations.remove(location)
-
-            with self.gameobject.world.session.begin() as session:
-                session.execute(
-                    delete(FrequentedLocationData)
-                    .where(FrequentedLocationData.character_id == self.gameobject.uid)
-                    .where(FrequentedLocationData.location_id == location.uid)
-                )
 
             self.gameobject.world.rp_db.delete(
                 f"{self.gameobject.uid}.frequented_locations.{location.uid}"

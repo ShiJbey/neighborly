@@ -10,26 +10,10 @@ from __future__ import annotations
 import enum
 from typing import Any, Iterable, Mapping, Optional
 
-from sqlalchemy import ForeignKey, delete
-from sqlalchemy.orm import Mapped, mapped_column
-
 from neighborly.datetime import SimDate
-from neighborly.ecs import Component, GameData, GameObject
+from neighborly.ecs import Component, GameObject
 from neighborly.effects.base_types import Effect
 from neighborly.preconditions.base_types import Precondition
-
-
-class OccupationData(GameData):
-    """SQL Data for an occupation."""
-
-    __tablename__ = "occupations"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    role_id: Mapped[str]
-    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    start_date: Mapped[int]
 
 
 class Occupation(Component):
@@ -82,16 +66,6 @@ class Occupation(Component):
         return self._start_date
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                OccupationData(
-                    uid=self.gameobject.uid,
-                    role_id=self.job_role.definition_id,
-                    business_id=self.business.uid,
-                    start_date=self.start_date.to_iso_str(),
-                )
-            )
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.occupation.job_role!{self.job_role.definition_id}"
         )
@@ -103,11 +77,6 @@ class Occupation(Component):
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(OccupationData).where(OccupationData.uid == self.gameobject.uid)
-            )
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.occupation")
 
     def to_dict(self) -> dict[str, Any]:
@@ -140,50 +109,24 @@ class BusinessStatus(enum.Enum):
     PENDING = enum.auto()
 
 
-class BusinessData(GameData):
-    """SQL queryable data about a business."""
-
-    __tablename__ = "businesses"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    name: Mapped[str]
-    owner_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("gameobjects.uid"), nullable=True
-    )
-    district_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    status: Mapped[BusinessStatus] = mapped_column(default=BusinessStatus.PENDING)
-
-
-class JobOpeningData(GameData):
-    """Information about a job role opening at a business."""
-
-    __tablename__ = "job_openings"
-
-    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    role_id: Mapped[str]
-    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    count: Mapped[int]
-
-
 class Business(Component):
     """A business where characters work."""
 
     __slots__ = (
-        "data",
+        "_name",
         "_owner_role",
         "_employee_roles",
         "_district",
         "_owner",
         "_employees",
+        "_status",
     )
 
-    data: BusinessData
-    """SQl-queryable data about the business."""
+    _name: str
+    """The name of the business."""
     _owner_role: JobRole
     """The role of the business' owner."""
-    _employee_roles: dict[str, JobOpeningData]
+    _employee_roles: dict[JobRole, int]
     """The roles of employees."""
     _district: Optional[GameObject]
     """The district the residence is in."""
@@ -191,27 +134,24 @@ class Business(Component):
     """Owner and their job role ID."""
     _employees: dict[GameObject, JobRole]
     """Employees mapped to their job role ID."""
+    _status: BusinessStatus
+    """Current status of the business."""
 
     def __init__(
         self,
         gameobject: GameObject,
         name: str,
         owner_role: JobRole,
-        employee_roles: dict[str, JobOpeningData],
+        employee_roles: dict[JobRole, int],
     ) -> None:
         super().__init__(gameobject)
-        self.data = BusinessData(
-            uid=gameobject.uid,
-            name=name,
-            owner_id=None,
-            district_id=-1,
-            status=BusinessStatus.PENDING,
-        )
         self._district = None
+        self._name = name
         self._owner_role = owner_role
         self._employee_roles = employee_roles
         self._owner = None
         self._employees = {}
+        self._status = BusinessStatus.CLOSED
         gameobject.name = name
 
     @property
@@ -223,10 +163,6 @@ class Business(Component):
     def district(self, value: Optional[GameObject]) -> None:
         """Set the district property."""
         self._district = value
-        self.data.district_id = value.uid if value else -1
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
 
         if value:
             self.gameobject.world.rp_db.insert(
@@ -240,20 +176,18 @@ class Business(Component):
     @property
     def name(self) -> str:
         """The name of the business."""
-        return self.data.name
+        return self._name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set the name of the business."""
-        with self.gameobject.world.session.begin() as session:
-            self.data.name = value
-            session.add(self.data)
+        self._name = value
 
         self.gameobject.name = value
 
-        if self.data.name:
+        if value:
             self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.business.name!{self.data.name}"
+                f"{self.gameobject.uid}.business.name!{value}"
             )
         else:
             self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.business.name")
@@ -276,17 +210,15 @@ class Business(Component):
     @property
     def status(self) -> BusinessStatus:
         """The current status of the business."""
-        return self.data.status
+        return self._status
 
     @status.setter
     def status(self, value: BusinessStatus) -> None:
         """Set the current business status."""
-        with self.gameobject.world.session.begin() as session:
-            self.data.status = value
-            session.add(self.data)
+        self._status = value
 
         self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.business.status!{self.data.status.name}"
+            f"{self.gameobject.uid}.business.status!{self._status.name}"
         )
 
     def add_employee(self, employee: GameObject, role: JobRole) -> None:
@@ -305,20 +237,17 @@ class Business(Component):
         if employee in self._employees:
             raise ValueError("Character cannot hold two roles at the same business.")
 
-        if role.definition_id not in self._employee_roles:
+        if role not in self._employee_roles:
             raise ValueError(f"Business does not have employee role with ID: {role}.")
 
-        remaining_slots = self._employee_roles[role.definition_id].count
+        remaining_slots = self._employee_roles[role]
 
         if remaining_slots == 0:
             raise ValueError(f"No remaining slots job role with ID: {role}.")
 
-        self._employee_roles[role.definition_id].count -= 1
+        self._employee_roles[role] -= 1
 
         self._employees[employee] = role
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self._employee_roles[role.definition_id])
 
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.business.employees.{employee.uid}"
@@ -339,10 +268,7 @@ class Business(Component):
 
         del self._employees[employee]
 
-        self._employee_roles[role.definition_id].count += 1
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self._employee_roles[role.definition_id])
+        self._employee_roles[role] += 1
 
         self.gameobject.world.rp_db.delete(
             f"{self.gameobject.uid}.business.employees.{employee.uid}"
@@ -358,10 +284,6 @@ class Business(Component):
         """
         self._owner = owner
 
-        with self.gameobject.world.session.begin() as session:
-            self.data.owner_id = owner.uid if owner else None
-            session.add(self.data)
-
         if owner:
             self.gameobject.world.rp_db.insert(
                 f"{self.gameobject.uid}.business.owner.{owner.uid}"
@@ -372,20 +294,15 @@ class Business(Component):
     def get_open_positions(self) -> Iterable[str]:
         """Get positions at the business with at least one open slot."""
         return [
-            job_opening_data.role_id
-            for job_opening_data in self._employee_roles.values()
-            if job_opening_data.count > 0
+            role.definition_id
+            for role, count in self._employee_roles.items()
+            if count > 0
         ]
 
     def on_add(self) -> None:
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
+        return
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.delete(self.data)
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.business")
 
     def to_dict(self) -> dict[str, Any]:
@@ -395,17 +312,6 @@ class Business(Component):
             "owner": self._owner.uid if self._owner else -1,
             "district": self._district.uid if self._district else -1,
         }
-
-
-class UnemployedData(GameData):
-    """SQL Queryable data about an unemployed character."""
-
-    __tablename__ = "unemployed"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    timestamp: Mapped[str]
 
 
 class Unemployed(Component):
@@ -426,23 +332,11 @@ class Unemployed(Component):
         return self._timestamp
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                UnemployedData(
-                    uid=self.gameobject.uid, timestamp=self.timestamp.to_iso_str()
-                )
-            )
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.unemployed.timestamp!{self.timestamp}"
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(UnemployedData).where(UnemployedData.uid == self.gameobject.uid)
-            )
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.unemployed")
 
     def to_dict(self) -> dict[str, Any]:

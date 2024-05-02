@@ -11,8 +11,6 @@ from __future__ import annotations
 import random
 from typing import ClassVar, Optional
 
-from sqlalchemy import select
-
 from neighborly.components.beliefs import Belief
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import Character, LifeStage, Pregnant, Species
@@ -35,9 +33,7 @@ from neighborly.components.spawn_table import (
     BusinessSpawnTable,
     BusinessSpawnTableEntry,
     CharacterSpawnTable,
-    CharacterSpawnTableEntry,
     ResidenceSpawnTable,
-    ResidenceSpawnTableEntry,
 )
 from neighborly.components.stats import Lifespan
 from neighborly.components.traits import Trait, Traits, TraitType
@@ -165,32 +161,31 @@ class SpawnResidentialBuildingsSystem(System):
         str or None
             The definition ID of a selected residence, or None if no eligible entries.
         """
-        with district.gameobject.world.session.begin() as session:
-            eligible_entries = session.scalars(
-                select(ResidenceSpawnTableEntry)
-                .where(
-                    ResidenceSpawnTableEntry.instances
-                    < ResidenceSpawnTableEntry.max_instances
-                )
-                .where(
-                    ResidenceSpawnTableEntry.required_population <= district.population
-                )
-                .where(ResidenceSpawnTableEntry.uid == district.gameobject.uid)
-                .where(
-                    ResidenceSpawnTableEntry.is_multifamily == False
-                )  # pylint: disable=C0121
-            ).all()
+        spawn_table = district.gameobject.get_component(ResidenceSpawnTable)
+
+        eligible_entries: list[str] = []
+        weights: list[float] = []
+
+        for entry in spawn_table.table.values():
+            if entry.instances >= entry.max_instances:
+                continue
+
+            if entry.required_population <= district.population:
+                continue
+
+            if entry.is_multifamily is True:
+                continue
+
+            eligible_entries.append(entry.definition_id)
+            weights.append(entry.spawn_frequency)
 
         if len(eligible_entries) == 0:
             return None
 
         rng = district.gameobject.world.resource_manager.get_resource(random.Random)
 
-        population = [e.name for e in eligible_entries]
-        weights = [e.spawn_frequency for e in eligible_entries]
-
         return rng.choices(
-            population=population,
+            population=eligible_entries,
             weights=weights,
             k=1,
         )[0]
@@ -209,33 +204,31 @@ class SpawnResidentialBuildingsSystem(System):
         str or None
             The definition ID of a selected residence, or None if no eligible entries.
         """
-        with district.gameobject.world.session.begin() as session:
-            eligible_entries = session.scalars(
-                select(ResidenceSpawnTableEntry)
-                .where(
-                    ResidenceSpawnTableEntry.instances
-                    < ResidenceSpawnTableEntry.max_instances
-                )
-                .where(
-                    ResidenceSpawnTableEntry.required_population <= district.population
-                )
-                .where(ResidenceSpawnTableEntry.uid == district.gameobject.uid)
-                .where(
-                    ResidenceSpawnTableEntry.is_multifamily
-                    == True  # pylint: disable=C0121
-                )
-            ).all()
+        spawn_table = district.gameobject.get_component(ResidenceSpawnTable)
+
+        eligible_entries: list[str] = []
+        weights: list[float] = []
+
+        for entry in spawn_table.table.values():
+            if entry.instances >= entry.max_instances:
+                continue
+
+            if entry.required_population <= district.population:
+                continue
+
+            if entry.is_multifamily is False:
+                continue
+
+            eligible_entries.append(entry.definition_id)
+            weights.append(entry.spawn_frequency)
 
         if len(eligible_entries) == 0:
             return None
 
         rng = district.gameobject.world.resource_manager.get_resource(random.Random)
 
-        population = [e.name for e in eligible_entries]
-        weights = [e.spawn_frequency for e in eligible_entries]
-
         return rng.choices(
-            population=population,
+            population=eligible_entries,
             weights=weights,
             k=1,
         )[0]
@@ -307,25 +300,25 @@ class SpawnNewResidentSystem(System):
 
             spawn_table = district.get_component(CharacterSpawnTable)
 
-            if len(spawn_table) == 0:
+            if len(spawn_table.table) == 0:
                 continue
 
             if rng.random() > SpawnNewResidentSystem.CHANCE_NEW_RESIDENT:
                 continue
 
-            with world.session.begin() as session:
-                eligible_entries = session.scalars(
-                    select(CharacterSpawnTableEntry).where(
-                        CharacterSpawnTableEntry.uid == district.uid
-                    )
-                ).all()
-
             # Weighted random selection on the characters in the table
-            population = [e.name for e in eligible_entries]
-            weights = [e.spawn_frequency for e in eligible_entries]
+            eligible_entries: list[str] = []
+            weights: list[float] = []
+
+            for entry in spawn_table.table.values():
+                eligible_entries.append(entry.definition_id)
+                weights.append(entry.spawn_frequency)
+
+            if not eligible_entries:
+                continue
 
             character_definition_id = rng.choices(
-                population=population,
+                population=eligible_entries,
                 weights=weights,
                 k=1,
             )[0]
@@ -361,7 +354,7 @@ class SpawnNewBusinessesSystem(System):
     @staticmethod
     def get_random_business(
         settlement: Settlement,
-    ) -> Optional[BusinessSpawnTableEntry]:
+    ) -> Optional[tuple[GameObject, BusinessSpawnTableEntry]]:
         """Attempt to randomly select a business from the spawn table.
 
         Parameters
@@ -374,20 +367,25 @@ class SpawnNewBusinessesSystem(System):
         str or None
             The definition ID of a selected business, or None if no eligible entries.
         """
-        with settlement.gameobject.world.session.begin() as session:
-            eligible_entries = session.scalars(
-                select(BusinessSpawnTableEntry).where(
-                    BusinessSpawnTableEntry.min_population <= settlement.population
-                )
-            ).all()
+        eligible_entries: list[tuple[GameObject, BusinessSpawnTableEntry]] = []
+        weights: list[float] = []
 
-        if len(eligible_entries) == 0:
+        for district in settlement.districts:
+            spawn_table = district.get_component(BusinessSpawnTable)
+
+            for entry in spawn_table.table.values():
+                if entry.instances >= entry.max_instances:
+                    continue
+                if entry.min_population >= settlement.population:
+                    continue
+
+                eligible_entries.append((district, entry))
+                weights.append(entry.spawn_frequency)
+
+        if not eligible_entries:
             return None
 
         rng = settlement.gameobject.world.resource_manager.get_resource(random.Random)
-
-        # population = [e.name for e in eligible_entries]
-        weights = [e.spawn_frequency for e in eligible_entries]
 
         return rng.choices(
             population=eligible_entries,
@@ -397,7 +395,12 @@ class SpawnNewBusinessesSystem(System):
 
     def on_update(self, world: World) -> None:
 
-        settlement = world.get_component(Settlement)[0][1]
+        settlements = world.get_component(Settlement)
+
+        if not settlements:
+            return
+
+        settlement = settlements[0][1]
 
         for _, (_, character) in world.get_components((Active, Character)):
             # We can't build if there is no space
@@ -413,24 +416,24 @@ class SpawnNewBusinessesSystem(System):
             if character.gameobject.get_component(
                 Age
             ).value >= 18 and character.gameobject.has_component(Occupation):
-                spawn_entry = SpawnNewBusinessesSystem.get_random_business(settlement)
+                result = SpawnNewBusinessesSystem.get_random_business(settlement)
 
-                if spawn_entry is None:
+                if result is None:
                     continue
 
-                district = world.gameobjects.get_gameobject(
-                    spawn_entry.uid
-                ).get_component(District)
+                district_obj, spawn_entry = result
+
+                district = district_obj.get_component(District)
 
                 if district.business_slots <= 0:
                     continue
 
-                business = create_business(world, spawn_entry.name)
+                business = create_business(world, spawn_entry.definition_id)
                 business.get_component(Business).district = district.gameobject
                 district.add_business(business)
                 district.gameobject.add_child(business)
                 district.gameobject.get_component(BusinessSpawnTable).increment_count(
-                    spawn_entry.name
+                    spawn_entry.definition_id
                 )
 
 

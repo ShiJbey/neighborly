@@ -9,10 +9,7 @@ from __future__ import annotations
 import enum
 from typing import Any, Iterable
 
-from sqlalchemy import ForeignKey, delete
-from sqlalchemy.orm import Mapped, mapped_column
-
-from neighborly.ecs import Component, GameData, GameObject
+from neighborly.ecs import Component, GameObject
 from neighborly.effects.base_types import Effect
 
 
@@ -89,22 +86,6 @@ class Trait:
 
     def __repr__(self) -> str:
         return f"{type(self)}({self.definition_id})"
-
-
-class TraitInstanceData(GameData):
-    """An instance of a trait being attached to a GameObject."""
-
-    __tablename__ = "traits"
-
-    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    trait_id: Mapped[str]
-
-    def __str__(self) -> str:
-        return f"TraitInstanceData(uid={self.uid}, trait={self.trait_id!r})"
-
-    def __repr__(self) -> str:
-        return f"TraitInstanceData(uid={self.uid}, trait={self.trait_id!r})"
 
 
 class TraitInstance:
@@ -200,12 +181,6 @@ class Traits(Component):
             f"{self.gameobject.uid}.traits.{trait.definition_id}"
         )
 
-        # Add the trait to the SQL database
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                TraitInstanceData(uid=self.gameobject.uid, trait_id=trait.definition_id)
-            )
-
         return True
 
     def remove_trait(self, trait: Trait) -> bool:
@@ -218,13 +193,6 @@ class Traits(Component):
             self.gameobject.world.rp_db.delete(
                 f"{self.gameobject.uid}.traits.{trait.definition_id}"
             )
-
-            with self.gameobject.world.session.begin() as session:
-                session.execute(
-                    delete(TraitInstanceData)
-                    .where(TraitInstanceData.uid == self.gameobject.uid)
-                    .where(TraitInstanceData.trait_id == trait.definition_id)
-                )
 
             return True
 

@@ -40,7 +40,7 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
                 table_entries.append(
                     CharacterSpawnTableEntry(
-                        name=character_def.definition_id,
+                        definition_id=character_def.definition_id,
                         spawn_frequency=entry.get("spawn_frequency", 1),
                     )
                 )
@@ -58,7 +58,7 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
                 table_entries.append(
                     CharacterSpawnTableEntry(
-                        name=character_def.definition_id,
+                        definition_id=character_def.definition_id,
                         spawn_frequency=entry.get("spawn_frequency", 1),
                     )
                 )
@@ -84,7 +84,7 @@ class BusinessSpawnTableFactory(ComponentFactory):
                 business_def = business_library.get_definition(definition_id)
                 table_entries.append(
                     BusinessSpawnTableEntry(
-                        name=definition_id,
+                        definition_id=definition_id,
                         spawn_frequency=entry.get(
                             "spawn_frequency", business_def.spawn_frequency
                         ),
@@ -109,7 +109,7 @@ class BusinessSpawnTableFactory(ComponentFactory):
 
                 table_entries.append(
                     BusinessSpawnTableEntry(
-                        name=business_def.definition_id,
+                        definition_id=business_def.definition_id,
                         spawn_frequency=entry.get(
                             "spawn_frequency", business_def.spawn_frequency
                         ),
@@ -146,7 +146,7 @@ class ResidenceSpawnTableFactory(ComponentFactory):
 
                 table_entries.append(
                     ResidenceSpawnTableEntry(
-                        name=residence_def.definition_id,
+                        definition_id=residence_def.definition_id,
                         spawn_frequency=entry.get(
                             "spawn_frequency", residence_def.spawn_frequency
                         ),
@@ -174,7 +174,7 @@ class ResidenceSpawnTableFactory(ComponentFactory):
 
                 table_entries.append(
                     ResidenceSpawnTableEntry(
-                        name=residence_def.definition_id,
+                        definition_id=residence_def.definition_id,
                         spawn_frequency=entry.get(
                             "spawn_frequency", residence_def.spawn_frequency
                         ),

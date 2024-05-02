@@ -19,25 +19,8 @@ from abc import ABC
 from typing import Any, ClassVar, Iterable, Optional, cast
 
 import attrs
-from sqlalchemy import ForeignKey, delete, update
-from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.ecs import Component, EventEmitter, GameData, GameObject
-
-
-class StatData(GameData):
-    """Manages SQL queryable data about a stat."""
-
-    __tablename__ = "stats"
-
-    key: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uid: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    name: Mapped[str]
-    """The name of the state"""
-    value: Mapped[float]
-    """The final score of the stat"""
-    base_value: Mapped[float]
-    """The base score for this stat used by modifiers."""
+from neighborly.ecs import Component, EventEmitter, GameObject
 
 
 @dataclasses.dataclass
@@ -377,16 +360,6 @@ class Stats(Component):
 
         stat.stat.on_value_changed.add_listener(self.handle_stat_value_change(stat_id))
 
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                StatData(
-                    uid=self.gameobject.uid,
-                    name=stat_id,
-                    value=stat.stat.value,
-                    base_value=stat.stat.base_value,
-                )
-            )
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.stats.{stat_id}!{stat.stat.value}"
         )
@@ -438,13 +411,6 @@ class Stats(Component):
 
             stat_comp.stat.on_value_changed.remove_all_listeners()
 
-            with self.gameobject.world.session.begin() as session:
-                session.execute(
-                    delete(StatData)
-                    .where(StatData.uid == self.gameobject.uid)
-                    .where(StatData.name == stat_id)
-                )
-
             self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.stats.{stat_id}")
 
             del self._stats[stat_id]
@@ -462,17 +428,6 @@ class Stats(Component):
         # this is necessary to capture the stat ID in a closure
         def handler(source: object, event: StatValueChangeEvent) -> None:
             source = cast(Stat, source)
-
-            with self.gameobject.world.session.begin() as session:
-                session.execute(
-                    update(StatData)
-                    .where(StatData.uid == self.gameobject.uid)
-                    .where(StatData.name == stat_id)
-                    .values(
-                        value=event.value,
-                        base_value=source.base_value,
-                    )
-                )
 
             self.gameobject.world.rp_db.insert(
                 f"{self.gameobject.uid}.stats.{stat_id}!{event.value}"

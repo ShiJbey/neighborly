@@ -8,42 +8,25 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
-from neighborly.ecs import Component, GameData, GameObject
-
-
-class DistrictData(GameData):
-    """SQL queryable district component data."""
-
-    __tablename__ = "districts"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    name: Mapped[str]
-    settlement_id: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), nullable=True
-    )
-    population: Mapped[int]
+from neighborly.ecs import Component, GameObject
 
 
 class District(Component):
     """A subsection of a settlement."""
 
     __slots__ = (
-        "data",
+        "_name",
         "_description",
         "_settlement",
         "_residential_slots",
         "_business_slots",
         "_businesses",
         "_residences",
+        "_population",
     )
 
-    data: DistrictData
-    """District"""
+    _name: str
+    """The district's name."""
     _description: str
     """A short description of the district."""
     _settlement: Optional[GameObject]
@@ -56,6 +39,8 @@ class District(Component):
     """Businesses in this district."""
     _residences: list[GameObject]
     """Residences in this district."""
+    _population: int
+    """The number of characters living in this district."""
 
     def __init__(
         self,
@@ -66,29 +51,27 @@ class District(Component):
         business_slots: int,
     ) -> None:
         super().__init__(gameobject)
-        self.data = DistrictData(uid=gameobject.uid, name=name, population=0)
+        self._name = name
         self._description = description
         self._settlement = None
         self._residential_slots = residential_slots
         self._business_slots = business_slots
         self._businesses = []
         self._residences = []
+        self._population = 0
         gameobject.name = name
 
     @property
     def name(self) -> str:
         """The name of the settlement."""
-        return self.data.name
+        return self._name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set the name of the settlement"""
 
-        self.data.name = value
+        self._name = value
         self.gameobject.name = value
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
 
         if value:
             self.gameobject.world.rp_db.insert(
@@ -112,15 +95,12 @@ class District(Component):
     @property
     def population(self) -> int:
         """The number of characters that live in this district."""
-        return self.data.population
+        return self._population
 
     @population.setter
     def population(self, value: int) -> None:
         """Set the number of characters that live in this district."""
-        self.data.population = value
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
+        self._population = value
 
     @property
     def settlement(self) -> Optional[GameObject]:
@@ -131,10 +111,6 @@ class District(Component):
     def settlement(self, value: GameObject) -> None:
         """The settlement the district belongs to."""
         self._settlement = value
-        self.data.settlement_id = value.uid
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
 
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.district.settlement!{value.uid}"
@@ -245,9 +221,6 @@ class District(Component):
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.delete(self.data)
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.district")
 
     def to_dict(self) -> dict[str, Any]:
@@ -261,24 +234,13 @@ class District(Component):
         }
 
 
-class SettlementData(GameData):
-    """SQL queryable settlement component data."""
-
-    __tablename__ = "settlements"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    name: Mapped[str]
-
-
 class Settlement(Component):
     """A town, city, or village where characters live."""
 
-    __slots__ = ("data", "_districts")
+    __slots__ = ("_name", "_districts")
 
-    data: SettlementData
-    """Queryable settlement data."""
+    _name: str
+    """The settlement's name."""
     _districts: list[GameObject]
     """References to districts within this settlement."""
 
@@ -289,23 +251,20 @@ class Settlement(Component):
         districts: Optional[list[GameObject]] = None,
     ) -> None:
         super().__init__(gameobject)
-        self.data = SettlementData(uid=gameobject.uid, name=name)
+        self._name = name
         self._districts = districts.copy() if districts is not None else []
         gameobject.name = name
 
     @property
     def name(self) -> str:
         """The name of the settlement."""
-        return self.data.name
+        return self._name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set the name of the settlement"""
-        self.data.name = value
+        self._name = value
         self.gameobject.name = value
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
 
         if value:
             self.gameobject.world.rp_db.insert(
@@ -364,18 +323,12 @@ class Settlement(Component):
             return False
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
-
         if self.name:
             self.gameobject.world.rp_db.insert(
                 f"{self.gameobject.uid}.settlement.name!{self.name}"
             )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.delete(self.data)
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.settlement")
 
     def to_dict(self) -> dict[str, Any]:

@@ -6,112 +6,71 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
-from neighborly.ecs import Component, GameData, GameObject
-
-
-class AgeData(GameData):
-    """SQL queryable age component data."""
-
-    __tablename__ = "ages"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    value: Mapped[float]
+from neighborly.ecs import Component, GameObject
 
 
 class Age(Component):
     """Tracks the age of a GameObject in years."""
 
-    __slots__ = ("data",)
+    __slots__ = ("_value",)
 
-    data: AgeData
+    _value: float
     """The age of the GameObject in simulated years."""
 
     def __init__(self, gameobject: GameObject, value: float = 0) -> None:
         super().__init__(gameobject)
-        self.data = AgeData(uid=gameobject.uid, value=value)
+        self._value = value
 
     @property
     def value(self) -> float:
         """The age value."""
-        return self.data.value
+        return self._value
 
     @value.setter
     def value(self, value: float) -> None:
         """Set the age value."""
 
-        self.data.value = value
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
+        self._value = value
 
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.age.value")
 
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.age.value!{self.data.value}"
-        )
+        self.gameobject.world.rp_db.insert(f"{self.gameobject.uid}.age.value!{value}")
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
-
         self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.age.value!{self.data.value}"
+            f"{self.gameobject.uid}.age.value!{self.value}"
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.delete(self.data)
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.age")
 
     def to_dict(self) -> dict[str, Any]:
-        return {"value": self.data.value}
-
-
-class AgentData(GameData):
-    """SQL queryable agent component data."""
-
-    __tablename__ = "agents"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    agent_type: Mapped[str]
+        return {"value": self._value}
 
 
 class Agent(Component):
     """Marks the gameobject as being an agent."""
 
-    __slots__ = ("data",)
+    __slots__ = ("_agent_type",)
 
-    data: AgentData
+    _agent_type: str
+    """The type of agent represented by this GameObject."""
 
     def __init__(self, gameobject: GameObject, agent_type: str) -> None:
         super().__init__(gameobject)
-        self.data = AgentData(uid=gameobject.uid, agent_type=agent_type)
+        self._agent_type = agent_type
 
     @property
     def agent_type(self) -> str:
         """The type of the agent."""
-        return self.data.agent_type
+        return self._agent_type
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(self.data)
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.agent.agent_type!{self.agent_type}"
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.delete(self.data)
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.agent")
 
     def to_dict(self) -> dict[str, Any]:

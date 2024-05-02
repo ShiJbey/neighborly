@@ -10,23 +10,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from sqlalchemy import ForeignKey, delete
-from sqlalchemy.orm import Mapped, mapped_column
-
 from neighborly.components.stats import StatComponent
-from neighborly.ecs import Component, GameData, GameObject
-
-
-class RelationshipData(GameData):
-    """Queryable relationship data."""
-
-    __tablename__ = "relationships"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    owner_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    target_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+from neighborly.ecs import Component, GameObject
 
 
 class Relationship(Component):
@@ -60,15 +45,6 @@ class Relationship(Component):
         return self._target
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                RelationshipData(
-                    uid=self.gameobject.uid,
-                    owner_id=self.owner.uid,
-                    target_id=self.target.uid,
-                )
-            )
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.relationship.owner!{self.owner.uid}"
         )
@@ -77,13 +53,6 @@ class Relationship(Component):
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(RelationshipData)
-                .where(RelationshipData.owner_id == self.owner.uid)
-                .where(RelationshipData.target_id == self.target.uid)
-            )
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.relationship")
 
     def to_dict(self) -> dict[str, Any]:

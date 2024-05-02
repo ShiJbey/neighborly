@@ -7,21 +7,8 @@ from __future__ import annotations
 from typing import Any, Iterable, Optional
 
 from ordered_set import OrderedSet
-from sqlalchemy import ForeignKey, delete, update
-from sqlalchemy.orm import Mapped, mapped_column
 
-from neighborly.ecs import Component, GameData, GameObject, TagComponent
-
-
-class ResidentialUnitData(GameData):
-    """Queryable information about a residential unit."""
-
-    __tablename__ = "residential_units"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    building_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+from neighborly.ecs import Component, GameObject, TagComponent
 
 
 class ResidentialUnit(Component):
@@ -137,26 +124,11 @@ class ResidentialUnit(Component):
         return character in self._residents
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                ResidentialUnitData(
-                    uid=self.gameobject.uid,
-                    building_id=self.building.uid,
-                )
-            )
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.residence.building!{self.building.uid}"
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(ResidentialUnitData).where(
-                    ResidentialUnitData.uid == self.gameobject.uid
-                )
-            )
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.residence")
 
     def __repr__(self) -> str:
@@ -167,17 +139,6 @@ class ResidentialUnit(Component):
 
     def __len__(self) -> int:
         return len(self._residents)
-
-
-class ResidentialBuildingData(GameData):
-    """Queryable residential component data."""
-
-    __tablename__ = "residential_buildings"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    district_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
 
 
 class ResidentialBuilding(Component):
@@ -204,14 +165,6 @@ class ResidentialBuilding(Component):
     def district(self, value: Optional[GameObject]):
         """Set the district of a residential building."""
         self._district = value
-
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                ResidentialBuildingData(
-                    uid=self.gameobject.uid,
-                    district_id=self.district.uid if self.district else -1,
-                )
-            )
 
         if self.district:
             self.gameobject.world.rp_db.insert(
@@ -242,26 +195,12 @@ class ResidentialBuilding(Component):
         )
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                update(ResidentialBuildingData)
-                .where(ResidentialBuildingData.uid == self.gameobject.uid)
-                .values(district_id=self.district.uid if self.district else -1)
-            )
-
         if self.district:
             self.gameobject.world.rp_db.insert(
                 f"{self.gameobject.uid}.residential_building.district!{self.district.uid}"
             )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(ResidentialBuildingData).where(
-                    ResidentialBuildingData.uid == self.gameobject.uid
-                )
-            )
-
         self.gameobject.world.rp_db.delete(
             f"{self.gameobject.uid}.residential_building"
         )
@@ -271,17 +210,6 @@ class ResidentialBuilding(Component):
             "district": self.district.uid if self.district else -1,
             "units": [u.uid for u in self._residential_units],
         }
-
-
-class ResidentData(GameData):
-    """Queryable Vacant component data."""
-
-    __tablename__ = "residents"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-    residence_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
 
 
 class Resident(Component):
@@ -303,21 +231,11 @@ class Resident(Component):
         self.residence = residence
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(
-                ResidentData(uid=self.gameobject.uid, residence_id=self.residence.uid)
-            )
-
         self.gameobject.world.rp_db.insert(
             f"{self.gameobject.uid}.resident.residence!{self.residence.uid}"
         )
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(ResidentData).where(ResidentData.uid == self.gameobject.uid)
-            )
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.resident")
 
     def to_dict(self) -> dict[str, Any]:
@@ -330,29 +248,11 @@ class Resident(Component):
         return f"Resident({self.to_dict()})"
 
 
-class VacantData(GameData):
-    """Queryable Vacant component data."""
-
-    __tablename__ = "vacant"
-
-    uid: Mapped[int] = mapped_column(
-        ForeignKey("gameobjects.uid"), primary_key=True, unique=True
-    )
-
-
 class Vacant(TagComponent):
     """Tags a residence that does not currently have anyone living there."""
 
     def on_add(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.add(VacantData(uid=self.gameobject.uid))
-
         self.gameobject.world.rp_db.insert(f"{self.gameobject.uid}.vacant")
 
     def on_remove(self) -> None:
-        with self.gameobject.world.session.begin() as session:
-            session.execute(
-                delete(VacantData).where(VacantData.uid == self.gameobject.uid)
-            )
-
         self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.vacant")
