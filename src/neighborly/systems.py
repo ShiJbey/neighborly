@@ -29,7 +29,7 @@ from neighborly.components.residence import (
     ResidentialUnit,
     Vacant,
 )
-from neighborly.components.settlement import District
+from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.spawn_table import (
     BusinessSpawnTable,
@@ -357,58 +357,75 @@ class SpawnNewBusinessesSystem(System):
     """Spawns new businesses for characters to open."""
 
     @staticmethod
-    def get_random_business(district: District) -> Optional[str]:
+    def get_random_business(settlement: Settlement) -> Optional[BusinessSpawnTableEntry]:
         """Attempt to randomly select a business from the spawn table.
 
         Parameters
         ----------
-        district
-            The district where the business will be built.
+        settlement
+            The settlement where the business will be built.
 
         Returns
         -------
         str or None
             The definition ID of a selected business, or None if no eligible entries.
         """
-        with district.gameobject.world.session.begin() as session:
+        with settlement.gameobject.world.session.begin() as session:
             eligible_entries = session.scalars(
-                select(BusinessSpawnTableEntry).where(
-                    BusinessSpawnTableEntry.uid == district.gameobject.uid
+                select(BusinessSpawnTableEntry)
+                .where(
+                    BusinessSpawnTableEntry.min_population <= settlement.population
                 )
             ).all()
+
 
         if len(eligible_entries) == 0:
             return None
 
-        rng = district.gameobject.world.resource_manager.get_resource(random.Random)
+        rng = settlement.gameobject.world.resource_manager.get_resource(random.Random)
 
-        population = [e.name for e in eligible_entries]
+        # population = [e.name for e in eligible_entries]
         weights = [e.spawn_frequency for e in eligible_entries]
 
         return rng.choices(
-            population=population,
+            population=eligible_entries,
             weights=weights,
             k=1,
         )[0]
 
     def on_update(self, world: World) -> None:
-        for _, (_, district, spawn_table) in world.get_components(
-            (Active, District, BusinessSpawnTable)
+
+        settlement = world.get_component(Settlement)[0]
+
+        for _, (_, character) in world.get_components(
+            (Active, Character)
         ):
             # We can't build if there is no space
-            if district.business_slots <= 0:
-                continue
 
-            business_id = SpawnNewBusinessesSystem.get_random_business(
-                district=district
-            )
+            # gets all game objects with active, a district and a business spawn table (list of data)
+            # change from looping over districts to looping over characters. 
+            # If they are adults they can open a business
+            # They don't have an occupation. (unemployed)
 
-            if business_id is not None:
-                business = create_business(world, business_id)
+            #Need to know the uid for the district that the business should be built in use 
+            #.where( BusinessSpawnTableEntry.uid == district.gameobject.uid)
+
+            if character.gameobject.get_component(Age).value >= 18 and character.gameobject.has_component(Occupation):
+                spawn_entry = SpawnNewBusinessesSystem.get_random_business(settlement)
+
+                if spawn_entry is None:
+                    continue
+
+                district = world.gameobjects.get_gameobject(spawn_entry.uid).get_component(District)
+
+                if district.business_slots <= 0:
+                    continue
+
+                business = create_business(world, spawn_entry.name)
                 business.get_component(Business).district = district.gameobject
                 district.add_business(business)
                 district.gameobject.add_child(business)
-                spawn_table.increment_count(business_id)
+                district.gameobject.get_component(BusinessSpawnTable).increment_count(spawn_entry.name)
 
 
 class CompileTraitDefsSystem(System):

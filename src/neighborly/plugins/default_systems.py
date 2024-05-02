@@ -186,6 +186,12 @@ class BecomeBusinessOwnerSystem(System):
             if business.status == BusinessStatus.PENDING
         ]
 
+        #businesses that exist, constructed, but no body works here.
+        #get busineesses eligible to be built/open
+        #this is where you check requirements id people are eligible to be built.
+
+        #checks if people want to build a business
+
         for _, (character, _) in world.get_components((Character, Active)):
 
             actions: list[BecomeBusinessOwner] = []
