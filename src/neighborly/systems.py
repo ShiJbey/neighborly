@@ -12,7 +12,13 @@ import random
 from typing import ClassVar, Optional
 
 from neighborly.components.beliefs import Belief
-from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
+from neighborly.components.business import (
+    Business,
+    BusinessStatus,
+    JobRole,
+    Occupation,
+    Unemployed,
+)
 from neighborly.components.character import Character, LifeStage, Pregnant, Species
 from neighborly.components.location import (
     FrequentedLocations,
@@ -58,7 +64,7 @@ from neighborly.helpers.character import (
     move_into_residence,
     set_rand_age,
 )
-from neighborly.helpers.location import score_location
+from neighborly.helpers.location import add_frequented_location, score_location
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
@@ -84,6 +90,7 @@ from neighborly.libraries import (
     TraitLibrary,
 )
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
+from neighborly.plugins.default_events import StartBusinessEvent
 
 
 class InitializationSystems(SystemGroup):
@@ -371,6 +378,9 @@ class SpawnNewBusinessesSystem(System):
         weights: list[float] = []
 
         for district in settlement.districts:
+            if district.get_component(District).business_slots <= 0:
+                continue
+
             spawn_table = district.get_component(BusinessSpawnTable)
 
             for entry in spawn_table.table.values():
@@ -413,9 +423,10 @@ class SpawnNewBusinessesSystem(System):
             # Need to know the uid for the district that the business should be built in use
             # .where( BusinessSpawnTableEntry.uid == district.gameobject.uid)
 
-            if character.gameobject.get_component(
-                Age
-            ).value >= 18 and character.gameobject.has_component(Occupation):
+            if (
+                character.life_stage >= LifeStage.YOUNG_ADULT
+                and not character.gameobject.has_component(Occupation)
+            ):
                 result = SpawnNewBusinessesSystem.get_random_business(settlement)
 
                 if result is None:
@@ -425,9 +436,6 @@ class SpawnNewBusinessesSystem(System):
 
                 district = district_obj.get_component(District)
 
-                if district.business_slots <= 0:
-                    continue
-
                 business = create_business(world, spawn_entry.definition_id)
                 business.get_component(Business).district = district.gameobject
                 district.add_business(business)
@@ -435,6 +443,36 @@ class SpawnNewBusinessesSystem(System):
                 district.gameobject.get_component(BusinessSpawnTable).increment_count(
                     spawn_entry.definition_id
                 )
+
+                owner_role = business.get_component(Business).owner_role
+                business_component = business.get_component(Business)
+
+                character.gameobject.add_component(
+                    Occupation(
+                        character.gameobject,
+                        business=business,
+                        start_date=world.resources.get_resource(SimDate).copy(),
+                        job_role=owner_role,
+                    )
+                )
+
+                add_frequented_location(character.gameobject, business)
+
+                business_component.set_owner(character.gameobject)
+
+                business_component.status = BusinessStatus.OPEN
+
+                if character.gameobject.has_component(Unemployed):
+                    character.gameobject.remove_component(Unemployed)
+
+                start_business_event = StartBusinessEvent(
+                    character=character.gameobject,
+                    business=business,
+                )
+
+                add_to_personal_history(character.gameobject, start_business_event)
+                add_to_personal_history(business, start_business_event)
+                dispatch_life_event(world, start_business_event)
 
 
 class CompileTraitDefsSystem(System):
@@ -1063,19 +1101,14 @@ class TickTraitsSystem(System):
         for _, (traits,) in world.get_components((Traits,)):
             traits_to_remove: list[Trait] = []
 
-            with world.session.begin() as session:
+            for trait_instance in traits.traits.values():
+                if not trait_instance.has_duration:
+                    continue
 
-                for trait_instance in traits.traits.values():
-                    if not trait_instance.has_duration:
-                        continue
+                trait_instance.duration -= 1
 
-                    trait_instance.duration -= 1
-
-                    if trait_instance.duration <= 0:
-                        session.delete(trait_instance)
-                        traits_to_remove.append(trait_instance.trait)
-                    else:
-                        session.add(trait_instance)
+                if trait_instance.duration <= 0:
+                    traits_to_remove.append(trait_instance.trait)
 
             for trait_id in traits_to_remove:
                 if relationship := traits.gameobject.try_component(Relationship):
