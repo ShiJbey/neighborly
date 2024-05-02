@@ -6,7 +6,7 @@ import pathlib
 import random
 from typing import Union
 
-from neighborly.ecs import GameObject
+from neighborly.ecs import World
 from neighborly.simulation import Simulation
 
 _DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -25,8 +25,8 @@ class SimpleNameFactory(ICharacterNameFactory):
         with open(name_file, "r", encoding="utf8") as f:
             self.names = f.read().splitlines()
 
-    def __call__(self, gameobject: GameObject) -> str:
-        rng = gameobject.world.resources.get_resource(random.Random)
+    def __call__(self, world: World) -> str:
+        rng = world.resources.get_resource(random.Random)
 
         return rng.choice(self.names)
 
@@ -37,11 +37,15 @@ def load_plugin(sim: Simulation) -> None:
     name_factories = sim.world.resources.get_resource(CharacterNameFactories)
 
     name_factories.add_factory(
-        "masculine-first", SimpleNameFactory(_DATA_DIR / "masculine_first_names.txt")
+        "masculine-first",
+        SimpleNameFactory(_DATA_DIR / "masculine_first_names.txt"),
+        ["male"],
     )
 
     name_factories.add_factory(
-        "feminine-first", SimpleNameFactory(_DATA_DIR / "feminine_first_names.txt")
+        "feminine-first",
+        SimpleNameFactory(_DATA_DIR / "feminine_first_names.txt"),
+        ["female"],
     )
 
     name_factories.add_factory(

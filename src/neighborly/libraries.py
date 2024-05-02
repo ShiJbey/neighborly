@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections import defaultdict
-from typing import Any, Generic, Iterable, Protocol, Type, TypeVar
+from typing import Any, Generic, Iterable, Optional, Protocol, Type, TypeVar
 
 from ordered_set import OrderedSet
 
@@ -34,7 +34,7 @@ from neighborly.defs.base_types import (
     SpeciesDef,
     TraitDef,
 )
-from neighborly.ecs import GameObject, World
+from neighborly.ecs import World
 from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.preconditions.base_types import Precondition
@@ -208,7 +208,7 @@ class ICharacterNameFactory(Protocol):
     """Generates a character name."""
 
     @abstractmethod
-    def __call__(self, gameobject: GameObject) -> str:
+    def __call__(self, world: World) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 
@@ -216,28 +216,37 @@ class ICharacterNameFactory(Protocol):
 class CharacterNameFactories:
     """A Collection of factories that generate character names."""
 
-    __slots__ = ("factories",)
+    __slots__ = ("_factories",)
 
-    factories: dict[str, ICharacterNameFactory]
+    _factories: dict[str, tuple[ICharacterNameFactory, list[str]]]
     """Factories indexed by name."""
 
     def __init__(self) -> None:
-        self.factories = {}
+        self._factories = {}
 
-    def add_factory(self, name: str, factory: ICharacterNameFactory) -> None:
+    def add_factory(
+        self,
+        name: str,
+        factory: ICharacterNameFactory,
+        tags: Optional[list[str]] = None,
+    ) -> None:
         """Add a factory."""
-        self.factories[name] = factory
+        self._factories[name] = (factory, tags if tags else [])
 
     def get_factory(self, name: str) -> ICharacterNameFactory:
         """Get a factory by name."""
-        return self.factories[name]
+        return self._factories[name][0]
+
+    def get_with_tags(self, tags: list[str]) -> list[ICharacterNameFactory]:
+        """Get a factory by name."""
+        return get_with_tags(options=self._factories.values(), tags=tags)
 
 
 class IBusinessNameFactory(Protocol):
     """Generates business names."""
 
     @abstractmethod
-    def __call__(self, gameobject: GameObject) -> str:
+    def __call__(self, world: World) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 
@@ -245,28 +254,34 @@ class IBusinessNameFactory(Protocol):
 class BusinessNameFactories:
     """A collection of factories that generate business names."""
 
-    __slots__ = ("factories",)
+    __slots__ = ("_factories",)
 
-    factories: dict[str, IBusinessNameFactory]
+    _factories: dict[str, tuple[IBusinessNameFactory, list[str]]]
     """Factories indexed by name."""
 
     def __init__(self) -> None:
-        self.factories = {}
+        self._factories = {}
 
-    def add_factory(self, name: str, factory: IBusinessNameFactory) -> None:
+    def add_factory(
+        self, name: str, factory: IBusinessNameFactory, tags: Optional[list[str]] = None
+    ) -> None:
         """Add a factory."""
-        self.factories[name] = factory
+        self._factories[name] = (factory, tags if tags else [])
 
     def get_factory(self, name: str) -> IBusinessNameFactory:
         """Get a factory by name."""
-        return self.factories[name]
+        return self._factories[name][0]
+
+    def get_with_tags(self, tags: list[str]) -> list[IBusinessNameFactory]:
+        """Get a factory by name."""
+        return get_with_tags(options=self._factories.values(), tags=tags)
 
 
 class IDistrictNameFactory(Protocol):
     """Generates district names."""
 
     @abstractmethod
-    def __call__(self, gameobject: GameObject) -> str:
+    def __call__(self, world: World) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 
@@ -295,7 +310,7 @@ class ISettlementNameFactory(Protocol):
     """Generates settlement names."""
 
     @abstractmethod
-    def __call__(self, gameobject: GameObject) -> str:
+    def __call__(self, world: World) -> str:
         """Generate a new name."""
         raise NotImplementedError()
 
@@ -303,21 +318,30 @@ class ISettlementNameFactory(Protocol):
 class SettlementNameFactories:
     """A collection of factories that generate settlement names."""
 
-    __slots__ = ("factories",)
+    __slots__ = ("_factories",)
 
-    factories: dict[str, ISettlementNameFactory]
+    _factories: dict[str, tuple[ISettlementNameFactory, list[str]]]
     """Factories indexed by name."""
 
     def __init__(self) -> None:
-        self.factories = {}
+        self._factories = {}
 
-    def add_factory(self, name: str, factory: ISettlementNameFactory) -> None:
+    def add_factory(
+        self,
+        name: str,
+        factory: ISettlementNameFactory,
+        tags: Optional[list[str]] = None,
+    ) -> None:
         """Add a factory."""
-        self.factories[name] = factory
+        self._factories[name] = (factory, tags if tags else [])
 
     def get_factory(self, name: str) -> ISettlementNameFactory:
         """Get a factory by name."""
-        return self.factories[name]
+        return self._factories[name][0]
+
+    def get_with_tags(self, tags: list[str]) -> list[ISettlementNameFactory]:
+        """Get a factory by name."""
+        return get_with_tags(options=self._factories.values(), tags=tags)
 
 
 class ActionConsiderationLibrary:

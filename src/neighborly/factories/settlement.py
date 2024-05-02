@@ -6,6 +6,7 @@ from typing import Any
 
 from neighborly.components.settlement import District, Settlement
 from neighborly.ecs import Component, ComponentFactory, World
+from neighborly.libraries import DistrictNameFactories, SettlementNameFactories
 
 
 class SettlementFactory(ComponentFactory):
@@ -18,12 +19,9 @@ class SettlementFactory(ComponentFactory):
         name = kwargs.get("name", "")
 
         if name_factory := kwargs.get("name_factory", ""):
-            # factories = world.resource_manager.get_resource(SettlementNameFactories)
+            factories = world.resource_manager.get_resource(SettlementNameFactories)
 
-            # name = factories.get_factory(name_factory)(gameobject)
-            del name_factory
-            # TODO: Add the revised name factory
-            name = ""
+            name = factories.get_factory(name_factory)(world)
 
         return Settlement(name=name)
 
@@ -41,12 +39,9 @@ class DistrictFactory(ComponentFactory):
         residential_slots: int = kwargs.get("residential_slots", 0)
 
         if name_factory := kwargs.get("name_factory", ""):
-            # factories = world.resource_manager.get_resource(DistrictNameFactories)
+            factories = world.resource_manager.get_resource(DistrictNameFactories)
 
-            # name = factories.get_factory(name_factory)(gameobject)
-            del name_factory
-            # TODO: Add the revised name factory
-            name = ""
+            name = factories.get_factory(name_factory)(world)
 
         return District(
             name=name,

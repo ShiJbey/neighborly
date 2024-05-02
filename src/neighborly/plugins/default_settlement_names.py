@@ -6,7 +6,7 @@ import pathlib
 import random
 from typing import Union
 
-from neighborly.ecs import GameObject
+from neighborly.ecs import World
 from neighborly.libraries import ISettlementNameFactory, SettlementNameFactories
 from neighborly.simulation import Simulation
 
@@ -23,8 +23,8 @@ class SimpleNameFactory(ISettlementNameFactory):
         with open(name_file, "r", encoding="utf8") as f:
             self.names = f.read().splitlines()
 
-    def __call__(self, gameobject: GameObject) -> str:
-        rng = gameobject.world.resources.get_resource(random.Random)
+    def __call__(self, world: World) -> str:
+        rng = world.resources.get_resource(random.Random)
 
         return rng.choice(self.names)
 

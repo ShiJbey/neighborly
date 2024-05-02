@@ -6,7 +6,7 @@ from typing import Any
 
 from neighborly.components.business import Business, Occupation, Unemployed
 from neighborly.ecs import Component, ComponentFactory, World
-from neighborly.libraries import JobRoleLibrary
+from neighborly.libraries import BusinessNameFactories, JobRoleLibrary
 
 
 class OccupationFactory(ComponentFactory):
@@ -29,12 +29,9 @@ class BusinessFactory(ComponentFactory):
         name = kwargs.get("name", "")
 
         if name_factory := kwargs.get("name_factory", ""):
-            # factories = world.resource_manager.get_resource(BusinessNameFactories)
+            factories = world.resource_manager.get_resource(BusinessNameFactories)
 
-            # name = factories.get_factory(name_factory)(gameobject)
-            del name_factory
-            # TODO: Add the revised name factory
-            name = ""
+            name = factories.get_factory(name_factory)(world)
 
         job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
 
