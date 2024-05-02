@@ -69,6 +69,8 @@ from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import (
     add_relationship_trait,
     get_relationships_with_traits,
+    remove_relationship_trait,
+    remove_trait,
 )
 from neighborly.libraries import (
     BeliefLibrary,
@@ -1052,4 +1054,9 @@ class TickTraitsSystem(System):
                         session.add(trait_instance)
 
             for trait_id in traits_to_remove:
-                traits.remove_trait(trait_id)
+                if relationship := traits.gameobject.try_component(Relationship):
+                    remove_relationship_trait(
+                        relationship.owner, relationship.target, trait_id
+                    )
+                else:
+                    remove_trait(traits.gameobject, trait_id)

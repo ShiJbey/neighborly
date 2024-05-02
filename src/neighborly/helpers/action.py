@@ -36,7 +36,7 @@ def get_action_utility(action: Action) -> float:
         consideration_count += 1
 
     if consideration_count == 0:
-        return 0
+        return 0.5
     else:
         return score ** (1 / consideration_count)
 

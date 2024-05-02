@@ -138,7 +138,7 @@ class MarriageEvent(LifeEvent):
 
 
 class DivorceEvent(LifeEvent):
-    """Dispatched to officially divorce two married characters."""
+    """Event dispatched when a character chooses to divorce from their spouse."""
 
     __event_id__ = "divorce"
     __tablename__ = "divorce_event"
@@ -166,7 +166,7 @@ class DivorceEvent(LifeEvent):
 
 
 class DatingBreakUpEvent(LifeEvent):
-    """Dispatched to officially break up a dating relationship between characters."""
+    """Event dispatched when a character decides to stop dating another."""
 
     __event_id__ = "dating_break_up"
     __tablename__ = "break_up_event"
@@ -190,11 +190,11 @@ class DatingBreakUpEvent(LifeEvent):
         self.partner_id = partner.uid
 
     def __str__(self) -> str:
-        return f"{self.initiator.name} broke up with " f"{self.partner.name}."
+        return f"{self.initiator.name} broke up with {self.partner.name}."
 
 
 class PregnancyEvent(LifeEvent):
-    """Characters have a chance of getting pregnant while in romantic relationships."""
+    """Event dispatched when a character becomes pregnant."""
 
     __event_id__ = "pregnancy"
     __tablename__ = "pregnancy_event"
@@ -226,15 +226,7 @@ class PregnancyEvent(LifeEvent):
 
 
 class RetirementEvent(LifeEvent):
-    """Simulates a character retiring from their position at a business.
-
-    When a business owner retires they may appoint a current employee or family member
-    to become the owner of the business. If they can't find a suitable successor,
-    then they shut the business down and everyone is laid-off.
-
-    If the retiree is an employee, they are just removed from their role and business
-    continues as usual.
-    """
+    """Event dispatched when a character retires from an occupation."""
 
     __event_id__ = "retirement"
     __tablename__ = "retirement_event"
@@ -269,12 +261,12 @@ class RetirementEvent(LifeEvent):
     def __str__(self) -> str:
         return (
             f"{self.character.name} retired from their "
-            f"position as {self.job_role.name} at {self.business.name}."
+            f"position as a(n) {self.job_role.name} at {self.business.name}."
         )
 
 
 class JobPromotionEvent(LifeEvent):
-    """The character is promoted at their job from a lower role to a higher role."""
+    """Event dispatched when a character is promoted at their job."""
 
     __event_id__ = "job_promotion"
     __tablename__ = "job_promotion_event"
@@ -308,13 +300,13 @@ class JobPromotionEvent(LifeEvent):
 
     def __str__(self) -> str:
         return (
-            f"{self.character.name} was promoted from to "
+            f"{self.character.name} was promoted to "
             f"{self.job_role.name} at {self.business.name}."
         )
 
 
 class FiredFromJobEvent(LifeEvent):
-    """The character is fired from their job."""
+    """Event dispatched when a character is fired from their job."""
 
     __event_id__ = "fired"
     __tablename__ = "fired_event"
@@ -345,6 +337,6 @@ class FiredFromJobEvent(LifeEvent):
 
     def __str__(self) -> str:
         return (
-            f"{self.character.name} was fired from their role as a "
+            f"{self.character.name} was fired from their role as a(n) "
             f"{self.job_role.name} at {self.business.name}."
         )

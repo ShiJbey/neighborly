@@ -5,7 +5,7 @@
     "preconditions": [
       {
         "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?target\n?target.character.sex!MALE",
+        "query": "?target.relationship.owner!?other\n?other.character.sex!MALE",
         "description": "Relationship target is male"
       }
     ],
@@ -28,7 +28,7 @@
     "preconditions": [
       {
         "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?target\n?target.character.sex!MALE",
+        "query": "?target.relationship.owner!?other\n?other.character.sex!MALE",
         "description": "Relationship target is male"
       }
     ],
@@ -51,7 +51,7 @@
     "preconditions": [
       {
         "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?target\n?target.character.sex!FEMALE",
+        "query": "?target.relationship.owner!?other\n?other.character.sex!FEMALE",
         "description": "Relationship target is female"
       }
     ],
@@ -74,7 +74,7 @@
     "preconditions": [
       {
         "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?target\n?target.character.sex!FEMALE",
+        "query": "?target.relationship.owner!?other\n?other.character.sex!FEMALE",
         "description": "Relationship target is female"
       }
     ],

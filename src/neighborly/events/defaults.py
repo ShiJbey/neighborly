@@ -394,7 +394,7 @@ class LayOffEvent(LifeEvent):
         job_role: JobRole,
         reason: str = "",
     ) -> None:
-        super().__init__(self.world)
+        super().__init__(character.world)
         self.character = character
         self.business = business
         self.character_id = character.uid

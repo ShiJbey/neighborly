@@ -15,6 +15,7 @@ from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
 from neighborly.ecs import GameObject, World
+from neighborly.events.defaults import BusinessClosedEvent, LayOffEvent
 from neighborly.helpers.location import (
     add_frequented_location,
     remove_all_frequenting_characters,
@@ -29,7 +30,11 @@ from neighborly.helpers.traits import (
 )
 from neighborly.libraries import BusinessLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
-from neighborly.plugins.default_events import FiredFromJobEvent, StartNewJobEvent
+from neighborly.plugins.default_events import (
+    FiredFromJobEvent,
+    JobPromotionEvent,
+    StartNewJobEvent,
+)
 
 
 def create_business(
@@ -92,6 +97,11 @@ def close_business(business: GameObject) -> None:
     # Un-mark the business as active so it doesn't appear in queries
     business.deactivate()
 
+    event = BusinessClosedEvent(business)
+
+    add_to_personal_history(business, event)
+    dispatch_life_event(business.world, event)
+
 
 def lay_off_employee(business: GameObject, employee: GameObject) -> None:
 
@@ -120,7 +130,15 @@ def lay_off_employee(business: GameObject, employee: GameObject) -> None:
         remove_relationship_trait(other_employee, employee, "coworker")
 
     employee.add_component(Unemployed(employee, timestamp=current_date))
+
+    job_role = employee.get_component(Occupation).job_role
+
     employee.remove_component(Occupation)
+
+    event = LayOffEvent(employee, business, job_role)
+
+    add_to_personal_history(employee, event)
+    dispatch_life_event(employee.world, event)
 
 
 def leave_job(business: GameObject, character: GameObject) -> None:
@@ -247,3 +265,8 @@ def promote_employee(
     )
 
     business_data.add_employee(character, job_role)
+
+    event = JobPromotionEvent(character, business, job_role)
+
+    add_to_personal_history(character, event)
+    dispatch_life_event(character.world, event)

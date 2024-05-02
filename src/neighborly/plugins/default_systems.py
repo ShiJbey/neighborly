@@ -101,21 +101,28 @@ class FiredFromJobSystem(System):
             if business_owner is None:
                 continue
 
+            potential_actions: list[tuple[FireEmployee, float]] = []
+            action_utilities: list[float] = []
+
             # Evaluate firing each employee
             for employee, _ in business.employees.items():
 
                 action = FireEmployee(business_owner, employee)
-
                 utility_score = get_action_utility(action)
 
-                if rng.random() < utility_score:
+                if utility_score > 0:
+                    potential_actions.append((action, utility_score))
+                    action_utilities.append(utility_score)
 
-                    probability_success = get_action_success_probability(action)
+            if not potential_actions:
+                continue
 
-                    if rng.random() < probability_success:
-                        action.on_success()
-                    else:
-                        action.on_failure()
+            chosen_action, utility_score = rng.choices(
+                potential_actions, action_utilities, k=1
+            )[0]
+
+            if rng.random() < utility_score:
+                chosen_action.on_success()
 
 
 class JobPromotionSystem(System):

@@ -23,6 +23,7 @@ from neighborly.helpers.business import (
     close_business,
     fire_employee,
     leave_job,
+    promote_employee,
 )
 from neighborly.helpers.character import (
     depart_settlement,
@@ -43,9 +44,12 @@ from neighborly.helpers.traits import (
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 from neighborly.plugins.default_events import (
     DatingBreakUpEvent,
+    DivorceEvent,
+    MarriageEvent,
     PregnancyEvent,
     RetirementEvent,
     StartBusinessEvent,
+    StartDatingEvent,
 )
 
 
@@ -116,7 +120,9 @@ class FormCrush(Action):
 
     def on_success(self) -> None:
         for rel in get_relationships_with_traits(self.character, "crush"):
-            remove_trait(rel, "crush")
+            relationship = rel.get_component(Relationship)
+
+            remove_relationship_trait(relationship.owner, relationship.target, "crush")
 
         add_relationship_trait(self.character, self.crush, "crush")
 
@@ -145,9 +151,11 @@ class Retire(Action):
         business_data = business.get_component(Business)
 
         add_trait(self.character, "retired")
+        event = RetirementEvent(self.character, business, occupation.job_role)
+        add_to_personal_history(self.character, event)
         dispatch_life_event(
             self.world,
-            RetirementEvent(self.character, business, occupation.job_role),
+            event,
         )
         leave_job(business, self.character)
 
@@ -213,7 +221,9 @@ class GetPregnant(Action):
 
         self.character.add_component(Pregnant(self.character, self.partner, due_date))
 
-        dispatch_life_event(self.world, PregnancyEvent(self.character, self.partner))
+        event = PregnancyEvent(self.character, self.partner)
+        add_to_personal_history(self.character, event)
+        dispatch_life_event(self.world, event)
 
     def on_failure(self) -> None:
         return
@@ -245,9 +255,10 @@ class BreakUp(Action):
             get_relationship(self.partner, self.character), "romance"
         ).base_value -= 15
 
-        dispatch_life_event(
-            self.world, DatingBreakUpEvent(self.character, self.partner)
-        )
+        event = DatingBreakUpEvent(self.character, self.partner)
+        add_to_personal_history(self.character, event)
+        add_to_personal_history(self.partner, event)
+        dispatch_life_event(self.world, event)
 
     def on_failure(self) -> None:
         return
@@ -278,6 +289,12 @@ class Divorce(Action):
         get_stat(
             get_relationship(self.partner, self.character), "romance"
         ).base_value -= 25
+
+        event = DivorceEvent(self.character, self.partner)
+
+        add_to_personal_history(self.character, event)
+        add_to_personal_history(self.partner, event)
+        dispatch_life_event(self.world, event)
 
         # initiator finds new place to live or departs
         vacant_housing = self.world.get_components((ResidentialUnit, Vacant))
@@ -368,6 +385,12 @@ class GetMarried(Action):
                     add_relationship_trait(child, self.character, "parent")
                     add_relationship_trait(child, self.character, "step_parent")
 
+        event = MarriageEvent(self.character, self.partner)
+
+        add_to_personal_history(self.character, event)
+        add_to_personal_history(self.partner, event)
+        dispatch_life_event(self.world, event)
+
     def on_failure(self) -> None:
         return
 
@@ -390,6 +413,12 @@ class StartDating(Action):
     def on_success(self) -> None:
         add_relationship_trait(self.character, self.partner, "dating")
         add_relationship_trait(self.partner, self.character, "dating")
+
+        event = StartDatingEvent(self.character, self.partner)
+
+        add_to_personal_history(self.character, event)
+        add_to_personal_history(self.partner, event)
+        dispatch_life_event(self.world, event)
 
     def on_failure(self) -> None:
         return
@@ -465,7 +494,7 @@ class PromoteEmployee(Action):
 
     def on_success(self) -> None:
         business = self.character.get_component(Occupation).business
-        fire_employee(business, self.employee)
+        promote_employee(business, self.employee, self.role)
 
     def on_failure(self) -> None:
         return
