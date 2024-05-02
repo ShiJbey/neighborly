@@ -1,4 +1,4 @@
-# pylint: disable=C0121
+# pylint: disable=C0121, C0302, C0301
 
 """Built-in Systems.
 
@@ -359,7 +359,9 @@ class SpawnNewBusinessesSystem(System):
     """Spawns new businesses for characters to open."""
 
     @staticmethod
-    def get_random_business(settlement: Settlement) -> Optional[BusinessSpawnTableEntry]:
+    def get_random_business(
+        settlement: Settlement,
+    ) -> Optional[BusinessSpawnTableEntry]:
         """Attempt to randomly select a business from the spawn table.
 
         Parameters
@@ -374,12 +376,10 @@ class SpawnNewBusinessesSystem(System):
         """
         with settlement.gameobject.world.session.begin() as session:
             eligible_entries = session.scalars(
-                select(BusinessSpawnTableEntry)
-                .where(
+                select(BusinessSpawnTableEntry).where(
                     BusinessSpawnTableEntry.min_population <= settlement.population
                 )
             ).all()
-
 
         if len(eligible_entries) == 0:
             return None
@@ -397,28 +397,30 @@ class SpawnNewBusinessesSystem(System):
 
     def on_update(self, world: World) -> None:
 
-        settlement = world.get_component(Settlement)[0]
+        settlement = world.get_component(Settlement)[0][1]
 
-        for _, (_, character) in world.get_components(
-            (Active, Character)
-        ):
+        for _, (_, character) in world.get_components((Active, Character)):
             # We can't build if there is no space
 
             # gets all game objects with active, a district and a business spawn table (list of data)
-            # change from looping over districts to looping over characters. 
+            # change from looping over districts to looping over characters.
             # If they are adults they can open a business
             # They don't have an occupation. (unemployed)
 
-            #Need to know the uid for the district that the business should be built in use 
-            #.where( BusinessSpawnTableEntry.uid == district.gameobject.uid)
+            # Need to know the uid for the district that the business should be built in use
+            # .where( BusinessSpawnTableEntry.uid == district.gameobject.uid)
 
-            if character.gameobject.get_component(Age).value >= 18 and character.gameobject.has_component(Occupation):
+            if character.gameobject.get_component(
+                Age
+            ).value >= 18 and character.gameobject.has_component(Occupation):
                 spawn_entry = SpawnNewBusinessesSystem.get_random_business(settlement)
 
                 if spawn_entry is None:
                     continue
 
-                district = world.gameobjects.get_gameobject(spawn_entry.uid).get_component(District)
+                district = world.gameobjects.get_gameobject(
+                    spawn_entry.uid
+                ).get_component(District)
 
                 if district.business_slots <= 0:
                     continue
@@ -427,7 +429,9 @@ class SpawnNewBusinessesSystem(System):
                 business.get_component(Business).district = district.gameobject
                 district.add_business(business)
                 district.gameobject.add_child(business)
-                district.gameobject.get_component(BusinessSpawnTable).increment_count(spawn_entry.name)
+                district.gameobject.get_component(BusinessSpawnTable).increment_count(
+                    spawn_entry.name
+                )
 
 
 class CompileTraitDefsSystem(System):

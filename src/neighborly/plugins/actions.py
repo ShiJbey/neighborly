@@ -39,7 +39,6 @@ from neighborly.helpers.traits import (
     get_relationships_with_traits,
     has_trait,
     remove_relationship_trait,
-    remove_trait,
 )
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 from neighborly.plugins.default_events import (
