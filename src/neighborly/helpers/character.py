@@ -258,7 +258,7 @@ def move_out_of_residence(character: GameObject) -> None:
             former_district.get_component(District).population -= 1
 
         if len(former_residence_comp) <= 0:
-            former_residence.add_component(Vacant(former_residence))
+            former_residence.add_component(Vacant())
 
 
 def move_into_residence(
@@ -274,7 +274,7 @@ def move_into_residence(
     if is_owner:
         new_residence.get_component(ResidentialUnit).add_owner(character)
 
-    character.add_component(Resident(character, residence=new_residence))
+    character.add_component(Resident(residence=new_residence))
 
     add_frequented_location(character, new_residence)
 

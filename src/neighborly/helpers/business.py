@@ -129,7 +129,7 @@ def lay_off_employee(business: GameObject, employee: GameObject) -> None:
         remove_relationship_trait(employee, other_employee, "coworker")
         remove_relationship_trait(other_employee, employee, "coworker")
 
-    employee.add_component(Unemployed(employee, timestamp=current_date))
+    employee.add_component(Unemployed(timestamp=current_date))
 
     job_role = employee.get_component(Occupation).job_role
 
@@ -176,7 +176,7 @@ def leave_job(business: GameObject, character: GameObject) -> None:
             remove_relationship_trait(character, other_employee, "coworker")
             remove_relationship_trait(other_employee, character, "coworker")
 
-    character.add_component(Unemployed(character, timestamp=current_date))
+    character.add_component(Unemployed(timestamp=current_date))
     character.remove_component(Occupation)
 
 
@@ -212,7 +212,6 @@ def add_employee(
 
     character.add_component(
         Occupation(
-            character,
             business=business,
             start_date=current_date,
             job_role=job_role,
@@ -257,7 +256,6 @@ def promote_employee(
     # Add the new occupation
     character.add_component(
         Occupation(
-            character,
             business=business,
             start_date=character.world.resource_manager.get_resource(SimDate),
             job_role=job_role,

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component
 
 
 class Age(Component):
@@ -17,8 +17,8 @@ class Age(Component):
     _value: float
     """The age of the GameObject in simulated years."""
 
-    def __init__(self, gameobject: GameObject, value: float = 0) -> None:
-        super().__init__(gameobject)
+    def __init__(self, value: float = 0) -> None:
+        super().__init__()
         self._value = value
 
     @property
@@ -44,8 +44,8 @@ class Agent(Component):
     _agent_type: str
     """The type of agent represented by this GameObject."""
 
-    def __init__(self, gameobject: GameObject, agent_type: str) -> None:
-        super().__init__(gameobject)
+    def __init__(self, agent_type: str) -> None:
+        super().__init__()
         self._agent_type = agent_type
 
     @property

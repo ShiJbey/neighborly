@@ -72,8 +72,8 @@ class PersonalEventHistory(Component):
     _history: list[LifeEvent]
     """A list of events in chronological-order."""
 
-    def __init__(self, gameobject: GameObject) -> None:
-        super().__init__(gameobject)
+    def __init__(self) -> None:
+        super().__init__()
         self._history = []
 
     @property

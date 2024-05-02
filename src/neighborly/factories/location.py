@@ -9,7 +9,7 @@ from neighborly.components.location import (
     Location,
     LocationPreferences,
 )
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 
 
 class LocationFactory(ComponentFactory):
@@ -17,8 +17,8 @@ class LocationFactory(ComponentFactory):
 
     __component__ = "Location"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return Location(gameobject, is_private=kwargs.get("is_private", False))
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return Location(is_private=kwargs.get("is_private", False))
 
 
 class FrequentedLocationsFactory(ComponentFactory):
@@ -26,8 +26,8 @@ class FrequentedLocationsFactory(ComponentFactory):
 
     __component__ = "FrequentedLocations"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return FrequentedLocations(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return FrequentedLocations()
 
 
 class LocationPreferencesFactory(ComponentFactory):
@@ -35,5 +35,5 @@ class LocationPreferencesFactory(ComponentFactory):
 
     __component__ = "LocationPreferences"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return LocationPreferences(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return LocationPreferences()

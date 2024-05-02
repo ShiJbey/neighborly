@@ -32,13 +32,11 @@ def create_residence(
         residential_unit = world.gameobject_manager.spawn_gameobject(
             name="ResidentialUnit"
         )
-        residential_unit.add_component(Traits(residential_unit))
+        residential_unit.add_component(Traits())
         residence.add_child(residential_unit)
-        residential_unit.add_component(
-            ResidentialUnit(residential_unit, building=residence)
-        )
-        residential_unit.add_component(Location(residential_unit, is_private=True))
+        residential_unit.add_component(ResidentialUnit(building=residence))
+        residential_unit.add_component(Location(is_private=True))
         building.add_residential_unit(residential_unit)
-        residential_unit.add_component(Vacant(residential_unit))
+        residential_unit.add_component(Vacant())
 
     return residence

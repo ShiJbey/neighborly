@@ -6,7 +6,7 @@
 from typing import Any
 
 from neighborly.components.traits import Traits
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 
 
 class TraitsFactory(ComponentFactory):
@@ -14,8 +14,6 @@ class TraitsFactory(ComponentFactory):
 
     __component__ = "Traits"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        traits = Traits(gameobject)
-
-        return traits
+        return Traits()

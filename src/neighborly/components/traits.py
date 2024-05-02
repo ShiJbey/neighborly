@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 from typing import Any, Iterable
 
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component
 from neighborly.effects.base_types import Effect
 
 
@@ -140,9 +140,8 @@ class Traits(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self.traits = {}
 
     def add_trait(

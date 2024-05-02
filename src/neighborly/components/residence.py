@@ -23,8 +23,8 @@ class ResidentialUnit(Component):
     _residents: OrderedSet[GameObject]
     """All the characters who live at the residence (including non-owners)."""
 
-    def __init__(self, gameobject: GameObject, building: GameObject) -> None:
-        super().__init__(gameobject)
+    def __init__(self, building: GameObject) -> None:
+        super().__init__()
         self._building = building
         self._owners = OrderedSet([])
         self._residents = OrderedSet([])
@@ -131,8 +131,8 @@ class ResidentialBuilding(Component):
     _residential_units: list[GameObject]
     """The residential units that belong to this building."""
 
-    def __init__(self, gameobject: GameObject) -> None:
-        super().__init__(gameobject)
+    def __init__(self) -> None:
+        super().__init__()
         self._district = None
         self._residential_units = []
 
@@ -174,14 +174,14 @@ class Resident(Component):
     residence: GameObject
     """The GameObject ID of their residence."""
 
-    def __init__(self, gameobject: GameObject, residence: GameObject) -> None:
+    def __init__(self, residence: GameObject) -> None:
         """
         Parameters
         ----------
         residence
             A GameObject reference to their residence.
         """
-        super().__init__(gameobject)
+        super().__init__()
         self.residence = residence
 
     def to_dict(self) -> dict[str, Any]:

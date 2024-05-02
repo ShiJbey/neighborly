@@ -30,7 +30,6 @@ class Occupation(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         job_role: JobRole,
         business: GameObject,
         start_date: SimDate,
@@ -45,7 +44,7 @@ class Occupation(Component):
         start_date
             The date they started this occupation.
         """
-        super().__init__(gameobject)
+        super().__init__()
         self._job_role = job_role
         self._business = business
         self._start_date = start_date
@@ -125,12 +124,11 @@ class Business(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         name: str,
         owner_role: JobRole,
         employee_roles: dict[JobRole, int],
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self._district = None
         self._name = name
         self._owner_role = owner_role
@@ -138,7 +136,6 @@ class Business(Component):
         self._owner = None
         self._employees = {}
         self._status = BusinessStatus.CLOSED
-        gameobject.name = name
 
     @property
     def district(self) -> Optional[GameObject]:
@@ -266,8 +263,8 @@ class Unemployed(Component):
     _timestamp: SimDate
     """The date the character became unemployed."""
 
-    def __init__(self, gameobject: GameObject, timestamp: SimDate) -> None:
-        super().__init__(gameobject)
+    def __init__(self, timestamp: SimDate) -> None:
+        super().__init__()
         self._timestamp = timestamp
 
     @property

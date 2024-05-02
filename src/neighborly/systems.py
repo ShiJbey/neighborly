@@ -449,7 +449,6 @@ class SpawnNewBusinessesSystem(System):
 
                 character.gameobject.add_component(
                     Occupation(
-                        character.gameobject,
                         business=business,
                         start_date=world.resources.get_resource(SimDate).copy(),
                         job_role=owner_role,

@@ -5,7 +5,7 @@
 from typing import Any
 
 from neighborly.components.beliefs import AgentBeliefs, AppliedBeliefs
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 
 
 class AgentBeliefsFactory(ComponentFactory):
@@ -13,8 +13,8 @@ class AgentBeliefsFactory(ComponentFactory):
 
     __component__ = "AgentBeliefs"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return AgentBeliefs(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return AgentBeliefs()
 
 
 class AppliedBeliefsFactory(ComponentFactory):
@@ -22,5 +22,5 @@ class AppliedBeliefsFactory(ComponentFactory):
 
     __component__ = "AppliedBeliefs"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return AppliedBeliefs(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return AppliedBeliefs()

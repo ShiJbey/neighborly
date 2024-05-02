@@ -6,7 +6,7 @@ import random
 from typing import Any
 
 from neighborly.components.skills import Skills
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 from neighborly.libraries import SkillLibrary
 
 
@@ -15,11 +15,11 @@ class SkillsFactory(ComponentFactory):
 
     __component__ = "Skills"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
-        skill_library = gameobject.world.resource_manager.get_resource(SkillLibrary)
-        skills = Skills(gameobject)
+        rng = world.resource_manager.get_resource(random.Random)
+        skill_library = world.resource_manager.get_resource(SkillLibrary)
+        skills = Skills()
 
         skill_entries: list[dict[str, Any]] = kwargs.get("skills", [])
 

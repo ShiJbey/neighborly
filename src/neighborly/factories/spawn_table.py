@@ -13,7 +13,7 @@ from neighborly.components.spawn_table import (
     ResidenceSpawnTable,
     ResidenceSpawnTableEntry,
 )
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 from neighborly.libraries import BusinessLibrary, CharacterLibrary, ResidenceLibrary
 
 
@@ -22,9 +22,8 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
     __component__ = "CharacterSpawnTable"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        world = gameobject.world
         rng = world.resource_manager.get_resource(random.Random)
 
         character_library = world.resource_manager.get_resource(CharacterLibrary)
@@ -63,7 +62,7 @@ class CharacterSpawnTableFactory(ComponentFactory):
                     )
                 )
 
-        return CharacterSpawnTable(gameobject, table_entries)
+        return CharacterSpawnTable(table_entries)
 
 
 class BusinessSpawnTableFactory(ComponentFactory):
@@ -71,8 +70,8 @@ class BusinessSpawnTableFactory(ComponentFactory):
 
     __component__ = "BusinessSpawnTable"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        world = gameobject.world
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+
         rng = world.resource_manager.get_resource(random.Random)
         business_library = world.resource_manager.get_resource(BusinessLibrary)
 
@@ -123,7 +122,7 @@ class BusinessSpawnTableFactory(ComponentFactory):
                     )
                 )
 
-        return BusinessSpawnTable(gameobject, table_entries)
+        return BusinessSpawnTable(table_entries)
 
 
 class ResidenceSpawnTableFactory(ComponentFactory):
@@ -131,8 +130,8 @@ class ResidenceSpawnTableFactory(ComponentFactory):
 
     __component__ = "ResidenceSpawnTable"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        world = gameobject.world
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+
         rng = world.resource_manager.get_resource(random.Random)
 
         residence_library = world.resource_manager.get_resource(ResidenceLibrary)
@@ -189,4 +188,4 @@ class ResidenceSpawnTableFactory(ComponentFactory):
                     )
                 )
 
-        return ResidenceSpawnTable(gameobject, entries=table_entries)
+        return ResidenceSpawnTable(entries=table_entries)

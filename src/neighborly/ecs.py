@@ -293,7 +293,7 @@ class GameObject:
 
     def activate(self) -> None:
         """Tag the GameObject as active."""
-        self.add_component(Active(self))
+        self.add_component(Active())
 
         for child in self.children:
             child.activate()
@@ -350,6 +350,7 @@ class GameObject:
                 f"Attempted to add {type(component)}."
             )
 
+        component.gameobject = self
         self._component_manager.add_component(self.uid, component)
         self._component_types.append(type(component))
         component.on_add()
@@ -608,14 +609,19 @@ class Component(ABC):
     _gameobject: GameObject
     """The GameObject the component belongs to."""
 
-    def __init__(self, gameobject: GameObject) -> None:
-        super().__init__()
-        self._gameobject = gameobject
-
     @property
     def gameobject(self) -> GameObject:
         """Get the GameObject instance for this component."""
         return self._gameobject
+
+    @gameobject.setter
+    def gameobject(self, value: GameObject) -> None:
+        """Set the GameObject instance."""
+        # This method should only be called by the ECS
+        if not hasattr(self, "_gameobject"):
+            self._gameobject = value
+        else:
+            raise RuntimeError("Cannot reassign the GameObject for a component")
 
     def on_add(self) -> None:
         """Lifecycle method called when the component is added to a GameObject."""
@@ -1223,7 +1229,7 @@ class ComponentFactory(ABC):
         return self.__component__
 
     @abstractmethod
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
         """Create an instance of the component."""
 
         raise NotImplementedError()
@@ -1314,7 +1320,7 @@ class GameObjectManager:
 
                 component = self.world.gameobjects.component_factories[
                     component_type
-                ].instantiate(gameobject, **factory_args)
+                ].instantiate(self.world, **factory_args)
 
                 gameobject.add_component(component)
 

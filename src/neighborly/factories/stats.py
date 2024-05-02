@@ -15,7 +15,7 @@ from neighborly.components.stats import (
     Stats,
     Stewardship,
 )
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 
 
 class StatsFactory(ComponentFactory):
@@ -23,8 +23,8 @@ class StatsFactory(ComponentFactory):
 
     __component__ = "Stats"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return Stats(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return Stats()
 
 
 class LifespanFactory(ComponentFactory):
@@ -32,9 +32,9 @@ class LifespanFactory(ComponentFactory):
 
     __component__ = "Lifespan"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -42,7 +42,7 @@ class LifespanFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Lifespan(gameobject, base_value=value)
+        return Lifespan(base_value=value)
 
 
 class FertilityFactory(ComponentFactory):
@@ -50,9 +50,9 @@ class FertilityFactory(ComponentFactory):
 
     __component__ = "Fertility"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -60,7 +60,7 @@ class FertilityFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Fertility(gameobject, base_value=value)
+        return Fertility(base_value=value)
 
 
 class KindnessFactory(ComponentFactory):
@@ -68,9 +68,9 @@ class KindnessFactory(ComponentFactory):
 
     __component__ = "Kindness"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -78,7 +78,7 @@ class KindnessFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Kindness(gameobject, base_value=value)
+        return Kindness(base_value=value)
 
 
 class CourageFactory(ComponentFactory):
@@ -86,9 +86,9 @@ class CourageFactory(ComponentFactory):
 
     __component__ = "Courage"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -96,7 +96,7 @@ class CourageFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Courage(gameobject, base_value=value)
+        return Courage(base_value=value)
 
 
 class StewardshipFactory(ComponentFactory):
@@ -104,9 +104,9 @@ class StewardshipFactory(ComponentFactory):
 
     __component__ = "Stewardship"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -114,7 +114,7 @@ class StewardshipFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Stewardship(gameobject, base_value=value)
+        return Stewardship(base_value=value)
 
 
 class SociabilityFactory(ComponentFactory):
@@ -122,9 +122,9 @@ class SociabilityFactory(ComponentFactory):
 
     __component__ = "Sociability"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -132,7 +132,7 @@ class SociabilityFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Sociability(gameobject, base_value=value)
+        return Sociability(base_value=value)
 
 
 class IntelligenceFactory(ComponentFactory):
@@ -140,9 +140,9 @@ class IntelligenceFactory(ComponentFactory):
 
     __component__ = "Intelligence"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -150,7 +150,7 @@ class IntelligenceFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Intelligence(gameobject, base_value=value)
+        return Intelligence(base_value=value)
 
 
 class DisciplineFactory(ComponentFactory):
@@ -158,9 +158,9 @@ class DisciplineFactory(ComponentFactory):
 
     __component__ = "Discipline"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -168,7 +168,7 @@ class DisciplineFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Discipline(gameobject, base_value=value)
+        return Discipline(base_value=value)
 
 
 class CharmFactory(ComponentFactory):
@@ -176,9 +176,9 @@ class CharmFactory(ComponentFactory):
 
     __component__ = "Charm"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = gameobject.world.resource_manager.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
         value: float = float(kwargs.get("value", 0))
 
@@ -186,4 +186,4 @@ class CharmFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Charm(gameobject, base_value=value)
+        return Charm(base_value=value)

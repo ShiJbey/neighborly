@@ -6,7 +6,7 @@ import random
 from typing import Any
 
 from neighborly.components.shared import Age, Agent
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 from neighborly.life_event import PersonalEventHistory
 
 
@@ -15,8 +15,8 @@ class AgeFactory(ComponentFactory):
 
     __component__ = "Age"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        rng = gameobject.world.resources.get_resource(random.Random)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        rng = world.resources.get_resource(random.Random)
 
         value = kwargs.get("value", 0)
 
@@ -24,7 +24,7 @@ class AgeFactory(ComponentFactory):
             min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
             value = rng.randint(min_value, max_value)
 
-        return Age(gameobject, value=value)
+        return Age(value=value)
 
 
 class AgentFactory(ComponentFactory):
@@ -32,8 +32,8 @@ class AgentFactory(ComponentFactory):
 
     __component__ = "Agent"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return Agent(gameobject, agent_type=kwargs["agent_type"])
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return Agent(agent_type=kwargs["agent_type"])
 
 
 class PersonalEventHistoryFactory(ComponentFactory):
@@ -41,5 +41,5 @@ class PersonalEventHistoryFactory(ComponentFactory):
 
     __component__ = "PersonalEventHistory"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return PersonalEventHistory(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return PersonalEventHistory()

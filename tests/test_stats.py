@@ -10,7 +10,6 @@ import pathlib
 import pytest
 
 from neighborly.components.stats import StatComponent
-from neighborly.ecs import GameObject
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat, has_stat
 from neighborly.loaders import load_characters, load_skills, load_species
@@ -29,10 +28,9 @@ class Hunger(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 @pytest.fixture
@@ -58,7 +56,7 @@ def test_has_stat(test_sim: Simulation) -> None:
 
     character = create_character(test_sim.world, "farmer.female")
 
-    character.add_component(Hunger(character, 0))
+    character.add_component(Hunger(0))
 
     assert has_stat(character, "hunger") is True
 
@@ -70,7 +68,7 @@ def test_get_stat(test_sim: Simulation) -> None:
 
     character = create_character(test_sim.world, "farmer.female")
 
-    character.add_component(Hunger(character, 0))
+    character.add_component(Hunger(0))
 
     hunger = get_stat(character, "hunger")
     hunger.base_value = 10

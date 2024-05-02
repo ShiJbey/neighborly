@@ -100,8 +100,8 @@ class AgentBeliefs(Component):
     _beliefs: defaultdict[str, int]
     """Belief IDs mapped to reference counts."""
 
-    def __init__(self, gameobject: GameObject) -> None:
-        super().__init__(gameobject)
+    def __init__(self) -> None:
+        super().__init__()
         self._beliefs = defaultdict(lambda: 0)
 
     def get_all(self) -> Iterable[str]:
@@ -145,8 +145,8 @@ class AppliedBeliefs(Component):
     beliefs: OrderedSet[str]
     """A collection of belief IDs."""
 
-    def __init__(self, gameobject: GameObject) -> None:
-        super().__init__(gameobject)
+    def __init__(self) -> None:
+        super().__init__()
         self.beliefs = OrderedSet([])
 
     def get_all(self) -> Iterable[str]:

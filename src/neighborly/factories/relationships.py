@@ -5,7 +5,7 @@
 from typing import Any
 
 from neighborly.components.relationship import Relationships
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 
 
 class RelationshipsFactory(ComponentFactory):
@@ -13,5 +13,5 @@ class RelationshipsFactory(ComponentFactory):
 
     __component__ = "Relationships"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return Relationships(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return Relationships()

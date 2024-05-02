@@ -5,8 +5,7 @@
 from typing import Any
 
 from neighborly.components.settlement import District, Settlement
-from neighborly.ecs import Component, ComponentFactory, GameObject
-from neighborly.libraries import DistrictNameFactories, SettlementNameFactories
+from neighborly.ecs import Component, ComponentFactory, World
 
 
 class SettlementFactory(ComponentFactory):
@@ -14,18 +13,19 @@ class SettlementFactory(ComponentFactory):
 
     __component__ = "Settlement"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-
-        world = gameobject.world
-
-        name_factories = world.resources.get_resource(SettlementNameFactories)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
         name = kwargs.get("name", "")
 
         if name_factory := kwargs.get("name_factory", ""):
-            name = name_factories.get_factory(name_factory)(gameobject)
+            # factories = world.resource_manager.get_resource(SettlementNameFactories)
 
-        return Settlement(gameobject, name=name)
+            # name = factories.get_factory(name_factory)(gameobject)
+            del name_factory
+            # TODO: Add the revised name factory
+            name = ""
+
+        return Settlement(name=name)
 
 
 class DistrictFactory(ComponentFactory):
@@ -33,10 +33,7 @@ class DistrictFactory(ComponentFactory):
 
     __component__ = "District"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        world = gameobject.world
-
-        name_factories = world.resources.get_resource(DistrictNameFactories)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
         name = kwargs.get("name", "")
         description = kwargs.get("description", "")
@@ -44,10 +41,14 @@ class DistrictFactory(ComponentFactory):
         residential_slots: int = kwargs.get("residential_slots", 0)
 
         if name_factory := kwargs.get("name_factory", ""):
-            name = name_factories.get_factory(name_factory)(gameobject)
+            # factories = world.resource_manager.get_resource(DistrictNameFactories)
+
+            # name = factories.get_factory(name_factory)(gameobject)
+            del name_factory
+            # TODO: Add the revised name factory
+            name = ""
 
         return District(
-            gameobject,
             name=name,
             description=description,
             residential_slots=residential_slots,

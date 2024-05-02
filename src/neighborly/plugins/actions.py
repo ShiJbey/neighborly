@@ -73,7 +73,6 @@ class BecomeBusinessOwner(Action):
 
         self.character.add_component(
             Occupation(
-                self.character,
                 business=self.business,
                 start_date=self.world.resources.get_resource(SimDate).copy(),
                 job_role=owner_role,
@@ -218,7 +217,7 @@ class GetPregnant(Action):
         due_date = self.world.resources.get_resource(SimDate).copy()
         due_date.increment(months=9)
 
-        self.character.add_component(Pregnant(self.character, self.partner, due_date))
+        self.character.add_component(Pregnant(self.partner, due_date))
 
         event = PregnancyEvent(self.character, self.partner)
         add_to_personal_history(self.character, event)

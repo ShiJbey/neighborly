@@ -5,7 +5,7 @@
 from typing import Any
 
 from neighborly.components.residence import ResidentialBuilding
-from neighborly.ecs import Component, ComponentFactory, GameObject
+from neighborly.ecs import Component, ComponentFactory, World
 
 
 class ResidentialBuildingFactory(ComponentFactory):
@@ -13,5 +13,5 @@ class ResidentialBuildingFactory(ComponentFactory):
 
     __component__ = "ResidentialBuilding"
 
-    def instantiate(self, gameobject: GameObject, /, **kwargs: Any) -> Component:
-        return ResidentialBuilding(gameobject)
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return ResidentialBuilding()

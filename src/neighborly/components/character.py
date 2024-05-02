@@ -106,13 +106,12 @@ class Character(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         first_name: str,
         last_name: str,
         sex: Sex,
         species: SpeciesDef,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self._first_name = first_name
         self._last_name = last_name
         self._sex = sex
@@ -120,7 +119,6 @@ class Character(Component):
         self._life_stage = LifeStage.CHILD
         self.species = species
         self.species = species
-        gameobject.name = self.full_name
 
     @property
     def first_name(self) -> str:
@@ -197,10 +195,8 @@ class Pregnant(Component):
     due_date: SimDate
     """The date the baby is due."""
 
-    def __init__(
-        self, gameobject: GameObject, partner: GameObject, due_date: SimDate
-    ) -> None:
-        super().__init__(gameobject)
+    def __init__(self, partner: GameObject, due_date: SimDate) -> None:
+        super().__init__()
         self.partner = partner
         self.due_date = due_date.copy()
 

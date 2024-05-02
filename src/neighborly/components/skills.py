@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any
 
 from neighborly.components.stats import Stat
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component
 
 SKILL_MIN_VALUE = 0
 """The lowest value a skill stat can be."""
@@ -26,9 +26,8 @@ class Skills(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self.skills = {}
 
     def add_skill(self, skill: str, base_value: float = 0.0) -> bool:

@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 import attrs
 
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component
 
 
 @attrs.define
@@ -34,7 +34,6 @@ class CharacterSpawnTable(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         entries: Optional[list[CharacterSpawnTableEntry]] = None,
     ) -> None:
         """
@@ -43,7 +42,7 @@ class CharacterSpawnTable(Component):
         entries
             Starting entries.
         """
-        super().__init__(gameobject)
+        super().__init__()
         self.table = {}
 
         if entries:
@@ -80,7 +79,6 @@ class BusinessSpawnTable(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         entries: Optional[list[BusinessSpawnTableEntry]] = None,
     ) -> None:
         """
@@ -89,7 +87,7 @@ class BusinessSpawnTable(Component):
         entries
             Starting entries.
         """
-        super().__init__(gameobject)
+        super().__init__()
         self.table = {}
 
         if entries:
@@ -148,7 +146,6 @@ class ResidenceSpawnTable(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         entries: Optional[list[ResidenceSpawnTableEntry]] = None,
     ) -> None:
         """
@@ -157,7 +154,7 @@ class ResidenceSpawnTable(Component):
         entries
             Starting entries.
         """
-        super().__init__(gameobject)
+        super().__init__()
         self.table = {}
 
         if entries:

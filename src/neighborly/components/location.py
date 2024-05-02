@@ -28,10 +28,9 @@ class Location(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         is_private: bool = False,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self.is_private = is_private
         self.frequented_by = OrderedSet([])
 
@@ -93,9 +92,8 @@ class FrequentedLocations(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self._locations = OrderedSet([])
 
     def add_location(self, location: GameObject) -> None:
@@ -188,9 +186,8 @@ class LocationPreferences(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self._rules = defaultdict(lambda: 0)
 
     @property

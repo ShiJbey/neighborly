@@ -20,7 +20,7 @@ from typing import Any, ClassVar, Iterable, Optional
 
 import attrs
 
-from neighborly.ecs import Component, EventEmitter, GameObject
+from neighborly.ecs import Component, EventEmitter
 
 
 @dataclasses.dataclass
@@ -294,12 +294,11 @@ class StatComponent(Component, ABC):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
         bounds: Optional[tuple[float, float]] = None,
         is_discrete: bool = False,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
 
         if not self.__stat_name__:
             raise ValueError(
@@ -334,9 +333,8 @@ class Stats(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self._stats = {}
 
     @property
@@ -422,10 +420,9 @@ class Lifespan(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, 999_999), True)
+        super().__init__(base_value, (0, 999_999), True)
 
 
 class Fertility(StatComponent):
@@ -435,10 +432,9 @@ class Fertility(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, 1.0), False)
+        super().__init__(base_value, (0, 1.0), False)
 
 
 class Kindness(StatComponent):
@@ -450,10 +446,9 @@ class Kindness(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Courage(StatComponent):
@@ -465,10 +460,9 @@ class Courage(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Stewardship(StatComponent):
@@ -480,10 +474,9 @@ class Stewardship(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Sociability(StatComponent):
@@ -495,10 +488,9 @@ class Sociability(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Intelligence(StatComponent):
@@ -510,10 +502,9 @@ class Intelligence(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Discipline(StatComponent):
@@ -525,10 +516,9 @@ class Discipline(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Charm(StatComponent):
@@ -540,7 +530,6 @@ class Charm(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)

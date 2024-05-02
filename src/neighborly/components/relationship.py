@@ -26,11 +26,10 @@ class Relationship(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
         owner: GameObject,
         target: GameObject,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self._owner = owner
         self._target = target
 
@@ -80,9 +79,8 @@ class Relationships(Component):
 
     def __init__(
         self,
-        gameobject: GameObject,
     ) -> None:
-        super().__init__(gameobject)
+        super().__init__()
         self._incoming = {}
         self._outgoing = {}
 
@@ -261,10 +259,9 @@ class Reputation(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Romance(StatComponent):
@@ -276,10 +273,9 @@ class Romance(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Compatibility(StatComponent):
@@ -291,10 +287,9 @@ class Compatibility(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class RomanticCompatibility(StatComponent):
@@ -306,10 +301,9 @@ class RomanticCompatibility(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class InteractionScore(StatComponent):
@@ -321,7 +315,6 @@ class InteractionScore(StatComponent):
 
     def __init__(
         self,
-        gameobject: GameObject,
         base_value: float = 0,
     ) -> None:
-        super().__init__(gameobject, base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
