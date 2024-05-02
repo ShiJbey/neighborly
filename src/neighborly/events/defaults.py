@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import Any
 
 from neighborly.components.business import JobRole
 from neighborly.ecs import GameObject
@@ -15,26 +14,20 @@ from neighborly.life_event import LifeEvent
 class DeathEvent(LifeEvent):
     """Event emitted when a character passes away."""
 
-    __event_id__ = "death"
-    __tablename__ = "death_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "death",
-    }
+    __event_type__ = "death"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     character: GameObject
 
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
-        self.character_id = character.uid
         self.character = character
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(id={self.event_id}, "
+            f"{self.__class__.__name__}(id={self.life_event_id}, "
             f"event_type={self.event_type!r}, timestamp={self.timestamp!r}, "
             f"character={self.character.name!r})"
         )
@@ -46,17 +39,10 @@ class DeathEvent(LifeEvent):
 class JoinSettlementEvent(LifeEvent):
     """Dispatched when a character joins a settlement."""
 
-    __event_id__ = "join-settlement"
-    __tablename__ = "join_settlement_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "join_settlement",
-    }
+    __event_type__ = "join-settlement"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    settlement_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("settlement", "character")
+
     settlement: GameObject
     character: GameObject
 
@@ -64,8 +50,13 @@ class JoinSettlementEvent(LifeEvent):
         super().__init__(character.world)
         self.character = character
         self.settlement = settlement
-        self.character_id = character.uid
-        self.settlement_id = settlement.uid
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "settlement": self.settlement.uid,
+        }
 
     def __str__(self) -> str:
         return f"{self.character.name} joined settlement, {self.settlement.name}."
@@ -74,22 +65,18 @@ class JoinSettlementEvent(LifeEvent):
 class BecomeAdolescentEvent(LifeEvent):
     """Event dispatched when a character becomes an adolescent."""
 
-    __event_id__ = "become-adolescent"
-    __tablename__ = "become_adolescent_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "become_adolescent",
-    }
+    __event_type__ = "become-adolescent"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("character",)
+
     character: GameObject
 
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
-        self.character_id = character.uid
         self.character = character
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return f"{self.character.name} became an adolescent."
@@ -98,22 +85,16 @@ class BecomeAdolescentEvent(LifeEvent):
 class BecomeYoungAdultEvent(LifeEvent):
     """Event dispatched when a character becomes a young adult."""
 
-    __event_id__ = "become-young-adult"
-    __tablename__ = "become_young_adult_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "become-young-adult",
-    }
+    __event_type__ = "become-young-adult"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     character: GameObject
 
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
-        self.character_id = character.uid
         self.character = character
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return f"{self.character.name} became a young adult."
@@ -122,22 +103,18 @@ class BecomeYoungAdultEvent(LifeEvent):
 class BecomeAdultEvent(LifeEvent):
     """Event dispatched when a character becomes an adult."""
 
-    __event_id__ = "become-adult"
-    __tablename__ = "become_adult_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "become-adult",
-    }
+    __event_type__ = "become-adult"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("character",)
+
     character: GameObject
 
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
-        self.character_id = character.uid
         self.character = character
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return f"{self.character.name} became an adult."
@@ -146,22 +123,18 @@ class BecomeAdultEvent(LifeEvent):
 class BecomeSeniorEvent(LifeEvent):
     """Event dispatched when a character becomes a senior."""
 
-    __event_id__ = "become-senior"
-    __tablename__ = "become_senior_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "become_senior",
-    }
+    __event_type__ = "become-senior"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("character",)
+
     character: GameObject
 
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
-        self.character_id = character.uid
         self.character = character
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**super().to_dict(), "character": self.character.uid}
 
     def __str__(self) -> str:
         return f"{self.character.name} became a senior."
@@ -170,26 +143,24 @@ class BecomeSeniorEvent(LifeEvent):
 class MoveOutOfResidenceEvent(LifeEvent):
     """Sets the characters current residence."""
 
-    __event_id__ = "move-out-residence"
-    __tablename__ = "move_out_residence_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "move-out-residence",
-    }
+    __event_type__ = "move-out-residence"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("character", "residence")
+
     character: GameObject
-    residence_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     residence: GameObject
 
     def __init__(self, character: GameObject, residence: GameObject) -> None:
         super().__init__(character.world)
         self.character = character
-        self.character_id = character.uid
         self.residence = residence
-        self.residence_id = residence.uid
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "residence": self.residence.uid,
+        }
 
     def __str__(self) -> str:
         return f"{self.character.name} moved out of their residence, {self.residence.name}."
@@ -198,26 +169,24 @@ class MoveOutOfResidenceEvent(LifeEvent):
 class MoveIntoResidenceEvent(LifeEvent):
     """Sets the characters current residence."""
 
-    __event_id__ = "move-into-residence"
-    __tablename__ = "move_into_residence_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "move-into-residence",
-    }
+    __event_type__ = "move-into-residence"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("character", "residence")
+
     character: GameObject
-    residence_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     residence: GameObject
 
     def __init__(self, character: GameObject, residence: GameObject) -> None:
         super().__init__(character.world)
         self.character = character
-        self.character_id = character.uid
         self.residence = residence
-        self.residence_id = residence.uid
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "residence": self.residence.uid,
+        }
 
     def __str__(self) -> str:
         return (
@@ -228,16 +197,10 @@ class MoveIntoResidenceEvent(LifeEvent):
 class BirthEvent(LifeEvent):
     """Event dispatched when a child is born."""
 
-    __event_id__ = "birth"
-    __tablename__ = "birth_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "birth",
-    }
+    __event_type__ = "birth"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("character",)
+
     character: GameObject
 
     def __init__(
@@ -246,7 +209,12 @@ class BirthEvent(LifeEvent):
     ) -> None:
         super().__init__(character.world)
         self.character = character
-        self.character_id = character.uid
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+        }
 
     def __str__(self) -> str:
         return f"{self.character.name} was born."
@@ -255,20 +223,12 @@ class BirthEvent(LifeEvent):
 class HaveChildEvent(LifeEvent):
     """Event dispatched when a character has a child."""
 
-    __event_id__ = "have_child"
-    __tablename__ = "have_child_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "have_child",
-    }
+    __event_type__ = "have_child"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    child_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("child", "birthing_parent", "other_parent")
+
     child: GameObject
-    birthing_parent_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     birthing_parent: GameObject
-    other_parent_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
     other_parent: GameObject
 
     def __init__(
@@ -279,11 +239,16 @@ class HaveChildEvent(LifeEvent):
     ) -> None:
         super().__init__(child.world)
         self.child = child
-        self.child_id = child.uid
         self.birthing_parent = birthing_parent
-        self.birthing_parent_id = birthing_parent.uid
         self.other_parent = other_parent
-        self.other_parent_id = other_parent.uid
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "child": self.child.uid,
+            "birthing_parent": self.birthing_parent.uid,
+            "other_parent": self.other_parent.uid,
+        }
 
     def __str__(self) -> str:
         return (
@@ -295,19 +260,11 @@ class HaveChildEvent(LifeEvent):
 class LeaveJobEvent(LifeEvent):
     """Character leaves job of their own will."""
 
-    __event_id__ = "leave-job"
-    __tablename__ = "leave_job_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "leave-job",
-    }
+    __event_type__ = "leave-job"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    role_id: Mapped[str]
-    reason: Mapped[str] = mapped_column(default="")
+    __slots__ = ("business", "character", "job_role", "reason")
+
+    reason: str
     business: GameObject
     job_role: JobRole
     character: GameObject
@@ -322,11 +279,17 @@ class LeaveJobEvent(LifeEvent):
         super().__init__(character.world)
         self.character = character
         self.business = business
-        self.character_id = character.uid
-        self.business_id = business.uid
-        self.role_id = job_role.definition_id
         self.job_role = job_role
         self.reason = reason
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "job_role": self.job_role.definition_id,
+            "reason": self.reason,
+        }
 
     def __str__(self) -> str:
         if self.reason:
@@ -344,24 +307,24 @@ class LeaveJobEvent(LifeEvent):
 class DepartSettlementEvent(LifeEvent):
     """Character leave the settlement and the simulation."""
 
-    __event_id__ = "depart"
-    __tablename__ = "depart_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "depart",
-    }
+    __event_type__ = "depart"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("character", "reason")
+
     character: GameObject
-    reason: Mapped[str] = mapped_column(default="")
+    reason: str
 
     def __init__(self, character: GameObject, reason: str = "") -> None:
         super().__init__(character.world)
         self.character = character
-        self.character_id = character.uid
         self.reason = reason
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "reason": self.reason,
+        }
 
     def __str__(self):
         return f"{self.character.name} departed from the settlement."
@@ -370,22 +333,14 @@ class DepartSettlementEvent(LifeEvent):
 class LayOffEvent(LifeEvent):
     """The character is laid off from their job."""
 
-    __event_id__ = "lay-off"
-    __tablename__ = "lay_off_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "lay-off",
-    }
+    __event_type__ = "lay-off"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    character_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    role_id: Mapped[str]
-    reason: Mapped[str] = mapped_column(default="")
+    __slots__ = ("business", "job_role", "character", "reason")
+
     business: GameObject
     job_role: JobRole
     character: GameObject
+    reason: str
 
     def __init__(
         self,
@@ -397,11 +352,17 @@ class LayOffEvent(LifeEvent):
         super().__init__(character.world)
         self.character = character
         self.business = business
-        self.character_id = character.uid
-        self.business_id = business.uid
-        self.role_id = job_role.definition_id
         self.job_role = job_role
         self.reason = reason
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+            "job_role": self.job_role.definition_id,
+            "reason": self.reason,
+        }
 
     def __str__(self):
         return (
@@ -413,22 +374,24 @@ class LayOffEvent(LifeEvent):
 class BusinessClosedEvent(LifeEvent):
     """Event emitted when a business closes."""
 
-    __event_id__ = "business-closed"
-    __tablename__ = "business_closed_event"
-    __mapper_args__ = {"polymorphic_identity": "business-closed"}
+    __event_type__ = "business-closed"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    business_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
-    reason: Mapped[str] = mapped_column(default="")
+    __slots__ = ("business", "reason")
+
     business: GameObject
+    reason: str
 
     def __init__(self, business: GameObject, reason: str = "") -> None:
         super().__init__(business.world)
-        self.business_id = business.uid
         self.business = business
         self.reason = reason
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "business": self.business.uid,
+            "reason": self.reason,
+        }
 
     def __str__(self) -> str:
         return f"{self.business.name} has closed for business."
@@ -437,22 +400,21 @@ class BusinessClosedEvent(LifeEvent):
 class NewSettlementEvent(LifeEvent):
     """Event dispatched when a settlement is created."""
 
-    __event_id__ = "settlement-added"
-    __tablename__ = "settlement_added_event"
-    __mapper_args__ = {
-        "polymorphic_identity": "settlement-added",
-    }
+    __event_type__ = "settlement-added"
 
-    event_id: Mapped[int] = mapped_column(
-        ForeignKey("life_events.event_id"), primary_key=True, autoincrement=True
-    )
-    settlement_id: Mapped[int] = mapped_column(ForeignKey("gameobjects.uid"))
+    __slots__ = ("settlement",)
+
     settlement: GameObject
 
     def __init__(self, settlement: GameObject) -> None:
         super().__init__(settlement.world)
-        self.settlement_id = settlement.uid
         self.settlement = settlement
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "settlement": self.settlement.uid,
+        }
 
     def __str__(self) -> str:
         return f"Created new settlement, {self.settlement.name}."

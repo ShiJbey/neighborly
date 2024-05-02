@@ -38,10 +38,7 @@ from typing import (
 )
 
 import esper
-import sqlalchemy
-import sqlalchemy.orm
 from ordered_set import OrderedSet
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -191,9 +188,9 @@ class Event:
     data: dict[str, Any]
     """General metadata."""
 
-    def __init__(self, event_id: str, world: World, **kwargs: Any) -> None:
+    def __init__(self, event_type: str, world: World, **kwargs: Any) -> None:
         self._world = world
-        self._event_type = event_id
+        self._event_type = event_type
         self.data = {**kwargs}
 
     @property
@@ -212,20 +209,6 @@ class Event:
         return {"event_id": self.event_type, "data": self.data}
 
 
-class GameData(DeclarativeBase):
-    """Base class required by SQLAlchemy."""
-
-
-class GameObjectData(GameData):
-    """Collects all GameObject table into a single table for joining"""
-
-    __tablename__ = "gameobjects"
-
-    uid: Mapped[int] = mapped_column(primary_key=True, unique=True)
-    name: Mapped[str] = mapped_column(default="")
-    is_active: Mapped[bool] = mapped_column(default=True)
-
-
 class GameObject:
     """A reference to an entity within the world.
 
@@ -234,7 +217,8 @@ class GameObject:
     """
 
     __slots__ = (
-        "data",
+        "_uid",
+        "_name",
         "world",
         "children",
         "parent",
@@ -243,8 +227,10 @@ class GameObject:
         "_component_manager",
     )
 
-    data: GameObjectData
-    """SQL mapped data about this GameObject."""
+    _uid: int
+    """The unique ID of this GameObject."""
+    _name: str
+    """The name of this GameObject."""
     world: World
     """The world instance a GameObject belongs to."""
     _component_manager: esper.World
@@ -265,15 +251,8 @@ class GameObject:
         component_manager: esper.World,
         name: str = "",
     ) -> None:
-        self.data = GameObjectData(
-            uid=unique_id,
-            name=name if name else f"GameObject({unique_id})",
-            is_active=True,
-        )
-
-        with world.session() as session:
-            session.add(self.data)
-
+        self._uid = unique_id
+        self._name = name if name else f"GameObject({unique_id})"
         self.world = world
         self._component_manager = component_manager
         self.parent = None
@@ -284,7 +263,7 @@ class GameObject:
     @property
     def uid(self) -> int:
         """A GameObject's ID."""
-        return self.data.uid
+        return self._uid
 
     @property
     def exists(self) -> bool:
@@ -300,27 +279,21 @@ class GameObject:
     @property
     def is_active(self) -> bool:
         """Check if a GameObject is active."""
-        return self.data.is_active
+        return self.has_component(Active)
 
     @property
     def name(self) -> str:
         """Get the GameObject's name"""
-        return self.data.name
+        return self._name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set the GameObject's name"""
-        with self.world.session() as session:
-            self.data.name = f"{value}({self.uid})"
-            session.add(self.data)
+        self._name = f"{value}({self.uid})"
 
     def activate(self) -> None:
         """Tag the GameObject as active."""
         self.add_component(Active(self))
-
-        with self.world.session() as session:
-            self.data.is_active = True
-            session.add(self.data)
 
         for child in self.children:
             child.activate()
@@ -329,10 +302,6 @@ class GameObject:
         """Remove the Active tag from a GameObject."""
 
         self.remove_component(Active)
-
-        with self.world.session() as session:
-            self.data.is_active = False
-            session.add(self.data)
 
         for child in self.children:
             child.deactivate()
@@ -1414,9 +1383,6 @@ class GameObjectManager:
         for component_type in reversed(gameobject.get_component_types()):
             gameobject.remove_component(component_type)
 
-        with self.world.session() as session:
-            session.delete(gameobject.data)
-
     def clear_dead_gameobjects(self) -> None:
         """Delete gameobjects that were removed from the world."""
         for gameobject_id in self._dead_gameobjects:
@@ -1450,8 +1416,6 @@ class World:
         "gameobjects",
         "systems",
         "events",
-        "sql_engine",
-        "session",
     )
 
     gameobjects: GameObjectManager
@@ -1462,28 +1426,12 @@ class World:
     """The systems run every simulation step."""
     events: EventManager
     """Manages event listeners."""
-    sql_engine: sqlalchemy.Engine
-    """A reference to the SQL database engine."""
-    session: sessionmaker[Session]
-    """SQL database session factory."""
 
-    def __init__(self, db_path: str = ":memory:") -> None:
+    def __init__(self) -> None:
         self.resources = ResourceManager(self)
         self.systems = SystemManager(self)
         self.events = EventManager(self)
         self.gameobjects = GameObjectManager(self)
-        self.sql_engine = sqlalchemy.create_engine(
-            f"sqlite+pysqlite:///{db_path}", echo=False
-        )
-        self.session = sessionmaker(
-            self.sql_engine, expire_on_commit=False, autoflush=True
-        )
-
-    def initialize_sql_database(self) -> None:
-        """Initialize SQL database tables."""
-
-        GameData.registry.configure()
-        GameData.metadata.create_all(self.sql_engine)
 
     @property
     def system_manager(self) -> SystemManager:

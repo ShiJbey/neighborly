@@ -359,8 +359,6 @@ class Simulation:
 
     def initialize(self) -> None:
         """Run initialization systems only."""
-        self.world.initialize_sql_database()
-
         initialization_system_group = self.world.system_manager.get_system(
             InitializationSystems
         )

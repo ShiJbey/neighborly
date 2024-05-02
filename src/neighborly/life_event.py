@@ -10,71 +10,55 @@ in characters' PersonalEventHistories.
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable
-
-from sqlalchemy.orm import Mapped, mapped_column
+from abc import ABC, abstractmethod
+from itertools import count
+from typing import Any, ClassVar, Iterable
 
 from neighborly.datetime import SimDate
-from neighborly.ecs import Component, GameData, GameObject, World
+from neighborly.ecs import Component, Event, GameObject, World
 
 _logger = logging.getLogger(__name__)
 
 
-class LifeEvent(GameData):
+class LifeEvent(Event, ABC):
     """An event of significant importance in a GameObject's life"""
-
-    __tablename__ = "life_events"
 
     __event_type__: str = ""
     """ID used to map the event to considerations and listeners"""
 
-    event_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    timestamp_str: Mapped[str] = mapped_column(name="timestamp")
-    type: Mapped[str]
-    world: World
+    _next_life_event_id: ClassVar[count[int]] = count()
+
+    __slots__ = ("life_event_id", "timestamp")
+
+    life_event_id: int
+    """Numerical ID of this life event."""
     timestamp: SimDate
-
-    __mapper_args__ = {
-        "polymorphic_identity": "life_event",
-        "polymorphic_on": "type",
-    }
-
-    __allow_unmapped__ = True
+    """The timestamp of the event"""
 
     def __init__(self, world: World) -> None:
-        super().__init__()
+        if not type(self).__event_type__:
+            raise ValueError(f"Please specify __event_id__ for class {type(self)}")
+        super().__init__(self.__event_type__, world)
+        self.life_event_id = next(self._next_life_event_id)
         self.timestamp = world.resources.get_resource(SimDate).copy()
-        self.timestamp_str = str(self.timestamp)
-
-    @property
-    def event_type(self) -> str:
-        """A type name for the event."""
-
-        return self.type
-
-    @classmethod
-    def get_event_id(cls) -> str:
-        """Get the event ID for this event type."""
-        if not cls.__event_type__:
-            raise ValueError(f"Please specify __event_id__ for class {cls}")
-        return cls.__event_type__
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(id={self.event_id}, "
+            f"{self.__class__.__name__}(id={self.life_event_id}, "
             f"event_type={self.event_type!r}, timestamp={self.timestamp!r})"
         )
 
     def __str__(self) -> str:
         return (
-            f"{self.__class__.__name__}(id={self.event_id}, "
+            f"{self.__class__.__name__}(id={self.life_event_id}, "
             f"event_type={self.event_type!r}, timestamp={self.timestamp!r})"
         )
 
+    @abstractmethod
     def to_dict(self) -> dict[str, Any]:
         """Serialize event data to a dict."""
         return {
-            "event_id": self.event_id,
+            "life_event_id": self.life_event_id,
             "event_type": self.event_type,
             "timestamp": str(self.timestamp),
         }
@@ -108,13 +92,13 @@ class PersonalEventHistory(Component):
         self._history.append(event)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"events": [e.event_id for e in self._history]}
+        return {"events": [e.to_dict() for e in self._history]}
 
     def __str__(self) -> str:
         return self.__repr__()
 
     def __repr__(self) -> str:
-        history = [f"{type(e).__name__}({e.event_id})" for e in self._history]
+        history = [f"{type(e).__name__}({e.life_event_id})" for e in self._history]
         return f"{self.__class__.__name__}({history})"
 
 
@@ -147,14 +131,9 @@ class GlobalEventHistory:
 def dispatch_life_event(world: World, event: LifeEvent) -> None:
     """Dispatch a life event."""
 
-    # This needs to be called before we do anything because adding it to the session
-    # assigns the "event_id" attribute.
-    with world.session() as session:
-        session.add(event)
-
     world.resources.get_resource(GlobalEventHistory).append(event)
 
-    _logger.info("[%s]: %s", event.timestamp_str, str(event))
+    _logger.info("[%s]: %s", str(event.timestamp), str(event))
 
     world.events.dispatch_event(event)
 
