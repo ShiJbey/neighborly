@@ -6,7 +6,9 @@ This module is for profiling the performance of a simulation.
 
 """
 
+import argparse
 import pathlib
+import random
 from cProfile import Profile
 from pstats import SortKey, Stats
 
@@ -66,10 +68,51 @@ def life_stage_consideration(action: Action) -> float:
     return -1
 
 
+def get_args() -> argparse.Namespace:
+    """Configure CLI argument parser and parse args.
+
+    Returns
+    -------
+    argparse.Namespace
+        parsed CLI arguments.
+    """
+
+    parser = argparse.ArgumentParser("Neighborly Sample Simulation.")
+
+    parser.add_argument(
+        "-s",
+        "--seed",
+        default=str(random.randint(0, 9999999)),
+        type=str,
+        help="The world seed.",
+    )
+
+    parser.add_argument(
+        "-y",
+        "--years",
+        default=5,
+        type=int,
+        help="The number of years to simulate.",
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=pathlib.Path,
+        default=pathlib.Path("./profile.prof"),
+        help="Specify path to write generated world data.",
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+
+    args = get_args()
 
     sim = Simulation(
         SimulationConfig(
+            seed=args.seed,
             settlement="basic_settlement",
             logging=LoggingConfig(logging_enabled=True),
         )
@@ -99,7 +142,7 @@ if __name__ == "__main__":
         ActionConsiderationLibrary
     ).add_success_consideration("become-business-owner", life_stage_consideration)
 
-    total_time_steps: int = 30 * 12
+    total_time_steps: int = args.years * 12
 
     sim.world.systems.get_system(PassiveReputationChange).set_active(False)
     sim.world.systems.get_system(PassiveRomanceChange).set_active(False)
@@ -109,9 +152,5 @@ if __name__ == "__main__":
     with Profile() as profile:
         for _ in range(total_time_steps):
             sim.step()
-        (
-            Stats(profile)
-            .strip_dirs()
-            .sort_stats(SortKey.PCALLS)
-            .dump_stats("stats_all_actions_no_sql_no_rpx.prof")
-        )
+
+        (Stats(profile).strip_dirs().sort_stats(SortKey.PCALLS).dump_stats(args.output))
