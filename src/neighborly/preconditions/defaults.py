@@ -4,12 +4,9 @@
 
 from typing import Any
 
-from repraxis.query import DBQuery
-
 from neighborly.components.character import Character, LifeStage
 from neighborly.components.relationship import Relationship
 from neighborly.ecs import GameObject, World
-from neighborly.helpers.db_helpers import preprocess_query_string
 from neighborly.helpers.skills import get_skill, has_skill
 from neighborly.helpers.stats import get_stat, has_stat
 from neighborly.helpers.traits import has_trait
@@ -171,36 +168,3 @@ class AtLeastLifeStage(Precondition):
         life_stage = LifeStage[params["life_stage"]]
 
         return cls(life_stage)
-
-
-class RePraxisPrecondition(Precondition):
-    """Requires that a given RePraxis query succeeds."""
-
-    __precondition_name__ = "RePraxisQuery"
-
-    __slots__ = ("query", "_description")
-
-    query: DBQuery
-    """The query to run."""
-    _description: str
-    """A description of the query."""
-
-    def __init__(self, query: DBQuery, description: str) -> None:
-        super().__init__()
-        self.query = query
-        self._description = description
-
-    @property
-    def description(self) -> str:
-        return self._description
-
-    def check(self, target: GameObject) -> bool:
-        result = self.query.run(target.world.rp_db, bindings=[{"?target": target.uid}])
-
-        return result.success
-
-    @classmethod
-    def instantiate(cls, world: World, params: dict[str, Any]) -> Precondition:
-        query = DBQuery(preprocess_query_string(params["query"]))
-        description = params.get("description", "")
-        return cls(query=query, description=description)

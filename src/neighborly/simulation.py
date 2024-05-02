@@ -86,7 +86,6 @@ from neighborly.life_event import GlobalEventHistory
 from neighborly.preconditions.defaults import (
     AtLeastLifeStage,
     HasTrait,
-    RePraxisPrecondition,
     SkillRequirement,
     StatRequirement,
     TargetHasTrait,
@@ -321,7 +320,6 @@ class Simulation:
         precondition_library.add_precondition_type(SkillRequirement)
         precondition_library.add_precondition_type(StatRequirement)
         precondition_library.add_precondition_type(AtLeastLifeStage)
-        precondition_library.add_precondition_type(RePraxisPrecondition)
 
     def _init_logging(self) -> None:
         """Initialize simulation logging."""

@@ -176,11 +176,6 @@ class Traits(Component):
 
         self.traits[instance.trait.definition_id] = instance
 
-        # Add the trait to the repraxis database
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.traits.{trait.definition_id}"
-        )
-
         return True
 
     def remove_trait(self, trait: Trait) -> bool:
@@ -189,10 +184,6 @@ class Traits(Component):
         if trait.definition_id in self.traits:
 
             del self.traits[trait.definition_id]
-
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.traits.{trait.definition_id}"
-            )
 
             return True
 

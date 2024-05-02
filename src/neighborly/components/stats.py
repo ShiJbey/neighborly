@@ -16,7 +16,7 @@ import enum
 import math
 import sys
 from abc import ABC
-from typing import Any, ClassVar, Iterable, Optional, cast
+from typing import Any, ClassVar, Iterable, Optional
 
 import attrs
 
@@ -358,12 +358,6 @@ class Stats(Component):
         stat_id = stat.stat_name
         self._stats[stat_id] = stat
 
-        stat.stat.on_value_changed.add_listener(self.handle_stat_value_change(stat_id))
-
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.stats.{stat_id}!{stat.stat.value}"
-        )
-
     def has_stat(self, stat_id: str) -> bool:
         """Check if a stat exists.
 
@@ -411,8 +405,6 @@ class Stats(Component):
 
             stat_comp.stat.on_value_changed.remove_all_listeners()
 
-            self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.stats.{stat_id}")
-
             del self._stats[stat_id]
 
             return True
@@ -421,19 +413,6 @@ class Stats(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {}
-
-    def handle_stat_value_change(self, stat_id: str):
-        """Wraps a listener function for stat value change events."""
-
-        # this is necessary to capture the stat ID in a closure
-        def handler(source: object, event: StatValueChangeEvent) -> None:
-            source = cast(Stat, source)
-
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.stats.{stat_id}!{event.value}"
-            )
-
-        return handler
 
 
 class Lifespan(StatComponent):

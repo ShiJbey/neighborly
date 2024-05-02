@@ -159,7 +159,6 @@ def main() -> Simulation:
 
 
 if __name__ == "__main__":
-    from neighborly.helpers.db_helpers import *
     from neighborly.inspection import *
 
     sim = main()

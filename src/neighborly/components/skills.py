@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
-from neighborly.components.stats import Stat, StatValueChangeEvent
+from neighborly.components.stats import Stat
 from neighborly.ecs import Component, GameObject
 
 SKILL_MIN_VALUE = 0
@@ -41,14 +41,6 @@ class Skills(Component):
 
             self.skills[skill] = skill_stat
 
-            skill_stat.on_value_changed.add_listener(
-                self.handle_stat_value_change(skill)
-            )
-
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.skills.{skill}!{skill_stat.value}"
-            )
-
             return True
 
         return False
@@ -67,16 +59,3 @@ class Skills(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {"skills": [s.to_dict() for s in self.skills.values()]}
-
-    def handle_stat_value_change(self, skill_id: str):
-        """Wraps a listener function for stat value change events."""
-
-        # this is necessary to capture the stat ID in a closure
-        def handler(source: object, event: StatValueChangeEvent) -> None:
-            source = cast(Stat, source)
-
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.skills.{skill_id}!{event.value}"
-            )
-
-        return handler

@@ -41,7 +41,6 @@ import esper
 import sqlalchemy
 import sqlalchemy.orm
 from ordered_set import OrderedSet
-from repraxis import RePraxisDatabase
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 _LOGGER = logging.getLogger(__name__)
@@ -1451,7 +1450,6 @@ class World:
         "gameobjects",
         "systems",
         "events",
-        "rp_db",
         "sql_engine",
         "session",
     )
@@ -1464,8 +1462,6 @@ class World:
     """The systems run every simulation step."""
     events: EventManager
     """Manages event listeners."""
-    rp_db: RePraxisDatabase
-    """Database that holds some easily-queryable data."""
     sql_engine: sqlalchemy.Engine
     """A reference to the SQL database engine."""
     session: sessionmaker[Session]
@@ -1476,7 +1472,6 @@ class World:
         self.systems = SystemManager(self)
         self.events = EventManager(self)
         self.gameobjects = GameObjectManager(self)
-        self.rp_db = RePraxisDatabase()
         self.sql_engine = sqlalchemy.create_engine(
             f"sqlite+pysqlite:///{db_path}", echo=False
         )

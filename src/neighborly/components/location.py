@@ -44,9 +44,6 @@ class Location(Component):
             The GameObject reference to a character.
         """
         self.frequented_by.add(character)
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.location.frequented_by.{character.uid}"
-        )
 
     def remove_character(self, character: GameObject) -> bool:
         """Remove a character.
@@ -63,20 +60,10 @@ class Location(Component):
         """
         if character in self.frequented_by:
             self.frequented_by.remove(character)
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.location.frequented_by.{character.uid}"
-            )
+
             return True
 
         return False
-
-    def on_add(self) -> None:
-        self.gameobject.world.rp_db.delete(
-            f"{self.gameobject.uid}.location.is_private!{self.is_private}"
-        )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.location")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -121,10 +108,6 @@ class FrequentedLocations(Component):
         """
         self._locations.add(location)
 
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.frequented_locations.{location.uid}"
-        )
-
     def remove_location(self, location: GameObject) -> bool:
         """Remove a location.
 
@@ -141,16 +124,8 @@ class FrequentedLocations(Component):
         if location in self._locations:
             self._locations.remove(location)
 
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.frequented_locations.{location.uid}"
-            )
             return True
         return False
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(
-            f"{self.gameobject.uid}.frequented_locations"
-        )
 
     def to_dict(self) -> dict[str, Any]:
         return {"locations": [entry.uid for entry in self._locations]}

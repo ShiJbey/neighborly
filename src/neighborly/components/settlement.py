@@ -73,15 +73,6 @@ class District(Component):
         self._name = value
         self.gameobject.name = value
 
-        if value:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.district.name!{value}"
-            )
-        else:
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.district.name!{value}"
-            )
-
     @property
     def description(self) -> str:
         """A short description of the district."""
@@ -111,10 +102,6 @@ class District(Component):
     def settlement(self, value: GameObject) -> None:
         """The settlement the district belongs to."""
         self._settlement = value
-
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.district.settlement!{value.uid}"
-        )
 
     @property
     def residential_slots(self) -> int:
@@ -146,9 +133,6 @@ class District(Component):
         """
         self._businesses.append(business)
         self._business_slots -= 1
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.district.businesses.{business.uid}"
-        )
 
     def remove_business(self, business: GameObject) -> bool:
         """Remove a business from this district.
@@ -166,9 +150,6 @@ class District(Component):
         try:
             self._businesses.remove(business)
             self._business_slots += 1
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.district.businesses.{business.uid}"
-            )
             return True
         except ValueError:
             # The business was not present
@@ -184,9 +165,6 @@ class District(Component):
         """
         self._residences.append(residence)
         self._residential_slots -= 1
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.district.residences.{residence.uid}"
-        )
 
     def remove_residence(self, residence: GameObject) -> bool:
         """Remove a residence from this district.
@@ -204,24 +182,10 @@ class District(Component):
         try:
             self._residences.remove(residence)
             self._residential_slots += 1
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.district.residences.{residence.uid}"
-            )
             return True
         except ValueError:
             # The residence was not present
             return False
-
-    def on_add(self) -> None:
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.district.name!{self.name}"
-        )
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.district.population!{self.population}"
-        )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.district")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -266,11 +230,6 @@ class Settlement(Component):
         self._name = value
         self.gameobject.name = value
 
-        if value:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.settlement.name!{value}"
-            )
-
     @property
     def population(self) -> int:
         """The total number of people living in the settlement."""
@@ -295,9 +254,6 @@ class Settlement(Component):
             The district to add.
         """
         self._districts.append(district)
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.settlement.district.{district.uid}"
-        )
 
     def remove_district(self, district: GameObject) -> bool:
         """Remove a district from this settlement.
@@ -314,22 +270,10 @@ class Settlement(Component):
         """
         try:
             self._districts.remove(district)
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.settlement.district.{district.uid}"
-            )
             return True
         except ValueError:
             # The district was not present
             return False
-
-    def on_add(self) -> None:
-        if self.name:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.settlement.name!{self.name}"
-            )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.settlement")
 
     def to_dict(self) -> dict[str, Any]:
         return {

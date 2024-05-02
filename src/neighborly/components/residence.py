@@ -60,9 +60,6 @@ class ResidentialUnit(Component):
             A GameObject reference to a residence owner.
         """
         self._owners.add(owner)
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.residence.owners.{owner.uid}"
-        )
 
     def remove_owner(self, owner: GameObject) -> None:
         """Remove owner from residence.
@@ -73,9 +70,6 @@ class ResidentialUnit(Component):
             A GameObject reference to a residence owner.
         """
         self._owners.remove(owner)
-        self.gameobject.world.rp_db.delete(
-            f"{self.gameobject.uid}.residence.owners.{owner.uid}"
-        )
 
     def is_owner(self, character: GameObject) -> bool:
         """Check if a GameObject owns a residence.
@@ -96,9 +90,6 @@ class ResidentialUnit(Component):
             A GameObject reference to a resident.
         """
         self._residents.add(resident)
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.residence.residents.{resident.uid}"
-        )
 
     def remove_resident(self, resident: GameObject) -> None:
         """Remove a tenant rom this residence.
@@ -109,9 +100,6 @@ class ResidentialUnit(Component):
             A GameObject reference to a resident.
         """
         self._residents.remove(resident)
-        self.gameobject.world.rp_db.delete(
-            f"{self.gameobject.uid}.residence.residents.{resident.uid}"
-        )
 
     def is_resident(self, character: GameObject) -> bool:
         """Check if a GameObject is a resident.
@@ -122,14 +110,6 @@ class ResidentialUnit(Component):
             A GameObject reference to a character
         """
         return character in self._residents
-
-    def on_add(self) -> None:
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.residence.building!{self.building.uid}"
-        )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.residence")
 
     def __repr__(self) -> str:
         return f"Residence({self.to_dict()})"
@@ -166,15 +146,6 @@ class ResidentialBuilding(Component):
         """Set the district of a residential building."""
         self._district = value
 
-        if self.district:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.residential_building.district!{self.district.uid}"
-            )
-        else:
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.residential_building.district"
-            )
-
     @property
     def units(self) -> Iterable[GameObject]:
         """Get the residential units within the building."""
@@ -183,27 +154,10 @@ class ResidentialBuilding(Component):
     def add_residential_unit(self, residence: GameObject) -> None:
         """Add a residential unit to the building."""
         self._residential_units.append(residence)
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.residential_building.units.{residence.uid}"
-        )
 
     def remove_residential_unit(self, residence: GameObject) -> None:
         """Add a residential unit to the building."""
         self._residential_units.remove(residence)
-        self.gameobject.world.rp_db.delete(
-            f"{self.gameobject.uid}.residential_building.units.{residence.uid}"
-        )
-
-    def on_add(self) -> None:
-        if self.district:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.residential_building.district!{self.district.uid}"
-            )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(
-            f"{self.gameobject.uid}.residential_building"
-        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -230,14 +184,6 @@ class Resident(Component):
         super().__init__(gameobject)
         self.residence = residence
 
-    def on_add(self) -> None:
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.resident.residence!{self.residence.uid}"
-        )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.resident")
-
     def to_dict(self) -> dict[str, Any]:
         return {"residence": self.residence.uid}
 
@@ -250,9 +196,3 @@ class Resident(Component):
 
 class Vacant(TagComponent):
     """Tags a residence that does not currently have anyone living there."""
-
-    def on_add(self) -> None:
-        self.gameobject.world.rp_db.insert(f"{self.gameobject.uid}.vacant")
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.vacant")

@@ -135,11 +135,6 @@ class Character(Component):
 
         self.gameobject.name = self.full_name
 
-        if self._first_name:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.character.first_name!{self._first_name}"
-            )
-
     @property
     def last_name(self) -> str:
         """The character's last name."""
@@ -151,11 +146,6 @@ class Character(Component):
         self._last_name = value
 
         self.gameobject.name = self.full_name
-
-        if self._last_name:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.character.last_name!{self._last_name}"
-            )
 
     @property
     def full_name(self) -> str:
@@ -177,36 +167,6 @@ class Character(Component):
         """Set the character's life stage."""
 
         self._life_stage = value
-
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.character.life_stage!{self._life_stage.name}"
-        )
-
-    def on_add(self) -> None:
-        if self.first_name:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.character.first_name!{self.first_name}"
-            )
-        if self.last_name:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.character.last_name!{self.last_name}"
-            )
-
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.character.sex!{self.sex.name}"
-        )
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.character.life_stage!{self.life_stage.name}"
-        )
-
-        if self.species:
-            species_id = self.species.definition_id
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.character.species!{species_id}"
-            )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.character")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -243,20 +203,6 @@ class Pregnant(Component):
         super().__init__(gameobject)
         self.partner = partner
         self.due_date = due_date.copy()
-
-    def on_add(self) -> None:
-
-        if self.partner:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.pregnant.partner!{self.partner.uid}"
-            )
-        if self.due_date:
-            self.gameobject.world.rp_db.insert(
-                f"{self.gameobject.uid}.pregnant.due_date!{self.due_date}"
-            )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.pregnant")
 
     def __str__(self) -> str:
         return f"Pregnant(partner={self.partner.name!r}, due_date={self.due_date})"

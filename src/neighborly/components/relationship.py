@@ -44,17 +44,6 @@ class Relationship(Component):
         """Get the target of the relationship."""
         return self._target
 
-    def on_add(self) -> None:
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.relationship.owner!{self.owner.uid}"
-        )
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.relationship.target!{self.target.uid}"
-        )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.relationship")
-
     def to_dict(self) -> dict[str, Any]:
         return {
             "owner": self.owner.uid,
