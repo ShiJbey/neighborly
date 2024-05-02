@@ -12,6 +12,8 @@ from collections import defaultdict
 from typing import Any, Iterable
 
 from ordered_set import OrderedSet
+
+from neighborly.components.relationship import Relationship
 from neighborly.ecs import Component, GameObject
 from neighborly.effects.base_types import Effect
 from neighborly.preconditions.base_types import Precondition
@@ -24,7 +26,15 @@ class Belief:
     preconditions.
     """
 
-    __slots__ = ("belief_id", "description", "preconditions", "effects", "is_global")
+    __slots__ = (
+        "belief_id",
+        "description",
+        "preconditions",
+        "owner_preconditions",
+        "target_preconditions",
+        "effects",
+        "is_global",
+    )
 
     belief_id: str
     """A unique ID for the belief."""
@@ -54,8 +64,17 @@ class Belief:
     def check_preconditions(self, relationship: GameObject) -> bool:
         """Check the preconditions against the given relationship."""
 
+        relationship_comp = relationship.get_component(Relationship)
+        owner = relationship_comp.owner
+        target = relationship_comp.target
+
         for precondition in self.preconditions:
-            if precondition.check(relationship) is False:
+            if (
+                precondition.check(
+                    {"relationship": relationship, "owner": owner, "target": target}
+                )
+                is False
+            ):
                 return False
 
         return True

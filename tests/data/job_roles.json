@@ -4,8 +4,9 @@
     "job_level": 2,
     "requirements": [
       {
-        "type": "RePraxisQuery",
-        "query": "?subject.skills.blacksmithing!?val\ngte ?val 50"
+        "type": "SkillRequirement",
+        "skill": "blacksmithing",
+        "level": 50
       }
     ],
     "recurring_effects": [

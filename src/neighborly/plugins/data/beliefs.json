@@ -4,9 +4,9 @@
     "description": "Men are attractive",
     "preconditions": [
       {
-        "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?other\n?other.character.sex!MALE",
-        "description": "Relationship target is male"
+        "type": "GenderRequirement",
+        "gender": "male",
+        "target": "target"
       }
     ],
     "effects": [
@@ -27,9 +27,9 @@
     "description": "Men are not attractive",
     "preconditions": [
       {
-        "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?other\n?other.character.sex!MALE",
-        "description": "Relationship target is male"
+        "type": "GenderRequirement",
+        "gender": "male",
+        "target": "target"
       }
     ],
     "effects": [
@@ -50,9 +50,9 @@
     "description": "Women are attractive.",
     "preconditions": [
       {
-        "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?other\n?other.character.sex!FEMALE",
-        "description": "Relationship target is female"
+        "type": "GenderRequirement",
+        "gender": "female",
+        "target": "target"
       }
     ],
     "effects": [
@@ -73,9 +73,9 @@
     "description": "Women are not attractive.",
     "preconditions": [
       {
-        "type": "RePraxisQuery",
-        "query": "?target.relationship.owner!?other\n?other.character.sex!FEMALE",
-        "description": "Relationship target is female"
+        "type": "GenderRequirement",
+        "gender": "female",
+        "target": "target"
       }
     ],
     "effects": [

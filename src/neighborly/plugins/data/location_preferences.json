@@ -4,9 +4,9 @@
     "description": "Like places that serve alcohol",
     "preconditions": [
       {
-        "type": "RePraxisQuery",
-        "query": "?target.traits.serves_alcohol",
-        "description": "The location serves alcohol."
+        "type": "HasTrait",
+        "target": "location",
+        "trait": "serves_alcohol"
       }
     ],
     "probability": 0.8

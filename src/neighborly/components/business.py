@@ -327,4 +327,4 @@ class JobRole:
 
     def check_requirements(self, gameobject: GameObject) -> bool:
         """Check if a character passes all the requirements for this job."""
-        return all([req.check(gameobject)] for req in self.requirements)
+        return all([req.check({"target": gameobject})] for req in self.requirements)
