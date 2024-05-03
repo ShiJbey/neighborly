@@ -118,7 +118,6 @@ from neighborly.systems import (
     CompileSkillDefsSystem,
     CompileSpeciesDefsSystem,
     CompileTraitDefsSystem,
-    DataCollectionSystems,
     EarlyUpdateSystems,
     InitializationSystems,
     InitializeSettlementSystem,
@@ -207,7 +206,6 @@ class Simulation:
         """Initialize built-in systems."""
         # Add default top-level system groups (in execution order)
         self.world.system_manager.add_system(InitializationSystems())
-        self.world.system_manager.add_system(DataCollectionSystems())
         self.world.system_manager.add_system(EarlyUpdateSystems())
         self.world.system_manager.add_system(UpdateSystems())
         self.world.system_manager.add_system(LateUpdateSystems())

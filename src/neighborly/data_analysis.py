@@ -20,23 +20,38 @@ from neighborly.simulation import Simulation
 class Metric(ABC):
     """Extracts and aggregates data from a BatchRunner."""
 
-    __slots__ = ("_tables",)
+    __slots__ = ("_tables", "collection_interval", "collect_at_end", "cooldown")
 
-    _tables: list[pd.DataFrame]
+    _tables: list[list[pd.DataFrame]]
     """Data frames extracted from simulation instances."""
+    collection_interval: int
+    """The number of timesteps between collections."""
+    collect_at_end: bool
+    """Should this metric collect data when the simulation ends."""
+    cooldown: int
+    """The number of timesteps until the metric runs again."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, collection_interval: int = -1, collect_at_end: bool = True
+    ) -> None:
         super().__init__()
-        self._tables = []
+        self._tables = [[]]
+        self.collection_interval = collection_interval
+        self.collect_at_end = collect_at_end
+        self.cooldown = 0
 
     @property
-    def tables(self) -> Sequence[pd.DataFrame]:
+    def tables(self) -> Sequence[Sequence[pd.DataFrame]]:
         """Get the data tables for the metric."""
         return self._tables
 
+    def increment_table_batch(self) -> None:
+        """Add a new collection of tables for another batch run."""
+        self._tables.append([])
+
     def add_table(self, table: pd.DataFrame) -> None:
         """Add a table to the Metric's collection of tables."""
-        self._tables.append(table)
+        self._tables[-1].append(table)
 
     @abstractmethod
     def extract_data(self, sim: Simulation) -> pd.DataFrame:
@@ -51,6 +66,7 @@ class Metric(ABC):
     def clear(self) -> None:
         """Clears all data from the metric."""
         self._tables.clear()
+        self._tables.append([])
 
 
 class BatchRunner:
@@ -103,8 +119,16 @@ class BatchRunner:
             for _ in tqdm.tqdm(range(num_time_steps)):
                 sim.step()
 
+                for metric in self._metrics:
+                    metric.cooldown -= 1
+                    if metric.cooldown <= 0 and metric.collection_interval > 0:
+                        metric.add_table(metric.extract_data(sim))
+                        metric.cooldown = metric.collection_interval
+
             for metric in self._metrics:
-                metric.add_table(metric.extract_data(sim))
+                if metric.collect_at_end:
+                    metric.add_table(metric.extract_data(sim))
+                metric.increment_table_batch()
 
     def reset(self) -> None:
         """Resets the internal data caches for another run."""
