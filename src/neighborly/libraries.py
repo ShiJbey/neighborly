@@ -8,7 +8,7 @@ ID.
 
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, Generic, Iterable, Optional, Protocol, Type, TypeVar
 
@@ -34,7 +34,7 @@ from neighborly.defs.base_types import (
     SpeciesDef,
     TraitDef,
 )
-from neighborly.ecs import World
+from neighborly.ecs import GameObject, World
 from neighborly.effects.base_types import Effect
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.preconditions.base_types import Precondition
@@ -117,20 +117,173 @@ class SpeciesLibrary(ContentDefinitionLibrary[SpeciesDef]):
         return self.instances[definition_id]
 
 
+class IDistrictFactory(ABC):
+    """Creates instances of district gameobjects using a single definition."""
+
+    @abstractmethod
+    def create_district(self, world: World, definition_id: str) -> GameObject:
+        """Create instance of district from a district definition.
+
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        definition_id
+            The ID of the district's definition.
+
+        Returns
+        -------
+        GameObject
+            The new district.
+        """
+        raise NotImplementedError()
+
+
 class DistrictLibrary(ContentDefinitionLibrary[DistrictDef]):
     """A collection of all district definitions."""
+
+    _slots__ = ("factory",)
+
+    factory: IDistrictFactory
+    """The factory used to create new district from definitions."""
+
+    def __init__(self, factory: IDistrictFactory) -> None:
+        super().__init__()
+        self.factory = factory
+
+
+class ISettlementFactory(ABC):
+    """Creates instances of settlement gameobjects using a single definition."""
+
+    @abstractmethod
+    def create_settlement(self, world: World, definition_id: str) -> GameObject:
+        """Create instance of settlement from a settlement definition.
+
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        definition_id
+            The ID of the settlement's definition.
+
+        Returns
+        -------
+        GameObject
+            The new settlement.
+        """
+        raise NotImplementedError()
 
 
 class SettlementLibrary(ContentDefinitionLibrary[SettlementDef]):
     """A Collection of all the settlement definitions."""
 
+    _slots__ = ("factory",)
+
+    factory: ISettlementFactory
+    """The factory used to create new settlement from definitions."""
+
+    def __init__(self, factory: ISettlementFactory) -> None:
+        super().__init__()
+        self.factory = factory
+
+
+class IResidenceFactory(ABC):
+    """Creates instances of residence gameobjects using a single definition."""
+
+    @abstractmethod
+    def create_residence(self, world: World, definition_id: str) -> GameObject:
+        """Create instance of residence from a residence definition.
+
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        definition_id
+            The ID of the residence's definition.
+
+        Returns
+        -------
+        GameObject
+            The new residence.
+        """
+        raise NotImplementedError()
+
 
 class ResidenceLibrary(ContentDefinitionLibrary[ResidenceDef]):
     """A collection of all character definitions."""
 
+    _slots__ = ("factory",)
+
+    factory: IResidenceFactory
+    """The factory used to create new residence from definitions."""
+
+    def __init__(self, factory: IResidenceFactory) -> None:
+        super().__init__()
+        self.factory = factory
+
+
+class ICharacterFactory(ABC):
+    """Creates instances of character gameobjects using a single definition."""
+
+    @abstractmethod
+    def create_character(self, world: World, definition_id: str) -> GameObject:
+        """Create instance of character from a character definition.
+
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        definition_id
+            The ID of the character's definition.
+
+        Returns
+        -------
+        GameObject
+            The new character.
+        """
+        raise NotImplementedError()
+
+
+class IChildFactory(ABC):
+    """Creates instances of children given two parents."""
+
+    @abstractmethod
+    def create_child(
+        self, birthing_parent: GameObject, other_parent: GameObject
+    ) -> GameObject:
+        """Create instance of a child from two parents.
+
+        Parameters
+        ----------
+        birthing_parent
+            The parent who gave birth to the child.
+        other_parent
+            The other parent contributing genetics to the child.
+
+        Returns
+        -------
+        GameObject
+            The new child.
+        """
+        raise NotImplementedError()
+
 
 class CharacterLibrary(ContentDefinitionLibrary[CharacterDef]):
     """A collection of all character definitions."""
+
+    _slots__ = ("factory", "child_factory")
+
+    factory: ICharacterFactory
+    """The factory used to create new characters from definitions."""
+    child_factory: IChildFactory
+    """The factory used to create new children from existing characters."""
+
+    def __init__(
+        self, factory: ICharacterFactory, child_factory: IChildFactory
+    ) -> None:
+        super().__init__()
+        self.factory = factory
+        self.child_factory = child_factory
 
 
 class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
@@ -154,8 +307,39 @@ class JobRoleLibrary(ContentDefinitionLibrary[JobRoleDef]):
         return self.instances[definition_id]
 
 
+class IBusinessFactory(ABC):
+    """Creates instances of business gameobjects using a single definition."""
+
+    @abstractmethod
+    def create_business(self, world: World, definition_id: str) -> GameObject:
+        """Create instance of business from a business definition.
+
+        Parameters
+        ----------
+        world
+            The simulation's World instance.
+        definition_id
+            The ID of the business's definition.
+
+        Returns
+        -------
+        GameObject
+            The new business.
+        """
+        raise NotImplementedError()
+
+
 class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
     """A collection of all business definitions."""
+
+    _slots__ = ("factory",)
+
+    factory: IBusinessFactory
+    """The factory used to create new business from definitions."""
+
+    def __init__(self, factory: IBusinessFactory) -> None:
+        super().__init__()
+        self.factory = factory
 
 
 class BeliefLibrary(ContentDefinitionLibrary[BeliefDef]):

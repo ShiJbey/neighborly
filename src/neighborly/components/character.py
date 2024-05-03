@@ -90,6 +90,20 @@ class Species:
         self.can_physically_age = can_physically_age
         self.traits = traits
 
+    def get_life_stage_for_age(self, age: int) -> LifeStage:
+        """Get the life stage for a character with a given species and age."""
+
+        if age >= self.senior_age:
+            return LifeStage.SENIOR
+        elif age >= self.adult_age:
+            return LifeStage.ADULT
+        elif age >= self.young_adult_age:
+            return LifeStage.YOUNG_ADULT
+        elif age >= self.adolescent_age:
+            return LifeStage.ADOLESCENT
+
+        return LifeStage.CHILD
+
 
 class Character(Component):
     """A character within the story world."""

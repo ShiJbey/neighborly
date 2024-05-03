@@ -5,8 +5,14 @@
 from typing import Any
 
 from neighborly.components.business import Business, Occupation, Unemployed
-from neighborly.ecs import Component, ComponentFactory, World
-from neighborly.libraries import BusinessNameFactories, JobRoleLibrary
+from neighborly.ecs import Component, ComponentFactory, GameObject, World
+from neighborly.helpers.traits import add_trait
+from neighborly.libraries import (
+    BusinessLibrary,
+    BusinessNameFactories,
+    IBusinessFactory,
+    JobRoleLibrary,
+)
 
 
 class OccupationFactory(ComponentFactory):
@@ -59,3 +65,23 @@ class UnemployedFactory(ComponentFactory):
     def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
         return Unemployed(**kwargs)
+
+
+class DefaultBusinessFactory(IBusinessFactory):
+    """Default implementation of a business factory."""
+
+    def create_business(self, world: World, definition_id: str) -> GameObject:
+
+        library = world.resource_manager.get_resource(BusinessLibrary)
+
+        business_def = library.get_definition(definition_id)
+
+        business = world.gameobject_manager.spawn_gameobject(
+            components=business_def.components
+        )
+        business.metadata["definition_id"] = definition_id
+
+        for trait in business_def.traits:
+            add_trait(business, trait)
+
+        return business

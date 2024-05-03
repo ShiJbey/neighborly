@@ -23,11 +23,7 @@ from neighborly.helpers.location import (
 )
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import (
-    add_relationship_trait,
-    add_trait,
-    remove_relationship_trait,
-)
+from neighborly.helpers.traits import add_relationship_trait, remove_relationship_trait
 from neighborly.libraries import BusinessLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 from neighborly.plugins.default_events import (
@@ -57,17 +53,7 @@ def create_business(
     """
     library = world.resource_manager.get_resource(BusinessLibrary)
 
-    business_def = library.get_definition(definition_id)
-
-    business = world.gameobject_manager.spawn_gameobject(
-        components=business_def.components
-    )
-    business.metadata["definition_id"] = definition_id
-
-    for trait in business_def.traits:
-        add_trait(business, trait)
-
-    return business
+    return library.factory.create_business(world, definition_id)
 
 
 def close_business(business: GameObject) -> None:

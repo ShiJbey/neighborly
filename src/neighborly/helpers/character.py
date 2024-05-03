@@ -4,10 +4,7 @@
 
 from __future__ import annotations
 
-import random
-
 from neighborly.components.business import Business, Occupation
-from neighborly.components.character import Character, LifeStage
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import (
     Resident,
@@ -16,9 +13,6 @@ from neighborly.components.residence import (
     Vacant,
 )
 from neighborly.components.settlement import District
-from neighborly.components.shared import Age
-from neighborly.components.stats import Lifespan
-from neighborly.defs.base_types import CharacterDef
 from neighborly.ecs import GameObject, World
 from neighborly.events.defaults import DeathEvent
 from neighborly.helpers.business import close_business, leave_job
@@ -35,7 +29,7 @@ from neighborly.helpers.traits import (
     has_trait,
     remove_relationship_trait,
 )
-from neighborly.libraries import CharacterLibrary, TraitLibrary
+from neighborly.libraries import CharacterLibrary
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 
 
@@ -56,89 +50,29 @@ def create_character(world: World, definition_id: str) -> GameObject:
     """
     character_library = world.resource_manager.get_resource(CharacterLibrary)
 
-    character_def = character_library.get_definition(definition_id)
+    return character_library.factory.create_character(world, definition_id)
 
-    character = world.gameobject_manager.spawn_gameobject(
-        components=character_def.components
+
+def create_child(birthing_parent: GameObject, other_parent: GameObject) -> GameObject:
+    """Create instance of a child from two parents.
+
+    Parameters
+    ----------
+    birthing_parent
+        The parent who gave birth to the child.
+    other_parent
+        The other parent contributing genetics to the child.
+
+    Returns
+    -------
+    GameObject
+        The new child.
+    """
+    character_library = birthing_parent.world.resource_manager.get_resource(
+        CharacterLibrary
     )
-    character.metadata["definition_id"] = definition_id
 
-    # Initialize the life span
-    species = character.get_component(Character).species
-    rng = character.world.resource_manager.get_resource(random.Random)
-    min_value, max_value = (int(x.strip()) for x in species.lifespan.split("-"))
-    base_lifespan = rng.randint(min_value, max_value)
-    character.get_component(Lifespan).stat.base_value = base_lifespan
-
-    _initialize_traits(character, character_def)
-
-    for trait_id in species.traits:
-        add_trait(character, trait_id)
-
-    return character
-
-
-def set_rand_age(character: GameObject, life_stage: LifeStage) -> None:
-    """Initializes the characters age."""
-    rng = character.world.resource_manager.get_resource(random.Random)
-
-    character_comp = character.get_component(Character)
-    age = character.get_component(Age)
-    species = character.get_component(Character).species
-
-    character_comp.life_stage = life_stage
-
-    # Generate an age for this character
-    if life_stage == LifeStage.CHILD:
-        age.value = rng.randint(0, species.adolescent_age - 1)
-    elif life_stage == LifeStage.ADOLESCENT:
-        age.value = rng.randint(
-            species.adolescent_age,
-            species.young_adult_age - 1,
-        )
-    elif life_stage == LifeStage.YOUNG_ADULT:
-        age.value = rng.randint(
-            species.young_adult_age,
-            species.adult_age - 1,
-        )
-    elif life_stage == LifeStage.ADULT:
-        age.value = rng.randint(
-            species.adult_age,
-            species.senior_age - 1,
-        )
-    else:
-        age.value = species.senior_age
-
-
-def _initialize_traits(character: GameObject, definition: CharacterDef) -> None:
-    """Set the traits for a character."""
-    rng = character.world.resource_manager.get_resource(random.Random)
-    trait_library = character.world.resource_manager.get_resource(TraitLibrary)
-
-    # species = character.get_component(Character).species
-
-    # Loop through the trait entries in the definition and get by ID or select
-    # randomly if using tags
-    for entry in definition.traits:
-        if entry.with_id:
-            add_trait(character, entry.with_id)
-        elif entry.with_tags:
-            potential_traits = trait_library.get_definition_with_tags(entry.with_tags)
-
-            traits: list[str] = []
-            trait_weights: list[int] = []
-
-            for trait_def in potential_traits:
-                if trait_def.spawn_frequency >= 1:
-                    traits.append(trait_def.definition_id)
-                    trait_weights.append(trait_def.spawn_frequency)
-
-            if len(traits) == 0:
-                continue
-
-            chosen_trait = rng.choices(population=traits, weights=trait_weights, k=1)[0]
-
-            add_trait(character, chosen_trait)
+    return character_library.child_factory.create_child(birthing_parent, other_parent)
 
 
 def die(character: GameObject) -> None:

@@ -28,16 +28,28 @@ from neighborly.effects.effects import (
     IncreaseBaseStat,
 )
 from neighborly.factories.beliefs import AgentBeliefsFactory, AppliedBeliefsFactory
-from neighborly.factories.business import BusinessFactory
-from neighborly.factories.character import CharacterFactory
+from neighborly.factories.business import BusinessFactory, DefaultBusinessFactory
+from neighborly.factories.character import (
+    CharacterFactory,
+    DefaultCharacterFactory,
+    DefaultChildFactory,
+)
 from neighborly.factories.location import (
     FrequentedLocationsFactory,
     LocationFactory,
     LocationPreferencesFactory,
 )
 from neighborly.factories.relationships import RelationshipsFactory
-from neighborly.factories.residence import ResidentialBuildingFactory
-from neighborly.factories.settlement import DistrictFactory, SettlementFactory
+from neighborly.factories.residence import (
+    DefaultResidenceFactory,
+    ResidentialBuildingFactory,
+)
+from neighborly.factories.settlement import (
+    DefaultDistrictFactory,
+    DefaultSettlementFactory,
+    DistrictFactory,
+    SettlementFactory,
+)
 from neighborly.factories.shared import (
     AgeFactory,
     AgentFactory,
@@ -159,12 +171,24 @@ class Simulation:
         self.world.resource_manager.add_resource(self._config)
         self.world.resource_manager.add_resource(random.Random(self._config.seed))
         self.world.resource_manager.add_resource(SimDate())
-        self.world.resource_manager.add_resource(CharacterLibrary())
+        self.world.resource_manager.add_resource(
+            CharacterLibrary(
+                factory=DefaultCharacterFactory(), child_factory=DefaultChildFactory()
+            )
+        )
         self.world.resource_manager.add_resource(JobRoleLibrary())
-        self.world.resource_manager.add_resource(BusinessLibrary())
-        self.world.resource_manager.add_resource(ResidenceLibrary())
-        self.world.resource_manager.add_resource(DistrictLibrary())
-        self.world.resource_manager.add_resource(SettlementLibrary())
+        self.world.resource_manager.add_resource(
+            BusinessLibrary(factory=DefaultBusinessFactory())
+        )
+        self.world.resource_manager.add_resource(
+            ResidenceLibrary(factory=DefaultResidenceFactory())
+        )
+        self.world.resource_manager.add_resource(
+            DistrictLibrary(factory=DefaultDistrictFactory())
+        )
+        self.world.resource_manager.add_resource(
+            SettlementLibrary(factory=DefaultSettlementFactory())
+        )
         self.world.resource_manager.add_resource(TraitLibrary())
         self.world.resource_manager.add_resource(SpeciesLibrary())
         self.world.resource_manager.add_resource(SkillLibrary())

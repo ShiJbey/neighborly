@@ -58,12 +58,7 @@ from neighborly.events.defaults import (
     NewSettlementEvent,
 )
 from neighborly.helpers.business import close_business, create_business
-from neighborly.helpers.character import (
-    create_character,
-    die,
-    move_into_residence,
-    set_rand_age,
-)
+from neighborly.helpers.character import create_character, die, move_into_residence
 from neighborly.helpers.location import add_frequented_location, score_location
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
@@ -330,15 +325,7 @@ class SpawnNewResidentSystem(System):
                 k=1,
             )[0]
 
-            character_life_stage = rng.choices(
-                population=(LifeStage.YOUNG_ADULT, LifeStage.ADULT, LifeStage.SENIOR),
-                weights=(5, 2, 1),
-                k=1,
-            )[0]
-
             character = create_character(world, character_definition_id)
-
-            set_rand_age(character, character_life_stage)
 
             settlement = district.get_component(District).settlement
             assert settlement is not None
