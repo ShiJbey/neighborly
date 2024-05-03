@@ -123,9 +123,15 @@ class TraitDef(ContentDefinition):
     """Tags describing this definition."""
 
 
-class SpeciesDef(TraitDef):
+class SpeciesDef(ContentDefinition):
     """A definition for a species type."""
 
+    definition_id: str
+    """The ID of this species definition."""
+    name: str
+    """The name of this species."""
+    description: str = ""
+    """A short description of the trait."""
     adolescent_age: int
     """Age this species reaches adolescence."""
     young_adult_age: int
@@ -136,8 +142,10 @@ class SpeciesDef(TraitDef):
     """Age this species becomes a senior/elder."""
     lifespan: str
     """A range of of years that this species lives (e.g. 'MIN - MAX')."""
-    can_physically_age: bool
+    can_physically_age: bool = True
     """Does this character go through the various life stages."""
+    traits: list[str] = pydantic.Field(default_factory=list)
+    """Traits to apply to characters of this species."""
 
 
 class SettlementDefDistrictEntry(pydantic.BaseModel):

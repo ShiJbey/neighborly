@@ -72,38 +72,10 @@ def create_character(world: World, definition_id: str) -> GameObject:
 
     _initialize_traits(character, character_def)
 
+    for trait_id in species.traits:
+        add_trait(character, trait_id)
+
     return character
-
-
-# def set_species(gameobject: GameObject, species: SpeciesDef) -> bool:
-#     """the species of the character.
-
-#     Parameters
-#     ----------
-#     gameobject
-#         The gameobject to add the trait to.
-#     species
-#         The species.
-
-#     Return
-#     ------
-#     bool
-#         True if the trait was added successfully, False if already present or
-#         if the trait conflict with existing traits.
-#     """
-#     world = gameobject.world
-
-#     character = gameobject.get_component(Character)
-
-#     if character.species:
-#         remove_trait(gameobject, character.species.definition_id)
-
-#     if add_trait(gameobject, species_id):
-#         library = world.resources.get_resource(TraitLibrary)
-#         character.species = cast(SpeciesDef, library.get_definition(species_id))
-#         return True
-
-#     return False
 
 
 def set_rand_age(character: GameObject, life_stage: LifeStage) -> None:
@@ -144,8 +116,6 @@ def _initialize_traits(character: GameObject, definition: CharacterDef) -> None:
     trait_library = character.world.resource_manager.get_resource(TraitLibrary)
 
     # species = character.get_component(Character).species
-
-    # set_species(character, species.definition_id)
 
     # Loop through the trait entries in the definition and get by ID or select
     # randomly if using tags

@@ -528,7 +528,6 @@ class CompileSpeciesDefsSystem(System):
 
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(SpeciesLibrary)
-        effect_library = world.resource_manager.get_resource(EffectLibrary)
 
         compiled_defs = compile_definitions(library.definitions.values())
 
@@ -543,17 +542,13 @@ class CompileSpeciesDefsSystem(System):
                         definition_id=definition.definition_id,
                         name=definition.name,
                         description=definition.description,
-                        effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in definition.effects
-                        ],
-                        conflicting_traits=definition.conflicts_with,
                         adolescent_age=definition.adolescent_age,
                         young_adult_age=definition.young_adult_age,
                         adult_age=definition.adult_age,
                         senior_age=definition.senior_age,
                         lifespan=definition.lifespan,
                         can_physically_age=definition.can_physically_age,
+                        traits=[*definition.traits],
                     )
                 )
 

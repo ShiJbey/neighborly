@@ -34,7 +34,7 @@ class CharacterFactory(ComponentFactory):
         sex: Sex = Sex[kwargs["sex"]]
 
         species_library = world.resources.get_resource(SpeciesLibrary)
-        species = species_library.get_definition(species_id)
+        species = species_library.get_species(species_id)
 
         return Character(
             first_name=first_name,

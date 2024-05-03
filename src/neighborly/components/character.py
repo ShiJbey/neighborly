@@ -5,13 +5,10 @@
 from __future__ import annotations
 
 import enum
-from typing import Any, Iterable
+from typing import Any
 
-from neighborly.components.traits import Trait, TraitType
 from neighborly.datetime import SimDate
-from neighborly.defs.base_types import SpeciesDef
 from neighborly.ecs import Component, GameObject
-from neighborly.effects.base_types import Effect
 
 
 class LifeStage(enum.IntEnum):
@@ -32,58 +29,66 @@ class Sex(enum.IntEnum):
     NOT_SPECIFIED = enum.auto()
 
 
-class Species(Trait):
+class Species:
     """Configuration information about a character's species."""
 
     __slots__ = (
+        "definition_id",
+        "name",
+        "description",
         "adolescent_age",
         "young_adult_age",
         "adult_age",
         "senior_age",
         "lifespan",
         "can_physically_age",
+        "traits",
     )
 
     definition_id: str
+    """The unique ID of this species definition."""
+    name: str
+    """The name of this species."""
+    description: str
+    """A short text description."""
     adolescent_age: int
+    """The age when this species is considered an adolescent."""
     young_adult_age: int
+    """The age when this species is considered a young adult."""
     adult_age: int
+    """The age when this species is considered an adult."""
     senior_age: int
+    """The age when this species is considered a senior."""
     lifespan: str
+    """A lifespan interval for characters of this species."""
     can_physically_age: bool
+    """Can characters of this species age."""
+    traits: list[str]
+    """IDs of traits characters of this species get at creation."""
 
     def __init__(
         self,
         definition_id: str,
         name: str,
         description: str,
-        effects: list[Effect],
-        conflicting_traits: Iterable[str],
         adolescent_age: int,
         young_adult_age: int,
         adult_age: int,
         senior_age: int,
         lifespan: str,
         can_physically_age: bool,
+        traits: list[str],
     ) -> None:
-        super().__init__(
-            definition_id=definition_id,
-            name=name,
-            trait_type=TraitType.AGENT,
-            description=description,
-            effects=effects,
-            conflicting_traits=conflicting_traits,
-            target_effects=[],
-            owner_effects=[],
-            outgoing_relationship_effects=[],
-            incoming_relationship_effects=[],
-        )
+        self.definition_id = definition_id
+        self.name = name
+        self.description = description
         self.adolescent_age = adolescent_age
         self.young_adult_age = young_adult_age
         self.adult_age = adult_age
         self.senior_age = senior_age
         self.lifespan = lifespan
         self.can_physically_age = can_physically_age
+        self.traits = traits
 
 
 class Character(Component):
@@ -101,7 +106,7 @@ class Character(Component):
     """The physical sex of the character."""
     _life_stage: LifeStage
     """The character's current life stage."""
-    species: SpeciesDef
+    species: Species
     """The character's species"""
 
     def __init__(
@@ -109,7 +114,7 @@ class Character(Component):
         first_name: str,
         last_name: str,
         sex: Sex,
-        species: SpeciesDef,
+        species: Species,
     ) -> None:
         super().__init__()
         self._first_name = first_name
