@@ -35,16 +35,16 @@ proceedings of the 2022 IEEE Conference On Games.
 
 ## 🎯 Core Features
 
-- 💾 Data-driven simulation
-- 🛠️ Procedurally generates a settlement, districts, characters, residences, and businesses.
-- 📦 Plugin system to load and share new content.
-- 👔 Characters can start businesses and hold jobs.
-- ️🏷️ Tag GameObjects with traits that modify their stats and relationships.
-- ❤️ Characters cultivate relationships based on romance and reputation.
-- 💥 Simulate random life events that spice up characters' lives.
-- ⚖️ Social Rules influence how characters feel about each other.
-- 🏬 Location Preferences determine what locations characters frequent.
-- 📈 Query simulation data using SQL and analyze data with data science tools like [Pandas](https://pandas.pydata.org/).
+- 💾 **Data-driven**. Customize the simulation for different narrative settings
+- 🤖 **Agent-based**. Settlement and character histories are generated bottom-up from character behavior.
+- 📦 **Entity-Component System**. Agents are composed of modular components.
+- 👔 **Stat & Skill Systems**. Track character proficiencies and RPG-like stats.
+- ️🏷️ **Trait System**. Tag GameObjects with traits that modify their stats and relationships.
+- ❤️ **Relationship System**. Characters cultivate relationships based on romance and reputation.
+- 💥 **Action & Event System**. Agents take actions that build up histories of life events.
+- ⚖️ **Belief System**. Character's beliefs influence how they feel about others.
+- 🏬 **Location Preference System**. Model what locations a character might frequent given their traits.
+- 📈 **Ready for data science**. Extract and analyze data with [Pandas](https://pandas.pydata.org/).
 
 ## 🚀 How to Install
 
