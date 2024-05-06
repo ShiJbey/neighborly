@@ -26,9 +26,20 @@ Neighborly is an agent-based settlement simulation that generates backstory data
 
 Neighborly's was inspired [_Talk of the Town_](https://github.com/james-owen-ryan/talktown), another settlement simulation for emergent narrative storytelling research. It also draws inspiration from commercial world-simulation games like _Caves of Qud_, _Dwarf Fortress_, _Crusader Kings_, _RimWorld_, and _WorldBox_.
 
-If you use Neighborly in a project, please [cite this repository](./CITATION.bib). You can read
+If you use Neighborly in a project, please cite this repository. You can read
 Neighborly's associated [paper](https://shijbey.github.io/publications/Neighborly.pdf) that was published in the
 proceedings of the 2022 IEEE Conference On Games.
+
+```
+@inproceedings{johnsonbey2022neighborly,
+    title = {Neighborly: A Sandbox for Simulation-based Emergent Narrative},
+    author = {Johnson-Bey, Shi and Nelson, Mark J and Mateas, Michael},
+    booktitle = {2022 IEEE Conference on Games (CoG)},
+    pages = {425--432},
+    year = {2022},
+    organization = {IEEE}
+}
+```
 
 > [!IMPORTANT]
 > Neighborly's current architecture differs from what is described in the paper. Please see the [Differences from the Paper](#ℹ️-differences-from-the-paper) section below.
