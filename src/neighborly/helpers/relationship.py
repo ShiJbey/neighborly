@@ -4,13 +4,10 @@
 
 from neighborly.components.beliefs import AgentBeliefs, AppliedBeliefs, Belief
 from neighborly.components.relationship import (
-    Compatibility,
-    InteractionScore,
     Relationship,
     Relationships,
     Reputation,
     Romance,
-    RomanticCompatibility,
 )
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
@@ -44,9 +41,6 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Traits())
     relationship.add_component(Reputation())
     relationship.add_component(Romance())
-    relationship.add_component(Compatibility())
-    relationship.add_component(RomanticCompatibility())
-    relationship.add_component(InteractionScore())
     relationship.add_component(AppliedBeliefs())
 
     relationship.name = f"{owner.name} -> {target.name}"

@@ -23,11 +23,6 @@
     "effects": [
       {
         "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 1
-      },
-      {
-        "type": "AddStatBuff",
         "stat": "romance",
         "amount": -50
       },
@@ -35,11 +30,6 @@
         "type": "AddStatBuff",
         "stat": "reputation",
         "amount": 10
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": -3
       }
     ]
   },
@@ -52,11 +42,6 @@
         "type": "AddStatBuff",
         "stat": "romance",
         "amount": -50
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": -5
       },
       {
         "type": "AddStatBuff",
@@ -94,18 +79,8 @@
       },
       {
         "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 3
-      },
-      {
-        "type": "AddStatBuff",
         "stat": "reputation",
         "amount": 20
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "compatibility",
-        "amount": 4
       }
     ]
   },
@@ -121,18 +96,13 @@
       },
       {
         "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 2
+        "stat": "romance",
+        "amount": 5
       },
       {
         "type": "AddStatBuff",
         "stat": "reputation",
         "amount": 15
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "compatibility",
-        "amount": 4
       }
     ]
   },
@@ -218,37 +188,16 @@
   "boss": {
     "name": "Boss",
     "trait_type": "relationship",
-    "description": "The target of this relationship is the their work boss.",
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 1
-      }
-    ]
+    "description": "The target of this relationship is the their work boss."
   },
   "employee": {
     "name": "Employee",
     "trait_type": "relationship",
-    "description": "The target of this relationship is an employee.",
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 1
-      }
-    ]
+    "description": "The target of this relationship is an employee."
   },
   "coworker": {
     "name": "Coworker",
     "trait_type": "relationship",
-    "description": "The target of this relationship is a coworker.",
-    "effects": [
-      {
-        "type": "AddStatBuff",
-        "stat": "interaction_score",
-        "amount": 2
-      }
-    ]
+    "description": "The target of this relationship is a coworker."
   }
 }

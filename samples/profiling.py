@@ -35,7 +35,6 @@ from neighborly.plugins import (
 )
 from neighborly.plugins.actions import BecomeBusinessOwner
 from neighborly.simulation import Simulation
-from neighborly.systems import PassiveReputationChange, PassiveRomanceChange
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent.parent / "tests" / "data"
 
@@ -143,9 +142,6 @@ if __name__ == "__main__":
     ).add_success_consideration("become-business-owner", life_stage_consideration)
 
     total_time_steps: int = args.years * 12
-
-    sim.world.systems.get_system(PassiveReputationChange).set_active(False)
-    sim.world.systems.get_system(PassiveRomanceChange).set_active(False)
 
     sim.initialize()
 

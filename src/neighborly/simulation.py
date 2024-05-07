@@ -124,8 +124,6 @@ from neighborly.systems import (
     JobRoleMonthlyEffectsSystem,
     LateUpdateSystems,
     LifeStageSystem,
-    PassiveReputationChange,
-    PassiveRomanceChange,
     SpawnNewBusinessesSystem,
     SpawnNewResidentSystem,
     SpawnResidentialBuildingsSystem,
@@ -270,12 +268,6 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=ChildBirthSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=PassiveReputationChange(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=PassiveRomanceChange(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
             system=JobRoleMonthlyEffectsSystem(), system_group=UpdateSystems

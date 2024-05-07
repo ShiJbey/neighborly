@@ -14,11 +14,6 @@
         "type": "AddStatBuff",
         "stat": "romance",
         "amount": 15
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 5
       }
     ]
   },
@@ -37,11 +32,6 @@
         "type": "AddStatBuff",
         "stat": "romance",
         "amount": -15
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": -5
       }
     ]
   },
@@ -60,11 +50,6 @@
         "type": "AddStatBuff",
         "stat": "romance",
         "amount": 15
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 5
       }
     ]
   },
@@ -83,11 +68,6 @@
         "type": "AddStatBuff",
         "stat": "romance",
         "amount": 15
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 5
       }
     ]
   }

@@ -878,60 +878,6 @@ class LifeStageSystem(System):
                         character.life_stage = LifeStage.CHILD
 
 
-class PassiveReputationChange(System):
-    """Reputation stats have a probability of changing each time step."""
-
-    CHANCE_OF_CHANGE: ClassVar[float] = 0.05
-
-    def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for _, (
-            relationship,
-            _,
-        ) in world.get_components((Relationship, Active)):
-            interaction_boost = max(
-                1.0, get_stat(relationship.gameobject, "interaction_score").value / 10.0
-            )
-
-            final_chance = PassiveReputationChange.CHANCE_OF_CHANGE * (
-                1.0 + interaction_boost
-            )
-
-            if rng.random() < final_chance:
-                get_stat(relationship.gameobject, "reputation").base_value = (
-                    get_stat(relationship.gameobject, "reputation").base_value
-                    + get_stat(relationship.gameobject, "compatibility").value
-                )
-
-
-class PassiveRomanceChange(System):
-    """Romance stats have a probability of changing each time step."""
-
-    CHANCE_OF_CHANGE: ClassVar[float] = 0.05
-
-    def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for _, (
-            relationship,
-            _,
-        ) in world.get_components((Relationship, Active)):
-            interaction_boost = max(
-                1.0, get_stat(relationship.gameobject, "interaction_score").value / 10.0
-            )
-
-            final_chance = PassiveRomanceChange.CHANCE_OF_CHANGE * (
-                1.0 + interaction_boost
-            )
-
-            if rng.random() < final_chance:
-                get_stat(relationship.gameobject, "romance").base_value = (
-                    get_stat(relationship.gameobject, "romance").base_value
-                    + get_stat(relationship.gameobject, "romantic_compatibility").value
-                )
-
-
 class CharacterLifespanSystem(System):
     """Kills of characters who have reached their lifespan."""
 

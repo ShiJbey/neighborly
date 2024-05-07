@@ -364,16 +364,11 @@ def _get_relationships_table(obj: GameObject) -> str:
     if relationships is None:
         return ""
 
-    relationship_data: list[
-        tuple[bool, int, str, float, float, float, float, float, str]
-    ] = []
+    relationship_data: list[tuple[bool, int, str, float, float, str]] = []
 
     for target, relationship in relationships.outgoing.items():
         reputation = get_stat(relationship, "reputation").value
         romance = get_stat(relationship, "romance").value
-        compatibility = get_stat(relationship, "compatibility").value
-        romantic_compatibility = get_stat(relationship, "romantic_compatibility").value
-        interaction_score = get_stat(relationship, "interaction_score").value
         traits = ", ".join(
             t.trait.name for t in relationship.get_component(Traits).traits.values()
         )
@@ -385,9 +380,6 @@ def _get_relationships_table(obj: GameObject) -> str:
                 target.name,
                 int(reputation),
                 int(romance),
-                compatibility,
-                romantic_compatibility,
-                int(interaction_score),
                 traits,
             )
         )

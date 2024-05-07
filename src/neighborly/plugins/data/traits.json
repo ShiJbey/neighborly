@@ -27,7 +27,9 @@
         "amount": -5
       }
     ],
-    "conflicts_with": ["gullible"],
+    "conflicts_with": [
+      "gullible"
+    ],
     "spawn_frequency": 1
   },
   "gullible": {
@@ -47,7 +49,9 @@
         "amount": 10
       }
     ],
-    "conflicts_with": ["skeptical"],
+    "conflicts_with": [
+      "skeptical"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.25,
     "inheritance_chance_both": 0.5
@@ -61,11 +65,6 @@
         "type": "AddStatBuff",
         "stat": "romance",
         "amount": 30
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
-        "amount": 4
       }
     ]
   },
@@ -87,7 +86,9 @@
         "amount": 5
       }
     ],
-    "conflicts_with": ["traitorous"],
+    "conflicts_with": [
+      "traitorous"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.5,
     "inheritance_chance_both": 0.75
@@ -111,16 +112,13 @@
       },
       {
         "type": "AddStatBuff",
-        "stat": "compatibility",
-        "amount": -5
-      },
-      {
-        "type": "AddStatBuff",
-        "stat": "romantic_compatibility",
+        "stat": "romance",
         "amount": -3
       }
     ],
-    "conflicts_with": ["loyal"],
+    "conflicts_with": [
+      "loyal"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
@@ -136,7 +134,9 @@
         "amount": -3
       }
     ],
-    "conflicts_with": ["extroverted"],
+    "conflicts_with": [
+      "extroverted"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -152,7 +152,9 @@
         "amount": 20
       }
     ],
-    "conflicts_with": ["introverted"],
+    "conflicts_with": [
+      "introverted"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -182,7 +184,9 @@
         "amount": 5
       }
     ],
-    "conflicts_with": ["callous"],
+    "conflicts_with": [
+      "callous"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
     "inheritance_chance_both": 0.7
@@ -212,7 +216,9 @@
         "amount": -5
       }
     ],
-    "conflicts_with": ["compassionate"],
+    "conflicts_with": [
+      "compassionate"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
@@ -228,7 +234,9 @@
         "amount": 25
       }
     ],
-    "conflicts_with": ["cautious"],
+    "conflicts_with": [
+      "cautious"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -244,7 +252,9 @@
         "amount": -15
       }
     ],
-    "conflicts_with": ["adventurous"],
+    "conflicts_with": [
+      "adventurous"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -267,7 +277,9 @@
         "amount": 15
       }
     ],
-    "conflicts_with": ["awkward"],
+    "conflicts_with": [
+      "awkward"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -283,7 +295,9 @@
         "amount": -5
       }
     ],
-    "conflicts_with": ["charismatic"],
+    "conflicts_with": [
+      "charismatic"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
@@ -304,7 +318,9 @@
         "amount": 5
       }
     ],
-    "conflicts_with": ["lazy"],
+    "conflicts_with": [
+      "lazy"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
@@ -325,7 +341,9 @@
         "amount": -5
       }
     ],
-    "conflicts_with": ["ambitious"],
+    "conflicts_with": [
+      "ambitious"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
@@ -351,7 +369,9 @@
         "amount": -15
       }
     ],
-    "conflicts_with": ["calm"],
+    "conflicts_with": [
+      "calm"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
@@ -372,7 +392,9 @@
         "amount": 15
       }
     ],
-    "conflicts_with": ["hot-headed"],
+    "conflicts_with": [
+      "hot-headed"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
     "inheritance_chance_both": 0.4
@@ -453,7 +475,9 @@
         "amount": 30
       }
     ],
-    "conflicts_with": ["pessimistic"],
+    "conflicts_with": [
+      "pessimistic"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -469,7 +493,9 @@
         "amount": -20
       }
     ],
-    "conflicts_with": ["optimistic"],
+    "conflicts_with": [
+      "optimistic"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -485,7 +511,9 @@
         "amount": 0.2
       }
     ],
-    "conflicts_with": ["lethargic"],
+    "conflicts_with": [
+      "lethargic"
+    ],
     "spawn_frequency": 2,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -501,7 +529,9 @@
         "amount": -0.2
       }
     ],
-    "conflicts_with": ["energetic"],
+    "conflicts_with": [
+      "energetic"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -562,7 +592,9 @@
         "amount": 40
       }
     ],
-    "conflicts_with": ["simpleminded"],
+    "conflicts_with": [
+      "simpleminded"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -607,7 +639,9 @@
         "amount": 10
       }
     ],
-    "conflicts_with": ["chaste"],
+    "conflicts_with": [
+      "chaste"
+    ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6
@@ -640,7 +674,9 @@
         "belief_id": "women_are_not_attractive"
       }
     ],
-    "conflicts_with": ["attracted_to_women"],
+    "conflicts_with": [
+      "attracted_to_women"
+    ],
     "spawn_frequency": 3
   },
   "attracted_to_women": {
@@ -657,7 +693,9 @@
         "belief_id": "men_are_not_attractive"
       }
     ],
-    "conflicts_with": ["attracted_to_men"],
+    "conflicts_with": [
+      "attracted_to_men"
+    ],
     "spawn_frequency": 3
   },
   "departed": {
