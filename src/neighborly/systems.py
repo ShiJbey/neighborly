@@ -58,7 +58,12 @@ from neighborly.events.defaults import (
     NewSettlementEvent,
 )
 from neighborly.helpers.business import close_business, create_business
-from neighborly.helpers.character import create_character, die, move_into_residence
+from neighborly.helpers.character import (
+    create_character,
+    create_child,
+    die,
+    move_into_residence,
+)
 from neighborly.helpers.location import add_frequented_location, score_location
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
@@ -964,12 +969,10 @@ class ChildBirthSystem(System):
 
             other_parent = pregnancy.partner
 
-            baby = create_character(
-                character.gameobject.world,
-                character.gameobject.metadata["definition_id"],
+            baby = create_child(
+                birthing_parent=character.gameobject,
+                other_parent=other_parent,
             )
-
-            baby.get_component(Character).last_name = character.last_name
 
             move_into_residence(
                 baby,

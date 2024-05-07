@@ -132,4 +132,17 @@ class DefaultChildFactory(IChildFactory):
     def create_child(
         self, birthing_parent: GameObject, other_parent: GameObject
     ) -> GameObject:
-        raise NotImplementedError()
+
+        world = birthing_parent.world
+
+        character_library = world.resource_manager.get_resource(CharacterLibrary)
+
+        child = character_library.factory.create_character(
+            world, birthing_parent.metadata["definition_id"]
+        )
+
+        child.get_component(Character).last_name = birthing_parent.get_component(
+            Character
+        ).last_name
+
+        return child
