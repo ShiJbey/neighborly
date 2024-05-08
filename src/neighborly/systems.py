@@ -57,13 +57,8 @@ from neighborly.events.defaults import (
     JoinSettlementEvent,
     NewSettlementEvent,
 )
-from neighborly.helpers.business import close_business, create_business
-from neighborly.helpers.character import (
-    create_character,
-    create_child,
-    die,
-    move_into_residence,
-)
+from neighborly.helpers.business import create_business
+from neighborly.helpers.character import create_character, create_child
 from neighborly.helpers.location import add_frequented_location, score_location
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
@@ -90,6 +85,7 @@ from neighborly.libraries import (
     TraitLibrary,
 )
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
+from neighborly.plugins.actions import CloseBusiness, Die, MoveIntoResidence
 from neighborly.plugins.default_events import StartBusinessEvent
 
 
@@ -336,7 +332,7 @@ class SpawnNewResidentSystem(System):
             add_to_personal_history(character, event)
 
             # Add the character as the owner of the home and a resident
-            move_into_residence(character, residence.gameobject, is_owner=True)
+            MoveIntoResidence(character, residence.gameobject, is_owner=True).execute()
 
 
 class SpawnNewBusinessesSystem(System):
@@ -887,7 +883,7 @@ class CharacterLifespanSystem(System):
         ):
 
             if age.value >= life_span.stat.value:
-                die(character.gameobject)
+                Die(character.gameobject).execute()
 
 
 class BusinessLifespanSystem(System):
@@ -898,7 +894,7 @@ class BusinessLifespanSystem(System):
             (Business, Age, Lifespan, Active)
         ):
             if age.value >= lifespan.stat.value and business.owner:
-                close_business(business.gameobject)
+                CloseBusiness(business.gameobject).execute()
 
 
 class ChildBirthSystem(System):
@@ -920,11 +916,11 @@ class ChildBirthSystem(System):
                 other_parent=other_parent,
             )
 
-            move_into_residence(
+            MoveIntoResidence(
                 baby,
                 character.gameobject.get_component(Resident).residence,
                 is_owner=False,
-            )
+            ).execute()
 
             # Birthing parent to child
             add_relationship_trait(character.gameobject, baby, "child")

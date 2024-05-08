@@ -12,8 +12,6 @@ from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.ecs import Active, System, World
 from neighborly.events.defaults import LeaveJobEvent
 from neighborly.helpers.action import get_action_success_probability, get_action_utility
-from neighborly.helpers.business import close_business
-from neighborly.helpers.character import move_into_residence
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import get_relationships_with_traits
 from neighborly.libraries import JobRoleLibrary
@@ -21,12 +19,14 @@ from neighborly.life_event import LifeEvent
 from neighborly.plugins.actions import (
     BecomeBusinessOwner,
     BreakUp,
+    CloseBusiness,
     Divorce,
     FireEmployee,
     FormCrush,
     GetMarried,
     GetPregnant,
     HireEmployee,
+    MoveIntoResidence,
     PromoteEmployee,
     Retire,
     StartDating,
@@ -80,9 +80,7 @@ class FindJobSystem(System):
             probability_success = get_action_success_probability(action)
 
             if rng.random() < probability_success:
-                action.on_success()
-            else:
-                action.on_failure()
+                action.execute()
 
 
 class FiredFromJobSystem(System):
@@ -122,7 +120,7 @@ class FiredFromJobSystem(System):
             )[0]
 
             if rng.random() < utility_score:
-                chosen_action.on_success()
+                chosen_action.execute()
 
 
 class JobPromotionSystem(System):
@@ -175,9 +173,7 @@ class JobPromotionSystem(System):
             probability_success = get_action_success_probability(action)
 
             if rng.random() < probability_success:
-                action.on_success()
-            else:
-                action.on_failure()
+                action.execute()
 
 
 class BecomeBusinessOwnerSystem(System):
@@ -193,11 +189,11 @@ class BecomeBusinessOwnerSystem(System):
             if business.status == BusinessStatus.PENDING
         ]
 
-        #businesses that exist, constructed, but no body works here.
-        #get busineesses eligible to be built/open
-        #this is where you check requirements id people are eligible to be built.
+        # businesses that exist, constructed, but no body works here.
+        # get busineesses eligible to be built/open
+        # this is where you check requirements id people are eligible to be built.
 
-        #checks if people want to build a business
+        # checks if people want to build a business
 
         for _, (character, _) in world.get_components((Character, Active)):
 
@@ -246,15 +242,13 @@ class BecomeBusinessOwnerSystem(System):
                     pending_businesses.remove(
                         chosen_action.business.get_component(Business)
                     )
-                    chosen_action.on_success()
-                else:
-                    chosen_action.on_failure()
+                    chosen_action.execute()
 
     def handle_owner_leaving(self, event: LifeEvent) -> None:
         """Event listener placed on the business owners to track when they leave."""
 
         leave_job_event = cast(LeaveJobEvent, event)
-        close_business(leave_job_event.business)
+        CloseBusiness(leave_job_event.business).execute()
 
 
 class CharacterDatingSystem(System):
@@ -291,9 +285,7 @@ class CharacterDatingSystem(System):
             probability_success = get_action_success_probability(action)
 
             if rng.random() < probability_success:
-                action.on_success()
-            else:
-                action.on_failure()
+                action.execute()
 
 
 class CharacterMarriageSystem(System):
@@ -332,9 +324,7 @@ class CharacterMarriageSystem(System):
             probability_success = get_action_success_probability(action)
 
             if rng.random() < probability_success:
-                action.on_success()
-            else:
-                action.on_failure()
+                action.execute()
 
 
 class CharacterDivorceSystem(System):
@@ -372,9 +362,7 @@ class CharacterDivorceSystem(System):
             probability_success = get_action_success_probability(action)
 
             if rng.random() < probability_success:
-                action.on_success()
-            else:
-                action.on_failure()
+                action.execute()
 
 
 class DatingBreakUpSystem(System):
@@ -417,9 +405,7 @@ class DatingBreakUpSystem(System):
             probability_success = get_action_success_probability(action)
 
             if rng.random() < probability_success:
-                action.on_success()
-            else:
-                action.on_failure()
+                action.execute()
 
 
 class PregnancySystem(System):
@@ -467,9 +453,7 @@ class PregnancySystem(System):
             probability_success = get_action_success_probability(action)
 
             if rng.random() < probability_success:
-                action.on_success()
-            else:
-                action.on_failure()
+                action.execute()
 
 
 class RetirementSystem(System):
@@ -494,9 +478,7 @@ class RetirementSystem(System):
                 probability_success = get_action_success_probability(action)
 
                 if rng.random() < probability_success:
-                    action.on_success()
-                else:
-                    action.on_failure()
+                    action.execute()
 
 
 class AdultsFindOwnResidenceSystem(System):
@@ -522,9 +504,9 @@ class AdultsFindOwnResidenceSystem(System):
 
                 if vacant_housing:
                     _, (residence, _) = vacant_housing[0]
-                    move_into_residence(
+                    MoveIntoResidence(
                         character.gameobject, residence.gameobject, is_owner=True
-                    )
+                    ).execute()
 
 
 class CrushFormationSystem(System):
@@ -573,9 +555,7 @@ class CrushFormationSystem(System):
                 probability_success = get_action_success_probability(action)
 
                 if rng.random() < probability_success:
-                    action.on_success()
-                else:
-                    action.on_failure()
+                    action.execute()
 
 
 def load_plugin(sim: Simulation) -> None:

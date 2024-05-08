@@ -42,13 +42,7 @@ class Action(ABC):
         return cls.__action_id__
 
     @abstractmethod
-    def on_success(self) -> None:
-        """Method executed when the action succeeds."""
-
-        raise NotImplementedError()
-
-    @abstractmethod
-    def on_failure(self) -> None:
-        """Method executed when the action fails."""
+    def execute(self) -> None:
+        """Executes the action."""
 
         raise NotImplementedError()
