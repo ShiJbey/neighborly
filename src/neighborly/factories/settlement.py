@@ -71,6 +71,7 @@ class DefaultDistrictFactory(IDistrictFactory):
             components=district_def.components
         )
         district.metadata["definition_id"] = definition_id
+        district.name = district.get_component(District).name
 
         return district
 
@@ -89,6 +90,7 @@ class DefaultSettlementFactory(ISettlementFactory):
             components=settlement_def.components
         )
         settlement.metadata["definition_id"] = definition_id
+        settlement.name = settlement.get_component(Settlement).name
 
         library = settlement.world.resource_manager.get_resource(DistrictLibrary)
         rng = settlement.world.resource_manager.get_resource(random.Random)

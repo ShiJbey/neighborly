@@ -80,6 +80,7 @@ class DefaultBusinessFactory(IBusinessFactory):
             components=business_def.components
         )
         business.metadata["definition_id"] = definition_id
+        business.name = business.get_component(Business).name
 
         for trait in business_def.traits:
             add_trait(business, trait)

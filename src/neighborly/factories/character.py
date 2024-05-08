@@ -34,13 +34,13 @@ class CharacterFactory(ComponentFactory):
         if name := kwargs.get("first_name", ""):
             first_name = name
         elif name_factory := kwargs.get("first_name_factory", ""):
-            name = name_factories.get_factory(name_factory)(world)
+            first_name = name_factories.get_factory(name_factory)(world)
 
         last_name = ""
         if name := kwargs.get("last_name", ""):
             last_name = name
         elif name_factory := kwargs.get("last_name_factory", ""):
-            name = name_factories.get_factory(name_factory)(world)
+            last_name = name_factories.get_factory(name_factory)(world)
 
         species_id: str = kwargs["species"]
         sex: Sex = Sex[kwargs["sex"]]
@@ -69,6 +69,7 @@ class DefaultCharacterFactory(ICharacterFactory):
             components=character_def.components
         )
         character.metadata["definition_id"] = definition_id
+        character.name = character.get_component(Character).full_name
 
         # Initialize the life span (Overwrite the existing one)
         species = character.get_component(Character).species

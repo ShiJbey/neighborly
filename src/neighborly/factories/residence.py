@@ -32,6 +32,7 @@ class DefaultResidenceFactory(IResidenceFactory):
             components=residence_def.components
         )
         residence.metadata["definition_id"] = definition_id
+        residence.name = "ResidentialBuilding"
 
         world = residence.world
         building = residence.get_component(ResidentialBuilding)
