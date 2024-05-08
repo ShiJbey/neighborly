@@ -2,7 +2,6 @@
 
 """
 
-import random
 from typing import Any
 
 from neighborly.components.spawn_table import (
@@ -24,8 +23,6 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
     def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = world.resource_manager.get_resource(random.Random)
-
         character_library = world.resource_manager.get_resource(CharacterLibrary)
 
         table_entries: list[CharacterSpawnTableEntry] = []
@@ -46,21 +43,18 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
             elif definition_tags := entry.get("with_tags", []):
 
-                potential_defs = character_library.get_definition_with_tags(
+                matching_definitions = character_library.get_definition_with_tags(
                     definition_tags
                 )
 
-                if not potential_defs:
-                    continue
+                for definition in matching_definitions:
 
-                character_def = rng.choice(potential_defs)
-
-                table_entries.append(
-                    CharacterSpawnTableEntry(
-                        definition_id=character_def.definition_id,
-                        spawn_frequency=entry.get("spawn_frequency", 1),
+                    table_entries.append(
+                        CharacterSpawnTableEntry(
+                            definition_id=definition.definition_id,
+                            spawn_frequency=entry.get("spawn_frequency", 1),
+                        )
                     )
-                )
 
         return CharacterSpawnTable(table_entries)
 
@@ -72,7 +66,6 @@ class BusinessSpawnTableFactory(ComponentFactory):
 
     def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
-        rng = world.resource_manager.get_resource(random.Random)
         business_library = world.resource_manager.get_resource(BusinessLibrary)
 
         table_entries: list[BusinessSpawnTableEntry] = []
@@ -97,30 +90,27 @@ class BusinessSpawnTableFactory(ComponentFactory):
                     )
                 )
             elif definition_tags := entry.get("with_tags", []):
-                potential_defs = business_library.get_definition_with_tags(
+                matching_definitions = business_library.get_definition_with_tags(
                     definition_tags
                 )
 
-                if not potential_defs:
-                    continue
+                for business_def in matching_definitions:
 
-                business_def = rng.choice(potential_defs)
-
-                table_entries.append(
-                    BusinessSpawnTableEntry(
-                        definition_id=business_def.definition_id,
-                        spawn_frequency=entry.get(
-                            "spawn_frequency", business_def.spawn_frequency
-                        ),
-                        max_instances=entry.get(
-                            "max_instances", business_def.max_instances
-                        ),
-                        min_population=entry.get(
-                            "min_population", business_def.min_population
-                        ),
-                        instances=0,
+                    table_entries.append(
+                        BusinessSpawnTableEntry(
+                            definition_id=business_def.definition_id,
+                            spawn_frequency=entry.get(
+                                "spawn_frequency", business_def.spawn_frequency
+                            ),
+                            max_instances=entry.get(
+                                "max_instances", business_def.max_instances
+                            ),
+                            min_population=entry.get(
+                                "min_population", business_def.min_population
+                            ),
+                            instances=0,
+                        )
                     )
-                )
 
         return BusinessSpawnTable(table_entries)
 
@@ -131,8 +121,6 @@ class ResidenceSpawnTableFactory(ComponentFactory):
     __component__ = "ResidenceSpawnTable"
 
     def instantiate(self, world: World, /, **kwargs: Any) -> Component:
-
-        rng = world.resource_manager.get_resource(random.Random)
 
         residence_library = world.resource_manager.get_resource(ResidenceLibrary)
         residence_types: list[dict[str, Any]] = kwargs.get("residence_types", [])
@@ -162,30 +150,27 @@ class ResidenceSpawnTableFactory(ComponentFactory):
 
             elif definition_tags := entry.get("with_tags", []):
 
-                potential_defs = residence_library.get_definition_with_tags(
+                matching_definitions = residence_library.get_definition_with_tags(
                     definition_tags
                 )
 
-                if not potential_defs:
-                    continue
+                for residence_def in matching_definitions:
 
-                residence_def = rng.choice(potential_defs)
-
-                table_entries.append(
-                    ResidenceSpawnTableEntry(
-                        definition_id=residence_def.definition_id,
-                        spawn_frequency=entry.get(
-                            "spawn_frequency", residence_def.spawn_frequency
-                        ),
-                        instances=0,
-                        required_population=entry.get(
-                            "required_population", residence_def.required_population
-                        ),
-                        max_instances=entry.get(
-                            "max_instances", residence_def.max_instances
-                        ),
-                        is_multifamily=residence_def.is_multifamily,
+                    table_entries.append(
+                        ResidenceSpawnTableEntry(
+                            definition_id=residence_def.definition_id,
+                            spawn_frequency=entry.get(
+                                "spawn_frequency", residence_def.spawn_frequency
+                            ),
+                            instances=0,
+                            required_population=entry.get(
+                                "required_population", residence_def.required_population
+                            ),
+                            max_instances=entry.get(
+                                "max_instances", residence_def.max_instances
+                            ),
+                            is_multifamily=residence_def.is_multifamily,
+                        )
                     )
-                )
 
         return ResidenceSpawnTable(entries=table_entries)

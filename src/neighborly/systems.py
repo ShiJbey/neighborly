@@ -981,7 +981,7 @@ class ChildBirthSystem(System):
                 add_relationship_trait(sibling, baby, "sibling")
 
             character.gameobject.remove_component(Pregnant)
-            get_stat(character.gameobject, "fertility").base_value -= 0.2
+            get_stat(character.gameobject, "fertility").base_value -= 20
 
             have_child_evt = HaveChildEvent(
                 character.gameobject,

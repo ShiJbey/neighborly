@@ -20,8 +20,8 @@
       "District": {
         "name": "Farming District",
         "description": "Where the animals and farmers are.",
-        "residential_slots": 3,
-        "business_slots": 3
+        "residential_slots": 50,
+        "business_slots": 50
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -47,7 +47,7 @@
       "ResidenceSpawnTable": {
         "residence_types": [
           {
-            "with_id": "house"
+            "with_id": "large_apartment_building"
           }
         ]
       }
@@ -68,8 +68,8 @@
       "District": {
         "name": "Market District",
         "description": "Where people are always selling things.",
-        "business_slots": 5,
-        "residential_slots": 2
+        "business_slots": 50,
+        "residential_slots": 50
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -93,12 +93,6 @@
       "ResidenceSpawnTable": {
         "residence_types": [
           {
-            "with_id": "small_apartment_building"
-          },
-          {
-            "with_id": "medium_apartment_building"
-          },
-          {
             "with_id": "large_apartment_building"
           }
         ]
@@ -121,7 +115,7 @@
       "District": {
         "name": "Market District",
         "description": "Where people are always selling things.",
-        "business_slots": 3
+        "business_slots": 50
       },
       "CharacterSpawnTable": {},
       "BusinessSpawnTable": {
@@ -137,7 +131,7 @@
       "ResidenceSpawnTable": {
         "residence_types": [
           {
-            "with_id": "small_apartment_building"
+            "with_id": "large_apartment_building"
           }
         ]
       }
@@ -152,8 +146,8 @@
       "District": {
         "name": "Upper Class Residences",
         "description": "Where the nobility live.",
-        "business_slots": 3,
-        "residential_slots": 3
+        "business_slots": 50,
+        "residential_slots": 50
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -168,7 +162,7 @@
       "ResidenceSpawnTable": {
         "residence_types": [
           {
-            "with_id": "mansion"
+            "with_id": "large_apartment_building"
           }
         ]
       }

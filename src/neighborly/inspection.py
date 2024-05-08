@@ -25,9 +25,14 @@ from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
 from neighborly.helpers.stats import get_stat
-from neighborly.libraries import JobRoleLibrary, SkillLibrary
+from neighborly.libraries import JobRoleLibrary, SkillLibrary, TraitLibrary
 from neighborly.life_event import PersonalEventHistory
 from neighborly.simulation import Simulation
+
+
+def _sign(num: Union[int, float]) -> str:
+    """Get the sign of a number."""
+    return "-" if num < 0 else "+"
 
 
 def _title_section(obj: GameObject) -> str:
@@ -391,11 +396,8 @@ def _get_relationships_table(obj: GameObject) -> str:
             "Active",
             "UID",
             "Target",
-            "Rep.",
-            "Rom.",
-            "Compat.",
-            "Rom. Compat.",
-            "Int. Score",
+            "Reputation",
+            "Romance",
             "Traits",
         ),
     )
@@ -411,29 +413,26 @@ def _get_stats_table(obj: GameObject) -> str:
     if stats is None:
         return ""
 
-    stats_table_data: list[tuple[str, str, str]] = []
+    stats_table_data: list[tuple[str, str]] = []
 
     for stat_component in stats.stats:
         stat = stat_component.stat
         if stat.is_discrete:
-            value_label = f"{int(stat.value)}"
+            boost = int(stat.value - stat.base_value)
+            value_label = (
+                f"{int(stat.base_value)}[{_sign(boost)}{boost}] / {stat.bounds[1]}"
+            )
         else:
-            value_label = f"{stat.value:.3f}"
+            boost = int(stat.value - stat.base_value)
+            value_label = (
+                f"{stat.base_value:.3f}[{_sign(boost)}{boost}] / {stat.bounds[1]}"
+            )
 
-        if stat.is_bounded:
-            min_value, max_value = stat.bounds
-            if stat.is_discrete:
-                min_max_label = f"[{int(min_value)}, {int(max_value)}]"
-            else:
-                min_max_label = f"[{min_value:.3f}, {max_value:.3f}]"
-        else:
-            min_max_label = "N/A"
-
-        stats_table_data.append((stat_component.stat_name, value_label, min_max_label))
+        stats_table_data.append((stat_component.stat_name, value_label))
 
     output = "=== Stats ===\n"
     output += tabulate.tabulate(
-        stats_table_data, headers=("Stat", "Value", "Min/Max"), numalign="left"
+        stats_table_data, headers=("Stat", "Value"), numalign="left"
     )
     output += "\n"
 
@@ -660,8 +659,8 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
                 uid,
                 character.full_name,
                 int(age.value),
-                str(character.sex),
-                str(character.species),
+                str(character.sex.name),
+                str(character.species.name),
             )
             for uid, (character, age, _) in sim.world.get_components(
                 (Character, Age, Active)
@@ -728,7 +727,7 @@ def list_job_roles(sim: Simulation) -> None:
 def list_traits(sim: Simulation) -> None:
     """List the trait instances from the simulation."""
 
-    trait_library = sim.world.resources.get_resource(SkillLibrary)
+    trait_library = sim.world.resources.get_resource(TraitLibrary)
 
     traits = [
         (trait_def.definition_id, trait_def.name, trait_def.description)

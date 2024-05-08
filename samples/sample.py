@@ -11,7 +11,9 @@ import random
 from neighborly.action import Action
 from neighborly.components.business import Occupation
 from neighborly.components.character import Character, LifeStage
+from neighborly.components.relationship import Romance
 from neighborly.config import LoggingConfig, SimulationConfig
+from neighborly.helpers.relationship import get_relationship
 from neighborly.libraries import ActionConsiderationLibrary
 from neighborly.loaders import (
     load_businesses,
@@ -29,7 +31,7 @@ from neighborly.plugins import (
     default_systems,
     default_traits,
 )
-from neighborly.plugins.actions import BecomeBusinessOwner
+from neighborly.plugins.actions import BecomeBusinessOwner, StartDating
 from neighborly.simulation import Simulation
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent.parent / "tests" / "data"
@@ -70,6 +72,32 @@ def get_args() -> argparse.Namespace:
     )
 
     return parser.parse_args()
+
+
+def romance_consideration(action: Action) -> float:
+    """Characters with occupations are not eligible to become business owners."""
+
+    if isinstance(action, StartDating):
+        outgoing_relationship = get_relationship(action.character, action.partner)
+        outgoing_romance_stat = outgoing_relationship.get_component(Romance).stat.value
+        if outgoing_romance_stat <= 50:
+            return 0
+
+        incoming_relationship = get_relationship(action.partner, action.character)
+        incoming_romance_stat = incoming_relationship.get_component(Romance).stat.value
+        if incoming_romance_stat <= 50:
+            return 0
+
+        romance_diff = abs(outgoing_romance_stat - incoming_romance_stat)
+
+        if romance_diff < 10:
+            return 0.8
+        if romance_diff < 20:
+            return 0.7
+        if romance_diff < 30:
+            return 0.6
+
+    return -1
 
 
 def has_occupation_consideration(action: Action) -> float:
@@ -135,6 +163,9 @@ def main() -> Simulation:
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("become-business-owner", life_stage_consideration)
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration("start-dating", romance_consideration)
 
     total_time_steps: int = args.years * 12
 

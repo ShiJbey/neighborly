@@ -430,11 +430,13 @@ class Fertility(StatComponent):
 
     __stat_name__ = "fertility"
 
+    MAX_VALUE: int = 100
+
     def __init__(
         self,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, 1.0), False)
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
 class Kindness(StatComponent):

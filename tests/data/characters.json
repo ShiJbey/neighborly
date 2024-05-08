@@ -1,6 +1,5 @@
 {
-  "person": {
-    "species": "human",
+  "base_character": {
     "is_template": true,
     "components": {
       "Agent": {
@@ -38,6 +37,33 @@
             "last_name_factory": "default-last",
             "sex": "MALE",
             "species": "human"
+          },
+          "Age": {
+            "value_range": "25-56"
+          },
+          "Fertility": {
+            "value_range": "0-100"
+          },
+          "Kindness": {
+            "value_range": "0-80"
+          },
+          "Courage": {
+            "value_range": "0-80"
+          },
+          "Stewardship": {
+            "value_range": "0-80"
+          },
+          "Sociability": {
+            "value_range": "0-80"
+          },
+          "Intelligence": {
+            "value_range": "0-80"
+          },
+          "Discipline": {
+            "value_range": "0-80"
+          },
+          "Charm": {
+            "value_range": "0-80"
           }
         }
       },
@@ -50,8 +76,35 @@
           "Character": {
             "first_name_factory": "feminine-first",
             "last_name_factory": "default-last",
-            "sex": "MALE",
+            "sex": "FEMALE",
             "species": "human"
+          },
+          "Age": {
+            "value_range": "25-56"
+          },
+          "Fertility": {
+            "value_range": "0-100"
+          },
+          "Kindness": {
+            "value_range": "0-80"
+          },
+          "Courage": {
+            "value_range": "0-80"
+          },
+          "Stewardship": {
+            "value_range": "0-80"
+          },
+          "Sociability": {
+            "value_range": "0-80"
+          },
+          "Intelligence": {
+            "value_range": "0-80"
+          },
+          "Discipline": {
+            "value_range": "0-80"
+          },
+          "Charm": {
+            "value_range": "0-80"
           }
         }
       }
@@ -59,17 +112,29 @@
   },
   "farmer": {
     "is_template": true,
-    "extends": ["person"],
-    "tags": ["farmer"]
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "farmer"
+    ]
   },
   "merchant": {
     "is_template": true,
-    "extends": ["person"],
-    "tags": ["merchant"]
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "merchant"
+    ]
   },
   "nobility": {
     "is_template": true,
-    "extends": ["person"],
-    "tags": ["nobility"]
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "nobility"
+    ]
   }
 }
