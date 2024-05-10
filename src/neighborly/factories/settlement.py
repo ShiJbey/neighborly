@@ -5,6 +5,7 @@
 import random
 from typing import Any
 
+from neighborly.components.location import CurrentLocation
 from neighborly.components.settlement import District, Settlement
 from neighborly.ecs import Component, ComponentFactory, GameObject, World
 from neighborly.libraries import (
@@ -104,7 +105,9 @@ class DefaultSettlementFactory(ISettlementFactory):
                 )
 
                 settlement.get_component(Settlement).add_district(district)
-                district.get_component(District).settlement = settlement
+                district.add_component(
+                    CurrentLocation(settlement=settlement, district=district)
+                )
                 settlement.add_child(district)
 
             elif district_entry.with_tags:
@@ -122,7 +125,9 @@ class DefaultSettlementFactory(ISettlementFactory):
                     )
 
                     settlement.get_component(Settlement).add_district(district)
-                    district.get_component(District).settlement = settlement
+                    district.add_component(
+                        CurrentLocation(settlement=settlement, district=district)
+                    )
                     settlement.add_child(district)
 
         return settlement

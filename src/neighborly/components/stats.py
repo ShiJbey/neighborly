@@ -20,7 +20,7 @@ from typing import Any, ClassVar, Iterable, Optional
 
 import attrs
 
-from neighborly.ecs import Component, EventEmitter
+from neighborly.ecs import Component
 
 
 @dataclasses.dataclass
@@ -66,8 +66,6 @@ class Stat:
     """The maximum score the overall stat is clamped to."""
     _is_discrete: bool
     """Should the final calculated stat value be converted to an int."""
-    on_value_changed: EventEmitter[StatValueChangeEvent] = EventEmitter()
-    """Emits events when the value of a stat changes."""
 
     def __init__(
         self,
@@ -99,7 +97,6 @@ class Stat:
         """Set the base value of the relationship stat."""
         self._base_value = value
         self._is_dirty = True
-        self.on_value_changed.dispatch(self, StatValueChangeEvent(value=self.value))
 
     @property
     def value(self) -> float:
@@ -399,9 +396,7 @@ class Stats(Component):
         bool
             True is successful, False otherwise.
         """
-        if stat_comp := self._stats.get(stat_id):
-
-            stat_comp.stat.on_value_changed.remove_all_listeners()
+        if stat_id in self._stats:
 
             del self._stats[stat_id]
 

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from ordered_set import OrderedSet
 
@@ -124,27 +124,14 @@ class ResidentialUnit(Component):
 class ResidentialBuilding(Component):
     """Tags a building as managing multiple residential units."""
 
-    __slots__ = "_residential_units", "_district"
+    __slots__ = ("_residential_units",)
 
-    _district: Optional[GameObject]
-    """The district the residence is in."""
     _residential_units: list[GameObject]
     """The residential units that belong to this building."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._district = None
         self._residential_units = []
-
-    @property
-    def district(self) -> Optional[GameObject]:
-        """Get the district the residential building belongs to."""
-        return self._district
-
-    @district.setter
-    def district(self, value: Optional[GameObject]):
-        """Set the district of a residential building."""
-        self._district = value
 
     @property
     def units(self) -> Iterable[GameObject]:
@@ -161,7 +148,6 @@ class ResidentialBuilding(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "district": self.district.uid if self.district else -1,
             "units": [u.uid for u in self._residential_units],
         }
 
@@ -169,12 +155,29 @@ class ResidentialBuilding(Component):
 class Resident(Component):
     """A Component attached to characters that tracks where they live."""
 
-    __slots__ = ("residence",)
+    __slots__ = (
+        "settlement",
+        "district",
+        "building",
+        "residence",
+    )
 
+    settlement: GameObject
+    """The settlement they live in."""
+    district: GameObject
+    """The district they live in."""
+    building: GameObject
+    """The residential building they live in."""
     residence: GameObject
-    """The GameObject ID of their residence."""
+    """The unit they live in within the building."""
 
-    def __init__(self, residence: GameObject) -> None:
+    def __init__(
+        self,
+        settlement: GameObject,
+        district: GameObject,
+        building: GameObject,
+        residence: GameObject,
+    ) -> None:
         """
         Parameters
         ----------
@@ -182,10 +185,18 @@ class Resident(Component):
             A GameObject reference to their residence.
         """
         super().__init__()
+        self.settlement = settlement
+        self.district = district
+        self.building = building
         self.residence = residence
 
     def to_dict(self) -> dict[str, Any]:
-        return {"residence": self.residence.uid}
+        return {
+            "residence": self.residence.uid,
+            "building": self.building.uid,
+            "district": self.district.uid,
+            "settlement": self.settlement.uid,
+        }
 
     def __repr__(self) -> str:
         return f"Resident({self.to_dict()})"

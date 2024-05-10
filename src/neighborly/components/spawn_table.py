@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import attrs
 
+from neighborly.components.business import JobRole
 from neighborly.ecs import Component
 
 
@@ -67,6 +68,8 @@ class BusinessSpawnTableEntry:
     """The minimum settlement population required to spawn."""
     instances: int
     """The current number of active instances."""
+    owner_role: JobRole
+    """The role of the owner."""
 
 
 class BusinessSpawnTable(Component):

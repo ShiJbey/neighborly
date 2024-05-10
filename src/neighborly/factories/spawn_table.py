@@ -13,7 +13,12 @@ from neighborly.components.spawn_table import (
     ResidenceSpawnTableEntry,
 )
 from neighborly.ecs import Component, ComponentFactory, World
-from neighborly.libraries import BusinessLibrary, CharacterLibrary, ResidenceLibrary
+from neighborly.libraries import (
+    BusinessLibrary,
+    CharacterLibrary,
+    JobRoleLibrary,
+    ResidenceLibrary,
+)
 
 
 class CharacterSpawnTableFactory(ComponentFactory):
@@ -67,6 +72,7 @@ class BusinessSpawnTableFactory(ComponentFactory):
     def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
         business_library = world.resource_manager.get_resource(BusinessLibrary)
+        job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
 
         table_entries: list[BusinessSpawnTableEntry] = []
         business_types: list[dict[str, Any]] = kwargs.get("business_types", [])
@@ -87,6 +93,9 @@ class BusinessSpawnTableFactory(ComponentFactory):
                             "min_population", business_def.min_population
                         ),
                         instances=0,
+                        owner_role=job_role_library.get_role(
+                            business_def.components["Business"]["owner_role"]
+                        ),
                     )
                 )
             elif definition_tags := entry.get("with_tags", []):
@@ -109,6 +118,9 @@ class BusinessSpawnTableFactory(ComponentFactory):
                                 "min_population", business_def.min_population
                             ),
                             instances=0,
+                            owner_role=job_role_library.get_role(
+                                business_def.components["Business"]["owner_role"]
+                            ),
                         )
                     )
 

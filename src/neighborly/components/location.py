@@ -217,3 +217,20 @@ class LocationPreferences(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {"rules": [r for r in self._rules]}
+
+
+class CurrentLocation(Component):
+    """Tracks the current settlement and district of a GameObject."""
+
+    __slots__ = ("settlement", "district")
+
+    settlement: GameObject
+    district: GameObject
+
+    def __init__(self, settlement: GameObject, district: GameObject) -> None:
+        super().__init__()
+        self.settlement = settlement
+        self.district = district
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"settlement": self.settlement.uid, "district": self.district.uid}

@@ -46,9 +46,9 @@ class StartNewJobEvent(LifeEvent):
 
 
 class StartBusinessEvent(LifeEvent):
-    """Character starts a specific business."""
+    """Character becomes owner of a business."""
 
-    __event_type__ = "start_business"
+    __event_type__ = "start-business"
 
     __slots__ = ("character", "business")
 
@@ -73,6 +73,38 @@ class StartBusinessEvent(LifeEvent):
 
     def __str__(self) -> str:
         return f"{self.character.name} opened a new business, {self.business.name}."
+
+
+class BecomeBusinessOwnerEvent(LifeEvent):
+    """Character becomes owner of a business."""
+
+    __event_type__ = "become-business-owner"
+
+    __slots__ = ("character", "business")
+
+    character: GameObject
+    business: GameObject
+
+    def __init__(
+        self,
+        character: GameObject,
+        business: GameObject,
+    ) -> None:
+        super().__init__(character.world)
+        self.character = character
+        self.business = business
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "character": self.character.uid,
+            "business": self.business.uid,
+        }
+
+    def __str__(self) -> str:
+        return (
+            f"{self.character.name} became the business owner of {self.business.name}."
+        )
 
 
 class StartDatingEvent(LifeEvent):

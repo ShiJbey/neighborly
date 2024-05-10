@@ -11,7 +11,11 @@ import tabulate
 from neighborly import __version__
 from neighborly.components.business import Business, BusinessStatus, Occupation
 from neighborly.components.character import Character
-from neighborly.components.location import FrequentedLocations, Location
+from neighborly.components.location import (
+    CurrentLocation,
+    FrequentedLocations,
+    Location,
+)
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.residence import (
     Resident,
@@ -152,7 +156,7 @@ def _business_header(business: GameObject) -> str:
     output += f"UID: {business.uid}\n"
     output += f"Name: {business_data.name}\n"
     output += f"Status: {activity_status}\n"
-    output += f"District: {business_data.district}\n"
+    output += f"District: {business.get_component(CurrentLocation).district.name}\n"
     output += f"Owner: {business_data.owner.name if business_data.owner else None}\n"
     output += f"Owner role: {business_data.owner_role.name}\n"
     output += "\n"
@@ -185,13 +189,15 @@ def _residential_building_header(residence: GameObject) -> str:
         headers=("Unit", "Residents"),
     )
 
+    current_location = residence.get_component(CurrentLocation)
+
     output = "Residential Building\n"
     output += "====================\n"
     output += "\n"
     output += f"UID: {residence.uid}\n"
     output += f"Name: {residence.name}\n"
     output += f"Status: {activity_status}\n"
-    output += f"District: {building_data.district}\n"
+    output += f"District: {current_location.district.name}\n"
     output += "\n"
     output += "=== Residential Units ===\n"
     output += f"{residential_units}\n"
@@ -624,7 +630,7 @@ def list_businesses(sim: Simulation, inactive_ok: bool = False) -> None:
                     business.name,
                     str(business.owner),
                     activity_status,
-                    business.district.name if business.district else "",
+                    business.gameobject.get_component(CurrentLocation).district.name,
                 )
             )
 
@@ -685,10 +691,10 @@ def list_residences(sim: Simulation) -> None:
         (
             uid,
             building.gameobject.name,
-            building.district.name if building.district else "",
+            current_location.district.name,
         )
-        for uid, (building, _) in sim.world.get_components(
-            (ResidentialBuilding, Active)
+        for uid, (building, current_location, _) in sim.world.get_components(
+            (ResidentialBuilding, CurrentLocation, Active)
         )
     ]
 

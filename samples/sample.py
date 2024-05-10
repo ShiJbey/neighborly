@@ -9,9 +9,9 @@ import pathlib
 import random
 
 from neighborly.action import Action
-from neighborly.components.business import Occupation
+from neighborly.components.business import Business, Occupation
 from neighborly.components.character import Character, LifeStage
-from neighborly.components.relationship import Romance
+from neighborly.components.relationship import Reputation, Romance
 from neighborly.config import LoggingConfig, SimulationConfig
 from neighborly.helpers.relationship import get_relationship
 from neighborly.libraries import ActionConsiderationLibrary
@@ -31,7 +31,13 @@ from neighborly.plugins import (
     default_systems,
     default_traits,
 )
-from neighborly.plugins.actions import BecomeBusinessOwner, StartDating
+from neighborly.plugins.actions import (
+    BecomeBusinessOwner,
+    FireEmployee,
+    FormCrush,
+    Retire,
+    StartDating,
+)
 from neighborly.simulation import Simulation
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent.parent / "tests" / "data"
@@ -128,6 +134,53 @@ def life_stage_consideration(action: Action) -> float:
     return -1
 
 
+def retirement_life_stage_cons(action: Action) -> float:
+    """Senior characters are the only ones eligible to retire."""
+    if isinstance(action, Retire):
+        life_stage = action.character.get_component(Character).life_stage
+
+        if life_stage == LifeStage.ADULT:
+            return 0.05
+
+        if life_stage == LifeStage.SENIOR:
+            return 0.8
+
+        # Everyone who is a young-adult or younger
+        return 0.0
+
+    return -1
+
+
+def firing_owner_relationship_cons(action: Action) -> float:
+    """Consider relationship of the owner to the potentially fired character."""
+    if isinstance(action, FireEmployee):
+        employee = action.character
+        owner = action.business.get_component(Business).owner
+
+        if owner is None:
+            return -1
+
+        relationship = get_relationship(owner, employee)
+
+        normalized_reputation = relationship.get_component(Reputation).stat.normalized
+
+        return 1 - (normalized_reputation**2)
+
+    return -1
+
+
+def crush_romance_consideration(action: Action) -> float:
+    """Consider romance from a character to their potential crush."""
+    if isinstance(action, FormCrush):
+        relationship = get_relationship(action.character, action.crush)
+
+        normalized_reputation = relationship.get_component(Reputation).stat.normalized
+
+        return normalized_reputation**2
+
+    return -1
+
+
 def main() -> Simulation:
     """Main program entry point."""
     args = get_args()
@@ -136,7 +189,9 @@ def main() -> Simulation:
         SimulationConfig(
             seed=args.seed,
             settlement="basic_settlement",
-            logging=LoggingConfig(logging_enabled=True),
+            logging=LoggingConfig(
+                logging_enabled=True, log_level="DEBUG", log_to_terminal=False
+            ),
         )
     )
 
@@ -166,6 +221,12 @@ def main() -> Simulation:
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("start-dating", romance_consideration)
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration("fire-employee", firing_owner_relationship_cons)
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration("form-crush", crush_romance_consideration)
 
     total_time_steps: int = args.years * 12
 

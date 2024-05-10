@@ -124,7 +124,6 @@ from neighborly.systems import (
     JobRoleMonthlyEffectsSystem,
     LateUpdateSystems,
     LifeStageSystem,
-    SpawnNewBusinessesSystem,
     SpawnNewResidentSystem,
     SpawnResidentialBuildingsSystem,
     UpdateFrequentedLocationSystem,
@@ -255,9 +254,6 @@ class Simulation:
             system=SpawnResidentialBuildingsSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
-            system=SpawnNewBusinessesSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
             system=UpdateFrequentedLocationSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
@@ -348,6 +344,7 @@ class Simulation:
                     level=self.config.logging.log_level,
                     format="%(message)s",
                     force=True,
+                    filemode="w",
                 )
             else:
                 logging.basicConfig(

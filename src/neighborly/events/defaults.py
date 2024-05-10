@@ -397,7 +397,7 @@ class BusinessClosedEvent(LifeEvent):
         return f"{self.business.name} has closed for business."
 
 
-class NewSettlementEvent(LifeEvent):
+class SettlementAddedEvent(LifeEvent):
     """Event dispatched when a settlement is created."""
 
     __event_type__ = "settlement-added"

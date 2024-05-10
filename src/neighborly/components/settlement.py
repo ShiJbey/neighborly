@@ -17,7 +17,6 @@ class District(Component):
     __slots__ = (
         "_name",
         "_description",
-        "_settlement",
         "_residential_slots",
         "_business_slots",
         "_businesses",
@@ -29,8 +28,6 @@ class District(Component):
     """The district's name."""
     _description: str
     """A short description of the district."""
-    _settlement: Optional[GameObject]
-    """The settlement the district belongs to."""
     _residential_slots: int
     """The number of residential slots the district can build on."""
     _business_slots: int
@@ -52,7 +49,6 @@ class District(Component):
         super().__init__()
         self._name = name
         self._description = description
-        self._settlement = None
         self._residential_slots = residential_slots
         self._business_slots = business_slots
         self._businesses = []
@@ -90,16 +86,6 @@ class District(Component):
     def population(self, value: int) -> None:
         """Set the number of characters that live in this district."""
         self._population = value
-
-    @property
-    def settlement(self) -> Optional[GameObject]:
-        """The settlement the district belongs to."""
-        return self._settlement
-
-    @settlement.setter
-    def settlement(self, value: GameObject) -> None:
-        """The settlement the district belongs to."""
-        self._settlement = value
 
     @property
     def residential_slots(self) -> int:
@@ -189,7 +175,6 @@ class District(Component):
         return {
             "name": self.name,
             "description": self._description,
-            "settlement": self._settlement.uid if self._settlement else -1,
             "residences": [r.uid for r in self.residences],
             "businesses": [b.uid for b in self.businesses],
             "population": self.population,

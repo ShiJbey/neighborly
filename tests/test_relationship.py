@@ -56,8 +56,8 @@ def sim() -> Simulation:
 def test_get_relationship(sim: Simulation) -> None:
     """Test that get_relationship creates new relationship if one does not exist."""
 
-    a = create_character(sim.world, "person.female")
-    b = create_character(sim.world, "person.male")
+    a = create_character(sim.world, "base_character.female")
+    b = create_character(sim.world, "base_character.male")
 
     assert has_relationship(a, b) is False
     assert has_relationship(b, a) is False
@@ -82,8 +82,8 @@ def test_get_relationship(sim: Simulation) -> None:
 def test_add_relationship(sim: Simulation) -> None:
     """Test that adding a relationship create a new relationship or returns the old"""
 
-    a = create_character(sim.world, "person.male")
-    b = create_character(sim.world, "person.female")
+    a = create_character(sim.world, "base_character.male")
+    b = create_character(sim.world, "base_character.female")
 
     assert has_relationship(a, b) is False
     assert has_relationship(b, a) is False
@@ -103,17 +103,17 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     rel_to_noble = add_relationship(farmer, noble)
 
-    assert get_stat(rel_to_noble, "reputation").value == 0
+    assert get_stat(rel_to_noble, "reputation").value == 50
 
     add_trait(farmer, "gullible")
 
-    assert get_stat(rel_to_noble, "reputation").value == 10
+    assert get_stat(rel_to_noble, "reputation").value == 60
 
     rel = add_relationship(farmer, merchant)
 
-    assert get_stat(rel, "reputation").value == 10
+    assert get_stat(rel, "reputation").value == 60
 
     remove_trait(farmer, "gullible")
 
-    assert get_stat(rel, "reputation").value == 0
-    assert get_stat(rel_to_noble, "reputation").value == 0
+    assert get_stat(rel, "reputation").value == 50
+    assert get_stat(rel_to_noble, "reputation").value == 50

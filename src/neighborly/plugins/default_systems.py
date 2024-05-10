@@ -3,23 +3,22 @@
 """
 
 import random
-from typing import cast
+from typing import ClassVar
 
-from neighborly.components.business import Business, BusinessStatus, Occupation
+from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import Character, LifeStage, Pregnant, Sex
+from neighborly.components.location import CurrentLocation
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
-from neighborly.ecs import Active, System, World
-from neighborly.events.defaults import LeaveJobEvent
-from neighborly.helpers.action import get_action_success_probability, get_action_utility
+from neighborly.components.settlement import District, Settlement
+from neighborly.components.spawn_table import BusinessSpawnTable
+from neighborly.ecs import Active, GameObject, System, World
+from neighborly.helpers.action import get_action_probability
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import get_relationships_with_traits
 from neighborly.libraries import JobRoleLibrary
-from neighborly.life_event import LifeEvent
 from neighborly.plugins.actions import (
-    BecomeBusinessOwner,
     BreakUp,
-    CloseBusiness,
     Divorce,
     FireEmployee,
     FormCrush,
@@ -29,6 +28,7 @@ from neighborly.plugins.actions import (
     MoveIntoResidence,
     PromoteEmployee,
     Retire,
+    StartBusiness,
     StartDating,
 )
 from neighborly.simulation import Simulation
@@ -58,8 +58,13 @@ class FindJobSystem(System):
             if character.has_component(Occupation):
                 continue
 
-            potential_hirings: list[HireEmployee] = []
-            hiring_utilities: list[float] = []
+            if character_comp.life_stage not in (
+                LifeStage.YOUNG_ADULT,
+                LifeStage.ADULT,
+            ):
+                continue
+
+            potential_hires: list[HireEmployee] = []
 
             for business in active_businesses:
                 open_positions = business.get_open_positions()
@@ -68,28 +73,41 @@ class FindJobSystem(System):
                     job_role = library.get_role(role_id)
 
                     if job_role.check_requirements(character):
-                        action = HireEmployee(business.gameobject, character, job_role)
-                        potential_hirings.append(action)
-                        hiring_utilities.append(1)
+                        action = HireEmployee(
+                            business=business.gameobject,
+                            character=character,
+                            role=job_role,
+                        )
+                        potential_hires.append(action)
 
-            if not potential_hirings:
+            if not potential_hires:
                 continue
 
-            action = rng.choices(potential_hirings, hiring_utilities, k=1)[0]
+            action = rng.choice(potential_hires)
 
-            probability_success = get_action_success_probability(action)
+            action_probability = get_action_probability(action)
 
-            if rng.random() < probability_success:
+            if rng.random() < action_probability:
                 action.execute()
 
 
 class FiredFromJobSystem(System):
     """Occasionally fire an employee or two."""
 
+    FIRING_THRESHOLD: ClassVar[float] = 0.8
+    """Utility score required to consider someone for firing."""
+
     def on_update(self, world: World) -> None:
 
         rng = world.resources.get_resource(random.Random)
 
+        # This loops through all the active businesses, scores the probability of
+        # firing each of the current employees, and, if any are above the firing
+        # threshold (class var), they are added to a list of potential employees
+        # to fire.
+        # The system selects one character at random from the list using weighted
+        # random selection, and does a probability check on if the character will
+        # actually be fired this time step.
         for _, (business, _) in world.get_components((Business, Active)):
             if business.status != BusinessStatus.OPEN:
                 continue
@@ -105,32 +123,40 @@ class FiredFromJobSystem(System):
             # Evaluate firing each employee
             for employee, _ in business.employees.items():
 
-                action = FireEmployee(business_owner, employee)
-                utility_score = get_action_utility(action)
+                action = FireEmployee(business=business.gameobject, character=employee)
+                action_probability = get_action_probability(action)
 
-                if utility_score > 0:
-                    potential_actions.append((action, utility_score))
-                    action_utilities.append(utility_score)
+                if action_probability >= self.FIRING_THRESHOLD:
+                    potential_actions.append((action, action_probability))
+                    action_utilities.append(action_probability)
 
             if not potential_actions:
                 continue
 
-            chosen_action, utility_score = rng.choices(
+            chosen_action, action_probability = rng.choices(
                 potential_actions, action_utilities, k=1
             )[0]
 
-            if rng.random() < utility_score:
+            if rng.random() < action_probability:
                 chosen_action.execute()
 
 
 class JobPromotionSystem(System):
     """Occasionally promote characters to higher positions at their jobs."""
 
+    PROMOTION_THRESHOLD: ClassVar[float] = 0.8
+    """Probability scored required to consider someone for a promotion."""
+
     def on_update(self, world: World) -> None:
 
         rng = world.resources.get_resource(random.Random)
         job_role_library = world.resources.get_resource(JobRoleLibrary)
 
+        # Similar to firing characters, this systems loops through all the businesses
+        # and scores the probability of promoting each of it's employees. Only employees
+        # with probability scores above the threshold are considered. Once all employees
+        # have been evaluated, one is selected randomly and we perform a "dice roll"
+        # to see if they will actually be promoted this time step.
         for _, (business, _) in world.get_components((Business, Active)):
             if business.status != BusinessStatus.OPEN:
                 continue
@@ -140,7 +166,7 @@ class JobPromotionSystem(System):
             if business_owner is None:
                 continue
 
-            potential_promotions: list[PromoteEmployee] = []
+            potential_promotions: list[tuple[PromoteEmployee, float]] = []
             potential_promotion_scores: list[float] = []
 
             # Evaluate promoting each employee
@@ -157,98 +183,129 @@ class JobPromotionSystem(System):
                         continue
 
                     action = PromoteEmployee(business_owner, employee, role)
-                    utility = get_action_utility(action)
+                    probability_score = get_action_probability(action)
 
-                    if utility > 0:
-                        potential_promotions.append(action)
-                        potential_promotion_scores.append(utility)
+                    if probability_score > self.PROMOTION_THRESHOLD:
+                        potential_promotions.append((action, probability_score))
+                        potential_promotion_scores.append(probability_score)
 
             if not potential_promotions:
                 continue
 
-            action = rng.choices(potential_promotions, potential_promotion_scores, k=1)[
-                0
-            ]
+            action, action_probability = rng.choices(
+                potential_promotions, potential_promotion_scores, k=1
+            )[0]
 
-            probability_success = get_action_success_probability(action)
-
-            if rng.random() < probability_success:
+            if rng.random() < action_probability:
                 action.execute()
 
 
-class BecomeBusinessOwnerSystem(System):
+class StartBusinessSystem(System):
     """Characters have a chance of becoming a business owner."""
 
+    @staticmethod
+    def get_eligible_businesses(
+        settlement: Settlement,
+    ) -> list[tuple[str, GameObject, JobRole]]:
+        """Get all potential businesses that could be built.
+
+        Parameters
+        ----------
+        settlement
+            The settlement where the business will be built.
+
+        Returns
+        -------
+        tuple[str, GameObject, JobRole]
+            The definition ID, district to build, and job role of eligible business
+            definitions.
+        """
+        eligible_business_definitions: list[tuple[str, GameObject, JobRole]] = []
+        weights: list[float] = []
+
+        for district in settlement.districts:
+            if district.get_component(District).business_slots <= 0:
+                continue
+
+            spawn_table = district.get_component(BusinessSpawnTable)
+
+            for entry in spawn_table.table.values():
+                if entry.instances >= entry.max_instances:
+                    continue
+                if entry.min_population >= settlement.population:
+                    continue
+
+                eligible_business_definitions.append(
+                    (entry.definition_id, district, entry.owner_role)
+                )
+                weights.append(entry.spawn_frequency)
+
+        return eligible_business_definitions
+
     def on_update(self, world: World) -> None:
+        # This system loops through all the adult characters, giving them the option to
+        # start a new business if:
+        # (1) They meet the requirements for the owner role
+        # (2) They are unemployed
+        # (3) At least at the YOUNG_ADULT life stage
+        # (4) They are residents of the settlement
 
         rng = world.resource_manager.get_resource(random.Random)
 
-        pending_businesses = [
-            business
-            for _, (business, _) in world.get_components((Business, Active))
-            if business.status == BusinessStatus.PENDING
-        ]
+        for _, (character, resident, _) in world.get_components(
+            (Character, Resident, Active)
+        ):
+            if character.life_stage not in (LifeStage.YOUNG_ADULT, LifeStage.ADULT):
+                continue
 
-        # businesses that exist, constructed, but no body works here.
-        # get busineesses eligible to be built/open
-        # this is where you check requirements id people are eligible to be built.
+            if character.gameobject.has_component(Occupation):
+                continue
 
-        # checks if people want to build a business
+            settlement = resident.building.get_component(CurrentLocation).settlement
 
-        for _, (character, _) in world.get_components((Character, Active)):
+            eligible_businesses = self.get_eligible_businesses(
+                settlement.get_component(Settlement)
+            )
 
-            actions: list[BecomeBusinessOwner] = []
+            actions: list[tuple[StartBusiness, float]] = []
             action_utilities: list[float] = []
 
-            for business in pending_businesses:
-                if business.owner is not None:
-                    continue
-
-                owner_role = business.owner_role
+            for definition_id, district, owner_role in eligible_businesses:
 
                 if not owner_role.requirements:
-                    action = BecomeBusinessOwner(
-                        character.gameobject, business.gameobject
+                    action = StartBusiness(
+                        character=character.gameobject,
+                        business_definition_id=definition_id,
+                        district=district,
+                        owner_role=owner_role,
                     )
-                    utility_score = get_action_utility(action)
+                    action_probability = get_action_probability(action)
 
-                    if utility_score > 0:
-                        actions.append(action)
-                        action_utilities.append(utility_score)
+                    if action_probability > 0:
+                        actions.append((action, action_probability))
+                        action_utilities.append(action_probability)
 
                 else:
                     if owner_role.check_requirements(character.gameobject):
-                        action = BecomeBusinessOwner(
-                            character.gameobject, business.gameobject
+                        action = StartBusiness(
+                            character=character.gameobject,
+                            business_definition_id=definition_id,
+                            district=district,
+                            owner_role=owner_role,
                         )
-                        utility_score = get_action_utility(action)
+                        action_probability = get_action_probability(action)
 
-                        if utility_score > 0:
-                            actions.append(action)
-                            action_utilities.append(utility_score)
+                        if action_probability > 0:
+                            actions.append((action, action_probability))
+                            action_utilities.append(action_probability)
 
             if not actions:
                 continue
 
-            chosen_action = rng.choices(actions, action_utilities, k=1)[0]
+            action, action_probability = rng.choices(actions, action_utilities, k=1)[0]
 
-            utility_score = get_action_utility(chosen_action)
-
-            if rng.random() < utility_score:
-
-                probability_success = get_action_success_probability(chosen_action)
-
-                if rng.random() < probability_success:
-                    pending_businesses.remove(
-                        chosen_action.business.get_component(Business)
-                    )
-                    chosen_action.execute()
-
-    def handle_owner_leaving(self, event: LifeEvent) -> None:
-        """Event listener placed on the business owners to track when they leave."""
-
-        leave_job_event = cast(LeaveJobEvent, event)
-        CloseBusiness(leave_job_event.business).execute()
+            if rng.random() < action_probability:
+                action.execute()
 
 
 class CharacterDatingSystem(System):
@@ -261,7 +318,7 @@ class CharacterDatingSystem(System):
 
             relationships = get_relationships_with_traits(character.gameobject, "crush")
 
-            potential_romances: list[StartDating] = []
+            potential_romances: list[tuple[StartDating, float]] = []
             potential_romance_scores: list[float] = []
 
             for relationship in relationships:
@@ -270,21 +327,21 @@ class CharacterDatingSystem(System):
                 if partner.is_active is False:
                     continue
 
-                action = StartDating(character.gameobject, partner)
-                utility = get_action_utility(action)
+                action = StartDating(character=character.gameobject, partner=partner)
+                action_probability = get_action_probability(action)
 
-                if utility > 0:
-                    potential_romances.append(action)
-                    potential_romance_scores.append(utility)
+                if action_probability > 0:
+                    potential_romances.append((action, action_probability))
+                    potential_romance_scores.append(action_probability)
 
             if not potential_romances:
                 continue
 
-            action = rng.choices(potential_romances, potential_romance_scores, k=1)[0]
+            action, action_probability = rng.choices(
+                potential_romances, potential_romance_scores, k=1
+            )[0]
 
-            probability_success = get_action_success_probability(action)
-
-            if rng.random() < probability_success:
+            if rng.random() < action_probability:
                 action.execute()
 
 
@@ -300,7 +357,7 @@ class CharacterMarriageSystem(System):
                 character.gameobject, "dating"
             )
 
-            potential_marriages: list[GetMarried] = []
+            potential_marriages: list[tuple[GetMarried, float]] = []
             potential_marriage_scores: list[float] = []
 
             for relationship in relationships:
@@ -309,21 +366,21 @@ class CharacterMarriageSystem(System):
                 if partner.is_active is False:
                     continue
 
-                action = GetMarried(character.gameobject, partner)
-                utility = get_action_utility(action)
+                action = GetMarried(character=character.gameobject, partner=partner)
+                action_probability = get_action_probability(action)
 
-                if utility > 0:
-                    potential_marriages.append(action)
-                    potential_marriage_scores.append(utility)
+                if action_probability > 0:
+                    potential_marriages.append((action, action_probability))
+                    potential_marriage_scores.append(action_probability)
 
             if not potential_marriages:
                 continue
 
-            action = rng.choices(potential_marriages, potential_marriage_scores, k=1)[0]
+            action, action_probability = rng.choices(
+                potential_marriages, potential_marriage_scores, k=1
+            )[0]
 
-            probability_success = get_action_success_probability(action)
-
-            if rng.random() < probability_success:
+            if rng.random() < action_probability:
                 action.execute()
 
 
@@ -338,7 +395,7 @@ class CharacterDivorceSystem(System):
 
             marriages = get_relationships_with_traits(character.gameobject, "spouse")
 
-            potential_divorces: list[Divorce] = []
+            potential_divorces: list[tuple[Divorce, float]] = []
             potential_divorce_scores: list[float] = []
 
             for relationship in marriages:
@@ -347,21 +404,21 @@ class CharacterDivorceSystem(System):
                 if partner.is_active is False:
                     continue
 
-                action = Divorce(character.gameobject, partner)
-                utility = get_action_utility(action)
+                action = Divorce(character=character.gameobject, partner=partner)
+                action_probability = get_action_probability(action)
 
-                if utility > 0:
-                    potential_divorces.append(action)
-                    potential_divorce_scores.append(utility)
+                if action_probability > 0:
+                    potential_divorces.append((action, action_probability))
+                    potential_divorce_scores.append(action_probability)
 
             if not potential_divorces:
                 continue
 
-            action = rng.choices(potential_divorces, potential_divorce_scores, k=1)[0]
+            action, action_probability = rng.choices(
+                potential_divorces, potential_divorce_scores, k=1
+            )[0]
 
-            probability_success = get_action_success_probability(action)
-
-            if rng.random() < probability_success:
+            if rng.random() < action_probability:
                 action.execute()
 
 
@@ -378,7 +435,7 @@ class DatingBreakUpSystem(System):
                 character.gameobject, "dating"
             )
 
-            potential_break_ups: list[BreakUp] = []
+            potential_break_ups: list[tuple[BreakUp, float]] = []
             potential_break_up_scores: list[float] = []
 
             if dating_relationships:
@@ -388,23 +445,23 @@ class DatingBreakUpSystem(System):
                     return None
 
                 action = BreakUp(
-                    character.gameobject,
-                    relationship.get_component(Relationship).target,
+                    character=character.gameobject,
+                    partner=relationship.get_component(Relationship).target,
                 )
-                utility = get_action_utility(action)
+                action_probability = get_action_probability(action)
 
-                if utility > 0:
-                    potential_break_ups.append(action)
-                    potential_break_up_scores.append(utility)
+                if action_probability > 0:
+                    potential_break_ups.append((action, action_probability))
+                    potential_break_up_scores.append(action_probability)
 
             if not potential_break_ups:
                 continue
 
-            action = rng.choices(potential_break_ups, potential_break_up_scores, k=1)[0]
+            action, action_probability = rng.choices(
+                potential_break_ups, potential_break_up_scores, k=1
+            )[0]
 
-            probability_success = get_action_success_probability(action)
-
-            if rng.random() < probability_success:
+            if rng.random() < action_probability:
                 action.execute()
 
 
@@ -424,7 +481,7 @@ class PregnancySystem(System):
 
             marriages = get_relationships_with_traits(character.gameobject, "spouse")
 
-            potential_pregnancies: list[GetPregnant] = []
+            potential_pregnancies: list[tuple[GetPregnant, float]] = []
             potential_pregnancy_scores: list[float] = []
 
             for relationship in marriages:
@@ -436,23 +493,21 @@ class PregnancySystem(System):
                 if partner.is_active is False:
                     continue
 
-                action = GetPregnant(character.gameobject, partner)
-                utility = get_action_utility(action)
+                action = GetPregnant(character=character.gameobject, partner=partner)
+                action_probability = get_action_probability(action)
 
-                if utility > 0:
-                    potential_pregnancies.append(action)
-                    potential_pregnancy_scores.append(utility)
+                if action_probability > 0:
+                    potential_pregnancies.append((action, action_probability))
+                    potential_pregnancy_scores.append(action_probability)
 
             if not potential_pregnancies:
                 continue
 
-            action = rng.choices(
+            action, action_probability = rng.choices(
                 potential_pregnancies, potential_pregnancy_scores, k=1
             )[0]
 
-            probability_success = get_action_success_probability(action)
-
-            if rng.random() < probability_success:
+            if rng.random() < action_probability:
                 action.execute()
 
 
@@ -469,16 +524,15 @@ class RetirementSystem(System):
             if character.life_stage < LifeStage.SENIOR:
                 continue
 
+            if not character.gameobject.has_component(Occupation):
+                continue
+
             action = Retire(character.gameobject)
 
-            utility_score = get_action_utility(action)
+            action_probability = get_action_probability(action)
 
-            if rng.random() < utility_score:
-
-                probability_success = get_action_success_probability(action)
-
-                if rng.random() < probability_success:
-                    action.execute()
+            if rng.random() < action_probability:
+                action.execute()
 
 
 class AdultsFindOwnResidenceSystem(System):
@@ -517,6 +571,9 @@ class CrushFormationSystem(System):
     on characters that they are not currently in a romantic relationship with.
     """
 
+    CRUSH_THRESHOLD: ClassVar[float] = 0.7
+    """Probability score required for someone to form a crush."""
+
     def on_update(self, world: World) -> None:
         # 1) Loop through all the active characters
         # 2) Get their outgoing relationships
@@ -546,16 +603,15 @@ class CrushFormationSystem(System):
             crush = potential_crushes[-1][0]
             character = relationships.gameobject
 
-            action = FormCrush(character, crush)
+            action = FormCrush(character=character, crush=crush)
 
-            utility_score = get_action_utility(action)
+            action_probability = get_action_probability(action)
 
-            if rng.random() < utility_score:
+            if action_probability < self.CRUSH_THRESHOLD:
+                continue
 
-                probability_success = get_action_success_probability(action)
-
-                if rng.random() < probability_success:
-                    action.execute()
+            if rng.random() < action_probability:
+                action.execute()
 
 
 def load_plugin(sim: Simulation) -> None:
@@ -564,9 +620,7 @@ def load_plugin(sim: Simulation) -> None:
     sim.world.systems.add_system(FindJobSystem(), system_group=UpdateSystems)
     sim.world.systems.add_system(FiredFromJobSystem(), system_group=UpdateSystems)
     sim.world.systems.add_system(JobPromotionSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(
-        BecomeBusinessOwnerSystem(), system_group=UpdateSystems
-    )
+    sim.world.systems.add_system(StartBusinessSystem(), system_group=UpdateSystems)
     sim.world.systems.add_system(CharacterDatingSystem(), system_group=UpdateSystems)
     sim.world.systems.add_system(CharacterMarriageSystem(), system_group=UpdateSystems)
     sim.world.systems.add_system(CharacterDivorceSystem(), system_group=UpdateSystems)

@@ -64,9 +64,9 @@ def test_load_characters() -> None:
     load_characters(sim, _TEST_DATA_DIR / "characters.json")
     library = sim.world.resource_manager.get_resource(CharacterLibrary)
 
-    character_def = library.get_definition("person")
+    character_def = library.get_definition("base_character")
 
-    assert character_def.definition_id == "person"
+    assert character_def.definition_id == "base_character"
 
 
 def test_load_districts() -> None:

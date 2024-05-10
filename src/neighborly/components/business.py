@@ -91,7 +91,6 @@ class BusinessStatus(enum.Enum):
 
     OPEN = enum.auto()
     CLOSED = enum.auto()
-    PENDING = enum.auto()
 
 
 class Business(Component):
@@ -101,7 +100,6 @@ class Business(Component):
         "_name",
         "_owner_role",
         "_employee_roles",
-        "_district",
         "_owner",
         "_employees",
         "_status",
@@ -113,8 +111,6 @@ class Business(Component):
     """The role of the business' owner."""
     _employee_roles: dict[JobRole, int]
     """The roles of employees."""
-    _district: Optional[GameObject]
-    """The district the residence is in."""
     _owner: Optional[GameObject]
     """Owner and their job role ID."""
     _employees: dict[GameObject, JobRole]
@@ -129,23 +125,12 @@ class Business(Component):
         employee_roles: dict[JobRole, int],
     ) -> None:
         super().__init__()
-        self._district = None
         self._name = name
         self._owner_role = owner_role
         self._employee_roles = employee_roles
         self._owner = None
         self._employees = {}
         self._status = BusinessStatus.CLOSED
-
-    @property
-    def district(self) -> Optional[GameObject]:
-        """The district the residence is in."""
-        return self._district
-
-    @district.setter
-    def district(self, value: Optional[GameObject]) -> None:
-        """Set the district property."""
-        self._district = value
 
     @property
     def name(self) -> str:
@@ -251,7 +236,6 @@ class Business(Component):
             "name": self.name,
             "employees": [employee.uid for employee, _ in self._employees.items()],
             "owner": self._owner.uid if self._owner else -1,
-            "district": self._district.uid if self._district else -1,
         }
 
 

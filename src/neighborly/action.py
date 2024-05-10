@@ -27,11 +27,17 @@ class Action(ABC):
 
     __action_id__: ClassVar[str] = ""
 
-    __slots__ = ("world",)
+    __slots__ = ("world", "is_silent")
 
-    def __init__(self, world: World) -> None:
+    world: World
+    """The simulation's World instance."""
+    is_silent: bool
+    """Should this event or sub-events emit life events."""
+
+    def __init__(self, world: World, is_silent: bool = False) -> None:
         super().__init__()
         self.world = world
+        self.is_silent = is_silent
 
         if not self.__action_id__:
             raise ValueError("Please specify the __action_id__ class variable.")
@@ -42,7 +48,13 @@ class Action(ABC):
         return cls.__action_id__
 
     @abstractmethod
-    def execute(self) -> None:
-        """Executes the action."""
+    def execute(self) -> bool:
+        """Executes the action.
+
+        Returns
+        -------
+        bool
+            True, if the action completed successfully.
+        """
 
         raise NotImplementedError()

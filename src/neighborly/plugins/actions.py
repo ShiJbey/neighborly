@@ -3,6 +3,7 @@
 """
 
 import random
+from typing import Optional
 
 from neighborly.action import Action
 from neighborly.components.business import (
@@ -13,19 +14,21 @@ from neighborly.components.business import (
     Unemployed,
 )
 from neighborly.components.character import Pregnant
+from neighborly.components.location import CurrentLocation
 from neighborly.components.relationship import Relationship
-from neighborly.components.residence import (
-    Resident,
-    ResidentialBuilding,
-    ResidentialUnit,
-    Vacant,
-)
+from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
-from neighborly.ecs import GameObject
-from neighborly.events.defaults import BusinessClosedEvent, DeathEvent, LayOffEvent
-from neighborly.helpers.action import get_action_success_probability, get_action_utility
+from neighborly.ecs import Event, GameObject
+from neighborly.events.defaults import (
+    BusinessClosedEvent,
+    DeathEvent,
+    LayOffEvent,
+    LeaveJobEvent,
+)
+from neighborly.helpers.action import get_action_probability
+from neighborly.helpers.business import create_business
 from neighborly.helpers.location import (
     add_frequented_location,
     remove_all_frequented_locations,
@@ -43,6 +46,7 @@ from neighborly.helpers.traits import (
 )
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 from neighborly.plugins.default_events import (
+    BecomeBusinessOwnerEvent,
     DatingBreakUpEvent,
     DivorceEvent,
     FiredFromJobEvent,
@@ -56,8 +60,77 @@ from neighborly.plugins.default_events import (
 )
 
 
+class StartBusiness(Action):
+    """Character opens a new business and becomes the owner."""
+
+    __action_id__ = "start-business"
+
+    __slots__ = ("character", "district", "business_definition_id", "owner_role")
+
+    character: GameObject
+    district: GameObject
+    business_definition_id: str
+    owner_role: JobRole
+
+    def __init__(
+        self,
+        character: GameObject,
+        district: GameObject,
+        business_definition_id: str,
+        owner_role: JobRole,
+    ) -> None:
+        super().__init__(character.world)
+        self.character = character
+        self.district = district
+        self.business_definition_id = business_definition_id
+        self.owner_role = owner_role
+
+    def execute(self) -> bool:
+        # (1) Create the new business GameObject
+        business = create_business(self.world, self.business_definition_id)
+
+        # (2) Add the business to the district
+        business.add_component(
+            CurrentLocation(
+                district=self.district,
+                settlement=self.district.get_component(CurrentLocation).settlement,
+            )
+        )
+        district = self.district.get_component(District)
+        district.add_business(business)
+        district.gameobject.add_child(business)
+        district.gameobject.get_component(BusinessSpawnTable).increment_count(
+            self.business_definition_id
+        )
+
+        # (3) Dispatch a global event that a business was added to the sim.
+        self.world.events.dispatch_event(
+            Event("business-added", self.world, business=business)
+        )
+
+        # (4) Dispatch a life event for starting a business
+        start_business_event = StartBusinessEvent(
+            character=self.character,
+            business=business,
+        )
+
+        add_to_personal_history(self.character, start_business_event)
+        add_to_personal_history(business, start_business_event)
+        dispatch_life_event(self.world, start_business_event)
+
+        # (5) Execute the action for becoming a business owner. This will
+        # Dispatch a life event for becoming a business owner
+        # Although this might seem like a duplicate, some systems might
+        # only listen for "become-business-owner" events. So we do this
+        # to ensure they also include when characters start businesses.
+        # Also, this action ensures that relationships are properly updated
+        return BecomeBusinessOwner(
+            character=self.character, business=business
+        ).execute()
+
+
 class BecomeBusinessOwner(Action):
-    """Character attempts to become the owner of a business."""
+    """Character becomes the owner of a business."""
 
     __action_id__ = "become-business-owner"
 
@@ -71,7 +144,8 @@ class BecomeBusinessOwner(Action):
         self.character = character
         self.business = business
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
+        # (1) Update the state of the new owner and business
         owner_role = self.business.get_component(Business).owner_role
         business_component = self.business.get_component(Business)
 
@@ -83,23 +157,50 @@ class BecomeBusinessOwner(Action):
             )
         )
 
+        if self.character.has_component(Unemployed):
+            self.character.remove_component(Unemployed)
+
         add_frequented_location(self.character, self.business)
 
         business_component.set_owner(self.character)
 
         business_component.status = BusinessStatus.OPEN
 
-        if self.character.has_component(Unemployed):
-            self.character.remove_component(Unemployed)
+        # (2) Update relationships with any existing employees
+        for employee, _ in business_component.employees.items():
+            add_relationship_trait(self.character, employee, "employee")
+            add_relationship_trait(employee, self.character, "boss")
 
-        start_business_event = StartBusinessEvent(
+        # (3) Dispatch events for change in business owner and status
+        self.world.events.dispatch_event(
+            Event(
+                event_type="business-owner-change",
+                world=self.world,
+                business=self.business,
+                owner=self.character,
+            )
+        )
+
+        self.world.events.dispatch_event(
+            Event(
+                event_type="business-status-change",
+                world=self.world,
+                business=self.business,
+                status=business_component.status,
+            )
+        )
+
+        # (4) Dispatch a life event for becoming the owner of this business
+        become_business_owner_event = BecomeBusinessOwnerEvent(
             character=self.character,
             business=self.business,
         )
 
-        add_to_personal_history(self.character, start_business_event)
-        add_to_personal_history(self.business, start_business_event)
-        dispatch_life_event(self.world, start_business_event)
+        add_to_personal_history(self.character, become_business_owner_event)
+        add_to_personal_history(self.business, become_business_owner_event)
+        dispatch_life_event(self.world, become_business_owner_event)
+
+        return True
 
 
 class FormCrush(Action):
@@ -117,13 +218,15 @@ class FormCrush(Action):
         self.character = character
         self.crush = crush
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         for rel in get_relationships_with_traits(self.character, "crush"):
             relationship = rel.get_component(Relationship)
 
             remove_relationship_trait(relationship.owner, relationship.target, "crush")
 
         add_relationship_trait(self.character, self.crush, "crush")
+
+        return True
 
 
 class Retire(Action):
@@ -139,55 +242,55 @@ class Retire(Action):
         super().__init__(character.world)
         self.character = character
 
-    def execute(self) -> None:
+    def _choose_successor(self) -> Optional[BecomeBusinessOwner]:
         rng = self.world.resource_manager.get_resource(random.Random)
-
         occupation = self.character.get_component(Occupation)
         business = occupation.business
-        business_data = business.get_component(Business)
 
-        add_trait(self.character, "retired")
-        event = RetirementEvent(self.character, business, occupation.job_role)
-        add_to_personal_history(self.character, event)
-        dispatch_life_event(
-            self.world,
-            event,
+        potential_successors: list[tuple[GameObject, float]] = sorted(
+            [
+                (
+                    employee,
+                    get_stat(
+                        get_relationship(self.character, employee), "reputation"
+                    ).value,
+                )
+                for employee, _ in business.get_component(Business).employees.items()
+            ],
+            key=lambda entry: entry[1],
         )
-        LeaveJob(business, self.character).execute()
 
-        # If the character retiring is the owner of the business, try to find a
-        # successor among the people they like. If none is found, lay everyone off and
-        # close the business.
-        if business.get_component(Business).owner == self.character:
+        if not potential_successors:
+            return
 
-            potential_successors: list[tuple[GameObject, float]] = sorted(
-                [
-                    (
-                        employee,
-                        get_stat(
-                            get_relationship(self.character, employee), "reputation"
-                        ).value,
-                    )
-                    for employee, _ in business_data.employees.items()
-                ],
-                key=lambda entry: entry[1],
-            )
+        chosen_successor = potential_successors[-1][0]
 
-            if not potential_successors:
-                return
+        potential_succession_action = BecomeBusinessOwner(chosen_successor, business)
 
-            successor = potential_successors[-1][0]
+        action_probability = get_action_probability(potential_succession_action)
 
-            action = BecomeBusinessOwner(successor, business)
+        if rng.random() < action_probability:
+            return potential_succession_action
 
-            utility_score = get_action_utility(action)
+        return None
 
-            if rng.random() < utility_score:
+    def execute(self) -> bool:
+        occupation = self.character.get_component(Occupation)
+        business = occupation.business
 
-                probability_success = get_action_success_probability(action)
+        # Add the retired trait to the character and update employment status
+        add_trait(self.character, "retired")
 
-                if rng.random() < probability_success:
-                    action.execute()
+        # Dispatch a life event for retirement.
+        retirement_event = RetirementEvent(
+            self.character, business, occupation.job_role
+        )
+        add_to_personal_history(self.character, retirement_event)
+        dispatch_life_event(self.world, retirement_event)
+
+        LeaveJob(business=business, character=self.character, is_silent=True).execute()
+
+        return True
 
 
 class GetPregnant(Action):
@@ -205,7 +308,7 @@ class GetPregnant(Action):
         self.character = character
         self.partner = partner
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         due_date = self.world.resources.get_resource(SimDate).copy()
         due_date.increment(months=9)
 
@@ -214,6 +317,8 @@ class GetPregnant(Action):
         event = PregnancyEvent(self.character, self.partner)
         add_to_personal_history(self.character, event)
         dispatch_life_event(self.world, event)
+
+        return True
 
 
 class BreakUp(Action):
@@ -231,7 +336,7 @@ class BreakUp(Action):
         self.character = character
         self.partner = partner
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         remove_relationship_trait(self.character, self.partner, "dating")
         remove_relationship_trait(self.partner, self.character, "dating")
 
@@ -246,6 +351,8 @@ class BreakUp(Action):
         add_to_personal_history(self.character, event)
         add_to_personal_history(self.partner, event)
         dispatch_life_event(self.world, event)
+
+        return True
 
 
 class Divorce(Action):
@@ -263,7 +370,7 @@ class Divorce(Action):
         self.character = character
         self.partner = partner
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         remove_relationship_trait(self.character, self.partner, "spouse")
         remove_relationship_trait(self.partner, self.character, "spouse")
 
@@ -295,6 +402,8 @@ class Divorce(Action):
         else:
             DepartSettlement(self.character).execute()
 
+        return True
+
 
 class GetMarried(Action):
     """A two characters get married."""
@@ -311,7 +420,7 @@ class GetMarried(Action):
         self.character = character
         self.partner = partner
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         remove_relationship_trait(self.character, self.partner, "dating")
         remove_relationship_trait(self.partner, self.character, "dating")
 
@@ -372,6 +481,8 @@ class GetMarried(Action):
         add_to_personal_history(self.partner, event)
         dispatch_life_event(self.world, event)
 
+        return True
+
 
 class StartDating(Action):
     """A character start dating another."""
@@ -388,7 +499,7 @@ class StartDating(Action):
         self.character = character
         self.partner = partner
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         add_relationship_trait(self.character, self.partner, "dating")
         add_relationship_trait(self.partner, self.character, "dating")
 
@@ -397,6 +508,8 @@ class StartDating(Action):
         add_to_personal_history(self.character, event)
         add_to_personal_history(self.partner, event)
         dispatch_life_event(self.world, event)
+
+        return True
 
 
 class HireEmployee(Action):
@@ -411,14 +524,18 @@ class HireEmployee(Action):
     role: JobRole
 
     def __init__(
-        self, business: GameObject, character: GameObject, role: JobRole
+        self,
+        business: GameObject,
+        character: GameObject,
+        role: JobRole,
+        is_silent: bool = False,
     ) -> None:
-        super().__init__(business.world)
+        super().__init__(business.world, is_silent=is_silent)
         self.business = business
         self.character = character
         self.role = role
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         business_comp = self.business.get_component(Business)
 
         current_date = self.world.resource_manager.get_resource(SimDate)
@@ -447,11 +564,22 @@ class HireEmployee(Action):
             add_relationship_trait(employee, self.character, "coworker")
 
         business_comp.add_employee(self.character, self.role)
+        self.world.events.dispatch_event(
+            Event(
+                event_type="business-employee-added",
+                world=self.world,
+                business=self.business,
+                character=self.character,
+            )
+        )
 
-        event = StartNewJobEvent(self.character, self.business, self.role)
+        if not self.is_silent:
+            hiring_event = StartNewJobEvent(self.character, self.business, self.role)
+            add_to_personal_history(self.character, hiring_event)
+            add_to_personal_history(self.business, hiring_event)
+            dispatch_life_event(self.world, hiring_event)
 
-        add_to_personal_history(self.character, event)
-        dispatch_life_event(self.world, event)
+        return True
 
 
 class FireEmployee(Action):
@@ -469,30 +597,19 @@ class FireEmployee(Action):
         self.business = business
         self.character = character
 
-    def execute(self) -> None:
-        business = self.character.get_component(Occupation).business
+    def execute(self) -> bool:
         job_role = self.character.get_component(Occupation).job_role
 
-        event = FiredFromJobEvent(self.character, business, job_role)
+        LeaveJob(
+            business=self.business, character=self.character, is_silent=True
+        ).execute()
 
-        dispatch_life_event(business.world, event)
-        add_to_personal_history(self.character, event)
+        if not self.is_silent:
+            firing_event = FiredFromJobEvent(self.character, self.business, job_role)
+            dispatch_life_event(self.world, firing_event)
+            add_to_personal_history(self.character, firing_event)
 
-        LeaveJob(business, self.character).execute()
-
-        business_data = business.get_component(Business)
-
-        owner = business_data.owner
-        if owner is not None:
-            get_stat(
-                get_relationship(self.character, owner), "reputation"
-            ).base_value -= 20
-            get_stat(
-                get_relationship(owner, self.character), "reputation"
-            ).base_value -= 10
-            get_stat(
-                get_relationship(self.character, owner), "romance"
-            ).base_value -= 30
+        return True
 
 
 class PromoteEmployee(Action):
@@ -500,44 +617,42 @@ class PromoteEmployee(Action):
 
     __action_id__ = "promote-employee"
 
-    __slots__ = ("character", "employee", "role")
+    __slots__ = ("business", "character", "role")
 
+    business: GameObject
     character: GameObject
-    employee: GameObject
     role: JobRole
 
     def __init__(
-        self, character: GameObject, employee: GameObject, role: JobRole
+        self, business: GameObject, character: GameObject, role: JobRole
     ) -> None:
         super().__init__(character.world)
+        self.business = business
         self.character = character
-        self.employee = employee
         self.role = role
 
-    def execute(self) -> None:
-        business = self.character.get_component(Occupation).business
-        business_data = business.get_component(Business)
-
+    def execute(self) -> bool:
         # Remove the old occupation
-        self.character.remove_component(Occupation)
-
-        business_data.remove_employee(self.character)
+        LeaveJob(
+            business=self.business, character=self.character, is_silent=True
+        ).execute()
 
         # Add the new occupation
-        self.character.add_component(
-            Occupation(
-                business=business,
-                start_date=self.character.world.resource_manager.get_resource(SimDate),
-                job_role=self.role,
+        HireEmployee(
+            business=self.business,
+            character=self.character,
+            role=self.role,
+            is_silent=True,
+        ).execute()
+
+        if not self.is_silent:
+            promotion_event = JobPromotionEvent(
+                self.character, self.business, self.role
             )
-        )
+            add_to_personal_history(self.character, promotion_event)
+            dispatch_life_event(self.character.world, promotion_event)
 
-        business_data.add_employee(self.character, self.role)
-
-        event = JobPromotionEvent(self.character, business, self.role)
-
-        add_to_personal_history(self.character, event)
-        dispatch_life_event(self.character.world, event)
+        return True
 
 
 class LayOffEmployee(Action):
@@ -555,75 +670,104 @@ class LayOffEmployee(Action):
         self.business = business
         self.character = character
 
-    def execute(self) -> None:
-
-        current_date = self.world.resource_manager.get_resource(SimDate)
-
-        business_comp = self.business.get_component(Business)
-
-        remove_frequented_location(self.character, self.business)
-
-        business_comp.remove_employee(self.character)
-
-        # Update boss/employee relationships if needed
-        owner = business_comp.owner
-        if owner is not None:
-            remove_relationship_trait(self.character, owner, "boss")
-            remove_relationship_trait(owner, self.character, "employee")
-
-        # Update coworker relationships
-        for other_employee, _ in business_comp.employees.items():
-            if other_employee == self.character:
-                continue
-
-            remove_relationship_trait(self.character, other_employee, "coworker")
-            remove_relationship_trait(other_employee, self.character, "coworker")
-
-        self.character.add_component(Unemployed(timestamp=current_date))
+    def execute(self) -> bool:
 
         job_role = self.character.get_component(Occupation).job_role
 
-        self.character.remove_component(Occupation)
+        LeaveJob(
+            business=self.business, character=self.character, is_silent=True
+        ).execute()
 
-        event = LayOffEvent(self.character, self.business, job_role)
+        if not self.is_silent:
+            layoff_event = LayOffEvent(self.character, self.business, job_role)
+            add_to_personal_history(self.character, layoff_event)
+            dispatch_life_event(self.world, layoff_event)
 
-        add_to_personal_history(self.character, event)
-        dispatch_life_event(self.world, event)
+        return True
 
 
 class LeaveJob(Action):
-    """A business owner fires an employee."""
+    """A character leaves their job."""
 
-    __action_id__ = "leave-job-employee"
+    __action_id__ = "leave-job"
 
     __slots__ = ("business", "character")
 
     business: GameObject
     character: GameObject
 
-    def __init__(self, business: GameObject, character: GameObject) -> None:
-        super().__init__(business.world)
+    def __init__(
+        self, business: GameObject, character: GameObject, is_silent: bool = False
+    ) -> None:
+        super().__init__(business.world, is_silent=is_silent)
         self.business = business
         self.character = character
 
-    def execute(self) -> None:
+    def _choose_successor(self) -> Optional[BecomeBusinessOwner]:
+        rng = self.world.resource_manager.get_resource(random.Random)
+
+        potential_successors: list[tuple[GameObject, float]] = sorted(
+            [
+                (
+                    employee,
+                    get_stat(
+                        get_relationship(self.character, employee), "reputation"
+                    ).value,
+                )
+                for employee, _ in self.business.get_component(
+                    Business
+                ).employees.items()
+            ],
+            key=lambda entry: entry[1],
+        )
+
+        if not potential_successors:
+            return
+
+        chosen_successor = potential_successors[-1][0]
+
+        potential_succession_action = BecomeBusinessOwner(
+            chosen_successor, self.business
+        )
+
+        action_probability = get_action_probability(potential_succession_action)
+
+        if rng.random() < action_probability:
+            return potential_succession_action
+
+        return None
+
+    def execute(self) -> bool:
 
         current_date = self.world.resource_manager.get_resource(SimDate)
-
+        job_role = self.character.get_component(Occupation).job_role
         business_comp = self.business.get_component(Business)
+        succession_action: Optional[BecomeBusinessOwner] = None
+        is_business_owner = self.character == business_comp.owner
 
         remove_frequented_location(self.character, self.business)
+        self.character.add_component(Unemployed(timestamp=current_date))
+        self.character.remove_component(Occupation)
 
-        if self.character == business_comp.owner:
-            business_comp.set_owner(None)
+        if is_business_owner:
+            succession_action = self._choose_successor()
 
             # Update relationships boss/employee relationships
             for employee, _ in business_comp.employees.items():
                 remove_relationship_trait(self.character, employee, "employee")
                 remove_relationship_trait(employee, self.character, "boss")
 
+            business_comp.set_owner(None)
+            self.world.events.dispatch_event(
+                Event(
+                    event_type="business-owner-removed",
+                    world=self.world,
+                    business=self.business,
+                    character=self.character,
+                )
+            )
+
         else:
-            business_comp.remove_employee(self.character)
 
             # Update boss/employee relationships if needed
             owner = business_comp.owner
@@ -639,8 +783,31 @@ class LeaveJob(Action):
                 remove_relationship_trait(self.character, other_employee, "coworker")
                 remove_relationship_trait(other_employee, self.character, "coworker")
 
-        self.character.add_component(Unemployed(timestamp=current_date))
-        self.character.remove_component(Occupation)
+            business_comp.remove_employee(self.character)
+            self.world.events.dispatch_event(
+                Event(
+                    event_type="business-employee-removed",
+                    world=self.world,
+                    business=self.business,
+                    character=self.character,
+                )
+            )
+
+        if not self.is_silent:
+            leave_job_event = LeaveJobEvent(
+                character=self.character, business=self.business, job_role=job_role
+            )
+            add_to_personal_history(self.character, leave_job_event)
+            dispatch_life_event(self.world, leave_job_event)
+
+        # If we have a successor, put them in charge. Otherwise, close the business
+        if is_business_owner:
+            if succession_action:
+                succession_action.execute()
+            else:
+                CloseBusiness(business=self.business).execute()
+
+        return True
 
 
 class CloseBusiness(Action):
@@ -656,29 +823,29 @@ class CloseBusiness(Action):
         super().__init__(business.world)
         self.business = business
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
 
         business_comp = self.business.get_component(Business)
+        business_location = self.business.get_component(CurrentLocation)
 
         # Update the business as no longer active
         business_comp.status = BusinessStatus.CLOSED
 
         # Remove all the employees
         for employee, _ in [*business_comp.employees.items()]:
-            LayOffEmployee(self.business, employee).execute()
+            LayOffEmployee(business=self.business, character=employee).execute()
 
         # Remove the owner if applicable
         if business_comp.owner is not None:
-            LeaveJob(self.business, business_comp.owner).execute()
+            LeaveJob(business=self.business, character=business_comp.owner).execute()
 
         # Decrement the number of this type
-        if business_comp.district:
-            business_comp.district.get_component(BusinessSpawnTable).decrement_count(
-                self.business.metadata["definition_id"]
-            )
-            business_comp.district.get_component(District).remove_business(
-                self.business
-            )
+        business_location.district.get_component(BusinessSpawnTable).decrement_count(
+            self.business.metadata["definition_id"]
+        )
+        business_location.district.get_component(District).remove_business(
+            self.business
+        )
 
         # Remove any other characters that frequent the location
         remove_all_frequenting_characters(self.business)
@@ -687,9 +854,10 @@ class CloseBusiness(Action):
         self.business.deactivate()
 
         event = BusinessClosedEvent(self.business)
-
         add_to_personal_history(self.business, event)
         dispatch_life_event(self.world, event)
+
+        return True
 
 
 class Die(Action):
@@ -701,17 +869,12 @@ class Die(Action):
 
     character: GameObject
 
-    def __init__(self, character: GameObject) -> None:
-        super().__init__(character.world)
+    def __init__(self, character: GameObject, is_silent: bool = False) -> None:
+        super().__init__(character.world, is_silent=is_silent)
         self.character = character
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         """Have a character die."""
-
-        death_event = DeathEvent(self.character)
-
-        add_to_personal_history(self.character, death_event)
-        dispatch_life_event(self.world, death_event)
 
         self.character.deactivate()
 
@@ -722,6 +885,12 @@ class Die(Action):
         deactivate_relationships(self.character)
 
         MoveOutOfResidence(self.character).execute()
+
+        self.world.events.dispatch_event(
+            Event(
+                event_type="character-death", world=self.world, character=self.character
+            )
+        )
 
         # Remove the character from their residence
         if resident_data := self.character.try_component(Resident):
@@ -756,7 +925,16 @@ class Die(Action):
 
         # Remove the character from their occupation
         if occupation := self.character.try_component(Occupation):
-            LeaveJob(occupation.business, self.character).execute()
+            LeaveJob(
+                business=occupation.business, character=self.character, is_silent=True
+            ).execute()
+
+        if not self.is_silent:
+            death_event = DeathEvent(self.character)
+            add_to_personal_history(self.character, death_event)
+            dispatch_life_event(self.world, death_event)
+
+        return True
 
 
 class MoveOutOfResidence(Action):
@@ -772,12 +950,13 @@ class MoveOutOfResidence(Action):
         super().__init__(character.world)
         self.character = character
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         """Have the character move out of their current residence."""
 
         if resident := self.character.try_component(Resident):
             # This character is currently a resident at another location
             former_residence = resident.residence
+            former_district = resident.district
             former_residence_comp = former_residence.get_component(ResidentialUnit)
 
             for resident in former_residence_comp.residents:
@@ -795,17 +974,13 @@ class MoveOutOfResidence(Action):
 
             remove_frequented_location(self.character, former_residence)
 
-            former_district = (
-                former_residence.get_component(ResidentialUnit)
-                .building.get_component(ResidentialBuilding)
-                .district
-            )
-
             if former_district:
                 former_district.get_component(District).population -= 1
 
             if len(former_residence_comp) <= 0:
                 former_residence.add_component(Vacant())
+
+        return True
 
 
 class MoveIntoResidence(Action):
@@ -827,7 +1002,7 @@ class MoveIntoResidence(Action):
         self.residence = residence
         self.is_owner = is_owner
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         """Have the character move into a new residence."""
 
         if self.character.has_component(Resident):
@@ -838,7 +1013,18 @@ class MoveIntoResidence(Action):
         if self.is_owner:
             self.residence.get_component(ResidentialUnit).add_owner(self.character)
 
-        self.character.add_component(Resident(residence=self.residence))
+        building = self.residence.get_component(ResidentialUnit).building
+        district = building.get_component(CurrentLocation).district
+        settlement = building.get_component(CurrentLocation).settlement
+
+        self.character.add_component(
+            Resident(
+                residence=self.residence,
+                building=building,
+                district=district,
+                settlement=settlement,
+            )
+        )
 
         add_frequented_location(self.character, self.residence)
 
@@ -852,16 +1038,9 @@ class MoveIntoResidence(Action):
             add_relationship_trait(self.character, resident, "live_together")
             add_relationship_trait(resident, self.character, "live_together")
 
-        new_district = (
-            self.residence.get_component(ResidentialUnit)
-            .building.get_component(ResidentialBuilding)
-            .district
-        )
+        district.get_component(District).population += 1
 
-        if new_district:
-            new_district.get_component(District).population += 1
-        else:
-            raise RuntimeError("Residential building is missing district.")
+        return True
 
 
 class DepartSettlement(Action):
@@ -877,7 +1056,7 @@ class DepartSettlement(Action):
         super().__init__(character.world)
         self.character = character
 
-    def execute(self) -> None:
+    def execute(self) -> bool:
         """Have the given character depart the settlement."""
 
         remove_all_frequented_locations(self.character)
@@ -891,7 +1070,9 @@ class DepartSettlement(Action):
             if occupation.business.get_component(Business).owner == self.character:
                 CloseBusiness(occupation.business).execute()
             else:
-                LeaveJob(occupation.business, self.character).execute()
+                LeaveJob(
+                    business=occupation.business, character=self.character
+                ).execute()
 
         # Have the character leave their residence
         if resident_data := self.character.try_component(Resident):
@@ -917,3 +1098,5 @@ class DepartSettlement(Action):
                     resident, "departed"
                 ):
                     DepartSettlement(resident).execute()
+
+        return True

@@ -1,5 +1,3 @@
-# pylint: disable=C0121, C0302, C0301
-
 """Built-in Systems.
 
 This module contains built-in systems that help simulations function.
@@ -8,39 +6,25 @@ This module contains built-in systems that help simulations function.
 
 from __future__ import annotations
 
+import logging
 import random
 from typing import ClassVar, Optional
 
 from neighborly.components.beliefs import Belief
-from neighborly.components.business import (
-    Business,
-    BusinessStatus,
-    JobRole,
-    Occupation,
-    Unemployed,
-)
+from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import Character, LifeStage, Pregnant, Species
 from neighborly.components.location import (
+    CurrentLocation,
     FrequentedLocations,
     Location,
     LocationPreferenceRule,
     LocationPreferences,
 )
 from neighborly.components.relationship import Relationship
-from neighborly.components.residence import (
-    Resident,
-    ResidentialBuilding,
-    ResidentialUnit,
-    Vacant,
-)
-from neighborly.components.settlement import District, Settlement
+from neighborly.components.residence import Resident, ResidentialUnit, Vacant
+from neighborly.components.settlement import District
 from neighborly.components.shared import Age
-from neighborly.components.spawn_table import (
-    BusinessSpawnTable,
-    BusinessSpawnTableEntry,
-    CharacterSpawnTable,
-    ResidenceSpawnTable,
-)
+from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.components.stats import Lifespan
 from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.config import SimulationConfig
@@ -55,11 +39,10 @@ from neighborly.events.defaults import (
     BirthEvent,
     HaveChildEvent,
     JoinSettlementEvent,
-    NewSettlementEvent,
+    SettlementAddedEvent,
 )
-from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character, create_child
-from neighborly.helpers.location import add_frequented_location, score_location
+from neighborly.helpers.location import score_location
 from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
@@ -86,7 +69,8 @@ from neighborly.libraries import (
 )
 from neighborly.life_event import add_to_personal_history, dispatch_life_event
 from neighborly.plugins.actions import CloseBusiness, Die, MoveIntoResidence
-from neighborly.plugins.default_events import StartBusinessEvent
+
+_logger = logging.getLogger(__name__)
 
 
 class InitializationSystems(SystemGroup):
@@ -125,18 +109,17 @@ class InitializeSettlementSystem(System):
         rng = world.resource_manager.get_resource(random.Random)
 
         if isinstance(definition_ids, str):
-            if definition_ids:
-                settlement = create_settlement(world, definition_ids)
-                event = NewSettlementEvent(settlement)
-                dispatch_life_event(world, event)
-                add_to_personal_history(settlement, event)
-
+            settlement_definition_id = definition_ids
         elif len(definition_ids) > 0:
-            choice = rng.choice(definition_ids)
-            settlement = create_settlement(world, choice)
-            event = NewSettlementEvent(settlement)
-            dispatch_life_event(world, event)
-            add_to_personal_history(settlement, event)
+            settlement_definition_id = rng.choice(definition_ids)
+        else:
+            _logger.debug("No settlement IDs provided.")
+            return
+
+        settlement = create_settlement(world, settlement_definition_id)
+        event = SettlementAddedEvent(settlement)
+        dispatch_life_event(world, event)
+        add_to_personal_history(settlement, event)
 
 
 class SpawnResidentialBuildingsSystem(System):
@@ -236,44 +219,41 @@ class SpawnResidentialBuildingsSystem(System):
             if district.residential_slots <= 0:
                 continue
 
-            # Try to build a multifamily residential building
-            multifamily_building = (
+            # Try to get an eligible multi-family residential building definition
+            building_definition_id = (
                 SpawnResidentialBuildingsSystem.get_random_multifamily_building(
                     district=district
                 )
             )
 
-            if multifamily_building is not None:
-                residence = create_residence(
-                    world,
-                    multifamily_building,
+            # Try to get a single-family residential building if the previous fails
+            if building_definition_id is None:
+                building_definition_id = (
+                    SpawnResidentialBuildingsSystem.get_random_single_family_building(
+                        district=district
+                    )
                 )
-                residence.get_component(ResidentialBuilding).district = (
-                    district.gameobject
-                )
-                district.add_residence(residence)
-                district.gameobject.add_child(residence)
-                spawn_table.increment_count(multifamily_building)
+
+            # If it fails again, skip this district
+            if building_definition_id is None:
                 continue
 
-            # Try to build a single-family residential building
-            single_family_building = (
-                SpawnResidentialBuildingsSystem.get_random_single_family_building(
-                    district=district
+            # Otherwise, build the residence and add it to the district
+            residence = create_residence(
+                world,
+                building_definition_id,
+            )
+            residence.add_component(
+                CurrentLocation(
+                    district=district.gameobject,
+                    settlement=district.gameobject.get_component(
+                        CurrentLocation
+                    ).settlement,
                 )
             )
-
-            if single_family_building is not None:
-                residence = create_residence(
-                    world,
-                    single_family_building,
-                )
-                residence.get_component(ResidentialBuilding).district = (
-                    district.gameobject
-                )
-                district.add_residence(residence)
-                district.gameobject.add_child(residence)
-                spawn_table.increment_count(single_family_building)
+            district.add_residence(residence)
+            district.gameobject.add_child(residence)
+            spawn_table.increment_count(building_definition_id)
 
 
 class SpawnNewResidentSystem(System):
@@ -289,7 +269,7 @@ class SpawnNewResidentSystem(System):
             (Active, ResidentialUnit, Vacant)
         ):
             # Get the spawn table of district the residence belongs to
-            district = residence.building.get_component(ResidentialBuilding).district
+            district = residence.building.get_component(CurrentLocation).district
 
             assert district is not None
 
@@ -320,8 +300,7 @@ class SpawnNewResidentSystem(System):
 
             character = create_character(world, character_definition_id)
 
-            settlement = district.get_component(District).settlement
-            assert settlement is not None
+            settlement = district.get_component(CurrentLocation).settlement
 
             event = JoinSettlementEvent(
                 character,
@@ -333,125 +312,6 @@ class SpawnNewResidentSystem(System):
 
             # Add the character as the owner of the home and a resident
             MoveIntoResidence(character, residence.gameobject, is_owner=True).execute()
-
-
-class SpawnNewBusinessesSystem(System):
-    """Spawns new businesses for characters to open."""
-
-    @staticmethod
-    def get_random_business(
-        settlement: Settlement,
-    ) -> Optional[tuple[GameObject, BusinessSpawnTableEntry]]:
-        """Attempt to randomly select a business from the spawn table.
-
-        Parameters
-        ----------
-        settlement
-            The settlement where the business will be built.
-
-        Returns
-        -------
-        str or None
-            The definition ID of a selected business, or None if no eligible entries.
-        """
-        eligible_entries: list[tuple[GameObject, BusinessSpawnTableEntry]] = []
-        weights: list[float] = []
-
-        for district in settlement.districts:
-            if district.get_component(District).business_slots <= 0:
-                continue
-
-            spawn_table = district.get_component(BusinessSpawnTable)
-
-            for entry in spawn_table.table.values():
-                if entry.instances >= entry.max_instances:
-                    continue
-                if entry.min_population >= settlement.population:
-                    continue
-
-                eligible_entries.append((district, entry))
-                weights.append(entry.spawn_frequency)
-
-        if not eligible_entries:
-            return None
-
-        rng = settlement.gameobject.world.resource_manager.get_resource(random.Random)
-
-        return rng.choices(
-            population=eligible_entries,
-            weights=weights,
-            k=1,
-        )[0]
-
-    def on_update(self, world: World) -> None:
-
-        settlements = world.get_component(Settlement)
-
-        if not settlements:
-            return
-
-        settlement = settlements[0][1]
-
-        for _, (_, character) in world.get_components((Active, Character)):
-            # We can't build if there is no space
-
-            # gets all game objects with active, a district and a business spawn table (list of data)
-            # change from looping over districts to looping over characters.
-            # If they are adults they can open a business
-            # They don't have an occupation. (unemployed)
-
-            # Need to know the uid for the district that the business should be built in use
-            # .where( BusinessSpawnTableEntry.uid == district.gameobject.uid)
-
-            if (
-                character.life_stage >= LifeStage.YOUNG_ADULT
-                and not character.gameobject.has_component(Occupation)
-            ):
-                result = SpawnNewBusinessesSystem.get_random_business(settlement)
-
-                if result is None:
-                    continue
-
-                district_obj, spawn_entry = result
-
-                district = district_obj.get_component(District)
-
-                business = create_business(world, spawn_entry.definition_id)
-                business.get_component(Business).district = district.gameobject
-                district.add_business(business)
-                district.gameobject.add_child(business)
-                district.gameobject.get_component(BusinessSpawnTable).increment_count(
-                    spawn_entry.definition_id
-                )
-
-                owner_role = business.get_component(Business).owner_role
-                business_component = business.get_component(Business)
-
-                character.gameobject.add_component(
-                    Occupation(
-                        business=business,
-                        start_date=world.resources.get_resource(SimDate).copy(),
-                        job_role=owner_role,
-                    )
-                )
-
-                add_frequented_location(character.gameobject, business)
-
-                business_component.set_owner(character.gameobject)
-
-                business_component.status = BusinessStatus.OPEN
-
-                if character.gameobject.has_component(Unemployed):
-                    character.gameobject.remove_component(Unemployed)
-
-                start_business_event = StartBusinessEvent(
-                    character=character.gameobject,
-                    business=business,
-                )
-
-                add_to_personal_history(character.gameobject, start_business_event)
-                add_to_personal_history(business, start_business_event)
-                dispatch_life_event(world, start_business_event)
 
 
 class CompileTraitDefsSystem(System):
