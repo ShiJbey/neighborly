@@ -215,7 +215,6 @@ class GameObject:
     GameObjects wrap a unique integer identifier and provide an interface to access
     associated components and child/parent gameobjects.
     """
-
     __slots__ = (
         "_uid",
         "_name",
@@ -225,6 +224,7 @@ class GameObject:
         "metadata",
         "_component_types",
         "_component_manager",
+        "_event_listeners",
     )
 
     _uid: int
@@ -244,6 +244,9 @@ class GameObject:
     _component_types: list[Type[Component]]
     """Types of the GameObjects components in order of addition."""
 
+    _event_listeners: dict[str, OrderedSet[Callable[[IEvent], None]]]
+    """Event listeners that are only called when a specific type of event fires."""
+
     def __init__(
         self,
         unique_id: int,
@@ -259,6 +262,7 @@ class GameObject:
         self.children = []
         self.metadata = {}
         self._component_types = []
+        self._event_listeners = {}
 
     @property
     def uid(self) -> int:
@@ -356,6 +360,68 @@ class GameObject:
         component.on_add()
 
         return component
+
+
+    def add_event_listener(
+        self,
+        event_name: str,
+        listener: Callable[[IEvent], None],
+    ) -> None:
+        """Register a listener function to a specific event type.
+
+        Parameters
+        ----------
+        listener
+            A function to be called when the given event type fires.
+        """
+        if event_name not in self._event_listeners:
+            self._event_listeners[event_name] = OrderedSet([])
+    
+        listener_set = self._event_listeners[event_name]
+        listener_set.add(listener)
+    
+    def remove_event_listener(
+        self, 
+        event_name: str, 
+        listener: Callable[[IEvent], None]) -> None:
+        """Remove a listener function from a specific event type.
+
+        Parameters
+        ----------
+        event_name : str
+            The type of event to remove the listener from.
+        callback : Callable[[IEvent], None]
+            The callback function to be removed.
+        """
+        if event_name in self._event_listeners:
+            listener_set = self._event_listeners[event_name]
+            listener_set.discard(listener)
+
+    def remove_all_event_listeners_for_event(self, event_name: str) -> None:
+        """Remove all event listeners for a specific event type.
+
+        Parameters
+        ----------
+        event_name : str
+            The type of event to remove listeners for.
+        """
+        if event_name in self._event_listeners:
+            del self._event_listeners[event_name]
+
+    def remove_all_event_listeners(self) -> None:
+        """Remove all event listeners associated with this GameObject."""
+        self._event_listeners.clear()
+
+    def dispatch_event(self, event: IEvent) -> None:
+        """Fire an event and trigger associated event listeners.
+
+        Parameters
+        ----------
+        event : IEvent
+            The event to fire
+        """
+        for callback_fn in self._event_listeners.get(event.event_type, OrderedSet()):
+            callback_fn(event)   
 
     def remove_component(self, component_type: Type[Component]) -> bool:
         """Remove a component from the GameObject.
