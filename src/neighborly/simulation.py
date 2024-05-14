@@ -33,6 +33,7 @@ from neighborly.factories.character import (
     CharacterFactory,
     DefaultCharacterFactory,
     DefaultChildFactory,
+    SpeciesFactory,
 )
 from neighborly.factories.location import (
     FrequentedLocationsFactory,
@@ -306,6 +307,7 @@ class Simulation:
         self.world.gameobjects.add_component_factory(CharmFactory())
         self.world.gameobjects.add_component_factory(AgentBeliefsFactory())
         self.world.gameobjects.add_component_factory(AppliedBeliefsFactory())
+        self.world.gameobjects.add_component_factory(SpeciesFactory())
 
     def _init_effect_precondition_factories(self) -> None:
         """Add effect factories to the library."""

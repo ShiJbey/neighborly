@@ -39,13 +39,13 @@ def load_plugin(sim: Simulation) -> None:
     name_factories.add_factory(
         "masculine-first",
         SimpleNameFactory(_DATA_DIR / "masculine_first_names.txt"),
-        ["male"],
+        ["first", "male"],
     )
 
     name_factories.add_factory(
         "feminine-first",
         SimpleNameFactory(_DATA_DIR / "feminine_first_names.txt"),
-        ["female"],
+        ["first", "female"],
     )
 
     name_factories.add_factory(

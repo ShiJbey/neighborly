@@ -39,8 +39,8 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Relationship(owner=owner, target=target))
     relationship.add_component(Stats())
     relationship.add_component(Traits())
-    relationship.add_component(Reputation(base_value=50))
-    relationship.add_component(Romance(base_value=50))
+    relationship.add_component(Reputation())
+    relationship.add_component(Romance())
     relationship.add_component(AppliedBeliefs())
 
     relationship.name = f"[{owner.name} -> {target.name}]"

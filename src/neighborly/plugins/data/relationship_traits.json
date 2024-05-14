@@ -143,7 +143,14 @@
   "crush": {
     "name": "Crush",
     "trait_type": "relationship",
-    "description": "The owner of this relationship has a crush on the target."
+    "description": "The owner of this relationship has a crush on the target.",
+    "effects": [
+      {
+        "type": "AddStatBuff",
+        "stat": "romance",
+        "amount": 10
+      }
+    ]
   },
   "live_together": {
     "name": "Live Together",

@@ -103,17 +103,17 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     rel_to_noble = add_relationship(farmer, noble)
 
-    assert get_stat(rel_to_noble, "reputation").value == 50
+    assert get_stat(rel_to_noble, "reputation").value == 0
 
     add_trait(farmer, "gullible")
 
-    assert get_stat(rel_to_noble, "reputation").value == 60
+    assert get_stat(rel_to_noble, "reputation").value == 10
 
     rel = add_relationship(farmer, merchant)
 
-    assert get_stat(rel, "reputation").value == 60
+    assert get_stat(rel, "reputation").value == 10
 
     remove_trait(farmer, "gullible")
 
-    assert get_stat(rel, "reputation").value == 50
-    assert get_stat(rel_to_noble, "reputation").value == 50
+    assert get_stat(rel, "reputation").value == 0
+    assert get_stat(rel_to_noble, "reputation").value == 0

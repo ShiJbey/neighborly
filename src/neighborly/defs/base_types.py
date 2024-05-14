@@ -109,6 +109,8 @@ class TraitDef(ContentDefinition):
     """IDs of traits that this trait conflicts with."""
     spawn_frequency: int = 0
     """(Agents only) The relative frequency of an agent spawning with this trait."""
+    is_inheritable: bool = False
+    """(Agents only) Is the trait inheritable."""
     inheritance_chance_single: float = 0.0
     """(Agents only) The probability of inheriting this trait if one parent has it."""
     inheritance_chance_both: float = 0.0

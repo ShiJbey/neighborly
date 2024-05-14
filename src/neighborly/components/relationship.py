@@ -255,13 +255,11 @@ class Reputation(StatComponent):
 
     __stat_name__ = "reputation"
 
-    MAX_VALUE: int = 100
-
     def __init__(
         self,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (-50, 50), True)
 
 
 class Romance(StatComponent):
@@ -269,10 +267,8 @@ class Romance(StatComponent):
 
     __stat_name__ = "romance"
 
-    MAX_VALUE: int = 100
-
     def __init__(
         self,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(base_value, (-50, 50), True)

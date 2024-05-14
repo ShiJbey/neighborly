@@ -1,36 +1,42 @@
 {
   "base_character": {
     "is_template": true,
+    "traits": [
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "sexuality"
+        ]
+      }
+    ],
     "components": {
       "Agent": {
         "agent_type": "Character"
       },
       "Stats": {},
       "Lifespan": {},
-      "Fertility": {
-        "value_range": "0-100"
-      },
-      "Kindness": {
-        "value_range": "0-80"
-      },
-      "Courage": {
-        "value_range": "0-80"
-      },
-      "Stewardship": {
-        "value_range": "0-80"
-      },
-      "Sociability": {
-        "value_range": "0-80"
-      },
-      "Intelligence": {
-        "value_range": "0-80"
-      },
-      "Discipline": {
-        "value_range": "0-80"
-      },
-      "Charm": {
-        "value_range": "0-80"
-      },
+      "Fertility": {},
+      "Kindness": {},
+      "Courage": {},
+      "Stewardship": {},
+      "Sociability": {},
+      "Intelligence": {},
+      "Discipline": {},
+      "Charm": {},
       "Skills": {},
       "Age": {},
       "FrequentedLocations": {},
@@ -47,6 +53,23 @@
         "sex": "Male",
         "name_factory": "masculine-first",
         "is_template": false,
+        "traits": [
+          {
+            "with_tags": [
+              "personality"
+            ]
+          },
+          {
+            "with_tags": [
+              "personality"
+            ]
+          },
+          {
+            "with_tags": [
+              "sexuality"
+            ]
+          }
+        ],
         "components": {
           "Character": {
             "first_name_factory": "masculine-first",
@@ -130,31 +153,36 @@
       }
     ]
   },
-  "farmer": {
-    "is_template": true,
+  "child": {
     "extends": [
       "base_character"
     ],
-    "tags": [
-      "farmer"
-    ]
-  },
-  "merchant": {
-    "is_template": true,
-    "extends": [
-      "base_character"
-    ],
-    "tags": [
-      "merchant"
-    ]
-  },
-  "nobility": {
-    "is_template": true,
-    "extends": [
-      "base_character"
-    ],
-    "tags": [
-      "nobility"
-    ]
+    "is_template": false,
+    "components": {
+      "Fertility": {
+        "value_range": "0-100"
+      },
+      "Kindness": {
+        "value_range": "0-80"
+      },
+      "Courage": {
+        "value_range": "0-80"
+      },
+      "Stewardship": {
+        "value_range": "0-80"
+      },
+      "Sociability": {
+        "value_range": "0-80"
+      },
+      "Intelligence": {
+        "value_range": "0-80"
+      },
+      "Discipline": {
+        "value_range": "0-80"
+      },
+      "Charm": {
+        "value_range": "0-80"
+      }
+    }
   }
 }

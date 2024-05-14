@@ -7,8 +7,11 @@ This module contains class definitions for implementing the trait system.
 from __future__ import annotations
 
 import enum
-from typing import Any, Iterable
+from typing import Any
 
+import attrs
+
+from neighborly.datetime import SimDate
 from neighborly.ecs import Component
 from neighborly.effects.base_types import Effect
 
@@ -20,21 +23,9 @@ class TraitType(enum.Enum):
     RELATIONSHIP = enum.auto()
 
 
+@attrs.define
 class Trait:
     """Additional state associated with characters, businesses, and other GameObjects."""
-
-    __slots__ = (
-        "definition_id",
-        "description",
-        "name",
-        "trait_type",
-        "effects",
-        "conflicting_traits",
-        "incoming_relationship_effects",
-        "outgoing_relationship_effects",
-        "owner_effects",
-        "target_effects",
-    )
 
     definition_id: str
     """The ID of this tag definition."""
@@ -56,30 +47,14 @@ class Trait:
     """(Relationships only) Effects to the owner of a relationship."""
     target_effects: list[Effect]
     """(Relationships only) Effects to the target of a relationship."""
-
-    def __init__(
-        self,
-        definition_id: str,
-        name: str,
-        trait_type: TraitType,
-        description: str,
-        effects: list[Effect],
-        incoming_relationship_effects: list[Effect],
-        outgoing_relationship_effects: list[Effect],
-        owner_effects: list[Effect],
-        target_effects: list[Effect],
-        conflicting_traits: Iterable[str],
-    ) -> None:
-        self.definition_id = definition_id
-        self.name = name
-        self.trait_type = trait_type
-        self.description = description
-        self.effects = effects
-        self.conflicting_traits = set(conflicting_traits)
-        self.incoming_relationship_effects = incoming_relationship_effects
-        self.outgoing_relationship_effects = outgoing_relationship_effects
-        self.owner_effects = owner_effects
-        self.target_effects = target_effects
+    spawn_frequency: int = 0
+    """(Agents only) The relative frequency of an agent spawning with this trait."""
+    is_inheritable: bool = False
+    """(Agents only) Is the trait inheritable."""
+    inheritance_chance_single: float = 0.0
+    """(Agents only) The probability of inheriting this trait if one parent has it."""
+    inheritance_chance_both: float = 0.0
+    """(Agents only) The probability of inheriting this trait if both parents have it."""
 
     def __str__(self) -> str:
         return self.name
@@ -91,7 +66,7 @@ class Trait:
 class TraitInstance:
     """An instance of a trait being attached to a GameObject."""
 
-    __slots__ = ("trait", "description", "duration", "has_duration")
+    __slots__ = ("trait", "description", "duration", "has_duration", "timestamp")
 
     trait: Trait
     """The trait attached to the GameObject."""
@@ -101,23 +76,30 @@ class TraitInstance:
     """The remaining number of time steps this trait is active for."""
     has_duration: bool
     """Does the trait have a duration time."""
+    timestamp: SimDate
+    """When was this trait acquired."""
 
-    def __init__(self, trait: Trait, description: str = "", duration: int = 0) -> None:
+    def __init__(
+        self, trait: Trait, timestamp: SimDate, description: str = "", duration: int = 0
+    ) -> None:
         self.trait = trait
         self.description = description
         self.has_duration = duration > 0
         self.duration = duration
+        self.timestamp = timestamp
 
     def __str__(self) -> str:
         return (
-            f"Trait(trait={self.trait.definition_id!r}, "
-            f"duration={self.duration!r}, description={self.description!r})"
+            f"TraitInstance(trait={self.trait.definition_id!r}, "
+            f"duration={self.duration!r}, description={self.description!r}, "
+            f"timestamp={self.timestamp})"
         )
 
     def __repr__(self) -> str:
         return (
-            f"Trait(trait={self.trait.definition_id!r}, "
-            f"duration={self.duration!r}, description={self.description!r})"
+            f"TraitInstance(trait={self.trait.definition_id!r}, "
+            f"duration={self.duration!r}, description={self.description!r}, "
+            f"timestamp={self.timestamp})"
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -127,6 +109,7 @@ class TraitInstance:
             "description": self.description,
             "has_duration": self.has_duration,
             "duration": self.duration,
+            "timestamp": self.timestamp.to_iso_str(),
         }
 
 
@@ -170,7 +153,10 @@ class Traits(Component):
             return False
 
         instance = TraitInstance(
-            trait=trait, duration=duration, description=description
+            trait=trait,
+            timestamp=self.gameobject.world.resources.get_resource(SimDate).copy(),
+            duration=duration,
+            description=description if description else trait.description,
         )
 
         self.traits[instance.trait.definition_id] = instance

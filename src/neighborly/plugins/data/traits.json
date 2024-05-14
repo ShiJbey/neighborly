@@ -30,7 +30,10 @@
     "conflicts_with": [
       "gullible"
     ],
-    "spawn_frequency": 1
+    "spawn_frequency": 1,
+    "tags": [
+      "personality"
+    ]
   },
   "gullible": {
     "name": "Gullible",
@@ -54,7 +57,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.25,
-    "inheritance_chance_both": 0.5
+    "inheritance_chance_both": 0.5,
+    "tags": [
+      "personality"
+    ]
   },
   "flirtatious": {
     "name": "Flirtatious",
@@ -66,6 +72,9 @@
         "stat": "romance",
         "amount": 30
       }
+    ],
+    "tags": [
+      "personality"
     ]
   },
   "loyal": {
@@ -91,7 +100,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.5,
-    "inheritance_chance_both": 0.75
+    "inheritance_chance_both": 0.75,
+    "tags": [
+      "personality"
+    ]
   },
   "traitorous": {
     "name": "Traitorous",
@@ -121,7 +133,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "personality"
+    ]
   },
   "introverted": {
     "name": "Introverted",
@@ -139,7 +154,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "extroverted": {
     "name": "Extroverted",
@@ -157,7 +175,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "compassionate": {
     "name": "Compassionate",
@@ -189,7 +210,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
-    "inheritance_chance_both": 0.7
+    "inheritance_chance_both": 0.7,
+    "tags": [
+      "personality"
+    ]
   },
   "callous": {
     "name": "Callous",
@@ -221,7 +245,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "personality"
+    ]
   },
   "adventurous": {
     "name": "Adventurous",
@@ -239,7 +266,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "cautious": {
     "name": "Cautious",
@@ -257,7 +287,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "charismatic": {
     "name": "Charismatic",
@@ -282,7 +315,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "awkward": {
     "name": "Awkward",
@@ -300,7 +336,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "personality"
+    ]
   },
   "ambitious": {
     "name": "Ambitious",
@@ -323,7 +362,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "personality"
+    ]
   },
   "lazy": {
     "name": "Lazy",
@@ -346,7 +388,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "personality"
+    ]
   },
   "hot-headed": {
     "name": "Hot-Headed",
@@ -374,7 +419,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "personality"
+    ]
   },
   "calm": {
     "name": "Calm",
@@ -397,7 +445,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4
+    "inheritance_chance_both": 0.4,
+    "tags": [
+      "personality"
+    ]
   },
   "intelligent": {
     "name": "Intelligent",
@@ -412,7 +463,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
-    "inheritance_chance_both": 0.7
+    "inheritance_chance_both": 0.7,
+    "tags": [
+      "personality"
+    ]
   },
   "simpleminded": {
     "name": "Simple-Minded",
@@ -427,7 +481,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
-    "inheritance_chance_both": 0.7
+    "inheritance_chance_both": 0.7,
+    "tags": [
+      "personality"
+    ]
   },
   "charitable": {
     "name": "Charitable",
@@ -442,7 +499,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "selfish": {
     "name": "Selfish",
@@ -462,7 +522,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "optimistic": {
     "name": "Optimistic",
@@ -480,7 +543,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "pessimistic": {
     "name": "Pessimistic",
@@ -498,7 +564,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "energetic": {
     "name": "Energetic",
@@ -516,7 +585,10 @@
     ],
     "spawn_frequency": 2,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "lethargic": {
     "name": "Lethargic",
@@ -534,7 +606,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "confident": {
     "name": "Confident",
@@ -549,7 +624,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "insecure": {
     "name": "Insecure",
@@ -564,7 +642,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "betraying": {
     "name": "Betraying",
@@ -579,7 +660,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "genius": {
     "name": "Genius",
@@ -597,7 +681,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "friendly": {
     "name": "Friendly",
@@ -619,7 +706,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "lustful": {
     "name": "Lustful",
@@ -644,7 +734,10 @@
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6
+    "inheritance_chance_both": 0.6,
+    "tags": [
+      "personality"
+    ]
   },
   "immortal": {
     "name": "Immortal",
@@ -658,7 +751,10 @@
       }
     ],
     "inheritance_chance_single": 0.0,
-    "inheritance_chance_both": 0.9
+    "inheritance_chance_both": 0.9,
+    "tags": [
+      "personality"
+    ]
   },
   "attracted_to_men": {
     "name": "Attracted to Men",
@@ -667,7 +763,7 @@
     "effects": [
       {
         "type": "AddBelief",
-        "belief_id": "men_are_attractive."
+        "belief_id": "men_are_attractive"
       },
       {
         "type": "AddBelief",
@@ -677,7 +773,10 @@
     "conflicts_with": [
       "attracted_to_women"
     ],
-    "spawn_frequency": 3
+    "spawn_frequency": 3,
+    "tags": [
+      "sexuality"
+    ]
   },
   "attracted_to_women": {
     "name": "Attracted to Women",
@@ -696,7 +795,10 @@
     "conflicts_with": [
       "attracted_to_men"
     ],
-    "spawn_frequency": 3
+    "spawn_frequency": 3,
+    "tags": [
+      "sexuality"
+    ]
   },
   "departed": {
     "name": "Departed",

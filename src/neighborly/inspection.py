@@ -10,7 +10,7 @@ import tabulate
 
 from neighborly import __version__
 from neighborly.components.business import Business, BusinessStatus, Occupation
-from neighborly.components.character import Character
+from neighborly.components.character import Character, Species
 from neighborly.components.location import (
     CurrentLocation,
     FrequentedLocations,
@@ -254,7 +254,7 @@ def _character_header(character: GameObject) -> str:
     output += f"Status: {activity_status}\n"
     output += f"Age: {int(age)} ({character_data.life_stage.name})\n"
     output += f"Sex: {character_data.sex.name}\n"
-    output += f"Species: {character_data.species.name}\n"
+    output += f"Species: {character.get_component(Species).species.name}\n"
     output += "\n"
     output += f"Works at: {works_at}\n"
     output += f"Residence: {residence}\n"
@@ -320,13 +320,19 @@ def _get_frequented_by_table(obj: GameObject) -> str:
     if frequented_by is None:
         return ""
 
-    return tabulate.tabulate(
+    output = "=== Frequented By ===\n"
+
+    output += tabulate.tabulate(
         [
             (entry.uid, entry.get_component(Character).full_name)
             for entry in frequented_by
         ],
         headers=("UID", "Name"),
     )
+
+    output += "\n"
+
+    return output
 
 
 def _get_traits_table(obj: GameObject) -> str:
@@ -375,22 +381,26 @@ def _get_relationships_table(obj: GameObject) -> str:
     if relationships is None:
         return ""
 
-    relationship_data: list[tuple[bool, int, str, float, float, str]] = []
+    relationship_data: list[tuple[bool, int, str, str, str, str]] = []
 
     for target, relationship in relationships.outgoing.items():
-        reputation = get_stat(relationship, "reputation").value
-        romance = get_stat(relationship, "romance").value
+        reputation = get_stat(relationship, "reputation")
+        romance = get_stat(relationship, "romance")
         traits = ", ".join(
             t.trait.name for t in relationship.get_component(Traits).traits.values()
         )
+        rep_base = int(reputation.base_value)
+        rom_base = int(romance.base_value)
+        rep_boost = int(reputation.value - reputation.base_value)
+        rom_boost = int(romance.value - romance.base_value)
 
         relationship_data.append(
             (
                 relationship.has_component(Active),
                 relationship.uid,
                 target.name,
-                int(reputation),
-                int(romance),
+                f"{rep_base}[{_sign(rep_boost)}{abs(rep_boost)}]",
+                f"{rom_base}[{_sign(rom_boost)}{abs(rom_boost)}]",
                 traits,
             )
         )
@@ -425,14 +435,10 @@ def _get_stats_table(obj: GameObject) -> str:
         stat = stat_component.stat
         if stat.is_discrete:
             boost = int(stat.value - stat.base_value)
-            value_label = (
-                f"{int(stat.base_value)}[{_sign(boost)}{boost}] / {stat.bounds[1]}"
-            )
+            value_label = f"{int(stat.base_value)}[{_sign(boost)}{abs(boost)}]"
         else:
             boost = int(stat.value - stat.base_value)
-            value_label = (
-                f"{stat.base_value:.3f}[{_sign(boost)}{boost}] / {stat.bounds[1]}"
-            )
+            value_label = f"{stat.base_value:.3f}[{_sign(boost)}{abs(boost)}]"
 
         stats_table_data.append((stat_component.stat_name, value_label))
 
@@ -655,9 +661,11 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
                 character.full_name,
                 int(age.value),
                 str(character.sex.name),
-                str(character.species.name),
+                str(species.species.name),
             )
-            for uid, (character, age) in sim.world.get_components((Character, Age))
+            for uid, (character, species, age) in sim.world.get_components(
+                (Character, Species, Age)
+            )
         ]
     else:
         characters = [
@@ -666,10 +674,10 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
                 character.full_name,
                 int(age.value),
                 str(character.sex.name),
-                str(character.species.name),
+                str(species.species.name),
             )
-            for uid, (character, age, _) in sim.world.get_components(
-                (Character, Age, Active)
+            for uid, (character, species, age, _) in sim.world.get_components(
+                (Character, Species, Age, Active)
             )
         ]
 
@@ -737,7 +745,7 @@ def list_traits(sim: Simulation) -> None:
 
     traits = [
         (trait_def.definition_id, trait_def.name, trait_def.description)
-        for trait_def in trait_library.definitions.values()
+        for trait_def in trait_library.instances.values()
     ]
 
     table = tabulate.tabulate(traits, headers=["Trait ID", "Name", "Description"])

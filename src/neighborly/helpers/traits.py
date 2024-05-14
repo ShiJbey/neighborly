@@ -8,6 +8,7 @@ from typing import Union
 
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.traits import Trait, Traits, TraitType
+from neighborly.datetime import SimDate
 from neighborly.ecs import GameObject
 from neighborly.helpers.relationship import get_relationship
 from neighborly.libraries import TraitLibrary
@@ -111,7 +112,9 @@ def add_relationship_trait(
         raise TypeError(f"{trait_obj.definition_id} is not a relationship trait.")
 
     success = relationship.get_component(Traits).add_trait(
-        trait_obj, description=description, duration=duration
+        trait_obj,
+        description=description if description else trait_obj.description,
+        duration=duration,
     )
 
     if success is False:
@@ -176,11 +179,7 @@ def remove_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
 
 
 def remove_relationship_trait(
-    owner: GameObject,
-    target: GameObject,
-    trait: Union[str, Trait],
-    duration: int = -1,
-    description: str = "",
+    owner: GameObject, target: GameObject, trait: Union[str, Trait]
 ) -> bool:
     """Remove a trait from a relationship.
 
@@ -192,10 +191,6 @@ def remove_relationship_trait(
         The target of the relationship.
     trait
         The trait.
-    duration
-        How long the trait should last.
-    description
-        Override the default trait description.
 
     Return
     ------
@@ -211,9 +206,7 @@ def remove_relationship_trait(
     else:
         trait_obj = trait
 
-    success = relationship.get_component(Traits).add_trait(
-        trait_obj, description=description, duration=duration
-    )
+    success = relationship.get_component(Traits).remove_trait(trait_obj)
 
     if success is False:
         return False
@@ -280,3 +273,18 @@ def get_relationships_with_traits(
             matches.append(relationship)
 
     return matches
+
+
+def get_time_with_trait(gameobject: GameObject, trait: Union[str, Trait]) -> int:
+    """Get the number of months the trait has been active."""
+    current_date = gameobject.world.resources.get_resource(SimDate)
+
+    if isinstance(trait, str):
+        trait_id = trait
+    else:
+        trait_id = trait.definition_id
+
+    if trait_instance := gameobject.get_component(Traits).traits.get(trait_id):
+        return current_date.total_months - trait_instance.timestamp.total_months
+    else:
+        return 0

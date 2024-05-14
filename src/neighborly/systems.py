@@ -12,7 +12,13 @@ from typing import ClassVar, Optional
 
 from neighborly.components.beliefs import Belief
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
-from neighborly.components.character import Character, LifeStage, Pregnant, Species
+from neighborly.components.character import (
+    Character,
+    LifeStage,
+    Pregnant,
+    Species,
+    SpeciesType,
+)
 from neighborly.components.location import (
     CurrentLocation,
     FrequentedLocations,
@@ -337,6 +343,12 @@ class CompileTraitDefsSystem(System):
                         definition_id=trait_def.definition_id,
                         name=trait_def.name,
                         trait_type=TraitType[trait_def.trait_type.upper()],
+                        inheritance_chance_both=trait_def.inheritance_chance_both,
+                        inheritance_chance_single=trait_def.inheritance_chance_single,
+                        is_inheritable=(
+                            trait_def.inheritance_chance_single > 0
+                            or trait_def.inheritance_chance_both > 0
+                        ),
                         description=trait_def.description,
                         effects=[
                             effect_library.create_from_obj(world, entry)
@@ -378,7 +390,7 @@ class CompileSpeciesDefsSystem(System):
                 library.add_definition(definition)
 
                 library.add_species(
-                    Species(
+                    SpeciesType(
                         definition_id=definition.definition_id,
                         name=definition.name,
                         description=definition.description,
@@ -697,32 +709,33 @@ class LifeStageSystem(System):
 
     def on_update(self, world: World) -> None:
 
-        for _, (character, age, _) in world.get_components((Character, Age, Active)):
-            species = character.species
+        for _, (character, species, age, _) in world.get_components(
+            (Character, Species, Age, Active)
+        ):
 
-            if species.can_physically_age:
-                if age.value >= species.senior_age:
+            if species.species.can_physically_age:
+                if age.value >= species.species.senior_age:
                     if character.life_stage != LifeStage.SENIOR:
                         evt = BecomeSeniorEvent(character.gameobject)
                         character.life_stage = LifeStage.SENIOR
                         dispatch_life_event(world, evt)
                         add_to_personal_history(character.gameobject, evt)
 
-                elif age.value >= species.adult_age:
+                elif age.value >= species.species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
                         evt = BecomeAdultEvent(character.gameobject)
                         character.life_stage = LifeStage.ADULT
                         dispatch_life_event(world, evt)
                         add_to_personal_history(character.gameobject, evt)
 
-                elif age.value >= species.young_adult_age:
+                elif age.value >= species.species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
                         evt = BecomeYoungAdultEvent(character.gameobject)
                         character.life_stage = LifeStage.YOUNG_ADULT
                         dispatch_life_event(world, evt)
                         add_to_personal_history(character.gameobject, evt)
 
-                elif age.value >= species.adolescent_age:
+                elif age.value >= species.species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
                         evt = BecomeAdolescentEvent(character.gameobject)
                         character.life_stage = LifeStage.ADOLESCENT

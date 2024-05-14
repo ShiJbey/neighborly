@@ -963,8 +963,8 @@ class MoveOutOfResidence(Action):
                 if resident == self.character:
                     continue
 
-                add_relationship_trait(self.character, resident, "live_together")
-                add_relationship_trait(resident, self.character, "live_together")
+                remove_relationship_trait(self.character, resident, "live_together")
+                remove_relationship_trait(resident, self.character, "live_together")
 
             if former_residence_comp.is_owner(self.character):
                 former_residence_comp.remove_owner(self.character)

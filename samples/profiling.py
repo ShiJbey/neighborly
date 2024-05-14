@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
-    ).add_utility_consideration("become-business-owner", lambda action: 0.5)
+    ).add_success_consideration("become-business-owner", lambda action: 0.5)
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("become-business-owner", has_occupation_consideration)

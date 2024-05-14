@@ -314,15 +314,17 @@ class CharacterDatingSystem(System):
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, _) in world.get_components((Character, Active)):
-
-            relationships = get_relationships_with_traits(character.gameobject, "crush")
+        for _, (character, relationships, _) in world.get_components(
+            (Character, Relationships, Active)
+        ):
 
             potential_romances: list[tuple[StartDating, float]] = []
             potential_romance_scores: list[float] = []
 
-            for relationship in relationships:
-                partner = relationship.get_component(Relationship).target
+            for partner, relationship in relationships.outgoing.items():
+
+                if not relationship.is_active:
+                    continue
 
                 if partner.is_active is False:
                     continue
@@ -571,7 +573,7 @@ class CrushFormationSystem(System):
     on characters that they are not currently in a romantic relationship with.
     """
 
-    CRUSH_THRESHOLD: ClassVar[float] = 0.7
+    CRUSH_THRESHOLD: ClassVar[float] = 0.6
     """Probability score required for someone to form a crush."""
 
     def on_update(self, world: World) -> None:
@@ -607,8 +609,8 @@ class CrushFormationSystem(System):
 
             action_probability = get_action_probability(action)
 
-            if action_probability < self.CRUSH_THRESHOLD:
-                continue
+            # if action_probability < self.CRUSH_THRESHOLD:
+            #     continue
 
             if rng.random() < action_probability:
                 action.execute()
