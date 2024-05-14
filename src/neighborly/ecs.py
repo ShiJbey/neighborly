@@ -215,6 +215,7 @@ class GameObject:
     GameObjects wrap a unique integer identifier and provide an interface to access
     associated components and child/parent gameobjects.
     """
+
     __slots__ = (
         "_uid",
         "_name",
@@ -243,7 +244,6 @@ class GameObject:
     """Metadata associated with this GameObject."""
     _component_types: list[Type[Component]]
     """Types of the GameObjects components in order of addition."""
-
     _event_listeners: dict[str, OrderedSet[Callable[[IEvent], None]]]
     """Event listeners that are only called when a specific type of event fires."""
 
@@ -361,7 +361,6 @@ class GameObject:
 
         return component
 
-
     def add_event_listener(
         self,
         event_name: str,
@@ -376,14 +375,13 @@ class GameObject:
         """
         if event_name not in self._event_listeners:
             self._event_listeners[event_name] = OrderedSet([])
-    
+
         listener_set = self._event_listeners[event_name]
         listener_set.add(listener)
-    
+
     def remove_event_listener(
-        self, 
-        event_name: str, 
-        listener: Callable[[IEvent], None]) -> None:
+        self, event_name: str, listener: Callable[[IEvent], None]
+    ) -> None:
         """Remove a listener function from a specific event type.
 
         Parameters
@@ -420,8 +418,8 @@ class GameObject:
         event : IEvent
             The event to fire
         """
-        for callback_fn in self._event_listeners.get(event.event_type, OrderedSet()):
-            callback_fn(event)   
+        for callback_fn in self._event_listeners.get(event.event_type, OrderedSet([])):
+            callback_fn(event)
 
     def remove_component(self, component_type: Type[Component]) -> bool:
         """Remove a component from the GameObject.
