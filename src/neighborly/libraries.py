@@ -19,6 +19,7 @@ from neighborly.components.beliefs import Belief
 from neighborly.components.business import JobRole
 from neighborly.components.character import SpeciesType
 from neighborly.components.location import LocationPreferenceRule
+from neighborly.components.skills import Skill
 from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
     BeliefDef,
@@ -73,6 +74,23 @@ class ContentDefinitionLibrary(Generic[_T]):
 
 class SkillLibrary(ContentDefinitionLibrary[SkillDef]):
     """Manages skill definitions and instances."""
+
+    _slots__ = ("instances",)
+
+    instances: dict[str, Skill]
+    """Skill instances."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.instances = {}
+
+    def add_skill(self, skill: Skill) -> None:
+        """Add skill to the library."""
+        self.instances[skill.definition_id] = skill
+
+    def get_skill(self, definition_id: str) -> Skill:
+        """Get a skill instance."""
+        return self.instances[definition_id]
 
 
 class TraitLibrary(ContentDefinitionLibrary[TraitDef]):

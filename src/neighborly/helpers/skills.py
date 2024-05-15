@@ -2,8 +2,7 @@
 
 """
 
-from neighborly.components.skills import Skills
-from neighborly.components.stats import Stat
+from neighborly.components.skills import SkillInstance, Skills
 from neighborly.ecs import GameObject
 from neighborly.libraries import SkillLibrary
 
@@ -21,8 +20,8 @@ def add_skill(gameobject: GameObject, skill_id: str, base_value: float = 0.0) ->
         The base value of the skill when added.
     """
     library = gameobject.world.resource_manager.get_resource(SkillLibrary)
-    skill = library.get_definition(skill_id)
-    gameobject.get_component(Skills).add_skill(skill.definition_id, base_value)
+    skill = library.get_skill(skill_id)
+    gameobject.get_component(Skills).add_skill(skill, base_value)
 
 
 def has_skill(gameobject: GameObject, skill_id: str) -> bool:
@@ -43,7 +42,7 @@ def has_skill(gameobject: GameObject, skill_id: str) -> bool:
     return skill_id in gameobject.get_component(Skills).skills
 
 
-def get_skill(gameobject: GameObject, skill_id: str) -> Stat:
+def get_skill(gameobject: GameObject, skill_id: str) -> SkillInstance:
     """Get a character's skill stat.
 
     Parameters
@@ -55,7 +54,6 @@ def get_skill(gameobject: GameObject, skill_id: str) -> Stat:
 
     Returns
     -------
-    Stat
-        The stat associated with this skill.
+    SkillInstance
     """
     return gameobject.get_component(Skills).skills[skill_id]

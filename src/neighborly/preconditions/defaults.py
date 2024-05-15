@@ -128,25 +128,25 @@ class SkillRequirement(Precondition):
         target: GameObject = blackboard[self.target_key]
 
         if has_skill(target, self.skill_id):
-            skill_stat = get_skill(target, self.skill_id)
+            skill_instance = get_skill(target, self.skill_id)
 
             if self.comparator == ComparatorOp.EQ:
-                return skill_stat.value == self.skill_level
+                return skill_instance.stat.value == self.skill_level
 
             elif self.comparator == ComparatorOp.NEQ:
-                return skill_stat.value != self.skill_level
+                return skill_instance.stat.value != self.skill_level
 
             elif self.comparator == ComparatorOp.LT:
-                return skill_stat.value < self.skill_level
+                return skill_instance.stat.value < self.skill_level
 
             elif self.comparator == ComparatorOp.GT:
-                return skill_stat.value > self.skill_level
+                return skill_instance.stat.value > self.skill_level
 
             elif self.comparator == ComparatorOp.LTE:
-                return skill_stat.value <= self.skill_level
+                return skill_instance.stat.value <= self.skill_level
 
             elif self.comparator == ComparatorOp.GTE:
-                return skill_stat.value >= self.skill_level
+                return skill_instance.stat.value >= self.skill_level
 
         return False
 

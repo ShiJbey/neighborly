@@ -334,10 +334,10 @@ class DefaultChildFactory(IChildFactory):
             base_value: float = 0
 
             if has_skill(birthing_parent, skill_id):
-                base_value += get_skill(birthing_parent, skill_id).base_value
+                base_value += get_skill(birthing_parent, skill_id).stat.base_value
 
             if has_skill(other_parent, skill_id):
-                base_value += get_skill(other_parent, skill_id).base_value
+                base_value += get_skill(other_parent, skill_id).stat.base_value
 
             base_value = base_value / 2
 

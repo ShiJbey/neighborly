@@ -464,10 +464,10 @@ def _get_skills_table(obj: GameObject) -> str:
         [
             (
                 skill_id,
-                f"{int(stat.value)}/{int(SKILL_MAX_VALUE)}",
+                f"{int(skill.stat.value)}/{int(SKILL_MAX_VALUE)}",
                 library.get_definition(skill_id).description,
             )
-            for skill_id, stat in skill_data.skills.items()
+            for skill_id, skill in skill_data.skills.items()
         ],
         headers=("Name", "Level", "Description"),
     )

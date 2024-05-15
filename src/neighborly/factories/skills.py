@@ -34,8 +34,8 @@ class SkillsFactory(ComponentFactory):
                 base_value = rng.randint(min_value, max_value)
 
             if skill_id := entry.get("with_id"):
-                skill = skill_library.get_definition(skill_id)
-                skills.add_skill(skill.definition_id, base_value)
+                skill = skill_library.get_skill(skill_id)
+                skills.add_skill(skill, base_value)
 
             elif skill_tags := entry.get("with_tags"):
                 potential_skills = skill_library.get_definition_with_tags(skill_tags)
@@ -45,6 +45,8 @@ class SkillsFactory(ComponentFactory):
 
                 chosen_skill = rng.choice(potential_skills)
 
-                skills.add_skill(chosen_skill.definition_id, base_value)
+                skills.add_skill(
+                    skill_library.get_skill(chosen_skill.definition_id), base_value
+                )
 
         return skills

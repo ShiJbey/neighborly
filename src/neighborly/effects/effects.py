@@ -224,14 +224,14 @@ class AddSkillDebuff(Effect):
     def apply(self, target: GameObject) -> None:
         if not has_skill(target, self.skill_name):
             add_skill(target, self.skill_name)
-        get_skill(target, self.skill_name).add_modifier(
+        get_skill(target, self.skill_name).stat.add_modifier(
             StatModifier(
                 value=-self.amount, modifier_type=StatModifierType.FLAT, source=self
             )
         )
 
     def remove(self, target: GameObject) -> None:
-        get_skill(target, self.skill_name).remove_modifiers_from_source(self)
+        get_skill(target, self.skill_name).stat.remove_modifiers_from_source(self)
 
     @classmethod
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
@@ -268,14 +268,14 @@ class AddSkillBuff(Effect):
     def apply(self, target: GameObject) -> None:
         if not has_skill(target, self.skill_name):
             add_skill(target, self.skill_name)
-        get_skill(target, self.skill_name).add_modifier(
+        get_skill(target, self.skill_name).stat.add_modifier(
             StatModifier(
                 value=self.amount, modifier_type=StatModifierType.FLAT, source=self
             )
         )
 
     def remove(self, target: GameObject) -> None:
-        get_skill(target, self.skill_name).remove_modifiers_from_source(self)
+        get_skill(target, self.skill_name).stat.remove_modifiers_from_source(self)
 
     @classmethod
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
@@ -312,7 +312,7 @@ class DecreaseBaseSkill(Effect):
     def apply(self, target: GameObject) -> None:
         if not has_skill(target, self.skill_name):
             add_skill(target, self.skill_name)
-        get_skill(target, self.skill_name).base_value -= self.amount
+        get_skill(target, self.skill_name).stat.base_value -= self.amount
 
     def remove(self, target: GameObject) -> None:
         # This effect cannot be undone.
@@ -353,7 +353,7 @@ class IncreaseBaseSkill(Effect):
     def apply(self, target: GameObject) -> None:
         if not has_skill(target, self.skill_name):
             add_skill(target, self.skill_name)
-        get_skill(target, self.skill_name).base_value += self.amount
+        get_skill(target, self.skill_name).stat.base_value += self.amount
 
     def remove(self, target: GameObject) -> None:
         # This effect cannot be undone

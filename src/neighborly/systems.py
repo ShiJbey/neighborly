@@ -30,6 +30,7 @@ from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District
 from neighborly.components.shared import Age
+from neighborly.components.skills import Skill
 from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
 from neighborly.components.stats import Lifespan
 from neighborly.components.traits import Trait, Traits, TraitType
@@ -421,6 +422,15 @@ class CompileSkillDefsSystem(System):
         for skill_def in compiled_defs:
             if not skill_def.is_template:
                 skill_library.add_definition(skill_def)
+
+                skill_library.add_skill(
+                    Skill(
+                        definition_id=skill_def.definition_id,
+                        name=skill_def.name,
+                        description=skill_def.description,
+                        tags=set(*skill_def.tags),
+                    )
+                )
 
 
 class CompileJobRoleDefsSystem(System):
