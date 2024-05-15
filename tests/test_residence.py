@@ -12,18 +12,20 @@ from neighborly.loaders import (
 )
 from neighborly.simulation import Simulation
 
-_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+_DATA_DIR = (
+    pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
+)
 
 
 def test_create_residence() -> None:
     sim = Simulation()
 
-    load_districts(sim, _TEST_DATA_DIR / "districts.json")
-    load_settlements(sim, _TEST_DATA_DIR / "settlements.json")
-    load_businesses(sim, _TEST_DATA_DIR / "businesses.json")
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_residences(sim, _TEST_DATA_DIR / "residences.json")
-    load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
+    load_districts(sim, _DATA_DIR / "districts.json")
+    load_settlements(sim, _DATA_DIR / "settlements.json")
+    load_businesses(sim, _DATA_DIR / "businesses.json")
+    load_characters(sim, _DATA_DIR / "characters.json")
+    load_residences(sim, _DATA_DIR / "residences.json")
+    load_job_roles(sim, _DATA_DIR / "job_roles.json")
 
     sim.initialize()
 

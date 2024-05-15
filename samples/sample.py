@@ -23,23 +23,7 @@ from neighborly.ecs import GameObject, IEvent
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.traits import get_relationships_with_traits, get_time_with_trait
 from neighborly.libraries import ActionConsiderationLibrary
-from neighborly.loaders import (
-    load_businesses,
-    load_characters,
-    load_districts,
-    load_job_roles,
-    load_residences,
-    load_settlements,
-    load_skills,
-    load_species,
-)
-from neighborly.plugins import (
-    default_character_names,
-    default_characters,
-    default_settlement_names,
-    default_systems,
-    default_traits,
-)
+from neighborly.plugins import default_content
 from neighborly.plugins.actions import (
     BecomeBusinessOwner,
     Divorce,
@@ -52,8 +36,6 @@ from neighborly.plugins.actions import (
 )
 from neighborly.plugins.default_events import DatingBreakUpEvent, DivorceEvent
 from neighborly.simulation import Simulation
-
-TEST_DATA_DIR = pathlib.Path(__file__).parent.parent / "tests" / "data"
 
 
 def get_args() -> argparse.Namespace:
@@ -95,6 +77,12 @@ def get_args() -> argparse.Namespace:
         "--profiling",
         action="store_true",
         help="Enable profiling.",
+    )
+
+    parser.add_argument(
+        "--disable-logging",
+        help="Disable logging events to a file.",
+        action="store_true",
     )
 
     parser.add_argument(
@@ -362,25 +350,14 @@ def main() -> Simulation:
             seed=args.seed,
             settlement="basic_settlement",
             logging=LoggingConfig(
-                logging_enabled=True, log_level="DEBUG", log_to_terminal=False
+                logging_enabled=not bool(args.disable_logging),
+                log_level="DEBUG",
+                log_to_terminal=False,
             ),
         )
     )
 
-    load_districts(sim, TEST_DATA_DIR / "districts.json")
-    load_settlements(sim, TEST_DATA_DIR / "settlements.json")
-    load_businesses(sim, TEST_DATA_DIR / "businesses.json")
-    load_characters(sim, TEST_DATA_DIR / "characters.json")
-    load_residences(sim, TEST_DATA_DIR / "residences.json")
-    load_job_roles(sim, TEST_DATA_DIR / "job_roles.json")
-    load_skills(sim, TEST_DATA_DIR / "skills.json")
-    load_species(sim, TEST_DATA_DIR / "species.json")
-
-    default_traits.load_plugin(sim)
-    default_character_names.load_plugin(sim)
-    default_settlement_names.load_plugin(sim)
-    default_systems.load_plugin(sim)
-    default_characters.load_plugin(sim)
+    default_content.load_plugin(sim)
 
     sim.world.resources.get_resource(
         ActionConsiderationLibrary

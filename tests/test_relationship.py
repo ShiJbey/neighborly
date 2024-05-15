@@ -15,6 +15,7 @@ from neighborly.helpers.relationship import (
 )
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.libraries import CharacterLibrary
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -28,7 +29,9 @@ from neighborly.loaders import (
 from neighborly.plugins import default_character_names, default_traits
 from neighborly.simulation import Simulation
 
-_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+_DATA_DIR = (
+    pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
+)
 
 
 @pytest.fixture
@@ -36,17 +39,22 @@ def sim() -> Simulation:
     """Create sample simulation to use for test cases"""
     simulation = Simulation()
 
-    load_districts(simulation, _TEST_DATA_DIR / "districts.json")
-    load_settlements(simulation, _TEST_DATA_DIR / "settlements.json")
-    load_businesses(simulation, _TEST_DATA_DIR / "businesses.json")
-    load_characters(simulation, _TEST_DATA_DIR / "characters.json")
-    load_residences(simulation, _TEST_DATA_DIR / "residences.json")
-    load_job_roles(simulation, _TEST_DATA_DIR / "job_roles.json")
-    load_skills(simulation, _TEST_DATA_DIR / "skills.json")
-    load_species(simulation, _TEST_DATA_DIR / "species.json")
+    load_districts(simulation, _DATA_DIR / "districts.json")
+    load_settlements(simulation, _DATA_DIR / "settlements.json")
+    load_businesses(simulation, _DATA_DIR / "businesses.json")
+    load_characters(simulation, _DATA_DIR / "characters.json")
+    load_residences(simulation, _DATA_DIR / "residences.json")
+    load_job_roles(simulation, _DATA_DIR / "job_roles.json")
+    load_skills(simulation, _DATA_DIR / "skills.json")
+    load_species(simulation, _DATA_DIR / "species.json")
 
     default_traits.load_plugin(simulation)
     default_character_names.load_plugin(simulation)
+
+    # IMPORTANT: Stop character from generating with traits
+    simulation.world.resources.get_resource(CharacterLibrary).get_definition(
+        "base_character"
+    ).traits.clear()
 
     simulation.initialize()
 

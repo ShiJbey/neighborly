@@ -92,19 +92,14 @@ python -m pip install -e ".[development]"
 
 ## 🍪 Running the Samples
 
-Example simulations can be found in the `samples` directory. These demonstrate how to create simulations and collect and visualize data. We provide command line scripts and interactive IPython notebooks.
-
-First, follow the [Installing for Local Development](#installing-for-local-development) instructions provided above. Then the commands below will get you started with running the sample simulations.
+Example simulations can be found in the `samples` directory. Then the commands below will get you started with running the sample simulations.
 
 ```bash
 # Step 1: Install neighborly locally and all the dependencies needed to run the sample content.
-python -m pip install -e ".[samples]"
+python -m pip install "."
 
-# Step 2a: (optional) To run sample scripts
+# Step 2: Run a sample script
 python ./samples/NAME_OF_SAMPLE_FILE.py
-
-# Step 2b: (optional) To run IPython (*.ipynb) notebooks
-jupyter-lab
 ```
 
 ## 🧪 Running the Tests

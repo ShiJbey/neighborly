@@ -184,5 +184,32 @@
         "value_range": "0-80"
       }
     }
+  },
+  "farmer": {
+    "is_template": true,
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "farmer"
+    ]
+  },
+  "merchant": {
+    "is_template": true,
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "merchant"
+    ]
+  },
+  "nobility": {
+    "is_template": true,
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "nobility"
+    ]
   }
 }

@@ -10,11 +10,14 @@ import pytest
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
+from neighborly.libraries import CharacterLibrary
 from neighborly.loaders import load_characters, load_skills, load_species, load_traits
 from neighborly.plugins import default_character_names, default_traits
 from neighborly.simulation import Simulation
 
-_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+_DATA_DIR = (
+    pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
+)
 
 
 @pytest.fixture
@@ -26,10 +29,15 @@ def test_sim() -> Simulation:
     default_traits.load_plugin(sim)
     default_character_names.load_plugin(sim)
 
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-    load_species(sim, _TEST_DATA_DIR / "species.json")
-    load_traits(sim, _TEST_DATA_DIR / "traits.json")
+    load_characters(sim, _DATA_DIR / "characters.json")
+    load_skills(sim, _DATA_DIR / "skills.json")
+    load_species(sim, _DATA_DIR / "species.json")
+    load_traits(sim, _DATA_DIR / "traits.json")
+
+    # IMPORTANT: Stop character from generating with traits
+    sim.world.resources.get_resource(CharacterLibrary).get_definition(
+        "base_character"
+    ).traits.clear()
 
     sim.initialize()
 
