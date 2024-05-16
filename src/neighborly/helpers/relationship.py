@@ -11,7 +11,7 @@ from neighborly.components.relationship import (
 )
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
-from neighborly.ecs import GameObject
+from neighborly.ecs import Event, GameObject
 from neighborly.libraries import BeliefLibrary
 
 
@@ -59,6 +59,10 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
             effect.apply(relationship)
 
     reevaluate_relationship(relationship.get_component(Relationship))
+
+    relationship.world.events.dispatch_event(
+        Event("relationship-added", world=relationship.world, relationship=relationship)
+    )
 
     return relationship
 

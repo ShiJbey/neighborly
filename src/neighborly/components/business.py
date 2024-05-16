@@ -8,7 +8,7 @@ in the settlement and character occupations.
 from __future__ import annotations
 
 import enum
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Optional
 
 from neighborly.datetime import SimDate
 from neighborly.ecs import Component, GameObject
@@ -19,13 +19,13 @@ from neighborly.preconditions.base_types import Precondition
 class Occupation(Component):
     """Information about a character's employment status."""
 
-    __slots__ = "_start_date", "_business", "_job_role"
+    __slots__ = ("start_date", "business", "job_role")
 
-    _job_role: JobRole
+    job_role: JobRole
     """The job role."""
-    _business: GameObject
+    business: GameObject
     """The business they work for."""
-    _start_date: SimDate
+    start_date: SimDate
     """The year they started this occupation."""
 
     def __init__(
@@ -45,24 +45,9 @@ class Occupation(Component):
             The date they started this occupation.
         """
         super().__init__()
-        self._job_role = job_role
-        self._business = business
-        self._start_date = start_date
-
-    @property
-    def job_role(self) -> JobRole:
-        """The job role."""
-        return self._job_role
-
-    @property
-    def business(self) -> GameObject:
-        """The business they work for."""
-        return self._business
-
-    @property
-    def start_date(self) -> SimDate:
-        """The year they started this occupation."""
-        return self._start_date
+        self.job_role = job_role
+        self.business = business
+        self.start_date = start_date
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -97,25 +82,25 @@ class Business(Component):
     """A business where characters work."""
 
     __slots__ = (
-        "_name",
-        "_owner_role",
-        "_employee_roles",
-        "_owner",
-        "_employees",
-        "_status",
+        "name",
+        "owner_role",
+        "employee_roles",
+        "owner",
+        "employees",
+        "status",
     )
 
-    _name: str
+    name: str
     """The name of the business."""
-    _owner_role: JobRole
+    owner_role: JobRole
     """The role of the business' owner."""
-    _employee_roles: dict[JobRole, int]
+    employee_roles: dict[JobRole, int]
     """The roles of employees."""
-    _owner: Optional[GameObject]
+    owner: Optional[GameObject]
     """Owner and their job role ID."""
-    _employees: dict[GameObject, JobRole]
+    employees: dict[GameObject, JobRole]
     """Employees mapped to their job role ID."""
-    _status: BusinessStatus
+    status: BusinessStatus
     """Current status of the business."""
 
     def __init__(
@@ -125,136 +110,40 @@ class Business(Component):
         employee_roles: dict[JobRole, int],
     ) -> None:
         super().__init__()
-        self._name = name
-        self._owner_role = owner_role
-        self._employee_roles = employee_roles
-        self._owner = None
-        self._employees = {}
-        self._status = BusinessStatus.CLOSED
-
-    @property
-    def name(self) -> str:
-        """The name of the business."""
-        return self._name
-
-    @name.setter
-    def name(self, value: str) -> None:
-        """Set the name of the business."""
-        self._name = value
-        self.gameobject.name = value
-
-    @property
-    def owner(self) -> Optional[GameObject]:
-        """Owner and their job role ID."""
-        return self._owner
-
-    @property
-    def owner_role(self) -> JobRole:
-        """The role of the business' owner."""
-        return self._owner_role
-
-    @property
-    def employees(self) -> Mapping[GameObject, JobRole]:
-        """Employees mapped to their job role ID."""
-        return self._employees
-
-    @property
-    def status(self) -> BusinessStatus:
-        """The current status of the business."""
-        return self._status
-
-    @status.setter
-    def status(self, value: BusinessStatus) -> None:
-        """Set the current business status."""
-        self._status = value
-
-    def add_employee(self, employee: GameObject, role: JobRole) -> None:
-        """Add an employee to the business.
-
-        Parameters
-        ----------
-        employee
-            The employee to add.
-        role
-            The employee's job role.
-        """
-        if self._owner is not None and employee == self._owner:
-            raise ValueError("Business owner cannot be added as an employee.")
-
-        if employee in self._employees:
-            raise ValueError("Character cannot hold two roles at the same business.")
-
-        if role not in self._employee_roles:
-            raise ValueError(f"Business does not have employee role with ID: {role}.")
-
-        remaining_slots = self._employee_roles[role]
-
-        if remaining_slots == 0:
-            raise ValueError(f"No remaining slots job role with ID: {role}.")
-
-        self._employee_roles[role] -= 1
-
-        self._employees[employee] = role
-
-    def remove_employee(self, employee: GameObject) -> None:
-        """Remove an employee from the business.
-
-        Parameters
-        ----------
-        employee
-            The employee to remove.
-        """
-        if employee not in self._employees:
-            raise ValueError(f"{employee.name} is not an employee of this business.")
-
-        role = self._employees[employee]
-
-        del self._employees[employee]
-
-        self._employee_roles[role] += 1
-
-    def set_owner(self, owner: Optional[GameObject]) -> None:
-        """Set the owner of the business.
-
-        Parameters
-        ----------
-        owner
-            The owner of the business.
-        """
-        self._owner = owner
+        self.name = name
+        self.owner_role = owner_role
+        self.employee_roles = employee_roles
+        self.owner = None
+        self.employees = {}
+        self.status = BusinessStatus.CLOSED
 
     def get_open_positions(self) -> Iterable[str]:
         """Get positions at the business with at least one open slot."""
         return [
             role.definition_id
-            for role, count in self._employee_roles.items()
+            for role, count in self.employee_roles.items()
             if count > 0
         ]
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
-            "employees": [employee.uid for employee, _ in self._employees.items()],
-            "owner": self._owner.uid if self._owner else -1,
+            "employees": [employee.uid for employee, _ in self.employees.items()],
+            "owner": self.owner.uid if self.owner else -1,
         }
 
 
 class Unemployed(Component):
     """Tags a character as needing a job, but not having a job."""
 
-    __slots__ = ("_timestamp",)
+    __slots__ = ("timestamp",)
 
-    _timestamp: SimDate
+    timestamp: SimDate
     """The date the character became unemployed."""
 
     def __init__(self, timestamp: SimDate) -> None:
         super().__init__()
-        self._timestamp = timestamp
-
-    @property
-    def timestamp(self) -> SimDate:
-        """The date the character became unemployed"""
-        return self._timestamp
+        self.timestamp = timestamp
 
     def to_dict(self) -> dict[str, Any]:
         return {"timestamp": str(self.timestamp)}

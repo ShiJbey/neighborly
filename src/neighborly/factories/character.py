@@ -14,6 +14,7 @@ from neighborly.components.stats import Lifespan
 from neighborly.components.traits import Trait, Traits
 from neighborly.defs.base_types import CharacterDef
 from neighborly.ecs import Component, ComponentFactory, GameObject, World
+from neighborly.helpers.character import set_character_name
 from neighborly.helpers.skills import add_skill, get_skill, has_skill
 from neighborly.helpers.traits import add_trait
 from neighborly.libraries import (
@@ -88,7 +89,7 @@ class DefaultCharacterFactory(ICharacterFactory):
         # Initialize the life span (Overwrite the existing one)
         species = character.get_component(Species).species
         rng = character.world.resource_manager.get_resource(random.Random)
-        min_value, max_value = (int(x.strip()) for x in species.lifespan.split("-"))
+        min_value, max_value = species.lifespan
         base_lifespan = rng.randint(min_value, max_value)
         character.get_component(Lifespan).stat.base_value = base_lifespan
 
@@ -180,9 +181,7 @@ class DefaultChildFactory(IChildFactory):
             add_trait(child, trait_id)
 
         # Initialize their lifespan from the species
-        min_value, max_value = (
-            int(x.strip()) for x in chosen_species.lifespan.split("-")
-        )
+        min_value, max_value = chosen_species.lifespan
         base_lifespan = rng.randint(min_value, max_value)
         child.get_component(Lifespan).stat.base_value = base_lifespan
 
@@ -203,14 +202,11 @@ class DefaultChildFactory(IChildFactory):
             )
 
         name_factory = rng.choice(name_factories)
-        child.get_component(Character).first_name = name_factory(world)
-
-        # Take the last name of the birthing parent
-        child.get_component(Character).last_name = birthing_parent.get_component(
-            Character
-        ).last_name
-
-        child.name = child.get_component(Character).full_name
+        set_character_name(
+            child.get_component(Character),
+            first_name=name_factory(world),
+            last_name=birthing_parent.get_component(Character).last_name,
+        )
 
         self._inherit_traits(
             birthing_parent=birthing_parent, other_parent=other_parent, child=child

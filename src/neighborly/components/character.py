@@ -49,7 +49,7 @@ class SpeciesType:
     """The age when this species is considered an adult."""
     senior_age: int
     """The age when this species is considered a senior."""
-    lifespan: str
+    lifespan: tuple[int, int]
     """A lifespan interval for characters of this species."""
     can_physically_age: bool
     """Can characters of this species age."""

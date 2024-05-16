@@ -28,7 +28,7 @@ from neighborly.components.location import (
 )
 from neighborly.components.relationship import Relationship
 from neighborly.components.residence import Resident, ResidentialUnit, Vacant
-from neighborly.components.settlement import District
+from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.skills import Skill
 from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
@@ -37,7 +37,7 @@ from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.definition_compiler import compile_definitions
-from neighborly.ecs import Active, GameObject, System, SystemGroup, World
+from neighborly.ecs import Active, Event, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
     BecomeAdolescentEvent,
     BecomeAdultEvent,
@@ -74,7 +74,7 @@ from neighborly.libraries import (
     SpeciesLibrary,
     TraitLibrary,
 )
-from neighborly.life_event import add_to_personal_history, dispatch_life_event
+from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.actions import CloseBusiness, Die, MoveIntoResidence
 
 _logger = logging.getLogger(__name__)
@@ -123,10 +123,21 @@ class InitializeSettlementSystem(System):
             _logger.debug("No settlement IDs provided.")
             return
 
-        settlement = create_settlement(world, settlement_definition_id)
-        event = SettlementAddedEvent(settlement)
-        dispatch_life_event(world, event)
-        add_to_personal_history(settlement, event)
+        settlement = create_settlement(world, settlement_definition_id).get_component(
+            Settlement
+        )
+
+        world.events.dispatch_event(
+            Event("settlement-added", world=world, settlement=settlement.gameobject)
+        )
+
+        for district in settlement.districts:
+            world.events.dispatch_event(
+                Event("district-added", world=world, district=district)
+            )
+
+        event = SettlementAddedEvent(settlement.gameobject)
+        dispatch_life_event(event, [settlement.gameobject])
 
 
 class SpawnResidentialBuildingsSystem(System):
@@ -309,13 +320,16 @@ class SpawnNewResidentSystem(System):
 
             settlement = district.get_component(CurrentLocation).settlement
 
+            world.events.dispatch_event(
+                Event("character-added", world=world, character=character)
+            )
+
             event = JoinSettlementEvent(
                 character,
                 settlement,
             )
 
-            dispatch_life_event(world, event)
-            add_to_personal_history(character, event)
+            dispatch_life_event(event, [character])
 
             # Add the character as the owner of the home and a resident
             MoveIntoResidence(character, residence.gameobject, is_owner=True).execute()
@@ -390,6 +404,10 @@ class CompileSpeciesDefsSystem(System):
             if not definition.is_template:
                 library.add_definition(definition)
 
+                min_lifespan, max_lifespan = tuple(
+                    int(x.strip()) for x in definition.lifespan.split("-")
+                )
+
                 library.add_species(
                     SpeciesType(
                         definition_id=definition.definition_id,
@@ -399,7 +417,7 @@ class CompileSpeciesDefsSystem(System):
                         young_adult_age=definition.young_adult_age,
                         adult_age=definition.adult_age,
                         senior_age=definition.senior_age,
-                        lifespan=definition.lifespan,
+                        lifespan=(min_lifespan, max_lifespan),
                         can_physically_age=definition.can_physically_age,
                         traits=[*definition.traits],
                     )
@@ -728,29 +746,25 @@ class LifeStageSystem(System):
                     if character.life_stage != LifeStage.SENIOR:
                         evt = BecomeSeniorEvent(character.gameobject)
                         character.life_stage = LifeStage.SENIOR
-                        dispatch_life_event(world, evt)
-                        add_to_personal_history(character.gameobject, evt)
+                        dispatch_life_event(evt, [character.gameobject])
 
                 elif age.value >= species.species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
                         evt = BecomeAdultEvent(character.gameobject)
                         character.life_stage = LifeStage.ADULT
-                        dispatch_life_event(world, evt)
-                        add_to_personal_history(character.gameobject, evt)
+                        dispatch_life_event(evt, [character.gameobject])
 
                 elif age.value >= species.species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
                         evt = BecomeYoungAdultEvent(character.gameobject)
                         character.life_stage = LifeStage.YOUNG_ADULT
-                        dispatch_life_event(world, evt)
-                        add_to_personal_history(character.gameobject, evt)
+                        dispatch_life_event(evt, [character.gameobject])
 
                 elif age.value >= species.species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
                         evt = BecomeAdolescentEvent(character.gameobject)
                         character.life_stage = LifeStage.ADOLESCENT
-                        dispatch_life_event(world, evt)
-                        add_to_personal_history(character.gameobject, evt)
+                        dispatch_life_event(evt, [character.gameobject])
 
                 else:
                     if character.life_stage != LifeStage.CHILD:
@@ -871,13 +885,10 @@ class ChildBirthSystem(System):
                 other_parent,
                 baby,
             )
-            dispatch_life_event(world, have_child_evt)
-            add_to_personal_history(character.gameobject, have_child_evt)
-            add_to_personal_history(other_parent, have_child_evt)
+            dispatch_life_event(have_child_evt, [character.gameobject, other_parent])
 
             birth_evt = BirthEvent(baby)
-            dispatch_life_event(world, birth_evt)
-            add_to_personal_history(baby, birth_evt)
+            dispatch_life_event(birth_evt, [baby])
 
 
 class JobRoleMonthlyEffectsSystem(System):

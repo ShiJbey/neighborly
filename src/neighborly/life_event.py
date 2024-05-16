@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from itertools import count
-from typing import Any, ClassVar, Iterable
+from typing import Any, ClassVar, Iterable, Optional, Sequence
 
 from neighborly.datetime import SimDate
 from neighborly.ecs import Component, Event, GameObject, World
@@ -128,17 +128,27 @@ class GlobalEventHistory:
         return {"events": [e.to_dict() for e in self.history]}
 
 
-def dispatch_life_event(world: World, event: LifeEvent) -> None:
-    """Dispatch a life event."""
+def dispatch_life_event(
+    event: LifeEvent, gameobjects: Optional[Sequence[GameObject]] = None
+) -> None:
+    """Dispatch a life event to event listeners.
 
-    world.resources.get_resource(GlobalEventHistory).append(event)
+    Parameters
+    ----------
+    event
+        The event to dispatch.
+    gameobjects
+        GameObjects to locally dispatch the event from. The event is also saved in their
+        personal event history components.
+    """
+
+    event.world.resources.get_resource(GlobalEventHistory).append(event)
 
     _logger.info("[%s]: %s", str(event.timestamp), str(event))
 
-    world.events.dispatch_event(event)
+    if gameobjects:
+        for gameobject in gameobjects:
+            gameobject.get_component(PersonalEventHistory).append(event)
+            gameobject.dispatch_event(event)
 
-
-def add_to_personal_history(gameobject: GameObject, event: LifeEvent) -> None:
-    """Add a life event to a GameObject's personal history."""
-
-    gameobject.get_component(PersonalEventHistory).append(event)
+    event.world.events.dispatch_event(event)

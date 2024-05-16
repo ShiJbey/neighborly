@@ -310,6 +310,8 @@ class GameObject:
         for child in self.children:
             child.deactivate()
 
+        self.dispatch_event(Event("deactivated", world=self.world, gameobject=self))
+
     def get_components(self) -> tuple[Component, ...]:
         """Get all components associated with the GameObject.
 
