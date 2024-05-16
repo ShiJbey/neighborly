@@ -6,14 +6,26 @@ import random
 from typing import ClassVar
 
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
-from neighborly.components.character import Character, LifeStage, Pregnant, Sex
-from neighborly.components.location import CurrentLocation
+from neighborly.components.character import (
+    Character,
+    Household,
+    LifeStage,
+    MemberOfHousehold,
+    Pregnant,
+    ResidentOf,
+    Sex,
+)
 from neighborly.components.relationship import Relationship, Relationships
-from neighborly.components.residence import Resident, ResidentialUnit, Vacant
-from neighborly.components.settlement import District, Settlement
+from neighborly.components.settlement import Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.ecs import Active, GameObject, System, World
 from neighborly.helpers.action import get_action_probability
+from neighborly.helpers.character import (
+    add_character_to_household,
+    create_household,
+    remove_character_from_household,
+    set_household_head,
+)
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import get_relationships_with_traits
 from neighborly.libraries import JobRoleLibrary
@@ -25,7 +37,6 @@ from neighborly.plugins.actions import (
     GetMarried,
     GetPregnant,
     HireEmployee,
-    MoveIntoResidence,
     PromoteEmployee,
     Retire,
     StartBusiness,
@@ -224,9 +235,6 @@ class StartBusinessSystem(System):
         weights: list[float] = []
 
         for district in settlement.districts:
-            if district.get_component(District).business_slots <= 0:
-                continue
-
             spawn_table = district.get_component(BusinessSpawnTable)
 
             for entry in spawn_table.table.values():
@@ -252,8 +260,8 @@ class StartBusinessSystem(System):
 
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, resident, _) in world.get_components(
-            (Character, Resident, Active)
+        for _, (character, resident_of, _) in world.get_components(
+            (Character, ResidentOf, Active)
         ):
             if character.life_stage not in (LifeStage.YOUNG_ADULT, LifeStage.ADULT):
                 continue
@@ -261,10 +269,8 @@ class StartBusinessSystem(System):
             if character.gameobject.has_component(Occupation):
                 continue
 
-            settlement = resident.building.get_component(CurrentLocation).settlement
-
             eligible_businesses = self.get_eligible_businesses(
-                settlement.get_component(Settlement)
+                resident_of.settlement.get_component(Settlement)
             )
 
             actions: list[tuple[StartBusiness, float]] = []
@@ -355,6 +361,11 @@ class CharacterMarriageSystem(System):
 
         for _, (character, _) in world.get_components((Character, Active)):
 
+            marriages = get_relationships_with_traits(character.gameobject, "spouse")
+
+            if marriages:
+                continue
+
             relationships = get_relationships_with_traits(
                 character.gameobject, "dating"
             )
@@ -366,6 +377,11 @@ class CharacterMarriageSystem(System):
                 partner = relationship.get_component(Relationship).target
 
                 if partner.is_active is False:
+                    continue
+
+                marriages = get_relationships_with_traits(partner, "spouse")
+
+                if marriages:
                     continue
 
                 action = GetMarried(character=character.gameobject, partner=partner)
@@ -537,32 +553,34 @@ class RetirementSystem(System):
                 action.execute()
 
 
-class AdultsFindOwnResidenceSystem(System):
-    """Adult characters who do not own their residence will attempt to find a new one.
+class AdultsFormOwnHouseholdSystem(System):
+    """Characters may chose to start their own households.
 
-    This system is mainly used for ensuring that children leave the residence when they
-    become adults.
+    Adult characters who are not the head or spouse of a household, may start their own
+    households.
     """
 
     def on_update(self, world: World) -> None:
-        for _, (character, resident, _) in world.get_components(
-            (Character, Resident, Active)
+        for _, (character, member_of_household, _) in world.get_components(
+            (Character, MemberOfHousehold, Active)
         ):
             if character.life_stage < LifeStage.YOUNG_ADULT:
                 continue
 
-            owns_home = resident.residence.get_component(ResidentialUnit).is_owner(
-                character.gameobject
+            household = member_of_household.household.get_component(Household)
+
+            is_regular_member = (
+                character.gameobject != household.head
+                and character.gameobject != household.spouse
             )
 
-            if owns_home is False:
-                vacant_housing = world.get_components((ResidentialUnit, Vacant))
+            if not is_regular_member:
+                continue
 
-                if vacant_housing:
-                    _, (residence, _) = vacant_housing[0]
-                    MoveIntoResidence(
-                        character.gameobject, residence.gameobject, is_owner=True
-                    ).execute()
+            new_household = create_household(world).get_component(Household)
+            set_household_head(new_household, character)
+            remove_character_from_household(household, character)
+            add_character_to_household(new_household, character)
 
 
 class CrushFormationSystem(System):
@@ -630,6 +648,6 @@ def load_plugin(sim: Simulation) -> None:
     sim.world.systems.add_system(PregnancySystem(), system_group=UpdateSystems)
     sim.world.systems.add_system(RetirementSystem(), system_group=UpdateSystems)
     sim.world.systems.add_system(
-        AdultsFindOwnResidenceSystem(), system_group=UpdateSystems
+        AdultsFormOwnHouseholdSystem(), system_group=UpdateSystems
     )
     sim.world.systems.add_system(CrushFormationSystem(), system_group=UpdateSystems)

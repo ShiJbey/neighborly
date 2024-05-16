@@ -6,7 +6,7 @@ This module contains classes and helper functions for defining and modeling sett
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from neighborly.ecs import Component, GameObject
 
@@ -14,251 +14,46 @@ from neighborly.ecs import Component, GameObject
 class District(Component):
     """A subsection of a settlement."""
 
-    __slots__ = (
-        "_name",
-        "_description",
-        "_residential_slots",
-        "_business_slots",
-        "_businesses",
-        "_residences",
-        "_population",
-    )
+    __slots__ = ("name", "locations")
 
-    _name: str
+    name: str
     """The district's name."""
-    _description: str
-    """A short description of the district."""
-    _residential_slots: int
-    """The number of residential slots the district can build on."""
-    _business_slots: int
-    """The number of business slots the district can build on."""
-    _businesses: list[GameObject]
-    """Businesses in this district."""
-    _residences: list[GameObject]
-    """Residences in this district."""
-    _population: int
-    """The number of characters living in this district."""
+    locations: list[GameObject]
+    """locations within this district."""
 
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        residential_slots: int,
-        business_slots: int,
-    ) -> None:
+    def __init__(self, name: str) -> None:
         super().__init__()
-        self._name = name
-        self._description = description
-        self._residential_slots = residential_slots
-        self._business_slots = business_slots
-        self._businesses = []
-        self._residences = []
-        self._population = 0
-
-    @property
-    def name(self) -> str:
-        """The name of the settlement."""
-        return self._name
-
-    @name.setter
-    def name(self, value: str) -> None:
-        """Set the name of the settlement"""
-
-        self._name = value
-        self.gameobject.name = value
-
-    @property
-    def description(self) -> str:
-        """A short description of the district."""
-        return self._description
-
-    @description.setter
-    def description(self, value: str) -> None:
-        """A short description of the district."""
-        self._description = value
-
-    @property
-    def population(self) -> int:
-        """The number of characters that live in this district."""
-        return self._population
-
-    @population.setter
-    def population(self, value: int) -> None:
-        """Set the number of characters that live in this district."""
-        self._population = value
-
-    @property
-    def residential_slots(self) -> int:
-        """Get the number of slots remaining for residential buildings."""
-        return self._residential_slots
-
-    @property
-    def business_slots(self) -> int:
-        """Get the number of slots remaining for businesses."""
-        return self._business_slots
-
-    @property
-    def businesses(self) -> Iterable[GameObject]:
-        """Get all the businesses in the district."""
-        return self._businesses
-
-    @property
-    def residences(self) -> Iterable[GameObject]:
-        """Get all the residential buildings in the district."""
-        return self._residences
-
-    def add_business(self, business: GameObject) -> None:
-        """Add a business to this district.
-
-        Parameters
-        ---------
-        business
-            The business to add.
-        """
-        self._businesses.append(business)
-        self._business_slots -= 1
-
-    def remove_business(self, business: GameObject) -> bool:
-        """Remove a business from this district.
-
-        Parameters
-        ----------
-        business
-            The business to remove
-
-        Returns
-        -------
-        bool
-            True if the business was successfully removed, False otherwise.
-        """
-        try:
-            self._businesses.remove(business)
-            self._business_slots += 1
-            return True
-        except ValueError:
-            # The business was not present
-            return False
-
-    def add_residence(self, residence: GameObject) -> None:
-        """Add a residence to this district.
-
-        Parameters
-        ---------
-        residence
-            The district to add.
-        """
-        self._residences.append(residence)
-        self._residential_slots -= 1
-
-    def remove_residence(self, residence: GameObject) -> bool:
-        """Remove a residence from this district.
-
-        Parameters
-        ----------
-        residence
-            The residence to remove
-
-        Returns
-        -------
-        bool
-            True if the residence was successfully removed, False otherwise.
-        """
-        try:
-            self._residences.remove(residence)
-            self._residential_slots += 1
-            return True
-        except ValueError:
-            # The residence was not present
-            return False
+        self.name = name
+        self.locations = []
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
-            "description": self._description,
-            "residences": [r.uid for r in self.residences],
-            "businesses": [b.uid for b in self.businesses],
-            "population": self.population,
+            "locations": [l.uid for l in self.locations],
         }
 
 
 class Settlement(Component):
     """A town, city, or village where characters live."""
 
-    __slots__ = ("_name", "_districts")
+    __slots__ = ("name", "population", "districts")
 
-    _name: str
+    name: str
     """The settlement's name."""
-    _districts: list[GameObject]
+    population: int
+    """The number of characters living in this district."""
+    districts: list[GameObject]
     """References to districts within this settlement."""
 
-    def __init__(
-        self,
-        name: str,
-        districts: Optional[list[GameObject]] = None,
-    ) -> None:
+    def __init__(self, name: str) -> None:
         super().__init__()
-        self._name = name
-        self._districts = districts.copy() if districts is not None else []
-
-    @property
-    def name(self) -> str:
-        """The name of the settlement."""
-        return self._name
-
-    @name.setter
-    def name(self, value: str) -> None:
-        """Set the name of the settlement"""
-        self._name = value
-        self.gameobject.name = value
-
-    @property
-    def population(self) -> int:
-        """The total number of people living in the settlement."""
-        total_population: int = 0
-
-        for district in self._districts:
-            total_population += district.get_component(District).population
-
-        return total_population
-
-    @property
-    def districts(self) -> Iterable[GameObject]:
-        """Return an iterable for this settlement's districts."""
-        return self._districts
-
-    def add_district(self, district: GameObject) -> None:
-        """Add a district to this settlement.
-
-        Parameters
-        ---------
-        district
-            The district to add.
-        """
-        self._districts.append(district)
-
-    def remove_district(self, district: GameObject) -> bool:
-        """Remove a district from this settlement.
-
-        Parameters
-        ----------
-        district
-            The district to remove
-
-        Returns
-        -------
-        bool
-            True if the district was successfully removed, False otherwise.
-        """
-        try:
-            self._districts.remove(district)
-            return True
-        except ValueError:
-            # The district was not present
-            return False
+        self.name = name
+        self.districts = []
+        self.population = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
-            "districts": [d.uid for d in self._districts],
+            "districts": [d.uid for d in self.districts],
             "population": self.population,
         }

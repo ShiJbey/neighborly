@@ -186,36 +186,6 @@ class SettlementDef(ContentDefinition):
     """Information about components."""
 
 
-class ResidenceDef(ContentDefinition):
-    """A definition for a residential building."""
-
-    definition_id: str
-    """The name of this definition"""
-    spawn_frequency: int = 1
-    """The frequency of spawning relative to others in the district."""
-    residential_units: int = 1
-    """The number of individual residences in this building."""
-    required_population: int = 0
-    """The number of people required to build this residential building."""
-    max_instances: int = 9999
-    """Maximum number of this type of residential building allowed within a district."""
-    variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
-    """Variant settings of this type."""
-    extends: list[str] = pydantic.Field(default_factory=list)
-    """Definition IDs of definitions this inherits properties from."""
-    is_template: bool = False
-    """Is this definition a template for creating other definitions."""
-    tags: set[str] = pydantic.Field(default_factory=set)
-    """Tags describing this definition."""
-    components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
-    """Information about components."""
-
-    @property
-    def is_multifamily(self) -> bool:
-        """Is this a multifamily residential building"""
-        return self.residential_units > 1
-
-
 class CharacterDefTraitEntry(pydantic.BaseModel):
     """An entry in the traits list of a character definition."""
 

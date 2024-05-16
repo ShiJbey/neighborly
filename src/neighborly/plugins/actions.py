@@ -7,11 +7,16 @@ from typing import Optional
 
 from neighborly.action import Action
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
-from neighborly.components.character import Pregnant
-from neighborly.components.location import CurrentLocation
+from neighborly.components.character import (
+    Character,
+    Household,
+    MemberOfHousehold,
+    Pregnant,
+    ResidentOf,
+)
+from neighborly.components.location import CurrentDistrict
 from neighborly.components.relationship import Relationship
-from neighborly.components.residence import Resident, ResidentialUnit, Vacant
-from neighborly.components.settlement import District
+from neighborly.components.settlement import District, Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
 from neighborly.ecs import Event, GameObject
@@ -29,6 +34,13 @@ from neighborly.helpers.business import (
     remove_employee,
     set_business_owner,
     set_business_status,
+)
+from neighborly.helpers.character import (
+    add_character_to_household,
+    create_household,
+    remove_character_from_household,
+    set_household_head,
+    set_household_head_spouse,
 )
 from neighborly.helpers.location import (
     add_frequented_location,
@@ -91,15 +103,8 @@ class StartBusiness(Action):
         business = create_business(self.world, self.business_definition_id)
 
         # (2) Add the business to the district
-        business.add_component(
-            CurrentLocation(
-                district=self.district,
-                settlement=self.district.get_component(CurrentLocation).settlement,
-            )
-        )
+        business.add_component(CurrentDistrict(district=self.district))
         district = self.district.get_component(District)
-        district.add_business(business)
-        district.gameobject.add_child(business)
         district.gameobject.get_component(BusinessSpawnTable).increment_count(
             self.business_definition_id
         )
@@ -324,43 +329,74 @@ class Divorce(Action):
 
     __slots__ = ("character", "partner")
 
-    character: GameObject
-    partner: GameObject
+    character: Character
+    partner: Character
 
     def __init__(self, character: GameObject, partner: GameObject) -> None:
         super().__init__(character.world)
-        self.character = character
-        self.partner = partner
+        self.character = character.get_component(Character)
+        self.partner = partner.get_component(Character)
 
     def execute(self) -> bool:
-        remove_relationship_trait(self.character, self.partner, "spouse")
-        remove_relationship_trait(self.partner, self.character, "spouse")
+        remove_relationship_trait(
+            self.character.gameobject, self.partner.gameobject, "spouse"
+        )
+        remove_relationship_trait(
+            self.partner.gameobject, self.character.gameobject, "spouse"
+        )
 
-        add_relationship_trait(self.character, self.partner, "ex_spouse")
-        add_relationship_trait(self.partner, self.character, "ex_spouse")
+        add_relationship_trait(
+            self.character.gameobject, self.partner.gameobject, "ex_spouse"
+        )
+        add_relationship_trait(
+            self.partner.gameobject, self.character.gameobject, "ex_spouse"
+        )
 
         get_stat(
-            get_relationship(self.partner, self.character), "romance"
+            get_relationship(self.partner.gameobject, self.character.gameobject),
+            "romance",
         ).base_value -= 25
 
-        event = DivorceEvent(self.character, self.partner)
+        event = DivorceEvent(self.character.gameobject, self.partner.gameobject)
 
-        dispatch_life_event(event, [self.character, self.partner])
+        dispatch_life_event(event, [self.character.gameobject, self.partner.gameobject])
 
-        # initiator finds new place to live or departs
-        vacant_housing = self.world.get_components((ResidentialUnit, Vacant))
+        # Split the household
+        household = self.character.gameobject.get_component(
+            MemberOfHousehold
+        ).household.get_component(Household)
 
-        MoveOutOfResidence(self.character).execute()
+        new_household = create_household(self.world).get_component(Household)
 
-        if vacant_housing:
-            _, (residence, _) = vacant_housing[0]
+        set_household_head_spouse(household, None)
 
-            MoveIntoResidence(
-                self.character, residence=residence.gameobject, is_owner=True
-            ).execute()
+        if self.character.gameobject == household.head:
+
+            set_household_head(
+                new_household, self.partner.gameobject.get_component(Character)
+            )
+
+            remove_character_from_household(
+                household, self.partner.gameobject.get_component(Character)
+            )
+
+            add_character_to_household(
+                new_household, self.partner.gameobject.get_component(Character)
+            )
 
         else:
-            DepartSettlement(self.character).execute()
+
+            set_household_head(
+                new_household, self.character.gameobject.get_component(Character)
+            )
+
+            remove_character_from_household(
+                household, self.character.gameobject.get_component(Character)
+            )
+
+            add_character_to_household(
+                new_household, self.character.gameobject.get_component(Character)
+            )
 
         return True
 
@@ -387,16 +423,86 @@ class GetMarried(Action):
         add_relationship_trait(self.character, self.partner, "spouse")
         add_relationship_trait(self.partner, self.character, "spouse")
 
-        # Update residences
-        shared_residence = self.character.get_component(Resident).residence
+        # Combine the households under the initiating character
+        household = self.character.get_component(
+            MemberOfHousehold
+        ).household.get_component(Household)
 
-        MoveIntoResidence(self.partner, shared_residence, is_owner=True).execute()
+        partner_household = self.partner.get_component(
+            MemberOfHousehold
+        ).household.get_component(Household)
 
-        for rel in get_relationships_with_traits(
-            self.partner, "child", "live_together"
+        if self.character == household.head and self.partner == partner_household.head:
+            set_household_head_spouse(household, self.partner.get_component(Character))
+            set_household_head(partner_household, None)
+
+            partner_household_members = [*partner_household.members]
+            for member in partner_household_members:
+                remove_character_from_household(
+                    partner_household, member.get_component(Character)
+                )
+                add_character_to_household(household, member.get_component(Character))
+
+            self.world.gameobjects.destroy_gameobject(partner_household.gameobject)
+
+        elif (
+            self.character == household.head and self.partner != partner_household.head
         ):
-            target = rel.get_component(Relationship).target
-            MoveIntoResidence(target, shared_residence).execute()
+            set_household_head_spouse(household, self.partner.get_component(Character))
+            remove_character_from_household(
+                partner_household, self.partner.get_component(Character)
+            )
+            add_character_to_household(household, self.partner.get_component(Character))
+
+        elif (
+            self.character != household.head and self.partner != partner_household.head
+        ):
+            new_household = create_household(self.world).get_component(Household)
+            set_household_head(new_household, self.character.get_component(Character))
+            set_household_head_spouse(
+                new_household, self.partner.get_component(Character)
+            )
+            remove_character_from_household(
+                household, self.character.get_component(Character)
+            )
+            remove_character_from_household(
+                partner_household, self.partner.get_component(Character)
+            )
+            add_character_to_household(
+                new_household, self.character.get_component(Character)
+            )
+            add_character_to_household(
+                new_household, self.partner.get_component(Character)
+            )
+        elif (
+            self.character != household.head and self.partner == partner_household.head
+        ):
+
+            new_household = create_household(self.world).get_component(Household)
+
+            set_household_head(new_household, self.character.get_component(Character))
+            remove_character_from_household(
+                household, self.character.get_component(Character)
+            )
+            add_character_to_household(
+                new_household, self.character.get_component(Character)
+            )
+
+            set_household_head_spouse(
+                new_household, self.partner.get_component(Character)
+            )
+            set_household_head(partner_household, None)
+
+            partner_household_members = [*partner_household.members]
+            for member in partner_household_members:
+                remove_character_from_household(
+                    partner_household, member.get_component(Character)
+                )
+                add_character_to_household(
+                    new_household, member.get_component(Character)
+                )
+
+            self.world.gameobjects.destroy_gameobject(partner_household.gameobject)
 
         # Update step sibling relationships
         for rel_0 in get_relationships_with_traits(self.character, "child"):
@@ -741,7 +847,7 @@ class CloseBusiness(Action):
     def execute(self) -> bool:
 
         business_comp = self.business.get_component(Business)
-        business_location = self.business.get_component(CurrentLocation)
+        business_location = self.business.get_component(CurrentDistrict)
 
         # Update the business as no longer active
         business_comp.status = BusinessStatus.CLOSED
@@ -757,9 +863,6 @@ class CloseBusiness(Action):
         # Decrement the number of this type
         business_location.district.get_component(BusinessSpawnTable).decrement_count(
             self.business.metadata["definition_id"]
-        )
-        business_location.district.get_component(District).remove_business(
-            self.business
         )
 
         # Remove any other characters that frequent the location
@@ -801,26 +904,32 @@ class Die(Action):
 
         deactivate_relationships(self.character)
 
-        MoveOutOfResidence(self.character).execute()
-
         self.world.events.dispatch_event(
             Event(
                 event_type="character-death", world=self.world, character=self.character
             )
         )
 
-        # Remove the character from their residence
-        if resident_data := self.character.try_component(Resident):
-            residence = resident_data.residence
-            MoveOutOfResidence(self.character).execute()
+        # Remove the character from their household
+        household = self.character.get_component(
+            MemberOfHousehold
+        ).household.get_component(Household)
 
-            # If there are no-more residents that are owner's remove everyone from
-            # the residence and have them depart the simulation.
-            residence_data = residence.get_component(ResidentialUnit)
-            if len(list(residence_data.owners)) == 0:
-                residents = list(residence_data.residents)
-                for resident in residents:
-                    DepartSettlement(resident).execute()
+        if self.character == household.head:
+            set_household_head(household, None)
+
+        if self.character == household.spouse:
+            set_household_head_spouse(household, None)
+
+        remove_character_from_household(
+            household, self.character.get_component(Character)
+        )
+
+        current_settlement = self.character.get_component(
+            ResidentOf
+        ).settlement.get_component(Settlement)
+        current_settlement.population -= 1
+        self.character.remove_component(ResidentOf)
 
         # Adjust relationships
         for rel in get_relationships_with_traits(self.character, "dating"):
@@ -860,112 +969,6 @@ class Die(Action):
         return True
 
 
-class MoveOutOfResidence(Action):
-    """A character moves out of a residence."""
-
-    __action_id__ = "move-out-of-residence"
-
-    __slots__ = ("character",)
-
-    character: GameObject
-
-    def __init__(self, character: GameObject) -> None:
-        super().__init__(character.world)
-        self.character = character
-
-    def execute(self) -> bool:
-        """Have the character move out of their current residence."""
-
-        if resident := self.character.try_component(Resident):
-            # This character is currently a resident at another location
-            former_residence = resident.residence
-            former_district = resident.district
-            former_residence_comp = former_residence.get_component(ResidentialUnit)
-
-            for resident in former_residence_comp.residents:
-                if resident == self.character:
-                    continue
-
-                remove_relationship_trait(self.character, resident, "live_together")
-                remove_relationship_trait(resident, self.character, "live_together")
-
-            if former_residence_comp.is_owner(self.character):
-                former_residence_comp.remove_owner(self.character)
-
-            former_residence_comp.remove_resident(self.character)
-            self.character.remove_component(Resident)
-
-            remove_frequented_location(self.character, former_residence)
-
-            if former_district:
-                former_district.get_component(District).population -= 1
-
-            if len(former_residence_comp) <= 0:
-                former_residence.add_component(Vacant())
-
-        return True
-
-
-class MoveIntoResidence(Action):
-    """A character moves into a new residence."""
-
-    __action_id__ = "move-into-residence"
-
-    __slots__ = ("character", "residence", "is_owner")
-
-    character: GameObject
-    residence: GameObject
-    is_owner: bool
-
-    def __init__(
-        self, character: GameObject, residence: GameObject, is_owner: bool = False
-    ) -> None:
-        super().__init__(character.world)
-        self.character = character
-        self.residence = residence
-        self.is_owner = is_owner
-
-    def execute(self) -> bool:
-        """Have the character move into a new residence."""
-
-        if self.character.has_component(Resident):
-            MoveOutOfResidence(self.character).execute()
-
-        self.residence.get_component(ResidentialUnit).add_resident(self.character)
-
-        if self.is_owner:
-            self.residence.get_component(ResidentialUnit).add_owner(self.character)
-
-        building = self.residence.get_component(ResidentialUnit).building
-        district = building.get_component(CurrentLocation).district
-        settlement = building.get_component(CurrentLocation).settlement
-
-        self.character.add_component(
-            Resident(
-                residence=self.residence,
-                building=building,
-                district=district,
-                settlement=settlement,
-            )
-        )
-
-        add_frequented_location(self.character, self.residence)
-
-        if self.residence.has_component(Vacant):
-            self.residence.remove_component(Vacant)
-
-        for resident in self.residence.get_component(ResidentialUnit).residents:
-            if resident == self.character:
-                continue
-
-            add_relationship_trait(self.character, resident, "live_together")
-            add_relationship_trait(resident, self.character, "live_together")
-
-        district.get_component(District).population += 1
-
-        return True
-
-
 class DepartSettlement(Action):
     """A character departs from the settlement and simulation."""
 
@@ -1000,29 +1003,25 @@ class DepartSettlement(Action):
         event = DepartSettlementEvent(character=self.character)
         dispatch_life_event(event, [self.character])
 
-        # Have the character leave their residence
-        if resident_data := self.character.try_component(Resident):
-            residence_data = resident_data.residence.get_component(ResidentialUnit)
-            MoveOutOfResidence(self.character).execute()
+        # Remove the character from their household
+        household = self.character.get_component(
+            MemberOfHousehold
+        ).household.get_component(Household)
 
-            # Get people that this character lives with and have them depart with their
-            # spouse(s) and children. This function may need to be refactored in the future
-            # to perform BFS on the relationship tree when moving out extended families
-            # living within the same residence
-            for resident in list(residence_data.residents):
-                if resident == self.character:
-                    continue
+        if self.character == household.head:
+            set_household_head(household, None)
 
-                rel_to_resident = get_relationship(self.character, resident)
+        if self.character == household.spouse:
+            set_household_head_spouse(household, None)
 
-                if has_trait(rel_to_resident, "spouse") and not has_trait(
-                    resident, "departed"
-                ):
-                    DepartSettlement(resident).execute()
+        remove_character_from_household(
+            household, self.character.get_component(Character)
+        )
 
-                elif has_trait(rel_to_resident, "child") and not has_trait(
-                    resident, "departed"
-                ):
-                    DepartSettlement(resident).execute()
+        current_settlement = self.character.get_component(
+            ResidentOf
+        ).settlement.get_component(Settlement)
+        current_settlement.population -= 1
+        self.character.remove_component(ResidentOf)
 
         return True

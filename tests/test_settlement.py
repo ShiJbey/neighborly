@@ -9,7 +9,6 @@ from neighborly.loaders import (
     load_characters,
     load_districts,
     load_job_roles,
-    load_residences,
     load_settlements,
 )
 from neighborly.plugins import default_settlement_names
@@ -27,7 +26,6 @@ def test_create_settlement() -> None:
     load_settlements(sim, _DATA_DIR / "settlements.json")
     load_businesses(sim, _DATA_DIR / "businesses.json")
     load_characters(sim, _DATA_DIR / "characters.json")
-    load_residences(sim, _DATA_DIR / "residences.json")
     load_job_roles(sim, _DATA_DIR / "job_roles.json")
 
     default_settlement_names.load_plugin(sim)
@@ -51,7 +49,6 @@ def test_required_tags() -> None:
     # load_settlements(sim, _DATA_DIR / "settlements.json")
     load_businesses(sim, _DATA_DIR / "businesses.json")
     load_characters(sim, _DATA_DIR / "characters.json")
-    load_residences(sim, _DATA_DIR / "residences.json")
     load_job_roles(sim, _DATA_DIR / "job_roles.json")
 
     default_settlement_names.load_plugin(sim)
@@ -106,7 +103,6 @@ def test_optional_tags() -> None:
     # load_settlements(sim, _DATA_DIR / "settlements.json")
     load_businesses(sim, _DATA_DIR / "businesses.json")
     load_characters(sim, _DATA_DIR / "characters.json")
-    load_residences(sim, _DATA_DIR / "residences.json")
     load_job_roles(sim, _DATA_DIR / "job_roles.json")
 
     sim.world.resource_manager.get_resource(SettlementLibrary).add_definition(

@@ -5,8 +5,16 @@
 from __future__ import annotations
 
 import random
+from typing import Optional
 
-from neighborly.components.character import Character, LifeStage, Species
+from neighborly.components.character import (
+    Character,
+    HeadOfHousehold,
+    Household,
+    LifeStage,
+    MemberOfHousehold,
+    Species,
+)
 from neighborly.components.shared import Age
 from neighborly.ecs import Event, GameObject, World
 from neighborly.libraries import CharacterLibrary
@@ -104,3 +112,59 @@ def set_character_age(character: Character, age: int) -> None:
     character.gameobject.get_component(Age).value = float(age)
     species = character.gameobject.get_component(Species).species
     character.life_stage = species.get_life_stage_for_age(age)
+
+
+def set_household_head(household: Household, character: Optional[Character]) -> None:
+    """Set the head of a household."""
+
+    # Remove the current household head
+    if household.head is not None:
+        household.head.remove_component(HeadOfHousehold)
+        household.head = None
+
+    # Set the new household head
+    if character is not None:
+        household.head = character.gameobject
+        character.gameobject.add_component(
+            HeadOfHousehold(household=household.gameobject)
+        )
+
+
+def set_household_head_spouse(
+    household: Household, character: Optional[Character]
+) -> None:
+    """Set the spouse of the head of a household."""
+
+    # Remove the current spouse
+    if household.spouse is not None:
+        household.spouse = None
+
+    # Set the new clan head
+    if character is not None:
+        household.spouse = character.gameobject
+
+
+def add_character_to_household(household: Household, character: Character) -> None:
+    """Add a character to a house hold."""
+
+    household.members.append(character.gameobject)
+    character.gameobject.add_component(
+        MemberOfHousehold(household=household.gameobject)
+    )
+
+
+def remove_character_from_household(household: Household, character: Character) -> None:
+    """Remove a character from a house hold."""
+
+    household.members.remove(character.gameobject)
+    character.gameobject.remove_component(MemberOfHousehold)
+
+
+def create_household(world: World) -> GameObject:
+    """Create a new household."""
+
+    household = world.gameobjects.spawn_gameobject()
+    household.add_component(Household())
+    household.name = "Household"
+
+    return household

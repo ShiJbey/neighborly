@@ -9,7 +9,6 @@ from neighborly.libraries import (
     CharacterLibrary,
     DistrictLibrary,
     JobRoleLibrary,
-    ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
     TraitLibrary,
@@ -19,7 +18,6 @@ from neighborly.loaders import (
     load_characters,
     load_districts,
     load_job_roles,
-    load_residences,
     load_settlements,
     load_skills,
     load_traits,
@@ -29,16 +27,6 @@ from neighborly.simulation import Simulation
 _DATA_DIR = (
     pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
 )
-
-
-def test_load_residences() -> None:
-    sim = Simulation()
-    load_residences(sim, _DATA_DIR / "residences.json")
-    library = sim.world.resource_manager.get_resource(ResidenceLibrary)
-
-    residence_def = library.get_definition("house")
-
-    assert residence_def.definition_id == "house"
 
 
 def test_load_settlements() -> None:

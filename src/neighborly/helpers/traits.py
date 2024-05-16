@@ -241,10 +241,10 @@ def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
     bool
         True if the trait was removed successfully, False otherwise.
     """
-    if isinstance(trait, str):
-        library = gameobject.world.resource_manager.get_resource(TraitLibrary)
+    # if isinstance(trait, str):
+    #     library = gameobject.world.resource_manager.get_resource(TraitLibrary)
 
-        return gameobject.get_component(Traits).has_trait(library.get_trait(trait))
+    #     return gameobject.get_component(Traits).has_trait(library.get_trait(trait))
 
     return gameobject.get_component(Traits).has_trait(trait)
 

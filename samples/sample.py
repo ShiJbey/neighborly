@@ -296,7 +296,9 @@ def divorce_time_married_consideration(action: Action) -> float:
     """Consider how long you have been married before divorce."""
 
     if isinstance(action, Divorce):
-        relationship = get_relationship(action.character, action.partner)
+        relationship = get_relationship(
+            action.character.gameobject, action.partner.gameobject
+        )
         months_married = get_time_with_trait(relationship, "spouse")
         years_married = float(months_married) / 12.0
 

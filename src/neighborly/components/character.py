@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import enum
-from typing import Any
+from typing import Any, Optional
 
 import attrs
 
@@ -162,3 +162,83 @@ class Pregnant(Component):
             "partner": self.partner.uid,
             "due_date": str(self.due_date),
         }
+
+
+class Household(Component):
+    """A collection of characters that all live together."""
+
+    __slots__ = ("head", "spouse", "members")
+
+    head: Optional[GameObject]
+    """The head of the household."""
+    spouse: Optional[GameObject]
+    """The spouse of the head of the household."""
+    members: list[GameObject]
+    """Other members of the household."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.head = None
+        self.spouse = None
+        self.members = []
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "head": self.head.uid if self.head is not None else -1,
+            "spouse": self.spouse.uid if self.spouse is not None else -1,
+            "members": [m.uid for m in self.members],
+        }
+
+
+class MemberOfHousehold(Component):
+    """Marks a GameObject as being a member of a household."""
+
+    __slots__ = ("household",)
+
+    household: GameObject
+    """The household they belong to."""
+
+    def __init__(self, household: GameObject) -> None:
+        super().__init__()
+        self.household = household
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"household": self.household.uid}
+
+
+class HeadOfHousehold(Component):
+    """Marks a character as being the head of a household."""
+
+    __slots__ = ("household",)
+
+    household: GameObject
+    """The household they are the head of."""
+
+    def __init__(self, household: GameObject) -> None:
+        super().__init__()
+        self.household = household
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"household": self.household.uid}
+
+
+class ResidentOf(Component):
+    """A Component attached to characters that tracks where they live."""
+
+    __slots__ = ("settlement",)
+
+    settlement: GameObject
+    """The settlement they live in."""
+
+    def __init__(self, settlement: GameObject) -> None:
+        super().__init__()
+        self.settlement = settlement
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"settlement": self.settlement.uid}
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(settlement={self.settlement.name!r})"
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}(settlement={self.settlement.name!r})"

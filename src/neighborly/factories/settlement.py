@@ -5,9 +5,9 @@
 import random
 from typing import Any
 
-from neighborly.components.location import CurrentLocation
 from neighborly.components.settlement import District, Settlement
 from neighborly.ecs import Component, ComponentFactory, GameObject, World
+from neighborly.helpers.settlement import add_district_to_settlement
 from neighborly.libraries import (
     DistrictLibrary,
     DistrictNameFactories,
@@ -43,21 +43,13 @@ class DistrictFactory(ComponentFactory):
     def instantiate(self, world: World, /, **kwargs: Any) -> Component:
 
         name = kwargs.get("name", "")
-        description = kwargs.get("description", "")
-        business_slots: int = kwargs.get("business_slots", 0)
-        residential_slots: int = kwargs.get("residential_slots", 0)
 
         if name_factory := kwargs.get("name_factory", ""):
             factories = world.resource_manager.get_resource(DistrictNameFactories)
 
             name = factories.get_factory(name_factory)(world)
 
-        return District(
-            name=name,
-            description=description,
-            residential_slots=residential_slots,
-            business_slots=business_slots,
-        )
+        return District(name=name)
 
 
 class DefaultDistrictFactory(IDistrictFactory):
@@ -89,26 +81,24 @@ class DefaultSettlementFactory(ISettlementFactory):
 
         settlement = world.gameobject_manager.spawn_gameobject(
             components=settlement_def.components
-        )
-        settlement.metadata["definition_id"] = definition_id
-        settlement.name = settlement.get_component(Settlement).name
+        ).get_component(Settlement)
 
-        library = settlement.world.resource_manager.get_resource(DistrictLibrary)
-        rng = settlement.world.resource_manager.get_resource(random.Random)
+        settlement.gameobject.metadata["definition_id"] = definition_id
+
+        settlement.gameobject.name = settlement.name
+
+        library = world.resources.get_resource(DistrictLibrary)
+        rng = world.resources.get_resource(random.Random)
 
         for district_entry in settlement_def.districts:
             if district_entry.with_id:
 
                 district = district_library.factory.create_district(
-                    settlement.world,
+                    world,
                     district_entry.with_id,
-                )
+                ).get_component(District)
 
-                settlement.get_component(Settlement).add_district(district)
-                district.add_component(
-                    CurrentLocation(settlement=settlement, district=district)
-                )
-                settlement.add_child(district)
+                add_district_to_settlement(settlement, district)
 
             elif district_entry.with_tags:
 
@@ -120,14 +110,10 @@ class DefaultSettlementFactory(ISettlementFactory):
                     chosen_district = rng.choice(matching_districts)
 
                     district = district_library.factory.create_district(
-                        settlement.world,
+                        world,
                         chosen_district.definition_id,
-                    )
+                    ).get_component(District)
 
-                    settlement.get_component(Settlement).add_district(district)
-                    district.add_component(
-                        CurrentLocation(settlement=settlement, district=district)
-                    )
-                    settlement.add_child(district)
+                    add_district_to_settlement(settlement, district)
 
-        return settlement
+        return settlement.gameobject

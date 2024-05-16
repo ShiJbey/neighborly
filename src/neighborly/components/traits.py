@@ -7,7 +7,7 @@ This module contains class definitions for implementing the trait system.
 from __future__ import annotations
 
 import enum
-from typing import Any
+from typing import Any, Union
 
 import attrs
 
@@ -174,8 +174,10 @@ class Traits(Component):
 
         return False
 
-    def has_trait(self, trait: Trait) -> bool:
+    def has_trait(self, trait: Union[str, Trait]) -> bool:
         """Check if the GameObject has a given trait."""
+        if isinstance(trait, str):
+            return trait in self.traits
 
         return trait.definition_id in self.traits
 

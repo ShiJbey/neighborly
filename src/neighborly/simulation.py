@@ -41,10 +41,6 @@ from neighborly.factories.location import (
     LocationPreferencesFactory,
 )
 from neighborly.factories.relationships import RelationshipsFactory
-from neighborly.factories.residence import (
-    DefaultResidenceFactory,
-    ResidentialBuildingFactory,
-)
 from neighborly.factories.settlement import (
     DefaultDistrictFactory,
     DefaultSettlementFactory,
@@ -60,7 +56,6 @@ from neighborly.factories.skills import SkillsFactory
 from neighborly.factories.spawn_table import (
     BusinessSpawnTableFactory,
     CharacterSpawnTableFactory,
-    ResidenceSpawnTableFactory,
 )
 from neighborly.factories.stats import (
     CharmFactory,
@@ -88,7 +83,6 @@ from neighborly.libraries import (
     JobRoleLibrary,
     LocationPreferenceLibrary,
     PreconditionLibrary,
-    ResidenceLibrary,
     SettlementLibrary,
     SettlementNameFactories,
     SkillLibrary,
@@ -114,7 +108,6 @@ from neighborly.systems import (
     CompileDistrictDefsSystem,
     CompileJobRoleDefsSystem,
     CompileLocationPreferenceDefsSystem,
-    CompileResidenceDefsSystem,
     CompileSettlementDefsSystem,
     CompileSkillDefsSystem,
     CompileSpeciesDefsSystem,
@@ -126,7 +119,6 @@ from neighborly.systems import (
     LateUpdateSystems,
     LifeStageSystem,
     SpawnNewResidentSystem,
-    SpawnResidentialBuildingsSystem,
     UpdateFrequentedLocationSystem,
     UpdateSystems,
 )
@@ -176,9 +168,6 @@ class Simulation:
         self.world.resource_manager.add_resource(JobRoleLibrary())
         self.world.resource_manager.add_resource(
             BusinessLibrary(factory=DefaultBusinessFactory())
-        )
-        self.world.resource_manager.add_resource(
-            ResidenceLibrary(factory=DefaultResidenceFactory())
         )
         self.world.resource_manager.add_resource(
             DistrictLibrary(factory=DefaultDistrictFactory())
@@ -235,9 +224,6 @@ class Simulation:
             system=CompileSettlementDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
-            system=CompileResidenceDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
             system=CompileCharacterDefsSystem(), system_group=InitializationSystems
         )
         self.world.system_manager.add_system(
@@ -250,9 +236,6 @@ class Simulation:
         # Add core update systems
         self.world.system_manager.add_system(
             system=SpawnNewResidentSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=SpawnResidentialBuildingsSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
             system=UpdateFrequentedLocationSystem(), system_group=UpdateSystems
@@ -292,10 +275,8 @@ class Simulation:
         self.world.gameobjects.add_component_factory(StatsFactory())
         self.world.gameobjects.add_component_factory(CharacterSpawnTableFactory())
         self.world.gameobjects.add_component_factory(BusinessSpawnTableFactory())
-        self.world.gameobjects.add_component_factory(ResidenceSpawnTableFactory())
         self.world.gameobjects.add_component_factory(RelationshipsFactory())
         self.world.gameobjects.add_component_factory(PersonalEventHistoryFactory())
-        self.world.gameobjects.add_component_factory(ResidentialBuildingFactory())
         self.world.gameobjects.add_component_factory(LifespanFactory())
         self.world.gameobjects.add_component_factory(FertilityFactory())
         self.world.gameobjects.add_component_factory(KindnessFactory())

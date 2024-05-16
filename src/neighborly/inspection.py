@@ -10,18 +10,13 @@ import tabulate
 
 from neighborly import __version__
 from neighborly.components.business import Business, BusinessStatus, Occupation
-from neighborly.components.character import Character, Species
+from neighborly.components.character import Character, ResidentOf, Species
 from neighborly.components.location import (
-    CurrentLocation,
+    CurrentDistrict,
     FrequentedLocations,
     Location,
 )
 from neighborly.components.relationship import Relationship, Relationships
-from neighborly.components.residence import (
-    Resident,
-    ResidentialBuilding,
-    ResidentialUnit,
-)
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.skills import SKILL_MAX_VALUE, Skills
@@ -60,15 +55,8 @@ def _settlement_section(obj: GameObject) -> str:
     settlement_data = obj.get_component(Settlement)
 
     districts = tabulate.tabulate(
-        [
-            (
-                entry.uid,
-                entry.get_component(District).name,
-                entry.get_component(District).population,
-            )
-            for entry in settlement_data.districts
-        ],
-        headers=("UID", "Name", "Population"),
+        [(entry.name,) for entry in settlement_data.districts],
+        headers=("Name"),
     )
 
     output = ""
@@ -92,42 +80,16 @@ def _district_header(district: GameObject) -> str:
     if district_data is None:
         return ""
 
-    residential_buildings_table = tabulate.tabulate(
-        [(entry.name,) for entry in district_data.residences], headers=("Name",)
+    locations_table = tabulate.tabulate(
+        [(entry.name,) for entry in district_data.locations], headers=("Name",)
     )
-
-    businesses_table = tabulate.tabulate(
-        [(entry.name,) for entry in district_data.businesses], headers=("Name",)
-    )
-
-    resident_data: list[tuple[int, str]] = []
-    for entry in district_data.residences:
-        building = entry.get_component(ResidentialBuilding)
-        for unit in building.units:
-            residents = unit.get_component(ResidentialUnit).residents
-            for resident in residents:
-                resident_data.append(
-                    (resident.uid, resident.get_component(Character).full_name)
-                )
-
-    residents_table = tabulate.tabulate(resident_data, headers=("UID", "Name"))
 
     output = "District\n"
     output += "========\n"
-    output += "\n"
-    output += f"UID: {district.uid}\n"
     output += f"Name: {district_data.name}\n"
-    output += f"Population: {district_data.population}\n"
-    # output += f"description\n: {description}\n"
     output += "\n"
-    output += "=== Residential Buildings ===\n"
-    output += f"{residential_buildings_table}\n"
-    output += "\n"
-    output += "=== Businesses ===\n"
-    output += f"{businesses_table}\n"
-    output += "\n"
-    output += "=== Residents ===\n"
-    output += f"{residents_table}\n"
+    output += "=== Locations ===\n"
+    output += f"{locations_table}\n"
     output += "\n"
 
     return output
@@ -156,72 +118,12 @@ def _business_header(business: GameObject) -> str:
     output += f"UID: {business.uid}\n"
     output += f"Name: {business_data.name}\n"
     output += f"Status: {activity_status}\n"
-    output += f"District: {business.get_component(CurrentLocation).district.name}\n"
+    output += f"District: {business.get_component(CurrentDistrict).district.name}\n"
     output += f"Owner: {business_data.owner.name if business_data.owner else None}\n"
     output += f"Owner role: {business_data.owner_role.name}\n"
     output += "\n"
     output += "=== Employees ===\n"
     output += f"{employee_table}\n"
-    output += "\n"
-
-    return output
-
-
-def _residential_building_header(residence: GameObject) -> str:
-    """Print information about a residence."""
-    building_data = residence.try_component(ResidentialBuilding)
-
-    if building_data is None:
-        return ""
-
-    activity_status = "active" if residence.has_component(Active) else "inactive"
-
-    residential_units = tabulate.tabulate(
-        [
-            (
-                entry.uid,
-                ", ".join(
-                    r.name for r in entry.get_component(ResidentialUnit).residents
-                ),
-            )
-            for entry in building_data.units
-        ],
-        headers=("Unit", "Residents"),
-    )
-
-    current_location = residence.get_component(CurrentLocation)
-
-    output = "Residential Building\n"
-    output += "====================\n"
-    output += "\n"
-    output += f"UID: {residence.uid}\n"
-    output += f"Name: {residence.name}\n"
-    output += f"Status: {activity_status}\n"
-    output += f"District: {current_location.district.name}\n"
-    output += "\n"
-    output += "=== Residential Units ===\n"
-    output += f"{residential_units}\n"
-    output += "\n"
-
-    return output
-
-
-def _residential_unit_header(residential_unit: GameObject) -> str:
-    """Print information about a unit within a residential building."""
-    unit_data = residential_unit.try_component(ResidentialUnit)
-
-    if unit_data is None:
-        return ""
-
-    residents = ", ".join(r.name for r in unit_data.residents)
-
-    output = "Residential Unit\n"
-    output += "================\n"
-    output += "\n"
-    output += f"UID: {residential_unit.uid}\n"
-    output += f"Name: {residential_unit.name}\n"
-    output += f"Building: {unit_data.building.name}\n"
-    output += f"Residents: {residents}\n"
     output += "\n"
 
     return output
@@ -237,8 +139,8 @@ def _character_header(character: GameObject) -> str:
     activity_status = "active" if character.has_component(Active) else "inactive"
 
     residence = "N/A"
-    if resident := character.try_component(Resident):
-        residence = resident.residence.get_component(ResidentialUnit).building.name
+    if resident_of := character.try_component(ResidentOf):
+        residence = resident_of.settlement.name
 
     works_at = "N/A"
     if occupation := character.try_component(Occupation):
@@ -281,36 +183,6 @@ def _relationship_header(relationship: GameObject) -> str:
     output += f"Target: {relationship_data.target.name}\n"
 
     return output
-
-
-def get_settlement_description(settlement: Settlement) -> str:
-    """Create a string description of the settlement.
-
-    Parameters
-    ----------
-    settlement
-        The settlement to describe.
-
-    Returns
-    -------
-    str
-        The description.
-    """
-    districts = list(settlement.districts)
-
-    concatenated_district_names = ", ".join([d.name for d in districts])
-
-    description = (
-        f"{settlement.name} has a population of {settlement.population}. "
-        f"It has {len(districts)} district(s) ({concatenated_district_names})."
-    )
-
-    for district in districts:
-        description += (
-            f"{district.name} is {district.get_component(District).description}. "
-        )
-
-    return description
 
 
 def _get_frequented_by_table(obj: GameObject) -> str:
@@ -497,8 +369,6 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("settlement", _settlement_section),
     ("district", _district_header),
     ("relationship", _relationship_header),
-    ("residential_building", _residential_building_header),
-    ("residential_unit", _residential_unit_header),
     ("business", _business_header),
     ("character", _character_header),
     ("stats", _get_stats_table),
@@ -607,11 +477,11 @@ def list_settlements(sim: Simulation) -> None:
 def list_districts(sim: Simulation) -> None:
     """Prints the list of districts in the simulation."""
     districts = [
-        (uid, district.name, district.population)
+        (uid, district.name)
         for uid, (district, _) in sim.world.get_components((District, Active))
     ]
 
-    table = tabulate.tabulate(districts, headers=["UID", "Name", "Population"])
+    table = tabulate.tabulate(districts, headers=["UID", "Name"])
 
     # Display as a table the object ID, Display Name, Description
     output = "=== Districts ===\n"
@@ -636,7 +506,7 @@ def list_businesses(sim: Simulation, inactive_ok: bool = False) -> None:
                     business.name,
                     str(business.owner),
                     activity_status,
-                    business.gameobject.get_component(CurrentLocation).district.name,
+                    business.gameobject.get_component(CurrentDistrict).district.name,
                 )
             )
 
@@ -687,31 +557,6 @@ def list_characters(sim: Simulation, inactive_ok: bool = False) -> None:
 
     # Display as a table the object ID, Display Name, Description
     output = "=== Characters ===\n"
-    output += table
-    output += "\n"
-
-    print(output)
-
-
-def list_residences(sim: Simulation) -> None:
-    """Print active residential buildings in the simulation."""
-    residential_buildings = [
-        (
-            uid,
-            building.gameobject.name,
-            current_location.district.name,
-        )
-        for uid, (building, current_location, _) in sim.world.get_components(
-            (ResidentialBuilding, CurrentLocation, Active)
-        )
-    ]
-
-    table = tabulate.tabulate(
-        residential_buildings, headers=["UID", "Name", "District"]
-    )
-
-    # Display as a table the object ID, Display Name, Description
-    output = "=== Residential Buildings ===\n"
     output += table
     output += "\n"
 

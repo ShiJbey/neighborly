@@ -8,8 +8,7 @@
       "District": {},
       "PersonalEventHistory": {},
       "CharacterSpawnTable": {},
-      "BusinessSpawnTable": {},
-      "ResidenceSpawnTable": {}
+      "BusinessSpawnTable": {}
     }
   },
   "farming_district": {
@@ -41,13 +40,6 @@
             "with_id": "farm",
             "max_instances": 2,
             "spawn_frequency": 2
-          }
-        ]
-      },
-      "ResidenceSpawnTable": {
-        "residence_types": [
-          {
-            "with_id": "large_apartment_building"
           }
         ]
       }
@@ -89,13 +81,6 @@
             "with_id": "cafe"
           }
         ]
-      },
-      "ResidenceSpawnTable": {
-        "residence_types": [
-          {
-            "with_id": "large_apartment_building"
-          }
-        ]
       }
     },
     "tags": [
@@ -127,13 +112,6 @@
             "with_id": "bar"
           }
         ]
-      },
-      "ResidenceSpawnTable": {
-        "residence_types": [
-          {
-            "with_id": "large_apartment_building"
-          }
-        ]
       }
     },
     "tags": []
@@ -158,14 +136,7 @@
           }
         ]
       },
-      "BusinessSpawnTable": {},
-      "ResidenceSpawnTable": {
-        "residence_types": [
-          {
-            "with_id": "large_apartment_building"
-          }
-        ]
-      }
+      "BusinessSpawnTable": {}
     },
     "tags": []
   }

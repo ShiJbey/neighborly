@@ -18,12 +18,11 @@ from neighborly.defs.base_types import (
     CharacterDef,
     DistrictDef,
     JobRoleDef,
-    ResidenceDef,
+    LocationPreferenceDef,
     SettlementDef,
     SkillDef,
     SpeciesDef,
     TraitDef,
-    LocationPreferenceDef,
 )
 from neighborly.libraries import (
     BeliefLibrary,
@@ -32,7 +31,6 @@ from neighborly.libraries import (
     DistrictLibrary,
     JobRoleLibrary,
     LocationPreferenceLibrary,
-    ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
     SpeciesLibrary,
@@ -61,29 +59,6 @@ def load_districts(
     for district_id, params in data.items():
         district_library.add_definition(
             DistrictDef.model_validate({"definition_id": district_id, **params})
-        )
-
-
-def load_residences(
-    sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
-) -> None:
-    """Load residential building definition data from a data file.
-
-    Parameters
-    ----------
-    sim
-        The simulation instance to load the data into
-    file_path
-        The path to the data file.
-    """
-    with open(file_path, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
-
-    residence_library = sim.world.resource_manager.get_resource(ResidenceLibrary)
-
-    for residence_id, params in data.items():
-        residence_library.add_definition(
-            ResidenceDef.model_validate({"definition_id": residence_id, **params})
         )
 
 

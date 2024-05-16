@@ -219,18 +219,31 @@ class LocationPreferences(Component):
         return {"rules": [r for r in self._rules]}
 
 
-class CurrentLocation(Component):
-    """Tracks the current settlement and district of a GameObject."""
+class CurrentSettlement(Component):
+    """Tracks the current settlement a GameObject is in."""
 
-    __slots__ = ("settlement", "district")
+    __slots__ = ("settlement",)
 
     settlement: GameObject
-    district: GameObject
 
-    def __init__(self, settlement: GameObject, district: GameObject) -> None:
+    def __init__(self, settlement: GameObject) -> None:
         super().__init__()
         self.settlement = settlement
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"settlement": self.settlement.uid}
+
+
+class CurrentDistrict(Component):
+    """Tracks the current district a GameObject is in."""
+
+    __slots__ = ("district",)
+
+    district: GameObject
+
+    def __init__(self, district: GameObject) -> None:
+        super().__init__()
         self.district = district
 
     def to_dict(self) -> dict[str, Any]:
-        return {"settlement": self.settlement.uid, "district": self.district.uid}
+        return {"district": self.district.uid}

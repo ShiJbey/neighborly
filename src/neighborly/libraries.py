@@ -29,7 +29,6 @@ from neighborly.defs.base_types import (
     DistrictDef,
     JobRoleDef,
     LocationPreferenceDef,
-    ResidenceDef,
     SettlementDef,
     SkillDef,
     SpeciesDef,
@@ -201,41 +200,6 @@ class SettlementLibrary(ContentDefinitionLibrary[SettlementDef]):
     """The factory used to create new settlement from definitions."""
 
     def __init__(self, factory: ISettlementFactory) -> None:
-        super().__init__()
-        self.factory = factory
-
-
-class IResidenceFactory(ABC):
-    """Creates instances of residence gameobjects using a single definition."""
-
-    @abstractmethod
-    def create_residence(self, world: World, definition_id: str) -> GameObject:
-        """Create instance of residence from a residence definition.
-
-        Parameters
-        ----------
-        world
-            The simulation's World instance.
-        definition_id
-            The ID of the residence's definition.
-
-        Returns
-        -------
-        GameObject
-            The new residence.
-        """
-        raise NotImplementedError()
-
-
-class ResidenceLibrary(ContentDefinitionLibrary[ResidenceDef]):
-    """A collection of all character definitions."""
-
-    _slots__ = ("factory",)
-
-    factory: IResidenceFactory
-    """The factory used to create new residence from definitions."""
-
-    def __init__(self, factory: IResidenceFactory) -> None:
         super().__init__()
         self.factory = factory
 

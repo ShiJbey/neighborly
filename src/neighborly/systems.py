@@ -8,30 +8,32 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from neighborly.components.beliefs import Belief
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import (
     Character,
+    Household,
     LifeStage,
+    MemberOfHousehold,
     Pregnant,
+    ResidentOf,
     Species,
     SpeciesType,
 )
 from neighborly.components.location import (
-    CurrentLocation,
+    CurrentSettlement,
     FrequentedLocations,
     Location,
     LocationPreferenceRule,
     LocationPreferences,
 )
 from neighborly.components.relationship import Relationship
-from neighborly.components.residence import Resident, ResidentialUnit, Vacant
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.skills import Skill
-from neighborly.components.spawn_table import CharacterSpawnTable, ResidenceSpawnTable
+from neighborly.components.spawn_table import CharacterSpawnTable
 from neighborly.components.stats import Lifespan
 from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.config import SimulationConfig
@@ -48,9 +50,14 @@ from neighborly.events.defaults import (
     JoinSettlementEvent,
     SettlementAddedEvent,
 )
-from neighborly.helpers.character import create_character, create_child
+from neighborly.helpers.character import (
+    add_character_to_household,
+    create_character,
+    create_child,
+    create_household,
+    set_household_head,
+)
 from neighborly.helpers.location import score_location
-from neighborly.helpers.residence import create_residence
 from neighborly.helpers.settlement import create_settlement
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import (
@@ -68,14 +75,13 @@ from neighborly.libraries import (
     JobRoleLibrary,
     LocationPreferenceLibrary,
     PreconditionLibrary,
-    ResidenceLibrary,
     SettlementLibrary,
     SkillLibrary,
     SpeciesLibrary,
     TraitLibrary,
 )
 from neighborly.life_event import dispatch_life_event
-from neighborly.plugins.actions import CloseBusiness, Die, MoveIntoResidence
+from neighborly.plugins.actions import CloseBusiness, Die
 
 _logger = logging.getLogger(__name__)
 
@@ -140,140 +146,6 @@ class InitializeSettlementSystem(System):
         dispatch_life_event(event, [settlement.gameobject])
 
 
-class SpawnResidentialBuildingsSystem(System):
-    """Attempt to build new residential buildings in all districts."""
-
-    @staticmethod
-    def get_random_single_family_building(district: District) -> Optional[str]:
-        """Attempt to randomly select a single-family building from the spawn table.
-
-        Parameters
-        ----------
-        district
-            The district where the residential building will be built.
-
-        Returns
-        -------
-        str or None
-            The definition ID of a selected residence, or None if no eligible entries.
-        """
-        spawn_table = district.gameobject.get_component(ResidenceSpawnTable)
-
-        eligible_entries: list[str] = []
-        weights: list[float] = []
-
-        for entry in spawn_table.table.values():
-            if entry.instances >= entry.max_instances:
-                continue
-
-            if entry.required_population <= district.population:
-                continue
-
-            if entry.is_multifamily is True:
-                continue
-
-            eligible_entries.append(entry.definition_id)
-            weights.append(entry.spawn_frequency)
-
-        if len(eligible_entries) == 0:
-            return None
-
-        rng = district.gameobject.world.resource_manager.get_resource(random.Random)
-
-        return rng.choices(
-            population=eligible_entries,
-            weights=weights,
-            k=1,
-        )[0]
-
-    @staticmethod
-    def get_random_multifamily_building(district: District) -> Optional[str]:
-        """Attempt to randomly select a multifamily building from the spawn table.
-
-        Parameters
-        ----------
-        district
-            The district where the residential building will be built.
-
-        Returns
-        -------
-        str or None
-            The definition ID of a selected residence, or None if no eligible entries.
-        """
-        spawn_table = district.gameobject.get_component(ResidenceSpawnTable)
-
-        eligible_entries: list[str] = []
-        weights: list[float] = []
-
-        for entry in spawn_table.table.values():
-            if entry.instances >= entry.max_instances:
-                continue
-
-            if entry.required_population <= district.population:
-                continue
-
-            if entry.is_multifamily is False:
-                continue
-
-            eligible_entries.append(entry.definition_id)
-            weights.append(entry.spawn_frequency)
-
-        if len(eligible_entries) == 0:
-            return None
-
-        rng = district.gameobject.world.resource_manager.get_resource(random.Random)
-
-        return rng.choices(
-            population=eligible_entries,
-            weights=weights,
-            k=1,
-        )[0]
-
-    def on_update(self, world: World) -> None:
-        for _, (_, district, spawn_table) in world.get_components(
-            (Active, District, ResidenceSpawnTable)
-        ):
-            # We can't build if there is no space
-            if district.residential_slots <= 0:
-                continue
-
-            # Try to get an eligible multi-family residential building definition
-            building_definition_id = (
-                SpawnResidentialBuildingsSystem.get_random_multifamily_building(
-                    district=district
-                )
-            )
-
-            # Try to get a single-family residential building if the previous fails
-            if building_definition_id is None:
-                building_definition_id = (
-                    SpawnResidentialBuildingsSystem.get_random_single_family_building(
-                        district=district
-                    )
-                )
-
-            # If it fails again, skip this district
-            if building_definition_id is None:
-                continue
-
-            # Otherwise, build the residence and add it to the district
-            residence = create_residence(
-                world,
-                building_definition_id,
-            )
-            residence.add_component(
-                CurrentLocation(
-                    district=district.gameobject,
-                    settlement=district.gameobject.get_component(
-                        CurrentLocation
-                    ).settlement,
-                )
-            )
-            district.add_residence(residence)
-            district.gameobject.add_child(residence)
-            spawn_table.increment_count(building_definition_id)
-
-
 class SpawnNewResidentSystem(System):
     """Spawns new characters as residents within vacant residences."""
 
@@ -283,16 +155,9 @@ class SpawnNewResidentSystem(System):
         rng = world.resource_manager.get_resource(random.Random)
 
         # Find vacant residences
-        for _, (_, residence, _) in world.get_components(
-            (Active, ResidentialUnit, Vacant)
+        for _, (_, current_settlement, spawn_table, _) in world.get_components(
+            (District, CurrentSettlement, CharacterSpawnTable, Active)
         ):
-            # Get the spawn table of district the residence belongs to
-            district = residence.building.get_component(CurrentLocation).district
-
-            assert district is not None
-
-            spawn_table = district.get_component(CharacterSpawnTable)
-
             if len(spawn_table.table) == 0:
                 continue
 
@@ -318,7 +183,16 @@ class SpawnNewResidentSystem(System):
 
             character = create_character(world, character_definition_id)
 
-            settlement = district.get_component(CurrentLocation).settlement
+            household = create_household(world).get_component(Household)
+
+            set_household_head(household, character.get_component(Character))
+            add_character_to_household(household, character.get_component(Character))
+
+            character.add_component(
+                ResidentOf(settlement=current_settlement.settlement)
+            )
+
+            current_settlement.settlement.get_component(Settlement).population += 1
 
             world.events.dispatch_event(
                 Event("character-added", world=world, character=character)
@@ -326,13 +200,10 @@ class SpawnNewResidentSystem(System):
 
             event = JoinSettlementEvent(
                 character,
-                settlement,
+                current_settlement.settlement,
             )
 
             dispatch_life_event(event, [character])
-
-            # Add the character as the owner of the home and a resident
-            MoveIntoResidence(character, residence.gameobject, is_owner=True).execute()
 
 
 class CompileTraitDefsSystem(System):
@@ -582,21 +453,6 @@ class CompileSettlementDefsSystem(System):
                 library.add_definition(definition)
 
 
-class CompileResidenceDefsSystem(System):
-    """Compile residence definitions."""
-
-    def on_update(self, world: World) -> None:
-        library = world.resource_manager.get_resource(ResidenceLibrary)
-
-        compiled_defs = compile_definitions(library.definitions.values())
-
-        library.definitions.clear()
-
-        for definition in compiled_defs:
-            if not definition.is_template:
-                library.add_definition(definition)
-
-
 class CompileCharacterDefsSystem(System):
     """Compile character definitions."""
 
@@ -813,11 +669,15 @@ class ChildBirthSystem(System):
                 other_parent=other_parent,
             )
 
-            MoveIntoResidence(
-                baby,
-                character.gameobject.get_component(Resident).residence,
-                is_owner=False,
-            ).execute()
+            baby.add_component(
+                ResidentOf(character.gameobject.get_component(ResidentOf).settlement)
+            )
+
+            household = character.gameobject.get_component(
+                MemberOfHousehold
+            ).household.get_component(Household)
+
+            add_character_to_household(household, baby.get_component(Character))
 
             # Birthing parent to child
             add_relationship_trait(character.gameobject, baby, "child")

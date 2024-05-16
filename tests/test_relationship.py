@@ -21,7 +21,6 @@ from neighborly.loaders import (
     load_characters,
     load_districts,
     load_job_roles,
-    load_residences,
     load_settlements,
     load_skills,
     load_species,
@@ -43,7 +42,6 @@ def sim() -> Simulation:
     load_settlements(simulation, _DATA_DIR / "settlements.json")
     load_businesses(simulation, _DATA_DIR / "businesses.json")
     load_characters(simulation, _DATA_DIR / "characters.json")
-    load_residences(simulation, _DATA_DIR / "residences.json")
     load_job_roles(simulation, _DATA_DIR / "job_roles.json")
     load_skills(simulation, _DATA_DIR / "skills.json")
     load_species(simulation, _DATA_DIR / "species.json")

@@ -140,60 +140,6 @@ class BecomeSeniorEvent(LifeEvent):
         return f"{self.character.name} became a senior."
 
 
-class MoveOutOfResidenceEvent(LifeEvent):
-    """Sets the characters current residence."""
-
-    __event_type__ = "move-out-residence"
-
-    __slots__ = ("character", "residence")
-
-    character: GameObject
-    residence: GameObject
-
-    def __init__(self, character: GameObject, residence: GameObject) -> None:
-        super().__init__(character.world)
-        self.character = character
-        self.residence = residence
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "character": self.character.uid,
-            "residence": self.residence.uid,
-        }
-
-    def __str__(self) -> str:
-        return f"{self.character.name} moved out of their residence, {self.residence.name}."
-
-
-class MoveIntoResidenceEvent(LifeEvent):
-    """Sets the characters current residence."""
-
-    __event_type__ = "move-into-residence"
-
-    __slots__ = ("character", "residence")
-
-    character: GameObject
-    residence: GameObject
-
-    def __init__(self, character: GameObject, residence: GameObject) -> None:
-        super().__init__(character.world)
-        self.character = character
-        self.residence = residence
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "character": self.character.uid,
-            "residence": self.residence.uid,
-        }
-
-    def __str__(self) -> str:
-        return (
-            f"{self.character.name} moved into a new residence, {self.residence.name}"
-        )
-
-
 class BirthEvent(LifeEvent):
     """Event dispatched when a child is born."""
 
