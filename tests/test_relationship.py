@@ -25,7 +25,11 @@ from neighborly.loaders import (
     load_skills,
     load_species,
 )
-from neighborly.plugins import default_character_names, default_traits
+from neighborly.plugins import (
+    default_character_names,
+    default_settlement_names,
+    default_traits,
+)
 from neighborly.simulation import Simulation
 
 _DATA_DIR = (
@@ -48,6 +52,7 @@ def sim() -> Simulation:
 
     default_traits.load_plugin(simulation)
     default_character_names.load_plugin(simulation)
+    default_settlement_names.load_plugin(simulation)
 
     # IMPORTANT: Stop character from generating with traits
     simulation.world.resources.get_resource(CharacterLibrary).get_definition(

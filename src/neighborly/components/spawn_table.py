@@ -119,3 +119,44 @@ class BusinessSpawnTable(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {}
+
+
+@attrs.define
+class DistrictSpawnTableEntry:
+    """A single row of data from a DistrictSpawnTable."""
+
+    definition_id: str
+    """The ID of a business definition."""
+    spawn_frequency: int
+    """The relative frequency that this entry should spawn relative to others."""
+    max_instances: int
+    """Max number of instances of the business that may exist."""
+
+
+class DistrictSpawnTable(Component):
+    """Manages the frequency that business types are spawned"""
+
+    __slots__ = ("table",)
+
+    table: dict[str, DistrictSpawnTableEntry]
+    """Table data with entries."""
+
+    def __init__(
+        self,
+        entries: Optional[list[DistrictSpawnTableEntry]] = None,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        entries
+            Starting entries.
+        """
+        super().__init__()
+        self.table = {}
+
+        if entries:
+            for entry in entries:
+                self.table[entry.definition_id] = entry
+
+    def to_dict(self) -> dict[str, Any]:
+        return {}

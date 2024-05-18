@@ -49,6 +49,10 @@ class DistrictDef(ContentDefinition):
 
     definition_id: str
     """The name of this definition."""
+    spawn_frequency: int = 1
+    """The relative frequency of this district spawning compared to others."""
+    max_instances: int = 1
+    """The maximum instances of this district that can exist in a settlement."""
     variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)

@@ -9,9 +9,16 @@ from neighborly.components.spawn_table import (
     BusinessSpawnTableEntry,
     CharacterSpawnTable,
     CharacterSpawnTableEntry,
+    DistrictSpawnTable,
+    DistrictSpawnTableEntry,
 )
 from neighborly.ecs import Component, ComponentFactory, World
-from neighborly.libraries import BusinessLibrary, CharacterLibrary, JobRoleLibrary
+from neighborly.libraries import (
+    BusinessLibrary,
+    CharacterLibrary,
+    DistrictLibrary,
+    JobRoleLibrary,
+)
 
 
 class CharacterSpawnTableFactory(ComponentFactory):
@@ -118,3 +125,49 @@ class BusinessSpawnTableFactory(ComponentFactory):
                     )
 
         return BusinessSpawnTable(table_entries)
+
+
+class DistrictSpawnTableFactory(ComponentFactory):
+    """Creates DistrictSpawnTable instances."""
+
+    __component__ = "DistrictSpawnTable"
+
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+
+        library = world.resource_manager.get_resource(DistrictLibrary)
+
+        table_entries: list[DistrictSpawnTableEntry] = []
+        district_types: list[dict[str, Any]] = kwargs.get("district_types", [])
+
+        for entry in district_types:
+            if definition_id := entry.get("with_id", ""):
+                definition = library.get_definition(definition_id)
+                table_entries.append(
+                    DistrictSpawnTableEntry(
+                        definition_id=definition_id,
+                        spawn_frequency=entry.get(
+                            "spawn_frequency", definition.spawn_frequency
+                        ),
+                        max_instances=entry.get(
+                            "max_instances", definition.max_instances
+                        ),
+                    )
+                )
+            elif definition_tags := entry.get("with_tags", []):
+                matching_definitions = library.get_definition_with_tags(definition_tags)
+
+                for definition in matching_definitions:
+
+                    table_entries.append(
+                        DistrictSpawnTableEntry(
+                            definition_id=definition.definition_id,
+                            spawn_frequency=entry.get(
+                                "spawn_frequency", definition.spawn_frequency
+                            ),
+                            max_instances=entry.get(
+                                "max_instances", definition.max_instances
+                            ),
+                        )
+                    )
+
+        return DistrictSpawnTable(table_entries)

@@ -5,7 +5,6 @@ import pathlib
 import pytest
 
 from neighborly.components.settlement import Settlement
-from neighborly.config import SimulationConfig
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -31,7 +30,7 @@ _DATA_DIR = (
 def test_sim() -> Simulation:
     """Create a simulation instance for tests."""
 
-    sim = Simulation(SimulationConfig(settlement="basic_settlement"))
+    sim = Simulation()
 
     load_districts(sim, _DATA_DIR / "districts.json")
     load_settlements(sim, _DATA_DIR / "settlements.json")

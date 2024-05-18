@@ -11,8 +11,6 @@ import random
 from cProfile import Profile
 from pstats import SortKey
 
-import tqdm
-
 from neighborly.action import Action
 from neighborly.components.business import Business, Occupation
 from neighborly.components.character import Character, LifeStage
@@ -350,7 +348,6 @@ def main() -> Simulation:
     sim = Simulation(
         SimulationConfig(
             seed=args.seed,
-            settlement="basic_settlement",
             logging=LoggingConfig(
                 logging_enabled=not bool(args.disable_logging),
                 log_level="DEBUG",
@@ -403,40 +400,20 @@ def main() -> Simulation:
     sim.world.events.on_event("dating_break_up", break_up_response)
     sim.world.events.on_event("divorce", divorce_response)
 
-    total_time_steps: int = args.years * 12
-
     sim.initialize()
 
-    if sim.config.logging.log_to_terminal:
-        if args.profiling:
-            with Profile() as profile:
-                for _ in range(total_time_steps):
-                    sim.step()
+    if args.profiling:
+        with Profile() as profile:
+            sim.run_for(args.years)
 
-                (
-                    pstats.Stats(profile)
-                    .strip_dirs()  # type: ignore
-                    .sort_stats(SortKey.PCALLS)
-                    .dump_stats(args.profile_out)
-                )
-        else:
-            for _ in range(total_time_steps):
-                sim.step()
+            (
+                pstats.Stats(profile)
+                .strip_dirs()  # type: ignore
+                .sort_stats(SortKey.PCALLS)
+                .dump_stats(args.profile_out)
+            )
     else:
-        if args.profiling:
-            with Profile() as profile:
-                for _ in tqdm.trange(total_time_steps):
-                    sim.step()
-
-                (
-                    pstats.Stats(profile)
-                    .strip_dirs()  # type: ignore
-                    .sort_stats(SortKey.PCALLS)
-                    .dump_stats(args.profile_out)
-                )
-        else:
-            for _ in tqdm.trange(total_time_steps):
-                sim.step()
+        sim.run_for(args.years)
 
     if args.output:
         output_path: pathlib.Path = (

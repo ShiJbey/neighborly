@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import random
+from collections import defaultdict
 from typing import ClassVar
 
 from neighborly.components.beliefs import Belief
@@ -34,11 +35,12 @@ from neighborly.components.relationship import Relationship
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.skills import Skill
-from neighborly.components.spawn_table import CharacterSpawnTable
+from neighborly.components.spawn_table import CharacterSpawnTable, DistrictSpawnTable
 from neighborly.components.stats import Fertility, Lifespan
 from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
+from neighborly.defs.base_types import DistrictDef
 from neighborly.defs.definition_compiler import compile_definitions
 from neighborly.ecs import Active, Event, GameObject, System, SystemGroup, World
 from neighborly.events.defaults import (
@@ -58,8 +60,13 @@ from neighborly.helpers.character import (
     create_household,
     set_household_head,
 )
+from neighborly.helpers.content_selection import get_with_tags
 from neighborly.helpers.location import score_location
-from neighborly.helpers.settlement import create_settlement
+from neighborly.helpers.settlement import (
+    add_district_to_settlement,
+    create_district,
+    create_settlement,
+)
 from neighborly.helpers.traits import (
     add_relationship_trait,
     get_relationships_with_traits,
@@ -117,30 +124,77 @@ class InitializeSettlementSystem(System):
     def on_update(self, world: World) -> None:
         config = world.resource_manager.get_resource(SimulationConfig)
 
-        definition_ids = config.settlement
-
         rng = world.resource_manager.get_resource(random.Random)
 
-        if isinstance(definition_ids, str):
-            settlement_definition_id = definition_ids
-        elif len(definition_ids) > 0:
-            settlement_definition_id = rng.choice(definition_ids)
-        else:
-            _logger.debug("No settlement IDs provided.")
+        settlement_library = world.resources.get_resource(SettlementLibrary)
+        district_library = world.resources.get_resource(DistrictLibrary)
+
+        # Select a settlement from the library using the theme tags
+        selection_tags = [f"~{tag}" for tag in config.theme_tags]
+
+        settlement_options = settlement_library.get_definition_with_tags(selection_tags)
+
+        if not settlement_options:
             return
 
-        settlement = create_settlement(world, settlement_definition_id).get_component(
-            Settlement
-        )
+        chosen_settlement_definition = rng.choice(settlement_options)
+
+        settlement = create_settlement(
+            world, chosen_settlement_definition.definition_id
+        ).get_component(Settlement)
 
         world.events.dispatch_event(
             Event("settlement-added", world=world, settlement=settlement.gameobject)
         )
 
-        for district in settlement.districts:
+        # Now generate districts for the settlement using the spawn table. The table
+        # has a subset of all the districts in the district library. We need to perform
+        # tag-based selection on all the entries
+        spawn_table = settlement.gameobject.get_component(DistrictSpawnTable)
+
+        districts_and_tags: list[tuple[DistrictDef, list[str]]] = []
+
+        for entry in spawn_table.table.values():
+            definition = district_library.get_definition(entry.definition_id)
+            districts_and_tags.append((definition, [*definition.tags]))
+
+        district_options = get_with_tags(districts_and_tags, selection_tags)
+
+        n_districts_remaining = config.num_districts
+
+        district_instance_counts: defaultdict[str, int] = defaultdict(lambda: 0)
+
+        while n_districts_remaining > 0:
+
+            if not district_options:
+                raise RuntimeError(
+                    "Ran out of eligible districts when constructing settlement. "
+                    "Please adjust settings or add more content."
+                )
+
+            district_def = rng.choice(district_options)
+
+            # If there are too many instances of this district remove it from the list
+            # and try again
+            if (
+                district_instance_counts[district_def.definition_id]
+                > district_def.max_instances
+            ):
+                district_options.remove(district_def)
+                continue
+
+            # Create an instance of the district and add it to the settlement
+            district = create_district(world, district_def.definition_id).get_component(
+                District
+            )
+
+            add_district_to_settlement(settlement, district)
+
             world.events.dispatch_event(
                 Event("district-added", world=world, district=district)
             )
+
+            n_districts_remaining -= 1
 
         event = SettlementAddedEvent(settlement.gameobject)
         dispatch_life_event(event, [settlement.gameobject])

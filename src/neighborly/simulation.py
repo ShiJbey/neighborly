@@ -12,8 +12,10 @@ import pathlib
 import random
 from typing import Optional
 
+import tqdm
+
 from neighborly.config import SimulationConfig
-from neighborly.datetime import SimDate
+from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.ecs import World
 from neighborly.effects.effects import (
     AddBelief,
@@ -52,6 +54,7 @@ from neighborly.factories.skills import SkillsFactory
 from neighborly.factories.spawn_table import (
     BusinessSpawnTableFactory,
     CharacterSpawnTableFactory,
+    DistrictSpawnTableFactory,
 )
 from neighborly.factories.stats import (
     CharmFactory,
@@ -270,6 +273,7 @@ class Simulation:
         self.world.gameobjects.add_component_factory(StatsFactory())
         self.world.gameobjects.add_component_factory(CharacterSpawnTableFactory())
         self.world.gameobjects.add_component_factory(BusinessSpawnTableFactory())
+        self.world.gameobjects.add_component_factory(DistrictSpawnTableFactory())
         self.world.gameobjects.add_component_factory(RelationshipsFactory())
         self.world.gameobjects.add_component_factory(PersonalEventHistoryFactory())
         self.world.gameobjects.add_component_factory(LifespanFactory())
@@ -360,6 +364,19 @@ class Simulation:
         """Advance the simulation one time step (month)."""
         self._world.step()
         self.date.increment_month()
+
+    def run_for(self, years: int) -> None:
+        """Run the simulation for a given number of years."""
+
+        total_time_steps: int = years * MONTHS_PER_YEAR
+
+        if self.config.logging.log_to_terminal:
+
+            for _ in range(total_time_steps):
+                self.step()
+        else:
+            for _ in tqdm.trange(total_time_steps):
+                self.step()
 
     def to_json(self, indent: Optional[int] = None) -> str:
         """Export the simulation as a JSON string.
