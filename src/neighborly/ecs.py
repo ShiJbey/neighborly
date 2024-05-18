@@ -302,6 +302,8 @@ class GameObject:
         for child in self.children:
             child.activate()
 
+        self.dispatch_event(Event("activated", world=self.world, gameobject=self))
+
     def deactivate(self) -> None:
         """Remove the Active tag from a GameObject."""
 
@@ -1446,6 +1448,9 @@ class GameObjectManager:
 
         # Deactivate first
         gameobject.deactivate()
+        gameobject.dispatch_event(
+            Event("destroyed", world=self.world, gameobject=gameobject)
+        )
 
         # Destroy all children
         for child in gameobject.children:

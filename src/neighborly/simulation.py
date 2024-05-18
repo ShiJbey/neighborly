@@ -47,11 +47,7 @@ from neighborly.factories.settlement import (
     DistrictFactory,
     SettlementFactory,
 )
-from neighborly.factories.shared import (
-    AgeFactory,
-    AgentFactory,
-    PersonalEventHistoryFactory,
-)
+from neighborly.factories.shared import AgeFactory, PersonalEventHistoryFactory
 from neighborly.factories.skills import SkillsFactory
 from neighborly.factories.spawn_table import (
     BusinessSpawnTableFactory,
@@ -269,7 +265,6 @@ class Simulation:
         self.world.gameobjects.add_component_factory(SettlementFactory())
         self.world.gameobjects.add_component_factory(DistrictFactory())
         self.world.gameobjects.add_component_factory(AgeFactory())
-        self.world.gameobjects.add_component_factory(AgentFactory())
         self.world.gameobjects.add_component_factory(SkillsFactory())
         self.world.gameobjects.add_component_factory(TraitsFactory())
         self.world.gameobjects.add_component_factory(StatsFactory())

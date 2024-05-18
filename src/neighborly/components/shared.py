@@ -34,24 +34,3 @@ class Age(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {"value": self._value}
-
-
-class Agent(Component):
-    """Marks the gameobject as being an agent."""
-
-    __slots__ = ("_agent_type",)
-
-    _agent_type: str
-    """The type of agent represented by this GameObject."""
-
-    def __init__(self, agent_type: str) -> None:
-        super().__init__()
-        self._agent_type = agent_type
-
-    @property
-    def agent_type(self) -> str:
-        """The type of the agent."""
-        return self._agent_type
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"agent_type": self.agent_type}

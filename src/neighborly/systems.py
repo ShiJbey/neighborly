@@ -19,6 +19,7 @@ from neighborly.components.character import (
     MemberOfHousehold,
     Pregnant,
     ResidentOf,
+    Sex,
     Species,
     SpeciesType,
 )
@@ -34,7 +35,7 @@ from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.skills import Skill
 from neighborly.components.spawn_table import CharacterSpawnTable
-from neighborly.components.stats import Lifespan
+from neighborly.components.stats import Fertility, Lifespan
 from neighborly.components.traits import Trait, Traits, TraitType
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
@@ -59,7 +60,6 @@ from neighborly.helpers.character import (
 )
 from neighborly.helpers.location import score_location
 from neighborly.helpers.settlement import create_settlement
-from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import (
     add_relationship_trait,
     get_relationships_with_traits,
@@ -291,6 +291,15 @@ class CompileSpeciesDefsSystem(System):
                         lifespan=(min_lifespan, max_lifespan),
                         can_physically_age=definition.can_physically_age,
                         traits=[*definition.traits],
+                        adolescent_female_fertility=definition.adolescent_female_fertility,
+                        young_adult_female_fertility=definition.young_adult_female_fertility,
+                        adult_female_fertility=definition.adult_female_fertility,
+                        senior_female_fertility=definition.senior_female_fertility,
+                        adolescent_male_fertility=definition.adolescent_male_fertility,
+                        young_adult_male_fertility=definition.young_adult_male_fertility,
+                        adult_male_fertility=definition.adult_male_fertility,
+                        senior_male_fertility=definition.senior_male_fertility,
+                        fertility_cost_per_child=definition.fertility_cost_per_child,
                     )
                 )
 
@@ -396,6 +405,7 @@ class CompileLocationPreferenceDefsSystem(System):
                 library.add_rule(
                     LocationPreferenceRule(
                         rule_id=definition.definition_id,
+                        description=definition.description,
                         preconditions=[
                             precondition_library.create_from_obj(world, entry)
                             for entry in definition.preconditions
@@ -593,31 +603,73 @@ class LifeStageSystem(System):
 
     def on_update(self, world: World) -> None:
 
-        for _, (character, species, age, _) in world.get_components(
-            (Character, Species, Age, Active)
+        for _, (character, species, age, fertility, _) in world.get_components(
+            (Character, Species, Age, Fertility, Active)
         ):
 
             if species.species.can_physically_age:
                 if age.value >= species.species.senior_age:
                     if character.life_stage != LifeStage.SENIOR:
+                        fertility_max = (
+                            species.species.senior_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.senior_female_fertility
+                        )
+
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
                         evt = BecomeSeniorEvent(character.gameobject)
                         character.life_stage = LifeStage.SENIOR
                         dispatch_life_event(evt, [character.gameobject])
 
                 elif age.value >= species.species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
+
+                        fertility_max = (
+                            species.species.adult_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.adult_female_fertility
+                        )
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
                         evt = BecomeAdultEvent(character.gameobject)
                         character.life_stage = LifeStage.ADULT
                         dispatch_life_event(evt, [character.gameobject])
 
                 elif age.value >= species.species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
+
+                        fertility_max = (
+                            species.species.young_adult_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.young_adult_female_fertility
+                        )
+
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
                         evt = BecomeYoungAdultEvent(character.gameobject)
                         character.life_stage = LifeStage.YOUNG_ADULT
                         dispatch_life_event(evt, [character.gameobject])
 
                 elif age.value >= species.species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
+
+                        fertility_max = (
+                            species.species.adolescent_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.adolescent_female_fertility
+                        )
+
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
                         evt = BecomeAdolescentEvent(character.gameobject)
                         character.life_stage = LifeStage.ADOLESCENT
                         dispatch_life_event(evt, [character.gameobject])
@@ -656,8 +708,8 @@ class ChildBirthSystem(System):
     def on_update(self, world: World) -> None:
         current_date = world.resource_manager.get_resource(SimDate)
 
-        for _, (character, pregnancy, _) in world.get_components(
-            (Character, Pregnant, Active)
+        for _, (character, pregnancy, fertility, species, _) in world.get_components(
+            (Character, Pregnant, Fertility, Species, Active)
         ):
             if pregnancy.due_date > current_date:
                 continue
@@ -738,7 +790,9 @@ class ChildBirthSystem(System):
                 add_relationship_trait(sibling, baby, "sibling")
 
             character.gameobject.remove_component(Pregnant)
-            get_stat(character.gameobject, "fertility").base_value -= 20
+
+            # Reduce the character's fertility according to their species
+            fertility.stat.base_value -= species.species.fertility_cost_per_child
 
             have_child_evt = HaveChildEvent(
                 character.gameobject,

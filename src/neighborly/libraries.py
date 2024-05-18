@@ -369,6 +369,11 @@ class LocationPreferenceLibrary(ContentDefinitionLibrary[LocationPreferenceDef])
         """Add a location preference rule."""
         self.rules[rule.rule_id] = rule
 
+    def get_rule(self, rule_id: str) -> LocationPreferenceRule:
+        """Get a location preference rule."""
+
+        return self.rules[rule_id]
+
 
 class ICharacterNameFactory(Protocol):
     """Generates a character name."""

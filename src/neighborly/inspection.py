@@ -9,22 +9,43 @@ from typing import Callable, Union
 import tabulate
 
 from neighborly import __version__
-from neighborly.components.business import Business, BusinessStatus, Occupation
-from neighborly.components.character import Character, ResidentOf, Species
+from neighborly.components.beliefs import AgentBeliefs, AppliedBeliefs
+from neighborly.components.business import (
+    Business,
+    BusinessStatus,
+    Occupation,
+    Unemployed,
+)
+from neighborly.components.character import (
+    Character,
+    Household,
+    MemberOfHousehold,
+    Pregnant,
+    ResidentOf,
+    Species,
+)
 from neighborly.components.location import (
     CurrentDistrict,
     FrequentedLocations,
     Location,
+    LocationPreferences,
 )
 from neighborly.components.relationship import Relationship, Relationships
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.skills import SKILL_MAX_VALUE, Skills
 from neighborly.components.stats import Stats
-from neighborly.components.traits import Traits
+from neighborly.components.traits import Traits, TraitType
 from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
 from neighborly.helpers.stats import get_stat
-from neighborly.libraries import JobRoleLibrary, SkillLibrary, TraitLibrary
+from neighborly.libraries import (
+    BeliefLibrary,
+    JobRoleLibrary,
+    LocationPreferenceLibrary,
+    SkillLibrary,
+    SpeciesLibrary,
+    TraitLibrary,
+)
 from neighborly.life_event import PersonalEventHistory
 from neighborly.simulation import Simulation
 
@@ -40,149 +61,242 @@ def _title_section(obj: GameObject) -> str:
     name_line = f"|| {obj.name} ||"
     frame_top_bottom = "=" * len(name_line)
 
-    output = f"{frame_top_bottom}\n"
-    output += f"{name_line}\n"
-    output += f"{frame_top_bottom}\n\n"
+    output = [
+        frame_top_bottom,
+        name_line,
+        frame_top_bottom,
+        "",
+        f"Active: {obj.is_active}",
+        f"Name: {obj.name}",
+    ]
 
-    return output
+    return "\n".join(output)
 
 
 def _settlement_section(obj: GameObject) -> str:
     """Return string output for a section focuses on settlement data."""
-    if obj.has_component(Settlement) is False:
+    settlement = obj.try_component(Settlement)
+
+    if settlement is None:
         return ""
 
-    settlement_data = obj.get_component(Settlement)
+    output = [
+        "=== Settlement ===",
+        "",
+        f"Name: {settlement.name!r}",
+        f"Population: {settlement.population}",
+    ]
 
-    districts = tabulate.tabulate(
-        [(entry.name,) for entry in settlement_data.districts],
-        headers=("Name"),
-    )
+    if settlement.districts:
+        output.append(f"Districts: (Total {len(settlement.districts)})")
+        for district in settlement.districts:
+            output.append(f"\t- {district.name}")
+    else:
+        output.append("Districts: None")
 
-    output = ""
-    output += "Settlement\n"
-    output += "==========\n"
-    output += "\n"
-    output += f"Name: {settlement_data.name}\n"
-    output += f"Population: {settlement_data.population}\n"
-    output += "\n"
-    output += "=== Districts ===\n"
-    output += f"{districts}\n"
-
-    return output
+    return "\n".join(output)
 
 
-def _district_header(district: GameObject) -> str:
+def _district_section(obj: GameObject) -> str:
     """Print information about a district."""
 
-    district_data = district.try_component(District)
+    district = obj.try_component(District)
 
-    if district_data is None:
+    if district is None:
         return ""
 
-    locations_table = tabulate.tabulate(
-        [(entry.name,) for entry in district_data.locations], headers=("Name",)
-    )
+    output = [
+        "=== District ===",
+        "",
+        f"Name: {district.name}",
+    ]
 
-    output = "District\n"
-    output += "========\n"
-    output += f"Name: {district_data.name}\n"
-    output += "\n"
-    output += "=== Locations ===\n"
-    output += f"{locations_table}\n"
-    output += "\n"
+    if district.locations:
+        output.append(f"Locations: (Total {len(district.locations)})")
+        for location in district.locations:
+            output.append(f"\t- {location.name}")
+    else:
+        output.append("Locations: None")
 
-    return output
+    return "\n".join(output)
 
 
-def _business_header(business: GameObject) -> str:
+def _business_section(obj: GameObject) -> str:
     """Print information about a business."""
-    business_data = business.try_component(Business)
+    business = obj.try_component(Business)
 
-    if business_data is None:
+    if business is None:
         return ""
 
-    employee_table = tabulate.tabulate(
-        [
-            (employee.name, role.name)
-            for employee, role in business_data.employees.items()
-        ],
-        headers=("Employee", "Role"),
-    )
+    owner = f"{business.owner.name if business.owner else None}"
 
-    activity_status = business_data.status.name
+    output = [
+        "=== Business ===",
+        "",
+        f"Name: {business.name!r}",
+        f"Age: {obj.get_component(Age).value}",
+        f"Status: {business.status.name!r}",
+        f"Owner: {owner!r} [{business.owner_role.name!r}]",
+        f"District: {obj.get_component(CurrentDistrict).district.name!r}",
+    ]
 
-    output = "Business\n"
-    output += "========\n"
-    output += "\n"
-    output += f"UID: {business.uid}\n"
-    output += f"Name: {business_data.name}\n"
-    output += f"Status: {activity_status}\n"
-    output += f"District: {business.get_component(CurrentDistrict).district.name}\n"
-    output += f"Owner: {business_data.owner.name if business_data.owner else None}\n"
-    output += f"Owner role: {business_data.owner_role.name}\n"
-    output += "\n"
-    output += "=== Employees ===\n"
-    output += f"{employee_table}\n"
-    output += "\n"
+    open_positions = business.get_open_positions()
+    if open_positions:
+        output.append(f"Open Positions: {', '.join(sorted(open_positions))}")
+    else:
+        output.append("Open Positions: None")
 
-    return output
+    if business.employees:
+        output.append(f"Current Employees: (Total {len(business.employees)})\n")
+        employee_table = tabulate.tabulate(
+            [
+                (employee.name, role.name)
+                for employee, role in business.employees.items()
+            ],
+            headers=("Name", "Role"),
+        )
+        output.append(employee_table)
+    else:
+        output.append("Employees: None")
+
+    return "\n".join(output)
 
 
-def _character_header(character: GameObject) -> str:
+def _character_section(obj: GameObject) -> str:
     """Print information about a character."""
-    character_data = character.try_component(Character)
+    character = obj.try_component(Character)
 
-    if character_data is None:
+    if character is None:
         return ""
-
-    activity_status = "active" if character.has_component(Active) else "inactive"
 
     residence = "N/A"
-    if resident_of := character.try_component(ResidentOf):
-        residence = resident_of.settlement.name
+    if resident_of := obj.try_component(ResidentOf):
+        residence = f"{resident_of.settlement.name!r}"
 
-    works_at = "N/A"
-    if occupation := character.try_component(Occupation):
-        works_at = occupation.business.name
+    age = obj.get_component(Age).value
 
-    age = character.get_component(Age).value
+    output = [
+        "=== Character ===",
+        "",
+        f"Name: {character.full_name!r}",
+        f"Age: {int(age)} ({character.life_stage.name})",
+        f"Sex: {character.sex.name}",
+        f"Species: {obj.get_component(Species).species.name!r}",
+        f"Resident of: {residence}",
+    ]
 
-    output = "Character\n"
-    output += "=========\n"
-    output += "\n"
-    output += f"UID: {character.uid}\n"
-    output += f"Name: {character_data.full_name}\n"
-    output += f"Status: {activity_status}\n"
-    output += f"Age: {int(age)} ({character_data.life_stage.name})\n"
-    output += f"Sex: {character_data.sex.name}\n"
-    output += f"Species: {character.get_component(Species).species.name}\n"
-    output += "\n"
-    output += f"Works at: {works_at}\n"
-    output += f"Residence: {residence}\n"
-    output += "\n"
-
-    return output
+    return "\n".join(output)
 
 
-def _relationship_header(relationship: GameObject) -> str:
+def _relationship_section(obj: GameObject) -> str:
     """Print information about a relationship."""
 
-    relationship_data = relationship.try_component(Relationship)
+    relationship = obj.try_component(Relationship)
 
-    if relationship_data is None:
+    if relationship is None:
         return ""
 
-    output = "Relationship\n"
-    output += "============\n"
+    output = "=== Relationship ===\n"
     output += "\n"
-    output += f"UID: {relationship.uid}\n"
-    output += f"Name: {relationship.name}\n"
-    output += "\n"
-    output += f"Owner: {relationship_data.owner.name}\n"
-    output += f"Target: {relationship_data.target.name}\n"
+    output += f"Owner: {relationship.owner.name}\n"
+    output += f"Target: {relationship.target.name}\n"
 
     return output
+
+
+def _household_section(obj: GameObject) -> str:
+    """Print information about a household."""
+    household = obj.try_component(Household)
+
+    if household is None:
+        return ""
+
+    output: list[str] = [
+        "=== Household ===",
+        "",
+        f"Head of Household: {household.head.name if household.head else 'N/A'}",
+    ]
+
+    if household.members:
+        output.append(f"Members: (Total {len(household.members)})")
+        for member in household.members:
+            output.append(f"\t- {member.name}")
+    else:
+        output.append("Members: N/A")
+
+    return "\n".join(output)
+
+
+def _member_of_household_section(obj: GameObject) -> str:
+    """Print information about a member of household component."""
+    member_of_household = obj.try_component(MemberOfHousehold)
+
+    if member_of_household is None:
+        return ""
+
+    household = member_of_household.household.get_component(Household)
+
+    output: list[str] = [
+        "=== Member of Household ===",
+        "",
+        f"Name: {household.gameobject.name}",
+        f"Head of Household: {household.head.name if household.head else 'N/A'}",
+    ]
+
+    if household.members:
+        output.append(f"Members: (Total {len(household.members)})")
+        for member in household.members:
+            output.append(f"\t- {member.name}")
+    else:
+        output.append("Members: N/A")
+
+    return "\n".join(output)
+
+
+def _pregnancy_section(obj: GameObject) -> str:
+    """Print information about a pregnancy component."""
+
+    pregnancy = obj.try_component(Pregnant)
+
+    if pregnancy is None:
+        return ""
+
+    output = [
+        "=== Pregnant ===",
+        "",
+        f"Partner: {pregnancy.partner.name}",
+        f"Due Date: {pregnancy.due_date}",
+    ]
+
+    return "\n".join(output)
+
+
+def _employment_section(obj: GameObject) -> str:
+    """Print information about a household."""
+    occupation = obj.try_component(Occupation)
+
+    if occupation := obj.try_component(Occupation):
+        output: list[str] = [
+            "=== Employment ===",
+            "",
+            f"Role ID: {occupation.job_role.definition_id}",
+            f"Role: {occupation.job_role.name}",
+            f"Description: {occupation.job_role.description}",
+            f"Business: {occupation.business.name}",
+            f"Start Date: {occupation.start_date}",
+        ]
+
+        return "\n".join(output)
+    elif unemployment := obj.try_component(Unemployed):
+        output = [
+            "=== Employment ===",
+            "",
+            f"Unemployed Since: {unemployment.timestamp}",
+        ]
+
+        return "\n".join(output)
+
+    return ""
 
 
 def _get_frequented_by_table(obj: GameObject) -> str:
@@ -192,7 +306,7 @@ def _get_frequented_by_table(obj: GameObject) -> str:
     if frequented_by is None:
         return ""
 
-    output = "=== Frequented By ===\n"
+    output = "=== Frequented By ===\n\n"
 
     output += tabulate.tabulate(
         [
@@ -201,8 +315,6 @@ def _get_frequented_by_table(obj: GameObject) -> str:
         ],
         headers=("UID", "Name"),
     )
-
-    output += "\n"
 
     return output
 
@@ -214,14 +326,21 @@ def _get_traits_table(obj: GameObject) -> str:
 
     traits = obj.get_component(Traits)
 
-    output = "=== Traits ===\n"
+    output = "=== Traits ===\n\n"
 
     output += tabulate.tabulate(
-        [(entry.trait.name, entry.description) for entry in traits.traits.values()],
-        headers=("Name", "Description"),
+        [
+            (
+                entry.trait.definition_id,
+                entry.trait.name,
+                (entry.duration if entry.has_duration else "N/A"),
+                entry.timestamp.to_iso_str(),
+                entry.description,
+            )
+            for entry in traits.traits.values()
+        ],
+        headers=("ID", "Name", "Duration", "Timestamp", "Description"),
     )
-
-    output += "\n"
 
     return output
 
@@ -237,12 +356,12 @@ def _get_personal_history_table(obj: GameObject) -> str:
         (str(event.timestamp), str(event)) for event in history.history
     ]
 
-    output = "=== Event History ===\n"
+    output = "=== Event History ===\n\n"
+
     output += tabulate.tabulate(
         event_data,
         headers=("Timestamp", "Description"),
     )
-    output += "\n"
 
     return output
 
@@ -277,7 +396,8 @@ def _get_relationships_table(obj: GameObject) -> str:
             )
         )
 
-    output = "=== Relationships ===\n"
+    output = "=== Relationships ===\n\n"
+
     output += tabulate.tabulate(
         relationship_data,
         headers=(
@@ -289,7 +409,6 @@ def _get_relationships_table(obj: GameObject) -> str:
             "Traits",
         ),
     )
-    output += "\n"
 
     return output
 
@@ -314,11 +433,11 @@ def _get_stats_table(obj: GameObject) -> str:
 
         stats_table_data.append((stat_component.stat_name, value_label))
 
-    output = "=== Stats ===\n"
+    output = "=== Stats ===\n\n"
+
     output += tabulate.tabulate(
         stats_table_data, headers=("Stat", "Value"), numalign="left"
     )
-    output += "\n"
 
     return output
 
@@ -326,24 +445,24 @@ def _get_stats_table(obj: GameObject) -> str:
 def _get_skills_table(obj: GameObject) -> str:
     skill_data = obj.try_component(Skills)
 
-    library = obj.world.resources.get_resource(SkillLibrary)
-
     if skill_data is None:
         return ""
 
-    output = "=== Skills ===\n"
+    output = "=== Skills ===\n\n"
+
     output += tabulate.tabulate(
         [
             (
                 skill_id,
+                skill.skill.name,
                 f"{int(skill.stat.value)}/{int(SKILL_MAX_VALUE)}",
-                library.get_definition(skill_id).description,
+                skill.skill.description,
             )
             for skill_id, skill in skill_data.skills.items()
         ],
-        headers=("Name", "Level", "Description"),
+        headers=("ID", "Name", "Level", "Description"),
     )
-    output += "\n"
+
     return output
 
 
@@ -353,27 +472,108 @@ def _get_frequented_locations_table(obj: GameObject) -> str:
     if frequented_locations is None:
         return ""
 
-    output = "=== Frequented Locations ===\n"
+    output = "=== Frequented Locations ===\n\n"
+
     output += tabulate.tabulate(
         [(entry.uid, entry.name) for entry in frequented_locations],
         headers=("UID", "Name"),
     )
 
-    output += "\n"
-
     return output
+
+
+def _get_beliefs_table(obj: GameObject) -> str:
+    """Generate section for GameObject beliefs"""
+
+    beliefs = obj.try_component(AgentBeliefs)
+    library = obj.world.resources.get_resource(BeliefLibrary)
+
+    if beliefs is None:
+        return ""
+
+    output: list[str] = [
+        "=== Beliefs ===",
+        "",
+    ]
+
+    table = tabulate.tabulate(
+        [(entry, library.get_belief(entry).description) for entry in beliefs.get_all()],
+        headers=("ID", "Description"),
+    )
+
+    output.append(table)
+
+    return "\n".join(output)
+
+
+def _get_applied_beliefs_table(obj: GameObject) -> str:
+    """Generate section for GameObject beliefs"""
+
+    applied_beliefs = obj.try_component(AppliedBeliefs)
+    library = obj.world.resources.get_resource(BeliefLibrary)
+
+    if applied_beliefs is None:
+        return ""
+
+    output: list[str] = [
+        "=== Applied Beliefs ===",
+        "",
+    ]
+
+    table = tabulate.tabulate(
+        [
+            (entry, library.get_belief(entry).description)
+            for entry in applied_beliefs.get_all()
+        ],
+        headers=("ID", "Description"),
+    )
+
+    output.append(table)
+
+    return "\n".join(output)
+
+
+def _get_location_preferences_table(obj: GameObject) -> str:
+    """Generate section for GameObject beliefs"""
+
+    preferences = obj.try_component(LocationPreferences)
+    library = obj.world.resources.get_resource(LocationPreferenceLibrary)
+
+    if preferences is None:
+        return ""
+
+    output: list[str] = [
+        "=== Location Preferences ===",
+        "",
+    ]
+
+    table = tabulate.tabulate(
+        [(entry, library.get_rule(entry).description) for entry in preferences.rules],
+        headers=("ID", "Description"),
+    )
+
+    output.append(table)
+
+    return "\n".join(output)
 
 
 _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("title", _title_section),
     ("settlement", _settlement_section),
-    ("district", _district_header),
-    ("relationship", _relationship_header),
-    ("business", _business_header),
-    ("character", _character_header),
+    ("district", _district_section),
+    ("relationship", _relationship_section),
+    ("business", _business_section),
+    ("character", _character_section),
+    ("household", _household_section),
     ("stats", _get_stats_table),
     ("traits", _get_traits_table),
     ("skills", _get_skills_table),
+    ("beliefs", _get_beliefs_table),
+    ("location_preferences", _get_location_preferences_table),
+    ("applied_beliefs", _get_applied_beliefs_table),
+    ("member_of_household", _member_of_household_section),
+    ("occupation", _employment_section),
+    ("pregnancy", _pregnancy_section),
     ("frequented_by", _get_frequented_by_table),
     ("frequented_locations", _get_frequented_locations_table),
     ("relationships", _get_relationships_table),
@@ -621,3 +821,269 @@ def list_skills(sim: Simulation) -> None:
     output += "\n"
 
     print(output)
+
+
+def list_species(sim: Simulation) -> None:
+    """List all available species."""
+
+    library = sim.world.resources.get_resource(SpeciesLibrary)
+
+    species = [
+        (species.definition_id, species.name, species.description)
+        for species in library.instances.values()
+    ]
+
+    table = tabulate.tabulate(species, headers=["ID", "Name", "Description"])
+
+    output = "=== Species ===\n"
+    output += table
+    output += "\n"
+
+    print(output)
+
+
+def list_beliefs(sim: Simulation) -> None:
+    """List all available beliefs."""
+
+    library = sim.world.resources.get_resource(BeliefLibrary)
+
+    rows = [(entry.belief_id, entry.description) for entry in library.beliefs.values()]
+
+    table = tabulate.tabulate(rows, headers=["ID", "Description"])
+
+    output = "=== Beliefs ===\n"
+    output += table
+    output += "\n"
+
+    print(output)
+
+
+def list_location_preferences(sim: Simulation) -> None:
+    """List all available location preferences."""
+
+    library = sim.world.resources.get_resource(LocationPreferenceLibrary)
+
+    rows = [(entry.rule_id, entry.description) for entry in library.rules.values()]
+
+    table = tabulate.tabulate(rows, headers=["ID", "Description"])
+
+    output = "=== Location Preferences ===\n"
+    output += table
+    output += "\n"
+
+    print(output)
+
+
+def inspect_trait(sim: Simulation, trait_id: str) -> None:
+    """Display information about a trait."""
+
+    trait = sim.world.resources.get_resource(TraitLibrary).get_trait(trait_id)
+
+    lines: list[str] = [
+        "TRAIT",
+        "=====",
+        f"ID: {trait.definition_id!r}",
+        f"Name: {trait.name!r}",
+        f"Description: {trait.description!r}",
+        f"Trait Type: {trait.trait_type.name!r}",
+    ]
+
+    # Add effects
+    if trait.effects:
+        lines.append("Effects:")
+        for effect in trait.effects:
+            lines.append(f"\t- {effect.description}")
+    else:
+        lines.append("Effects: N/A")
+
+    # Add incoming/outgoing relationship effects and inheritance
+    if trait.trait_type == TraitType.AGENT:
+        if trait.incoming_relationship_effects:
+            lines.append("Incoming Relationship Effects:")
+            for effect in trait.incoming_relationship_effects:
+                lines.append(f"\t- {effect.description}")
+        else:
+            lines.append("Incoming Relationship Effects: N/A")
+
+        if trait.outgoing_relationship_effects:
+            lines.append("Outgoing Relationship Effects:")
+            for effect in trait.outgoing_relationship_effects:
+                lines.append(f"\t- {effect.description}")
+        else:
+            lines.append("Outgoing Relationship Effects: N/A")
+
+        lines.append(f"Spawn Frequency: {trait.spawn_frequency}")
+
+        lines.append(f"Is Inheritable: {trait.is_inheritable}")
+
+        if trait.is_inheritable:
+            lines.append("Inheritance chances if parents have trait:")
+            lines.append(f"\t- one parent: {trait.inheritance_chance_single}")
+            lines.append(f"\t- both parents: {trait.inheritance_chance_both}")
+
+    # Add information about owner and target effects
+    else:
+        if trait.owner_effects:
+            lines.append("relationship owner effects:")
+            for effect in trait.owner_effects:
+                lines.append(f"- {effect.description}")
+        else:
+            lines.append("relationship owner effects: N/A")
+
+        if trait.target_effects:
+            lines.append("relationship target effects:")
+            for effect in trait.target_effects:
+                lines.append(f"- {effect.description}")
+        else:
+            lines.append("relationship target effects: N/A")
+
+    print("\n".join(lines))
+
+
+def inspect_skill(sim: Simulation, skill_id: str) -> None:
+    """Display information about a skill."""
+
+    skill = sim.world.resources.get_resource(SkillLibrary).get_skill(skill_id)
+
+    if skill.tags:
+        tags = ", ".join(sorted(list(skill.tags)))
+    else:
+        tags = "N/A"
+
+    lines: list[str] = [
+        "Skill",
+        "=====",
+        f"ID: {skill.definition_id!r}",
+        f"Name: {skill.name!r}",
+        f"Description: {skill.description!r}",
+        f"Tags: {tags}",
+    ]
+
+    print("\n".join(lines))
+
+
+def inspect_job_role(sim: Simulation, role_id: str) -> None:
+    """Display information about a job role."""
+
+    role = sim.world.resources.get_resource(JobRoleLibrary).get_role(role_id)
+
+    lines: list[str] = [
+        "Job Role",
+        "========",
+        f"ID: {role.definition_id!r}",
+        f"Name: {role.name!r}",
+        f"Description: {role.description!r}",
+        f"Job Level: {role.job_level}",
+    ]
+
+    # Add requirements
+    if role.requirements:
+        lines.append("Requirements:")
+        for requirement in role.requirements:
+            lines.append(f"\t- {requirement.description}")
+    else:
+        lines.append("Requirements: N/A")
+
+    # Add Effects
+    if role.effects:
+        lines.append("Effects:")
+        for effect in role.effects:
+            lines.append(f"\t- {effect.description}")
+    else:
+        lines.append("Effects: N/A")
+
+    # Add Recurring Effects
+    if role.recurring_effects:
+        lines.append("Recurring Effects (Monthly):")
+        for effect in role.recurring_effects:
+            lines.append(f"\t- {effect.description}")
+    else:
+        lines.append("Recurring Effects (Monthly): N/A")
+
+    print("\n".join(lines))
+
+
+def inspect_species(sim: Simulation, species_id: str) -> None:
+    """Display information about a species."""
+
+    species = sim.world.resources.get_resource(SpeciesLibrary).get_species(species_id)
+
+    if species.traits:
+        traits = ", ".join(species.traits)
+    else:
+        traits = "N/A"
+
+    lines: list[str] = [
+        "Species",
+        "========",
+        f"ID: {species.definition_id!r}",
+        f"Name: {species.name!r}",
+        f"Description: {species.description!r}",
+        f"Adolescent Age: {species.adolescent_age}",
+        f"YoungAdult Age: {species.young_adult_age}",
+        f"Adult Age: {species.adult_age}",
+        f"Senior Age: {species.senior_age}",
+        f"Lifespan: {species.lifespan[0]} - {species.lifespan[1]}",
+        f"Can Physically Age: {species.can_physically_age}",
+        f"Traits: {traits}",
+    ]
+
+    print("\n".join(lines))
+
+
+def inspect_belief(sim: Simulation, belief_id: str) -> None:
+    """Display information about a belief."""
+
+    belief = sim.world.resources.get_resource(BeliefLibrary).get_belief(belief_id)
+
+    lines: list[str] = [
+        "Belief",
+        "======",
+        f"ID: {belief.belief_id!r}",
+        f"Description: {belief.description!r}",
+        f"Is Global: {belief.is_global}",
+    ]
+
+    # Add requirements
+    if belief.preconditions:
+        lines.append("Preconditions:")
+        for precondition in belief.preconditions:
+            lines.append(f"\t- {precondition.description}")
+    else:
+        lines.append("Preconditions: N/A")
+
+    # Add Effects
+    if belief.effects:
+        lines.append("Effects:")
+        for effect in belief.effects:
+            lines.append(f"\t- {effect.description}")
+    else:
+        lines.append("Effects: N/A")
+
+    print("\n".join(lines))
+
+
+def inspect_location_preference(sim: Simulation, rule_id: str) -> None:
+    """Display information about a location preference."""
+
+    rule = sim.world.resources.get_resource(LocationPreferenceLibrary).get_rule(rule_id)
+
+    lines: list[str] = [
+        "Location Preference",
+        "===================",
+        f"ID: {rule.rule_id!r}",
+        f"Description: {rule.description!r}",
+    ]
+
+    # Add requirements
+    if rule.preconditions:
+        lines.append("Preconditions:")
+        for precondition in rule.preconditions:
+            lines.append(f"\t- {precondition.description}")
+    else:
+        lines.append("Preconditions: N/A")
+
+    # Add consideration
+    lines.append(f"Score Consideration: {rule.probability}")
+
+    print("\n".join(lines))

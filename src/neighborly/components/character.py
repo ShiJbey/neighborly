@@ -55,6 +55,24 @@ class SpeciesType:
     """Can characters of this species age."""
     traits: list[str]
     """IDs of traits characters of this species get at creation."""
+    adolescent_male_fertility: int
+    """Max fertility for adolescent males."""
+    young_adult_male_fertility: int
+    """Max fertility for young adult males."""
+    adult_male_fertility: int
+    """Max fertility for adult males."""
+    senior_male_fertility: int
+    """Max fertility for senior males."""
+    adolescent_female_fertility: int
+    """Max fertility for adolescent females."""
+    young_adult_female_fertility: int
+    """Max fertility for young adult females."""
+    adult_female_fertility: int
+    """Max fertility for adult females."""
+    senior_female_fertility: int
+    """Max fertility for senior females."""
+    fertility_cost_per_child: int
+    """Fertility reduction each time a character births a child."""
 
     def get_life_stage_for_age(self, age: int) -> LifeStage:
         """Get the life stage for a character with a given species and age."""

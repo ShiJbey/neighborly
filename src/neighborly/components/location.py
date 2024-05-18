@@ -147,19 +147,26 @@ class FrequentedLocations(Component):
 class LocationPreferenceRule:
     """A rule that helps characters score how they feel about locations to frequent."""
 
-    __slots__ = ("rule_id", "preconditions", "probability")
+    __slots__ = ("rule_id", "description", "preconditions", "probability")
 
     rule_id: str
     """A unique ID for this rule."""
+    description: str
+    """A description of the preference."""
     preconditions: list[Precondition]
     """Precondition to run when scoring a location."""
     probability: float
     """The amount to apply to the score."""
 
     def __init__(
-        self, rule_id: str, preconditions: list[Precondition], probability: float
+        self,
+        rule_id: str,
+        description: str,
+        preconditions: list[Precondition],
+        probability: float,
     ) -> None:
         self.rule_id = rule_id
+        self.description = description
         self.preconditions = preconditions
         self.probability = probability
 

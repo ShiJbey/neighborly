@@ -2,9 +2,6 @@
   "base_settlement": {
     "is_template": true,
     "components": {
-      "Agent": {
-        "agent_type": "settlement"
-      },
       "Settlement": {
         "name_factory": "default"
       },

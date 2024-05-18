@@ -5,7 +5,7 @@
 import random
 from typing import Any
 
-from neighborly.components.shared import Age, Agent
+from neighborly.components.shared import Age
 from neighborly.ecs import Component, ComponentFactory, World
 from neighborly.life_event import PersonalEventHistory
 
@@ -25,15 +25,6 @@ class AgeFactory(ComponentFactory):
             value = rng.randint(min_value, max_value)
 
         return Age(value=value)
-
-
-class AgentFactory(ComponentFactory):
-    """Creates Agent component instances."""
-
-    __component__ = "Agent"
-
-    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
-        return Agent(agent_type=kwargs["agent_type"])
 
 
 class PersonalEventHistoryFactory(ComponentFactory):

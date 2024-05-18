@@ -24,9 +24,6 @@
       }
     ],
     "components": {
-      "Agent": {
-        "agent_type": "Character"
-      },
       "Stats": {},
       "Lifespan": {},
       "Fertility": {},

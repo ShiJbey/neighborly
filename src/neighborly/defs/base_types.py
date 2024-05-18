@@ -144,6 +144,24 @@ class SpeciesDef(ContentDefinition):
     """Age this species becomes a senior/elder."""
     lifespan: str
     """A range of of years that this species lives (e.g. 'MIN - MAX')."""
+    adolescent_male_fertility: int
+    """Max fertility for adolescent males."""
+    young_adult_male_fertility: int
+    """Max fertility for young adult males."""
+    adult_male_fertility: int
+    """Max fertility for adult males."""
+    senior_male_fertility: int
+    """Max fertility for senior males."""
+    adolescent_female_fertility: int
+    """Max fertility for adolescent females."""
+    young_adult_female_fertility: int
+    """Max fertility for young adult females."""
+    adult_female_fertility: int
+    """Max fertility for adult females."""
+    senior_female_fertility: int
+    """Max fertility for senior females."""
+    fertility_cost_per_child: int
+    """Fertility reduction each time a character births a child."""
     can_physically_age: bool = True
     """Does this character go through the various life stages."""
     traits: list[str] = pydantic.Field(default_factory=list)
@@ -313,7 +331,9 @@ class BeliefDef(ContentDefinition):
 class LocationPreferenceDef(ContentDefinition):
     """A rule that helps characters score how they feel about locations to frequent."""
 
+    description: str = ""
+    """A short text description of the rule."""
     preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
     """Precondition to run when scoring a location."""
-    probability: float
+    probability: float = 0.5
     """The amount to apply to the score."""

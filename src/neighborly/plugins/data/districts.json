@@ -2,9 +2,6 @@
   "base_district": {
     "is_template": true,
     "components": {
-      "Agent": {
-        "agent_type": "district"
-      },
       "District": {},
       "PersonalEventHistory": {},
       "CharacterSpawnTable": {},
