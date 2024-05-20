@@ -8,7 +8,7 @@ _T = TypeVar("_T")
 
 
 def get_with_tags(
-    options: list[tuple[_T, Iterable[str]]], tags: Iterable[str]
+    options: Iterable[tuple[_T, Iterable[str]]], tags: Iterable[str]
 ) -> list[_T]:
     """Get a definition from the library with the given tags.
 

@@ -5,28 +5,37 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 
-from neighborly.ecs import GameObject, World
+from neighborly.ecs import World
 
 
 class Precondition(ABC):
     """Abstract base class for all precondition objects."""
 
+    __precondition_name__: ClassVar[str] = ""
+
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.__precondition_name__:
+            raise ValueError(
+                f"Please specify __precondition_name__ class attribute for {type(self)}"
+            )
+
     @property
     @abstractmethod
     def description(self) -> str:
-        """Get a string description of the effect."""
+        """Get a string description of the precondition."""
         raise NotImplementedError()
 
     @abstractmethod
-    def __call__(self, target: GameObject) -> bool:
-        """Check if a GameObject passes the precondition.
+    def check(self, blackboard: dict[str, Any]) -> bool:
+        """Check if the precondition passes given a blackboard of values.
 
         Parameters
         ----------
-        target
-            A GameObject
+        blackboard
+            Information about the context of the precondition.
 
         Returns
         -------
@@ -48,6 +57,11 @@ class Precondition(ABC):
             Keyword parameters to pass to the precondition.
         """
         raise NotImplementedError()
+
+    @classmethod
+    def precondition_name(cls) -> str:
+        """Get the precondition name used in data files."""
+        return cls.__precondition_name__
 
     def __str__(self) -> str:
         return self.description

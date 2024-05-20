@@ -1,3 +1,4 @@
+# pylint: disable=W0621
 """Stat System Unit Tests.
 
 """
@@ -6,95 +7,84 @@ from __future__ import annotations
 
 import pathlib
 
-from neighborly.components.stats import Stat
+import pytest
+
+from neighborly.components.stats import StatComponent
 from neighborly.helpers.character import create_character
-from neighborly.helpers.stats import add_stat, get_stat, has_stat, remove_stat
-from neighborly.loaders import load_characters, load_skills
-from neighborly.plugins import default_traits
+from neighborly.helpers.stats import get_stat, has_stat
+from neighborly.libraries import CharacterLibrary
+from neighborly.loaders import load_characters, load_skills, load_species
+from neighborly.plugins import default_character_names, default_traits
 from neighborly.simulation import Simulation
 
-_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+_DATA_DIR = (
+    pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
+)
 
 
-def test_has_stat() -> None:
+class Hunger(StatComponent):
+    """Tracks a GameObject's hunger."""
+
+    __stat_name__ = "hunger"
+
+    MAX_VALUE: int = 1000
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+@pytest.fixture
+def test_sim() -> Simulation:
+    """Create a simulation instance for tests."""
+
+    sim = Simulation()
+
+    default_traits.load_plugin(sim)
+    default_character_names.load_plugin(sim)
+
+    load_characters(sim, _DATA_DIR / "characters.json")
+    load_skills(sim, _DATA_DIR / "skills.json")
+    load_species(sim, _DATA_DIR / "species.json")
+
+    # IMPORTANT: Stop character from generating with traits
+    sim.world.resources.get_resource(CharacterLibrary).get_definition(
+        "base_character"
+    ).traits.clear()
+
+    sim.initialize()
+
+    return sim
+
+
+def test_has_stat(test_sim: Simulation) -> None:
     """Test checking for stats."""
-    sim = Simulation()
 
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
+    character = create_character(test_sim.world, "farmer.female")
 
-    default_traits.load_plugin(sim)
+    character.add_component(Hunger(0))
 
-    sim.initialize()
+    assert has_stat(character, "hunger") is True
 
-    character = create_character(sim.world, "farmer")
-
-    assert has_stat(character, "hunger") is False
-
-    assert has_stat(character, "health") is True
+    assert has_stat(character, "health") is False
 
 
-def test_get_stat() -> None:
+def test_get_stat(test_sim: Simulation) -> None:
     """Test stat retrieval."""
-    sim = Simulation()
 
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
+    character = create_character(test_sim.world, "farmer.female")
 
-    default_traits.load_plugin(sim)
+    character.add_component(Hunger(0))
 
-    sim.initialize()
+    hunger = get_stat(character, "hunger")
+    hunger.base_value = 10
 
-    character = create_character(sim.world, "farmer")
+    assert hunger.base_value == 10
+    assert hunger.value == 10
 
-    health = get_stat(character, "health")
-    health.base_value = 10
+    hunger.base_value += 100
 
-    assert health.base_value == 10
-
-    health.base_value += 100
-
-    assert health.base_value == 110
-    assert health.value == 110
-
-
-def test_add_stat() -> None:
-    """Test stat addition."""
-
-    sim = Simulation()
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    default_traits.load_plugin(sim)
-
-    sim.initialize()
-
-    character = create_character(sim.world, "farmer")
-
-    hunger = add_stat(character, "hunger", Stat(base_value=100, bounds=(0, 255)))
-
-    assert hunger.base_value == 100
-
-
-def test_remove_stat() -> None:
-    """Test removing stats."""
-
-    sim = Simulation()
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    default_traits.load_plugin(sim)
-
-    sim.initialize()
-
-    character = create_character(sim.world, "farmer")
-
-    add_stat(character, "hunger", Stat(base_value=0, bounds=(0, 255)))
-
-    assert has_stat(character, "hunger")
-
-    remove_stat(character, "hunger")
-
-    assert has_stat(character, "hunger") is False
+    assert hunger.base_value == 110
+    assert hunger.value == 110

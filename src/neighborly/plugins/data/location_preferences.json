@@ -1,0 +1,14 @@
+[
+  {
+    "definition_id": "likes_bars",
+    "description": "Like places that serve alcohol",
+    "preconditions": [
+      {
+        "type": "HasTrait",
+        "target": "location",
+        "trait": "serves_alcohol"
+      }
+    ],
+    "probability": 0.8
+  }
+]

@@ -1,3 +1,4 @@
+# pylint: disable=C0302
 """Entity Component System
 
 This ECS implementation blends Unity-style GameObjects with the
@@ -24,26 +25,26 @@ from abc import ABC, abstractmethod
 from typing import (
     Any,
     Callable,
+    ClassVar,
+    Generic,
     Iterable,
     Iterator,
     Optional,
+    Protocol,
     Type,
     TypeVar,
     Union,
-    cast,
     overload,
 )
 
 import esper
 from ordered_set import OrderedSet
-from repraxis import RePraxisDatabase
 
 _LOGGER = logging.getLogger(__name__)
 
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
 _ST = TypeVar("_ST", bound="ISystem")
-_ET_contra = TypeVar("_ET_contra", bound="Event", contravariant=True)
 
 
 class ResourceNotFoundError(Exception):
@@ -158,19 +159,39 @@ class ComponentNotFoundError(Exception):
         return f"{self.__class__.__name__}(component={self.component_type.__name__})"
 
 
-class Event(ABC):
+class IEvent(Protocol):
+    """Interface implemented by any class that can be emitted as an event."""
+
+    @property
+    @abstractmethod
+    def event_type(self) -> str:
+        """A type name for the event."""
+
+        raise NotImplementedError()
+
+    @abstractmethod
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the event to a JSON-compliant dict."""
+
+        raise NotImplementedError()
+
+
+class Event:
     """Events signal when things happen in the simulation."""
 
-    __slots__ = ("_world", "_event_id")
+    __slots__ = ("_world", "_event_type", "data")
 
-    _event_id: int
-    """A unique ordinal ID for this event."""
     _world: World
     """The world instance to fire this event on."""
+    _event_type: str
+    """The ID of this event."""
+    data: dict[str, Any]
+    """General metadata."""
 
-    def __init__(self, world: World) -> None:
+    def __init__(self, event_type: str, world: World, **kwargs: Any) -> None:
         self._world = world
-        self._event_id = world.event_manager.get_next_event_id()
+        self._event_type = event_type
+        self.data = {**kwargs}
 
     @property
     def world(self) -> World:
@@ -178,34 +199,14 @@ class Event(ABC):
         return self._world
 
     @property
-    def event_id(self) -> int:
-        """A unique ordinal ID for this event."""
-        return self._event_id
+    def event_type(self) -> str:
+        """The type name for the event."""
+        return self._event_type
 
-    def dispatch(self) -> None:
-        """Dispatch the event to registered event listeners."""
-        self.world.event_manager.dispatch_event(self)
-
+    @abstractmethod
     def to_dict(self) -> dict[str, Any]:
         """Serialize the event to a JSON-compliant dict."""
-        return {"event_id": self.event_id, "event_type": self.__class__.__name__}
-
-    def __eq__(self, __o: object) -> bool:
-        if isinstance(__o, Event):
-            return self.event_id == __o.event_id
-        raise TypeError(f"Expected type Event, but was {type(__o)}")
-
-    def __le__(self, other: Event) -> bool:
-        return self.event_id <= other.event_id
-
-    def __lt__(self, other: Event) -> bool:
-        return self.event_id < other.event_id
-
-    def __ge__(self, other: Event) -> bool:
-        return self.event_id >= other.event_id
-
-    def __gt__(self, other: Event) -> bool:
-        return self.event_id > other.event_id
+        return {"event_id": self.event_type, "data": self.data}
 
 
 class GameObject:
@@ -216,32 +217,35 @@ class GameObject:
     """
 
     __slots__ = (
-        "_id",
+        "_uid",
         "_name",
-        "_world",
+        "world",
         "children",
         "parent",
-        "_metadata",
+        "metadata",
         "_component_types",
         "_component_manager",
+        "_event_listeners",
     )
 
-    _id: int
-    """A GameObject's unique ID."""
-    _world: World
+    _uid: int
+    """The unique ID of this GameObject."""
+    _name: str
+    """The name of this GameObject."""
+    world: World
     """The world instance a GameObject belongs to."""
     _component_manager: esper.World
     """Reference to Esper ECS instance with all the component data."""
-    _name: str
-    """The name of the GameObject."""
     children: list[GameObject]
     """Child GameObjects below this one in the hierarchy."""
     parent: Optional[GameObject]
     """The parent GameObject that this GameObject is a child of."""
-    _metadata: dict[str, Any]
+    metadata: dict[str, Any]
     """Metadata associated with this GameObject."""
     _component_types: list[Type[Component]]
     """Types of the GameObjects components in order of addition."""
+    _event_listeners: dict[str, OrderedSet[Callable[[IEvent], None]]]
+    """Event listeners that are only called when a specific type of event fires."""
 
     def __init__(
         self,
@@ -250,24 +254,20 @@ class GameObject:
         component_manager: esper.World,
         name: str = "",
     ) -> None:
-        self._id = unique_id
-        self._world = world
+        self._uid = unique_id
+        self._name = name if name else f"GameObject({unique_id})"
+        self.world = world
         self._component_manager = component_manager
         self.parent = None
         self.children = []
-        self._metadata = {}
+        self.metadata = {}
         self._component_types = []
-        self.name = name if name else "GameObject"
+        self._event_listeners = {}
 
     @property
     def uid(self) -> int:
         """A GameObject's ID."""
-        return self._id
-
-    @property
-    def world(self) -> World:
-        """The World instance to which a GameObject belongs."""
-        return self._world
+        return self._uid
 
     @property
     def exists(self) -> bool:
@@ -286,11 +286,6 @@ class GameObject:
         return self.has_component(Active)
 
     @property
-    def metadata(self) -> dict[str, Any]:
-        """Get the metadata associated with this GameObject."""
-        return self._metadata
-
-    @property
     def name(self) -> str:
         """Get the GameObject's name"""
         return self._name
@@ -307,6 +302,8 @@ class GameObject:
         for child in self.children:
             child.activate()
 
+        self.dispatch_event(Event("activated", world=self.world, gameobject=self))
+
     def deactivate(self) -> None:
         """Remove the Active tag from a GameObject."""
 
@@ -314,6 +311,8 @@ class GameObject:
 
         for child in self.children:
             child.deactivate()
+
+        self.dispatch_event(Event("deactivated", world=self.world, gameobject=self))
 
     def get_components(self) -> tuple[Component, ...]:
         """Get all components associated with the GameObject.
@@ -352,12 +351,79 @@ class GameObject:
         _CT
             The added component
         """
+
+        if self.has_component(type(component)):
+            raise TypeError(
+                "Cannot have multiple components of same type. "
+                f"Attempted to add {type(component)}."
+            )
+
         component.gameobject = self
         self._component_manager.add_component(self.uid, component)
         self._component_types.append(type(component))
         component.on_add()
 
         return component
+
+    def add_event_listener(
+        self,
+        event_name: str,
+        listener: Callable[[IEvent], None],
+    ) -> None:
+        """Register a listener function to a specific event type.
+
+        Parameters
+        ----------
+        listener
+            A function to be called when the given event type fires.
+        """
+        if event_name not in self._event_listeners:
+            self._event_listeners[event_name] = OrderedSet([])
+
+        listener_set = self._event_listeners[event_name]
+        listener_set.add(listener)
+
+    def remove_event_listener(
+        self, event_name: str, listener: Callable[[IEvent], None]
+    ) -> None:
+        """Remove a listener function from a specific event type.
+
+        Parameters
+        ----------
+        event_name : str
+            The type of event to remove the listener from.
+        callback : Callable[[IEvent], None]
+            The callback function to be removed.
+        """
+        if event_name in self._event_listeners:
+            listener_set = self._event_listeners[event_name]
+            listener_set.discard(listener)
+
+    def remove_all_event_listeners_for_event(self, event_name: str) -> None:
+        """Remove all event listeners for a specific event type.
+
+        Parameters
+        ----------
+        event_name : str
+            The type of event to remove listeners for.
+        """
+        if event_name in self._event_listeners:
+            del self._event_listeners[event_name]
+
+    def remove_all_event_listeners(self) -> None:
+        """Remove all event listeners associated with this GameObject."""
+        self._event_listeners.clear()
+
+    def dispatch_event(self, event: IEvent) -> None:
+        """Fire an event and trigger associated event listeners.
+
+        Parameters
+        ----------
+        event : IEvent
+            The event to fire
+        """
+        for callback_fn in self._event_listeners.get(event.event_type, OrderedSet([])):
+            callback_fn(event)
 
     def remove_component(self, component_type: Type[Component]) -> bool:
         """Remove a component from the GameObject.
@@ -591,34 +657,25 @@ class GameObject:
         return False
 
     def __int__(self) -> int:
-        return self._id
+        return self.uid
 
     def __hash__(self) -> int:
-        return self._id
+        return self.uid
 
     def __str__(self) -> str:
         return self.name
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(id={self.uid}, name={self.name})"
+        return f"GameObject(id={self.uid!r}, name={self.name!r})"
 
 
 class Component(ABC):
     """A collection of data attributes associated with a GameObject."""
 
-    __slots__ = ("_gameobject", "_has_gameobject")
+    __slots__ = ("_gameobject",)
 
     _gameobject: GameObject
     """The GameObject the component belongs to."""
-    # We need an additional variable to track if the gameobject has been set because
-    # the variable will be initialized outside the __init__ method, and we need to
-    # ensure that it is not set again
-    _has_gameobject: bool
-    """Is the Component's _gameobject field set."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._has_gameobject = False
 
     @property
     def gameobject(self) -> GameObject:
@@ -627,17 +684,12 @@ class Component(ABC):
 
     @gameobject.setter
     def gameobject(self, value: GameObject) -> None:
-        """Sets the component's gameobject reference.
-
-        Notes
-        -----
-        This setter should only be called internally by the ECS when adding new
-        components to gameobjects. Calling this function twice will result in a
-        RuntimeError.
-        """
-        if self._has_gameobject is True:
-            raise RuntimeError("Cannot reassign a component to another GameObject.")
-        self._gameobject = value
+        """Set the GameObject instance."""
+        # This method should only be called by the ECS
+        if not hasattr(self, "_gameobject"):
+            self._gameobject = value
+        else:
+            raise RuntimeError("Cannot reassign the GameObject for a component")
 
     def on_add(self) -> None:
         """Lifecycle method called when the component is added to a GameObject."""
@@ -1100,6 +1152,65 @@ class ResourceManager:
         return self._resources.get(resource_type)
 
 
+_T = TypeVar("_T")
+
+
+class EventEmitter(Generic[_T]):
+    """Emits events that observers can listen for."""
+
+    __slots__ = ("listeners",)
+
+    listeners: list[Callable[[object, _T], None]]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.listeners = []
+
+    def add_listener(
+        self,
+        listener: Callable[[object, _T], None],
+    ) -> None:
+        """Register a listener function to a specific event type.
+
+        Parameters
+        ----------
+        listener
+            A function to be called when the given event type fires.
+        """
+        self.listeners.append(listener)
+
+    def remove_listener(
+        self,
+        listener: Callable[[object, _T], None],
+    ) -> None:
+        """Remove a listener from an event type.
+
+        Parameters
+        ----------
+        listener
+            A listener callback.
+        """
+        self.listeners.remove(listener)
+
+    def remove_all_listeners(self) -> None:
+        """Remove all listeners from an emitter."""
+        self.listeners.clear()
+
+    def dispatch(self, source: object, event: _T) -> None:
+        """Fire an event and trigger associated event listeners.
+
+        Parameters
+        ----------
+        source
+            The source of the event
+        event
+            The event to fire
+        """
+
+        for callback_fn in self.listeners:
+            callback_fn(source, event)
+
+
 class EventManager:
     """Manages event listeners for a single World instance."""
 
@@ -1107,28 +1218,24 @@ class EventManager:
         "_general_event_listeners",
         "_event_listeners_by_type",
         "_world",
-        "_next_event_id",
     )
 
     _world: World
     """The world instance associated with the SystemManager."""
-    _next_event_id: int
-    """The ID number to be given to the next constructed event."""
-    _general_event_listeners: OrderedSet[Callable[[Event], None]]
+    _general_event_listeners: OrderedSet[Callable[[IEvent], None]]
     """Event listeners that are called when any event fires."""
-    _event_listeners_by_type: dict[Type[Event], OrderedSet[Callable[[Event], None]]]
+    _event_listeners_by_type: dict[str, OrderedSet[Callable[[IEvent], None]]]
     """Event listeners that are only called when a specific type of event fires."""
 
     def __init__(self, world: World) -> None:
         self._world = world
         self._general_event_listeners = OrderedSet([])
         self._event_listeners_by_type = {}
-        self._next_event_id = 0
 
     def on_event(
         self,
-        event_type: Type[_ET_contra],
-        listener: Callable[[_ET_contra], None],
+        event_type: str,
+        listener: Callable[[IEvent], None],
     ) -> None:
         """Register a listener function to a specific event type.
 
@@ -1141,13 +1248,10 @@ class EventManager:
         """
         if event_type not in self._event_listeners_by_type:
             self._event_listeners_by_type[event_type] = OrderedSet([])
-        listener_set = cast(
-            OrderedSet[Callable[[_ET_contra], None]],
-            self._event_listeners_by_type[event_type],
-        )
+        listener_set = self._event_listeners_by_type[event_type]
         listener_set.add(listener)
 
-    def on_any_event(self, listener: Callable[[Event], None]) -> None:
+    def on_any_event(self, listener: Callable[[IEvent], None]) -> None:
         """Register a listener function to all event types.
 
         Parameters
@@ -1157,7 +1261,7 @@ class EventManager:
         """
         self._general_event_listeners.append(listener)
 
-    def dispatch_event(self, event: Event) -> None:
+    def dispatch_event(self, event: IEvent) -> None:
         """Fire an event and trigger associated event listeners.
 
         Parameters
@@ -1167,18 +1271,36 @@ class EventManager:
         """
 
         for callback_fn in self._event_listeners_by_type.get(
-            type(event), OrderedSet([])
+            event.event_type, OrderedSet([])
         ):
             callback_fn(event)
 
         for callback_fn in self._general_event_listeners:
             callback_fn(event)
 
-    def get_next_event_id(self) -> int:
-        """Get an ID number for a new event instance."""
-        event_id = self._next_event_id
-        self._next_event_id += 1
-        return event_id
+
+class ComponentFactory(ABC):
+    """Creates instances of a component class."""
+
+    __component__: ClassVar[str] = ""
+
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.__component__:
+            raise ValueError(
+                f"Missing '__component__' class attribute for {type(self)}."
+            )
+
+    @property
+    def component_type(self) -> str:
+        """The class name of the component this constructs"""
+        return self.__component__
+
+    @abstractmethod
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        """Create an instance of the component."""
+
+        raise NotImplementedError()
 
 
 class GameObjectManager:
@@ -1186,6 +1308,7 @@ class GameObjectManager:
 
     __slots__ = (
         "world",
+        "component_factories",
         "_component_manager",
         "_gameobjects",
         "_dead_gameobjects",
@@ -1193,6 +1316,8 @@ class GameObjectManager:
 
     world: World
     """The manager's associated World instance."""
+    component_factories: dict[str, ComponentFactory]
+    """Component class names mapped to factory instances."""
     _component_manager: esper.World
     """Esper ECS instance used for efficiency."""
     _gameobjects: dict[int, GameObject]
@@ -1205,6 +1330,7 @@ class GameObjectManager:
         self._gameobjects = {}
         self._component_manager = esper.World()
         self._dead_gameobjects = OrderedSet([])
+        self.component_factories = {}
 
     @property
     def component_manager(self) -> esper.World:
@@ -1222,9 +1348,14 @@ class GameObjectManager:
         """
         return self._gameobjects.values()
 
+    def add_component_factory(self, factory: ComponentFactory) -> None:
+        """Register a component type with the ECS."""
+
+        self.component_factories[factory.component_type] = factory
+
     def spawn_gameobject(
         self,
-        components: Optional[list[Component]] = None,
+        components: Optional[dict[str, dict[str, Any]]] = None,
         name: str = "",
     ) -> GameObject:
         """Create a new GameObject and add it to the world.
@@ -1253,7 +1384,12 @@ class GameObjectManager:
         self._gameobjects[gameobject.uid] = gameobject
 
         if components:
-            for component in components:
+            for component_type, factory_args in components.items():
+
+                component = self.world.gameobjects.component_factories[
+                    component_type
+                ].instantiate(self.world, **factory_args)
+
                 gameobject.add_component(component)
 
         gameobject.activate()
@@ -1312,6 +1448,9 @@ class GameObjectManager:
 
         # Deactivate first
         gameobject.deactivate()
+        gameobject.dispatch_event(
+            Event("destroyed", world=self.world, gameobject=gameobject)
+        )
 
         # Destroy all children
         for child in gameobject.children:
@@ -1350,50 +1489,46 @@ class World:
     """Manages Gameobjects, Systems, events, and resources."""
 
     __slots__ = (
-        "_resource_manager",
-        "_gameobject_manager",
-        "_system_manager",
-        "_event_manager",
-        "rp_db",
+        "resources",
+        "gameobjects",
+        "systems",
+        "events",
     )
 
-    _gameobject_manager: GameObjectManager
+    gameobjects: GameObjectManager
     """Manages GameObjects and Component data."""
-    _resource_manager: ResourceManager
+    resources: ResourceManager
     """Global resources shared by systems in the ECS."""
-    _system_manager: SystemManager
+    systems: SystemManager
     """The systems run every simulation step."""
-    _event_manager: EventManager
+    events: EventManager
     """Manages event listeners."""
-    rp_db: RePraxisDatabase
-    """Database that holds some easily-queryable data."""
 
     def __init__(self) -> None:
-        self._resource_manager = ResourceManager(self)
-        self._system_manager = SystemManager(self)
-        self._event_manager = EventManager(self)
-        self._gameobject_manager = GameObjectManager(self)
-        self.rp_db = RePraxisDatabase()
+        self.resources = ResourceManager(self)
+        self.systems = SystemManager(self)
+        self.events = EventManager(self)
+        self.gameobjects = GameObjectManager(self)
 
     @property
     def system_manager(self) -> SystemManager:
         """Get the world's system manager."""
-        return self._system_manager
+        return self.systems
 
     @property
     def gameobject_manager(self) -> GameObjectManager:
         """Get the world's gameobject manager"""
-        return self._gameobject_manager
+        return self.gameobjects
 
     @property
     def resource_manager(self) -> ResourceManager:
         """Get the world's resource manager"""
-        return self._resource_manager
+        return self.resources
 
     @property
     def event_manager(self) -> EventManager:
         """Get the world's event manager."""
-        return self._event_manager
+        return self.events
 
     def get_component(self, component_type: Type[_CT]) -> list[tuple[int, _CT]]:
         """Get all the GameObjects that have a given component type.
@@ -1409,7 +1544,7 @@ class World:
             A list of tuples containing the ID of a GameObject and its respective
             component instance.
         """
-        return self._gameobject_manager.component_manager.get_component(  # type: ignore
+        return self.gameobjects.component_manager.get_component(  # type: ignore
             component_type
         )
 
@@ -1531,9 +1666,7 @@ class World:
             list of tuples containing a GameObject ID and an additional tuple with
             the instances of the given component types, in-order.
         """
-        ret = self._gameobject_manager.component_manager.get_components(
-            *component_types
-        )
+        ret = self.gameobjects.component_manager.get_components(*component_types)
 
         # We have to ignore the type because of esper's lax type hinting for
         # world.get_components()
@@ -1541,5 +1674,5 @@ class World:
 
     def step(self) -> None:
         """Advance the simulation as single tick and call all the systems."""
-        self._gameobject_manager.clear_dead_gameobjects()
-        self._system_manager.update_systems()
+        self.gameobjects.clear_dead_gameobjects()
+        self.systems.update_systems()

@@ -1,0 +1,140 @@
+{
+  "base_district": {
+    "is_template": true,
+    "components": {
+      "District": {},
+      "PersonalEventHistory": {},
+      "CharacterSpawnTable": {},
+      "BusinessSpawnTable": {}
+    }
+  },
+  "farming_district": {
+    "extends": [
+      "base_district"
+    ],
+    "components": {
+      "District": {
+        "name": "Farming District",
+        "description": "Where the animals and farmers are.",
+        "residential_slots": 50,
+        "business_slots": 50
+      },
+      "CharacterSpawnTable": {
+        "character_types": [
+          {
+            "with_tags": [
+              "farmer"
+            ]
+          }
+        ]
+      },
+      "BusinessSpawnTable": {
+        "business_types": [
+          {
+            "with_id": "dairy_farm"
+          },
+          {
+            "with_id": "farm",
+            "max_instances": 2,
+            "spawn_frequency": 2
+          }
+        ]
+      }
+    },
+    "tags": [
+      "lazy",
+      "rural",
+      "urban",
+      "suburban",
+      "hot"
+    ]
+  },
+  "market_district": {
+    "extends": [
+      "base_district"
+    ],
+    "components": {
+      "District": {
+        "name": "Market District",
+        "description": "Where people are always selling things.",
+        "business_slots": 50,
+        "residential_slots": 50
+      },
+      "CharacterSpawnTable": {
+        "character_types": [
+          {
+            "with_tags": [
+              "merchant"
+            ]
+          }
+        ]
+      },
+      "BusinessSpawnTable": {
+        "business_types": [
+          {
+            "with_id": "shop"
+          },
+          {
+            "with_id": "cafe"
+          }
+        ]
+      }
+    },
+    "tags": [
+      "lazy",
+      "rural",
+      "urban",
+      "suburban",
+      "hot",
+      "heat"
+    ]
+  },
+  "entertainment_district": {
+    "extends": [
+      "base_district"
+    ],
+    "components": {
+      "District": {
+        "name": "Market District",
+        "description": "Where people are always selling things.",
+        "business_slots": 50
+      },
+      "CharacterSpawnTable": {},
+      "BusinessSpawnTable": {
+        "business_types": [
+          {
+            "with_id": "theatre"
+          },
+          {
+            "with_id": "bar"
+          }
+        ]
+      }
+    },
+    "tags": []
+  },
+  "upper_class_residences": {
+    "extends": [
+      "base_district"
+    ],
+    "components": {
+      "District": {
+        "name": "Upper Class Residences",
+        "description": "Where the nobility live.",
+        "business_slots": 50,
+        "residential_slots": 50
+      },
+      "CharacterSpawnTable": {
+        "character_types": [
+          {
+            "with_tags": [
+              "nobility"
+            ]
+          }
+        ]
+      },
+      "BusinessSpawnTable": {}
+    },
+    "tags": []
+  }
+}

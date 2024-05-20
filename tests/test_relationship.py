@@ -1,4 +1,4 @@
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, disable=W0621
 """Test Relationship Components, Systems, and Helper Functions.
 
 """
@@ -15,19 +15,26 @@ from neighborly.helpers.relationship import (
 )
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.libraries import CharacterLibrary
 from neighborly.loaders import (
     load_businesses,
     load_characters,
     load_districts,
     load_job_roles,
-    load_residences,
     load_settlements,
     load_skills,
+    load_species,
 )
-from neighborly.plugins import default_traits
+from neighborly.plugins import (
+    default_character_names,
+    default_settlement_names,
+    default_traits,
+)
 from neighborly.simulation import Simulation
 
-_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+_DATA_DIR = (
+    pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
+)
 
 
 @pytest.fixture
@@ -35,14 +42,22 @@ def sim() -> Simulation:
     """Create sample simulation to use for test cases"""
     simulation = Simulation()
 
-    load_districts(simulation, _TEST_DATA_DIR / "districts.json")
-    load_settlements(simulation, _TEST_DATA_DIR / "settlements.json")
-    load_businesses(simulation, _TEST_DATA_DIR / "businesses.json")
-    load_characters(simulation, _TEST_DATA_DIR / "characters.json")
-    load_residences(simulation, _TEST_DATA_DIR / "residences.json")
-    load_job_roles(simulation, _TEST_DATA_DIR / "job_roles.json")
-    load_skills(simulation, _TEST_DATA_DIR / "skills.json")
+    load_districts(simulation, _DATA_DIR / "districts.json")
+    load_settlements(simulation, _DATA_DIR / "settlements.json")
+    load_businesses(simulation, _DATA_DIR / "businesses.json")
+    load_characters(simulation, _DATA_DIR / "characters.json")
+    load_job_roles(simulation, _DATA_DIR / "job_roles.json")
+    load_skills(simulation, _DATA_DIR / "skills.json")
+    load_species(simulation, _DATA_DIR / "species.json")
+
     default_traits.load_plugin(simulation)
+    default_character_names.load_plugin(simulation)
+    default_settlement_names.load_plugin(simulation)
+
+    # IMPORTANT: Stop character from generating with traits
+    simulation.world.resources.get_resource(CharacterLibrary).get_definition(
+        "base_character"
+    ).traits.clear()
 
     simulation.initialize()
 
@@ -52,8 +67,8 @@ def sim() -> Simulation:
 def test_get_relationship(sim: Simulation) -> None:
     """Test that get_relationship creates new relationship if one does not exist."""
 
-    a = create_character(sim.world, "person")
-    b = create_character(sim.world, "person")
+    a = create_character(sim.world, "base_character.female")
+    b = create_character(sim.world, "base_character.male")
 
     assert has_relationship(a, b) is False
     assert has_relationship(b, a) is False
@@ -78,8 +93,8 @@ def test_get_relationship(sim: Simulation) -> None:
 def test_add_relationship(sim: Simulation) -> None:
     """Test that adding a relationship create a new relationship or returns the old"""
 
-    a = create_character(sim.world, "person")
-    b = create_character(sim.world, "person")
+    a = create_character(sim.world, "base_character.male")
+    b = create_character(sim.world, "base_character.female")
 
     assert has_relationship(a, b) is False
     assert has_relationship(b, a) is False
@@ -93,9 +108,9 @@ def test_add_relationship(sim: Simulation) -> None:
 def test_trait_with_social_rules(sim: Simulation) -> None:
     """Test traits that apply social rules"""
 
-    farmer = create_character(sim.world, "farmer")
-    merchant = create_character(sim.world, "merchant")
-    noble = create_character(sim.world, "nobility")
+    farmer = create_character(sim.world, "farmer.female")
+    merchant = create_character(sim.world, "merchant.male")
+    noble = create_character(sim.world, "nobility.female")
 
     rel_to_noble = add_relationship(farmer, noble)
 
@@ -103,11 +118,11 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     add_trait(farmer, "gullible")
 
-    assert get_stat(rel_to_noble, "reputation").value == 5
+    assert get_stat(rel_to_noble, "reputation").value == 10
 
     rel = add_relationship(farmer, merchant)
 
-    assert get_stat(rel, "reputation").value == 5
+    assert get_stat(rel, "reputation").value == 10
 
     remove_trait(farmer, "gullible")
 

@@ -8,19 +8,16 @@ graph.
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Mapping
 
-import attrs
-
+from neighborly.components.stats import StatComponent
 from neighborly.ecs import Component, GameObject
-from neighborly.effects.base_types import Effect
-from neighborly.preconditions.base_types import Precondition
 
 
 class Relationship(Component):
     """Tags a GameObject as a relationship and tracks the owner and target."""
 
-    __slots__ = "_target", "_owner"
+    __slots__ = "_target", "_owner", "active_rules"
 
     _owner: GameObject
     """Who owns this relationship."""
@@ -45,17 +42,6 @@ class Relationship(Component):
     def target(self) -> GameObject:
         """Get the target of the relationship."""
         return self._target
-
-    def on_add(self) -> None:
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.relationship.owner!{self.owner.uid}"
-        )
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.relationship.target!{self.target.uid}"
-        )
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.relationship")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -91,7 +77,9 @@ class Relationships(Component):
     _outgoing: dict[GameObject, GameObject]
     """Relationship targets mapped to the Relationship GameObjects."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+    ) -> None:
         super().__init__()
         self._incoming = {}
         self._outgoing = {}
@@ -262,78 +250,25 @@ class Relationships(Component):
         )
 
 
-@attrs.define
-class SocialRule:
-    """A rule that modifies a relationship depending on some preconditions."""
+class Reputation(StatComponent):
+    """Tracks a relationship's reputations stat."""
 
-    preconditions: list[Precondition]
-    """Conditions that need to be met to apply the rule."""
-    effects: list[Effect]
-    """Side-effects of the rule applied to a relationship."""
-    is_outgoing: bool = True
-    """True if this rule is applied to outgoing relationships."""
-    source: Optional[object] = None
-    """The object responsible for adding this rule."""
+    __stat_name__ = "reputation"
 
-    def check_preconditions(self, relationship: GameObject) -> bool:
-        """Check that a relationship passes all the preconditions."""
-        return all(p(relationship) for p in self.preconditions)
-
-    def apply(self, relationship: GameObject) -> None:
-        """Apply the effects of the social rule.
-
-        Parameters
-        ----------
-        relationship
-            The relationship to apply the effects to.
-        """
-        for effect in self.effects:
-            effect.apply(relationship)
-
-    def remove(self, relationship: GameObject) -> None:
-        """Remove the effects of the social rule.
-
-        Parameters
-        ----------
-        relationship
-            The relationship to remove the effects from.
-        """
-        for effect in self.effects:
-            effect.remove(relationship)
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (-50, 50), True)
 
 
-class SocialRules(Component):
-    """Tracks all the social rules that a GameObject abides by."""
+class Romance(StatComponent):
+    """Tracks a relationship's romance stat."""
 
-    __slots__ = ("_rules",)
+    __stat_name__ = "romance"
 
-    _rules: list[SocialRule]
-    """Rules applied to the owning GameObject's relationships."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._rules = []
-
-    @property
-    def rules(self) -> Iterable[SocialRule]:
-        """Rules applied to the owning GameObject's relationships."""
-        return self._rules
-
-    def add_rule(self, rule: SocialRule) -> None:
-        """Add a rule to the rule collection."""
-        self._rules.append(rule)
-
-    def has_rule(self, rule: SocialRule) -> bool:
-        """Check if a rule is present."""
-        return rule in self._rules
-
-    def remove_rule(self, rule: SocialRule) -> bool:
-        """Remove a rule from the rules collection."""
-        try:
-            self._rules.remove(rule)
-            return True
-        except ValueError:
-            return False
-
-    def to_dict(self) -> dict[str, Any]:
-        return {}
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (-50, 50), True)

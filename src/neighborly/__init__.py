@@ -8,8 +8,13 @@ such as Caves of Qud and Dwarf Fortress.
 
 """
 
-from neighborly.__version__ import VERSION
+MAJOR_VERSION = 3
+MINOR_VERSION = 0
+PATCH_VERSION = 0
+VERSION_SUFFIX = ".dev1"
+VERSION = f"{MAJOR_VERSION}.{MINOR_VERSION}.{PATCH_VERSION}{VERSION_SUFFIX}"
+__version__ = VERSION
 
 __all__ = [
-    "VERSION",
+    "__version__",
 ]

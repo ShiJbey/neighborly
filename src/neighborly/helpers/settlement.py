@@ -4,22 +4,13 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
-from neighborly.components.settlement import Settlement
-from neighborly.defs.base_types import (
-    DistrictDef,
-    DistrictGenOptions,
-    SettlementDef,
-    SettlementGenOptions,
-)
+from neighborly.components.location import CurrentSettlement
+from neighborly.components.settlement import District, Settlement
 from neighborly.ecs import GameObject, World
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 
 
-def create_settlement(
-    world: World, definition_id: str, options: Optional[SettlementGenOptions] = None
-) -> GameObject:
+def create_settlement(world: World, definition_id: str) -> GameObject:
     """Create a new settlement.
 
     Parameters
@@ -28,9 +19,6 @@ def create_settlement(
         The world instance to spawn the settlement in.
     definition_id
         The ID of the definition to instantiate.
-    options
-        Generation options.
-
     Returns
     -------
     GameObject
@@ -38,20 +26,12 @@ def create_settlement(
     """
     library = world.resource_manager.get_resource(SettlementLibrary)
 
-    settlement_def = library.get_definition(definition_id)
-
-    options = options if options else SettlementGenOptions()
-
-    settlement = settlement_def.instantiate(world, options)
-
-    return settlement
+    return library.factory.create_settlement(world, definition_id)
 
 
 def create_district(
     world: World,
-    settlement: GameObject,
     definition_id: str,
-    options: Optional[DistrictGenOptions] = None,
 ) -> GameObject:
     """Create a new district GameObject.
 
@@ -59,12 +39,8 @@ def create_district(
     ----------
     world
         The world instance spawn the district in.
-    settlement
-        The settlement that owns district belongs to.
     definition_id
         The ID of the definition to instantiate.
-    options
-        Generation options.
 
     Returns
     -------
@@ -73,39 +49,21 @@ def create_district(
     """
     library = world.resource_manager.get_resource(DistrictLibrary)
 
-    district_def = library.get_definition(definition_id)
-
-    options = options if options else DistrictGenOptions()
-
-    district = district_def.instantiate(world, settlement, options)
-
-    settlement.get_component(Settlement).add_district(district)
-
-    return district
+    return library.factory.create_district(world, definition_id)
 
 
-def register_settlement_def(world: World, definition: SettlementDef) -> None:
-    """Add a new settlement definition for the SettlementLibrary.
+def add_district_to_settlement(settlement: Settlement, district: District) -> None:
+    """Add a district to a settlement."""
 
-    Parameters
-    ----------
-    world
-        The world instance containing the settlement library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(SettlementLibrary).add_definition(definition)
+    settlement.districts.append(district.gameobject)
+    district.gameobject.add_component(
+        CurrentSettlement(settlement=settlement.gameobject)
+    )
 
 
-def register_district_def(world: World, definition: DistrictDef) -> None:
-    """Add a new district definition for the DistrictLibrary.
+def remove_district_from_settlement(settlement: Settlement, district: District) -> None:
+    """Remove a district from this settlement."""
 
-    Parameters
-    ----------
-    world
-        The world instance containing the district library.
-    definition
-        The definition to add.
-    """
-    world.resource_manager.get_resource(DistrictLibrary).add_definition(definition)
-    world.resource_manager.get_resource(DistrictLibrary).add_definition(definition)
+    settlement.districts.remove(district.gameobject)
+    district.gameobject.remove_component(CurrentSettlement)
+    settlement.gameobject.add_child(district.gameobject)

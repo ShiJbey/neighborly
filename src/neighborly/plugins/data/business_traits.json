@@ -1,0 +1,7 @@
+{
+  "serves_alcohol": {
+    "name": "Serves Alcohol",
+    "trait_type": "agent",
+    "description": "This establishment serves alcohol."
+  }
+}

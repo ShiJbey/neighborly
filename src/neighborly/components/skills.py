@@ -4,132 +4,98 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator, Mapping
+from typing import Any
+
+import attrs
 
 from neighborly.components.stats import Stat
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component
+
+SKILL_MIN_VALUE = 0
+"""The lowest value a skill stat can be."""
+
+SKILL_MAX_VALUE = 255
+"""The highest value a skill stat can be."""
 
 
-class Skill(Component):
-    """A skill that a character can have and improve."""
+@attrs.define
+class Skill:
+    """Defines a skill that a character can learn."""
 
-    __slots__ = (
-        "_definition_id",
-        "_description",
-        "_display_name",
-    )
+    definition_id: str
+    """A unique ID for this skill among other skills."""
+    name: str
+    """A regular text name."""
+    description: str = ""
+    """A short description of the skill."""
+    tags: set[str] = attrs.field(factory=set)
+    """A set of tags associated with this skill."""
 
-    _definition_id: str
-    """The ID of this tag definition."""
-    _description: str
-    """A short description of the tag."""
-    _display_name: str
-    """The name of this tag printed."""
 
-    def __init__(
-        self,
-        definition_id: str,
-        display_name: str,
-        description: str,
-    ) -> None:
-        super().__init__()
-        self._definition_id = definition_id
-        self._display_name = display_name
-        self._description = description
+class SkillInstance:
+    """An instance of a skill associated with a character."""
 
-    @property
-    def definition_id(self) -> str:
-        """The ID of this tag definition."""
-        return self._definition_id
+    __slots__ = ("skill", "stat")
 
-    @property
-    def display_name(self) -> str:
-        """The name of this tag printed."""
-        return self._display_name
-
-    @property
-    def description(self) -> str:
-        """A short description of the tag."""
-        return self._description
+    def __init__(self, skill: Skill, base_value: float = 0.0) -> None:
+        self.skill = skill
+        self.stat = Stat(
+            base_value=base_value, bounds=(SKILL_MIN_VALUE, SKILL_MAX_VALUE)
+        )
 
     def __str__(self) -> str:
-        return self.definition_id
+        return (
+            f"SkillInstance(skill={self.skill.definition_id!r}, "
+            f"value={self.stat.value!r}, base_value={self.stat.base_value!r})"
+        )
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "definition_id": self.definition_id,
-            "display_name": self.display_name,
-            "description": self.description,
-        }
+    def __repr__(self) -> str:
+        return (
+            f"SkillInstance(skill={self.skill.definition_id!r}, "
+            f"value={self.stat.value!r}, base_value={self.stat.base_value!r})"
+        )
 
 
 class Skills(Component):
     """Tracks skills stats for a character."""
 
-    __slots__ = ("_skills",)
+    __slots__ = ("skills",)
 
-    _skills: dict[GameObject, Stat]
+    skills: dict[str, SkillInstance]
     """Skill names mapped to scores."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+    ) -> None:
         super().__init__()
-        self._skills = {}
+        self.skills = {}
 
-    @property
-    def skills(self) -> Mapping[GameObject, Stat]:
-        """Get skills."""
-        return self._skills
-
-    def has_skill(self, skill: GameObject) -> bool:
-        """Check if a character has a skill.
-
-        Parameters
-        ----------
-        skill
-            The skill to check for.
-
-        Returns
-        -------
-        bool
-            True if the skill is present, False otherwise.
-        """
-        return skill in self._skills
-
-    def add_skill(self, skill: GameObject, base_value: float = 0.0) -> None:
+    def add_skill(self, skill: Skill, base_value: float = 0.0) -> bool:
         """Add a new skill to the skill tracker."""
-        if skill not in self._skills:
-            self._skills[skill] = Stat(base_value=base_value, bounds=(0, 255))
-        else:
-            return
+        if skill.definition_id not in self.skills:
 
-    def get_skill(self, skill: GameObject) -> Stat:
-        """Get the stat for a skill.
+            self.skills[skill.definition_id] = SkillInstance(
+                skill, base_value=base_value
+            )
 
-        Parameters
-        ----------
-        skill
-            The skill to get the stat for.
-        """
-        return self._skills[skill]
+            return True
 
-    def __getitem__(self, item: GameObject) -> Stat:
-        """Get the value of a skill."""
-        return self.get_skill(item)
+        return False
 
     def __str__(self) -> str:
         skill_value_pairs = {
-            skill.name: stat.value for skill, stat in self._skills.items()
+            skill_id: skill.stat.value for skill_id, skill in self.skills.items()
         }
-        return f"{type(self).__name__}({skill_value_pairs})"
+        return f"Skills({repr(skill_value_pairs)})"
 
     def __repr__(self) -> str:
         skill_value_pairs = {
-            skill.name: stat.value for skill, stat in self._skills.items()
+            skill_id: skill.stat.value for skill_id, skill in self.skills.items()
         }
-        return f"{type(self).__name__}({skill_value_pairs})"
-
-    def __iter__(self) -> Iterator[tuple[GameObject, Stat]]:
-        return iter(self._skills.items())
+        return f"Skills({repr(skill_value_pairs)})"
 
     def to_dict(self) -> dict[str, Any]:
-        return {**{skill.name: stat.value for skill, stat in self._skills.items()}}
+        skill_value_pairs = {
+            skill_id: skill.stat.value for skill_id, skill in self.skills.items()
+        }
+        return {"skills": skill_value_pairs}

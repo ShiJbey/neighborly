@@ -37,5 +37,11 @@ class SimulationConfig:
     logging: LoggingConfig = attrs.field(factory=LoggingConfig)
     """Configuration settings for logging."""
 
-    settlement: Union[str, list[str]] = attrs.field(factory=list[str])
-    """Settlement definition ID to instantiate during simulation initialization."""
+    growth_factor: float = 0.5
+    """Probability of a district spawning a new character."""
+
+    num_districts: int = 4
+    """The number of districts to generate in the settlement."""
+
+    theme_tags: list[str] = attrs.field(factory=list)
+    """Content tags to guide settlement development."""

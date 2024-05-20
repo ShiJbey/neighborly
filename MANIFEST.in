@@ -1,4 +1,4 @@
-include LICENSE
+include LICENSE.md
 include CHANGELOG.md
 include CODE_OF_CONDUCT.md
 include README.md

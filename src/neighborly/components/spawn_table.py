@@ -7,18 +7,20 @@ the simulation.
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, Optional
 
-import polars as pl
+import attrs
 
+from neighborly.components.business import JobRole
 from neighborly.ecs import Component
 
 
-class CharacterSpawnTableEntry(TypedDict):
+@attrs.define
+class CharacterSpawnTableEntry:
     """Data for a single row in a CharacterSpawnTable."""
 
-    name: str
-    """The name of an entry."""
+    definition_id: str
+    """The ID of a character definition."""
     spawn_frequency: int
     """The relative frequency that this entry should spawn relative to others."""
 
@@ -26,12 +28,15 @@ class CharacterSpawnTableEntry(TypedDict):
 class CharacterSpawnTable(Component):
     """Manages the frequency that character defs are spawned."""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
-    """Column names mapped to column data."""
+    table: dict[str, CharacterSpawnTableEntry]
+    """Spawn table data."""
 
-    def __init__(self, entries: list[CharacterSpawnTableEntry]) -> None:
+    def __init__(
+        self,
+        entries: Optional[list[CharacterSpawnTableEntry]] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -39,31 +44,22 @@ class CharacterSpawnTable(Component):
             Starting entries.
         """
         super().__init__()
-        # The following line is type ignored since pl.from_dicts(...) expects a
-        # sequence of dict[str, Any]. Typed dict is not a subclass of that type since
-        # it does not use arbitrary keys. The Polars maintainers should update the
-        # type hints for Mapping[str, Any] to allow TypeDict usage.
-        self._table = pl.from_dicts(
-            entries, schema=[("name", str), ("spawn_frequency", int)]  # type: ignore
-        )
+        self.table = {}
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
-
-    def __len__(self) -> int:
-        return len(self._table)
+        if entries:
+            for entry in entries:
+                self.table[entry.definition_id] = entry
 
     def to_dict(self) -> dict[str, Any]:
         return {}
 
 
-class BusinessSpawnTableEntry(TypedDict):
+@attrs.define
+class BusinessSpawnTableEntry:
     """A single row of data from a BusinessSpawnTable."""
 
-    name: str
-    """The name of an entry."""
+    definition_id: str
+    """The ID of a business definition."""
     spawn_frequency: int
     """The relative frequency that this entry should spawn relative to others."""
     max_instances: int
@@ -72,17 +68,22 @@ class BusinessSpawnTableEntry(TypedDict):
     """The minimum settlement population required to spawn."""
     instances: int
     """The current number of active instances."""
+    owner_role: JobRole
+    """The role of the owner."""
 
 
 class BusinessSpawnTable(Component):
     """Manages the frequency that business types are spawned"""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
+    table: dict[str, BusinessSpawnTableEntry]
     """Table data with entries."""
 
-    def __init__(self, entries: list[BusinessSpawnTableEntry]) -> None:
+    def __init__(
+        self,
+        entries: Optional[list[BusinessSpawnTableEntry]] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -90,84 +91,60 @@ class BusinessSpawnTable(Component):
             Starting entries.
         """
         super().__init__()
-        # See comment in CharacterSpawnTable.__init__ for why this is type ignored
-        self._table = pl.from_dicts(
-            entries,  # type: ignore
-            schema=[
-                ("name", str),
-                ("spawn_frequency", int),
-                ("max_instances", int),
-                ("min_population", int),
-                ("instances", int),
-            ],
-        )
+        self.table = {}
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
+        if entries:
+            for entry in entries:
+                self.table[entry.definition_id] = entry
 
-    def increment_count(self, name: str) -> None:
+    def increment_count(self, definition_id: str) -> None:
         """Increment the instance count for an entry.
 
         Parameters
         ----------
-        name
-            The name of entry to update
+        definition_id
+            The definition ID of the entry to update.
         """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") + 1)
-            .otherwise(pl.col("instances"))
-        )
+        self.table[definition_id].instances += 1
 
-    def decrement_count(self, name: str) -> None:
+    def decrement_count(self, definition_id: str) -> None:
         """Increment the instance count for an entry.
 
         Parameters
         ----------
-        name
-            The name of entry to update
+        definition_id
+            The definition ID of the entry to update.
         """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") - 1)
-            .otherwise(pl.col("instances"))
-        )
+        self.table[definition_id].instances -= 1
 
     def to_dict(self) -> dict[str, Any]:
         return {}
 
-    def __len__(self) -> int:
-        return len(self._table)
 
+@attrs.define
+class DistrictSpawnTableEntry:
+    """A single row of data from a DistrictSpawnTable."""
 
-class ResidenceSpawnTableEntry(TypedDict):
-    """Data for a single row in a ResidenceSpawnTable."""
-
-    name: str
-    """The name of an entry."""
+    definition_id: str
+    """The ID of a business definition."""
     spawn_frequency: int
     """The relative frequency that this entry should spawn relative to others."""
-    required_population: int
-    """The number of people that need to live in the district."""
-    is_multifamily: bool
-    """Is this a multifamily residential building."""
-    instances: int
-    """The number of instances of this residence type"""
     max_instances: int
     """Max number of instances of the business that may exist."""
 
 
-class ResidenceSpawnTable(Component):
-    """Manages the frequency that residence types are spawned"""
+class DistrictSpawnTable(Component):
+    """Manages the frequency that business types are spawned"""
 
-    __slots__ = ("_table",)
+    __slots__ = ("table",)
 
-    _table: pl.DataFrame
-    """Column names mapped to column data."""
+    table: dict[str, DistrictSpawnTableEntry]
+    """Table data with entries."""
 
-    def __init__(self, entries: list[ResidenceSpawnTableEntry]) -> None:
+    def __init__(
+        self,
+        entries: Optional[list[DistrictSpawnTableEntry]] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -175,54 +152,11 @@ class ResidenceSpawnTable(Component):
             Starting entries.
         """
         super().__init__()
-        # See comment in CharacterSpawnTable.__init__ for why this is type ignored.
-        self._table = pl.from_dicts(
-            entries,  # type: ignore
-            schema=[
-                ("name", str),
-                ("spawn_frequency", int),
-                ("required_population", int),
-                ("is_multifamily", bool),
-                ("instances", int),
-                ("max_instances", int),
-            ],
-        )
+        self.table = {}
 
-    @property
-    def table(self) -> pl.DataFrame:
-        """Get the spawn table as a data frame."""
-        return self._table
-
-    def increment_count(self, name: str) -> None:
-        """Increment the instance count for an entry.
-
-        Parameters
-        ----------
-        name
-            The name of entry to update
-        """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") + 1)
-            .otherwise(pl.col("instances"))
-        )
-
-    def decrement_count(self, name: str) -> None:
-        """Increment the instance count for an entry.
-
-        Parameters
-        ----------
-        name
-            The name of entry to update
-        """
-        self._table = self._table.with_columns(  # type: ignore
-            instances=pl.when(pl.col("name") == name)  # type: ignore
-            .then(pl.col("instances") - 1)
-            .otherwise(pl.col("instances"))
-        )
-
-    def __len__(self) -> int:
-        return len(self._table)
+        if entries:
+            for entry in entries:
+                self.table[entry.definition_id] = entry
 
     def to_dict(self) -> dict[str, Any]:
         return {}

@@ -1,0 +1,59 @@
+{
+  "base_settlement": {
+    "is_template": true,
+    "components": {
+      "Settlement": {
+        "name_factory": "default"
+      },
+      "PersonalEventHistory": {},
+      "DistrictSpawnTable": {}
+    }
+  },
+  "basic_settlement": {
+    "extends": [
+      "base_settlement"
+    ],
+    "components": {
+      "Settlement": {
+        "name_factory": "default"
+      },
+      "PersonalEventHistory": {},
+      "DistrictSpawnTable": {
+        "district_types": [
+          {
+            "with_tags": [
+              "urban",
+              "suburban"
+            ]
+          },
+          {
+            "with_id": "market_district"
+          },
+          {
+            "with_id": "entertainment_district"
+          },
+          {
+            "with_id": "upper_class_residences"
+          }
+        ]
+      }
+    },
+    "districts": [
+      {
+        "with_tags": [
+          "urban",
+          "suburban"
+        ]
+      },
+      {
+        "with_id": "market_district"
+      },
+      {
+        "with_id": "entertainment_district"
+      },
+      {
+        "with_id": "upper_class_residences"
+      }
+    ]
+  }
+}

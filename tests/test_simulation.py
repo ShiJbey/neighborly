@@ -1,15 +1,18 @@
+# pylint: disable=W0621
+
 import pathlib
 
+import pytest
+
 from neighborly.components.settlement import Settlement
-from neighborly.config import SimulationConfig
 from neighborly.loaders import (
     load_businesses,
     load_characters,
     load_districts,
     load_job_roles,
-    load_residences,
     load_settlements,
     load_skills,
+    load_species,
 )
 from neighborly.plugins import (
     default_character_names,
@@ -18,7 +21,32 @@ from neighborly.plugins import (
 )
 from neighborly.simulation import Simulation
 
-_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+_DATA_DIR = (
+    pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
+)
+
+
+@pytest.fixture
+def test_sim() -> Simulation:
+    """Create a simulation instance for tests."""
+
+    sim = Simulation()
+
+    load_districts(sim, _DATA_DIR / "districts.json")
+    load_settlements(sim, _DATA_DIR / "settlements.json")
+    load_businesses(sim, _DATA_DIR / "businesses.json")
+    load_characters(sim, _DATA_DIR / "characters.json")
+    load_job_roles(sim, _DATA_DIR / "job_roles.json")
+    load_skills(sim, _DATA_DIR / "skills.json")
+    load_species(sim, _DATA_DIR / "species.json")
+
+    default_traits.load_plugin(sim)
+    default_character_names.load_plugin(sim)
+    default_settlement_names.load_plugin(sim)
+
+    sim.initialize()
+
+    return sim
 
 
 def test_simulation_step() -> None:
@@ -43,49 +71,24 @@ def test_simulation_step() -> None:
     assert sim.date.total_months == 14
 
 
-def test_simulation_initialization() -> None:
-    sim = Simulation(SimulationConfig(settlement="basic_settlement"))
+def test_simulation_initialization(test_sim: Simulation) -> None:
 
-    load_districts(sim, _TEST_DATA_DIR / "districts.json")
-    load_settlements(sim, _TEST_DATA_DIR / "settlements.json")
-    load_businesses(sim, _TEST_DATA_DIR / "businesses.json")
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_residences(sim, _TEST_DATA_DIR / "residences.json")
-    load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    # Settlements are created at the beginning of the first time step
-    sim.initialize()
-
-    settlements = sim.world.get_component(Settlement)
+    settlements = test_sim.world.get_component(Settlement)
 
     assert len(settlements) == 1
 
     assert settlements[0][1].gameobject.metadata["definition_id"] == "basic_settlement"
 
 
-def test_simulation_to_json() -> None:
-    sim = Simulation(SimulationConfig(settlement="basic_settlement"))
-
-    load_districts(sim, _TEST_DATA_DIR / "districts.json")
-    load_settlements(sim, _TEST_DATA_DIR / "settlements.json")
-    load_businesses(sim, _TEST_DATA_DIR / "businesses.json")
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_residences(sim, _TEST_DATA_DIR / "residences.json")
-    load_job_roles(sim, _TEST_DATA_DIR / "job_roles.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    default_traits.load_plugin(sim)
-    default_character_names.load_plugin(sim)
-    default_settlement_names.load_plugin(sim)
+def test_simulation_to_json(test_sim: Simulation) -> None:
 
     # Run the simulation for one year (12 months) of simulated time
     for _ in range(12):
-        sim.step()
+        test_sim.step()
 
     output_file = pathlib.Path(__file__).parent / "output" / "test_output.json"
     output_file.parent.mkdir(exist_ok=True, parents=True)
     with open(output_file, "w", encoding="utf-8") as fp:
-        fp.write(sim.to_json(2))
+        fp.write(test_sim.to_json(2))
 
     assert True

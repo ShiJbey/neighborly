@@ -2,8 +2,7 @@
 
 """
 
-from neighborly.components.skills import Skills
-from neighborly.components.stats import Stat
+from neighborly.components.skills import SkillInstance, Skills
 from neighborly.ecs import GameObject
 from neighborly.libraries import SkillLibrary
 
@@ -23,10 +22,6 @@ def add_skill(gameobject: GameObject, skill_id: str, base_value: float = 0.0) ->
     library = gameobject.world.resource_manager.get_resource(SkillLibrary)
     skill = library.get_skill(skill_id)
     gameobject.get_component(Skills).add_skill(skill, base_value)
-    skill_stat = get_skill(gameobject, skill_id)
-    gameobject.world.rp_db.insert(
-        f"{gameobject.uid}.skills.{skill_id}!{skill_stat.value}"
-    )
 
 
 def has_skill(gameobject: GameObject, skill_id: str) -> bool:
@@ -44,12 +39,10 @@ def has_skill(gameobject: GameObject, skill_id: str) -> bool:
     bool
         True if the character has the skill, False otherwise.
     """
-    library = gameobject.world.resource_manager.get_resource(SkillLibrary)
-    skill = library.get_skill(skill_id)
-    return gameobject.get_component(Skills).has_skill(skill)
+    return skill_id in gameobject.get_component(Skills).skills
 
 
-def get_skill(gameobject: GameObject, skill_id: str) -> Stat:
+def get_skill(gameobject: GameObject, skill_id: str) -> SkillInstance:
     """Get a character's skill stat.
 
     Parameters
@@ -61,9 +54,6 @@ def get_skill(gameobject: GameObject, skill_id: str) -> Stat:
 
     Returns
     -------
-    Stat
-        The stat associated with this skill.
+    SkillInstance
     """
-    library = gameobject.world.resource_manager.get_resource(SkillLibrary)
-    skill = library.get_skill(skill_id)
-    return gameobject.get_component(Skills).get_skill(skill)
+    return gameobject.get_component(Skills).skills[skill_id]

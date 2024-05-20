@@ -1,35 +1,23 @@
 #!/usr/bin/env python3
-# pylint: disable=W0614,W0401,W0621
-"""Sample Simulation for Terminal.
+# pylint: disable=W0614,W0401
+"""Sample Neighborly Simulation.
 
 """
 
 import argparse
 import pathlib
+import pstats
 import random
+from cProfile import Profile
+from pstats import SortKey
 
 from neighborly.config import LoggingConfig, SimulationConfig
-from neighborly.defs.base_types import CharacterDefTraitEntry
-from neighborly.defs.defaults import DefaultCharacterDef
-from neighborly.helpers.character import register_character_def
-from neighborly.loaders import (
-    load_businesses,
-    load_characters,
-    load_districts,
-    load_job_roles,
-    load_residences,
-    load_settlements,
-    load_skills,
-)
 from neighborly.plugins import (
-    default_character_names,
-    default_events,
-    default_settlement_names,
-    default_traits,
+    default_considerations,
+    default_content,
+    default_event_responses,
 )
 from neighborly.simulation import Simulation
-
-TEST_DATA_DIR = pathlib.Path(__file__).parent.parent / "tests" / "data"
 
 
 def get_args() -> argparse.Namespace:
@@ -54,7 +42,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "-y",
         "--years",
-        default=50,
+        default=150,
         type=int,
         help="The number of years to simulate.",
     )
@@ -63,58 +51,64 @@ def get_args() -> argparse.Namespace:
         "-o",
         "--output",
         type=pathlib.Path,
-        help="Specify path to write generated world data.",
+        help="Specify path to write generated JSON data.",
+    )
+
+    parser.add_argument(
+        "-p",
+        "--profiling",
+        action="store_true",
+        help="Enable profiling.",
+    )
+
+    parser.add_argument(
+        "--disable-logging",
+        help="Disable logging events to a file.",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--profile-out",
+        type=pathlib.Path,
+        default=pathlib.Path("./profile.prof"),
+        help="Specify path to write the profile data.",
     )
 
     return parser.parse_args()
 
 
-def main() -> Simulation:
-    """Main program entry point."""
+if __name__ == "__main__":
+    from neighborly.inspection import *
+
     args = get_args()
 
     sim = Simulation(
         SimulationConfig(
             seed=args.seed,
-            settlement="basic_settlement",
-            logging=LoggingConfig(logging_enabled=True),
+            logging=LoggingConfig(
+                logging_enabled=not bool(args.disable_logging),
+                log_level="DEBUG",
+                log_to_terminal=False,
+            ),
         )
     )
 
-    load_districts(sim, TEST_DATA_DIR / "districts.json")
-    load_settlements(sim, TEST_DATA_DIR / "settlements.json")
-    load_businesses(sim, TEST_DATA_DIR / "businesses.json")
-    load_characters(sim, TEST_DATA_DIR / "characters.json")
-    load_residences(sim, TEST_DATA_DIR / "residences.json")
-    load_job_roles(sim, TEST_DATA_DIR / "job_roles.json")
-    load_skills(sim, TEST_DATA_DIR / "skills.json")
+    default_content.load_plugin(sim)
+    default_considerations.load_plugin(sim)
+    default_event_responses.load_plugin(sim)
 
-    default_events.load_plugin(sim)
-    default_traits.load_plugin(sim)
-    default_character_names.load_plugin(sim)
-    default_settlement_names.load_plugin(sim)
+    if args.profiling:
+        with Profile() as profile:
+            sim.run_for(args.years)
 
-    register_character_def(
-        sim.world,
-        DefaultCharacterDef(
-            definition_id="person",
-            species="human",
-            traits=[
-                CharacterDefTraitEntry(with_tags=["incidental"]),
-                CharacterDefTraitEntry(with_tags=["incidental"]),
-                CharacterDefTraitEntry(with_tags=["incidental"]),
-            ],
-            variants=[
-                {"name": "male", "sex": "Male"},
-                {"name": "female", "sex": "Female"},
-            ],
-        ),
-    )
-
-    total_time_steps: int = args.years * 12
-
-    for _ in range(total_time_steps):
-        sim.step()
+            (
+                pstats.Stats(profile)
+                .strip_dirs()  # type: ignore
+                .sort_stats(SortKey.PCALLS)
+                .dump_stats(args.profile_out)
+            )
+    else:
+        sim.run_for(args.years)
 
     if args.output:
         output_path: pathlib.Path = (
@@ -127,12 +121,3 @@ def main() -> Simulation:
             file.write(sim.to_json())
 
         print(f"Simulation output written to: {output_path}")
-
-    return sim
-
-
-if __name__ == "__main__":
-    from neighborly.helpers.db_helpers import *
-    from neighborly.inspection import *
-
-    sim = main()

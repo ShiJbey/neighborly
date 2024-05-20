@@ -1,0 +1,212 @@
+{
+  "base_character": {
+    "is_template": true,
+    "traits": [
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "sexuality"
+        ]
+      }
+    ],
+    "components": {
+      "Stats": {},
+      "Lifespan": {},
+      "Fertility": {},
+      "Kindness": {},
+      "Courage": {},
+      "Stewardship": {},
+      "Sociability": {},
+      "Intelligence": {},
+      "Discipline": {},
+      "Charm": {},
+      "Skills": {},
+      "Age": {},
+      "FrequentedLocations": {},
+      "LocationPreferences": {},
+      "PersonalEventHistory": {},
+      "Relationships": {},
+      "Traits": {},
+      "Character": {},
+      "AgentBeliefs": {}
+    },
+    "variants": [
+      {
+        "variant_name": "male",
+        "sex": "Male",
+        "name_factory": "masculine-first",
+        "is_template": false,
+        "traits": [
+          {
+            "with_tags": [
+              "personality"
+            ]
+          },
+          {
+            "with_tags": [
+              "personality"
+            ]
+          },
+          {
+            "with_tags": [
+              "sexuality"
+            ]
+          }
+        ],
+        "components": {
+          "Character": {
+            "first_name_factory": "masculine-first",
+            "last_name_factory": "default-last",
+            "sex": "MALE"
+          },
+          "Species": {
+            "species": "human"
+          },
+          "Age": {
+            "value_range": "25-56"
+          },
+          "Fertility": {
+            "value_range": "0-100"
+          },
+          "Kindness": {
+            "value_range": "0-80"
+          },
+          "Courage": {
+            "value_range": "0-80"
+          },
+          "Stewardship": {
+            "value_range": "0-80"
+          },
+          "Sociability": {
+            "value_range": "0-80"
+          },
+          "Intelligence": {
+            "value_range": "0-80"
+          },
+          "Discipline": {
+            "value_range": "0-80"
+          },
+          "Charm": {
+            "value_range": "0-80"
+          }
+        }
+      },
+      {
+        "variant_name": "female",
+        "sex": "Female",
+        "name_factory": "feminine-first",
+        "is_template": false,
+        "components": {
+          "Character": {
+            "first_name_factory": "feminine-first",
+            "last_name_factory": "default-last",
+            "sex": "FEMALE"
+          },
+          "Species": {
+            "species": "human"
+          },
+          "Age": {
+            "value_range": "25-56"
+          },
+          "Fertility": {
+            "value_range": "0-100"
+          },
+          "Kindness": {
+            "value_range": "0-80"
+          },
+          "Courage": {
+            "value_range": "0-80"
+          },
+          "Stewardship": {
+            "value_range": "0-80"
+          },
+          "Sociability": {
+            "value_range": "0-80"
+          },
+          "Intelligence": {
+            "value_range": "0-80"
+          },
+          "Discipline": {
+            "value_range": "0-80"
+          },
+          "Charm": {
+            "value_range": "0-80"
+          }
+        }
+      }
+    ]
+  },
+  "child": {
+    "extends": [
+      "base_character"
+    ],
+    "is_template": false,
+    "components": {
+      "Fertility": {
+        "value_range": "0-100"
+      },
+      "Kindness": {
+        "value_range": "0-80"
+      },
+      "Courage": {
+        "value_range": "0-80"
+      },
+      "Stewardship": {
+        "value_range": "0-80"
+      },
+      "Sociability": {
+        "value_range": "0-80"
+      },
+      "Intelligence": {
+        "value_range": "0-80"
+      },
+      "Discipline": {
+        "value_range": "0-80"
+      },
+      "Charm": {
+        "value_range": "0-80"
+      }
+    }
+  },
+  "farmer": {
+    "is_template": true,
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "farmer"
+    ]
+  },
+  "merchant": {
+    "is_template": true,
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "merchant"
+    ]
+  },
+  "nobility": {
+    "is_template": true,
+    "extends": [
+      "base_character"
+    ],
+    "tags": [
+      "nobility"
+    ]
+  }
+}

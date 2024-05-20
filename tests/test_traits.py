@@ -1,70 +1,65 @@
+# pylint: disable=W0621
+"""Test for Neighborly's Trait System.
+
+"""
+
 import pathlib
 
-from neighborly.components.traits import Trait
+import pytest
+
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
-from neighborly.libraries import TraitLibrary
-from neighborly.loaders import load_characters, load_skills
-from neighborly.plugins import default_traits
+from neighborly.libraries import CharacterLibrary
+from neighborly.loaders import load_characters, load_skills, load_species, load_traits
+from neighborly.plugins import default_character_names, default_traits
 from neighborly.simulation import Simulation
 
-_TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
+_DATA_DIR = (
+    pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
+)
 
 
-def test_trait_instantiation() -> None:
-    """Test that traits are properly initialized by the simulation."""
+@pytest.fixture
+def test_sim() -> Simulation:
+    """Create a simulation instance for tests."""
 
     sim = Simulation()
 
     default_traits.load_plugin(sim)
+    default_character_names.load_plugin(sim)
 
-    # Traits are initialized at the start of the simulation
+    load_characters(sim, _DATA_DIR / "characters.json")
+    load_skills(sim, _DATA_DIR / "skills.json")
+    load_species(sim, _DATA_DIR / "species.json")
+    load_traits(sim, _DATA_DIR / "traits.json")
+
+    # IMPORTANT: Stop character from generating with traits
+    sim.world.resources.get_resource(CharacterLibrary).get_definition(
+        "base_character"
+    ).traits.clear()
+
     sim.initialize()
 
-    library = sim.world.resource_manager.get_resource(TraitLibrary)
-
-    trait = library.get_trait("flirtatious")
-
-    assert trait.get_component(Trait).display_name == "Flirtatious"
+    return sim
 
 
-def test_add_trait() -> None:
+def test_add_trait(test_sim: Simulation) -> None:
     """Test that adding a trait makes it visible with has_trait."""
 
-    sim = Simulation()
-
-    default_traits.load_plugin(sim)
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    # Traits are initialized at the start of the simulation
-    sim.initialize()
-
-    character = create_character(sim.world, "farmer")
+    character = create_character(test_sim.world, "farmer.female")
 
     assert has_trait(character, "flirtatious") is False
 
-    add_trait(character, "flirtatious")
+    success = add_trait(character, "flirtatious")
 
-    assert has_trait(character, "flirtatious") is True
+    assert success is True
 
 
-def test_remove_trait() -> None:
+def test_remove_trait(test_sim: Simulation) -> None:
     """Test that removing a trait makes it not available to has_trait."""
 
-    sim = Simulation()
-
-    default_traits.load_plugin(sim)
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    # Traits are initialized at the start of the simulation
-    sim.step()
-
-    character = create_character(sim.world, "farmer")
+    character = create_character(test_sim.world, "farmer.female")
 
     assert has_trait(character, "flirtatious") is False
 
@@ -72,25 +67,15 @@ def test_remove_trait() -> None:
 
     assert has_trait(character, "flirtatious") is True
 
-    remove_trait(character, "flirtatious")
+    success = remove_trait(character, "flirtatious")
 
-    assert has_trait(character, "flirtatious") is False
+    assert success is True
 
 
-def test_add_remove_trait_effects() -> None:
+def test_add_remove_trait_effects(test_sim: Simulation) -> None:
     """Test that trait effects are added and removed with the trait."""
 
-    sim = Simulation()
-
-    default_traits.load_plugin(sim)
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    # Traits are initialized at the start of the simulation
-    sim.initialize()
-
-    farmer = create_character(sim.world, "farmer")
+    farmer = create_character(test_sim.world, "farmer.female")
 
     get_stat(farmer, "sociability").base_value = 0
 
@@ -105,20 +90,10 @@ def test_add_remove_trait_effects() -> None:
     assert get_stat(farmer, "sociability").value == 0
 
 
-def test_try_add_conflicting_trait() -> None:
+def test_try_add_conflicting_trait(test_sim: Simulation) -> None:
     """Test that adding a conflicting trait to a character fails"""
 
-    sim = Simulation()
-
-    default_traits.load_plugin(sim)
-
-    load_characters(sim, _TEST_DATA_DIR / "characters.json")
-    load_skills(sim, _TEST_DATA_DIR / "skills.json")
-
-    # Traits are initialized at the start of the simulation
-    sim.initialize()
-
-    character = create_character(sim.world, "farmer")
+    character = create_character(test_sim.world, "farmer.female")
 
     success = add_trait(character, "skeptical")
 

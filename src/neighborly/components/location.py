@@ -7,26 +7,32 @@ characters have the highest likelihood of interacting with during a time step.
 
 """
 
-from typing import Any, Iterator
+from collections import defaultdict
+from typing import Any, Iterable, Iterator
 
-import attrs
 from ordered_set import OrderedSet
 
 from neighborly.ecs import Component, GameObject
 from neighborly.preconditions.base_types import Precondition
 
 
-class FrequentedBy(Component):
+class Location(Component):
     """Tracks the characters that frequent a location."""
 
-    __slots__ = ("_characters",)
+    __slots__ = ("frequented_by", "is_private")
 
-    _characters: OrderedSet[GameObject]
+    is_private: bool
+    """Can this location be frequented by any character."""
+    frequented_by: OrderedSet[GameObject]
     """GameObject IDs of characters that frequent the location."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        is_private: bool = False,
+    ) -> None:
         super().__init__()
-        self._characters = OrderedSet([])
+        self.is_private = is_private
+        self.frequented_by = OrderedSet([])
 
     def add_character(self, character: GameObject) -> None:
         """Add a character.
@@ -36,10 +42,7 @@ class FrequentedBy(Component):
         character
             The GameObject reference to a character.
         """
-        self._characters.add(character)
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.frequented_by.{character.uid}"
-        )
+        self.frequented_by.add(character)
 
     def remove_character(self, character: GameObject) -> bool:
         """Remove a character.
@@ -54,34 +57,29 @@ class FrequentedBy(Component):
         bool
             Returns True if a character was removed. False otherwise.
         """
-        if character in self._characters:
-            self._characters.remove(character)
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.frequented_by.{character.uid}"
-            )
+        if character in self.frequented_by:
+            self.frequented_by.remove(character)
+
             return True
 
         return False
 
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(f"{self.gameobject.uid}.frequented_by")
-
     def to_dict(self) -> dict[str, Any]:
         return {
-            "characters": [entry.uid for entry in self._characters],
+            "frequented_by": [entry.uid for entry in self.frequented_by],
         }
 
     def __contains__(self, item: GameObject) -> bool:
-        return item in self._characters
+        return item in self.frequented_by
 
     def __iter__(self) -> Iterator[GameObject]:
-        return iter(self._characters)
+        return iter(self.frequented_by)
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._characters})"
+        return f"Location({self.frequented_by!r})"
 
 
 class FrequentedLocations(Component):
@@ -92,7 +90,9 @@ class FrequentedLocations(Component):
     _locations: OrderedSet[GameObject]
     """A set of GameObject IDs of locations."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+    ) -> None:
         super().__init__()
         self._locations = OrderedSet([])
 
@@ -105,9 +105,6 @@ class FrequentedLocations(Component):
            A GameObject reference to a location.
         """
         self._locations.add(location)
-        self.gameobject.world.rp_db.insert(
-            f"{self.gameobject.uid}.frequented_locations.{location.uid}"
-        )
 
     def remove_location(self, location: GameObject) -> bool:
         """Remove a location.
@@ -124,16 +121,9 @@ class FrequentedLocations(Component):
         """
         if location in self._locations:
             self._locations.remove(location)
-            self.gameobject.world.rp_db.delete(
-                f"{self.gameobject.uid}.frequented_locations.{location.uid}"
-            )
+
             return True
         return False
-
-    def on_remove(self) -> None:
-        self.gameobject.world.rp_db.delete(
-            f"{self.gameobject.uid}.frequented_locations"
-        )
 
     def to_dict(self) -> dict[str, Any]:
         return {"locations": [entry.uid for entry in self._locations]}
@@ -154,36 +144,43 @@ class FrequentedLocations(Component):
         return f"{self.__class__.__name__}({repr(self._locations)})"
 
 
-@attrs.define
 class LocationPreferenceRule:
     """A rule that helps characters score how they feel about locations to frequent."""
 
+    __slots__ = ("rule_id", "description", "preconditions", "probability")
+
+    rule_id: str
+    """A unique ID for this rule."""
+    description: str
+    """A description of the preference."""
     preconditions: list[Precondition]
-    """Precondition functions to run when scoring a location."""
+    """Precondition to run when scoring a location."""
     probability: float
     """The amount to apply to the score."""
-    source: object
-    """The source of this location."""
 
-    def __call__(self, gameobject: GameObject) -> float:
-        """Check all preconditions and return a weight modifier.
+    def __init__(
+        self,
+        rule_id: str,
+        description: str,
+        preconditions: list[Precondition],
+        probability: float,
+    ) -> None:
+        self.rule_id = rule_id
+        self.description = description
+        self.preconditions = preconditions
+        self.probability = probability
 
-        Parameters
-        ----------
-        gameobject
-            A location to score.
+    def check_preconditions(self, character: GameObject, location: GameObject) -> bool:
+        """Check the preconditions against the given location."""
 
-        Returns
-        -------
-        float
-            A probability score from [0.0, 1.0] of the character frequenting the
-            location. Or -1 if it does not pass the preconditions.
-        """
+        for precondition in self.preconditions:
+            if (
+                precondition.check({"location": location, "character": character})
+                is False
+            ):
+                return False
 
-        if all(p(gameobject) for p in self.preconditions):
-            return self.probability
-
-        return -1.0
+        return True
 
 
 class LocationPreferences(Component):
@@ -191,59 +188,69 @@ class LocationPreferences(Component):
 
     __slots__ = ("_rules",)
 
-    _rules: list[LocationPreferenceRule]
-    """Rules added to the location preferences."""
+    _rules: defaultdict[str, int]
+    """Rules IDs mapped to reference counts."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+    ) -> None:
         super().__init__()
-        self._rules = []
+        self._rules = defaultdict(lambda: 0)
 
-    def add_rule(self, rule: LocationPreferenceRule) -> None:
-        """Add a location preference rule."""
-        self._rules.append(rule)
+    @property
+    def rules(self) -> Iterable[str]:
+        """Rules applied to the owning GameObject's relationships."""
+        return self._rules
 
-    def remove_rule(self, rule: LocationPreferenceRule) -> None:
-        """Remove a location preference rule."""
-        self._rules.remove(rule)
+    def add_rule(self, rule_id: str) -> None:
+        """Add a rule to the rule collection."""
+        self._rules[rule_id] += 1
 
-    def remove_rules_from_source(self, source: object) -> None:
-        """Remove all preference rules from the given source."""
-        self._rules = [rule for rule in self._rules if rule.source != source]
+    def has_rule(self, rule_id: str) -> bool:
+        """Check if a rule is present."""
+        return rule_id in self._rules
 
-    def score_location(self, location: GameObject) -> float:
-        """Calculate a score for a character choosing to frequent this location.
+    def remove_rule(self, rule_id: str) -> bool:
+        """Remove a rule from the rules collection."""
+        if rule_id in self._rules:
+            self._rules[rule_id] -= 1
 
-        Parameters
-        ----------
-        location
-            A location to score
+            if self._rules[rule_id] <= 0:
+                del self._rules[rule_id]
 
-        Returns
-        -------
-        float
-            A probability score from [0.0, 1.0]
-        """
+            return True
 
-        cumulative_score: float = 0.5
-        consideration_count: int = 1
-
-        for rule in self._rules:
-            consideration_score = rule(location)
-
-            # Scores greater than zero are added to the cumulative score
-            if consideration_score > 0:
-                cumulative_score += consideration_score
-                consideration_count += 1
-
-            # Scores equal to zero make the entire score zero (make zero a veto value)
-            elif consideration_score == 0.0:
-                cumulative_score = 0.0
-                break
-
-        # Scores are averaged using the arithmetic mean
-        final_score = cumulative_score / consideration_count
-
-        return final_score
+        return False
 
     def to_dict(self) -> dict[str, Any]:
-        return {}
+        return {"rules": [r for r in self._rules]}
+
+
+class CurrentSettlement(Component):
+    """Tracks the current settlement a GameObject is in."""
+
+    __slots__ = ("settlement",)
+
+    settlement: GameObject
+
+    def __init__(self, settlement: GameObject) -> None:
+        super().__init__()
+        self.settlement = settlement
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"settlement": self.settlement.uid}
+
+
+class CurrentDistrict(Component):
+    """Tracks the current district a GameObject is in."""
+
+    __slots__ = ("district",)
+
+    district: GameObject
+
+    def __init__(self, district: GameObject) -> None:
+        super().__init__()
+        self.district = district
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"district": self.district.uid}
