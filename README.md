@@ -30,7 +30,7 @@ If you use Neighborly in a project, please cite this repository. You can read
 Neighborly's associated [paper](https://shijbey.github.io/publications/Neighborly.pdf) that was published in the
 proceedings of the 2022 IEEE Conference On Games.
 
-```
+```text
 @inproceedings{johnsonbey2022neighborly,
     title = {Neighborly: A Sandbox for Simulation-based Emergent Narrative},
     author = {Johnson-Bey, Shi and Nelson, Mark J and Mateas, Michael},

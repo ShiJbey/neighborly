@@ -3,7 +3,8 @@
 """
 
 import random
-from typing import ClassVar
+from collections import defaultdict
+from typing import ClassVar, Optional
 
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import (
@@ -15,9 +16,11 @@ from neighborly.components.character import (
     ResidentOf,
     Sex,
 )
-from neighborly.components.relationship import Relationship, Relationships
+from neighborly.components.location import FrequentedLocations, Location
+from neighborly.components.relationship import Relationship, Relationships, Romance
 from neighborly.components.settlement import Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
+from neighborly.components.stats import Sociability
 from neighborly.ecs import Active, GameObject, System, World
 from neighborly.helpers.action import get_action_probability
 from neighborly.helpers.character import (
@@ -26,7 +29,7 @@ from neighborly.helpers.character import (
     remove_character_from_household,
     set_household_head,
 )
-from neighborly.helpers.stats import get_stat
+from neighborly.helpers.relationship import add_relationship, has_relationship
 from neighborly.helpers.traits import get_relationships_with_traits
 from neighborly.libraries import JobRoleLibrary
 from neighborly.plugins.actions import (
@@ -335,6 +338,9 @@ class CharacterDatingSystem(System):
                 if partner.is_active is False:
                     continue
 
+                if not partner.has_component(Character):
+                    continue
+
                 action = StartDating(character=character.gameobject, partner=partner)
                 action_probability = get_action_probability(action)
 
@@ -604,26 +610,33 @@ class CrushFormationSystem(System):
 
         rng = world.resources.get_resource(random.Random)
 
-        for _, (_, relationships, _) in world.get_components(
+        for _, (character, relationships, _) in world.get_components(
             (Character, Relationships, Active)
         ):
-            potential_crushes = sorted(
-                [
-                    (target, get_stat(rel, "romance").value)
-                    for target, rel in relationships.outgoing.items()
-                    if rel.get_component(Relationship).target.has_component(Character)
-                ],
-                key=lambda entry: entry[1],
-            )
+            potential_crush: Optional[GameObject] = None
+            highest_romance: float = 0
 
-            if len(potential_crushes) == 0:
+            for target, relationship in relationships.outgoing.items():
+
+                if not target.is_active or not relationship.is_active:
+                    continue
+
+                if not target.has_component(Character):
+                    continue
+
+                romance = relationship.get_component(Romance).stat.value
+
+                if romance <= 0:
+                    continue
+
+                if romance > highest_romance:
+                    highest_romance = romance
+                    potential_crush = target
+
+            if potential_crush is None:
                 continue
 
-            # The person they are most attracted to is the last one in the sorted list
-            crush = potential_crushes[-1][0]
-            character = relationships.gameobject
-
-            action = FormCrush(character=character, crush=crush)
+            action = FormCrush(character=character.gameobject, crush=potential_crush)
 
             action_probability = get_action_probability(action)
 
@@ -632,6 +645,51 @@ class CrushFormationSystem(System):
 
             if rng.random() < action_probability:
                 action.execute()
+
+
+class MeetNewPeopleSystem(System):
+    """Characters introduce themselves to new people that frequent the same places.
+
+    Notes
+    -----
+    This system uses a character's sociability stat score to determine the probability
+    of them introducing themselves to someone else. The goal is for characters with
+    higher sociability scores to form more relationships over the course of their lives.
+    """
+
+    def on_update(self, world: World) -> None:
+        rng = world.resource_manager.get_resource(random.Random)
+
+        for _, (character, frequented_locs, sociability, _) in world.get_components(
+            (Character, FrequentedLocations, Sociability, Active)
+        ):
+            probability_meet_someone = sociability.stat.normalized
+
+            if rng.random() < probability_meet_someone:
+                candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
+
+                for loc in frequented_locs:
+                    for other in loc.get_component(Location).frequented_by:
+                        if other != character.gameobject and not has_relationship(
+                            character.gameobject, other
+                        ):
+                            candidate_scores[other] += 1
+
+                if candidate_scores:
+                    rng = world.resource_manager.get_resource(random.Random)
+
+                    acquaintance = rng.choices(
+                        list(candidate_scores.keys()),
+                        weights=list(candidate_scores.values()),
+                        k=1,
+                    )[0]
+
+                    if (
+                        rng.random()
+                        < acquaintance.get_component(Sociability).stat.normalized
+                    ):
+                        add_relationship(character.gameobject, acquaintance)
+                        add_relationship(acquaintance, character.gameobject)
 
 
 def load_plugin(sim: Simulation) -> None:
@@ -651,3 +709,4 @@ def load_plugin(sim: Simulation) -> None:
         AdultsFormOwnHouseholdSystem(), system_group=UpdateSystems
     )
     sim.world.systems.add_system(CrushFormationSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(MeetNewPeopleSystem(), system_group=UpdateSystems)

@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import random
 from collections import defaultdict
-from typing import ClassVar
 
 from neighborly.components.beliefs import Belief
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
@@ -203,10 +202,9 @@ class InitializeSettlementSystem(System):
 class SpawnNewResidentSystem(System):
     """Spawns new characters as residents within vacant residences."""
 
-    CHANCE_NEW_RESIDENT: ClassVar[float] = 0.5
-
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
+        config = world.resources.get_resource(SimulationConfig)
 
         # Find vacant residences
         for _, (_, current_settlement, spawn_table, _) in world.get_components(
@@ -215,7 +213,7 @@ class SpawnNewResidentSystem(System):
             if len(spawn_table.table) == 0:
                 continue
 
-            if rng.random() > SpawnNewResidentSystem.CHANCE_NEW_RESIDENT:
+            if rng.random() > config.growth_factor:
                 continue
 
             # Weighted random selection on the characters in the table
