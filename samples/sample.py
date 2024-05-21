@@ -12,11 +12,7 @@ from cProfile import Profile
 from pstats import SortKey
 
 from neighborly.config import LoggingConfig, SimulationConfig
-from neighborly.plugins import (
-    default_considerations,
-    default_content,
-    default_event_responses,
-)
+from neighborly.plugins import default_content
 from neighborly.simulation import Simulation
 
 
@@ -94,8 +90,6 @@ if __name__ == "__main__":
     )
 
     default_content.load_plugin(sim)
-    default_considerations.load_plugin(sim)
-    default_event_responses.load_plugin(sim)
 
     if args.profiling:
         with Profile() as profile:

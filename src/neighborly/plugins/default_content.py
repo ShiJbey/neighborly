@@ -4,6 +4,8 @@ from neighborly.plugins import (
     default_businesses,
     default_character_names,
     default_characters,
+    default_considerations,
+    default_event_responses,
     default_settlement_names,
     default_settlements,
     default_systems,
@@ -22,3 +24,5 @@ def load_plugin(sim: Simulation) -> None:
     default_settlements.load_plugin(sim)
     default_systems.load_plugin(sim)
     default_traits.load_plugin(sim)
+    default_considerations.load_plugin(sim)
+    default_event_responses.load_plugin(sim)
