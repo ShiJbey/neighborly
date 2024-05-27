@@ -5,13 +5,13 @@ Responses implement relationship and personal stat changes using event listeners
 """
 
 from neighborly.components.relationship import Reputation, Romance
-from neighborly.ecs import IEvent
+from neighborly.ecs import Event
 from neighborly.helpers.relationship import get_relationship
 from neighborly.plugins.default_events import DatingBreakUpEvent, DivorceEvent
 from neighborly.simulation import Simulation
 
 
-def break_up_response(event: IEvent) -> None:
+def break_up_response(event: Event) -> None:
     """Listens for break ups and updates relationships."""
 
     if isinstance(event, DatingBreakUpEvent):
@@ -24,7 +24,7 @@ def break_up_response(event: IEvent) -> None:
         ).stat.base_value -= 15
 
 
-def divorce_response(event: IEvent) -> None:
+def divorce_response(event: Event) -> None:
     """Listens for divorces and updates relationships."""
 
     if isinstance(event, DivorceEvent):

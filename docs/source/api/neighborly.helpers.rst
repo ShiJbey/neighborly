@@ -4,6 +4,14 @@ neighborly.helpers package
 Submodules
 ----------
 
+neighborly.helpers.action module
+--------------------------------
+
+.. automodule:: neighborly.helpers.action
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 neighborly.helpers.business module
 ----------------------------------
 
@@ -20,6 +28,14 @@ neighborly.helpers.character module
    :undoc-members:
    :show-inheritance:
 
+neighborly.helpers.content\_selection module
+--------------------------------------------
+
+.. automodule:: neighborly.helpers.content_selection
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 neighborly.helpers.location module
 ----------------------------------
 
@@ -32,14 +48,6 @@ neighborly.helpers.relationship module
 --------------------------------------
 
 .. automodule:: neighborly.helpers.relationship
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.helpers.residence module
------------------------------------
-
-.. automodule:: neighborly.helpers.residence
    :members:
    :undoc-members:
    :show-inheritance:

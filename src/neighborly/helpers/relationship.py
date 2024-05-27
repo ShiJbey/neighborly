@@ -2,7 +2,7 @@
 
 """
 
-from neighborly.components.beliefs import AgentBeliefs, AppliedBeliefs, Belief
+from neighborly.components.beliefs import AppliedBeliefs, Belief, HeldBeliefs
 from neighborly.components.relationship import (
     Relationship,
     Relationships,
@@ -148,7 +148,7 @@ def add_belief(agent: GameObject, belief_id: str) -> None:
         The ID of the belief to add.
     """
     library = agent.world.resource_manager.get_resource(BeliefLibrary)
-    held_beliefs = agent.get_component(AgentBeliefs)
+    held_beliefs = agent.get_component(HeldBeliefs)
 
     if held_beliefs.has_belief(belief_id):
         # Add the belief to increment the internal belief reference counter.
@@ -176,7 +176,7 @@ def remove_belief(agent: GameObject, belief_id: str) -> None:
         The ID of the belief to remove.
     """
     library = agent.world.resource_manager.get_resource(BeliefLibrary)
-    held_beliefs = agent.get_component(AgentBeliefs)
+    held_beliefs = agent.get_component(HeldBeliefs)
 
     if not held_beliefs.has_belief(belief_id):
         return
@@ -210,7 +210,7 @@ def reevaluate_relationship(relationship: Relationship) -> None:
 
     applied_beliefs = relationship.gameobject.get_component(AppliedBeliefs)
 
-    held_beliefs = relationship.owner.get_component(AgentBeliefs)
+    held_beliefs = relationship.owner.get_component(HeldBeliefs)
 
     # Check that existing rules still pass their preconditions
 

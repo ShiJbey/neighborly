@@ -12,10 +12,10 @@ neighborly.defs.base\_types module
    :undoc-members:
    :show-inheritance:
 
-neighborly.defs.defaults module
--------------------------------
+neighborly.defs.definition\_compiler module
+-------------------------------------------
 
-.. automodule:: neighborly.defs.defaults
+.. automodule:: neighborly.defs.definition_compiler
    :members:
    :undoc-members:
    :show-inheritance:

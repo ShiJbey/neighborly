@@ -21,6 +21,7 @@ class DeathEvent(LifeEvent):
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
         self.character = character
+        self.data = {"character": character}
 
     def to_dict(self) -> dict[str, Any]:
         return {**super().to_dict(), "character": self.character.uid}
@@ -50,6 +51,7 @@ class JoinSettlementEvent(LifeEvent):
         super().__init__(character.world)
         self.character = character
         self.settlement = settlement
+        self.data = {"character": character, "settlement": settlement}
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -74,6 +76,7 @@ class BecomeAdolescentEvent(LifeEvent):
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
         self.character = character
+        self.data = {"character": character}
 
     def to_dict(self) -> dict[str, Any]:
         return {**super().to_dict(), "character": self.character.uid}
@@ -92,6 +95,7 @@ class BecomeYoungAdultEvent(LifeEvent):
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
         self.character = character
+        self.data = {"character": character}
 
     def to_dict(self) -> dict[str, Any]:
         return {**super().to_dict(), "character": self.character.uid}
@@ -112,6 +116,7 @@ class BecomeAdultEvent(LifeEvent):
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
         self.character = character
+        self.data = {"character": character}
 
     def to_dict(self) -> dict[str, Any]:
         return {**super().to_dict(), "character": self.character.uid}
@@ -132,6 +137,7 @@ class BecomeSeniorEvent(LifeEvent):
     def __init__(self, character: GameObject) -> None:
         super().__init__(world=character.world)
         self.character = character
+        self.data = {"character": character}
 
     def to_dict(self) -> dict[str, Any]:
         return {**super().to_dict(), "character": self.character.uid}
@@ -155,6 +161,7 @@ class BirthEvent(LifeEvent):
     ) -> None:
         super().__init__(character.world)
         self.character = character
+        self.data = {"character": character}
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -166,10 +173,10 @@ class BirthEvent(LifeEvent):
         return f"{self.character.name} was born."
 
 
-class HaveChildEvent(LifeEvent):
+class ChildBirthEvent(LifeEvent):
     """Event dispatched when a character has a child."""
 
-    __event_type__ = "have_child"
+    __event_type__ = "child-birth"
 
     __slots__ = ("child", "birthing_parent", "other_parent")
 
@@ -187,6 +194,11 @@ class HaveChildEvent(LifeEvent):
         self.child = child
         self.birthing_parent = birthing_parent
         self.other_parent = other_parent
+        self.data = {
+            "birthing_parent": birthing_parent,
+            "other_parent": other_parent,
+            "child": child,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -227,6 +239,12 @@ class LeaveJobEvent(LifeEvent):
         self.business = business
         self.job_role = job_role
         self.reason = reason
+        self.data = {
+            "character": self.character,
+            "business": self.business,
+            "job_role": self.job_role,
+            "reason": self.reason,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -264,6 +282,10 @@ class DepartSettlementEvent(LifeEvent):
         super().__init__(character.world)
         self.character = character
         self.reason = reason
+        self.data = {
+            "character": self.character,
+            "reason": self.reason,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -300,6 +322,12 @@ class LayOffEvent(LifeEvent):
         self.business = business
         self.job_role = job_role
         self.reason = reason
+        self.data = {
+            "character": self.character,
+            "business": self.business,
+            "job_role": self.job_role,
+            "reason": self.reason,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -331,6 +359,10 @@ class BusinessClosedEvent(LifeEvent):
         super().__init__(business.world)
         self.business = business
         self.reason = reason
+        self.data = {
+            "business": self.business,
+            "reason": self.reason,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -355,6 +387,9 @@ class SettlementAddedEvent(LifeEvent):
     def __init__(self, settlement: GameObject) -> None:
         super().__init__(settlement.world)
         self.settlement = settlement
+        self.data = {
+            "settlement": self.settlement,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {

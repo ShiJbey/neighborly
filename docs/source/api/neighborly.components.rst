@@ -4,6 +4,14 @@ neighborly.components package
 Submodules
 ----------
 
+neighborly.components.beliefs module
+------------------------------------
+
+.. automodule:: neighborly.components.beliefs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 neighborly.components.business module
 -------------------------------------
 
@@ -36,18 +44,18 @@ neighborly.components.relationship module
    :undoc-members:
    :show-inheritance:
 
-neighborly.components.residence module
---------------------------------------
-
-.. automodule:: neighborly.components.residence
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 neighborly.components.settlement module
 ---------------------------------------
 
 .. automodule:: neighborly.components.settlement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+neighborly.components.shared module
+-----------------------------------
+
+.. automodule:: neighborly.components.shared
    :members:
    :undoc-members:
    :show-inheritance:

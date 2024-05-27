@@ -1,5 +1,5 @@
-neighborly
-==========
+Neighborly API Reference
+========================
 
 .. toctree::
    :maxdepth: 4

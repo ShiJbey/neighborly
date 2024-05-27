@@ -332,6 +332,9 @@ class CharacterDatingSystem(System):
 
             for partner, relationship in relationships.outgoing.items():
 
+                if partner == character.gameobject:
+                    continue
+
                 if not relationship.is_active:
                     continue
 
@@ -617,6 +620,9 @@ class CrushFormationSystem(System):
             highest_romance: float = 0
 
             for target, relationship in relationships.outgoing.items():
+
+                if target == character.gameobject:
+                    continue
 
                 if not target.is_active or not relationship.is_active:
                     continue

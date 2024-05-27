@@ -92,8 +92,8 @@ class Belief:
             effect.remove(relationship)
 
 
-class AgentBeliefs(Component):
-    """Tracks all the beliefs held by an agent."""
+class HeldBeliefs(Component):
+    """Tracks all the beliefs held by a character."""
 
     __slots__ = ("_beliefs",)
 

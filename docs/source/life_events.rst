@@ -3,6 +3,8 @@
 Life Events
 ===========
 
+.. attention:: This page needs to be updated for version 3
+
 ``LifeEvents`` provide the narrative substance to the simulation. The narratives that emerge from the simulation are sequences of life events combined with observations about the state of the world, and who is engaged in the events. As characters go about their business, life events are selected randomly from a pool and execute given that they meet some preconditions. Life events are then recorded in the simulations ``GlobalEventHistory`` for later processing.
 
 One can think of life events as the major things that happen in a characters life or at least any event that the simulation designer thinks is significant enough to be included in a characters personal backstory (managed by their ``PersonalEventHistory`` component).

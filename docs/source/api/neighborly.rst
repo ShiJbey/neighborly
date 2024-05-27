@@ -11,12 +11,21 @@ Subpackages
    neighborly.defs
    neighborly.effects
    neighborly.events
+   neighborly.factories
    neighborly.helpers
    neighborly.plugins
    neighborly.preconditions
 
 Submodules
 ----------
+
+neighborly.action module
+------------------------
+
+.. automodule:: neighborly.action
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 neighborly.config module
 ------------------------
@@ -30,14 +39,6 @@ neighborly.data\_analysis module
 --------------------------------
 
 .. automodule:: neighborly.data_analysis
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.data\_collection module
-----------------------------------
-
-.. automodule:: neighborly.data_collection
    :members:
    :undoc-members:
    :show-inheritance:
@@ -102,14 +103,6 @@ neighborly.systems module
 -------------------------
 
 .. automodule:: neighborly.systems
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-neighborly.tracery module
--------------------------
-
-.. automodule:: neighborly.tracery
    :members:
    :undoc-members:
    :show-inheritance:

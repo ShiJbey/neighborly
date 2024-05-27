@@ -3,6 +3,8 @@
 Businesses
 ==========
 
+.. attention:: This page needs to be updated for version 3
+
 Businesses are places where characters work. They are also "hubs" of social activity where characters can meet coworkers and other people who frequent the establishment. Below is an example of a business definition in JSON. Neighborly uses this data to create Business GameObjects.
 
 Defining businesses

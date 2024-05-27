@@ -4,9 +4,10 @@
 
 from __future__ import annotations
 
+from neighborly.components.character import Character, ResidentOf
 from neighborly.components.location import CurrentSettlement
 from neighborly.components.settlement import District, Settlement
-from neighborly.ecs import GameObject, World
+from neighborly.ecs import Event, GameObject, World
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 
 
@@ -67,3 +68,35 @@ def remove_district_from_settlement(settlement: Settlement, district: District) 
     settlement.districts.remove(district.gameobject)
     district.gameobject.remove_component(CurrentSettlement)
     settlement.gameobject.add_child(district.gameobject)
+
+
+def add_character_to_settlement(settlement: Settlement, character: Character) -> None:
+    """Add a character to a settlement."""
+
+    settlement.population += 1
+    character.gameobject.add_component(ResidentOf(settlement=settlement.gameobject))
+
+    settlement.gameobject.dispatch_event(
+        Event(
+            event_type="resident-added",
+            world=settlement.gameobject.world,
+            character=character.gameobject,
+        )
+    )
+
+
+def remove_character_from_settlement(
+    settlement: Settlement, character: Character
+) -> None:
+    """Remove a character from a settlement."""
+
+    settlement.population -= 1
+    character.gameobject.remove_component(ResidentOf)
+
+    settlement.gameobject.dispatch_event(
+        Event(
+            event_type="resident-removed",
+            world=settlement.gameobject.world,
+            character=character.gameobject,
+        )
+    )

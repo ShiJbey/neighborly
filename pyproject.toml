@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neighborly"
-description = "A narrative-focused agent-based settlement simulation framework."
+description = "A character-focused settlement generator utilizing agent-based social simulation."
 authors = [{ name = "Shi Johnson-Bey", email = "shijbey@gmail.com" }]
 readme = "README.md"
 dynamic = ["version"]
@@ -50,6 +50,7 @@ dependencies = [
     "tqdm==4.*",
     "pydantic==2.*",
     "pandas==2.*",
+    "attrs==23.*",
 ]
 
 [project.optional-dependencies]

@@ -3,6 +3,8 @@
 Relationships
 =============
 
+.. attention:: This page needs to be updated for version 3
+
 Relationships track how characters feel about each other. They track directed stats that represent the feelings of the owner of the relationship toward the target of the relationship. In this way, characters may have asymmetric relationships. For instance, one character having a high reputation value of the other, but the feelings not being reciprocated.
 
 Relationships are represented as GameObjects with two required components ``Relationship``, ``Traits``, and ``Stats``. The ``Relationship`` component tracks the owner and target of the relationship, the ``Traits`` component tracks all traits applied to the relationship, and the ``Stats`` component tracks stats related to the relationship.

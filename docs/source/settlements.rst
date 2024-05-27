@@ -3,6 +3,8 @@
 Settlements and Districts
 =========================
 
+.. attention:: This page needs to be updated for version 3
+
 Settlements are the starting point for the procedural generation process. They set the stage for the types of themes that might emerge from characters interactions, and are the first place that users have the ability to express their authorial intent for what the shape of the settlement will be.
 
 **Settlement Fields**:

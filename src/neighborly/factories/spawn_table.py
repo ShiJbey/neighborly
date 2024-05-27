@@ -30,7 +30,7 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
         character_library = world.resource_manager.get_resource(CharacterLibrary)
 
-        table_entries: list[CharacterSpawnTableEntry] = []
+        table_entries: dict[str, CharacterSpawnTableEntry] = {}
 
         character_types: list[dict[str, Any]] = kwargs.get("character_types", [])
 
@@ -39,11 +39,9 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
                 character_def = character_library.get_definition(definition_id)
 
-                table_entries.append(
-                    CharacterSpawnTableEntry(
-                        definition_id=character_def.definition_id,
-                        spawn_frequency=entry.get("spawn_frequency", 1),
-                    )
+                table_entries[character_def.definition_id] = CharacterSpawnTableEntry(
+                    definition_id=character_def.definition_id,
+                    spawn_frequency=entry.get("spawn_frequency", 1),
                 )
 
             elif definition_tags := entry.get("with_tags", []):
@@ -54,14 +52,12 @@ class CharacterSpawnTableFactory(ComponentFactory):
 
                 for definition in matching_definitions:
 
-                    table_entries.append(
-                        CharacterSpawnTableEntry(
-                            definition_id=definition.definition_id,
-                            spawn_frequency=entry.get("spawn_frequency", 1),
-                        )
+                    table_entries[definition.definition_id] = CharacterSpawnTableEntry(
+                        definition_id=definition.definition_id,
+                        spawn_frequency=entry.get("spawn_frequency", 1),
                     )
 
-        return CharacterSpawnTable(table_entries)
+        return CharacterSpawnTable(list(table_entries.values()))
 
 
 class BusinessSpawnTableFactory(ComponentFactory):
@@ -74,15 +70,37 @@ class BusinessSpawnTableFactory(ComponentFactory):
         business_library = world.resource_manager.get_resource(BusinessLibrary)
         job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
 
-        table_entries: list[BusinessSpawnTableEntry] = []
+        table_entries: dict[str, BusinessSpawnTableEntry] = {}
         business_types: list[dict[str, Any]] = kwargs.get("business_types", [])
 
         for entry in business_types:
             if definition_id := entry.get("with_id", ""):
                 business_def = business_library.get_definition(definition_id)
-                table_entries.append(
-                    BusinessSpawnTableEntry(
-                        definition_id=definition_id,
+                table_entries[definition_id] = BusinessSpawnTableEntry(
+                    definition_id=definition_id,
+                    spawn_frequency=entry.get(
+                        "spawn_frequency", business_def.spawn_frequency
+                    ),
+                    max_instances=entry.get(
+                        "max_instances", business_def.max_instances
+                    ),
+                    min_population=entry.get(
+                        "min_population", business_def.min_population
+                    ),
+                    instances=0,
+                    owner_role=job_role_library.get_role(
+                        business_def.components["Business"]["owner_role"]
+                    ),
+                )
+            elif definition_tags := entry.get("with_tags", []):
+                matching_definitions = business_library.get_definition_with_tags(
+                    definition_tags
+                )
+
+                for business_def in matching_definitions:
+
+                    table_entries[business_def.definition_id] = BusinessSpawnTableEntry(
+                        definition_id=business_def.definition_id,
                         spawn_frequency=entry.get(
                             "spawn_frequency", business_def.spawn_frequency
                         ),
@@ -97,34 +115,8 @@ class BusinessSpawnTableFactory(ComponentFactory):
                             business_def.components["Business"]["owner_role"]
                         ),
                     )
-                )
-            elif definition_tags := entry.get("with_tags", []):
-                matching_definitions = business_library.get_definition_with_tags(
-                    definition_tags
-                )
 
-                for business_def in matching_definitions:
-
-                    table_entries.append(
-                        BusinessSpawnTableEntry(
-                            definition_id=business_def.definition_id,
-                            spawn_frequency=entry.get(
-                                "spawn_frequency", business_def.spawn_frequency
-                            ),
-                            max_instances=entry.get(
-                                "max_instances", business_def.max_instances
-                            ),
-                            min_population=entry.get(
-                                "min_population", business_def.min_population
-                            ),
-                            instances=0,
-                            owner_role=job_role_library.get_role(
-                                business_def.components["Business"]["owner_role"]
-                            ),
-                        )
-                    )
-
-        return BusinessSpawnTable(table_entries)
+        return BusinessSpawnTable(list(table_entries.values()))
 
 
 class DistrictSpawnTableFactory(ComponentFactory):
@@ -136,15 +128,26 @@ class DistrictSpawnTableFactory(ComponentFactory):
 
         library = world.resource_manager.get_resource(DistrictLibrary)
 
-        table_entries: list[DistrictSpawnTableEntry] = []
+        table_entries: dict[str, DistrictSpawnTableEntry] = {}
         district_types: list[dict[str, Any]] = kwargs.get("district_types", [])
 
         for entry in district_types:
             if definition_id := entry.get("with_id", ""):
                 definition = library.get_definition(definition_id)
-                table_entries.append(
-                    DistrictSpawnTableEntry(
-                        definition_id=definition_id,
+                table_entries[definition_id] = DistrictSpawnTableEntry(
+                    definition_id=definition_id,
+                    spawn_frequency=entry.get(
+                        "spawn_frequency", definition.spawn_frequency
+                    ),
+                    max_instances=entry.get("max_instances", definition.max_instances),
+                )
+            elif definition_tags := entry.get("with_tags", []):
+                matching_definitions = library.get_definition_with_tags(definition_tags)
+
+                for definition in matching_definitions:
+
+                    table_entries[definition.definition_id] = DistrictSpawnTableEntry(
+                        definition_id=definition.definition_id,
                         spawn_frequency=entry.get(
                             "spawn_frequency", definition.spawn_frequency
                         ),
@@ -152,22 +155,5 @@ class DistrictSpawnTableFactory(ComponentFactory):
                             "max_instances", definition.max_instances
                         ),
                     )
-                )
-            elif definition_tags := entry.get("with_tags", []):
-                matching_definitions = library.get_definition_with_tags(definition_tags)
 
-                for definition in matching_definitions:
-
-                    table_entries.append(
-                        DistrictSpawnTableEntry(
-                            definition_id=definition.definition_id,
-                            spawn_frequency=entry.get(
-                                "spawn_frequency", definition.spawn_frequency
-                            ),
-                            max_instances=entry.get(
-                                "max_instances", definition.max_instances
-                            ),
-                        )
-                    )
-
-        return DistrictSpawnTable(table_entries)
+        return DistrictSpawnTable(list(table_entries.values()))

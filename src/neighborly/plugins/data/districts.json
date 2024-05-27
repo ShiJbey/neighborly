@@ -14,10 +14,7 @@
     ],
     "components": {
       "District": {
-        "name": "Farming District",
-        "description": "Where the animals and farmers are.",
-        "residential_slots": 50,
-        "business_slots": 50
+        "name": "Farming District"
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -55,10 +52,7 @@
     ],
     "components": {
       "District": {
-        "name": "Market District",
-        "description": "Where people are always selling things.",
-        "business_slots": 50,
-        "residential_slots": 50
+        "name": "Market District"
       },
       "CharacterSpawnTable": {
         "character_types": [
@@ -95,9 +89,7 @@
     ],
     "components": {
       "District": {
-        "name": "Market District",
-        "description": "Where people are always selling things.",
-        "business_slots": 50
+        "name": "Market District"
       },
       "CharacterSpawnTable": {},
       "BusinessSpawnTable": {
@@ -119,10 +111,7 @@
     ],
     "components": {
       "District": {
-        "name": "Upper Class Residences",
-        "description": "Where the nobility live.",
-        "business_slots": 50,
-        "residential_slots": 50
+        "name": "Upper Class Residences"
       },
       "CharacterSpawnTable": {
         "character_types": [

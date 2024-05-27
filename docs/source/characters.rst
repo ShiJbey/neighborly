@@ -3,6 +3,8 @@
 Characters
 ==========
 
+.. attention:: This page needs to be updated for version 3
+
 Characters inhabit the settlement, own businesses, interact, and generate events that we will later mine for emergent stories. Character definitions are specifications for what types of characters can spawn within a district. They do not represent any one particular character, but rather a class of characters. For example, a ``person`` definition might create generic human characters with a subset of randomly selected traits, while an ``blacksmith`` definition might create similar character and give them a bonus Blacksmithing skill at spawn.
 
 Each timestep there is a chance that a new character will spawn into a vacant residential unit in the settlement. By default, characters always spawn in as single adult-aged individuals and **not** as families. This simplifies the process that's required to make families look believable.

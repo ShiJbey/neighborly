@@ -37,7 +37,17 @@ def create_character(world: World, definition_id: str) -> GameObject:
     """
     character_library = world.resource_manager.get_resource(CharacterLibrary)
 
-    return character_library.factory.create_character(world, definition_id)
+    character = character_library.factory.create_character(world, definition_id)
+
+    world.events.dispatch_event(
+        Event(
+            event_type="character-added",
+            world=world,
+            character=character,
+        )
+    )
+
+    return character
 
 
 def create_child(birthing_parent: GameObject, other_parent: GameObject) -> GameObject:
@@ -59,7 +69,19 @@ def create_child(birthing_parent: GameObject, other_parent: GameObject) -> GameO
         CharacterLibrary
     )
 
-    return character_library.child_factory.create_child(birthing_parent, other_parent)
+    character = character_library.child_factory.create_child(
+        birthing_parent, other_parent
+    )
+
+    birthing_parent.world.events.dispatch_event(
+        Event(
+            event_type="character-added",
+            world=birthing_parent.world,
+            character=character,
+        )
+    )
+
+    return character
 
 
 def set_character_name(
@@ -79,7 +101,7 @@ def set_character_name(
         Event(
             "name-changed",
             world=character.gameobject.world,
-            character=character,
+            character=character.gameobject,
             name=character.full_name,
         )
     )
@@ -117,6 +139,8 @@ def set_character_age(character: Character, age: int) -> None:
 def set_household_head(household: Household, character: Optional[Character]) -> None:
     """Set the head of a household."""
 
+    former_head = household.head
+
     # Remove the current household head
     if household.head is not None:
         household.head.remove_component(HeadOfHousehold)
@@ -129,11 +153,25 @@ def set_household_head(household: Household, character: Optional[Character]) -> 
             HeadOfHousehold(household=household.gameobject)
         )
 
+    character_obj = character.gameobject if character else None
+
+    if former_head != character_obj:
+        household.gameobject.dispatch_event(
+            Event(
+                event_type="head-change",
+                world=household.gameobject.world,
+                former_head=former_head,
+                current_head=character,
+            )
+        )
+
 
 def set_household_head_spouse(
     household: Household, character: Optional[Character]
 ) -> None:
     """Set the spouse of the head of a household."""
+
+    former_spouse = household.spouse
 
     # Remove the current spouse
     if household.spouse is not None:
@@ -142,6 +180,18 @@ def set_household_head_spouse(
     # Set the new clan head
     if character is not None:
         household.spouse = character.gameobject
+
+    character_obj = character.gameobject if character else None
+
+    if former_spouse != character_obj:
+        household.gameobject.dispatch_event(
+            Event(
+                event_type="spouse-changed",
+                world=household.gameobject.world,
+                former_spouse=former_spouse,
+                current_spouse=character_obj,
+            )
+        )
 
 
 def add_character_to_household(household: Household, character: Character) -> None:
@@ -152,12 +202,28 @@ def add_character_to_household(household: Household, character: Character) -> No
         MemberOfHousehold(household=household.gameobject)
     )
 
+    household.gameobject.dispatch_event(
+        Event(
+            "member-added",
+            world=household.gameobject.world,
+            character=character.gameobject,
+        )
+    )
+
 
 def remove_character_from_household(household: Household, character: Character) -> None:
     """Remove a character from a house hold."""
 
     household.members.remove(character.gameobject)
     character.gameobject.remove_component(MemberOfHousehold)
+
+    household.gameobject.dispatch_event(
+        Event(
+            "member-removed",
+            world=household.gameobject.world,
+            character=character.gameobject,
+        )
+    )
 
 
 def create_household(world: World) -> GameObject:
@@ -166,5 +232,9 @@ def create_household(world: World) -> GameObject:
     household = world.gameobjects.spawn_gameobject()
     household.add_component(Household())
     household.name = "Household"
+
+    world.events.dispatch_event(
+        Event(event_type="household-added", world=world, household=household)
+    )
 
     return household

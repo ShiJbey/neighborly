@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import random
 from collections import defaultdict
+from typing import cast
 
 from neighborly.components.beliefs import Belief
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
@@ -48,7 +49,8 @@ from neighborly.events.defaults import (
     BecomeSeniorEvent,
     BecomeYoungAdultEvent,
     BirthEvent,
-    HaveChildEvent,
+    ChildBirthEvent,
+    DeathEvent,
     JoinSettlementEvent,
     SettlementAddedEvent,
 )
@@ -57,11 +59,14 @@ from neighborly.helpers.character import (
     create_character,
     create_child,
     create_household,
+    remove_character_from_household,
     set_household_head,
+    set_household_head_spouse,
 )
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.helpers.location import score_location
 from neighborly.helpers.settlement import (
+    add_character_to_settlement,
     add_district_to_settlement,
     create_district,
     create_settlement,
@@ -233,29 +238,85 @@ class SpawnNewResidentSystem(System):
                 k=1,
             )[0]
 
-            character = create_character(world, character_definition_id)
+            character = create_character(world, character_definition_id).get_component(
+                Character
+            )
 
             household = create_household(world).get_component(Household)
 
-            set_household_head(household, character.get_component(Character))
-            add_character_to_household(household, character.get_component(Character))
+            set_household_head(household, character)
+            add_character_to_household(household, character)
 
-            character.add_component(
-                ResidentOf(settlement=current_settlement.settlement)
+            add_character_to_settlement(
+                current_settlement.settlement.get_component(Settlement), character
             )
-
-            current_settlement.settlement.get_component(Settlement).population += 1
 
             world.events.dispatch_event(
                 Event("character-added", world=world, character=character)
             )
 
             event = JoinSettlementEvent(
-                character,
+                character.gameobject,
                 current_settlement.settlement,
             )
 
-            dispatch_life_event(event, [character])
+            dispatch_life_event(event, [character.gameobject])
+
+
+class HouseholdSystem(System):
+    """Handles household logistics.
+
+    This class handles:
+    - Creating new households for spawned characters.
+    - Removing characters from households upon their death.
+    - Appointing family heads when the head dies.
+    """
+
+    def on_update(self, world: World) -> None:
+        return
+
+    def on_add(self, world: World) -> None:
+        world.events.on_event("household-added", self.handle_household_added)
+
+    def handle_household_added(self, event: Event) -> None:
+        """Registers event listeners with new households."""
+
+        household: GameObject = event.data["household"]
+
+        household.add_event_listener("member-added", self.handle_member_added)
+        household.add_event_listener("member-removed", self.handle_member_removed)
+
+    def handle_member_added(self, event: Event) -> None:
+        """Handle when a member is added to a family."""
+
+        character: GameObject = event.data["character"]
+
+        character.add_event_listener("death", self.handle_member_death)
+
+    def handle_member_removed(self, event: Event) -> None:
+        """Handle when a member is removed from a family."""
+
+        character: GameObject = event.data["character"]
+
+        character.remove_event_listener("death", self.handle_member_death)
+
+    def handle_member_death(self, event: Event) -> None:
+        """Removes characters from the household when they die."""
+
+        death_event = cast(DeathEvent, event)
+        character = death_event.character.get_component(Character)
+
+        household = character.gameobject.get_component(
+            MemberOfHousehold
+        ).household.get_component(Household)
+
+        if character.gameobject == household.head:
+            set_household_head(household, None)
+
+        if character.gameobject == household.spouse:
+            set_household_head_spouse(household, None)
+
+        remove_character_from_household(household, character)
 
 
 class CompileTraitDefsSystem(System):
@@ -846,12 +907,12 @@ class ChildBirthSystem(System):
             # Reduce the character's fertility according to their species
             fertility.stat.base_value -= species.species.fertility_cost_per_child
 
-            have_child_evt = HaveChildEvent(
+            child_birth_evt = ChildBirthEvent(
                 character.gameobject,
                 other_parent,
                 baby,
             )
-            dispatch_life_event(have_child_evt, [character.gameobject, other_parent])
+            dispatch_life_event(child_birth_evt, [character.gameobject, other_parent])
 
             birth_evt = BirthEvent(baby)
             dispatch_life_event(birth_evt, [baby])

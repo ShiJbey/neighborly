@@ -3,6 +3,8 @@
 Effects and Preconditions
 =========================
 
+.. attention:: This page needs to be updated for version 3
+
 When building our simulations, there may be times when we want traits or job roles to have side-effects on characters. For example, maybe we want:
 
 - Customer service jobs to gradually increase a character's sociability stat

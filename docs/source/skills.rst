@@ -3,6 +3,8 @@
 Skills
 ======
 
+.. attention:: This page needs to be updated for version 3
+
 Neighborly uses skills to track each character's proficiency levels for various tasks such as cooking, swordsmanship, seduction, marksmanship, water magic, explosion magic, and salesmanship. Skills provide an alternative an alternative method of representing character stats. Every skill has a value in the range ``0`` to ``255``, with ``255`` meaning that a character has maxed out that skill.
 
 Characters can be given skills when generated, and they can acquire skills from various jobs. Skills are mainly used as preconditions for characters qualifying for specific job roles at businesses within the settlement. The :ref:`businesses` wiki page explains how to perform skill checks as preconditions for job roles. Skills may also be used as event probability considerations or buffs when calculating the probability of success when performing a behavior.

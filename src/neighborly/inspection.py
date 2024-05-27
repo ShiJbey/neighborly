@@ -9,7 +9,7 @@ from typing import Callable, Union
 import tabulate
 
 from neighborly import __version__
-from neighborly.components.beliefs import AgentBeliefs, AppliedBeliefs
+from neighborly.components.beliefs import AppliedBeliefs, HeldBeliefs
 from neighborly.components.business import (
     Business,
     BusinessStatus,
@@ -485,7 +485,7 @@ def _get_frequented_locations_table(obj: GameObject) -> str:
 def _get_beliefs_table(obj: GameObject) -> str:
     """Generate section for GameObject beliefs"""
 
-    beliefs = obj.try_component(AgentBeliefs)
+    beliefs = obj.try_component(HeldBeliefs)
     library = obj.world.resources.get_resource(BeliefLibrary)
 
     if beliefs is None:

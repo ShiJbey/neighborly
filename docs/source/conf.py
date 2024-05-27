@@ -20,11 +20,11 @@ sys.path.insert(0, os.path.abspath("../../src"))
 # -- Project information -----------------------------------------------------
 
 project = "neighborly"
-copyright = f"2023-{date.today().year}, Shi Johnson-Bey"
+copyright = f"2022-{date.today().year}, Shi Johnson-Bey"
 author = "Shi Johnson-Bey"
 
 # The full version, including alpha/beta/rc tags
-release = "2.2.0"
+release = "3.0.0-dev1"
 
 
 # -- General configuration ---------------------------------------------------

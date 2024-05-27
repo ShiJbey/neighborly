@@ -3,6 +3,8 @@
 Location Preferences
 ====================
 
+.. attention:: This page needs to be updated for version 3
+
 Neighborly does not model the exact location of characters, businesses, and residences within the simulated world. Since the simulation progresses in single-month steps, it instead calculates and records the locations that character is most likely to frequent during a given month.
 
 The aside from places like a character's home and work place, other locations are selected to be frequented by a character based on a character's location preferences. Location preferences are rules that a character has that provide numeric scores for how much or how little a character would like to frequent that location. For example, a ``shopaholic`` trait might give a character a location preference for businesses with ``department_store`` or ``shop`` traits.

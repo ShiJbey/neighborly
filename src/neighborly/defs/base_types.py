@@ -194,8 +194,6 @@ class SettlementDef(ContentDefinition):
 
     definition_id: str
     """The name of this definition"""
-    districts: list[SettlementDefDistrictEntry] = pydantic.Field(default_factory=list)
-    """The districts to spawn in the settlement."""
     variants: list[dict[str, Any]] = pydantic.Field(default_factory=list)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)

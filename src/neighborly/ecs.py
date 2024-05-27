@@ -26,11 +26,9 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Generic,
     Iterable,
     Iterator,
     Optional,
-    Protocol,
     Type,
     TypeVar,
     Union,
@@ -159,23 +157,6 @@ class ComponentNotFoundError(Exception):
         return f"{self.__class__.__name__}(component={self.component_type.__name__})"
 
 
-class IEvent(Protocol):
-    """Interface implemented by any class that can be emitted as an event."""
-
-    @property
-    @abstractmethod
-    def event_type(self) -> str:
-        """A type name for the event."""
-
-        raise NotImplementedError()
-
-    @abstractmethod
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the event to a JSON-compliant dict."""
-
-        raise NotImplementedError()
-
-
 class Event:
     """Events signal when things happen in the simulation."""
 
@@ -244,7 +225,7 @@ class GameObject:
     """Metadata associated with this GameObject."""
     _component_types: list[Type[Component]]
     """Types of the GameObjects components in order of addition."""
-    _event_listeners: dict[str, OrderedSet[Callable[[IEvent], None]]]
+    _event_listeners: dict[str, OrderedSet[Callable[[Event], None]]]
     """Event listeners that are only called when a specific type of event fires."""
 
     def __init__(
@@ -368,7 +349,7 @@ class GameObject:
     def add_event_listener(
         self,
         event_name: str,
-        listener: Callable[[IEvent], None],
+        listener: Callable[[Event], None],
     ) -> None:
         """Register a listener function to a specific event type.
 
@@ -384,7 +365,7 @@ class GameObject:
         listener_set.add(listener)
 
     def remove_event_listener(
-        self, event_name: str, listener: Callable[[IEvent], None]
+        self, event_name: str, listener: Callable[[Event], None]
     ) -> None:
         """Remove a listener function from a specific event type.
 
@@ -392,7 +373,7 @@ class GameObject:
         ----------
         event_name : str
             The type of event to remove the listener from.
-        callback : Callable[[IEvent], None]
+        callback : Callable[[Event], None]
             The callback function to be removed.
         """
         if event_name in self._event_listeners:
@@ -414,12 +395,12 @@ class GameObject:
         """Remove all event listeners associated with this GameObject."""
         self._event_listeners.clear()
 
-    def dispatch_event(self, event: IEvent) -> None:
+    def dispatch_event(self, event: Event) -> None:
         """Fire an event and trigger associated event listeners.
 
         Parameters
         ----------
-        event : IEvent
+        event : Event
             The event to fire
         """
         for callback_fn in self._event_listeners.get(event.event_type, OrderedSet([])):
@@ -699,7 +680,6 @@ class Component(ABC):
         """Lifecycle method called when the component is removed from a GameObject."""
         return
 
-    @abstractmethod
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component to a JSON-serializable dictionary."""
         return {}
@@ -1152,65 +1132,6 @@ class ResourceManager:
         return self._resources.get(resource_type)
 
 
-_T = TypeVar("_T")
-
-
-class EventEmitter(Generic[_T]):
-    """Emits events that observers can listen for."""
-
-    __slots__ = ("listeners",)
-
-    listeners: list[Callable[[object, _T], None]]
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.listeners = []
-
-    def add_listener(
-        self,
-        listener: Callable[[object, _T], None],
-    ) -> None:
-        """Register a listener function to a specific event type.
-
-        Parameters
-        ----------
-        listener
-            A function to be called when the given event type fires.
-        """
-        self.listeners.append(listener)
-
-    def remove_listener(
-        self,
-        listener: Callable[[object, _T], None],
-    ) -> None:
-        """Remove a listener from an event type.
-
-        Parameters
-        ----------
-        listener
-            A listener callback.
-        """
-        self.listeners.remove(listener)
-
-    def remove_all_listeners(self) -> None:
-        """Remove all listeners from an emitter."""
-        self.listeners.clear()
-
-    def dispatch(self, source: object, event: _T) -> None:
-        """Fire an event and trigger associated event listeners.
-
-        Parameters
-        ----------
-        source
-            The source of the event
-        event
-            The event to fire
-        """
-
-        for callback_fn in self.listeners:
-            callback_fn(source, event)
-
-
 class EventManager:
     """Manages event listeners for a single World instance."""
 
@@ -1222,9 +1143,9 @@ class EventManager:
 
     _world: World
     """The world instance associated with the SystemManager."""
-    _general_event_listeners: OrderedSet[Callable[[IEvent], None]]
+    _general_event_listeners: OrderedSet[Callable[[Event], None]]
     """Event listeners that are called when any event fires."""
-    _event_listeners_by_type: dict[str, OrderedSet[Callable[[IEvent], None]]]
+    _event_listeners_by_type: dict[str, OrderedSet[Callable[[Event], None]]]
     """Event listeners that are only called when a specific type of event fires."""
 
     def __init__(self, world: World) -> None:
@@ -1235,7 +1156,7 @@ class EventManager:
     def on_event(
         self,
         event_type: str,
-        listener: Callable[[IEvent], None],
+        listener: Callable[[Event], None],
     ) -> None:
         """Register a listener function to a specific event type.
 
@@ -1251,7 +1172,7 @@ class EventManager:
         listener_set = self._event_listeners_by_type[event_type]
         listener_set.add(listener)
 
-    def on_any_event(self, listener: Callable[[IEvent], None]) -> None:
+    def on_any_event(self, listener: Callable[[Event], None]) -> None:
         """Register a listener function to all event types.
 
         Parameters
@@ -1261,7 +1182,7 @@ class EventManager:
         """
         self._general_event_listeners.append(listener)
 
-    def dispatch_event(self, event: IEvent) -> None:
+    def dispatch_event(self, event: Event) -> None:
         """Fire an event and trigger associated event listeners.
 
         Parameters

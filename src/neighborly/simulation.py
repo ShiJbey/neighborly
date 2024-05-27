@@ -112,6 +112,7 @@ from neighborly.systems import (
     CompileSpeciesDefsSystem,
     CompileTraitDefsSystem,
     EarlyUpdateSystems,
+    HouseholdSystem,
     InitializationSystems,
     InitializeSettlementSystem,
     JobRoleMonthlyEffectsSystem,
@@ -256,6 +257,9 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=BusinessLifespanSystem(), system_group=UpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=HouseholdSystem(), system_group=UpdateSystems
         )
 
     def _init_component_factories(self) -> None:

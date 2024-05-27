@@ -3,6 +3,9 @@
 Traits
 ======
 
+.. attention:: This page needs to be updated for version 3
+
+
 Traits are tags that can be applied to entities like characters, relationships, and businesses. Traits can represent personality traits, faction memberships, and relationship types/statuses ("coworker", "dating", "secret-lover", ...). Their greatest strength is that users can specify effects that are triggered when the trait is added to a GameObject. Effects can range from stat/skill buffs to location preferences to social rules. When a trait is added to an object, all the effects are immediately applied. And when a trait is removed, all the effects are also undone. For example, a ``friendly`` trait might boost a character's ``sociability`` stat and provide a ``reputation`` boost on all relationships. When the trait is added, that character will immediately get the stat buff and a boost on all their active relationships. And when the trait is removed, they will lose their ``sociability`` boost, and all relationships will lose the ``reputation`` boost.
 
 If you are interested in learning how to create custom effect types and make them available for content authoring, please see the :ref:`effects_preconditions` page.

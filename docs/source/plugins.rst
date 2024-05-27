@@ -26,7 +26,7 @@ Take a look at the code below. This is an example of a Neighborly plugin impleme
         load_districts(sim, "path/to/district_data")
 
 
-User can then load the plugin into their simulation by importing the module and calling the ``load_plugin`` function.
+Users can then load the plugin into their simulation by importing the module and calling the ``load_plugin`` function.
 
 .. code-block:: python
 
@@ -47,8 +47,7 @@ User can then load the plugin into their simulation by importing the module and 
 
         # other_stuff ...
 
-        for _ in range(1200):
-            sim.step()
+        sim.run_for(years=100)
 
 
     if __name__ == "__main__":
