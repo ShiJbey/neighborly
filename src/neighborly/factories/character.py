@@ -22,6 +22,7 @@ from neighborly.libraries import (
     CharacterNameFactories,
     ICharacterFactory,
     IChildFactory,
+    SkillLibrary,
     SpeciesLibrary,
     TraitLibrary,
 )
@@ -95,6 +96,8 @@ class DefaultCharacterFactory(ICharacterFactory):
 
         self._initialize_traits(character, character_def)
 
+        self._initialize_skills(character, character_def)
+
         for trait_id in species.traits:
             add_trait(character, trait_id)
 
@@ -140,6 +143,42 @@ class DefaultCharacterFactory(ICharacterFactory):
                 )[0]
 
                 add_trait(character, chosen_trait)
+
+    def _initialize_skills(
+        self, character: GameObject, definition: CharacterDef
+    ) -> None:
+        """Set the traits for a character."""
+        rng = character.world.resource_manager.get_resource(random.Random)
+        skill_library = character.world.resource_manager.get_resource(SkillLibrary)
+
+        # species = character.get_component(Character).species
+
+        # Loop through the trait entries in the definition and get by ID or select
+        # randomly if using tags
+        for entry in definition.skills:
+            if entry.with_id:
+                add_skill(character, entry.with_id, rng.randint(0, 180))
+            elif entry.with_tags:
+                potential_skills = skill_library.get_definition_with_tags(
+                    entry.with_tags
+                )
+
+                skills: list[str] = []
+                skill_weights: list[int] = []
+
+                for skill_def in potential_skills:
+                    if skill_def.spawn_frequency >= 1:
+                        skills.append(skill_def.definition_id)
+                        skill_weights.append(skill_def.spawn_frequency)
+
+                if len(skills) == 0:
+                    continue
+
+                chosen_skill = rng.choices(
+                    population=skills, weights=skill_weights, k=1
+                )[0]
+
+                add_skill(character, chosen_skill, rng.randint(0, 180))
 
 
 class DefaultChildFactory(IChildFactory):

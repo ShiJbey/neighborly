@@ -74,6 +74,8 @@ class SkillDef(ContentDefinition):
     """The skill's name."""
     description: str = ""
     """A short description of the skill."""
+    spawn_frequency: int = 1
+    """The relative frequency of a character spawning with this skill."""
     variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)

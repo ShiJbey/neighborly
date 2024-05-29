@@ -8,32 +8,6 @@ between minor-version updates.
 
 ## [3.0.0] - Unreleased
 
-Neighborly version 3.0 focuses on agent-based modeling, data analysis, and data querying. It boasts a new action system and two database instances (RePraxis and SQL) that help users easily query data for analysis or simulation mechanics. It also consolidates many of the public APIs to shorten code lines. To support this, 3.0 introduces breaking changes to the ECS, content definitions, social rules, location preferences, the life event system, and a few others.
-
-### Changed
-
-- Convert Skills and Traits to an instance-style model
-- Refactor social rules and location preferences to be independent from traits
-- Move social rule and location preference calculation functions to helper modules
-- Component constructors can no longer be called directly as we need to inject the gameobject directly into the `__init__()`.
-- Rename `display_name` attribute for content to `name`.
-- Move version information to top-level `__init__.py` as `__version__` to comply with Python conventions
-- Replace `FrequentedBy` component with `Location` component
-- Convert
-
-### Added
-
-- Add SQLAlchemy back-end to replace the manual table construction in the `data_analysis` module
-- Add `lifespan` option to business definitions
-
-### Removed
-
-- Precondition API in favor of RePraxis queries
-- Data duplication in Trait, JobRole, and Species classes
-- Polars sql context building code from `data_analysis` module
-- `data_collection` module. Users can leverage new SQL database.
-- `OpenToPublic` component
-- `health` and `health_decay` stats in favor of life span system.
 
 ## [2.5.0] - 2024-03-24
 
