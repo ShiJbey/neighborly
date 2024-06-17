@@ -158,7 +158,6 @@ class JobRole:
         "job_level",
         "requirements",
         "effects",
-        "recurring_effects",
         "definition_id",
     )
 
@@ -172,8 +171,6 @@ class JobRole:
     """Requirement functions for the role."""
     effects: list[Effect]
     """Effects applied when the taking on the role."""
-    recurring_effects: list[Effect]
-    """Effects applied every month the character has the role."""
     definition_id: str
     """The ID of this job role."""
 
@@ -184,7 +181,6 @@ class JobRole:
         job_level: int,
         requirements: list[Precondition],
         effects: list[Effect],
-        recurring_effects: list[Effect],
         definition_id: str,
     ) -> None:
         self.name = name
@@ -192,9 +188,8 @@ class JobRole:
         self.job_level = job_level
         self.requirements = requirements
         self.effects = effects
-        self.recurring_effects = recurring_effects
         self.definition_id = definition_id
 
     def check_requirements(self, gameobject: GameObject) -> bool:
         """Check if a character passes all the requirements for this job."""
-        return all([req.check({"target": gameobject})] for req in self.requirements)
+        return all(req.check(gameobject) for req in self.requirements)

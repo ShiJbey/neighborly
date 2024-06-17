@@ -70,6 +70,10 @@ class Skills(Component):
         super().__init__()
         self.skills = {}
 
+    def get_skill(self, skill_id: str) -> SkillInstance:
+        """Get a skill by ID."""
+        return self.skills[skill_id]
+
     def add_skill(self, skill: Skill, base_value: float = 0.0) -> bool:
         """Add a new skill to the skill tracker."""
         if skill.definition_id not in self.skills:

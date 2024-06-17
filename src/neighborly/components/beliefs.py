@@ -11,11 +11,9 @@ about another agent.
 from collections import defaultdict
 from typing import Any, Iterable
 
-from ordered_set import OrderedSet
-
-from neighborly.components.relationship import Relationship
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component
 from neighborly.effects.base_types import Effect
+from neighborly.effects.modifiers import RelationshipModifier
 from neighborly.preconditions.base_types import Precondition
 
 
@@ -30,8 +28,6 @@ class Belief:
         "belief_id",
         "description",
         "preconditions",
-        "owner_preconditions",
-        "target_preconditions",
         "effects",
         "is_global",
     )
@@ -61,35 +57,8 @@ class Belief:
         self.effects = effects
         self.is_global = is_global
 
-    def check_preconditions(self, relationship: GameObject) -> bool:
-        """Check the preconditions against the given relationship."""
-
-        relationship_comp = relationship.get_component(Relationship)
-        owner = relationship_comp.owner
-        target = relationship_comp.target
-
-        for precondition in self.preconditions:
-            if (
-                precondition.check(
-                    {"relationship": relationship, "owner": owner, "target": target}
-                )
-                is False
-            ):
-                return False
-
-        return True
-
-    def apply_effects(self, relationship: GameObject) -> None:
-        """Apply this belief's effects to the given relationship."""
-
-        for effect in self.effects:
-            effect.apply(relationship)
-
-    def remove_effects(self, relationship: GameObject) -> None:
-        """Remove this belief's effects from the given relationship."""
-
-        for effect in self.effects:
-            effect.remove(relationship)
+    def get_modifier(self) -> RelationshipModifier:
+        raise NotImplementedError()
 
 
 class HeldBeliefs(Component):
@@ -135,44 +104,3 @@ class HeldBeliefs(Component):
     def to_dict(self) -> dict[str, Any]:
 
         return {"beliefs": [b for b in self._beliefs]}
-
-
-class AppliedBeliefs(Component):
-    """Tracks all beliefs applied to a relationship GameObject."""
-
-    __slots__ = ("beliefs",)
-
-    beliefs: OrderedSet[str]
-    """A collection of belief IDs."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.beliefs = OrderedSet([])
-
-    def get_all(self) -> Iterable[str]:
-        """Get the IDs of all beliefs applied to the relationship."""
-
-        return self.beliefs
-
-    def add_belief(self, belief_id: str) -> None:
-        """Add a belief to the collection."""
-
-        self.beliefs.add(belief_id)
-
-    def has_belief(self, belief_id: str) -> bool:
-        """Check if a belief has been applied to the relationship."""
-
-        return belief_id in self.beliefs
-
-    def remove_belief(self, belief_id: str) -> bool:
-        """Remove a belief."""
-
-        if belief_id in self.beliefs:
-            self.beliefs.remove(belief_id)
-            return True
-
-        return False
-
-    def to_dict(self) -> dict[str, Any]:
-
-        return {"beliefs": [b for b in self.beliefs]}

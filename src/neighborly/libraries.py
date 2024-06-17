@@ -528,7 +528,7 @@ class ActionConsiderationLibrary:
     """Considerations for calculating success probabilities."""
 
     def __init__(self) -> None:
-        self.success_considerations = defaultdict(OrderedSet)
+        self.success_considerations = defaultdict(lambda: OrderedSet([]))
 
     def add_success_consideration(
         self, action_id: str, consideration: ActionConsideration

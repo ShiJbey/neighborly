@@ -11,23 +11,13 @@ https://www.youtube.com/watch?v=SH25f3cXBVc.
 
 from __future__ import annotations
 
-import dataclasses
 import enum
 import math
 import sys
-from abc import ABC
-from typing import Any, ClassVar, Iterable, Optional
-
-import attrs
+from abc import ABC, abstractmethod
+from typing import Any, ClassVar, Iterable, Optional, Protocol
 
 from neighborly.ecs import Component
-
-
-@dataclasses.dataclass
-class StatValueChangeEvent:
-    """An even triggered when a stats value changes."""
-
-    value: float
 
 
 class Stat:
@@ -58,7 +48,7 @@ class Stat:
     """The base score for this stat used by modifiers."""
     _value: float
     """The final score of the stat clamped between the min and max values."""
-    _modifiers: list[StatModifier]
+    _modifiers: list[IStatModifier]
     """Active stat modifiers."""
     _min_value: float
     """The minimum score the overall stat is clamped to."""
@@ -120,13 +110,13 @@ class Stat:
         """Returns True if the stat has min and max values."""
         return self._is_discrete
 
-    def add_modifier(self, modifier: StatModifier) -> None:
+    def add_modifier(self, modifier: IStatModifier) -> None:
         """Add a modifier to the stat."""
         self._modifiers.append(modifier)
-        self._modifiers.sort(key=lambda m: m.order)
+        self._modifiers.sort(key=lambda m: m.get_modifier_type())
         self._is_dirty = True
 
-    def remove_modifier(self, modifier: StatModifier) -> bool:
+    def remove_modifier(self, modifier: IStatModifier) -> bool:
         """Remove a modifier from the stat.
 
         Parameters
@@ -162,7 +152,7 @@ class Stat:
         did_remove: bool = False
 
         for modifier in [*self._modifiers]:
-            if modifier.source == source:
+            if modifier.get_source() == source:
                 self._is_dirty = True
                 did_remove = True
                 self._modifiers.remove(modifier)
@@ -182,22 +172,19 @@ class Stat:
         sum_percent_add: float = 0.0
 
         for i, modifier in enumerate(self._modifiers):
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
+            if modifier.get_modifier_type() == StatModifierType.FLAT:
+                final_value += modifier.get_value()
 
-            elif modifier.modifier_type == StatModifierType.PERCENT_ADD:
-                sum_percent_add += modifier.value
+            elif modifier.get_modifier_type() == StatModifierType.PERCENT:
+                sum_percent_add += modifier.get_value()
 
                 if (
                     i + 1 >= len(self._modifiers)
-                    or self._modifiers[i + 1].modifier_type
-                    != StatModifierType.PERCENT_ADD
+                    or self._modifiers[i + 1].get_modifier_type()
+                    != StatModifierType.PERCENT
                 ):
                     final_value *= 1 + sum_percent_add
                     sum_percent_add = 0
-
-            elif modifier.modifier_type == StatModifierType.PERCENT_MULTIPLY:
-                final_value *= 1 + modifier.value
 
         self._value = final_value
 
@@ -238,45 +225,33 @@ class StatModifierType(enum.IntEnum):
     FLAT = 100
     """Adds a constant value to the base value."""
 
-    PERCENT_ADD = 200
+    PERCENT = 200
     """Additively stacks percentage increases on a modified stat."""
 
-    PERCENT_MULTIPLY = 300
-    """Multiplicatively stacks percentage increases on a modified stat."""
 
-
-@attrs.define(slots=True)
-class StatModifier:
+class IStatModifier(Protocol):
     """Stat modifiers provide buffs and de-buffs to the value of stat components.
 
     Modifiers are applied to stats in ascending-priority-order. So, stats with lower
     orders are added first.
     """
 
-    value: float
-    """The amount to modify the stat."""
+    @abstractmethod
+    def get_value(self) -> float:
+        """Get the value of the modifier."""
 
-    modifier_type: StatModifierType
-    """How the modifier value is applied."""
+        raise NotImplementedError()
 
-    order: int = -1
-    """The priority of this modifier when calculating final stat values."""
+    @abstractmethod
+    def get_modifier_type(self) -> StatModifierType:
+        """Get modifier type."""
 
-    source: Optional[object] = None
-    """The source of the modifier (for debugging purposes)."""
+        raise NotImplementedError()
 
-    def __attrs_post_init__(self) -> None:
-        if self.order == -1:
-            self.order = int(self.modifier_type)
+    @abstractmethod
+    def get_source(self) -> Optional[object]:
 
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the modifier to a dictionary."""
-        return {
-            "value": self.value,
-            "modifier_type": self.modifier_type.name,
-            "order": self.order,
-            "source": str(self.source) if self.source is not None else "",
-        }
+        raise NotImplementedError()
 
 
 class StatComponent(Component, ABC):

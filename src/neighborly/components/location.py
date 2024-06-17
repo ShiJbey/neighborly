@@ -170,14 +170,11 @@ class LocationPreferenceRule:
         self.preconditions = preconditions
         self.probability = probability
 
-    def check_preconditions(self, character: GameObject, location: GameObject) -> bool:
+    def check_preconditions(self, location: GameObject) -> bool:
         """Check the preconditions against the given location."""
 
         for precondition in self.preconditions:
-            if (
-                precondition.check({"location": location, "character": character})
-                is False
-            ):
+            if precondition.check(location) is False:
                 return False
 
         return True

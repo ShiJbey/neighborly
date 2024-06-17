@@ -1065,9 +1065,9 @@ class ResourceManager:
         resource
             The resource to add
         """
-        resource_type = type(resource)
+        resource_type = type(resource)  # type: ignore
         if resource_type in self._resources:
-            _LOGGER.warning("Replacing existing resource of type: %s", resource_type)
+            _LOGGER.warning("Replacing existing resource of type: %s", resource_type)  # type: ignore
         self._resources[resource_type] = resource
 
     def remove_resource(self, resource_type: Type[Any]) -> None:

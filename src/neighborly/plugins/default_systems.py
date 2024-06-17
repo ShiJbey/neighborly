@@ -29,8 +29,11 @@ from neighborly.helpers.character import (
     remove_character_from_household,
     set_household_head,
 )
-from neighborly.helpers.relationship import add_relationship, has_relationship
-from neighborly.helpers.traits import get_relationships_with_traits
+from neighborly.helpers.relationship import (
+    add_relationship,
+    get_relationships_with_traits,
+    has_relationship,
+)
 from neighborly.libraries import JobRoleLibrary
 from neighborly.plugins.actions import (
     BreakUp,

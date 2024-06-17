@@ -20,16 +20,15 @@ from neighborly.ecs import World
 from neighborly.effects.effects import (
     AddBelief,
     AddLocationPreference,
-    AddSkillBuff,
-    AddSkillDebuff,
-    AddStatBuff,
-    AddStatDebuff,
-    DecreaseBaseSkill,
-    DecreaseBaseStat,
-    IncreaseBaseSkill,
-    IncreaseBaseStat,
+    AddRelationshipModifier,
+    AddSkillModifier,
+    AddStatModifier,
+    AddStatModifierToOwner,
+    AddStatModifierToTarget,
+    AddToBaseSkill,
+    AddToBaseStat,
 )
-from neighborly.factories.beliefs import AgentBeliefsFactory, AppliedBeliefsFactory
+from neighborly.factories.beliefs import HeldBeliefsFactory
 from neighborly.factories.business import BusinessFactory, DefaultBusinessFactory
 from neighborly.factories.character import (
     CharacterFactory,
@@ -90,11 +89,22 @@ from neighborly.libraries import (
 )
 from neighborly.life_event import GlobalEventHistory
 from neighborly.preconditions.defaults import (
-    GenderRequirement,
+    AreSameSex,
+    IsSex,
     HasTrait,
     LifeStageRequirement,
+    OwnerHasTrait,
+    OwnerIsSex,
+    OwnerLifeStageRequirement,
+    OwnerSkillRequirement,
+    OwnerStatRequirement,
     SkillRequirement,
     StatRequirement,
+    TargetHasTrait,
+    TargetIsSex,
+    TargetLifeStageRequirement,
+    TargetSkillRequirement,
+    TargetStatRequirement,
 )
 from neighborly.systems import (
     AgingSystem,
@@ -115,10 +125,11 @@ from neighborly.systems import (
     HouseholdSystem,
     InitializationSystems,
     InitializeSettlementSystem,
-    JobRoleMonthlyEffectsSystem,
     LateUpdateSystems,
     LifeStageSystem,
     SpawnNewResidentSystem,
+    TickModifiersSystem,
+    TickTraitsSystem,
     UpdateFrequentedLocationSystem,
     UpdateSystems,
 )
@@ -235,6 +246,12 @@ class Simulation:
 
         # Add core update systems
         self.world.system_manager.add_system(
+            system=TickModifiersSystem(), system_group=EarlyUpdateSystems
+        )
+        self.world.system_manager.add_system(
+            system=TickTraitsSystem(), system_group=EarlyUpdateSystems
+        )
+        self.world.system_manager.add_system(
             system=SpawnNewResidentSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
@@ -248,9 +265,6 @@ class Simulation:
         )
         self.world.system_manager.add_system(
             system=ChildBirthSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=JobRoleMonthlyEffectsSystem(), system_group=UpdateSystems
         )
         self.world.system_manager.add_system(
             system=CharacterLifespanSystem(), system_group=UpdateSystems
@@ -289,8 +303,7 @@ class Simulation:
         self.world.gameobjects.add_component_factory(IntelligenceFactory())
         self.world.gameobjects.add_component_factory(DisciplineFactory())
         self.world.gameobjects.add_component_factory(CharmFactory())
-        self.world.gameobjects.add_component_factory(AgentBeliefsFactory())
-        self.world.gameobjects.add_component_factory(AppliedBeliefsFactory())
+        self.world.gameobjects.add_component_factory(HeldBeliefsFactory())
         self.world.gameobjects.add_component_factory(SpeciesFactory())
 
     def _init_effect_precondition_factories(self) -> None:
@@ -298,24 +311,34 @@ class Simulation:
 
         effect_library = self.world.resources.get_resource(EffectLibrary)
 
-        effect_library.add_effect_type(AddStatBuff)
-        effect_library.add_effect_type(AddStatDebuff)
-        effect_library.add_effect_type(IncreaseBaseStat)
-        effect_library.add_effect_type(DecreaseBaseStat)
-        effect_library.add_effect_type(AddSkillBuff)
-        effect_library.add_effect_type(AddSkillDebuff)
-        effect_library.add_effect_type(DecreaseBaseSkill)
-        effect_library.add_effect_type(IncreaseBaseSkill)
+        effect_library.add_effect_type(AddStatModifier)
+        effect_library.add_effect_type(AddSkillModifier)
+        effect_library.add_effect_type(AddToBaseStat)
+        effect_library.add_effect_type(AddToBaseSkill)
         effect_library.add_effect_type(AddBelief)
         effect_library.add_effect_type(AddLocationPreference)
+        effect_library.add_effect_type(AddStatModifierToOwner)
+        effect_library.add_effect_type(AddStatModifierToTarget)
+        effect_library.add_effect_type(AddRelationshipModifier)
 
         precondition_library = self.world.resources.get_resource(PreconditionLibrary)
 
         precondition_library.add_precondition_type(HasTrait)
+        precondition_library.add_precondition_type(OwnerHasTrait)
+        precondition_library.add_precondition_type(TargetHasTrait)
+        precondition_library.add_precondition_type(AreSameSex)
         precondition_library.add_precondition_type(SkillRequirement)
+        precondition_library.add_precondition_type(OwnerSkillRequirement)
+        precondition_library.add_precondition_type(TargetSkillRequirement)
         precondition_library.add_precondition_type(StatRequirement)
+        precondition_library.add_precondition_type(OwnerStatRequirement)
+        precondition_library.add_precondition_type(TargetStatRequirement)
         precondition_library.add_precondition_type(LifeStageRequirement)
-        precondition_library.add_precondition_type(GenderRequirement)
+        precondition_library.add_precondition_type(OwnerLifeStageRequirement)
+        precondition_library.add_precondition_type(TargetLifeStageRequirement)
+        precondition_library.add_precondition_type(IsSex)
+        precondition_library.add_precondition_type(OwnerIsSex)
+        precondition_library.add_precondition_type(TargetIsSex)
 
     def _init_logging(self) -> None:
         """Initialize simulation logging."""

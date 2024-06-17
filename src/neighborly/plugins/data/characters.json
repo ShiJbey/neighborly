@@ -25,6 +25,7 @@
     ],
     "components": {
       "Stats": {},
+      "ModifierManager": {},
       "Lifespan": {},
       "Fertility": {},
       "Kindness": {},
@@ -42,7 +43,7 @@
       "Relationships": {},
       "Traits": {},
       "Character": {},
-      "AgentBeliefs": {}
+      "HeldBeliefs": {}
     },
     "variants": [
       {

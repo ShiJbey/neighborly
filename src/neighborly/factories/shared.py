@@ -5,7 +5,7 @@
 import random
 from typing import Any
 
-from neighborly.components.shared import Age
+from neighborly.components.shared import Age, ModifierManager
 from neighborly.ecs import Component, ComponentFactory, World
 from neighborly.life_event import PersonalEventHistory
 
@@ -34,3 +34,12 @@ class PersonalEventHistoryFactory(ComponentFactory):
 
     def instantiate(self, world: World, /, **kwargs: Any) -> Component:
         return PersonalEventHistory()
+
+
+class ModifierManagerFactory(ComponentFactory):
+    """Creates ModifierManager component instances."""
+
+    __component__ = "ModifierManager"
+
+    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+        return ModifierManager()

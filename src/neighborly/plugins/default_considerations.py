@@ -8,8 +8,11 @@ from neighborly.components.character import Character, LifeStage
 from neighborly.components.relationship import Reputation, Romance
 from neighborly.components.stats import Fertility
 from neighborly.ecs import GameObject
-from neighborly.helpers.relationship import get_relationship
-from neighborly.helpers.traits import get_relationships_with_traits, get_time_with_trait
+from neighborly.helpers.relationship import (
+    get_relationship,
+    get_relationships_with_traits,
+)
+from neighborly.helpers.traits import get_time_with_trait
 from neighborly.libraries import ActionConsiderationLibrary
 from neighborly.plugins.actions import (
     BecomeBusinessOwner,

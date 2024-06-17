@@ -99,18 +99,6 @@ class TraitDef(ContentDefinition):
     """A short description of the trait."""
     effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
     """Effects applied when a GameObject has this trait."""
-    incoming_relationship_effects: list[dict[str, Any]] = pydantic.Field(
-        default_factory=list
-    )
-    """(Agents only) Effects to incoming relationships."""
-    outgoing_relationship_effects: list[dict[str, Any]] = pydantic.Field(
-        default_factory=list
-    )
-    """(Agents only) Effects to outgoing relationships."""
-    owner_effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    """(Relationships only) Effects to the owner of a relationship."""
-    target_effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    """(Relationships only) Effects to the target of a relationship."""
     conflicts_with: set[str] = pydantic.Field(default_factory=set)
     """IDs of traits that this trait conflicts with."""
     spawn_frequency: int = 0
@@ -282,8 +270,6 @@ class JobRoleDef(ContentDefinition):
     """Precondition query statements for this role."""
     effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
     """Effects applied when a character holds this role."""
-    recurring_effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    """Effects reapplied each time step."""
     variants: list[dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Variant settings of this type."""
     extends: list[str] = pydantic.Field(default_factory=list)

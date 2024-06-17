@@ -4,7 +4,7 @@
     "description": "Men are attractive",
     "preconditions": [
       {
-        "type": "GenderRequirement",
+        "type": "IsSex",
         "gender": "male",
         "target": "target"
       }
@@ -22,7 +22,7 @@
     "description": "Men are not attractive",
     "preconditions": [
       {
-        "type": "GenderRequirement",
+        "type": "IsSex",
         "gender": "male",
         "target": "target"
       }
@@ -40,7 +40,7 @@
     "description": "Women are attractive.",
     "preconditions": [
       {
-        "type": "GenderRequirement",
+        "type": "IsSex",
         "gender": "female",
         "target": "target"
       }
@@ -58,7 +58,7 @@
     "description": "Women are not attractive.",
     "preconditions": [
       {
-        "type": "GenderRequirement",
+        "type": "IsSex",
         "gender": "female",
         "target": "target"
       }

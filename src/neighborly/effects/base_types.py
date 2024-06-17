@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol
 
 from neighborly.ecs import GameObject, World
 
@@ -51,3 +51,7 @@ class Effect(ABC):
 
     def __str__(self) -> str:
         return self.description
+
+
+class IModifier(Protocol):
+    """Interface implemented by all modifiers that can be attached to a GameObject."""

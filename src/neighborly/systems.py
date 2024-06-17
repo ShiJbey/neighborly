@@ -6,13 +6,12 @@ This module contains built-in systems that help simulations function.
 
 from __future__ import annotations
 
-import logging
 import random
 from collections import defaultdict
 from typing import cast
 
 from neighborly.components.beliefs import Belief
-from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
+from neighborly.components.business import Business, BusinessStatus, JobRole
 from neighborly.components.character import (
     Character,
     Household,
@@ -33,7 +32,7 @@ from neighborly.components.location import (
 )
 from neighborly.components.relationship import Relationship
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.shared import Age
+from neighborly.components.shared import Age, Modifier, ModifierManager
 from neighborly.components.skills import Skill
 from neighborly.components.spawn_table import CharacterSpawnTable, DistrictSpawnTable
 from neighborly.components.stats import Fertility, Lifespan
@@ -65,6 +64,10 @@ from neighborly.helpers.character import (
 )
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.helpers.location import score_location
+from neighborly.helpers.relationship import (
+    get_relationship,
+    get_relationships_with_traits,
+)
 from neighborly.helpers.settlement import (
     add_character_to_settlement,
     add_district_to_settlement,
@@ -72,9 +75,7 @@ from neighborly.helpers.settlement import (
     create_settlement,
 )
 from neighborly.helpers.traits import (
-    add_relationship_trait,
-    get_relationships_with_traits,
-    remove_relationship_trait,
+    add_trait,
     remove_trait,
 )
 from neighborly.libraries import (
@@ -93,8 +94,6 @@ from neighborly.libraries import (
 )
 from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.actions import CloseBusiness, Die
-
-_logger = logging.getLogger(__name__)
 
 
 class InitializationSystems(SystemGroup):
@@ -354,22 +353,6 @@ class CompileTraitDefsSystem(System):
                             for entry in trait_def.effects
                         ],
                         conflicting_traits=trait_def.conflicts_with,
-                        target_effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in trait_def.target_effects
-                        ],
-                        owner_effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in trait_def.owner_effects
-                        ],
-                        outgoing_relationship_effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in trait_def.outgoing_relationship_effects
-                        ],
-                        incoming_relationship_effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in trait_def.incoming_relationship_effects
-                        ],
                     )
                 )
 
@@ -476,10 +459,6 @@ class CompileJobRoleDefsSystem(System):
                         effects=[
                             effect_library.create_from_obj(world, entry)
                             for entry in role_def.effects
-                        ],
-                        recurring_effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in role_def.recurring_effects
                         ],
                     )
                 )
@@ -845,14 +824,14 @@ class ChildBirthSystem(System):
             add_character_to_household(household, baby.get_component(Character))
 
             # Birthing parent to child
-            add_relationship_trait(character.gameobject, baby, "child")
-            add_relationship_trait(baby, character.gameobject, "parent")
-            add_relationship_trait(baby, character.gameobject, "biological_parent")
+            add_trait(get_relationship(character.gameobject, baby), "child")
+            add_trait(get_relationship(baby, character.gameobject), "parent")
+            add_trait(get_relationship(baby, character.gameobject), "biological_parent")
 
             # Other parent to child
-            add_relationship_trait(other_parent, baby, "child")
-            add_relationship_trait(baby, other_parent, "parent")
-            add_relationship_trait(baby, other_parent, "biological_parent")
+            add_trait(get_relationship(other_parent, baby), "child")
+            add_trait(get_relationship(baby, other_parent), "parent")
+            add_trait(get_relationship(baby, other_parent), "biological_parent")
 
             # Create relationships with children of birthing parent
             for relationship in get_relationships_with_traits(
@@ -866,8 +845,8 @@ class ChildBirthSystem(System):
                 sibling = rel.target
 
                 # Baby to sibling
-                add_relationship_trait(baby, sibling, "sibling")
-                add_relationship_trait(sibling, baby, "sibling")
+                add_trait(get_relationship(baby, sibling), "sibling")
+                add_trait(get_relationship(sibling, baby), "sibling")
 
             # Create relationships with children of the birthing parent's spouses
             for spousal_rel in get_relationships_with_traits(
@@ -876,8 +855,8 @@ class ChildBirthSystem(System):
                 spouse = spousal_rel.get_component(Relationship).target
 
                 if spousal_rel.is_active:
-                    add_relationship_trait(spouse, baby, "child")
-                    add_relationship_trait(baby, spouse, "parent")
+                    add_trait(get_relationship(spouse, baby), "child")
+                    add_trait(get_relationship(baby, spouse), "parent")
 
                 for child_rel in get_relationships_with_traits(spouse, "child"):
                     rel = child_rel.get_component(Relationship)
@@ -887,8 +866,8 @@ class ChildBirthSystem(System):
                     sibling = rel.target
 
                     # Baby to sibling
-                    add_relationship_trait(baby, sibling, "sibling")
-                    add_relationship_trait(sibling, baby, "sibling")
+                    add_trait(get_relationship(baby, sibling), "sibling")
+                    add_trait(get_relationship(sibling, baby), "sibling")
 
             # Create relationships with children of other parent
             for relationship in get_relationships_with_traits(other_parent, "child"):
@@ -899,8 +878,8 @@ class ChildBirthSystem(System):
                 sibling = rel.target
 
                 # Baby to sibling
-                add_relationship_trait(baby, sibling, "sibling")
-                add_relationship_trait(sibling, baby, "sibling")
+                add_trait(get_relationship(baby, sibling), "sibling")
+                add_trait(get_relationship(sibling, baby), "sibling")
 
             character.gameobject.remove_component(Pregnant)
 
@@ -918,23 +897,23 @@ class ChildBirthSystem(System):
             dispatch_life_event(birth_evt, [baby])
 
 
-class JobRoleMonthlyEffectsSystem(System):
-    """This system applies monthly effects associated with character's job roles.
-
-    Unlike the normal effects, monthly effects are not reversed when the character
-    leaves the role. The changes are permanent. This system is meant to give characters
-    a way of increasing specific skill points the longer they work at a job. This way
-    higher level jobs can require characters to meet skill thresholds.
-    """
+class TickModifiersSystem(System):
+    """Tick all modifiers."""
 
     def on_update(self, world: World) -> None:
-        for _, (occupation, _) in world.get_components((Occupation, Active)):
-            for effect in occupation.job_role.recurring_effects:
-                effect.apply(occupation.gameobject)
+        for _, (modifier_manager, _) in world.get_components((ModifierManager, Active)):
+            modifiers_to_remove: list[Modifier] = []
+
+            for modifier in modifier_manager.modifiers:
+                if modifier.is_expired():
+                    modifiers_to_remove.append(modifier)
+                    continue
+                else:
+                    modifier.update(modifier_manager.gameobject)
 
 
 class TickTraitsSystem(System):
-    """Update trait durations."""
+    """Tick all trait durations."""
 
     def on_update(self, world: World) -> None:
         for _, (traits,) in world.get_components((Traits,)):
@@ -951,8 +930,9 @@ class TickTraitsSystem(System):
 
             for trait_id in traits_to_remove:
                 if relationship := traits.gameobject.try_component(Relationship):
-                    remove_relationship_trait(
-                        relationship.owner, relationship.target, trait_id
+                    remove_trait(
+                        get_relationship(relationship.owner, relationship.target),
+                        trait_id,
                     )
                 else:
                     remove_trait(traits.gameobject, trait_id)

@@ -7,7 +7,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
-from neighborly.ecs import World
+from neighborly.ecs import GameObject, World
 
 
 class Precondition(ABC):
@@ -29,13 +29,13 @@ class Precondition(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def check(self, blackboard: dict[str, Any]) -> bool:
-        """Check if the precondition passes given a blackboard of values.
+    def check(self, gameobject: GameObject) -> bool:
+        """Check if a gameobject passes this precondition.
 
         Parameters
         ----------
-        blackboard
-            Information about the context of the precondition.
+        gameobject
+            A GameObject to check..
 
         Returns
         -------

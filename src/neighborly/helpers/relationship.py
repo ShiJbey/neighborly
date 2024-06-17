@@ -2,16 +2,20 @@
 
 """
 
-from neighborly.components.beliefs import AppliedBeliefs, Belief, HeldBeliefs
+from neighborly.components.beliefs import HeldBeliefs
 from neighborly.components.relationship import (
     Relationship,
     Relationships,
     Reputation,
     Romance,
 )
+from neighborly.components.shared import ModifierManager
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import Event, GameObject
+from neighborly.effects.modifiers import RelationshipModifier, RelationshipModifierDir
+from neighborly.helpers.shared import remove_modifiers_from_source
+from neighborly.helpers.traits import has_trait
 from neighborly.libraries import BeliefLibrary
 
 
@@ -41,22 +45,12 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Traits())
     relationship.add_component(Reputation())
     relationship.add_component(Romance())
-    relationship.add_component(AppliedBeliefs())
+    relationship.add_component(ModifierManager())
 
     relationship.name = f"[{owner.name} -> {target.name}]"
 
     owner.get_component(Relationships).add_outgoing_relationship(target, relationship)
     target.get_component(Relationships).add_incoming_relationship(owner, relationship)
-
-    # Add outgoing relationship effects from owner
-    for trait_instance in owner.get_component(Traits).traits.values():
-        for effect in trait_instance.trait.outgoing_relationship_effects:
-            effect.apply(relationship)
-
-    # Add incoming relationship effects from target
-    for trait_instance in target.get_component(Traits).traits.values():
-        for effect in trait_instance.trait.incoming_relationship_effects:
-            effect.apply(relationship)
 
     reevaluate_relationship(relationship.get_component(Relationship))
 
@@ -157,12 +151,12 @@ def add_belief(agent: GameObject, belief_id: str) -> None:
 
     belief = library.get_belief(belief_id)
     held_beliefs.add_belief(belief_id)
+    agent.get_component(ModifierManager).add_modifier(belief.get_modifier())
 
     relationships = agent.get_component(Relationships).outgoing
 
     for _, relationship in relationships.items():
-        if belief.check_preconditions(relationship):
-            belief.apply_effects(relationship)
+        reevaluate_relationship(relationship.get_component(Relationship))
 
 
 def remove_belief(agent: GameObject, belief_id: str) -> None:
@@ -193,51 +187,52 @@ def remove_belief(agent: GameObject, belief_id: str) -> None:
 
     belief = library.get_belief(belief_id)
 
+    remove_modifiers_from_source(agent, belief)
+
     relationships = agent.get_component(Relationships).outgoing
 
     for _, relationship in relationships.items():
-        applied_beliefs = relationship.get_component(AppliedBeliefs)
+        reevaluate_relationship(relationship.get_component(Relationship))
 
-        if applied_beliefs.has_belief(belief_id):
-            applied_beliefs.remove_belief(belief_id)
-            belief.remove_effects(relationship)
+
+def reevaluate_relationships(gameobject: GameObject) -> None:
+    """Reevaluate all relationships for a GameObject."""
+
+    for relationship in gameobject.get_component(Relationships).outgoing.values():
+        reevaluate_relationship(relationship.get_component(Relationship))
+
+    for relationship in gameobject.get_component(Relationships).outgoing.values():
+        reevaluate_relationship(relationship.get_component(Relationship))
 
 
 def reevaluate_relationship(relationship: Relationship) -> None:
-    """Reevaluate beliefs for a given relationship."""
+    """Reevaluate modifiers for a given relationship."""
 
-    library = relationship.gameobject.world.resource_manager.get_resource(BeliefLibrary)
+    # Loop through all the owners modifiers looking for relationship modifiers.
+    # Remove the effects of all that you find and re-evaluate if they pass
+    owner_modifiers = relationship.owner.get_component(ModifierManager)
+    for modifier in owner_modifiers.modifiers:
+        if isinstance(modifier, RelationshipModifier):
+            modifier.remove_from_relationship(relationship.gameobject)
 
-    applied_beliefs = relationship.gameobject.get_component(AppliedBeliefs)
+            if modifier.direction != RelationshipModifierDir.OUTGOING:
+                continue
 
-    held_beliefs = relationship.owner.get_component(HeldBeliefs)
+            if modifier.check_preconditions(relationship.gameobject):
+                modifier.apply_to_relationship(relationship.gameobject)
 
-    # Check that existing rules still pass their preconditions
+    # Do the same as the above with the targets relationship modifiers, but this
+    # time look for incoming modifiers
+    target_modifiers = relationship.target.get_component(ModifierManager)
+    for modifier in target_modifiers.modifiers:
+        if isinstance(modifier, RelationshipModifier):
+            modifier.remove_from_relationship(relationship.gameobject)
 
-    beliefs_to_remove: list[Belief] = []
+            if modifier.direction != RelationshipModifierDir.INCOMING:
+                continue
 
-    for belief_id in held_beliefs.get_all():
-        belief = library.get_belief(belief_id)
-
-        if belief.check_preconditions(relationship.gameobject):
-            if not applied_beliefs.has_belief(belief_id):
-                applied_beliefs.add_belief(belief_id)
-                belief.apply_effects(relationship.gameobject)
-        else:
-            if applied_beliefs.has_belief(belief_id):
-                beliefs_to_remove.append(belief)
-
-    for belief in beliefs_to_remove:
-        applied_beliefs.remove_belief(belief.belief_id)
-        belief.remove_effects(relationship.gameobject)
-
-    # Check if any global beliefs should be applied
-
-    for belief_id in library.global_beliefs:
-        belief = library.get_belief(belief_id)
-        if belief.check_preconditions(relationship.gameobject):
-            applied_beliefs.add_belief(belief_id)
-            belief.apply_effects(relationship.gameobject)
+            if modifier.check_preconditions(relationship.gameobject):
+                modifier.apply_to_relationship(relationship.gameobject)
 
 
 def deactivate_relationships(gameobject: GameObject) -> None:
@@ -250,3 +245,29 @@ def deactivate_relationships(gameobject: GameObject) -> None:
 
     for _, relationship in relationships.incoming.items():
         relationship.deactivate()
+
+
+def get_relationships_with_traits(
+    gameobject: GameObject, *traits: str
+) -> list[GameObject]:
+    """Get all the relationships with the given tags.
+
+    Parameters
+    ----------
+    gameobject
+        The character to check.
+    *traits
+        The trait IDs to check for on relationships.
+
+    Returns
+    -------
+    list[GameObject]
+        Relationships with the given traits.
+    """
+    matches: list[GameObject] = []
+
+    for _, relationship in gameobject.get_component(Relationships).outgoing.items():
+        if all(has_trait(relationship, trait) for trait in traits):
+            matches.append(relationship)
+
+    return matches

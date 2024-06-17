@@ -9,7 +9,7 @@ from typing import Callable, Union
 import tabulate
 
 from neighborly import __version__
-from neighborly.components.beliefs import AppliedBeliefs, HeldBeliefs
+from neighborly.components.beliefs import HeldBeliefs
 from neighborly.components.business import (
     Business,
     BusinessStatus,
@@ -335,7 +335,7 @@ def _get_traits_table(obj: GameObject) -> str:
                 entry.trait.name,
                 (entry.duration if entry.has_duration else "N/A"),
                 entry.timestamp.to_iso_str(),
-                entry.description,
+                entry.trait.description,
             )
             for entry in traits.traits.values()
         ],
@@ -506,33 +506,6 @@ def _get_beliefs_table(obj: GameObject) -> str:
     return "\n".join(output)
 
 
-def _get_applied_beliefs_table(obj: GameObject) -> str:
-    """Generate section for GameObject beliefs"""
-
-    applied_beliefs = obj.try_component(AppliedBeliefs)
-    library = obj.world.resources.get_resource(BeliefLibrary)
-
-    if applied_beliefs is None:
-        return ""
-
-    output: list[str] = [
-        "=== Applied Beliefs ===",
-        "",
-    ]
-
-    table = tabulate.tabulate(
-        [
-            (entry, library.get_belief(entry).description)
-            for entry in applied_beliefs.get_all()
-        ],
-        headers=("ID", "Description"),
-    )
-
-    output.append(table)
-
-    return "\n".join(output)
-
-
 def _get_location_preferences_table(obj: GameObject) -> str:
     """Generate section for GameObject beliefs"""
 
@@ -570,7 +543,6 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("skills", _get_skills_table),
     ("beliefs", _get_beliefs_table),
     ("location_preferences", _get_location_preferences_table),
-    ("applied_beliefs", _get_applied_beliefs_table),
     ("member_of_household", _member_of_household_section),
     ("occupation", _employment_section),
     ("pregnancy", _pregnancy_section),
@@ -898,20 +870,6 @@ def inspect_trait(sim: Simulation, trait_id: str) -> None:
 
     # Add incoming/outgoing relationship effects and inheritance
     if trait.trait_type == TraitType.AGENT:
-        if trait.incoming_relationship_effects:
-            lines.append("Incoming Relationship Effects:")
-            for effect in trait.incoming_relationship_effects:
-                lines.append(f"\t- {effect.description}")
-        else:
-            lines.append("Incoming Relationship Effects: N/A")
-
-        if trait.outgoing_relationship_effects:
-            lines.append("Outgoing Relationship Effects:")
-            for effect in trait.outgoing_relationship_effects:
-                lines.append(f"\t- {effect.description}")
-        else:
-            lines.append("Outgoing Relationship Effects: N/A")
-
         lines.append(f"Spawn Frequency: {trait.spawn_frequency}")
 
         lines.append(f"Is Inheritable: {trait.is_inheritable}")
@@ -920,22 +878,6 @@ def inspect_trait(sim: Simulation, trait_id: str) -> None:
             lines.append("Inheritance chances if parents have trait:")
             lines.append(f"\t- one parent: {trait.inheritance_chance_single}")
             lines.append(f"\t- both parents: {trait.inheritance_chance_both}")
-
-    # Add information about owner and target effects
-    else:
-        if trait.owner_effects:
-            lines.append("relationship owner effects:")
-            for effect in trait.owner_effects:
-                lines.append(f"- {effect.description}")
-        else:
-            lines.append("relationship owner effects: N/A")
-
-        if trait.target_effects:
-            lines.append("relationship target effects:")
-            for effect in trait.target_effects:
-                lines.append(f"- {effect.description}")
-        else:
-            lines.append("relationship target effects: N/A")
 
     print("\n".join(lines))
 
@@ -991,14 +933,6 @@ def inspect_job_role(sim: Simulation, role_id: str) -> None:
             lines.append(f"\t- {effect.description}")
     else:
         lines.append("Effects: N/A")
-
-    # Add Recurring Effects
-    if role.recurring_effects:
-        lines.append("Recurring Effects (Monthly):")
-        for effect in role.recurring_effects:
-            lines.append(f"\t- {effect.description}")
-    else:
-        lines.append("Recurring Effects (Monthly): N/A")
 
     print("\n".join(lines))
 

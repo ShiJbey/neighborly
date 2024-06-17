@@ -93,7 +93,7 @@ def score_location(character: GameObject, location: GameObject) -> float:
 
     for rule_id in rules:
         rule = library.rules[rule_id]
-        if rule.check_preconditions(character=character, location=location):
+        if rule.check_preconditions(location):
             consideration_score = rule.probability
         else:
             consideration_score = -1
