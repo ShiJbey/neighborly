@@ -1,7 +1,6 @@
 {
   "human": {
     "name": "Human",
-    "trait_type": "agent",
     "description": "A plain ol' human being.",
     "adolescent_age": 13,
     "young_adult_age": 20,

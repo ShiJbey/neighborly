@@ -15,7 +15,6 @@ from neighborly.components.traits import Traits
 from neighborly.ecs import Event, GameObject
 from neighborly.effects.modifiers import RelationshipModifier, RelationshipModifierDir
 from neighborly.helpers.shared import remove_modifiers_from_source
-from neighborly.helpers.traits import has_trait
 from neighborly.libraries import BeliefLibrary
 
 
@@ -151,7 +150,16 @@ def add_belief(agent: GameObject, belief_id: str) -> None:
 
     belief = library.get_belief(belief_id)
     held_beliefs.add_belief(belief_id)
-    agent.get_component(ModifierManager).add_modifier(belief.get_modifier())
+    agent.get_component(ModifierManager).add_modifier(
+        RelationshipModifier(
+            direction=RelationshipModifierDir.OUTGOING,
+            description=belief.description,
+            preconditions=belief.preconditions,
+            effects=belief.effects,
+            source=belief,
+            reason=f"Has {belief.belief_id!r} belief",
+        )
+    )
 
     relationships = agent.get_component(Relationships).outgoing
 
@@ -266,8 +274,11 @@ def get_relationships_with_traits(
     """
     matches: list[GameObject] = []
 
-    for _, relationship in gameobject.get_component(Relationships).outgoing.items():
-        if all(has_trait(relationship, trait) for trait in traits):
+    relationships = gameobject.get_component(Relationships).outgoing.values()
+
+    for relationship in relationships:
+        relationship_traits = relationship.get_component(Traits)
+        if all(relationship_traits.has_trait(t) for t in traits):
             matches.append(relationship)
 
     return matches

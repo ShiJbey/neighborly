@@ -35,7 +35,7 @@ from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age
 from neighborly.components.skills import SKILL_MAX_VALUE, Skills
 from neighborly.components.stats import Stats
-from neighborly.components.traits import Traits, TraitType
+from neighborly.components.traits import Traits
 from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
 from neighborly.helpers.stats import get_stat
 from neighborly.libraries import (
@@ -857,7 +857,6 @@ def inspect_trait(sim: Simulation, trait_id: str) -> None:
         f"ID: {trait.definition_id!r}",
         f"Name: {trait.name!r}",
         f"Description: {trait.description!r}",
-        f"Trait Type: {trait.trait_type.name!r}",
     ]
 
     # Add effects
@@ -869,15 +868,14 @@ def inspect_trait(sim: Simulation, trait_id: str) -> None:
         lines.append("Effects: N/A")
 
     # Add incoming/outgoing relationship effects and inheritance
-    if trait.trait_type == TraitType.AGENT:
-        lines.append(f"Spawn Frequency: {trait.spawn_frequency}")
+    lines.append(f"Spawn Frequency: {trait.spawn_frequency}")
 
-        lines.append(f"Is Inheritable: {trait.is_inheritable}")
+    lines.append(f"Is Inheritable: {trait.is_inheritable}")
 
-        if trait.is_inheritable:
-            lines.append("Inheritance chances if parents have trait:")
-            lines.append(f"\t- one parent: {trait.inheritance_chance_single}")
-            lines.append(f"\t- both parents: {trait.inheritance_chance_both}")
+    if trait.is_inheritable:
+        lines.append("Inheritance chances if parents have trait:")
+        lines.append(f"\t- one parent: {trait.inheritance_chance_single}")
+        lines.append(f"\t- both parents: {trait.inheritance_chance_both}")
 
     print("\n".join(lines))
 

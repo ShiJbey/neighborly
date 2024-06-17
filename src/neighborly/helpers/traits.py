@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Union
 
-from neighborly.components.traits import Trait, Traits, TraitType
+from neighborly.components.traits import Trait, Traits
 from neighborly.datetime import SimDate
 from neighborly.ecs import GameObject
 from neighborly.libraries import TraitLibrary
@@ -42,9 +42,6 @@ def add_trait(
         trait_obj = library.get_trait(trait)
     else:
         trait_obj = trait
-
-    if trait_obj.trait_type != TraitType.AGENT:
-        raise TypeError(f"{trait_obj.definition_id} is not an agent trait.")
 
     success = gameobject.get_component(Traits).add_trait(trait_obj, duration=duration)
 
@@ -90,7 +87,7 @@ def remove_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
     return True
 
 
-def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
+def has_trait(gameobject: GameObject, trait: str) -> bool:
     """Check if a GameObject has a given trait.
 
     Parameters
@@ -108,14 +105,9 @@ def has_trait(gameobject: GameObject, trait: Union[str, Trait]) -> bool:
     return gameobject.get_component(Traits).has_trait(trait)
 
 
-def get_time_with_trait(gameobject: GameObject, trait: Union[str, Trait]) -> int:
+def get_time_with_trait(gameobject: GameObject, trait_id: str) -> int:
     """Get the number of months the trait has been active."""
     current_date = gameobject.world.resources.get_resource(SimDate)
-
-    if isinstance(trait, str):
-        trait_id = trait
-    else:
-        trait_id = trait.definition_id
 
     if trait_instance := gameobject.get_component(Traits).traits.get(trait_id):
         return current_date.total_months - trait_instance.timestamp.total_months

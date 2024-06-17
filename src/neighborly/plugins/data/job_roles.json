@@ -13,7 +13,7 @@
       {
         "type": "IncreaseBaseSkill",
         "skill": "blacksmithing",
-        "amount": 0.2
+        "value": 0.2
       }
     ]
   },
@@ -24,7 +24,7 @@
       {
         "type": "IncreaseBaseSkill",
         "skill": "blacksmithing",
-        "amount": 3
+        "value": 3
       }
     ]
   },

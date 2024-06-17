@@ -4,16 +4,15 @@
     "description": "Men are attractive",
     "preconditions": [
       {
-        "type": "IsSex",
-        "gender": "male",
-        "target": "target"
+        "type": "TargetIsSex",
+        "sex": "male"
       }
     ],
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": 15
+        "value": 15
       }
     ]
   },
@@ -22,16 +21,15 @@
     "description": "Men are not attractive",
     "preconditions": [
       {
-        "type": "IsSex",
-        "gender": "male",
-        "target": "target"
+        "type": "TargetIsSex",
+        "sex": "male"
       }
     ],
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -15
+        "value": -15
       }
     ]
   },
@@ -40,16 +38,15 @@
     "description": "Women are attractive.",
     "preconditions": [
       {
-        "type": "IsSex",
-        "gender": "female",
-        "target": "target"
+        "type": "TargetIsSex",
+        "sex": "female"
       }
     ],
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": 15
+        "value": 15
       }
     ]
   },
@@ -58,16 +55,15 @@
     "description": "Women are not attractive.",
     "preconditions": [
       {
-        "type": "IsSex",
-        "gender": "female",
-        "target": "target"
+        "type": "TargetIsSex",
+        "sex": "female"
       }
     ],
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -15
+        "value": -15
       }
     ]
   }

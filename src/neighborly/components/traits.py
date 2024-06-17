@@ -6,21 +6,13 @@ This module contains class definitions for implementing the trait system.
 
 from __future__ import annotations
 
-import enum
-from typing import Any, Union
+from typing import Any
 
 import attrs
 
 from neighborly.datetime import SimDate
 from neighborly.ecs import Component
 from neighborly.effects.base_types import Effect
-
-
-class TraitType(enum.Enum):
-    """Enumeration of all possible trait types."""
-
-    AGENT = enum.auto()
-    RELATIONSHIP = enum.auto()
 
 
 @attrs.define
@@ -33,8 +25,6 @@ class Trait:
     """A short description of the tag."""
     name: str
     """The name of this tag printed."""
-    trait_type: TraitType
-    """The kind of GameObject the trait can attach to."""
     effects: list[Effect]
     """Effects to apply when the tag is added."""
     conflicting_traits: set[str]
@@ -155,12 +145,9 @@ class Traits(Component):
 
         return False
 
-    def has_trait(self, trait: Union[str, Trait]) -> bool:
+    def has_trait(self, trait: str) -> bool:
         """Check if the GameObject has a given trait."""
-        if isinstance(trait, str):
-            return trait in self.traits
-
-        return trait.definition_id in self.traits
+        return trait in self.traits
 
     def has_conflicting_trait(self, trait: Trait) -> bool:
         """Check if a trait conflicts with current traits.

@@ -48,7 +48,11 @@ from neighborly.factories.settlement import (
     DistrictFactory,
     SettlementFactory,
 )
-from neighborly.factories.shared import AgeFactory, PersonalEventHistoryFactory
+from neighborly.factories.shared import (
+    AgeFactory,
+    ModifierManagerFactory,
+    PersonalEventHistoryFactory,
+)
 from neighborly.factories.skills import SkillsFactory
 from neighborly.factories.spawn_table import (
     BusinessSpawnTableFactory,
@@ -305,6 +309,7 @@ class Simulation:
         self.world.gameobjects.add_component_factory(CharmFactory())
         self.world.gameobjects.add_component_factory(HeldBeliefsFactory())
         self.world.gameobjects.add_component_factory(SpeciesFactory())
+        self.world.gameobjects.add_component_factory(ModifierManagerFactory())
 
     def _init_effect_precondition_factories(self) -> None:
         """Add effect factories to the library."""

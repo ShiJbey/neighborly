@@ -1,210 +1,190 @@
 {
   "family": {
     "name": "Family",
-    "trait_type": "relationship",
     "description": "These characters are related",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -30
+        "value": -30
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": 10
+        "value": 10
       }
     ]
   },
   "parent": {
     "name": "Parent",
-    "trait_type": "relationship",
     "description": "The target of this relationship is the owner's parent",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -50
+        "value": -50
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": 10
+        "value": 10
       }
     ]
   },
   "child": {
     "name": "Child",
-    "trait_type": "relationship",
     "description": "The target of this relationship is a child of the owner.",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -50
+        "value": -50
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": 20
+        "value": 20
       }
     ]
   },
   "sibling": {
     "name": "Sibling",
-    "trait_type": "relationship",
     "description": "The target of this relationship is a sibling of the owner.",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -50
+        "value": -50
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": 15
+        "value": 15
       }
     ]
   },
   "spouse": {
     "name": "Spouse",
-    "trait_type": "relationship",
     "description": "The target of this relationship is a spouse of the owner.",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": 15
+        "value": 15
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": 20
+        "value": 20
       }
     ]
   },
   "dating": {
     "name": "Dating",
-    "trait_type": "relationship",
     "description": "The relationship target and owner are dating.",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": 10
+        "value": 10
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": 5
+        "value": 5
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": 15
+        "value": 15
       }
     ]
   },
   "ex_spouse": {
     "name": "Ex-Spouse",
-    "trait_type": "relationship",
     "description": "These characters were formerly married",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -20
+        "value": -20
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": -8
+        "value": -8
       }
     ]
   },
   "ex_partner": {
     "name": "Ex-Partner",
-    "trait_type": "relationship",
     "description": "These character used to date.",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": -10
+        "value": -10
       },
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "reputation",
-        "amount": -5
+        "value": -5
       }
     ]
   },
   "crush": {
     "name": "Crush",
-    "trait_type": "relationship",
     "description": "The owner of this relationship has a crush on the target.",
     "effects": [
       {
-        "type": "AddStatBuff",
+        "type": "AddStatModifier",
         "stat": "romance",
-        "amount": 10
+        "value": 10
       }
     ]
   },
   "live_together": {
     "name": "Live Together",
-    "trait_type": "relationship",
     "description": "The owner of this relationship lives with the target."
   },
   "friend": {
     "name": "Friend",
-    "trait_type": "relationship",
     "description": "The owner of this relationship is friends with target."
   },
   "enemy": {
     "name": "Enemy",
-    "trait_type": "relationship",
     "description": "The owner of this relationship is enemies with target."
   },
   "widow": {
     "name": "Widow",
-    "trait_type": "relationship",
     "description": "The target of the relationship is the widow of the owner."
   },
   "step_parent": {
     "name": "Step Parent",
-    "trait_type": "relationship",
     "description": "Target is the step parent of the owner."
   },
   "step_child": {
     "name": "Step Child",
-    "trait_type": "relationship",
     "description": "Target is the step child of the owner."
   },
   "step_sibling": {
     "name": "Step Sibling",
-    "trait_type": "relationship",
     "description": "Target is the step sibling of the owner."
   },
   "biological_parent": {
     "name": "Biological Parent",
-    "trait_type": "relationship",
     "description": "Target is the biological parent of the owner."
   },
   "boss": {
     "name": "Boss",
-    "trait_type": "relationship",
     "description": "The target of this relationship is the their work boss."
   },
   "employee": {
     "name": "Employee",
-    "trait_type": "relationship",
     "description": "The target of this relationship is an employee."
   },
   "coworker": {
     "name": "Coworker",
-    "trait_type": "relationship",
     "description": "The target of this relationship is a coworker."
   }
 }

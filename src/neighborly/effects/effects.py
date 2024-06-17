@@ -53,7 +53,7 @@ class AddStatModifier(Effect):
         reason: str = "",
     ) -> None:
         super().__init__()
-        self.stat_id = stat
+        self.stat = stat
         self.modifier_type = modifier_type
         self.value = value
         self.duration = duration
@@ -176,7 +176,7 @@ class AddSkillModifier(Effect):
         reason: str = "",
     ) -> None:
         super().__init__()
-        self.stat_id = skill
+        self.skill = skill
         self.modifier_type = modifier_type
         self.value = value
         self.duration = duration
@@ -368,7 +368,7 @@ class AddStatModifierToTarget(Effect):
         reason: str = "",
     ) -> None:
         super().__init__()
-        self.stat_id = stat
+        self.stat = stat
         self.modifier_type = modifier_type
         self.value = value
         self.duration = duration
@@ -443,7 +443,7 @@ class AddStatModifierToOwner(Effect):
         reason: str = "",
     ) -> None:
         super().__init__()
-        self.stat_id = stat
+        self.stat = stat
         self.modifier_type = modifier_type
         self.value = value
         self.duration = duration

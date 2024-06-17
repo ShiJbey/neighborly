@@ -93,8 +93,6 @@ class TraitDef(ContentDefinition):
     """The ID of this trait definition."""
     name: str
     """The name of this trait."""
-    trait_type: str
-    """The kind of GameObject the trait can attach to."""
     description: str = ""
     """A short description of the trait."""
     effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)

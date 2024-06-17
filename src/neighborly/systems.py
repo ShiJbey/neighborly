@@ -36,7 +36,7 @@ from neighborly.components.shared import Age, Modifier, ModifierManager
 from neighborly.components.skills import Skill
 from neighborly.components.spawn_table import CharacterSpawnTable, DistrictSpawnTable
 from neighborly.components.stats import Fertility, Lifespan
-from neighborly.components.traits import Trait, Traits, TraitType
+from neighborly.components.traits import Trait, Traits
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.base_types import DistrictDef
@@ -340,7 +340,6 @@ class CompileTraitDefsSystem(System):
                     Trait(
                         definition_id=trait_def.definition_id,
                         name=trait_def.name,
-                        trait_type=TraitType[trait_def.trait_type.upper()],
                         inheritance_chance_both=trait_def.inheritance_chance_both,
                         inheritance_chance_single=trait_def.inheritance_chance_single,
                         is_inheritable=(

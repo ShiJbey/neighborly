@@ -6,7 +6,6 @@ from neighborly.components.skills import Skills
 from neighborly.components.stats import StatModifierType, Stats
 from neighborly.ecs import GameObject
 from neighborly.effects.base_types import Effect
-from neighborly.helpers.relationship import reevaluate_relationships
 from neighborly.preconditions.base_types import Precondition
 
 
@@ -405,10 +404,12 @@ class RelationshipModifier(Modifier):
         return all(p.check(relationship) for p in self.preconditions)
 
     def apply(self, target: GameObject) -> None:
+        from neighborly.helpers.relationship import reevaluate_relationships
 
         reevaluate_relationships(target)
 
     def remove(self, target: GameObject) -> None:
+        from neighborly.helpers.relationship import reevaluate_relationships
 
         reevaluate_relationships(target)
 

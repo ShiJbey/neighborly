@@ -13,7 +13,6 @@ from typing import Any, Iterable
 
 from neighborly.ecs import Component
 from neighborly.effects.base_types import Effect
-from neighborly.effects.modifiers import RelationshipModifier
 from neighborly.preconditions.base_types import Precondition
 
 
@@ -56,9 +55,6 @@ class Belief:
         self.preconditions = preconditions
         self.effects = effects
         self.is_global = is_global
-
-    def get_modifier(self) -> RelationshipModifier:
-        raise NotImplementedError()
 
 
 class HeldBeliefs(Component):
