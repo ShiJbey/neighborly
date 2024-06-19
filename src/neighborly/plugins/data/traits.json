@@ -104,11 +104,6 @@
     "name": "Traitorous",
     "description": "This character can betray their friends and allies for personal gain.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "kindness",
-        "value": -3
-      }
     ],
     "outgoing_relationship_effects": [
       {
@@ -176,11 +171,7 @@
     "name": "Compassionate",
     "description": "This character cares deeply for the well-being of others.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "kindness",
-        "value": 20
-      }
+
     ],
     "outgoing_relationship_effects": [
       {
@@ -210,11 +201,6 @@
     "name": "Callous",
     "description": "This character is emotionally detached and unsympathetic.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "kindness",
-        "value": -20
-      }
     ],
     "outgoing_relationship_effects": [
       {
@@ -244,11 +230,7 @@
     "name": "Adventurous",
     "description": "This character seeks excitement and enjoys taking risks.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "courage",
-        "value": 25
-      }
+
     ],
     "conflicts_with": [
       "cautious"
@@ -264,11 +246,7 @@
     "name": "Cautious",
     "description": "This character is risk-averse and avoids dangerous situations.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "courage",
-        "value": -15
-      }
+
     ],
     "conflicts_with": [
       "adventurous"
@@ -335,11 +313,6 @@
         "type": "AddStatModifier",
         "stat": "stewardship",
         "value": 5
-      },
-      {
-        "type": "AddStatModifier",
-        "stat": "courage",
-        "value": 5
       }
     ],
     "conflicts_with": [
@@ -360,11 +333,6 @@
         "type": "AddStatModifier",
         "stat": "stewardship",
         "value": -5
-      },
-      {
-        "type": "AddStatModifier",
-        "stat": "courage",
-        "value": -5
       }
     ],
     "conflicts_with": [
@@ -381,11 +349,6 @@
     "name": "Hot-Headed",
     "description": "This character has a short temper and is quick to anger.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "courage",
-        "value": 10
-      },
       {
         "type": "AddStatModifier",
         "stat": "charm",
@@ -470,11 +433,7 @@
     "name": "Charitable",
     "description": "This character is generous and often helps others in need.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "kindness",
-        "value": 10
-      }
+
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
@@ -487,11 +446,6 @@
     "name": "Selfish",
     "description": "This character prioritizes their own needs and desires over others.",
     "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "kindness",
-        "value": -15
-      },
       {
         "type": "AddStatModifier",
         "stat": "charm",

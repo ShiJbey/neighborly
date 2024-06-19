@@ -41,7 +41,6 @@ from neighborly.helpers.character import (
     remove_character_from_household,
     set_character_name,
     set_household_head,
-    set_household_head_spouse,
 )
 from neighborly.helpers.location import (
     add_frequented_location,
@@ -374,8 +373,6 @@ class Divorce(Action):
 
         new_household = create_household(self.world).get_component(Household)
 
-        set_household_head_spouse(household, None)
-
         if self.character.gameobject == household.head:
 
             set_household_head(
@@ -444,7 +441,6 @@ class GetMarried(Action):
         ).household.get_component(Household)
 
         if self.character == household.head and self.partner == partner_household.head:
-            set_household_head_spouse(household, self.partner.get_component(Character))
             set_household_head(partner_household, None)
 
             partner_household_members = [*partner_household.members]
@@ -459,7 +455,6 @@ class GetMarried(Action):
         elif (
             self.character == household.head and self.partner != partner_household.head
         ):
-            set_household_head_spouse(household, self.partner.get_component(Character))
             remove_character_from_household(
                 partner_household, self.partner.get_component(Character)
             )
@@ -470,9 +465,6 @@ class GetMarried(Action):
         ):
             new_household = create_household(self.world).get_component(Household)
             set_household_head(new_household, self.character.get_component(Character))
-            set_household_head_spouse(
-                new_household, self.partner.get_component(Character)
-            )
             remove_character_from_household(
                 household, self.character.get_component(Character)
             )
@@ -499,9 +491,6 @@ class GetMarried(Action):
                 new_household, self.character.get_component(Character)
             )
 
-            set_household_head_spouse(
-                new_household, self.partner.get_component(Character)
-            )
             set_household_head(partner_household, None)
 
             partner_household_members = [*partner_household.members]

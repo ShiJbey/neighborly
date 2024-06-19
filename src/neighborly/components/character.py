@@ -185,25 +185,21 @@ class Pregnant(Component):
 class Household(Component):
     """A collection of characters that all live together."""
 
-    __slots__ = ("head", "spouse", "members")
+    __slots__ = ("head", "members")
 
     head: Optional[GameObject]
     """The head of the household."""
-    spouse: Optional[GameObject]
-    """The spouse of the head of the household."""
     members: list[GameObject]
     """Other members of the household."""
 
     def __init__(self) -> None:
         super().__init__()
         self.head = None
-        self.spouse = None
         self.members = []
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "head": self.head.uid if self.head is not None else -1,
-            "spouse": self.spouse.uid if self.spouse is not None else -1,
             "members": [m.uid for m in self.members],
         }
 

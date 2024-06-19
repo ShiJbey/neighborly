@@ -166,34 +166,6 @@ def set_household_head(household: Household, character: Optional[Character]) -> 
         )
 
 
-def set_household_head_spouse(
-    household: Household, character: Optional[Character]
-) -> None:
-    """Set the spouse of the head of a household."""
-
-    former_spouse = household.spouse
-
-    # Remove the current spouse
-    if household.spouse is not None:
-        household.spouse = None
-
-    # Set the new clan head
-    if character is not None:
-        household.spouse = character.gameobject
-
-    character_obj = character.gameobject if character else None
-
-    if former_spouse != character_obj:
-        household.gameobject.dispatch_event(
-            Event(
-                event_type="spouse-changed",
-                world=household.gameobject.world,
-                former_spouse=former_spouse,
-                current_spouse=character_obj,
-            )
-        )
-
-
 def add_character_to_household(household: Household, character: Character) -> None:
     """Add a character to a house hold."""
 

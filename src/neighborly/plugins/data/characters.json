@@ -28,8 +28,6 @@
       "ModifierManager": {},
       "Lifespan": {},
       "Fertility": {},
-      "Kindness": {},
-      "Courage": {},
       "Stewardship": {},
       "Sociability": {},
       "Intelligence": {},
@@ -83,12 +81,6 @@
           "Fertility": {
             "value_range": "0-100"
           },
-          "Kindness": {
-            "value_range": "0-80"
-          },
-          "Courage": {
-            "value_range": "0-80"
-          },
           "Stewardship": {
             "value_range": "0-80"
           },
@@ -126,12 +118,6 @@
           "Fertility": {
             "value_range": "0-100"
           },
-          "Kindness": {
-            "value_range": "0-80"
-          },
-          "Courage": {
-            "value_range": "0-80"
-          },
           "Stewardship": {
             "value_range": "0-80"
           },
@@ -159,12 +145,6 @@
     "components": {
       "Fertility": {
         "value_range": "0-100"
-      },
-      "Kindness": {
-        "value_range": "0-80"
-      },
-      "Courage": {
-        "value_range": "0-80"
       },
       "Stewardship": {
         "value_range": "0-80"

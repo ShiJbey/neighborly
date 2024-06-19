@@ -581,12 +581,7 @@ class AdultsFormOwnHouseholdSystem(System):
 
             household = member_of_household.household.get_component(Household)
 
-            is_regular_member = (
-                character.gameobject != household.head
-                and character.gameobject != household.spouse
-            )
-
-            if not is_regular_member:
+            if not character.gameobject != household.head:
                 continue
 
             new_household = create_household(world).get_component(Household)

@@ -409,34 +409,6 @@ class Fertility(StatComponent):
         super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
-class Kindness(StatComponent):
-    """Tracks a GameObject's kindness."""
-
-    __stat_name__ = "kindness"
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
-
-
-class Courage(StatComponent):
-    """Tracks a GameObject's courage."""
-
-    __stat_name__ = "courage"
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
-
-
 class Stewardship(StatComponent):
     """Tracks a GameObject's stewardship."""
 

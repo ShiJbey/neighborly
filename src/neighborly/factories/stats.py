@@ -5,11 +5,9 @@ from typing import Any
 
 from neighborly.components.stats import (
     Charm,
-    Courage,
     Discipline,
     Fertility,
     Intelligence,
-    Kindness,
     Lifespan,
     Sociability,
     Stats,
@@ -61,42 +59,6 @@ class FertilityFactory(ComponentFactory):
             value = rng.randint(min_value, max_value)
 
         return Fertility(base_value=value)
-
-
-class KindnessFactory(ComponentFactory):
-    """Creates Kindness component instances."""
-
-    __component__ = "Kindness"
-
-    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
-
-        rng = world.resource_manager.get_resource(random.Random)
-
-        value: float = float(kwargs.get("value", 0))
-
-        if value_range := kwargs.get("value_range", ""):
-            min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
-            value = rng.randint(min_value, max_value)
-
-        return Kindness(base_value=value)
-
-
-class CourageFactory(ComponentFactory):
-    """Creates Courage component instances."""
-
-    __component__ = "Courage"
-
-    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
-
-        rng = world.resource_manager.get_resource(random.Random)
-
-        value: float = float(kwargs.get("value", 0))
-
-        if value_range := kwargs.get("value_range", ""):
-            min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
-            value = rng.randint(min_value, max_value)
-
-        return Courage(base_value=value)
 
 
 class StewardshipFactory(ComponentFactory):

@@ -60,7 +60,6 @@ from neighborly.helpers.character import (
     create_household,
     remove_character_from_household,
     set_household_head,
-    set_household_head_spouse,
 )
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.helpers.location import score_location
@@ -311,9 +310,6 @@ class HouseholdSystem(System):
 
         if character.gameobject == household.head:
             set_household_head(household, None)
-
-        if character.gameobject == household.spouse:
-            set_household_head_spouse(household, None)
 
         remove_character_from_household(household, character)
 
@@ -915,7 +911,7 @@ class TickTraitsSystem(System):
     """Tick all trait durations."""
 
     def on_update(self, world: World) -> None:
-        for _, (traits,) in world.get_components((Traits,)):
+        for _, (traits, _) in world.get_components((Traits, Active)):
             traits_to_remove: list[Trait] = []
 
             for trait_instance in traits.traits.values():
@@ -928,10 +924,4 @@ class TickTraitsSystem(System):
                     traits_to_remove.append(trait_instance.trait)
 
             for trait_id in traits_to_remove:
-                if relationship := traits.gameobject.try_component(Relationship):
-                    remove_trait(
-                        get_relationship(relationship.owner, relationship.target),
-                        trait_id,
-                    )
-                else:
-                    remove_trait(traits.gameobject, trait_id)
+                remove_trait(traits.gameobject, trait_id)

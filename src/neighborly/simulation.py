@@ -61,11 +61,9 @@ from neighborly.factories.spawn_table import (
 )
 from neighborly.factories.stats import (
     CharmFactory,
-    CourageFactory,
     DisciplineFactory,
     FertilityFactory,
     IntelligenceFactory,
-    KindnessFactory,
     LifespanFactory,
     SociabilityFactory,
     StatsFactory,
@@ -300,8 +298,6 @@ class Simulation:
         self.world.gameobjects.add_component_factory(PersonalEventHistoryFactory())
         self.world.gameobjects.add_component_factory(LifespanFactory())
         self.world.gameobjects.add_component_factory(FertilityFactory())
-        self.world.gameobjects.add_component_factory(KindnessFactory())
-        self.world.gameobjects.add_component_factory(CourageFactory())
         self.world.gameobjects.add_component_factory(StewardshipFactory())
         self.world.gameobjects.add_component_factory(SociabilityFactory())
         self.world.gameobjects.add_component_factory(IntelligenceFactory())
