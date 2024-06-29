@@ -95,13 +95,20 @@ from neighborly.plugins.actions import CloseBusiness, Die
 class TimeSystem(System):
     """Increments the current date/time."""
 
+    __system_group__ = "LateUpdateSystems"
+    __update_order__ = ("last",)
+
     def on_update(self, world: World) -> None:
         current_date = world.resources.get_resource(SimDate)
 
         current_date.increment_month()
 
+
 class InitializeSettlementSystem(System):
     """Creates one or more settlement instances using simulation config settings."""
+
+    __system_group__ = "InitializationSystems"
+    __update_order__ = ("last",)
 
     __slots__ = ("num_districts",)
 
@@ -277,6 +284,8 @@ class HouseholdSystem(System):
     - Appointing family heads when the head dies.
     """
 
+    __system_group__ = "LateUpdateSystems"
+
     def on_update(self, world: World) -> None:
         return
 
@@ -324,6 +333,8 @@ class HouseholdSystem(System):
 class CompileTraitDefsSystem(System):
     """Instantiates all the trait definitions within the TraitLibrary."""
 
+    __system_group__ = "InitializationSystems"
+
     def on_update(self, world: World) -> None:
         trait_library = world.resource_manager.get_resource(TraitLibrary)
         effect_library = world.resource_manager.get_resource(EffectLibrary)
@@ -361,6 +372,8 @@ class CompileTraitDefsSystem(System):
 
 class CompileSpeciesDefsSystem(System):
     """Instantiates all the species definitions within the SpeciesLibrary."""
+
+    __system_group__ = "InitializationSystems"
 
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(SpeciesLibrary)
@@ -405,6 +418,8 @@ class CompileSpeciesDefsSystem(System):
 class CompileSkillDefsSystem(System):
     """Instantiates all the skill definitions within the SkillLibrary."""
 
+    __system_group__ = "InitializationSystems"
+
     def on_update(self, world: World) -> None:
         skill_library = world.resource_manager.get_resource(SkillLibrary)
 
@@ -431,6 +446,8 @@ class CompileSkillDefsSystem(System):
 
 class CompileJobRoleDefsSystem(System):
     """Instantiates all the job role definitions within the TraitLibrary."""
+
+    __system_group__ = "InitializationSystems"
 
     def on_update(self, world: World) -> None:
         job_role_library = world.resource_manager.get_resource(JobRoleLibrary)
@@ -469,6 +486,8 @@ class CompileJobRoleDefsSystem(System):
 class CompileDistrictDefsSystem(System):
     """Compile district definitions."""
 
+    __system_group__ = "InitializationSystems"
+
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(DistrictLibrary)
 
@@ -483,6 +502,8 @@ class CompileDistrictDefsSystem(System):
 
 class CompileLocationPreferenceDefsSystem(System):
     """Compile location preference definitions."""
+
+    __system_group__ = "InitializationSystems"
 
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(LocationPreferenceLibrary)
@@ -511,6 +532,8 @@ class CompileLocationPreferenceDefsSystem(System):
 
 class CompileBeliefDefsSystem(System):
     """Compile belief definitions."""
+
+    __system_group__ = "InitializationSystems"
 
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(BeliefLibrary)
@@ -545,6 +568,8 @@ class CompileBeliefDefsSystem(System):
 class CompileSettlementDefsSystem(System):
     """Compile settlement definitions."""
 
+    __system_group__ = "InitializationSystems"
+
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(SettlementLibrary)
 
@@ -560,6 +585,8 @@ class CompileSettlementDefsSystem(System):
 class CompileCharacterDefsSystem(System):
     """Compile character definitions."""
 
+    __system_group__ = "InitializationSystems"
+
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(CharacterLibrary)
 
@@ -574,6 +601,8 @@ class CompileCharacterDefsSystem(System):
 
 class CompileBusinessDefsSystem(System):
     """Compile business definitions."""
+
+    __system_group__ = "InitializationSystems"
 
     def on_update(self, world: World) -> None:
         library = world.resource_manager.get_resource(BusinessLibrary)
@@ -900,6 +929,8 @@ class ChildBirthSystem(System):
 class TickModifiersSystem(System):
     """Tick all modifiers."""
 
+    __system_group__ = "EarlyUpdateSystems"
+
     def on_update(self, world: World) -> None:
         for _, (modifier_manager, _) in world.get_components((Modifiers, Active)):
             modifiers_to_remove: list[Modifier] = []
@@ -914,6 +945,8 @@ class TickModifiersSystem(System):
 
 class TickTraitsSystem(System):
     """Tick all trait durations."""
+
+    __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
         for _, (traits, _) in world.get_components((Traits, Active)):

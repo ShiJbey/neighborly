@@ -16,7 +16,7 @@ import tqdm
 
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
-from neighborly.ecs import World, InitializationSystems, EarlyUpdateSystems, UpdateSystems
+from neighborly.ecs import InitializationSystems, World
 from neighborly.effects.effects import (
     AddBelief,
     AddLocationPreference,
@@ -130,7 +130,8 @@ from neighborly.systems import (
     SpawnNewResidentSystem,
     TickModifiersSystem,
     TickTraitsSystem,
-    UpdateFrequentedLocationSystem, TimeSystem,
+    TimeSystem,
+    UpdateFrequentedLocationSystem,
 )
 
 
@@ -201,76 +202,33 @@ class Simulation:
 
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
-        # Add default top-level system groups (in execution order)
-        self.world.system_manager.add_system(TimeSystem())
-
         # Add content initialization systems
-        self.world.system_manager.add_system(
-            system=CompileTraitDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileSpeciesDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileBeliefDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileLocationPreferenceDefsSystem(),
-            system_group=InitializationSystems,
-        )
-        self.world.system_manager.add_system(
-            system=CompileJobRoleDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileSkillDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileDistrictDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileSettlementDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileCharacterDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=CompileBusinessDefsSystem(), system_group=InitializationSystems
-        )
-        self.world.system_manager.add_system(
-            system=InitializeSettlementSystem(), system_group=InitializationSystems
-        )
+        self.world.system_manager.add_system(CompileTraitDefsSystem())
+        self.world.system_manager.add_system(CompileSpeciesDefsSystem())
+        self.world.system_manager.add_system(CompileBeliefDefsSystem())
+        self.world.system_manager.add_system(CompileLocationPreferenceDefsSystem())
+        self.world.system_manager.add_system(CompileJobRoleDefsSystem())
+        self.world.system_manager.add_system(CompileSkillDefsSystem())
+        self.world.system_manager.add_system(CompileDistrictDefsSystem())
+        self.world.system_manager.add_system(CompileSettlementDefsSystem())
+        self.world.system_manager.add_system(CompileCharacterDefsSystem())
+        self.world.system_manager.add_system(CompileBusinessDefsSystem())
+        self.world.system_manager.add_system(InitializeSettlementSystem())
 
         # Add core update systems
-        self.world.system_manager.add_system(
-            system=TickModifiersSystem(), system_group=EarlyUpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=TickTraitsSystem(), system_group=EarlyUpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=SpawnNewResidentSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=UpdateFrequentedLocationSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=AgingSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=LifeStageSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=ChildBirthSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=CharacterLifespanSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=BusinessLifespanSystem(), system_group=UpdateSystems
-        )
-        self.world.system_manager.add_system(
-            system=HouseholdSystem(), system_group=UpdateSystems
-        )
+        self.world.system_manager.add_system(TickModifiersSystem())
+        self.world.system_manager.add_system(TickTraitsSystem())
+        self.world.system_manager.add_system(SpawnNewResidentSystem())
+        self.world.system_manager.add_system(UpdateFrequentedLocationSystem())
+        self.world.system_manager.add_system(AgingSystem())
+        self.world.system_manager.add_system(LifeStageSystem())
+        self.world.system_manager.add_system(ChildBirthSystem())
+        self.world.system_manager.add_system(CharacterLifespanSystem())
+        self.world.system_manager.add_system(BusinessLifespanSystem())
+        self.world.system_manager.add_system(HouseholdSystem())
+
+        # Late Update Systems
+        self.world.system_manager.add_system(TimeSystem())
 
     def _init_component_factories(self) -> None:
         """Initialize built-in component factories."""
@@ -373,6 +331,8 @@ class Simulation:
 
     def initialize(self) -> None:
         """Run initialization systems only."""
+        self.world.system_manager.sort_children()
+
         initialization_system_group = self.world.system_manager.get_system(
             InitializationSystems
         )

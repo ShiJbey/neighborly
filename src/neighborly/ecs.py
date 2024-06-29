@@ -20,8 +20,10 @@ Sources:
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from abc import ABC, abstractmethod
+from queue import PriorityQueue
 from typing import (
     Any,
     Callable,
@@ -78,12 +80,12 @@ class SystemNotFoundError(Exception):
 
     __slots__ = ("system_type", "message")
 
-    system_type: Type[Any]
+    system_type: str
     """The class type of the system."""
     message: str
     """An error message."""
 
-    def __init__(self, system_type: Type[Any]) -> None:
+    def __init__(self, system_type: str) -> None:
         """
         Parameters
         ----------
@@ -92,7 +94,7 @@ class SystemNotFoundError(Exception):
         """
         super().__init__()
         self.system_type = system_type
-        self.message = f"Could not find system with type: {system_type.__name__}."
+        self.message = f"Could not find system with type: {system_type}."
 
     def __str__(self) -> str:
         return self.message
@@ -780,6 +782,11 @@ class ISystem(ABC):
 class System(ISystem, ABC):
     """Base class for systems, providing implementation for most lifecycle methods."""
 
+    __system_group__: ClassVar[str] = "UpdateSystems"
+    """The system group the system will be added to."""
+    __update_order__: ClassVar[tuple[str, ...]] = ()
+    """Ordering constraints for when the system should be update."""
+
     __slots__ = ("_active",)
 
     _active: bool
@@ -843,6 +850,111 @@ class System(ISystem, ABC):
         """Checks if this system should run this simulation step."""
         return self._active
 
+    @classmethod
+    def system_name(cls) -> str:
+        return cls.__name__
+
+    @classmethod
+    def system_group(cls) -> str:
+        return cls.__system_group__
+
+    @classmethod
+    def update_order(cls) -> tuple[str, ...]:
+        return cls.__update_order__
+
+
+@dataclasses.dataclass
+class _SystemSortNode:
+
+    system: System
+    update_first: bool = False
+    update_last: bool = False
+    order: int = 0
+
+
+@dataclasses.dataclass(order=True)
+class _NodeQueueEntry:
+    priority: int
+    item: _SystemSortNode = dataclasses.field(compare=False)
+
+
+def _topological_sort(systems: list[System]) -> list[System]:
+    """Perform topological sort on the provided systems."""
+
+    # Convert the systems to nodes
+    nodes: dict[str, _SystemSortNode] = {}
+    edges: list[tuple[str, str]] = []
+    for system in systems:
+        node = _SystemSortNode(system=system)
+
+        for constraint in system.update_order():
+            if constraint == "first":
+                node.update_first = True
+                node.order -= 1
+            elif constraint == "last":
+                node.update_last = True
+                node.order += 1
+            else:
+                # We have to parse it
+                command, system_name = tuple(s.strip() for s in constraint.split(":"))
+
+                if command == "before":
+                    edges.append((system.system_name(), system_name))
+                elif command == "after":
+                    edges.append((system_name, system.system_name()))
+                else:
+                    raise ValueError(f"Unknown update order constraint: {constraint}.")
+
+        if node.update_first and node.update_last:
+            raise ValueError(
+                f"'{system.system_name()}' has constraints to update first and last."
+            )
+
+        nodes[system.system_name()] = node
+
+    # verify all edges have nodes
+    for _n, _m in edges:
+        if _n not in nodes:
+            raise KeyError(f"Missing System with name: {_n}.")
+        if _m not in nodes:
+            raise KeyError(f"Missing System with name: {_m}.")
+
+    def get_incoming_edges(_node: _SystemSortNode) -> list[str]:
+        return [_n for _n, _m in edges if _m == _node.system.system_name()]
+
+    def get_outgoing_edges(_node: _SystemSortNode) -> list[str]:
+        return [_m for _n, _m in edges if _n == _node.system.system_name()]
+
+    result: list[System] = []
+
+    # Get all nodes with no incoming edges.
+    starting_nodes = [
+        node for node in nodes.values() if len(get_incoming_edges(node)) == 0
+    ]
+
+    node_queue: PriorityQueue[_NodeQueueEntry] = PriorityQueue()
+    for node in starting_nodes:
+        node_queue.put(_NodeQueueEntry(priority=node.order, item=node))
+
+    while not node_queue.empty():
+        entry = node_queue.get()
+        node = entry.item
+        result.append(node.system)
+
+        for dependent_name in get_outgoing_edges(node):
+            dependent = nodes[dependent_name]
+            edges.remove((node.system.system_name(), dependent_name))
+
+            if len(get_incoming_edges(dependent)) == 0:
+                node_queue.put(
+                    _NodeQueueEntry(priority=dependent.order, item=dependent)
+                )
+
+    if edges:
+        raise ValueError(f"Systems ordering contains a dependency cycle.")
+
+    return result
+
 
 class SystemGroup(System, ABC):
     """A group of ECS systems that run as a unit.
@@ -852,7 +964,7 @@ class SystemGroup(System, ABC):
 
     __slots__ = ("_children",)
 
-    _children: list[tuple[int, System]]
+    _children: list[System]
     """The systems that belong to this group"""
 
     def __init__(self) -> None:
@@ -861,31 +973,28 @@ class SystemGroup(System, ABC):
 
     def set_active(self, value: bool) -> None:
         super().set_active(value)
-        for _, child in self._children:
+        for child in self._children:
             child.set_active(value)
 
-    def iter_children(self) -> Iterator[tuple[int, System]]:
+    def iter_children(self) -> Iterator[System]:
         """Get an iterator for the group's children.
 
         Returns
         -------
-        Iterator[tuple[SystemBase]]
+        Iterator[System]
             An iterator for the child system collection.
         """
         return iter(self._children)
 
-    def add_child(self, system: System, priority: int = 0) -> None:
+    def add_child(self, system: System) -> None:
         """Add a new system as a sub_system of this group.
 
         Parameters
         ----------
         system
             The system to add to this group.
-        priority
-            The priority of running this system relative to its siblings.
         """
-        self._children.append((priority, system))
-        self._children.sort(key=lambda pair: pair[0], reverse=True)
+        self._children.append(system)
 
     def remove_child(self, system_type: Type[System]) -> None:
         """Remove a child system.
@@ -899,7 +1008,7 @@ class SystemGroup(System, ABC):
             The class type of the system to remove.
         """
         children_to_remove = [
-            pair for pair in self._children if isinstance(pair[1], system_type)
+            child for child in self._children if isinstance(child, system_type)
         ]
 
         if children_to_remove:
@@ -913,11 +1022,19 @@ class SystemGroup(System, ABC):
         world
             The world instance the system is updating
         """
-        for _, child in self._children:
+        for child in self._children:
             child.on_start_running(world)
             if child.should_run_system(world):
                 child.on_update(world)
             child.on_stop_running(world)
+
+    def sort_children(self) -> None:
+        """Performs topologically sort child systems."""
+        self._children = _topological_sort(self._children)
+
+        for child in self._children:
+            if isinstance(child, SystemGroup):
+                child.sort_children()
 
 
 class InitializationSystems(SystemGroup):
@@ -926,6 +1043,9 @@ class InitializationSystems(SystemGroup):
     Any content initialization systems or initial world building systems should
     belong to this group.
     """
+
+    __system_group__ = "SystemManager"
+    __update_order__ = ("before:EarlyUpdateSystems", "first")
 
     def on_update(self, world: World) -> None:
         # Run all child systems first before deactivating
@@ -936,13 +1056,22 @@ class InitializationSystems(SystemGroup):
 class EarlyUpdateSystems(SystemGroup):
     """The early phase of the update loop."""
 
+    __system_group__ = "SystemManager"
+    __update_order__ = ("before:UpdateSystems",)
+
 
 class UpdateSystems(SystemGroup):
     """The main phase of the update loop."""
 
+    __system_group__ = "SystemManager"
+    __update_order__ = ("before:LateUpdateSystems",)
+
 
 class LateUpdateSystems(SystemGroup):
     """The late phase of the update loop."""
+
+    __system_group__ = "SystemManager"
+    __update_order__ = ("last",)
 
 
 class SystemManager(SystemGroup):
@@ -960,8 +1089,6 @@ class SystemManager(SystemGroup):
     def add_system(
         self,
         system: System,
-        priority: int = 0,
-        system_group: Optional[Type[SystemGroup]] = None,
     ) -> None:
         """Add a System instance.
 
@@ -969,31 +1096,22 @@ class SystemManager(SystemGroup):
         ----------
         system
             The system to add.
-        priority
-            The priority of the system relative to the others in its system group.
-        system_group
-            The class of the group to add this system to
         """
 
-        if system_group is None:
-            self.add_child(system, priority)
-            return
-
-        stack = [child for _, child in self._children]
+        stack: list[SystemGroup] = [self]
 
         while stack:
             current_sys = stack.pop()
 
-            if isinstance(current_sys, system_group):
+            if current_sys.system_name() == system.system_group():
                 current_sys.add_child(system)
-                system.on_add(self._world)
                 return
 
-            if isinstance(current_sys, SystemGroup):
-                for _, child in current_sys.iter_children():
+            for child in current_sys.iter_children():
+                if isinstance(child, SystemGroup):
                     stack.append(child)
 
-        raise SystemNotFoundError(system_group)
+        raise SystemNotFoundError(system.system_group())
 
     def get_system(self, system_type: Type[_ST]) -> _ST:
         """Attempt to get a System of the given type.
@@ -1009,7 +1127,7 @@ class SystemManager(SystemGroup):
             The system instance if one is found.
         """
         stack: list[tuple[SystemGroup, System]] = [
-            (self, child) for _, child in self._children
+            (self, child) for child in self._children
         ]
 
         while stack:
@@ -1019,10 +1137,10 @@ class SystemManager(SystemGroup):
                 return current_sys
 
             if isinstance(current_sys, SystemGroup):
-                for _, child in current_sys.iter_children():
+                for child in current_sys.iter_children():
                     stack.append((current_sys, child))
 
-        raise SystemNotFoundError(system_type)
+        raise SystemNotFoundError(system_type.__name__)
 
     def remove_system(self, system_type: Type[System]) -> None:
         """Remove all instances of a system type.
@@ -1043,7 +1161,7 @@ class SystemManager(SystemGroup):
         """
 
         stack: list[tuple[SystemGroup, System]] = [
-            (self, c) for _, c in self.iter_children()
+            (self, c) for c in self.iter_children()
         ]
 
         while stack:
@@ -1055,7 +1173,7 @@ class SystemManager(SystemGroup):
 
             else:
                 if isinstance(current_sys, SystemGroup):
-                    for _, child in current_sys.iter_children():
+                    for child in current_sys.iter_children():
                         stack.append((current_sys, child))
 
     def update_systems(self) -> None:

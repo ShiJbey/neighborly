@@ -21,7 +21,7 @@ from neighborly.components.relationship import Relationship, Relationships, Roma
 from neighborly.components.settlement import Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.components.stats import Sociability
-from neighborly.ecs import Active, GameObject, System, World, UpdateSystems
+from neighborly.ecs import Active, GameObject, System, World
 from neighborly.helpers.action import get_action_probability
 from neighborly.helpers.character import (
     add_character_to_household,
@@ -698,18 +698,16 @@ class MeetNewPeopleSystem(System):
 def load_plugin(sim: Simulation) -> None:
     """Load systems into the simulation."""
 
-    sim.world.systems.add_system(FindJobSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(FiredFromJobSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(JobPromotionSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(StartBusinessSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(CharacterDatingSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(CharacterMarriageSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(CharacterDivorceSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(DatingBreakUpSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(PregnancySystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(RetirementSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(
-        AdultsFormOwnHouseholdSystem(), system_group=UpdateSystems
-    )
-    sim.world.systems.add_system(CrushFormationSystem(), system_group=UpdateSystems)
-    sim.world.systems.add_system(MeetNewPeopleSystem(), system_group=UpdateSystems)
+    sim.world.systems.add_system(FindJobSystem())
+    sim.world.systems.add_system(FiredFromJobSystem())
+    sim.world.systems.add_system(JobPromotionSystem())
+    sim.world.systems.add_system(StartBusinessSystem())
+    sim.world.systems.add_system(CharacterDatingSystem())
+    sim.world.systems.add_system(CharacterMarriageSystem())
+    sim.world.systems.add_system(CharacterDivorceSystem())
+    sim.world.systems.add_system(DatingBreakUpSystem())
+    sim.world.systems.add_system(PregnancySystem())
+    sim.world.systems.add_system(RetirementSystem())
+    sim.world.systems.add_system(AdultsFormOwnHouseholdSystem())
+    sim.world.systems.add_system(CrushFormationSystem())
+    sim.world.systems.add_system(MeetNewPeopleSystem())
