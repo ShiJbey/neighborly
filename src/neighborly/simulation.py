@@ -82,7 +82,6 @@ from neighborly.libraries import (
     DistrictNameFactories,
     EffectLibrary,
     JobRoleLibrary,
-    LocationPreferenceLibrary,
     PreconditionLibrary,
     SettlementLibrary,
     SettlementNameFactories,
@@ -119,7 +118,6 @@ from neighborly.systems import (
     CompileCharacterDefsSystem,
     CompileDistrictDefsSystem,
     CompileJobRoleDefsSystem,
-    CompileLocationPreferenceDefsSystem,
     CompileSettlementDefsSystem,
     CompileSkillDefsSystem,
     CompileSpeciesDefsSystem,
@@ -190,7 +188,6 @@ class Simulation:
         self.world.resource_manager.add_resource(SpeciesLibrary())
         self.world.resource_manager.add_resource(SkillLibrary())
         self.world.resource_manager.add_resource(BeliefLibrary())
-        self.world.resource_manager.add_resource(LocationPreferenceLibrary())
         self.world.resource_manager.add_resource(SettlementNameFactories())
         self.world.resource_manager.add_resource(EffectLibrary())
         self.world.resource_manager.add_resource(PreconditionLibrary())
@@ -206,7 +203,6 @@ class Simulation:
         self.world.system_manager.add_system(CompileTraitDefsSystem())
         self.world.system_manager.add_system(CompileSpeciesDefsSystem())
         self.world.system_manager.add_system(CompileBeliefDefsSystem())
-        self.world.system_manager.add_system(CompileLocationPreferenceDefsSystem())
         self.world.system_manager.add_system(CompileJobRoleDefsSystem())
         self.world.system_manager.add_system(CompileSkillDefsSystem())
         self.world.system_manager.add_system(CompileDistrictDefsSystem())

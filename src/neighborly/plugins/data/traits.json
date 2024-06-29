@@ -4,10 +4,22 @@
     "effects": [
       {
         "type": "AddLocationPreference",
-        "rule_id": "likes_bars"
+        "location_preconditions": [
+          {
+            "type": "HasTrait",
+            "target": "location",
+            "trait": "serves_alcohol"
+          }
+        ],
+        "value": 0.8,
+        "modifier_type": "percent",
+        "reason": "Has the 'Drinks too Much' trait."
       }
     ],
-    "spawn_frequency": 1
+    "spawn_frequency": 10,
+    "tags": [
+      "personality"
+    ]
   },
   "skeptical": {
     "name": "Skeptical",

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from neighborly.components.location import LocationPreferences
+from neighborly.components.location import LocationPreferences, LocationPreference
 from neighborly.components.relationship import Relationship
 from neighborly.components.stats import StatModifierType, Stats
 from neighborly.ecs import GameObject, World
@@ -279,29 +279,100 @@ class AddLocationPreference(Effect):
 
     __effect_name__ = "AddLocationPreference"
 
-    __slots__ = ("rule_id",)
+    __slots__ = (
+        "location_preconditions",
+        "character_preconditions",
+        "value",
+        "modifier_type",
+        "source",
+    )
 
-    rule_id: str
-    """The ID of a location preference rule."""
+    location_preconditions: list[Precondition]
+    """Precondition to run against the location when scoring."""
+    character_preconditions: list[Precondition]
+    """Precondition to run against a character when scoring."""
+    value: float
+    """The amount to apply to the score."""
+    modifier_type: StatModifierType
+    """How to apply the modifier value."""
 
-    def __init__(self, rule_id: str) -> None:
-        super().__init__()
-        self.rule_id = rule_id
+    def __init__(
+        self,
+        location_preconditions: list[Precondition],
+        character_preconditions: list[Precondition],
+        value: float,
+        modifier_type: StatModifierType,
+        reason: str = "",
+    ) -> None:
+        super().__init__(reason=reason)
+        self.location_preconditions = location_preconditions
+        self.character_preconditions = character_preconditions
+        self.value = value
+        self.modifier_type = modifier_type
 
     @property
     def description(self) -> str:
-        return f"Gains location preference {self.rule_id!r}"
+        location_precondition_descriptions = "; ".join(
+            [p.description for p in self.location_preconditions]
+        )
+
+        character_precondition_descriptions = "; ".join(
+            [p.description for p in self.character_preconditions]
+        )
+
+        sign = "+" if self.value > 0 else "-"
+        percent_sign = "%" if self.modifier_type == StatModifierType.PERCENT else ""
+
+        return (
+            f"Effect(s): Location preference {sign}{abs(self.value)}{percent_sign}\n"
+            f"Location Precondition(s): {location_precondition_descriptions}\n"
+            f"Character Precondition(s): {character_precondition_descriptions}\n"
+        )
 
     def apply(self, target: GameObject) -> None:
-        target.get_component(LocationPreferences).add_rule(self.rule_id)
+        target.get_component(LocationPreferences).add_preference(
+            LocationPreference(
+                location_preconditions=self.location_preconditions,
+                character_preconditions=self.character_preconditions,
+                value=self.value,
+                modifier_type=self.modifier_type,
+                reason=self.reason,
+                source=self,
+            )
+        )
 
     def remove(self, target: GameObject) -> None:
-        target.get_component(LocationPreferences).remove_rule(self.rule_id)
+        target.get_component(LocationPreferences).remove_from_source(self)
 
     @classmethod
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        rule_id = params["rule_id"]
-        return cls(rule_id=rule_id)
+        value: float = float(params["value"])
+        modifier_name: str = params.get("modifier_type", "FLAT")
+        modifier_type = StatModifierType[modifier_name.upper()]
+
+        reason: str = params.get("reason", "")
+
+        precondition_library = world.resources.get_resource(PreconditionLibrary)
+
+        location_preconditions: list[Precondition] = []
+        for entry in params.get("location_preconditions", []):
+            location_preconditions.append(
+                precondition_library.create_from_obj(world, entry)
+            )
+
+        character_preconditions: list[Precondition] = []
+        for entry in params.get("character_preconditions", []):
+            character_preconditions.append(
+                precondition_library.create_from_obj(world, entry)
+            )
+
+        return cls(
+            location_preconditions=location_preconditions,
+            character_preconditions=character_preconditions,
+            value=value,
+            modifier_type=modifier_type,
+            reason=reason,
+        )
 
 
 class AddBelief(Effect):

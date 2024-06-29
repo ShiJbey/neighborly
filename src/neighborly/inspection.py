@@ -41,7 +41,6 @@ from neighborly.helpers.stats import get_stat
 from neighborly.libraries import (
     BeliefLibrary,
     JobRoleLibrary,
-    LocationPreferenceLibrary,
     SkillLibrary,
     SpeciesLibrary,
     TraitLibrary,
@@ -536,25 +535,18 @@ def _get_beliefs_table(obj: GameObject) -> str:
 def _get_location_preferences_table(obj: GameObject) -> str:
     """Generate section for GameObject beliefs"""
 
-    preferences = obj.try_component(LocationPreferences)
-    library = obj.world.resources.get_resource(LocationPreferenceLibrary)
+    if preferences := obj.try_component(LocationPreferences):
+        output: list[str] = [
+            "=== Location Preferences ===",
+            "",
+        ]
 
-    if preferences is None:
-        return ""
+        for p in preferences.preferences:
+            output.append(f"{p.get_description()}\n")
 
-    output: list[str] = [
-        "=== Location Preferences ===",
-        "",
-    ]
+        return "\n".join(output)
 
-    table = tabulate.tabulate(
-        [(entry, library.get_rule(entry).description) for entry in preferences.rules],
-        headers=("ID", "Description"),
-    )
-
-    output.append(table)
-
-    return "\n".join(output)
+    return ""
 
 
 _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
@@ -859,22 +851,6 @@ def list_beliefs(sim: Simulation) -> None:
     print(output)
 
 
-def list_location_preferences(sim: Simulation) -> None:
-    """List all available location preferences."""
-
-    library = sim.world.resources.get_resource(LocationPreferenceLibrary)
-
-    rows = [(entry.rule_id, entry.description) for entry in library.rules.values()]
-
-    table = tabulate.tabulate(rows, headers=["ID", "Description"])
-
-    output = "=== Location Preferences ===\n"
-    output += table
-    output += "\n"
-
-    print(output)
-
-
 def inspect_trait(sim: Simulation, trait_id: str) -> None:
     """Display information about a trait."""
 
@@ -1020,31 +996,5 @@ def inspect_belief(sim: Simulation, belief_id: str) -> None:
             lines.append(f"\t- {effect.description}")
     else:
         lines.append("Effects: N/A")
-
-    print("\n".join(lines))
-
-
-def inspect_location_preference(sim: Simulation, rule_id: str) -> None:
-    """Display information about a location preference."""
-
-    rule = sim.world.resources.get_resource(LocationPreferenceLibrary).get_rule(rule_id)
-
-    lines: list[str] = [
-        "Location Preference",
-        "===================",
-        f"ID: {rule.rule_id!r}",
-        f"Description: {rule.description!r}",
-    ]
-
-    # Add requirements
-    if rule.preconditions:
-        lines.append("Preconditions:")
-        for precondition in rule.preconditions:
-            lines.append(f"\t- {precondition.description}")
-    else:
-        lines.append("Preconditions: N/A")
-
-    # Add consideration
-    lines.append(f"Score Consideration: {rule.probability}")
 
     print("\n".join(lines))

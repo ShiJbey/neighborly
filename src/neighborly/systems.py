@@ -27,7 +27,6 @@ from neighborly.components.location import (
     CurrentSettlement,
     FrequentedLocations,
     Location,
-    LocationPreferenceRule,
     LocationPreferences,
 )
 from neighborly.components.relationship import Relationship
@@ -81,7 +80,6 @@ from neighborly.libraries import (
     DistrictLibrary,
     EffectLibrary,
     JobRoleLibrary,
-    LocationPreferenceLibrary,
     PreconditionLibrary,
     SettlementLibrary,
     SkillLibrary,
@@ -500,36 +498,6 @@ class CompileDistrictDefsSystem(System):
         for definition in compiled_defs:
             if not definition.is_template:
                 library.add_definition(definition)
-
-
-class CompileLocationPreferenceDefsSystem(System):
-    """Compile location preference definitions."""
-
-    __system_group__ = "InitializationSystems"
-
-    def on_update(self, world: World) -> None:
-        library = world.resource_manager.get_resource(LocationPreferenceLibrary)
-        precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
-
-        compiled_defs = compile_definitions(library.definitions.values())
-
-        library.definitions.clear()
-
-        for definition in compiled_defs:
-            if not definition.is_template:
-                library.add_definition(definition)
-
-                library.add_rule(
-                    LocationPreferenceRule(
-                        rule_id=definition.definition_id,
-                        description=definition.description,
-                        preconditions=[
-                            precondition_library.create_from_obj(world, entry)
-                            for entry in definition.preconditions
-                        ],
-                        probability=definition.probability,
-                    )
-                )
 
 
 class CompileBeliefDefsSystem(System):

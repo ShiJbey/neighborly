@@ -18,7 +18,6 @@ from neighborly.defs.base_types import (
     CharacterDef,
     DistrictDef,
     JobRoleDef,
-    LocationPreferenceDef,
     SettlementDef,
     SkillDef,
     SpeciesDef,
@@ -30,7 +29,6 @@ from neighborly.libraries import (
     CharacterLibrary,
     DistrictLibrary,
     JobRoleLibrary,
-    LocationPreferenceLibrary,
     SettlementLibrary,
     SkillLibrary,
     SpeciesLibrary,
@@ -239,17 +237,3 @@ def load_beliefs(
 
     for entry in data:
         library.add_definition(BeliefDef.model_validate(entry))
-
-
-def load_location_preferences(
-    sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
-) -> None:
-    """Load location preference rules from a file."""
-
-    with open(file_path, "r", encoding="utf8") as file:
-        data: list[dict[str, Any]] = yaml.safe_load(file)
-
-    library = sim.world.resource_manager.get_resource(LocationPreferenceLibrary)
-
-    for entry in data:
-        library.add_definition(LocationPreferenceDef.model_validate(entry))

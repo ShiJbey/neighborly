@@ -7,11 +7,11 @@ characters have the highest likelihood of interacting with during a time step.
 
 """
 
-from collections import defaultdict
-from typing import Any, Iterable, Iterator
+from typing import Any, Iterator, Optional
 
 from ordered_set import OrderedSet
 
+from neighborly.components.stats import StatModifierType
 from neighborly.ecs import Component, GameObject
 from neighborly.preconditions.base_types import Precondition
 
@@ -144,83 +144,119 @@ class FrequentedLocations(Component):
         return f"{self.__class__.__name__}({repr(self._locations)})"
 
 
-class LocationPreferenceRule:
+class LocationPreference:
     """A rule that helps characters score how they feel about locations to frequent."""
 
-    __slots__ = ("rule_id", "description", "preconditions", "probability")
+    __slots__ = (
+        "location_preconditions",
+        "character_preconditions",
+        "value",
+        "modifier_type",
+        "reason",
+        "source",
+    )
 
-    rule_id: str
-    """A unique ID for this rule."""
-    description: str
-    """A description of the preference."""
-    preconditions: list[Precondition]
-    """Precondition to run when scoring a location."""
-    probability: float
+    location_preconditions: list[Precondition]
+    """Precondition to run against the location when scoring."""
+    character_preconditions: list[Precondition]
+    """Precondition to run against a character when scoring."""
+    value: float
     """The amount to apply to the score."""
+    modifier_type: StatModifierType
+    """How to apply the modifier value."""
+    reason: str
+    """The reason for this preference."""
+    source: Optional[object]
+    """The source of this preference."""
 
     def __init__(
         self,
-        rule_id: str,
-        description: str,
-        preconditions: list[Precondition],
-        probability: float,
+        location_preconditions: list[Precondition],
+        character_preconditions: list[Precondition],
+        value: float,
+        modifier_type: StatModifierType,
+        reason: str = "",
+        source: Optional[object] = None,
     ) -> None:
-        self.rule_id = rule_id
-        self.description = description
-        self.preconditions = preconditions
-        self.probability = probability
+        self.location_preconditions = location_preconditions
+        self.character_preconditions = character_preconditions
+        self.value = value
+        self.modifier_type = modifier_type
+        self.reason = reason
+        self.source = source
 
-    def check_preconditions(self, location: GameObject) -> bool:
-        """Check the preconditions against the given location."""
+    def get_description(self) -> str:
+        """Get a description of what the modifier does."""
 
-        for precondition in self.preconditions:
-            if precondition.check(location) is False:
-                return False
+        location_precondition_descriptions = "; ".join(
+            [p.description for p in self.location_preconditions]
+        )
 
-        return True
+        character_precondition_descriptions = "; ".join(
+            [p.description for p in self.character_preconditions]
+        )
+
+        sign = "+" if self.value > 0 else "-"
+        percent_sign = "%" if self.modifier_type == StatModifierType.PERCENT else ""
+        value_str = str(abs(self.value * 100)) if percent_sign else str(abs(self.value))
+
+        return (
+            f"Effect(s): Location preference {sign}{value_str}{percent_sign}\n"
+            f"Location Precondition(s): {location_precondition_descriptions}\n"
+            f"Character Precondition(s): {character_precondition_descriptions}\n"
+            f"Reason: {self.reason}"
+        )
 
 
 class LocationPreferences(Component):
-    """A component that manages a character's location preference rules."""
+    """A component that manages a character's location preferences."""
 
-    __slots__ = ("_rules",)
-
-    _rules: defaultdict[str, int]
-    """Rules IDs mapped to reference counts."""
+    preferences: list[LocationPreference]
+    """All location preference modifiers."""
 
     def __init__(
         self,
     ) -> None:
         super().__init__()
-        self._rules = defaultdict(lambda: 0)
+        self.preferences = []
 
-    @property
-    def rules(self) -> Iterable[str]:
-        """Rules applied to the owning GameObject's relationships."""
-        return self._rules
+    def add_preference(self, preference: LocationPreference) -> None:
+        """Add a preference to the manager."""
+        self.preferences.append(preference)
 
-    def add_rule(self, rule_id: str) -> None:
-        """Add a rule to the rule collection."""
-        self._rules[rule_id] += 1
+    def remove_preference(self, preference: LocationPreference) -> bool:
+        """Remove a preference from the manager.
 
-    def has_rule(self, rule_id: str) -> bool:
-        """Check if a rule is present."""
-        return rule_id in self._rules
-
-    def remove_rule(self, rule_id: str) -> bool:
-        """Remove a rule from the rules collection."""
-        if rule_id in self._rules:
-            self._rules[rule_id] -= 1
-
-            if self._rules[rule_id] <= 0:
-                del self._rules[rule_id]
-
+        Returns
+        -------
+        bool
+            True if successfully removed.
+        """
+        try:
+            self.preferences.remove(preference)
             return True
+        except ValueError:
+            return False
 
-        return False
+    def remove_from_source(self, source: object) -> bool:
+        """Remove all preferences from a given source.
+
+        Returns
+        -------
+        bool
+            True if successfully removed.
+        """
+        any_preference_removed = False
+
+        for i in reversed(range(len(self.preferences))):
+            if self.preferences[i].source == source:
+                self.preferences.pop(i)
+                any_preference_removed = True
+
+        return any_preference_removed
 
     def to_dict(self) -> dict[str, Any]:
-        return {"rules": [r for r in self._rules]}
+        return {}
 
 
 class CurrentSettlement(Component):

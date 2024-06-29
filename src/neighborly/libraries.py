@@ -18,7 +18,6 @@ from neighborly.action import ActionConsideration
 from neighborly.components.beliefs import Belief
 from neighborly.components.business import JobRole
 from neighborly.components.character import SpeciesType
-from neighborly.components.location import LocationPreferenceRule
 from neighborly.components.skills import Skill
 from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
@@ -28,7 +27,6 @@ from neighborly.defs.base_types import (
     ContentDefinition,
     DistrictDef,
     JobRoleDef,
-    LocationPreferenceDef,
     SettlementDef,
     SkillDef,
     SpeciesDef,
@@ -351,29 +349,6 @@ class BeliefLibrary(ContentDefinitionLibrary[BeliefDef]):
         """Get a belief from the library using its ID."""
 
         return self.beliefs[belief_id]
-
-
-class LocationPreferenceLibrary(ContentDefinitionLibrary[LocationPreferenceDef]):
-    """The collection of location preference rules."""
-
-    __slots__ = ("rules",)
-
-    rules: dict[str, LocationPreferenceRule]
-    """Rules added to the location preferences."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.rules = {}
-
-    def add_rule(self, rule: LocationPreferenceRule) -> None:
-        """Add a location preference rule."""
-        self.rules[rule.rule_id] = rule
-
-    def get_rule(self, rule_id: str) -> LocationPreferenceRule:
-        """Get a location preference rule."""
-
-        return self.rules[rule_id]
-
 
 class ICharacterNameFactory(Protocol):
     """Generates a character name."""

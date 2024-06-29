@@ -7,8 +7,9 @@ from neighborly.components.location import (
     Location,
     LocationPreferences,
 )
+from neighborly.components.stats import Stat
 from neighborly.ecs import GameObject
-from neighborly.libraries import LocationPreferenceLibrary
+from neighborly.effects.modifiers import StatModifier
 
 
 def add_frequented_location(character: GameObject, location: GameObject) -> None:
@@ -84,43 +85,23 @@ def score_location(character: GameObject, location: GameObject) -> float:
     float
         A probability score from [0.0, 1.0].
     """
+    preferences = character.get_component(LocationPreferences).preferences
 
-    library = character.world.resource_manager.get_resource(LocationPreferenceLibrary)
-    rules = character.get_component(LocationPreferences).rules
+    score = Stat(base_value=0.5, bounds=(0.0, 1.0))
 
-    cumulative_score: float = 0.5
-    consideration_count: int = 1
-
-    for rule_id in rules:
-        rule = library.rules[rule_id]
-        if rule.check_preconditions(location):
-            consideration_score = rule.probability
-        else:
-            consideration_score = -1
-
-        # Scores greater than zero are added to the cumulative score
-        if consideration_score > 0:
-            cumulative_score += consideration_score
-            consideration_count += 1
-
-        # Scores equal to zero make the entire score zero (make zero a veto value)
-        elif consideration_score == 0.0:
-            cumulative_score = 0.0
-            break
+    for preference in preferences:
+        if all(p.check(location) for p in preference.location_preconditions) and all(
+            p.check(character) for p in preference.character_preconditions
+        ):
+            score.add_modifier(
+                StatModifier(
+                    stat="",
+                    value=preference.value,
+                    modifier_type=preference.modifier_type,
+                )
+            )
 
     # Scores are averaged using the arithmetic mean
-    final_score = cumulative_score / consideration_count
+    final_score = score.value
 
     return final_score
-
-
-def add_location_preference(character: GameObject, rule_id: str) -> None:
-    """Add a location preference to a character."""
-
-    character.get_component(LocationPreferences).add_rule(rule_id)
-
-
-def remove_location_preference(character: GameObject, rule_id: str) -> bool:
-    """Remove a location preference from a character."""
-
-    return character.get_component(LocationPreferences).remove_rule(rule_id)
