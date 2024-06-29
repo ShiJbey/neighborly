@@ -129,7 +129,9 @@ class GlobalEventHistory:
 
 
 def dispatch_life_event(
-    event: LifeEvent, gameobjects: Optional[Sequence[GameObject]] = None
+    event: LifeEvent,
+    gameobjects: Optional[Sequence[GameObject]] = None,
+    skip_logging: bool = False
 ) -> None:
     """Dispatch a life event to event listeners.
 
@@ -140,11 +142,15 @@ def dispatch_life_event(
     gameobjects
         GameObjects to locally dispatch the event from. The event is also saved in their
         personal event history components.
+    skip_logging
+        Prevents this event from appearing in the global event history, but the event
+        is still dispatched to listeners.
     """
 
-    event.world.resources.get_resource(GlobalEventHistory).append(event)
+    if not skip_logging:
+        event.world.resources.get_resource(GlobalEventHistory).append(event)
 
-    _logger.info("[%s]: %s", str(event.timestamp), str(event))
+        _logger.info("[%s]: %s", str(event.timestamp), str(event))
 
     if gameobjects:
         for gameobject in gameobjects:

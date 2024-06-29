@@ -585,9 +585,11 @@ class HireEmployee(Action):
             add_trait(get_relationship(self.character, employee), "coworker")
             add_trait(get_relationship(employee, self.character), "coworker")
 
-        if not self.is_silent:
-            hiring_event = StartNewJobEvent(self.character, self.business, self.role)
-            dispatch_life_event(hiring_event, [self.character, self.business])
+        hiring_event = StartNewJobEvent(self.character, self.business, self.role)
+
+        dispatch_life_event(
+            hiring_event, [self.character, self.business], skip_logging=self.is_silent
+        )
 
         return True
 
@@ -614,9 +616,9 @@ class FireEmployee(Action):
             business=self.business, character=self.character, is_silent=True
         ).execute()
 
-        if not self.is_silent:
-            firing_event = FiredFromJobEvent(self.character, self.business, job_role)
-            dispatch_life_event(firing_event, [self.character])
+        firing_event = FiredFromJobEvent(self.character, self.business, job_role)
+
+        dispatch_life_event(firing_event, [self.character], skip_logging=self.is_silent)
 
         return True
 
@@ -654,12 +656,11 @@ class PromoteEmployee(Action):
             is_silent=True,
         ).execute()
 
-        if not self.is_silent:
-            promotion_event = JobPromotionEvent(
-                self.character, self.business, self.role
-            )
+        promotion_event = JobPromotionEvent(self.character, self.business, self.role)
 
-            dispatch_life_event(promotion_event, [self.character])
+        dispatch_life_event(
+            promotion_event, [self.character], skip_logging=self.is_silent
+        )
 
         return True
 
@@ -687,9 +688,9 @@ class LayOffEmployee(Action):
             business=self.business, character=self.character, is_silent=True
         ).execute()
 
-        if not self.is_silent:
-            layoff_event = LayOffEvent(self.character, self.business, job_role)
-            dispatch_life_event(layoff_event, [self.character])
+        layoff_event = LayOffEvent(self.character, self.business, job_role)
+
+        dispatch_life_event(layoff_event, [self.character], skip_logging=self.is_silent)
 
         return True
 
@@ -786,12 +787,13 @@ class LeaveJob(Action):
 
             remove_employee(business_comp, self.character)
 
-        if not self.is_silent:
-            leave_job_event = LeaveJobEvent(
-                character=self.character, business=self.business, job_role=job_role
-            )
+        leave_job_event = LeaveJobEvent(
+            character=self.character, business=self.business, job_role=job_role
+        )
 
-            dispatch_life_event(leave_job_event, [self.character])
+        dispatch_life_event(
+            leave_job_event, [self.character], skip_logging=self.is_silent
+        )
 
         # If we have a successor, put them in charge. Otherwise, close the business
         if is_business_owner:
@@ -925,9 +927,9 @@ class Die(Action):
                 business=occupation.business, character=self.character, is_silent=True
             ).execute()
 
-        if not self.is_silent:
-            death_event = DeathEvent(self.character)
-            dispatch_life_event(death_event, [self.character])
+        death_event = DeathEvent(self.character)
+
+        dispatch_life_event(death_event, [self.character], skip_logging=self.is_silent)
 
         return True
 
