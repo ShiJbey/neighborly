@@ -1,3 +1,7 @@
+"""Default modifier implementations.
+
+"""
+
 import enum
 from typing import Optional
 
@@ -404,14 +408,10 @@ class RelationshipModifier(Modifier):
         return all(p.check(relationship) for p in self.preconditions)
 
     def apply(self, target: GameObject) -> None:
-        from neighborly.helpers.relationship import reevaluate_relationships
-
-        reevaluate_relationships(target)
+        return
 
     def remove(self, target: GameObject) -> None:
-        from neighborly.helpers.relationship import reevaluate_relationships
-
-        reevaluate_relationships(target)
+        return
 
     def apply_to_relationship(self, relationship: GameObject) -> None:
         """Apply this modifier's effects to the given relationship."""

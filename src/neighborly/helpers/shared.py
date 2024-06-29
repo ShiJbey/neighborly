@@ -1,12 +1,13 @@
 from typing import Optional
-from neighborly.components.shared import Modifier, ModifierManager
+
+from neighborly.components.shared import Modifier, Modifiers
 from neighborly.ecs import GameObject
 
 
 def add_modifier(target: GameObject, modifier: Modifier) -> None:
     """Add a modifier to a GameObject."""
 
-    target.get_component(ModifierManager).add_modifier(modifier)
+    target.get_component(Modifiers).add_modifier(modifier)
 
     modifier.apply(target)
 
@@ -20,7 +21,7 @@ def remove_modifier(target: GameObject, modifier: Modifier) -> bool:
         True if removed successfully.
     """
 
-    success = target.get_component(ModifierManager).remove_modifier(modifier)
+    success = target.get_component(Modifiers).remove_modifier(modifier)
 
     if success:
         modifier.remove(target)
@@ -36,7 +37,7 @@ def remove_modifiers_from_source(target: GameObject, source: Optional[object]) -
     bool
         True if any modifiers were removed
     """
-    modifier_manager = target.get_component(ModifierManager)
+    modifier_manager = target.get_component(Modifiers)
 
     modifiers_to_remove = [
         m for m in modifier_manager.modifiers if m.get_source() == source

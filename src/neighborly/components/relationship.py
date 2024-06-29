@@ -12,6 +12,7 @@ from typing import Any, Mapping
 
 from neighborly.components.stats import StatComponent
 from neighborly.ecs import Component, GameObject
+from neighborly.effects.modifiers import RelationshipModifier
 
 
 class Relationship(Component):
@@ -272,3 +273,37 @@ class Romance(StatComponent):
         base_value: float = 0,
     ) -> None:
         super().__init__(base_value, (-50, 50), True)
+
+
+class RelationshipModifiers(Component):
+    """Manages all the modifiers attached to a GameObject."""
+
+    __slots__ = ("modifiers",)
+
+    modifiers: list[RelationshipModifier]
+    """All modifiers within the manager."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.modifiers = []
+
+    def add_modifier(self, modifier: RelationshipModifier) -> None:
+        """Add a modifier to the manager."""
+        self.modifiers.append(modifier)
+
+    def remove_modifier(self, modifier: RelationshipModifier) -> bool:
+        """Remove a modifier from the manager.
+
+        Returns
+        -------
+        bool
+            True if successfully removed.
+        """
+        try:
+            self.modifiers.remove(modifier)
+            return True
+        except ValueError:
+            return False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {}

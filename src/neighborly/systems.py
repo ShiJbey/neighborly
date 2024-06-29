@@ -32,7 +32,7 @@ from neighborly.components.location import (
 )
 from neighborly.components.relationship import Relationship
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.shared import Age, Modifier, ModifierManager
+from neighborly.components.shared import Age, Modifier, Modifiers
 from neighborly.components.skills import Skill
 from neighborly.components.spawn_table import CharacterSpawnTable, DistrictSpawnTable
 from neighborly.components.stats import Fertility, Lifespan
@@ -73,10 +73,7 @@ from neighborly.helpers.settlement import (
     create_district,
     create_settlement,
 )
-from neighborly.helpers.traits import (
-    add_trait,
-    remove_trait,
-)
+from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.libraries import (
     BeliefLibrary,
     BusinessLibrary,
@@ -242,8 +239,8 @@ class SpawnNewResidentSystem(System):
 
             household = create_household(world).get_component(Household)
 
-            set_household_head(household, character)
-            add_character_to_household(household, character)
+            set_household_head(household.gameobject, character.gameobject)
+            add_character_to_household(household.gameobject, character.gameobject)
 
             add_character_to_settlement(
                 current_settlement.settlement.get_component(Settlement), character
@@ -309,9 +306,9 @@ class HouseholdSystem(System):
         ).household.get_component(Household)
 
         if character.gameobject == household.head:
-            set_household_head(household, None)
+            set_household_head(household.gameobject, None)
 
-        remove_character_from_household(household, character)
+        remove_character_from_household(household.gameobject, character.gameobject)
 
 
 class CompileTraitDefsSystem(System):
@@ -812,11 +809,9 @@ class ChildBirthSystem(System):
                 ResidentOf(character.gameobject.get_component(ResidentOf).settlement)
             )
 
-            household = character.gameobject.get_component(
-                MemberOfHousehold
-            ).household.get_component(Household)
+            household = character.gameobject.get_component(MemberOfHousehold).household
 
-            add_character_to_household(household, baby.get_component(Character))
+            add_character_to_household(household, baby)
 
             # Birthing parent to child
             add_trait(get_relationship(character.gameobject, baby), "child")
@@ -896,7 +891,7 @@ class TickModifiersSystem(System):
     """Tick all modifiers."""
 
     def on_update(self, world: World) -> None:
-        for _, (modifier_manager, _) in world.get_components((ModifierManager, Active)):
+        for _, (modifier_manager, _) in world.get_components((Modifiers, Active)):
             modifiers_to_remove: list[Modifier] = []
 
             for modifier in modifier_manager.modifiers:

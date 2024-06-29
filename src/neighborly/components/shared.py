@@ -93,10 +93,10 @@ class Modifier(ABC):
         return self._source
 
 
-class ModifierManager(Component):
+class Modifiers(Component):
     """Manages all the modifiers attached to a GameObject."""
 
-    __slots__ = "modifiers"
+    __slots__ = ("modifiers",)
 
     modifiers: list[Modifier]
     """All modifiers within the manager."""

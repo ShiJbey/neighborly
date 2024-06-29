@@ -4,10 +4,8 @@ import random
 from typing import Any
 
 from neighborly.components.stats import (
-    Charm,
     Discipline,
     Fertility,
-    Intelligence,
     Lifespan,
     Sociability,
     Stats,
@@ -97,24 +95,6 @@ class SociabilityFactory(ComponentFactory):
         return Sociability(base_value=value)
 
 
-class IntelligenceFactory(ComponentFactory):
-    """Creates Intelligence component instances."""
-
-    __component__ = "Intelligence"
-
-    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
-
-        rng = world.resource_manager.get_resource(random.Random)
-
-        value: float = float(kwargs.get("value", 0))
-
-        if value_range := kwargs.get("value_range", ""):
-            min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
-            value = rng.randint(min_value, max_value)
-
-        return Intelligence(base_value=value)
-
-
 class DisciplineFactory(ComponentFactory):
     """Creates Discipline component instances."""
 
@@ -131,21 +111,3 @@ class DisciplineFactory(ComponentFactory):
             value = rng.randint(min_value, max_value)
 
         return Discipline(base_value=value)
-
-
-class CharmFactory(ComponentFactory):
-    """Creates Charm component instances."""
-
-    __component__ = "Charm"
-
-    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
-
-        rng = world.resource_manager.get_resource(random.Random)
-
-        value: float = float(kwargs.get("value", 0))
-
-        if value_range := kwargs.get("value_range", ""):
-            min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
-            value = rng.randint(min_value, max_value)
-
-        return Charm(base_value=value)

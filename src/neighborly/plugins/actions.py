@@ -55,11 +55,7 @@ from neighborly.helpers.relationship import (
 )
 from neighborly.helpers.settlement import remove_character_from_settlement
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import (
-    add_trait,
-    has_trait,
-    remove_trait,
-)
+from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.default_events import (
     BecomeBusinessOwnerEvent,
@@ -371,35 +367,27 @@ class Divorce(Action):
             MemberOfHousehold
         ).household.get_component(Household)
 
-        new_household = create_household(self.world).get_component(Household)
+        new_household = create_household(self.world)
 
         if self.character.gameobject == household.head:
 
-            set_household_head(
-                new_household, self.partner.gameobject.get_component(Character)
-            )
+            set_household_head(new_household, self.partner.gameobject)
 
             remove_character_from_household(
-                household, self.partner.gameobject.get_component(Character)
+                household.gameobject, self.partner.gameobject
             )
 
-            add_character_to_household(
-                new_household, self.partner.gameobject.get_component(Character)
-            )
+            add_character_to_household(new_household, self.partner.gameobject)
 
         else:
 
-            set_household_head(
-                new_household, self.character.gameobject.get_component(Character)
-            )
+            set_household_head(new_household, self.character.gameobject)
 
             remove_character_from_household(
-                household, self.character.gameobject.get_component(Character)
+                household.gameobject, self.character.gameobject
             )
 
-            add_character_to_household(
-                new_household, self.character.gameobject.get_component(Character)
-            )
+            add_character_to_household(new_household, self.character.gameobject)
 
         return True
 
@@ -441,66 +429,46 @@ class GetMarried(Action):
         ).household.get_component(Household)
 
         if self.character == household.head and self.partner == partner_household.head:
-            set_household_head(partner_household, None)
+            set_household_head(partner_household.gameobject, None)
 
             partner_household_members = [*partner_household.members]
             for member in partner_household_members:
-                remove_character_from_household(
-                    partner_household, member.get_component(Character)
-                )
-                add_character_to_household(household, member.get_component(Character))
+                remove_character_from_household(partner_household.gameobject, member)
+                add_character_to_household(household.gameobject, member)
 
             self.world.gameobjects.destroy_gameobject(partner_household.gameobject)
 
         elif (
             self.character == household.head and self.partner != partner_household.head
         ):
-            remove_character_from_household(
-                partner_household, self.partner.get_component(Character)
-            )
-            add_character_to_household(household, self.partner.get_component(Character))
+            remove_character_from_household(partner_household.gameobject, self.partner)
+            add_character_to_household(household.gameobject, self.partner)
 
         elif (
             self.character != household.head and self.partner != partner_household.head
         ):
             new_household = create_household(self.world).get_component(Household)
-            set_household_head(new_household, self.character.get_component(Character))
-            remove_character_from_household(
-                household, self.character.get_component(Character)
-            )
-            remove_character_from_household(
-                partner_household, self.partner.get_component(Character)
-            )
-            add_character_to_household(
-                new_household, self.character.get_component(Character)
-            )
-            add_character_to_household(
-                new_household, self.partner.get_component(Character)
-            )
+            set_household_head(new_household.gameobject, self.character)
+            remove_character_from_household(household.gameobject, self.character)
+            remove_character_from_household(partner_household.gameobject, self.partner)
+            add_character_to_household(new_household.gameobject, self.character)
+            add_character_to_household(new_household.gameobject, self.partner)
         elif (
             self.character != household.head and self.partner == partner_household.head
         ):
 
             new_household = create_household(self.world).get_component(Household)
 
-            set_household_head(new_household, self.character.get_component(Character))
-            remove_character_from_household(
-                household, self.character.get_component(Character)
-            )
-            add_character_to_household(
-                new_household, self.character.get_component(Character)
-            )
+            set_household_head(new_household.gameobject, self.character)
+            remove_character_from_household(household.gameobject, self.character)
+            add_character_to_household(new_household.gameobject, self.character)
 
-            set_household_head(partner_household, None)
+            set_household_head(partner_household.gameobject, None)
 
             partner_household_members = [*partner_household.members]
             for member in partner_household_members:
-                remove_character_from_household(
-                    partner_household, member.get_component(Character)
-                )
-                add_character_to_household(
-                    new_household, member.get_component(Character)
-                )
+                remove_character_from_household(partner_household.gameobject, member)
+                add_character_to_household(new_household.gameobject, member)
 
             self.world.gameobjects.destroy_gameobject(partner_household.gameobject)
 

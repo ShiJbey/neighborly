@@ -25,14 +25,13 @@
     ],
     "components": {
       "Stats": {},
-      "ModifierManager": {},
+      "Modifiers": {},
+      "RelationshipModifiers": {},
       "Lifespan": {},
       "Fertility": {},
       "Stewardship": {},
       "Sociability": {},
-      "Intelligence": {},
       "Discipline": {},
-      "Charm": {},
       "Skills": {},
       "Age": {},
       "FrequentedLocations": {},
@@ -87,13 +86,7 @@
           "Sociability": {
             "value_range": "0-80"
           },
-          "Intelligence": {
-            "value_range": "0-80"
-          },
           "Discipline": {
-            "value_range": "0-80"
-          },
-          "Charm": {
             "value_range": "0-80"
           }
         }
@@ -124,13 +117,7 @@
           "Sociability": {
             "value_range": "0-80"
           },
-          "Intelligence": {
-            "value_range": "0-80"
-          },
           "Discipline": {
-            "value_range": "0-80"
-          },
-          "Charm": {
             "value_range": "0-80"
           }
         }
@@ -152,13 +139,7 @@
       "Sociability": {
         "value_range": "0-80"
       },
-      "Intelligence": {
-        "value_range": "0-80"
-      },
       "Discipline": {
-        "value_range": "0-80"
-      },
-      "Charm": {
         "value_range": "0-80"
       }
     }

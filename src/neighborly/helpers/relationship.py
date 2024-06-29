@@ -2,14 +2,17 @@
 
 """
 
+from typing import Optional
+
 from neighborly.components.beliefs import HeldBeliefs
 from neighborly.components.relationship import (
     Relationship,
+    RelationshipModifiers,
     Relationships,
     Reputation,
     Romance,
 )
-from neighborly.components.shared import ModifierManager
+from neighborly.components.shared import Modifiers
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import Event, GameObject
@@ -44,7 +47,7 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Traits())
     relationship.add_component(Reputation())
     relationship.add_component(Romance())
-    relationship.add_component(ModifierManager())
+    relationship.add_component(Modifiers())
 
     relationship.name = f"[{owner.name} -> {target.name}]"
 
@@ -150,7 +153,7 @@ def add_belief(agent: GameObject, belief_id: str) -> None:
 
     belief = library.get_belief(belief_id)
     held_beliefs.add_belief(belief_id)
-    agent.get_component(ModifierManager).add_modifier(
+    agent.get_component(Modifiers).add_modifier(
         RelationshipModifier(
             direction=RelationshipModifierDir.OUTGOING,
             description=belief.description,
@@ -218,29 +221,27 @@ def reevaluate_relationship(relationship: Relationship) -> None:
 
     # Loop through all the owners modifiers looking for relationship modifiers.
     # Remove the effects of all that you find and re-evaluate if they pass
-    owner_modifiers = relationship.owner.get_component(ModifierManager)
+    owner_modifiers = relationship.owner.get_component(RelationshipModifiers)
     for modifier in owner_modifiers.modifiers:
-        if isinstance(modifier, RelationshipModifier):
-            modifier.remove_from_relationship(relationship.gameobject)
+        modifier.remove_from_relationship(relationship.gameobject)
 
-            if modifier.direction != RelationshipModifierDir.OUTGOING:
-                continue
+        if modifier.direction != RelationshipModifierDir.OUTGOING:
+            continue
 
-            if modifier.check_preconditions(relationship.gameobject):
-                modifier.apply_to_relationship(relationship.gameobject)
+        if modifier.check_preconditions(relationship.gameobject):
+            modifier.apply_to_relationship(relationship.gameobject)
 
     # Do the same as the above with the targets relationship modifiers, but this
     # time look for incoming modifiers
-    target_modifiers = relationship.target.get_component(ModifierManager)
+    target_modifiers = relationship.target.get_component(RelationshipModifiers)
     for modifier in target_modifiers.modifiers:
-        if isinstance(modifier, RelationshipModifier):
-            modifier.remove_from_relationship(relationship.gameobject)
+        modifier.remove_from_relationship(relationship.gameobject)
 
-            if modifier.direction != RelationshipModifierDir.INCOMING:
-                continue
+        if modifier.direction != RelationshipModifierDir.INCOMING:
+            continue
 
-            if modifier.check_preconditions(relationship.gameobject):
-                modifier.apply_to_relationship(relationship.gameobject)
+        if modifier.check_preconditions(relationship.gameobject):
+            modifier.apply_to_relationship(relationship.gameobject)
 
 
 def deactivate_relationships(gameobject: GameObject) -> None:
@@ -282,3 +283,61 @@ def get_relationships_with_traits(
             matches.append(relationship)
 
     return matches
+
+
+def add_relationship_modifier(
+    target: GameObject, modifier: RelationshipModifier
+) -> None:
+    """Add a modifier to a GameObject."""
+
+    target.get_component(RelationshipModifiers).add_modifier(modifier)
+
+    reevaluate_relationships(target)
+
+
+def remove_relationship_modifier(
+    target: GameObject, modifier: RelationshipModifier
+) -> bool:
+    """Remove a modifier from a GameObject.
+
+    Returns
+    -------
+    bool
+        True if removed successfully.
+    """
+
+    success = target.get_component(RelationshipModifiers).remove_modifier(modifier)
+
+    if success:
+        if modifier.direction == RelationshipModifierDir.OUTGOING:
+            for relationship in target.get_component(Relationships).outgoing.values():
+                modifier.remove_from_relationship(relationship)
+        else:
+            for relationship in target.get_component(Relationships).incoming.values():
+                modifier.remove_from_relationship(relationship)
+
+        modifier.remove(target)
+
+    return success
+
+
+def remove_relationship_modifiers_from_source(
+    target: GameObject, source: Optional[object]
+) -> bool:
+    """Remove all modifiers from a given source.
+
+    Returns
+    -------
+    bool
+        True if any modifiers were removed
+    """
+    modifier_manager = target.get_component(RelationshipModifiers)
+
+    modifiers_to_remove = [
+        m for m in modifier_manager.modifiers if m.get_source() == source
+    ]
+
+    for m in modifiers_to_remove:
+        remove_relationship_modifier(target, m)
+
+    return len(modifiers_to_remove) > 0

@@ -7,6 +7,10 @@ import pathlib
 
 import pytest
 
+from neighborly.components.stats import StatModifierType
+from neighborly.components.traits import Trait
+from neighborly.effects.effects import AddRelationshipModifier, AddStatModifier
+from neighborly.effects.modifiers import RelationshipModifierDir
 from neighborly.helpers.character import create_character
 from neighborly.helpers.relationship import (
     add_relationship,
@@ -15,7 +19,7 @@ from neighborly.helpers.relationship import (
 )
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, remove_trait
-from neighborly.libraries import CharacterLibrary
+from neighborly.libraries import CharacterLibrary, TraitLibrary
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -25,11 +29,7 @@ from neighborly.loaders import (
     load_skills,
     load_species,
 )
-from neighborly.plugins import (
-    default_character_names,
-    default_settlement_names,
-    default_traits,
-)
+from neighborly.plugins import default_character_names, default_settlement_names
 from neighborly.simulation import Simulation
 
 _DATA_DIR = (
@@ -50,9 +50,32 @@ def sim() -> Simulation:
     load_skills(simulation, _DATA_DIR / "skills.json")
     load_species(simulation, _DATA_DIR / "species.json")
 
-    default_traits.load_plugin(simulation)
+    # default_traits.load_plugin(simulation)
     default_character_names.load_plugin(simulation)
     default_settlement_names.load_plugin(simulation)
+
+    simulation.world.resources.get_resource(TraitLibrary).add_trait(
+        Trait(
+            definition_id="gullible",
+            name="Gullible",
+            description="",
+            effects=[
+                AddRelationshipModifier(
+                    direction=RelationshipModifierDir.OUTGOING,
+                    description="",
+                    preconditions=[],
+                    effects=[
+                        AddStatModifier(
+                            stat="reputation",
+                            value=10,
+                            modifier_type=StatModifierType.FLAT,
+                        )
+                    ],
+                )
+            ],
+            conflicting_traits=set(),
+        )
+    )
 
     # IMPORTANT: Stop character from generating with traits
     simulation.world.resources.get_resource(CharacterLibrary).get_definition(

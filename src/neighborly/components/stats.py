@@ -437,38 +437,10 @@ class Sociability(StatComponent):
         super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
-class Intelligence(StatComponent):
-    """Tracks a GameObject's intelligence."""
-
-    __stat_name__ = "intelligence"
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
-
-
 class Discipline(StatComponent):
     """Tracks a GameObject's discipline."""
 
     __stat_name__ = "discipline"
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
-
-
-class Charm(StatComponent):
-    """Tracks a GameObject's charm."""
-
-    __stat_name__ = "charm"
 
     MAX_VALUE: int = 100
 

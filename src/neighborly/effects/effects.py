@@ -7,20 +7,28 @@ social rules.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable
 
 from neighborly.components.location import LocationPreferences
 from neighborly.components.relationship import Relationship
 from neighborly.components.stats import StatModifierType, Stats
 from neighborly.ecs import GameObject, World
 from neighborly.effects.base_types import Effect
-from neighborly.helpers.relationship import add_belief, remove_belief
-from neighborly.helpers.shared import (
-    add_modifier,
-    remove_modifiers_from_source,
+from neighborly.effects.modifiers import (
+    RelationshipModifier,
+    RelationshipModifierDir,
+    StatModifier,
 )
+from neighborly.helpers.relationship import (
+    add_belief,
+    add_relationship_modifier,
+    remove_belief,
+    remove_relationship_modifiers_from_source,
+)
+from neighborly.helpers.shared import add_modifier, remove_modifiers_from_source
 from neighborly.helpers.skills import add_skill, get_skill, has_skill
-from neighborly.effects.modifiers import StatModifier
+from neighborly.libraries import EffectLibrary, PreconditionLibrary
+from neighborly.preconditions.base_types import Precondition
 
 
 class AddStatModifier(Effect):
@@ -336,6 +344,67 @@ class AddRelationshipModifier(Effect):
     """Adds a relationship modifier to the GamObject."""
 
     __effect_name__ = "AddRelationshipModifier"
+
+    __slots__ = ("direction", "_description", "preconditions", "effects")
+
+    direction: RelationshipModifierDir
+    _description: str
+    preconditions: list[Precondition]
+    effects: list[Effect]
+
+    def __init__(
+        self,
+        direction: RelationshipModifierDir,
+        description: str,
+        preconditions: Iterable[Precondition],
+        effects: Iterable[Effect],
+    ) -> None:
+        super().__init__()
+        self.direction = direction
+        self._description = description
+        self.preconditions = list(preconditions)
+        self.effects = list(effects)
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    def apply(self, target: GameObject) -> None:
+        add_relationship_modifier(
+            target,
+            RelationshipModifier(
+                direction=self.direction,
+                description=self.description,
+                preconditions=self.preconditions,
+                effects=self.effects,
+                source=self,
+            ),
+        )
+
+    def remove(self, target: GameObject) -> None:
+        remove_relationship_modifiers_from_source(target, self)
+
+    @classmethod
+    def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
+        modifier_dir = RelationshipModifierDir[params["direction"]]
+        description = params.get("description", "")
+
+        precondition_library = world.resources.get_resource(PreconditionLibrary)
+        preconditions: list[Precondition] = []
+        for entry in params.get("preconditions", []):
+            preconditions.append(precondition_library.create_from_obj(world, entry))
+
+        effect_library = world.resources.get_resource(EffectLibrary)
+        effects: list[Effect] = []
+        for entry in params.get("effects", []):
+            effects.append(effect_library.create_from_obj(world, entry))
+
+        return cls(
+            direction=modifier_dir,
+            description=description,
+            preconditions=preconditions,
+            effects=effects,
+        )
 
 
 class AddStatModifierToTarget(Effect):

@@ -103,8 +103,7 @@
   "traitorous": {
     "name": "Traitorous",
     "description": "This character can betray their friends and allies for personal gain.",
-    "effects": [
-    ],
+    "effects": [],
     "outgoing_relationship_effects": [
       {
         "type": "AddStatModifier",
@@ -170,9 +169,7 @@
   "compassionate": {
     "name": "Compassionate",
     "description": "This character cares deeply for the well-being of others.",
-    "effects": [
-
-    ],
+    "effects": [],
     "outgoing_relationship_effects": [
       {
         "type": "AddStatModifier",
@@ -200,8 +197,7 @@
   "callous": {
     "name": "Callous",
     "description": "This character is emotionally detached and unsympathetic.",
-    "effects": [
-    ],
+    "effects": [],
     "outgoing_relationship_effects": [
       {
         "type": "AddStatModifier",
@@ -229,9 +225,7 @@
   "adventurous": {
     "name": "Adventurous",
     "description": "This character seeks excitement and enjoys taking risks.",
-    "effects": [
-
-    ],
+    "effects": [],
     "conflicts_with": [
       "cautious"
     ],
@@ -245,9 +239,7 @@
   "cautious": {
     "name": "Cautious",
     "description": "This character is risk-averse and avoids dangerous situations.",
-    "effects": [
-
-    ],
+    "effects": [],
     "conflicts_with": [
       "adventurous"
     ],
@@ -261,13 +253,7 @@
   "charismatic": {
     "name": "Charismatic",
     "description": "This character has a natural charm that draws others to them.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "charm",
-        "value": 20
-      }
-    ],
+    "effects": [],
     "incoming_relationship_effects": [
       {
         "type": "AddStatModifier",
@@ -351,11 +337,6 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "charm",
-        "value": -10
-      },
-      {
-        "type": "AddStatModifier",
         "stat": "discipline",
         "value": -15
       }
@@ -376,11 +357,6 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "charm",
-        "value": 10
-      },
-      {
-        "type": "AddStatModifier",
         "stat": "discipline",
         "value": 15
       }
@@ -398,13 +374,7 @@
   "intelligent": {
     "name": "Intelligent",
     "description": "This character possesses a high level of intelligence and problem-solving abilities.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "intelligence",
-        "value": 15
-      }
-    ],
+    "effects": [],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
     "inheritance_chance_both": 0.7,
@@ -415,13 +385,7 @@
   "simpleminded": {
     "name": "Simple-Minded",
     "description": "This character lacks intellectual depth and struggles with complex tasks.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "intelligence",
-        "value": -10
-      }
-    ],
+    "effects": [],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.4,
     "inheritance_chance_both": 0.7,
@@ -432,9 +396,7 @@
   "charitable": {
     "name": "Charitable",
     "description": "This character is generous and often helps others in need.",
-    "effects": [
-
-    ],
+    "effects": [],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6,
@@ -445,13 +407,7 @@
   "selfish": {
     "name": "Selfish",
     "description": "This character prioritizes their own needs and desires over others.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "charm",
-        "value": -5
-      }
-    ],
+    "effects": [],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6,
@@ -542,13 +498,7 @@
   "confident": {
     "name": "Confident",
     "description": "This character is self-assured and has a strong belief in their abilities.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "charm",
-        "value": 20
-      }
-    ],
+    "effects": [],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6,
@@ -559,13 +509,7 @@
   "insecure": {
     "name": "Insecure",
     "description": "This character struggles with self-doubt and often feels unattractive or inadequate.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "charm",
-        "value": -10
-      }
-    ],
+    "effects": [],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6,
@@ -593,13 +537,7 @@
   "genius": {
     "name": "Genius",
     "description": "This character possesses exceptional intelligence and problem-solving abilities.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "intelligence",
-        "value": 40
-      }
-    ],
+    "effects": [],
     "conflicts_with": [
       "simpleminded"
     ],

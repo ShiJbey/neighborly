@@ -585,9 +585,9 @@ class AdultsFormOwnHouseholdSystem(System):
                 continue
 
             new_household = create_household(world).get_component(Household)
-            set_household_head(new_household, character)
-            remove_character_from_household(household, character)
-            add_character_to_household(new_household, character)
+            set_household_head(new_household.gameobject, character.gameobject)
+            remove_character_from_household(household.gameobject, character.gameobject)
+            add_character_to_household(new_household.gameobject, character.gameobject)
 
 
 class CrushFormationSystem(System):

@@ -41,7 +41,10 @@ from neighborly.factories.location import (
     LocationFactory,
     LocationPreferencesFactory,
 )
-from neighborly.factories.relationships import RelationshipsFactory
+from neighborly.factories.relationships import (
+    RelationshipModifiersFactory,
+    RelationshipsFactory,
+)
 from neighborly.factories.settlement import (
     DefaultDistrictFactory,
     DefaultSettlementFactory,
@@ -50,7 +53,7 @@ from neighborly.factories.settlement import (
 )
 from neighborly.factories.shared import (
     AgeFactory,
-    ModifierManagerFactory,
+    ModifiersFactory,
     PersonalEventHistoryFactory,
 )
 from neighborly.factories.skills import SkillsFactory
@@ -60,10 +63,8 @@ from neighborly.factories.spawn_table import (
     DistrictSpawnTableFactory,
 )
 from neighborly.factories.stats import (
-    CharmFactory,
     DisciplineFactory,
     FertilityFactory,
-    IntelligenceFactory,
     LifespanFactory,
     SociabilityFactory,
     StatsFactory,
@@ -92,8 +93,8 @@ from neighborly.libraries import (
 from neighborly.life_event import GlobalEventHistory
 from neighborly.preconditions.defaults import (
     AreSameSex,
-    IsSex,
     HasTrait,
+    IsSex,
     LifeStageRequirement,
     OwnerHasTrait,
     OwnerIsSex,
@@ -300,12 +301,11 @@ class Simulation:
         self.world.gameobjects.add_component_factory(FertilityFactory())
         self.world.gameobjects.add_component_factory(StewardshipFactory())
         self.world.gameobjects.add_component_factory(SociabilityFactory())
-        self.world.gameobjects.add_component_factory(IntelligenceFactory())
         self.world.gameobjects.add_component_factory(DisciplineFactory())
-        self.world.gameobjects.add_component_factory(CharmFactory())
         self.world.gameobjects.add_component_factory(HeldBeliefsFactory())
         self.world.gameobjects.add_component_factory(SpeciesFactory())
-        self.world.gameobjects.add_component_factory(ModifierManagerFactory())
+        self.world.gameobjects.add_component_factory(ModifiersFactory())
+        self.world.gameobjects.add_component_factory(RelationshipModifiersFactory())
 
     def _init_effect_precondition_factories(self) -> None:
         """Add effect factories to the library."""

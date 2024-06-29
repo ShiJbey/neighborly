@@ -136,64 +136,66 @@ def set_character_age(character: Character, age: int) -> None:
     character.life_stage = species.get_life_stage_for_age(age)
 
 
-def set_household_head(household: Household, character: Optional[Character]) -> None:
+def set_household_head(household: GameObject, character: Optional[GameObject]) -> None:
     """Set the head of a household."""
 
-    former_head = household.head
+    household_component = household.get_component(Household)
+
+    former_head = household_component.head
 
     # Remove the current household head
-    if household.head is not None:
-        household.head.remove_component(HeadOfHousehold)
-        household.head = None
+    if household_component.head is not None:
+        household_component.head.remove_component(HeadOfHousehold)
+        household_component.head = None
 
     # Set the new household head
     if character is not None:
-        household.head = character.gameobject
-        character.gameobject.add_component(
-            HeadOfHousehold(household=household.gameobject)
-        )
+        household_component.head = character
+        character.add_component(HeadOfHousehold(household=household))
 
-    character_obj = character.gameobject if character else None
-
-    if former_head != character_obj:
-        household.gameobject.dispatch_event(
+    if former_head != character:
+        household.dispatch_event(
             Event(
                 event_type="head-change",
-                world=household.gameobject.world,
+                world=household.world,
                 former_head=former_head,
                 current_head=character,
             )
         )
 
 
-def add_character_to_household(household: Household, character: Character) -> None:
+def add_character_to_household(household: GameObject, character: GameObject) -> None:
     """Add a character to a house hold."""
 
-    household.members.append(character.gameobject)
-    character.gameobject.add_component(
-        MemberOfHousehold(household=household.gameobject)
-    )
+    household_component = household.get_component(Household)
 
-    household.gameobject.dispatch_event(
+    household_component.members.append(character)
+    character.add_component(MemberOfHousehold(household=household))
+
+    household.dispatch_event(
         Event(
             "member-added",
-            world=household.gameobject.world,
-            character=character.gameobject,
+            world=household.world,
+            character=character,
         )
     )
 
 
-def remove_character_from_household(household: Household, character: Character) -> None:
+def remove_character_from_household(
+    household: GameObject, character: GameObject
+) -> None:
     """Remove a character from a house hold."""
 
-    household.members.remove(character.gameobject)
-    character.gameobject.remove_component(MemberOfHousehold)
+    household_component = household.get_component(Household)
 
-    household.gameobject.dispatch_event(
+    household_component.members.remove(character)
+    character.remove_component(MemberOfHousehold)
+
+    household.dispatch_event(
         Event(
             "member-removed",
-            world=household.gameobject.world,
-            character=character.gameobject,
+            world=household.world,
+            character=character,
         )
     )
 
