@@ -628,10 +628,132 @@
         "belief_id": "women_are_not_attractive"
       }
     ],
+    "spawn_frequency": 1,
     "conflicts_with": [
       "attracted_to_women"
     ],
-    "spawn_frequency": 3,
+    "tags": [
+      "sexuality"
+    ]
+  },
+  "heterosexual": {
+    "name": "Heterosexual",
+    "description": "This character experiences romantic attraction to the opposite sex.",
+    "effects": [
+      {
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "preconditions": [
+          {
+            "type": "AreOppositeSex"
+          }
+        ],
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": 15,
+            "reason": "Owner has Heterosexual trait"
+          }
+        ]
+      },
+      {
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "preconditions": [
+          {
+            "type": "AreSameSex"
+          }
+        ],
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": -15,
+            "reason": "Owner has Heterosexual trait"
+          }
+        ]
+      }
+    ],
+    "spawn_frequency": 1,
+    "conflicts_with": [
+      "homosexual",
+      "bisexual"
+    ],
+    "tags": [
+      "sexuality"
+    ]
+  },
+  "homosexual": {
+    "name": "Homosexual",
+    "description": "This character experiences romantic attraction to the same sex.",
+    "effects": [
+      {
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "preconditions": [
+          {
+            "type": "AreOppositeSex"
+          }
+        ],
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": -15,
+            "reason": "Owner has Homosexual trait"
+          }
+        ]
+      },
+      {
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "preconditions": [
+          {
+            "type": "AreSameSex"
+          }
+        ],
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": 15,
+            "reason": "Owner has Homosexual trait"
+          }
+        ]
+      }
+    ],
+    "spawn_frequency": 1,
+    "conflicts_with": [
+      "heterosexual",
+      "bisexual"
+    ],
+    "tags": [
+      "sexuality"
+    ]
+  },
+  "bisexual": {
+    "name": "Bisexual",
+    "description": "This character experiences romantic attraction to the both sexes.",
+    "effects": [
+      {
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": 15,
+            "reason": "Owner has Bisexual trait"
+          }
+        ]
+      }
+    ],
+    "spawn_frequency": 1,
+    "conflicts_with": [
+      "heterosexual",
+      "bisexual"
+    ],
     "tags": [
       "sexuality"
     ]
@@ -652,7 +774,6 @@
     "conflicts_with": [
       "attracted_to_men"
     ],
-    "spawn_frequency": 3,
     "tags": [
       "sexuality"
     ]

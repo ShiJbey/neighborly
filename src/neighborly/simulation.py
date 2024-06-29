@@ -107,7 +107,7 @@ from neighborly.preconditions.defaults import (
     TargetIsSex,
     TargetLifeStageRequirement,
     TargetSkillRequirement,
-    TargetStatRequirement,
+    TargetStatRequirement, AreOppositeSex,
 )
 from neighborly.systems import (
     AgingSystem,
@@ -279,6 +279,7 @@ class Simulation:
         precondition_library.add_precondition_type(OwnerHasTrait)
         precondition_library.add_precondition_type(TargetHasTrait)
         precondition_library.add_precondition_type(AreSameSex)
+        precondition_library.add_precondition_type(AreOppositeSex)
         precondition_library.add_precondition_type(SkillRequirement)
         precondition_library.add_precondition_type(OwnerSkillRequirement)
         precondition_library.add_precondition_type(TargetSkillRequirement)

@@ -351,24 +351,25 @@ class CompileTraitDefsSystem(System):
             if not trait_def.is_template:
                 trait_library.add_definition(trait_def)
 
-                trait_library.add_trait(
-                    Trait(
-                        definition_id=trait_def.definition_id,
-                        name=trait_def.name,
-                        inheritance_chance_both=trait_def.inheritance_chance_both,
-                        inheritance_chance_single=trait_def.inheritance_chance_single,
-                        is_inheritable=(
-                            trait_def.inheritance_chance_single > 0
-                            or trait_def.inheritance_chance_both > 0
-                        ),
-                        description=trait_def.description,
-                        effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in trait_def.effects
-                        ],
-                        conflicting_traits=trait_def.conflicts_with,
-                    )
+                trait = Trait(
+                    definition_id=trait_def.definition_id,
+                    name=trait_def.name,
+                    inheritance_chance_both=trait_def.inheritance_chance_both,
+                    inheritance_chance_single=trait_def.inheritance_chance_single,
+                    is_inheritable=(
+                        trait_def.inheritance_chance_single > 0
+                        or trait_def.inheritance_chance_both > 0
+                    ),
+                    description=trait_def.description,
+                    effects=[
+                        effect_library.create_from_obj(
+                            world, {"reason": f"Has {trait_def.name} trait", **entry})
+                        for entry in trait_def.effects
+                    ],
+                    conflicting_traits=trait_def.conflicts_with,
                 )
+
+                trait_library.add_trait(trait)
 
 
 class CompileSpeciesDefsSystem(System):

@@ -129,6 +129,31 @@ class AreSameSex(Precondition):
         return cls()
 
 
+class AreOppositeSex(Precondition):
+    """Checks if the owner and target of a relationship belong to the dame sex."""
+
+    __precondition_name__ = "AreOppositeSex"
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    @property
+    def description(self) -> str:
+        return f"owner and target of the relationship are the opposite sex"
+
+    def check(self, gameobject: GameObject) -> bool:
+        relationship = gameobject.get_component(Relationship)
+
+        owner_sex = relationship.owner.get_component(Character).sex
+        target_sex = relationship.target.get_component(Character).sex
+
+        return owner_sex != target_sex
+
+    @classmethod
+    def instantiate(cls, world: World, params: dict[str, Any]) -> Precondition:
+        return cls()
+
+
 class ComparatorOp(enum.Enum):
     """Comparator Operators."""
 

@@ -30,9 +30,9 @@ from neighborly.components.location import (
     Location,
     LocationPreferences,
 )
-from neighborly.components.relationship import Relationship, Relationships
+from neighborly.components.relationship import Relationship, Relationships, RelationshipModifiers
 from neighborly.components.settlement import District, Settlement
-from neighborly.components.shared import Age
+from neighborly.components.shared import Age, Modifiers
 from neighborly.components.skills import SKILL_MAX_VALUE, Skills
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
@@ -480,6 +480,35 @@ def _get_frequented_locations_table(obj: GameObject) -> str:
     return output
 
 
+def _modifiers_section(obj: GameObject) -> str:
+    if modifiers := obj.try_component(Modifiers):
+        output: list[str] = [
+            "=== Modifiers ===",
+            "",
+        ]
+
+        for m in modifiers.modifiers:
+            output.append(f"{m.get_description()}\n")
+
+        return "\n".join(output)
+
+    return ""
+
+
+def _relationship_modifiers_section(obj: GameObject) -> str:
+    if modifiers := obj.try_component(RelationshipModifiers):
+        output: list[str] = [
+            "=== Relationship Modifiers ===",
+            "",
+        ]
+
+        for m in modifiers.modifiers:
+            output.append(f"{m.get_description()}\n")
+
+        return "\n".join(output)
+
+    return ""
+
 def _get_beliefs_table(obj: GameObject) -> str:
     """Generate section for GameObject beliefs"""
 
@@ -539,7 +568,9 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("stats", _get_stats_table),
     ("traits", _get_traits_table),
     ("skills", _get_skills_table),
-    ("beliefs", _get_beliefs_table),
+    ("modifiers", _modifiers_section),
+    ("relationship_modifiers", _relationship_modifiers_section),
+    # ("beliefs", _get_beliefs_table),
     ("location_preferences", _get_location_preferences_table),
     ("member_of_household", _member_of_household_section),
     ("occupation", _employment_section),

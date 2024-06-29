@@ -61,13 +61,19 @@ class StatModifier(Modifier):
         sign = "+" if self.value > 0 else "-"
         percent_sign = "%" if self.modifier_type == StatModifierType.PERCENT else ""
 
-        if self._has_duration:
-            return (
-                f"{sign}{abs(self.value)}{percent_sign} {self.stat} "
-                f"for the next {self.duration} time steps"
-            )
+        output = ""
 
-        return f"{sign}{abs(self.value)}{percent_sign} {self.stat}"
+        if self._has_duration:
+            output += (
+                f"Effect(s): {sign}{abs(self.value)}{percent_sign} {self.stat} "
+                f"for the next {self.duration} time steps\n"
+            )
+        else:
+            output += f"Effect(s): {self.stat} {sign}{abs(self.value)}{percent_sign}\n"
+
+        output += f"Reason: {self.reason}"
+
+        return output
 
     def is_expired(self) -> bool:
         """Return true if the modifier is no longer valid."""
@@ -146,7 +152,13 @@ class SkillModifier(Modifier):
                 f"for the next {self.duration} time steps"
             )
 
-        return f"{sign}{abs(self.value)}{percent_sign} {self.skill}"
+        if self.reason:
+            return (
+                f"Effect(s): {self.skill} {sign}{abs(self.value)}{percent_sign}\n"
+                f"Reason: {self.reason}"
+            )
+        else:
+            return f"{self.skill} {sign}{abs(self.value)}{percent_sign}"
 
     def is_expired(self) -> bool:
         """Return true if the modifier is no longer valid."""
@@ -214,11 +226,17 @@ class RecurringAddToSkill(Modifier):
         """Get a description of what the modifier does."""
         sign = "+" if self.value > 0 else "-"
         percent_sign = "%" if self.modifier_type == StatModifierType.PERCENT else ""
-        return (
-            f"{sign}{abs(self.value)}{percent_sign} {self.skill} "
+
+        effect_str = (
+            f"{self.skill} {sign}{abs(self.value)}{percent_sign} "
             f"every {self.interval} time steps "
             f"for the next {self.duration} time steps"
         )
+
+        if self.reason:
+            return f"Effect(s): {effect_str}\n" f"Reason: {self.reason}"
+        else:
+            return effect_str
 
     def is_expired(self) -> bool:
         """Return true if the modifier is no longer valid."""
@@ -299,11 +317,17 @@ class RecurringAddToStat(Modifier):
         """Get a description of what the modifier does."""
         sign = "+" if self.value > 0 else "-"
         percent_sign = "%" if self.modifier_type == StatModifierType.PERCENT else ""
-        return (
-            f"{sign}{abs(self.value)}{percent_sign} {self.stat} "
+
+        effect_str = (
+            f"{self.stat} {sign}{abs(self.value)}{percent_sign} "
             f"every {self.interval} time steps "
             f"for the next {self.duration} time steps"
         )
+
+        if self.reason:
+            return f"Effect(s): {effect_str}\n" f"Reason: {self.reason}"
+        else:
+            return effect_str
 
     def is_expired(self) -> bool:
         """Return true if the modifier is no longer valid."""
@@ -389,7 +413,15 @@ class RelationshipModifier(Modifier):
 
     def get_description(self) -> str:
         """Get a description of what the modifier does."""
-        return self.description
+        effect_descriptions = "; ".join([e.description for e in self.effects])
+        precondition_descriptions = "; ".join(
+            [p.description for p in self.preconditions]
+        )
+        return (
+            f"Effect(s): {effect_descriptions}\n"
+            f"Precondition(s): {precondition_descriptions}\n"
+            f"Reason: {self.reason}"
+        )
 
     def is_expired(self) -> bool:
         """Return true if the modifier is no longer valid."""

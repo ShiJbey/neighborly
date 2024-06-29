@@ -15,12 +15,18 @@ class Effect(ABC):
 
     __effect_name__: ClassVar[str] = ""
 
-    def __init__(self) -> None:
+    __slots__ = ("reason",)
+
+    reason: str
+    """The reason for the effect."""
+
+    def __init__(self, reason: str = "") -> None:
         super().__init__()
         if not self.__effect_name__:
             raise ValueError(
                 f"Please specify __effect_name__ class attribute for {type(self)}"
             )
+        self.reason = reason
 
     @property
     @abstractmethod

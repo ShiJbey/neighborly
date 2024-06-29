@@ -36,21 +36,13 @@ class AddStatModifier(Effect):
 
     __effect_name__ = "AddStatModifier"
 
-    __slots__ = (
-        "stat",
-        "value",
-        "modifier_type",
-        "duration",
-        "has_duration",
-        "reason",
-    )
+    __slots__ = ("stat", "value", "modifier_type", "duration", "has_duration")
 
     stat: str
     value: float
     modifier_type: StatModifierType
     duration: int
     has_duration: bool
-    reason: str
 
     def __init__(
         self,
@@ -60,12 +52,11 @@ class AddStatModifier(Effect):
         duration: int = -1,
         reason: str = "",
     ) -> None:
-        super().__init__()
+        super().__init__(reason=reason)
         self.stat = stat
         self.modifier_type = modifier_type
         self.value = value
         self.duration = duration
-        self.reason = reason
 
     @property
     def description(self) -> str:
@@ -81,6 +72,7 @@ class AddStatModifier(Effect):
                 value=self.value,
                 modifier_type=self.modifier_type,
                 source=self,
+                reason=self.reason,
             ),
         )
 
@@ -111,7 +103,11 @@ class AddToBaseStat(Effect):
 
     __effect_name__ = "AddToBaseStat"
 
-    __slots__ = ("stat", "value", "modifier_type")
+    __slots__ = (
+        "stat",
+        "value",
+        "modifier_type",
+    )
 
     stat: str
     value: float
@@ -165,7 +161,6 @@ class AddSkillModifier(Effect):
         "modifier_type",
         "duration",
         "has_duration",
-        "reason",
     )
 
     skill: str
@@ -173,7 +168,6 @@ class AddSkillModifier(Effect):
     modifier_type: StatModifierType
     duration: int
     has_duration: bool
-    reason: str
 
     def __init__(
         self,
@@ -183,12 +177,11 @@ class AddSkillModifier(Effect):
         duration: int = -1,
         reason: str = "",
     ) -> None:
-        super().__init__()
+        super().__init__(reason=reason)
         self.skill = skill
         self.modifier_type = modifier_type
         self.value = value
         self.duration = duration
-        self.reason = reason
 
     @property
     def description(self) -> str:
@@ -204,6 +197,7 @@ class AddSkillModifier(Effect):
                 value=self.value,
                 modifier_type=self.modifier_type,
                 source=self,
+                reason=self.reason,
             ),
         )
 
@@ -358,8 +352,9 @@ class AddRelationshipModifier(Effect):
         description: str,
         preconditions: Iterable[Precondition],
         effects: Iterable[Effect],
+        reason: str = "",
     ) -> None:
-        super().__init__()
+        super().__init__(reason=reason)
         self.direction = direction
         self._description = description
         self.preconditions = list(preconditions)
@@ -378,6 +373,7 @@ class AddRelationshipModifier(Effect):
                 preconditions=self.preconditions,
                 effects=self.effects,
                 source=self,
+                reason=self.reason,
             ),
         )
 
@@ -386,8 +382,9 @@ class AddRelationshipModifier(Effect):
 
     @classmethod
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        modifier_dir = RelationshipModifierDir[params["direction"]]
+        modifier_dir = RelationshipModifierDir[str(params["direction"]).upper()]
         description = params.get("description", "")
+        reason: str = params.get("reason", "")
 
         precondition_library = world.resources.get_resource(PreconditionLibrary)
         preconditions: list[Precondition] = []
@@ -404,6 +401,7 @@ class AddRelationshipModifier(Effect):
             description=description,
             preconditions=preconditions,
             effects=effects,
+            reason=reason,
         )
 
 
@@ -418,7 +416,6 @@ class AddStatModifierToTarget(Effect):
         "modifier_type",
         "duration",
         "has_duration",
-        "reason",
     )
 
     stat: str
@@ -426,7 +423,6 @@ class AddStatModifierToTarget(Effect):
     modifier_type: StatModifierType
     duration: int
     has_duration: bool
-    reason: str
 
     def __init__(
         self,
@@ -457,6 +453,7 @@ class AddStatModifierToTarget(Effect):
                 value=self.value,
                 modifier_type=self.modifier_type,
                 source=self,
+                reason=self.reason,
             ),
         )
 
@@ -487,14 +484,7 @@ class AddStatModifierToOwner(Effect):
 
     __effect_name__ = "AddStatModifierToOwner"
 
-    __slots__ = (
-        "stat",
-        "value",
-        "modifier_type",
-        "duration",
-        "has_duration",
-        "reason",
-    )
+    __slots__ = ("stat", "value", "modifier_type", "duration", "has_duration")
 
     stat: str
     value: float

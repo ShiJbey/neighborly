@@ -17,7 +17,6 @@ from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import Event, GameObject
 from neighborly.effects.modifiers import RelationshipModifier, RelationshipModifierDir
-from neighborly.helpers.shared import remove_modifiers_from_source
 from neighborly.libraries import BeliefLibrary
 
 
@@ -153,15 +152,16 @@ def add_belief(agent: GameObject, belief_id: str) -> None:
 
     belief = library.get_belief(belief_id)
     held_beliefs.add_belief(belief_id)
-    agent.get_component(Modifiers).add_modifier(
+    add_relationship_modifier(
+        agent,
         RelationshipModifier(
             direction=RelationshipModifierDir.OUTGOING,
             description=belief.description,
             preconditions=belief.preconditions,
             effects=belief.effects,
             source=belief,
-            reason=f"Has {belief.belief_id!r} belief",
-        )
+            reason=f"{belief.description}",
+        ),
     )
 
     relationships = agent.get_component(Relationships).outgoing
@@ -198,12 +198,7 @@ def remove_belief(agent: GameObject, belief_id: str) -> None:
 
     belief = library.get_belief(belief_id)
 
-    remove_modifiers_from_source(agent, belief)
-
-    relationships = agent.get_component(Relationships).outgoing
-
-    for _, relationship in relationships.items():
-        reevaluate_relationship(relationship.get_component(Relationship))
+    remove_relationship_modifiers_from_source(agent, belief)
 
 
 def reevaluate_relationships(gameobject: GameObject) -> None:
