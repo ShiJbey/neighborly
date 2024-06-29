@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import random
-from typing import Union
+from typing import Any, Union
 
 import attrs
 
@@ -29,11 +29,5 @@ class SimulationConfig:
     log_to_terminal: bool = True
     """Toggles if logs should be printed to the terminal or saved to a file."""
 
-    growth_factor: float = 0.5
-    """Probability of a district spawning a new character."""
-
-    num_districts: int = 4
-    """The number of districts to generate in the settlement."""
-
-    theme_tags: list[str] = attrs.field(factory=list)
-    """Content tags to guide settlement development."""
+    settings: dict[str, Any] = attrs.field(factory=dict)
+    """Various key-value pair configuration settings."""

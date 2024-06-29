@@ -120,6 +120,20 @@ class LateUpdateSystems(SystemGroup):
 class InitializeSettlementSystem(System):
     """Creates one or more settlement instances using simulation config settings."""
 
+    __slots__ = ("num_districts",)
+
+    num_districts: float
+
+    def __init__(self, num_districts: float = 4) -> None:
+        super().__init__()
+        self.num_districts = num_districts
+
+    def on_add(self, world: World) -> None:
+        config = world.resources.get_resource(SimulationConfig)
+
+        if num_districts := config.settings.get("num_districts"):
+            self.num_districts = int(num_districts)
+
     def on_update(self, world: World) -> None:
         config = world.resource_manager.get_resource(SimulationConfig)
 
@@ -129,7 +143,7 @@ class InitializeSettlementSystem(System):
         district_library = world.resources.get_resource(DistrictLibrary)
 
         # Select a settlement from the library using the theme tags
-        selection_tags = [f"~{tag}" for tag in config.theme_tags]
+        selection_tags = [f"~{tag}" for tag in config.settings.get("theme_tags", [])]
 
         settlement_options = settlement_library.get_definition_with_tags(selection_tags)
 
@@ -159,7 +173,7 @@ class InitializeSettlementSystem(System):
 
         district_options = get_with_tags(districts_and_tags, selection_tags)
 
-        n_districts_remaining = config.num_districts
+        n_districts_remaining = self.num_districts
 
         district_instance_counts: defaultdict[str, int] = defaultdict(lambda: 0)
 
@@ -202,9 +216,22 @@ class InitializeSettlementSystem(System):
 class SpawnNewResidentSystem(System):
     """Spawns new characters as residents within vacant residences."""
 
+    __slots__ = ("growth_factor",)
+
+    growth_factor: float
+
+    def __init__(self, growth_factor: float = 0.4) -> None:
+        super().__init__()
+        self.growth_factor = growth_factor
+
+    def on_add(self, world: World) -> None:
+        config = world.resources.get_resource(SimulationConfig)
+
+        if growth_factor := config.settings.get("growth_factor"):
+            self.growth_factor = float(growth_factor)
+
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
-        config = world.resources.get_resource(SimulationConfig)
 
         # Find vacant residences
         for _, (_, current_settlement, spawn_table, _) in world.get_components(
@@ -213,7 +240,7 @@ class SpawnNewResidentSystem(System):
             if len(spawn_table.table) == 0:
                 continue
 
-            if rng.random() > config.growth_factor:
+            if rng.random() > self.growth_factor:
                 continue
 
             # Weighted random selection on the characters in the table
