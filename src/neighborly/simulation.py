@@ -130,7 +130,7 @@ from neighborly.systems import (
     SpawnNewResidentSystem,
     TickModifiersSystem,
     TickTraitsSystem,
-    UpdateFrequentedLocationSystem,
+    UpdateFrequentedLocationSystem, TimeSystem,
 )
 
 
@@ -202,7 +202,7 @@ class Simulation:
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
         # Add default top-level system groups (in execution order)
-
+        self.world.system_manager.add_system(TimeSystem())
 
         # Add content initialization systems
         self.world.system_manager.add_system(
@@ -384,7 +384,6 @@ class Simulation:
     def step(self) -> None:
         """Advance the simulation one time step (month)."""
         self._world.step()
-        self.date.increment_month()
 
     def run_for(self, years: int) -> None:
         """Run the simulation for a given number of years."""

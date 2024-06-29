@@ -92,6 +92,14 @@ from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.actions import CloseBusiness, Die
 
 
+class TimeSystem(System):
+    """Increments the current date/time."""
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate)
+
+        current_date.increment_month()
+
 class InitializeSettlementSystem(System):
     """Creates one or more settlement instances using simulation config settings."""
 
