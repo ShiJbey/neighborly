@@ -927,12 +927,17 @@ def _topological_sort(systems: list[System]) -> list[System]:
 
         nodes[system.system_name()] = node
 
-    # verify all edges have nodes
-    for _n, _m in edges:
+    # Remove edges missing nodes
+    for i in reversed(range(len(edges))):
+        _n, _m = edges[i]
+
         if _n not in nodes:
-            raise KeyError(f"Missing System with name: {_n}.")
+            edges.pop(i)
+            continue
+
         if _m not in nodes:
-            raise KeyError(f"Missing System with name: {_m}.")
+            edges.pop(i)
+            continue
 
     result: list[System] = []
 
@@ -1059,7 +1064,7 @@ class InitializationSystems(SystemGroup):
     def on_update(self, world: World) -> None:
         # Run all child systems first before deactivating
         super().on_update(world)
-        self.set_active(False)
+        world.system_manager.destroy_system(type(self))
 
 
 class EarlyUpdateSystems(SystemGroup):
@@ -1108,19 +1113,24 @@ class SystemManager(SystemGroup):
         """
 
         stack: list[SystemGroup] = [self]
+        success: bool = False
 
         while stack:
             current_sys = stack.pop()
 
             if current_sys.system_name() == system.system_group():
                 current_sys.add_child(system)
-                return
+                success = True
+                break
 
             for child in current_sys.iter_children():
                 if isinstance(child, SystemGroup):
                     stack.append(child)
 
-        raise SystemNotFoundError(system.system_group())
+        if success:
+            self.sort_children()
+        else:
+            raise SystemNotFoundError(system.system_group())
 
     def get_system(self, system_type: Type[_ST]) -> _ST:
         """Attempt to get a System of the given type.
@@ -1151,7 +1161,7 @@ class SystemManager(SystemGroup):
 
         raise SystemNotFoundError(system_type.__name__)
 
-    def remove_system(self, system_type: Type[System]) -> None:
+    def destroy_system(self, system_type: Type[System]) -> None:
         """Remove all instances of a system type.
 
         Parameters
@@ -1606,6 +1616,14 @@ class World:
     def event_manager(self) -> EventManager:
         """Get the world's event manager."""
         return self.events
+
+    def initialize(self) -> None:
+        """Run initialization systems only."""
+        initialization_system_group = self.systems.get_system(
+            InitializationSystems
+        )
+
+        initialization_system_group.on_update(self)
 
     def get_component(self, component_type: Type[_CT]) -> list[tuple[int, _CT]]:
         """Get all the GameObjects that have a given component type.

@@ -16,7 +16,7 @@ import tqdm
 
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
-from neighborly.ecs import InitializationSystems, World
+from neighborly.ecs import World
 from neighborly.effects.effects import (
     AddBelief,
     AddLocationPreference,
@@ -331,15 +331,7 @@ class Simulation:
 
     def initialize(self) -> None:
         """Run initialization systems only."""
-        self.world.system_manager.sort_children()
-
-        initialization_system_group = self.world.system_manager.get_system(
-            InitializationSystems
-        )
-
-        initialization_system_group.on_update(self.world)
-
-        initialization_system_group.set_active(False)
+        self._world.initialize()
 
     def step(self) -> None:
         """Advance the simulation one time step (month)."""
@@ -353,10 +345,10 @@ class Simulation:
         if self.config.log_to_terminal:
 
             for _ in range(total_time_steps):
-                self.step()
+                self._world.step()
         else:
             for _ in tqdm.trange(total_time_steps):
-                self.step()
+                self._world.step()
 
     def to_json(self, indent: Optional[int] = None) -> str:
         """Export the simulation as a JSON string.
