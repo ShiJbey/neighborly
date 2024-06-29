@@ -27,8 +27,6 @@ def add_trait(
         The trait.
     duration
         How long the trait should last.
-    description
-        Override the default trait description.
 
     Return
     ------

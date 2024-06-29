@@ -314,7 +314,8 @@ class HouseholdSystem(System):
 
         character.remove_event_listener("death", self.handle_member_death)
 
-    def handle_member_death(self, event: Event) -> None:
+    @staticmethod
+    def handle_member_death(event: Event) -> None:
         """Removes characters from the household when they die."""
 
         death_event = cast(DeathEvent, event)

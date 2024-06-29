@@ -121,7 +121,7 @@ class BatchRunner:
 
                 for metric in self._metrics:
                     metric.cooldown -= 1
-                    if metric.cooldown <= 0 and metric.collection_interval > 0:
+                    if (metric.cooldown <= 0) and (metric.collection_interval > 0):
                         metric.add_table(metric.extract_data(sim))
                         metric.cooldown = metric.collection_interval
 

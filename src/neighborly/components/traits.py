@@ -41,9 +41,6 @@ class Trait:
     def __str__(self) -> str:
         return self.name
 
-    def __repr__(self) -> str:
-        return f"{type(self)}({self.definition_id})"
-
 
 class TraitInstance:
     """An instance of a trait being attached to a GameObject."""

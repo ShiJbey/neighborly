@@ -7,13 +7,13 @@ import random
 from typing import Union
 
 from neighborly.ecs import World
-from neighborly.libraries import ISettlementNameFactory, SettlementNameFactories
+from neighborly.libraries import SettlementNameFactories
 from neighborly.simulation import Simulation
 
 _DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
-class SimpleNameFactory(ISettlementNameFactory):
+class SimpleNameFactory:
 
     __slots__ = ("names",)
 

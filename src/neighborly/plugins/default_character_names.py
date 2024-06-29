@@ -12,10 +12,10 @@ from neighborly.simulation import Simulation
 _DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
-from neighborly.libraries import CharacterNameFactories, ICharacterNameFactory
+from neighborly.libraries import CharacterNameFactories
 
 
-class SimpleNameFactory(ICharacterNameFactory):
+class SimpleNameFactory:
 
     __slots__ = ("names",)
 

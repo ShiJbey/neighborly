@@ -108,9 +108,8 @@ class DefaultCharacterFactory(ICharacterFactory):
 
         return character
 
-    def _initialize_traits(
-        self, character: GameObject, definition: CharacterDef
-    ) -> None:
+    @staticmethod
+    def _initialize_traits(character: GameObject, definition: CharacterDef) -> None:
         """Set the traits for a character."""
         rng = character.world.resource_manager.get_resource(random.Random)
         trait_library = character.world.resource_manager.get_resource(TraitLibrary)
@@ -144,9 +143,8 @@ class DefaultCharacterFactory(ICharacterFactory):
 
                 add_trait(character, chosen_trait)
 
-    def _initialize_skills(
-        self, character: GameObject, definition: CharacterDef
-    ) -> None:
+    @staticmethod
+    def _initialize_skills(character: GameObject, definition: CharacterDef) -> None:
         """Set the traits for a character."""
         rng = character.world.resource_manager.get_resource(random.Random)
         skill_library = character.world.resource_manager.get_resource(SkillLibrary)
@@ -308,9 +306,8 @@ class DefaultChildFactory(IChildFactory):
         for trait in sampled_traits:
             add_trait(child, trait)
 
-    def _initialize_traits(
-        self, character: GameObject, definition: CharacterDef
-    ) -> None:
+    @staticmethod
+    def _initialize_traits(character: GameObject, definition: CharacterDef) -> None:
         """Set the traits for a character."""
         rng = character.world.resource_manager.get_resource(random.Random)
         trait_library = character.world.resource_manager.get_resource(TraitLibrary)

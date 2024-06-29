@@ -127,6 +127,8 @@ def add_employee(business: Business, employee: GameObject, role: JobRole) -> Non
 
     Parameters
     ----------
+    business
+        The business tp add the employee to.
     employee
         The employee to add.
     role
@@ -187,6 +189,8 @@ def remove_employee(business: Business, employee: GameObject) -> None:
 
     Parameters
     ----------
+    business
+        The business to remove the employee from.
     employee
         The employee to remove.
     """

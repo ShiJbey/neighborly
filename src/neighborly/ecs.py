@@ -357,6 +357,8 @@ class GameObject:
 
         Parameters
         ----------
+        event_name
+            The name of the event to listen for.
         listener
             A function to be called when the given event type fires.
         """
@@ -375,8 +377,8 @@ class GameObject:
         ----------
         event_name : str
             The type of event to remove the listener from.
-        callback : Callable[[Event], None]
-            The callback function to be removed.
+        listener : Callable[[Event], None]
+            The listener function to be removed.
         """
         if event_name in self._event_listeners:
             listener_set = self._event_listeners[event_name]
@@ -878,6 +880,19 @@ class _NodeQueueEntry:
     item: _SystemSortNode = dataclasses.field(compare=False)
 
 
+def get_incoming_edges(
+    edges: list[tuple[str, str,]], node: _SystemSortNode
+) -> list[str]:
+    """Get incoming edges for a node in a system sorting graph."""
+    return [n for n, m in edges if m == node.system.system_name()]
+
+def get_outgoing_edges(
+    edges: list[tuple[str, str,]], node: _SystemSortNode
+) -> list[str]:
+    """Get outgoing edges for a node in a system sorting graph."""
+    return [m for n, m in edges if n == node.system.system_name()]
+
+
 def _topological_sort(systems: list[System]) -> list[System]:
     """Perform topological sort on the provided systems."""
 
@@ -919,17 +934,11 @@ def _topological_sort(systems: list[System]) -> list[System]:
         if _m not in nodes:
             raise KeyError(f"Missing System with name: {_m}.")
 
-    def get_incoming_edges(_node: _SystemSortNode) -> list[str]:
-        return [_n for _n, _m in edges if _m == _node.system.system_name()]
-
-    def get_outgoing_edges(_node: _SystemSortNode) -> list[str]:
-        return [_m for _n, _m in edges if _n == _node.system.system_name()]
-
     result: list[System] = []
 
     # Get all nodes with no incoming edges.
     starting_nodes = [
-        node for node in nodes.values() if len(get_incoming_edges(node)) == 0
+        node for node in nodes.values() if len(get_incoming_edges(edges, node)) == 0
     ]
 
     node_queue: PriorityQueue[_NodeQueueEntry] = PriorityQueue()
@@ -941,11 +950,11 @@ def _topological_sort(systems: list[System]) -> list[System]:
         node = entry.item
         result.append(node.system)
 
-        for dependent_name in get_outgoing_edges(node):
+        for dependent_name in get_outgoing_edges(edges, node):
             dependent = nodes[dependent_name]
             edges.remove((node.system.system_name(), dependent_name))
 
-            if len(get_incoming_edges(dependent)) == 0:
+            if len(get_incoming_edges(edges, dependent)) == 0:
                 node_queue.put(
                     _NodeQueueEntry(priority=dependent.order, item=dependent)
                 )

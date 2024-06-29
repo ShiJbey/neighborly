@@ -663,7 +663,12 @@ class MeetNewPeopleSystem(System):
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, frequented_locs, sociability, _) in world.get_components(
+        for _, (
+            character,
+            frequented_locations,
+            sociability,
+            _,
+        ) in world.get_components(
             (Character, FrequentedLocations, Sociability, Active)
         ):
             probability_meet_someone = sociability.stat.normalized
@@ -671,7 +676,7 @@ class MeetNewPeopleSystem(System):
             if rng.random() < probability_meet_someone:
                 candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
 
-                for loc in frequented_locs:
+                for loc in frequented_locations:
                     for other in loc.get_component(Location).frequented_by:
                         if other != character.gameobject and not has_relationship(
                             character.gameobject, other

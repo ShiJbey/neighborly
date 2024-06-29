@@ -273,8 +273,6 @@ def _pregnancy_section(obj: GameObject) -> str:
 
 def _employment_section(obj: GameObject) -> str:
     """Print information about a household."""
-    occupation = obj.try_component(Occupation)
-
     if occupation := obj.try_component(Occupation):
         output: list[str] = [
             "=== Employment ===",
