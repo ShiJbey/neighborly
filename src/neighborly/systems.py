@@ -41,7 +41,7 @@ from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.base_types import DistrictDef
 from neighborly.defs.definition_compiler import compile_definitions
-from neighborly.ecs import Active, Event, GameObject, System, SystemGroup, World
+from neighborly.ecs import Active, Event, GameObject, System, World
 from neighborly.events.defaults import (
     BecomeAdolescentEvent,
     BecomeAdultEvent,
@@ -90,31 +90,6 @@ from neighborly.libraries import (
 )
 from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.actions import CloseBusiness, Die
-
-
-class InitializationSystems(SystemGroup):
-    """A group of systems that run once at the beginning of the simulation.
-
-    Any content initialization systems or initial world building systems should
-    belong to this group.
-    """
-
-    def on_update(self, world: World) -> None:
-        # Run all child systems first before deactivating
-        super().on_update(world)
-        self.set_active(False)
-
-
-class EarlyUpdateSystems(SystemGroup):
-    """The early phase of the update loop."""
-
-
-class UpdateSystems(SystemGroup):
-    """The main phase of the update loop."""
-
-
-class LateUpdateSystems(SystemGroup):
-    """The late phase of the update loop."""
 
 
 class InitializeSettlementSystem(System):

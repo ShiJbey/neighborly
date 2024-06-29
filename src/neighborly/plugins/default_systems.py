@@ -21,7 +21,7 @@ from neighborly.components.relationship import Relationship, Relationships, Roma
 from neighborly.components.settlement import Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.components.stats import Sociability
-from neighborly.ecs import Active, GameObject, System, World
+from neighborly.ecs import Active, GameObject, System, World, UpdateSystems
 from neighborly.helpers.action import get_action_probability
 from neighborly.helpers.character import (
     add_character_to_household,
@@ -49,7 +49,6 @@ from neighborly.plugins.actions import (
     StartDating,
 )
 from neighborly.simulation import Simulation
-from neighborly.systems import UpdateSystems
 
 
 class FindJobSystem(System):

@@ -920,6 +920,31 @@ class SystemGroup(System, ABC):
             child.on_stop_running(world)
 
 
+class InitializationSystems(SystemGroup):
+    """A group of systems that run once at the beginning of the simulation.
+
+    Any content initialization systems or initial world building systems should
+    belong to this group.
+    """
+
+    def on_update(self, world: World) -> None:
+        # Run all child systems first before deactivating
+        super().on_update(world)
+        self.set_active(False)
+
+
+class EarlyUpdateSystems(SystemGroup):
+    """The early phase of the update loop."""
+
+
+class UpdateSystems(SystemGroup):
+    """The main phase of the update loop."""
+
+
+class LateUpdateSystems(SystemGroup):
+    """The late phase of the update loop."""
+
+
 class SystemManager(SystemGroup):
     """Manages system instances for a single world instance."""
 
@@ -1430,6 +1455,10 @@ class World:
         self.systems = SystemManager(self)
         self.events = EventManager(self)
         self.gameobjects = GameObjectManager(self)
+        self.system_manager.add_system(InitializationSystems())
+        self.system_manager.add_system(EarlyUpdateSystems())
+        self.system_manager.add_system(UpdateSystems())
+        self.system_manager.add_system(LateUpdateSystems())
 
     @property
     def system_manager(self) -> SystemManager:

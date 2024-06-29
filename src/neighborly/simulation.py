@@ -16,7 +16,7 @@ import tqdm
 
 from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
-from neighborly.ecs import World
+from neighborly.ecs import World, InitializationSystems, EarlyUpdateSystems, UpdateSystems
 from neighborly.effects.effects import (
     AddBelief,
     AddLocationPreference,
@@ -124,17 +124,13 @@ from neighborly.systems import (
     CompileSkillDefsSystem,
     CompileSpeciesDefsSystem,
     CompileTraitDefsSystem,
-    EarlyUpdateSystems,
     HouseholdSystem,
-    InitializationSystems,
     InitializeSettlementSystem,
-    LateUpdateSystems,
     LifeStageSystem,
     SpawnNewResidentSystem,
     TickModifiersSystem,
     TickTraitsSystem,
     UpdateFrequentedLocationSystem,
-    UpdateSystems,
 )
 
 
@@ -206,10 +202,7 @@ class Simulation:
     def _init_systems(self) -> None:
         """Initialize built-in systems."""
         # Add default top-level system groups (in execution order)
-        self.world.system_manager.add_system(InitializationSystems())
-        self.world.system_manager.add_system(EarlyUpdateSystems())
-        self.world.system_manager.add_system(UpdateSystems())
-        self.world.system_manager.add_system(LateUpdateSystems())
+
 
         # Add content initialization systems
         self.world.system_manager.add_system(
