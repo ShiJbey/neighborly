@@ -11,8 +11,11 @@ import attrs
 
 
 @attrs.define
-class LoggingConfig:
-    """Configuration settings for logging within a simulation."""
+class SimulationConfig:
+    """Configuration settings for a Simulation instance."""
+
+    seed: Union[str, int] = attrs.field(factory=lambda: random.randint(0, 9999999))
+    """Value used for pseudo-random number generation."""
 
     logging_enabled: bool = True
     """Toggles if logging messages are sent anywhere."""
@@ -25,17 +28,6 @@ class LoggingConfig:
 
     log_to_terminal: bool = True
     """Toggles if logs should be printed to the terminal or saved to a file."""
-
-
-@attrs.define
-class SimulationConfig:
-    """Configuration settings for a Simulation instance."""
-
-    seed: Union[str, int] = attrs.field(factory=lambda: random.randint(0, 9999999))
-    """Value used for pseudo-random number generation."""
-
-    logging: LoggingConfig = attrs.field(factory=LoggingConfig)
-    """Configuration settings for logging."""
 
     growth_factor: float = 0.5
     """Probability of a district spawning a new character."""

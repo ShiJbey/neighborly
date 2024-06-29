@@ -343,22 +343,22 @@ class Simulation:
 
     def _init_logging(self) -> None:
         """Initialize simulation logging."""
-        if self.config.logging.logging_enabled:
-            if self.config.logging.log_to_terminal is False:
+        if self.config.logging_enabled:
+            if self.config.log_to_terminal is False:
                 # Output the logs to a file
-                log_path = pathlib.Path(self.config.logging.log_file_path)
+                log_path = pathlib.Path(self.config.log_file_path)
 
                 logging.basicConfig(
                     filename=log_path,
                     encoding="utf-8",
-                    level=self.config.logging.log_level,
+                    level=self.config.log_level,
                     format="%(message)s",
                     force=True,
                     filemode="w",
                 )
             else:
                 logging.basicConfig(
-                    level=self.config.logging.log_level,
+                    level=self.config.log_level,
                     format="%(message)s",
                     force=True,
                 )
@@ -398,7 +398,7 @@ class Simulation:
 
         total_time_steps: int = years * MONTHS_PER_YEAR
 
-        if self.config.logging.log_to_terminal:
+        if self.config.log_to_terminal:
 
             for _ in range(total_time_steps):
                 self.step()

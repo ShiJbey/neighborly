@@ -11,7 +11,7 @@ import random
 from cProfile import Profile
 from pstats import SortKey
 
-from neighborly.config import LoggingConfig, SimulationConfig
+from neighborly.config import SimulationConfig
 from neighborly.plugins import default_content
 from neighborly.simulation import Simulation
 
@@ -81,11 +81,9 @@ if __name__ == "__main__":
     sim = Simulation(
         SimulationConfig(
             seed=args.seed,
-            logging=LoggingConfig(
-                logging_enabled=not bool(args.disable_logging),
-                log_level="DEBUG",
-                log_to_terminal=False,
-            ),
+            logging_enabled=not bool(args.disable_logging),
+            log_level="DEBUG",
+            log_to_terminal=False,
         )
     )
 
