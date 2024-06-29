@@ -9,7 +9,6 @@ from typing import Callable, Union
 import tabulate
 
 from neighborly import __version__
-from neighborly.components.beliefs import HeldBeliefs
 from neighborly.components.business import (
     Business,
     BusinessStatus,
@@ -30,7 +29,11 @@ from neighborly.components.location import (
     Location,
     LocationPreferences,
 )
-from neighborly.components.relationship import Relationship, Relationships, RelationshipModifiers
+from neighborly.components.relationship import (
+    Relationship,
+    RelationshipModifiers,
+    Relationships,
+)
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age, Modifiers
 from neighborly.components.skills import SKILL_MAX_VALUE, Skills
@@ -39,7 +42,6 @@ from neighborly.components.traits import Traits
 from neighborly.ecs import Active, GameObject, GameObjectNotFoundError
 from neighborly.helpers.stats import get_stat
 from neighborly.libraries import (
-    BeliefLibrary,
     JobRoleLibrary,
     SkillLibrary,
     SpeciesLibrary,
@@ -508,29 +510,6 @@ def _relationship_modifiers_section(obj: GameObject) -> str:
 
     return ""
 
-def _get_beliefs_table(obj: GameObject) -> str:
-    """Generate section for GameObject beliefs"""
-
-    beliefs = obj.try_component(HeldBeliefs)
-    library = obj.world.resources.get_resource(BeliefLibrary)
-
-    if beliefs is None:
-        return ""
-
-    output: list[str] = [
-        "=== Beliefs ===",
-        "",
-    ]
-
-    table = tabulate.tabulate(
-        [(entry, library.get_belief(entry).description) for entry in beliefs.get_all()],
-        headers=("ID", "Description"),
-    )
-
-    output.append(table)
-
-    return "\n".join(output)
-
 
 def _get_location_preferences_table(obj: GameObject) -> str:
     """Generate section for GameObject beliefs"""
@@ -562,7 +541,6 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("skills", _get_skills_table),
     ("modifiers", _modifiers_section),
     ("relationship_modifiers", _relationship_modifiers_section),
-    # ("beliefs", _get_beliefs_table),
     ("location_preferences", _get_location_preferences_table),
     ("member_of_household", _member_of_household_section),
     ("occupation", _employment_section),
@@ -835,22 +813,6 @@ def list_species(sim: Simulation) -> None:
     print(output)
 
 
-def list_beliefs(sim: Simulation) -> None:
-    """List all available beliefs."""
-
-    library = sim.world.resources.get_resource(BeliefLibrary)
-
-    rows = [(entry.belief_id, entry.description) for entry in library.beliefs.values()]
-
-    table = tabulate.tabulate(rows, headers=["ID", "Description"])
-
-    output = "=== Beliefs ===\n"
-    output += table
-    output += "\n"
-
-    print(output)
-
-
 def inspect_trait(sim: Simulation, trait_id: str) -> None:
     """Display information about a trait."""
 
@@ -964,37 +926,5 @@ def inspect_species(sim: Simulation, species_id: str) -> None:
         f"Can Physically Age: {species.can_physically_age}",
         f"Traits: {traits}",
     ]
-
-    print("\n".join(lines))
-
-
-def inspect_belief(sim: Simulation, belief_id: str) -> None:
-    """Display information about a belief."""
-
-    belief = sim.world.resources.get_resource(BeliefLibrary).get_belief(belief_id)
-
-    lines: list[str] = [
-        "Belief",
-        "======",
-        f"ID: {belief.belief_id!r}",
-        f"Description: {belief.description!r}",
-        f"Is Global: {belief.is_global}",
-    ]
-
-    # Add requirements
-    if belief.preconditions:
-        lines.append("Preconditions:")
-        for precondition in belief.preconditions:
-            lines.append(f"\t- {precondition.description}")
-    else:
-        lines.append("Preconditions: N/A")
-
-    # Add Effects
-    if belief.effects:
-        lines.append("Effects:")
-        for effect in belief.effects:
-            lines.append(f"\t- {effect.description}")
-    else:
-        lines.append("Effects: N/A")
 
     print("\n".join(lines))

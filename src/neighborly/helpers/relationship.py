@@ -4,7 +4,6 @@
 
 from typing import Optional
 
-from neighborly.components.beliefs import HeldBeliefs
 from neighborly.components.relationship import (
     Relationship,
     RelationshipModifiers,
@@ -17,7 +16,6 @@ from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import Event, GameObject
 from neighborly.effects.modifiers import RelationshipModifier, RelationshipModifierDir
-from neighborly.libraries import BeliefLibrary
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
@@ -130,75 +128,6 @@ def destroy_relationship(owner: GameObject, target: GameObject) -> bool:
         return True
 
     return False
-
-
-def add_belief(agent: GameObject, belief_id: str) -> None:
-    """Add a belief to an agent.
-
-    Parameters
-    ----------
-    agent
-        The agent that will hold the belief.
-    belief_id
-        The ID of the belief to add.
-    """
-    library = agent.world.resource_manager.get_resource(BeliefLibrary)
-    held_beliefs = agent.get_component(HeldBeliefs)
-
-    if held_beliefs.has_belief(belief_id):
-        # Add the belief to increment the internal belief reference counter.
-        held_beliefs.add_belief(belief_id)
-        return
-
-    belief = library.get_belief(belief_id)
-    held_beliefs.add_belief(belief_id)
-    add_relationship_modifier(
-        agent,
-        RelationshipModifier(
-            direction=RelationshipModifierDir.OUTGOING,
-            description=belief.description,
-            preconditions=belief.preconditions,
-            effects=belief.effects,
-            source=belief,
-            reason=f"{belief.description}",
-        ),
-    )
-
-    relationships = agent.get_component(Relationships).outgoing
-
-    for _, relationship in relationships.items():
-        reevaluate_relationship(relationship.get_component(Relationship))
-
-
-def remove_belief(agent: GameObject, belief_id: str) -> None:
-    """Remove a belief from an agent.
-
-    Parameters
-    ----------
-    agent
-        The agent to modify.
-    belief_id
-        The ID of the belief to remove.
-    """
-    library = agent.world.resource_manager.get_resource(BeliefLibrary)
-    held_beliefs = agent.get_component(HeldBeliefs)
-
-    if not held_beliefs.has_belief(belief_id):
-        return
-
-    held_beliefs.remove_belief(belief_id)
-
-    # If the agent still has the belief, then there is something else like a trait
-    # that still requires this belief to be present.
-    if held_beliefs.has_belief(belief_id):
-        return
-
-    # If the belief is no longer held by the agent, remove the effects from all
-    # outgoing relationships.
-
-    belief = library.get_belief(belief_id)
-
-    remove_relationship_modifiers_from_source(agent, belief)
 
 
 def reevaluate_relationships(gameobject: GameObject) -> None:

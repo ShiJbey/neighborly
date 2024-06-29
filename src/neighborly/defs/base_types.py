@@ -301,16 +301,3 @@ class BusinessDef(ContentDefinition):
     """Tags describing this definition."""
     components: dict[str, dict[str, Any]] = pydantic.Field(default_factory=dict)
     """Information about components."""
-
-
-class BeliefDef(ContentDefinition):
-    """A definition for a belief held by an agent."""
-
-    description: str
-    """A text description of the belief."""
-    preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    """Relationship preconditions for the belief to take effect."""
-    effects: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    """Effects applied to a relationship by the belief."""
-    is_global: bool = False
-    """Is this belief held by all agents."""

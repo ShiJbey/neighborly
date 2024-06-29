@@ -16,7 +16,7 @@
         "reason": "Has the 'Drinks too Much' trait."
       }
     ],
-    "spawn_frequency": 10,
+    "spawn_frequency": 1,
     "tags": [
       "personality"
     ]
@@ -627,27 +627,6 @@
       "personality"
     ]
   },
-  "attracted_to_men": {
-    "name": "Attracted to Men",
-    "description": "This character experiences romantic attraction primarily to men.",
-    "effects": [
-      {
-        "type": "AddBelief",
-        "belief_id": "men_are_attractive"
-      },
-      {
-        "type": "AddBelief",
-        "belief_id": "women_are_not_attractive"
-      }
-    ],
-    "spawn_frequency": 1,
-    "conflicts_with": [
-      "attracted_to_women"
-    ],
-    "tags": [
-      "sexuality"
-    ]
-  },
   "heterosexual": {
     "name": "Heterosexual",
     "description": "This character experiences romantic attraction to the opposite sex.",
@@ -765,26 +744,6 @@
     "conflicts_with": [
       "heterosexual",
       "bisexual"
-    ],
-    "tags": [
-      "sexuality"
-    ]
-  },
-  "attracted_to_women": {
-    "name": "Attracted to Women",
-    "description": "This character experiences romantic attraction primarily to women.",
-    "effects": [
-      {
-        "type": "AddBelief",
-        "belief_id": "women_are_attractive"
-      },
-      {
-        "type": "AddBelief",
-        "belief_id": "men_are_not_attractive"
-      }
-    ],
-    "conflicts_with": [
-      "attracted_to_men"
     ],
     "tags": [
       "sexuality"

@@ -18,7 +18,6 @@ from neighborly.config import SimulationConfig
 from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.ecs import World
 from neighborly.effects.effects import (
-    AddBelief,
     AddLocationPreference,
     AddRelationshipModifier,
     AddSkillModifier,
@@ -28,7 +27,6 @@ from neighborly.effects.effects import (
     AddToBaseSkill,
     AddToBaseStat,
 )
-from neighborly.factories.beliefs import HeldBeliefsFactory
 from neighborly.factories.business import BusinessFactory, DefaultBusinessFactory
 from neighborly.factories.character import (
     CharacterFactory,
@@ -73,7 +71,6 @@ from neighborly.factories.stats import (
 from neighborly.factories.traits import TraitsFactory
 from neighborly.libraries import (
     ActionConsiderationLibrary,
-    BeliefLibrary,
     BusinessLibrary,
     BusinessNameFactories,
     CharacterLibrary,
@@ -91,6 +88,7 @@ from neighborly.libraries import (
 )
 from neighborly.life_event import GlobalEventHistory
 from neighborly.preconditions.defaults import (
+    AreOppositeSex,
     AreSameSex,
     HasTrait,
     IsSex,
@@ -106,14 +104,13 @@ from neighborly.preconditions.defaults import (
     TargetIsSex,
     TargetLifeStageRequirement,
     TargetSkillRequirement,
-    TargetStatRequirement, AreOppositeSex,
+    TargetStatRequirement,
 )
 from neighborly.systems import (
     AgingSystem,
     BusinessLifespanSystem,
     CharacterLifespanSystem,
     ChildBirthSystem,
-    CompileBeliefDefsSystem,
     CompileBusinessDefsSystem,
     CompileCharacterDefsSystem,
     CompileDistrictDefsSystem,
@@ -187,7 +184,6 @@ class Simulation:
         self.world.resource_manager.add_resource(TraitLibrary())
         self.world.resource_manager.add_resource(SpeciesLibrary())
         self.world.resource_manager.add_resource(SkillLibrary())
-        self.world.resource_manager.add_resource(BeliefLibrary())
         self.world.resource_manager.add_resource(SettlementNameFactories())
         self.world.resource_manager.add_resource(EffectLibrary())
         self.world.resource_manager.add_resource(PreconditionLibrary())
@@ -202,7 +198,6 @@ class Simulation:
         # Add content initialization systems
         self.world.system_manager.add_system(CompileTraitDefsSystem())
         self.world.system_manager.add_system(CompileSpeciesDefsSystem())
-        self.world.system_manager.add_system(CompileBeliefDefsSystem())
         self.world.system_manager.add_system(CompileJobRoleDefsSystem())
         self.world.system_manager.add_system(CompileSkillDefsSystem())
         self.world.system_manager.add_system(CompileDistrictDefsSystem())
@@ -249,7 +244,6 @@ class Simulation:
         self.world.gameobjects.add_component_factory(StewardshipFactory())
         self.world.gameobjects.add_component_factory(SociabilityFactory())
         self.world.gameobjects.add_component_factory(DisciplineFactory())
-        self.world.gameobjects.add_component_factory(HeldBeliefsFactory())
         self.world.gameobjects.add_component_factory(SpeciesFactory())
         self.world.gameobjects.add_component_factory(ModifiersFactory())
         self.world.gameobjects.add_component_factory(RelationshipModifiersFactory())
@@ -263,7 +257,6 @@ class Simulation:
         effect_library.add_effect_type(AddSkillModifier)
         effect_library.add_effect_type(AddToBaseStat)
         effect_library.add_effect_type(AddToBaseSkill)
-        effect_library.add_effect_type(AddBelief)
         effect_library.add_effect_type(AddLocationPreference)
         effect_library.add_effect_type(AddStatModifierToOwner)
         effect_library.add_effect_type(AddStatModifierToTarget)

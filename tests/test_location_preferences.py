@@ -55,13 +55,15 @@ def test_trait_with_location_preferences() -> None:
 
     farmer = create_character(sim.world, "farmer.female")
 
+    remove_trait(farmer, "drinks_too_much")  # just in case they spawned with the trait
+
     assert score_location(farmer, cafe) == 0.5
     assert score_location(farmer, bar) == 0.5
 
     add_trait(farmer, "drinks_too_much")
 
     assert score_location(farmer, cafe) == 0.5
-    assert score_location(farmer, bar) == pytest.approx(0.65, 0.001)  # type: ignore
+    assert score_location(farmer, bar) == pytest.approx(0.9, 0.001)  # type: ignore
 
     remove_trait(farmer, "drinks_too_much")
 

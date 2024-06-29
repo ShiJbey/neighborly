@@ -13,7 +13,6 @@ from typing import Any, Union
 import yaml
 
 from neighborly.defs.base_types import (
-    BeliefDef,
     BusinessDef,
     CharacterDef,
     DistrictDef,
@@ -24,7 +23,6 @@ from neighborly.defs.base_types import (
     TraitDef,
 )
 from neighborly.libraries import (
-    BeliefLibrary,
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
@@ -223,17 +221,3 @@ def load_skills(
         library.add_definition(
             SkillDef.model_validate({"definition_id": definition_id, **params})
         )
-
-
-def load_beliefs(
-    sim: Simulation, file_path: Union[os.PathLike[str], str, bytes]
-) -> None:
-    """Load beliefs from a file."""
-
-    with open(file_path, "r", encoding="utf8") as file:
-        data: list[dict[str, Any]] = yaml.safe_load(file)
-
-    library = sim.world.resource_manager.get_resource(BeliefLibrary)
-
-    for entry in data:
-        library.add_definition(BeliefDef.model_validate(entry))

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from neighborly.components.location import LocationPreferences, LocationPreference
+from neighborly.components.location import LocationPreference, LocationPreferences
 from neighborly.components.relationship import Relationship
 from neighborly.components.stats import StatModifierType, Stats
 from neighborly.ecs import GameObject, World
@@ -20,9 +20,7 @@ from neighborly.effects.modifiers import (
     StatModifier,
 )
 from neighborly.helpers.relationship import (
-    add_belief,
     add_relationship_modifier,
-    remove_belief,
     remove_relationship_modifiers_from_source,
 )
 from neighborly.helpers.shared import add_modifier, remove_modifiers_from_source
@@ -373,36 +371,6 @@ class AddLocationPreference(Effect):
             modifier_type=modifier_type,
             reason=reason,
         )
-
-
-class AddBelief(Effect):
-    """Add a belief to an agent."""
-
-    __effect_name__ = "AddBelief"
-
-    __slots__ = ("belief_id",)
-
-    belief_id: str
-    """The ID of a belief."""
-
-    def __init__(self, rule_id: str) -> None:
-        super().__init__()
-        self.belief_id = rule_id
-
-    @property
-    def description(self) -> str:
-        return f"Gains belief: {self.belief_id!r}"
-
-    def apply(self, target: GameObject) -> None:
-        add_belief(target, self.belief_id)
-
-    def remove(self, target: GameObject) -> None:
-        remove_belief(target, self.belief_id)
-
-    @classmethod
-    def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        belief_id = params["belief_id"]
-        return cls(rule_id=belief_id)
 
 
 class AddRelationshipModifier(Effect):

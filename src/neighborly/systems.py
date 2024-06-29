@@ -10,7 +10,6 @@ import random
 from collections import defaultdict
 from typing import cast
 
-from neighborly.components.beliefs import Belief
 from neighborly.components.business import Business, BusinessStatus, JobRole
 from neighborly.components.character import (
     Character,
@@ -74,7 +73,6 @@ from neighborly.helpers.settlement import (
 )
 from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.libraries import (
-    BeliefLibrary,
     BusinessLibrary,
     CharacterLibrary,
     DistrictLibrary,
@@ -361,7 +359,8 @@ class CompileTraitDefsSystem(System):
                     description=trait_def.description,
                     effects=[
                         effect_library.create_from_obj(
-                            world, {"reason": f"Has {trait_def.name} trait", **entry})
+                            world, {"reason": f"Has {trait_def.name} trait", **entry}
+                        )
                         for entry in trait_def.effects
                     ],
                     conflicting_traits=trait_def.conflicts_with,
@@ -498,41 +497,6 @@ class CompileDistrictDefsSystem(System):
         for definition in compiled_defs:
             if not definition.is_template:
                 library.add_definition(definition)
-
-
-class CompileBeliefDefsSystem(System):
-    """Compile belief definitions."""
-
-    __system_group__ = "InitializationSystems"
-
-    def on_update(self, world: World) -> None:
-        library = world.resource_manager.get_resource(BeliefLibrary)
-        effect_library = world.resource_manager.get_resource(EffectLibrary)
-        precondition_library = world.resource_manager.get_resource(PreconditionLibrary)
-
-        compiled_defs = compile_definitions(library.definitions.values())
-
-        library.definitions.clear()
-
-        for definition in compiled_defs:
-            if not definition.is_template:
-                library.add_definition(definition)
-
-                library.add_belief(
-                    Belief(
-                        belief_id=definition.definition_id,
-                        description=definition.description,
-                        preconditions=[
-                            precondition_library.create_from_obj(world, entry)
-                            for entry in definition.preconditions
-                        ],
-                        effects=[
-                            effect_library.create_from_obj(world, entry)
-                            for entry in definition.effects
-                        ],
-                        is_global=definition.is_global,
-                    )
-                )
 
 
 class CompileSettlementDefsSystem(System):

@@ -15,13 +15,11 @@ from typing import Any, Generic, Iterable, Optional, Protocol, Type, TypeVar
 from ordered_set import OrderedSet
 
 from neighborly.action import ActionConsideration
-from neighborly.components.beliefs import Belief
 from neighborly.components.business import JobRole
 from neighborly.components.character import SpeciesType
 from neighborly.components.skills import Skill
 from neighborly.components.traits import Trait
 from neighborly.defs.base_types import (
-    BeliefDef,
     BusinessDef,
     CharacterDef,
     ContentDefinition,
@@ -321,34 +319,6 @@ class BusinessLibrary(ContentDefinitionLibrary[BusinessDef]):
         super().__init__()
         self.factory = factory
 
-
-class BeliefLibrary(ContentDefinitionLibrary[BeliefDef]):
-    """The collection of all potential agent beliefs."""
-
-    __slots__ = ("beliefs", "global_beliefs")
-
-    beliefs: dict[str, Belief]
-    """All potential beliefs."""
-    global_beliefs: OrderedSet[str]
-    """IDs of all beliefs that are held globally by all characters."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.beliefs = {}
-        self.global_beliefs = OrderedSet([])
-
-    def add_belief(self, belief: Belief) -> None:
-        """Add a belief to the library."""
-
-        self.beliefs[belief.belief_id] = belief
-
-        if belief.is_global:
-            self.global_beliefs.add(belief.belief_id)
-
-    def get_belief(self, belief_id: str) -> Belief:
-        """Get a belief from the library using its ID."""
-
-        return self.beliefs[belief_id]
 
 class ICharacterNameFactory(Protocol):
     """Generates a character name."""
