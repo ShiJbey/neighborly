@@ -713,6 +713,6 @@ def load_plugin(sim: Simulation) -> None:
     sim.world.systems.add_system(DatingBreakUpSystem())
     sim.world.systems.add_system(PregnancySystem())
     sim.world.systems.add_system(RetirementSystem())
-    sim.world.systems.add_system(AdultsFormOwnHouseholdSystem())
+    # sim.world.systems.add_system(AdultsFormOwnHouseholdSystem())
     sim.world.systems.add_system(CrushFormationSystem())
     sim.world.systems.add_system(MeetNewPeopleSystem())
