@@ -74,8 +74,6 @@ def get_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
-    from neighborly.inspection import *
-
     args = get_args()
 
     sim = Simulation(
