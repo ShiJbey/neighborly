@@ -9,10 +9,10 @@ import pytest
 
 from neighborly.helpers.character import create_character
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, has_trait, remove_trait
+from neighborly.helpers.traits import add_trait_with_id, has_trait, remove_trait_with_id
 from neighborly.libraries import CharacterLibrary
 from neighborly.loaders import load_characters, load_skills, load_species, load_traits
-from neighborly.plugins import default_character_names, default_traits
+from neighborly.plugins import default_content
 from neighborly.simulation import Simulation
 
 _DATA_DIR = (
@@ -26,8 +26,7 @@ def test_sim() -> Simulation:
 
     sim = Simulation()
 
-    default_traits.load_plugin(sim)
-    default_character_names.load_plugin(sim)
+    default_content.load_plugin(sim)
 
     load_characters(sim, _DATA_DIR / "characters.json")
     load_skills(sim, _DATA_DIR / "skills.json")
@@ -51,7 +50,7 @@ def test_add_trait(test_sim: Simulation) -> None:
 
     assert has_trait(character, "flirtatious") is False
 
-    success = add_trait(character, "flirtatious")
+    success = add_trait_with_id(character, "flirtatious")
 
     assert success is True
 
@@ -63,11 +62,11 @@ def test_remove_trait(test_sim: Simulation) -> None:
 
     assert has_trait(character, "flirtatious") is False
 
-    add_trait(character, "flirtatious")
+    add_trait_with_id(character, "flirtatious")
 
     assert has_trait(character, "flirtatious") is True
 
-    success = remove_trait(character, "flirtatious")
+    success = remove_trait_with_id(character, "flirtatious")
 
     assert success is True
 
@@ -79,12 +78,12 @@ def test_add_remove_trait_effects(test_sim: Simulation) -> None:
 
     get_stat(farmer, "sociability").base_value = 0
 
-    success = add_trait(farmer, "gullible")
+    success = add_trait_with_id(farmer, "gullible")
 
     assert success is True
     assert get_stat(farmer, "sociability").value == 3
 
-    success = remove_trait(farmer, "gullible")
+    success = remove_trait_with_id(farmer, "gullible")
 
     assert success is True
     assert get_stat(farmer, "sociability").value == 0
@@ -95,14 +94,14 @@ def test_try_add_conflicting_trait(test_sim: Simulation) -> None:
 
     character = create_character(test_sim.world, "farmer.female")
 
-    success = add_trait(character, "skeptical")
+    success = add_trait_with_id(character, "skeptical")
 
     assert success is True
 
-    success = add_trait(character, "gullible")
+    success = add_trait_with_id(character, "gullible")
 
     assert success is False
 
-    success = add_trait(character, "skeptical")
+    success = add_trait_with_id(character, "skeptical")
 
     assert success is False

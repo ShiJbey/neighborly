@@ -207,6 +207,14 @@ def remove_employee(business: Business, employee: GameObject) -> None:
     employee.remove_component(Occupation)
     employee.add_component(Unemployed(timestamp=current_date.copy()))
 
+    employee.dispatch_event(
+        Event(
+            "occupation-changed",
+            world=business.gameobject.world,
+            occupation=None,
+        )
+    )
+
     business.gameobject.dispatch_event(
         Event(
             "employee-removed",

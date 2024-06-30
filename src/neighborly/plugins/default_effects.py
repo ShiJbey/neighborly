@@ -1,8 +1,5 @@
 """Built-in Effect Definitions.
 
-This module contains class definitions for effects that may be applied by traits and
-social rules.
-
 """
 
 from __future__ import annotations
@@ -10,15 +7,14 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 from neighborly.components.location import LocationPreference, LocationPreferences
-from neighborly.components.relationship import Relationship
-from neighborly.components.stats import StatModifierType, Stats
-from neighborly.ecs import GameObject, World
-from neighborly.effects.base_types import Effect
-from neighborly.effects.modifiers import (
+from neighborly.components.relationship import (
+    Relationship,
     RelationshipModifier,
     RelationshipModifierDir,
-    StatModifier,
 )
+from neighborly.components.stats import StatModifierType, Stats
+from neighborly.ecs import GameObject, World
+from neighborly.effects import Effect
 from neighborly.helpers.relationship import (
     add_relationship_modifier,
     remove_relationship_modifiers_from_source,
@@ -26,7 +22,9 @@ from neighborly.helpers.relationship import (
 from neighborly.helpers.shared import add_modifier, remove_modifiers_from_source
 from neighborly.helpers.skills import add_skill, get_skill, has_skill
 from neighborly.libraries import EffectLibrary, PreconditionLibrary
-from neighborly.preconditions.base_types import Precondition
+from neighborly.plugins.modifiers import StatModifier
+from neighborly.preconditions import Precondition
+from neighborly.simulation import Simulation
 
 
 class AddStatModifier(Effect):
@@ -584,3 +582,18 @@ class AddStatModifierToOwner(Effect):
             duration=duration,
             reason=reason,
         )
+
+
+def load_plugin(sim: Simulation) -> None:
+    """Load plugin data."""
+
+    effect_library = sim.world.resources.get_resource(EffectLibrary)
+
+    effect_library.add_effect_type(AddStatModifier)
+    effect_library.add_effect_type(AddSkillModifier)
+    effect_library.add_effect_type(AddToBaseStat)
+    effect_library.add_effect_type(AddToBaseSkill)
+    effect_library.add_effect_type(AddLocationPreference)
+    effect_library.add_effect_type(AddStatModifierToOwner)
+    effect_library.add_effect_type(AddStatModifierToTarget)
+    effect_library.add_effect_type(AddRelationshipModifier)

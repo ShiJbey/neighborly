@@ -12,7 +12,7 @@ import attrs
 
 from neighborly.datetime import SimDate
 from neighborly.ecs import Component
-from neighborly.effects.base_types import Effect
+from neighborly.effects import Effect
 
 
 @attrs.define

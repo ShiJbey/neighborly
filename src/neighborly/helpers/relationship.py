@@ -6,6 +6,8 @@ from typing import Optional
 
 from neighborly.components.relationship import (
     Relationship,
+    RelationshipModifier,
+    RelationshipModifierDir,
     RelationshipModifiers,
     Relationships,
     Reputation,
@@ -15,7 +17,6 @@ from neighborly.components.shared import Modifiers
 from neighborly.components.stats import Stats
 from neighborly.components.traits import Traits
 from neighborly.ecs import Event, GameObject
-from neighborly.effects.modifiers import RelationshipModifier, RelationshipModifierDir
 
 
 def add_relationship(owner: GameObject, target: GameObject) -> GameObject:

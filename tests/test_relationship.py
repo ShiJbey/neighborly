@@ -7,10 +7,9 @@ import pathlib
 
 import pytest
 
+from neighborly.components.relationship import RelationshipModifierDir
 from neighborly.components.stats import StatModifierType
 from neighborly.components.traits import Trait
-from neighborly.effects.effects import AddRelationshipModifier, AddStatModifier
-from neighborly.effects.modifiers import RelationshipModifierDir
 from neighborly.helpers.character import create_character
 from neighborly.helpers.relationship import (
     add_relationship,
@@ -18,7 +17,7 @@ from neighborly.helpers.relationship import (
     has_relationship,
 )
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.helpers.traits import add_trait_with_id, remove_trait_with_id
 from neighborly.libraries import CharacterLibrary, TraitLibrary
 from neighborly.loaders import (
     load_businesses,
@@ -29,7 +28,8 @@ from neighborly.loaders import (
     load_skills,
     load_species,
 )
-from neighborly.plugins import default_character_names, default_settlement_names
+from neighborly.plugins import default_content
+from neighborly.plugins.default_effects import AddRelationshipModifier, AddStatModifier
 from neighborly.simulation import Simulation
 
 _DATA_DIR = (
@@ -50,9 +50,14 @@ def sim() -> Simulation:
     load_skills(simulation, _DATA_DIR / "skills.json")
     load_species(simulation, _DATA_DIR / "species.json")
 
-    # default_traits.load_plugin(simulation)
-    default_character_names.load_plugin(simulation)
-    default_settlement_names.load_plugin(simulation)
+    default_content.load_plugin(simulation)
+
+    # IMPORTANT: Stop character from generating with traits
+    simulation.world.resources.get_resource(CharacterLibrary).get_definition(
+        "base_character"
+    ).traits.clear()
+
+    simulation.initialize()
 
     simulation.world.resources.get_resource(TraitLibrary).add_trait(
         Trait(
@@ -76,13 +81,6 @@ def sim() -> Simulation:
             conflicting_traits=set(),
         )
     )
-
-    # IMPORTANT: Stop character from generating with traits
-    simulation.world.resources.get_resource(CharacterLibrary).get_definition(
-        "base_character"
-    ).traits.clear()
-
-    simulation.initialize()
 
     return simulation
 
@@ -139,7 +137,7 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     assert get_stat(rel_to_noble, "reputation").value == 0
 
-    add_trait(farmer, "gullible")
+    add_trait_with_id(farmer, "gullible")
 
     assert get_stat(rel_to_noble, "reputation").value == 10
 
@@ -147,7 +145,7 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     assert get_stat(rel, "reputation").value == 10
 
-    remove_trait(farmer, "gullible")
+    remove_trait_with_id(farmer, "gullible")
 
     assert get_stat(rel, "reputation").value == 0
     assert get_stat(rel_to_noble, "reputation").value == 0

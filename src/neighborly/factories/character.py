@@ -12,11 +12,11 @@ from neighborly.components.shared import Age
 from neighborly.components.skills import Skills
 from neighborly.components.stats import Lifespan
 from neighborly.components.traits import Trait, Traits
-from neighborly.defs.base_types import CharacterDef
+from neighborly.definitions import CharacterDef
 from neighborly.ecs import Component, ComponentFactory, GameObject, World
 from neighborly.helpers.character import set_character_name
 from neighborly.helpers.skills import add_skill, get_skill, has_skill
-from neighborly.helpers.traits import add_trait
+from neighborly.helpers.traits import add_trait, add_trait_with_id
 from neighborly.libraries import (
     CharacterLibrary,
     CharacterNameFactories,
@@ -99,7 +99,7 @@ class DefaultCharacterFactory(ICharacterFactory):
         self._initialize_skills(character, character_def)
 
         for trait_id in species.traits:
-            add_trait(character, trait_id)
+            add_trait_with_id(character, trait_id)
 
         # Initialize the character's life stage given their age
         character.get_component(Character).life_stage = species.get_life_stage_for_age(
@@ -120,7 +120,7 @@ class DefaultCharacterFactory(ICharacterFactory):
         # randomly if using tags
         for entry in definition.traits:
             if entry.with_id:
-                add_trait(character, entry.with_id)
+                add_trait_with_id(character, entry.with_id)
             elif entry.with_tags:
                 potential_traits = trait_library.get_definition_with_tags(
                     entry.with_tags
@@ -141,7 +141,7 @@ class DefaultCharacterFactory(ICharacterFactory):
                     population=traits, weights=trait_weights, k=1
                 )[0]
 
-                add_trait(character, chosen_trait)
+                add_trait_with_id(character, chosen_trait)
 
     @staticmethod
     def _initialize_skills(character: GameObject, definition: CharacterDef) -> None:
@@ -215,7 +215,7 @@ class DefaultChildFactory(IChildFactory):
 
         child.add_component(Species(species=chosen_species))
         for trait_id in chosen_species.traits:
-            add_trait(child, trait_id)
+            add_trait_with_id(child, trait_id)
 
         # Initialize their lifespan from the species
         min_value, max_value = chosen_species.lifespan
@@ -318,7 +318,7 @@ class DefaultChildFactory(IChildFactory):
         # randomly if using tags
         for entry in definition.traits:
             if entry.with_id:
-                add_trait(character, entry.with_id)
+                add_trait_with_id(character, entry.with_id)
             elif entry.with_tags:
                 potential_traits = trait_library.get_definition_with_tags(
                     entry.with_tags
@@ -339,7 +339,7 @@ class DefaultChildFactory(IChildFactory):
                     population=traits, weights=trait_weights, k=1
                 )[0]
 
-                add_trait(character, chosen_trait)
+                add_trait_with_id(character, chosen_trait)
 
     def _initialize_skills(
         self, birthing_parent: GameObject, other_parent: GameObject, child: GameObject

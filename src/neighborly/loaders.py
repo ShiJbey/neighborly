@@ -12,7 +12,7 @@ from typing import Any, Union
 
 import yaml
 
-from neighborly.defs.base_types import (
+from neighborly.definitions import (
     BusinessDef,
     CharacterDef,
     DistrictDef,

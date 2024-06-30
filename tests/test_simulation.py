@@ -14,11 +14,7 @@ from neighborly.loaders import (
     load_skills,
     load_species,
 )
-from neighborly.plugins import (
-    default_character_names,
-    default_settlement_names,
-    default_traits,
-)
+from neighborly.plugins import default_content
 from neighborly.simulation import Simulation
 
 _DATA_DIR = (
@@ -40,9 +36,7 @@ def test_sim() -> Simulation:
     load_skills(sim, _DATA_DIR / "skills.json")
     load_species(sim, _DATA_DIR / "species.json")
 
-    default_traits.load_plugin(sim)
-    default_character_names.load_plugin(sim)
-    default_settlement_names.load_plugin(sim)
+    default_content.load_plugin(sim)
 
     sim.initialize()
 

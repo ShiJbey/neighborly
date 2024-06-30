@@ -8,14 +8,17 @@ graph.
 
 from __future__ import annotations
 
+import enum
 from collections import defaultdict
-from typing import Any
+from typing import Any, Optional
 
 from ordered_set import OrderedSet
 
+from neighborly.components.shared import Modifier
 from neighborly.components.stats import StatComponent
 from neighborly.ecs import Component, GameObject, TagComponent
-from neighborly.effects.modifiers import RelationshipModifier
+from neighborly.effects import Effect
+from neighborly.preconditions import Precondition
 
 
 class Relationship(Component):
@@ -280,3 +283,97 @@ class IsSingle(TagComponent):
 
 class IsMarried(TagComponent):
     """Tags a character as being married."""
+
+
+class RelationshipModifierDir(enum.Enum):
+
+    OUTGOING = enum.auto()
+    INCOMING = enum.auto()
+
+
+class RelationshipModifier(Modifier):
+    """Conditionally modifies a GameObject's relationships."""
+
+    __slots__ = (
+        "direction",
+        "description",
+        "preconditions",
+        "effects",
+        "duration",
+        "_has_duration",
+    )
+
+    direction: RelationshipModifierDir
+    """A unique ID for the belief."""
+    description: str
+    """A text description of this belief."""
+    preconditions: list[Precondition]
+    """Preconditions checked against a relationship GameObject."""
+    effects: list[Effect]
+    """Effects to apply to a relationship GameObject."""
+    duration: int
+    _has_duration: bool
+
+    def __init__(
+        self,
+        direction: RelationshipModifierDir,
+        description: str,
+        preconditions: list[Precondition],
+        effects: list[Effect],
+        source: Optional[object] = None,
+        duration: int = -1,
+        reason: str = "",
+    ) -> None:
+        super().__init__(source=source, reason=reason)
+        self.direction = direction
+        self.description = description
+        self.preconditions = preconditions
+        self.effects = effects
+        self.duration = duration
+        self._has_duration = duration > 0
+
+    def get_description(self) -> str:
+        """Get a description of what the modifier does."""
+        effect_descriptions = "; ".join([e.description for e in self.effects])
+        precondition_descriptions = "; ".join(
+            [p.description for p in self.preconditions]
+        )
+        return (
+            f"Effect(s): {effect_descriptions}\n"
+            f"Precondition(s): {precondition_descriptions}\n"
+            f"Reason: {self.reason}"
+        )
+
+    def is_expired(self) -> bool:
+        """Return true if the modifier is no longer valid."""
+
+        return self._has_duration and self.duration <= 0
+
+    def update(self, target: GameObject) -> None:
+        """Update the modifier for every time step that it is not expired."""
+
+        if self._has_duration:
+            self.duration -= 1
+
+    def check_preconditions(self, relationship: GameObject) -> bool:
+        """Check the preconditions against the given relationship."""
+
+        return all(p.check(relationship) for p in self.preconditions)
+
+    def apply(self, target: GameObject) -> None:
+        return
+
+    def remove(self, target: GameObject) -> None:
+        return
+
+    def apply_to_relationship(self, relationship: GameObject) -> None:
+        """Apply this modifier's effects to the given relationship."""
+
+        for effect in self.effects:
+            effect.apply(relationship)
+
+    def remove_from_relationship(self, relationship: GameObject) -> None:
+        """Remove this modifier's effects from the given relationship."""
+
+        for effect in self.effects:
+            effect.remove(relationship)

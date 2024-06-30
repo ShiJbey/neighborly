@@ -131,7 +131,7 @@ class GlobalEventHistory:
 def dispatch_life_event(
     event: LifeEvent,
     gameobjects: Optional[Sequence[GameObject]] = None,
-    skip_logging: bool = False
+    skip_logging: bool = False,
 ) -> None:
     """Dispatch a life event to event listeners.
 

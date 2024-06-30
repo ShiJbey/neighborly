@@ -19,7 +19,7 @@ from neighborly.components.business import JobRole
 from neighborly.components.character import SpeciesType
 from neighborly.components.skills import Skill
 from neighborly.components.traits import Trait
-from neighborly.defs.base_types import (
+from neighborly.definitions import (
     BusinessDef,
     CharacterDef,
     ContentDefinition,
@@ -31,9 +31,9 @@ from neighborly.defs.base_types import (
     TraitDef,
 )
 from neighborly.ecs import GameObject, World
-from neighborly.effects.base_types import Effect
+from neighborly.effects import Effect
 from neighborly.helpers.content_selection import get_with_tags
-from neighborly.preconditions.base_types import Precondition
+from neighborly.preconditions import Precondition
 
 _T = TypeVar("_T", bound=ContentDefinition)
 

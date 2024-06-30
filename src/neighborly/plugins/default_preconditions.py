@@ -11,7 +11,9 @@ from neighborly.ecs import GameObject, World
 from neighborly.helpers.skills import get_skill, has_skill
 from neighborly.helpers.stats import get_stat, has_stat
 from neighborly.helpers.traits import has_trait
-from neighborly.preconditions.base_types import Precondition
+from neighborly.libraries import PreconditionLibrary
+from neighborly.preconditions import Precondition
+from neighborly.simulation import Simulation
 
 
 class HasTrait(Precondition):
@@ -824,3 +826,27 @@ class TargetIsSex(Precondition):
     def instantiate(cls, world: World, params: dict[str, Any]) -> Precondition:
         sex = Sex[params["sex"].upper()]
         return cls(sex=sex)
+
+
+def load_plugin(sim: Simulation) -> None:
+    """Load plugin data."""
+
+    precondition_library = sim.world.resources.get_resource(PreconditionLibrary)
+
+    precondition_library.add_precondition_type(HasTrait)
+    precondition_library.add_precondition_type(OwnerHasTrait)
+    precondition_library.add_precondition_type(TargetHasTrait)
+    precondition_library.add_precondition_type(AreSameSex)
+    precondition_library.add_precondition_type(AreOppositeSex)
+    precondition_library.add_precondition_type(SkillRequirement)
+    precondition_library.add_precondition_type(OwnerSkillRequirement)
+    precondition_library.add_precondition_type(TargetSkillRequirement)
+    precondition_library.add_precondition_type(StatRequirement)
+    precondition_library.add_precondition_type(OwnerStatRequirement)
+    precondition_library.add_precondition_type(TargetStatRequirement)
+    precondition_library.add_precondition_type(LifeStageRequirement)
+    precondition_library.add_precondition_type(OwnerLifeStageRequirement)
+    precondition_library.add_precondition_type(TargetLifeStageRequirement)
+    precondition_library.add_precondition_type(IsSex)
+    precondition_library.add_precondition_type(OwnerIsSex)
+    precondition_library.add_precondition_type(TargetIsSex)

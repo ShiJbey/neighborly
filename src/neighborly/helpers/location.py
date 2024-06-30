@@ -9,7 +9,7 @@ from neighborly.components.location import (
 )
 from neighborly.components.stats import Stat
 from neighborly.ecs import GameObject
-from neighborly.effects.modifiers import StatModifier
+from neighborly.plugins.modifiers import StatModifier
 
 
 def add_frequented_location(character: GameObject, location: GameObject) -> None:

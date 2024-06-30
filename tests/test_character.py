@@ -19,10 +19,10 @@ from neighborly.helpers.character import (
     set_household_head,
 )
 from neighborly.loaders import load_characters, load_skills, load_species
-from neighborly.plugins import default_character_names, default_traits
+from neighborly.plugins import default_character_names, default_content, default_traits
 from neighborly.plugins.actions import GetMarried
+from neighborly.plugins.default_systems import InitializeSettlementSystem
 from neighborly.simulation import Simulation
-from neighborly.systems import InitializeSettlementSystem
 
 _DATA_DIR = (
     pathlib.Path(__file__).parent.parent / "src" / "neighborly" / "plugins" / "data"
@@ -33,6 +33,8 @@ _DATA_DIR = (
 def sim() -> Simulation:
 
     simulation = Simulation()
+
+    default_content.load_plugin(simulation)
 
     load_characters(simulation, _DATA_DIR / "characters.json")
     load_skills(simulation, _DATA_DIR / "skills.json")

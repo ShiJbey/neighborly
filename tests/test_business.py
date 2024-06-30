@@ -7,6 +7,7 @@ import pathlib
 from neighborly.components.business import Business
 from neighborly.helpers.business import create_business
 from neighborly.loaders import load_businesses, load_job_roles
+from neighborly.plugins import default_content
 from neighborly.simulation import Simulation
 
 _DATA_DIR = (
@@ -18,6 +19,8 @@ def test_create_business() -> None:
     """Test business creation using create_business."""
 
     sim = Simulation()
+
+    default_content.load_plugin(sim)
 
     load_businesses(sim, _DATA_DIR / "businesses.json")
     load_job_roles(sim, _DATA_DIR / "job_roles.json")

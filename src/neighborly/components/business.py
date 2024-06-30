@@ -12,8 +12,8 @@ from typing import Any, Iterable, Optional
 
 from neighborly.datetime import SimDate
 from neighborly.ecs import Component, GameObject
-from neighborly.effects.base_types import Effect
-from neighborly.preconditions.base_types import Precondition
+from neighborly.effects import Effect
+from neighborly.preconditions import Precondition
 
 
 class Occupation(Component):

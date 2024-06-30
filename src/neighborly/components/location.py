@@ -13,7 +13,7 @@ from ordered_set import OrderedSet
 
 from neighborly.components.stats import StatModifierType
 from neighborly.ecs import Component, GameObject
-from neighborly.preconditions.base_types import Precondition
+from neighborly.preconditions import Precondition
 
 
 class Location(Component):

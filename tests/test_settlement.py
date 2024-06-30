@@ -8,7 +8,7 @@ from neighborly.loaders import (
     load_job_roles,
     load_settlements,
 )
-from neighborly.plugins import default_settlement_names
+from neighborly.plugins import default_content
 from neighborly.simulation import Simulation
 
 _DATA_DIR = (
@@ -25,7 +25,7 @@ def test_create_settlement() -> None:
     load_characters(sim, _DATA_DIR / "characters.json")
     load_job_roles(sim, _DATA_DIR / "job_roles.json")
 
-    default_settlement_names.load_plugin(sim)
+    default_content.load_plugin(sim)
 
     sim.initialize()
 

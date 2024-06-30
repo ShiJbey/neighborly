@@ -1,12 +1,10 @@
-"""Default systems to include into a simulation.
-
-"""
+from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import ClassVar, Optional
+from typing import cast
 
-from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
+from neighborly.components.business import Business, BusinessStatus
 from neighborly.components.character import (
     Character,
     Household,
@@ -15,725 +13,616 @@ from neighborly.components.character import (
     Pregnant,
     ResidentOf,
     Sex,
+    Species,
 )
-from neighborly.components.location import FrequentedLocations, Location
-from neighborly.components.relationship import (
-    IsMarried,
-    KeyRelations,
-    Relationships,
-    Romance,
+from neighborly.components.location import (
+    CurrentSettlement,
+    FrequentedLocations,
+    Location,
+    LocationPreferences,
 )
-from neighborly.components.settlement import Settlement
-from neighborly.components.spawn_table import BusinessSpawnTable
-from neighborly.components.stats import Sociability, Stats
+from neighborly.components.relationship import KeyRelations
+from neighborly.components.settlement import District, Settlement
+from neighborly.components.shared import Age
+from neighborly.components.spawn_table import CharacterSpawnTable, DistrictSpawnTable
+from neighborly.components.stats import Fertility, Lifespan
 from neighborly.config import SimulationConfig
-from neighborly.ecs import Active, GameObject, System, World
-from neighborly.helpers.action import get_action_probability
+from neighborly.datetime import MONTHS_PER_YEAR, SimDate
+from neighborly.definitions import DistrictDef
+from neighborly.ecs import Active, Event, GameObject, System, World
 from neighborly.helpers.character import (
     add_character_to_household,
+    create_character,
+    create_child,
     create_household,
     remove_character_from_household,
     set_household_head,
 )
-from neighborly.helpers.relationship import (
-    add_relationship,
-    get_relationship,
-    has_relationship,
+from neighborly.helpers.content_selection import get_with_tags
+from neighborly.helpers.location import score_location
+from neighborly.helpers.relationship import get_relationship
+from neighborly.helpers.settlement import (
+    add_character_to_settlement,
+    add_district_to_settlement,
+    create_district,
+    create_settlement,
 )
-from neighborly.libraries import JobRoleLibrary
-from neighborly.plugins.actions import (
-    BreakUp,
-    Divorce,
-    FireEmployee,
-    FormCrush,
-    GetMarried,
-    GetPregnant,
-    HireEmployee,
-    PromoteEmployee,
-    Retire,
-    StartBusiness,
-    StartDating,
+from neighborly.helpers.traits import add_trait_with_id, has_trait
+from neighborly.libraries import DistrictLibrary, SettlementLibrary
+from neighborly.life_event import dispatch_life_event
+from neighborly.plugins.actions import CloseBusiness, Die
+from neighborly.plugins.default_events import (
+    BecomeAdolescentEvent,
+    BecomeAdultEvent,
+    BecomeSeniorEvent,
+    BecomeYoungAdultEvent,
+    BirthEvent,
+    ChildBirthEvent,
+    DeathEvent,
+    JoinSettlementEvent,
+    SettlementAddedEvent,
 )
 from neighborly.simulation import Simulation
 
 
-class FindJobSystem(System):
-    """Unemployed characters try to find work."""
+class InitializeSettlementSystem(System):
+    """Creates one or more settlement instances using simulation config settings."""
 
-    def on_update(self, world: World) -> None:
+    __system_group__ = "InitializationSystems"
+    __update_order__ = ("last",)
 
-        rng = world.resources.get_resource(random.Random)
+    __slots__ = ("num_districts",)
 
-        library = world.resources.get_resource(JobRoleLibrary)
+    num_districts: float
 
-        active_businesses = [
-            business
-            for _, (business, _) in world.get_components((Business, Active))
-            if business.status == BusinessStatus.OPEN
-        ]
-
-        rng.shuffle(active_businesses)
-
-        for _, (character_comp, _) in world.get_components((Character, Active)):
-            character = character_comp.gameobject
-
-            if character.has_component(Occupation):
-                continue
-
-            if character_comp.life_stage not in (
-                LifeStage.YOUNG_ADULT,
-                LifeStage.ADULT,
-            ):
-                continue
-
-            potential_hires: list[HireEmployee] = []
-
-            for business in active_businesses:
-                open_positions = business.get_open_positions()
-
-                for role_id in open_positions:
-                    job_role = library.get_role(role_id)
-
-                    if job_role.check_requirements(character):
-                        action = HireEmployee(
-                            business=business.gameobject,
-                            character=character,
-                            role=job_role,
-                        )
-                        potential_hires.append(action)
-
-            if not potential_hires:
-                continue
-
-            action = rng.choice(potential_hires)
-
-            action_probability = get_action_probability(action)
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class FiredFromJobSystem(System):
-    """Occasionally fire an employee or two."""
-
-    FIRING_THRESHOLD: ClassVar[float] = 0.8
-    """Utility score required to consider someone for firing."""
-
-    def on_update(self, world: World) -> None:
-
-        rng = world.resources.get_resource(random.Random)
-
-        # This loops through all the active businesses, scores the probability of
-        # firing each of the current employees, and, if any are above the firing
-        # threshold (class var), they are added to a list of potential employees
-        # to fire.
-        # The system selects one character at random from the list using weighted
-        # random selection, and does a probability check on if the character will
-        # actually be fired this time step.
-        for _, (business, _) in world.get_components((Business, Active)):
-            if business.status != BusinessStatus.OPEN:
-                continue
-
-            business_owner = business.owner
-
-            if business_owner is None:
-                continue
-
-            potential_actions: list[tuple[FireEmployee, float]] = []
-            action_utilities: list[float] = []
-
-            # Evaluate firing each employee
-            for employee, _ in business.employees.items():
-
-                action = FireEmployee(business=business.gameobject, character=employee)
-                action_probability = get_action_probability(action)
-
-                if action_probability >= self.FIRING_THRESHOLD:
-                    potential_actions.append((action, action_probability))
-                    action_utilities.append(action_probability)
-
-            if not potential_actions:
-                continue
-
-            chosen_action, action_probability = rng.choices(
-                potential_actions, action_utilities, k=1
-            )[0]
-
-            if rng.random() < action_probability:
-                chosen_action.execute()
-
-
-class JobPromotionSystem(System):
-    """Occasionally promote characters to higher positions at their jobs."""
-
-    PROMOTION_THRESHOLD: ClassVar[float] = 0.8
-    """Probability scored required to consider someone for a promotion."""
-
-    def on_update(self, world: World) -> None:
-
-        rng = world.resources.get_resource(random.Random)
-        job_role_library = world.resources.get_resource(JobRoleLibrary)
-
-        # Similar to firing characters, this systems loops through all the businesses
-        # and scores the probability of promoting each of it's employees. Only employees
-        # with probability scores above the threshold are considered. Once all employees
-        # have been evaluated, one is selected randomly and we perform a "dice roll"
-        # to see if they will actually be promoted this time step.
-        for _, (business, _) in world.get_components((Business, Active)):
-            if business.status != BusinessStatus.OPEN:
-                continue
-
-            business_owner = business.owner
-
-            if business_owner is None:
-                continue
-
-            potential_promotions: list[tuple[PromoteEmployee, float]] = []
-            potential_promotion_scores: list[float] = []
-
-            # Evaluate promoting each employee
-            for employee, current_role in business.employees.items():
-
-                current_job_level = current_role.job_level
-
-                open_positions = business.get_open_positions()
-
-                for role_id in open_positions:
-                    role = job_role_library.get_role(role_id)
-
-                    if current_job_level >= role.job_level:
-                        continue
-
-                    action = PromoteEmployee(business_owner, employee, role)
-                    probability_score = get_action_probability(action)
-
-                    if probability_score > self.PROMOTION_THRESHOLD:
-                        potential_promotions.append((action, probability_score))
-                        potential_promotion_scores.append(probability_score)
-
-            if not potential_promotions:
-                continue
-
-            action, action_probability = rng.choices(
-                potential_promotions, potential_promotion_scores, k=1
-            )[0]
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class StartBusinessSystem(System):
-    """Characters have a chance of becoming a business owner."""
-
-    @staticmethod
-    def get_eligible_businesses(
-        settlement: Settlement,
-    ) -> list[tuple[str, GameObject, JobRole]]:
-        """Get all potential businesses that could be built.
-
-        Parameters
-        ----------
-        settlement
-            The settlement where the business will be built.
-
-        Returns
-        -------
-        tuple[str, GameObject, JobRole]
-            The definition ID, district to build, and job role of eligible business
-            definitions.
-        """
-        eligible_business_definitions: list[tuple[str, GameObject, JobRole]] = []
-        weights: list[float] = []
-
-        for district in settlement.districts:
-            spawn_table = district.get_component(BusinessSpawnTable)
-
-            for entry in spawn_table.table.values():
-                if entry.instances >= entry.max_instances:
-                    continue
-                if entry.min_population >= settlement.population:
-                    continue
-
-                eligible_business_definitions.append(
-                    (entry.definition_id, district, entry.owner_role)
-                )
-                weights.append(entry.spawn_frequency)
-
-        return eligible_business_definitions
-
-    def on_update(self, world: World) -> None:
-        # This system loops through all the adult characters, giving them the option to
-        # start a new business if:
-        # (1) They meet the requirements for the owner role
-        # (2) They are unemployed
-        # (3) At least at the YOUNG_ADULT life stage
-        # (4) They are residents of the settlement
-
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for _, (character, resident_of, _) in world.get_components(
-            (Character, ResidentOf, Active)
-        ):
-            if character.life_stage not in (LifeStage.YOUNG_ADULT, LifeStage.ADULT):
-                continue
-
-            if character.gameobject.has_component(Occupation):
-                continue
-
-            eligible_businesses = self.get_eligible_businesses(
-                resident_of.settlement.get_component(Settlement)
-            )
-
-            actions: list[tuple[StartBusiness, float]] = []
-            action_utilities: list[float] = []
-
-            for definition_id, district, owner_role in eligible_businesses:
-
-                if not owner_role.requirements:
-                    action = StartBusiness(
-                        character=character.gameobject,
-                        business_definition_id=definition_id,
-                        district=district,
-                        owner_role=owner_role,
-                    )
-                    action_probability = get_action_probability(action)
-
-                    if action_probability > 0:
-                        actions.append((action, action_probability))
-                        action_utilities.append(action_probability)
-
-                else:
-                    if owner_role.check_requirements(character.gameobject):
-                        action = StartBusiness(
-                            character=character.gameobject,
-                            business_definition_id=definition_id,
-                            district=district,
-                            owner_role=owner_role,
-                        )
-                        action_probability = get_action_probability(action)
-
-                        if action_probability > 0:
-                            actions.append((action, action_probability))
-                            action_utilities.append(action_probability)
-
-            if not actions:
-                continue
-
-            action, action_probability = rng.choices(actions, action_utilities, k=1)[0]
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class CharacterDatingSystem(System):
-    """Characters have a chance of dating their crush."""
-
-    def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for _, (character, key_relations, _) in world.get_components(
-            (Character, KeyRelations, Active)
-        ):
-            if character.gameobject.has_component(IsMarried):
-                continue
-
-            potential_romances: list[tuple[StartDating, float]] = []
-            potential_romance_scores: list[float] = []
-
-            for partner in key_relations.get("crush"):
-
-                if partner.has_component(IsMarried):
-                    continue
-
-                if partner == character.gameobject:
-                    continue
-
-                if partner.is_active is False:
-                    continue
-
-                if not partner.has_component(Character):
-                    continue
-
-                action = StartDating(character=character.gameobject, partner=partner)
-                action_probability = get_action_probability(action)
-
-                if action_probability > 0:
-                    potential_romances.append((action, action_probability))
-                    potential_romance_scores.append(action_probability)
-
-            if not potential_romances:
-                continue
-
-            action, action_probability = rng.choices(
-                potential_romances, potential_romance_scores, k=1
-            )[0]
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class CharacterMarriageSystem(System):
-    """Characters have a chance to get married"""
-
-    def on_update(self, world: World) -> None:
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for _, (character, key_relations, _) in world.get_components(
-            (Character, KeyRelations, Active)
-        ):
-            if character.gameobject.has_component(IsMarried):
-                continue
-
-            significant_others = key_relations.get("dating")
-
-            potential_marriages: list[tuple[GetMarried, float]] = []
-            potential_marriage_scores: list[float] = []
-
-            for partner in significant_others:
-                if partner.is_active is False:
-                    continue
-
-                if partner.has_component(IsMarried):
-                    continue
-
-                action = GetMarried(character=character.gameobject, partner=partner)
-                action_probability = get_action_probability(action)
-
-                if action_probability > 0:
-                    potential_marriages.append((action, action_probability))
-                    potential_marriage_scores.append(action_probability)
-
-            if not potential_marriages:
-                continue
-
-            action, action_probability = rng.choices(
-                potential_marriages, potential_marriage_scores, k=1
-            )[0]
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class CharacterDivorceSystem(System):
-    """Characters in marriages may choose to divorce their spouse."""
-
-    def on_update(self, world: World) -> None:
-
-        rng = world.resource_manager.get_resource(random.Random)
-
-        for _, (character, key_relations, _) in world.get_components(
-            (Character, KeyRelations, Active)
-        ):
-
-            spouses = key_relations.get("spouse")
-
-            potential_divorces: list[tuple[Divorce, float]] = []
-            potential_divorce_scores: list[float] = []
-
-            for partner in spouses:
-
-                if partner.is_active is False:
-                    continue
-
-                action = Divorce(character=character.gameobject, partner=partner)
-                action_probability = get_action_probability(action)
-
-                if action_probability > 0:
-                    potential_divorces.append((action, action_probability))
-                    potential_divorce_scores.append(action_probability)
-
-            if not potential_divorces:
-                continue
-
-            action, action_probability = rng.choices(
-                potential_divorces, potential_divorce_scores, k=1
-            )[0]
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class DatingBreakUpSystem(System):
-    """Characters in dating relationships may choose to break-up with their partner."""
-
-    def on_update(self, world: World) -> None:
-
-        rng = world.resources.get_resource(random.Random)
-
-        for _, (character, key_relations, _) in world.get_components(
-            (Character, KeyRelations, Active)
-        ):
-
-            partners = key_relations.get("dating")
-
-            potential_break_ups: list[tuple[BreakUp, float]] = []
-            potential_break_up_scores: list[float] = []
-
-            if partners:
-                partner = rng.choice(partners)
-
-                if not partner.is_active:
-                    continue
-
-                action = BreakUp(
-                    character=character.gameobject,
-                    partner=partner,
-                )
-                action_probability = get_action_probability(action)
-
-                if action_probability > 0:
-                    potential_break_ups.append((action, action_probability))
-                    potential_break_up_scores.append(action_probability)
-
-            if not potential_break_ups:
-                continue
-
-            action, action_probability = rng.choices(
-                potential_break_ups, potential_break_up_scores, k=1
-            )[0]
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class PregnancySystem(System):
-    """Female characters in marriages have a chance of getting pregnant."""
-
-    def on_update(self, world: World) -> None:
-
-        rng = world.resources.get_resource(random.Random)
-
-        for _, (character, key_relations, _) in world.get_components(
-            (Character, KeyRelations, Active)
-        ):
-            if character.sex != Sex.FEMALE:
-                continue
-
-            if character.gameobject.has_component(Pregnant):
-                continue
-
-            spouses = key_relations.get("spouse")
-
-            potential_pregnancies: list[tuple[GetPregnant, float]] = []
-            potential_pregnancy_scores: list[float] = []
-
-            for partner in spouses:
-
-                if partner.get_component(Character).sex != Sex.MALE:
-                    continue
-
-                if partner.is_active is False:
-                    continue
-
-                action = GetPregnant(character=character.gameobject, partner=partner)
-                action_probability = get_action_probability(action)
-
-                if action_probability > 0:
-                    potential_pregnancies.append((action, action_probability))
-                    potential_pregnancy_scores.append(action_probability)
-
-            if not potential_pregnancies:
-                continue
-
-            action, action_probability = rng.choices(
-                potential_pregnancies, potential_pregnancy_scores, k=1
-            )[0]
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class RetirementSystem(System):
-    """Senior characters working a job can consider if they want to retire."""
-
-    def on_update(self, world: World) -> None:
-
-        rng = world.resources.get_resource(random.Random)
-
-        for _, (character, _, _) in world.get_components(
-            (Character, Occupation, Active)
-        ):
-            if character.life_stage < LifeStage.SENIOR:
-                continue
-
-            if not character.gameobject.has_component(Occupation):
-                continue
-
-            action = Retire(character.gameobject)
-
-            action_probability = get_action_probability(action)
-
-            if rng.random() < action_probability:
-                action.execute()
-
-
-class AdultsFormOwnHouseholdSystem(System):
-    """Characters may chose to start their own households.
-
-    Adult characters who are not the head or spouse of a household, may start their own
-    households.
-    """
-
-    def on_update(self, world: World) -> None:
-        for _, (character, member_of_household, _) in world.get_components(
-            (Character, MemberOfHousehold, Active)
-        ):
-            if character.life_stage < LifeStage.YOUNG_ADULT:
-                continue
-
-            household = member_of_household.household.get_component(Household)
-
-            if not character.gameobject != household.head:
-                continue
-
-            new_household = create_household(world).get_component(Household)
-            set_household_head(new_household.gameobject, character.gameobject)
-            remove_character_from_household(household.gameobject, character.gameobject)
-            add_character_to_household(new_household.gameobject, character.gameobject)
-
-
-class CrushFormationSystem(System):
-    """Every timestep there is a possibility that a character might form a new crush.
-
-    This system is intended to assist with romantic depth within the simulation. It adds
-    an additional layer of nuance to relationships since characters might form crushes
-    on characters that they are not currently in a romantic relationship with.
-    """
-
-    __slots__ = ("crush_threshold",)
-
-    crush_threshold: float
-    """Probability score required for someone to form a crush."""
-
-    def __init__(self, crush_threshold: float = 0.6) -> None:
+    def __init__(self, num_districts: float = 4) -> None:
         super().__init__()
-        self.crush_threshold = crush_threshold
+        self.num_districts = num_districts
 
     def on_add(self, world: World) -> None:
         config = world.resources.get_resource(SimulationConfig)
 
-        if threshold := config.settings.get("crush_threshold"):
-            self.crush_threshold = float(threshold)
+        if num_districts := config.settings.get("num_districts"):
+            self.num_districts = int(num_districts)
 
     def on_update(self, world: World) -> None:
-        # 1) Loop through all the active characters
-        # 2) Get their outgoing relationships
-        # 3) Find the person that they have the highest romantic attraction to
-        # 4) Run a probability check
-        # 5) If successful, add a crush trait to the relationship and remove any
-        #    existing crushes.
+        config = world.resource_manager.get_resource(SimulationConfig)
 
-        rng = world.resources.get_resource(random.Random)
+        rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, key_relations, relationships, _) in world.get_components(
-            (Character, KeyRelations, Relationships, Active)
-        ):
-            current_crush: Optional[GameObject] = None
-            potential_crush: Optional[GameObject] = None
-            highest_romance: float = 0
+        settlement_library = world.resources.get_resource(SettlementLibrary)
+        district_library = world.resources.get_resource(DistrictLibrary)
 
-            crushes = key_relations.get("crush")
-            if crushes:
-                current_crush = crushes[0]
-                potential_crush = current_crush
-                highest_romance = (
-                    get_relationship(character.gameobject, potential_crush)
-                    .get_component(Stats)
-                    .get_stat("romance")
-                    .value
+        # Select a settlement from the library using the theme tags
+        selection_tags = [f"~{tag}" for tag in config.settings.get("theme_tags", [])]
+
+        settlement_options = settlement_library.get_definition_with_tags(selection_tags)
+
+        if not settlement_options:
+            return
+
+        chosen_settlement_definition = rng.choice(settlement_options)
+
+        settlement = create_settlement(
+            world, chosen_settlement_definition.definition_id
+        ).get_component(Settlement)
+
+        world.events.dispatch_event(
+            Event("settlement-added", world=world, settlement=settlement.gameobject)
+        )
+
+        # Now generate districts for the settlement using the spawn table. The table
+        # has a subset of all the districts in the district library. We need to perform
+        # tag-based selection on all the entries
+        spawn_table = settlement.gameobject.get_component(DistrictSpawnTable)
+
+        districts_and_tags: list[tuple[DistrictDef, list[str]]] = []
+
+        for entry in spawn_table.table.values():
+            definition = district_library.get_definition(entry.definition_id)
+            districts_and_tags.append((definition, [*definition.tags]))
+
+        district_options = get_with_tags(districts_and_tags, selection_tags)
+
+        n_districts_remaining = self.num_districts
+
+        district_instance_counts: defaultdict[str, int] = defaultdict(lambda: 0)
+
+        while n_districts_remaining > 0:
+
+            if not district_options:
+                raise RuntimeError(
+                    "Ran out of eligible districts when constructing settlement. "
+                    "Please adjust settings or add more content."
                 )
 
-            for target, relationship in relationships.outgoing.items():
+            district_def = rng.choice(district_options)
 
-                if target == character.gameobject:
-                    continue
-
-                if not target.is_active:
-                    continue
-
-                romance = relationship.get_component(Romance).stat.value
-
-                if romance > highest_romance:
-                    highest_romance = romance
-                    potential_crush = target
-
-            if potential_crush is None or potential_crush == current_crush:
+            # If there are too many instances of this district remove it from the list
+            # and try again
+            if (
+                district_instance_counts[district_def.definition_id]
+                > district_def.max_instances
+            ):
+                district_options.remove(district_def)
                 continue
 
-            action = FormCrush(character=character.gameobject, crush=potential_crush)
+            # Create an instance of the district and add it to the settlement
+            district = create_district(world, district_def.definition_id).get_component(
+                District
+            )
 
-            action_probability = get_action_probability(action)
+            add_district_to_settlement(settlement, district)
 
-            if action_probability < self.crush_threshold:
-                continue
+            world.events.dispatch_event(
+                Event("district-added", world=world, district=district)
+            )
 
-            if rng.random() < action_probability:
-                action.execute()
+            n_districts_remaining -= 1
+
+        event = SettlementAddedEvent(settlement.gameobject)
+        dispatch_life_event(event, [settlement.gameobject])
 
 
-class MeetNewPeopleSystem(System):
-    """Characters introduce themselves to new people that frequent the same places.
+class SpawnNewResidentSystem(System):
+    """Spawns new characters as residents within vacant residences."""
 
-    Notes
-    -----
-    This system uses a character's sociability stat score to determine the probability
-    of them introducing themselves to someone else. The goal is for characters with
-    higher sociability scores to form more relationships over the course of their lives.
-    """
+    __slots__ = ("growth_factor",)
+
+    growth_factor: float
+
+    def __init__(self, growth_factor: float = 0.4) -> None:
+        super().__init__()
+        self.growth_factor = growth_factor
+
+    def on_add(self, world: World) -> None:
+        config = world.resources.get_resource(SimulationConfig)
+
+        if growth_factor := config.settings.get("growth_factor"):
+            self.growth_factor = float(growth_factor)
 
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
 
+        # Find vacant residences
+        for _, (_, current_settlement, spawn_table, _) in world.get_components(
+            (District, CurrentSettlement, CharacterSpawnTable, Active)
+        ):
+            if len(spawn_table.table) == 0:
+                continue
+
+            if rng.random() > self.growth_factor:
+                continue
+
+            # Weighted random selection on the characters in the table
+            eligible_entries: list[str] = []
+            weights: list[float] = []
+
+            for entry in spawn_table.table.values():
+                eligible_entries.append(entry.definition_id)
+                weights.append(entry.spawn_frequency)
+
+            if not eligible_entries:
+                continue
+
+            character_definition_id = rng.choices(
+                population=eligible_entries,
+                weights=weights,
+                k=1,
+            )[0]
+
+            character = create_character(world, character_definition_id).get_component(
+                Character
+            )
+
+            household = create_household(world).get_component(Household)
+
+            set_household_head(household.gameobject, character.gameobject)
+            add_character_to_household(household.gameobject, character.gameobject)
+
+            add_character_to_settlement(
+                current_settlement.settlement.get_component(Settlement), character
+            )
+
+            world.events.dispatch_event(
+                Event("character-added", world=world, character=character)
+            )
+
+            event = JoinSettlementEvent(
+                character.gameobject,
+                current_settlement.settlement,
+            )
+
+            dispatch_life_event(event, [character.gameobject])
+
+
+class HouseholdSystem(System):
+    """Handles household logistics.
+
+    This class handles:
+    - Creating new households for spawned characters.
+    - Removing characters from households upon their death.
+    - Appointing family heads when the head dies.
+    """
+
+    __system_group__ = "LateUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        return
+
+    def on_add(self, world: World) -> None:
+        world.events.on_event("household-added", self.handle_household_added)
+
+    def handle_household_added(self, event: Event) -> None:
+        """Registers event listeners with new households."""
+
+        household: GameObject = event.data["household"]
+
+        household.add_event_listener("member-added", self.handle_member_added)
+        household.add_event_listener("member-removed", self.handle_member_removed)
+
+    def handle_member_added(self, event: Event) -> None:
+        """Handle when a member is added to a family."""
+
+        character: GameObject = event.data["character"]
+
+        character.add_event_listener("death", self.handle_member_death)
+
+    def handle_member_removed(self, event: Event) -> None:
+        """Handle when a member is removed from a family."""
+
+        character: GameObject = event.data["character"]
+
+        character.remove_event_listener("death", self.handle_member_death)
+
+    @staticmethod
+    def handle_member_death(event: Event) -> None:
+        """Removes characters from the household when they die."""
+
+        death_event = cast(DeathEvent, event)
+        character = death_event.character.get_component(Character)
+
+        household = character.gameobject.get_component(
+            MemberOfHousehold
+        ).household.get_component(Household)
+
+        was_household_head = character.gameobject == household.head
+
+        remove_character_from_household(household.gameobject, character.gameobject)
+
+        if was_household_head:
+            set_household_head(household.gameobject, None)
+
+            if not household.members:
+                household.gameobject.destroy()
+                return
+
+            # appoint new head
+            spouse_appointed = False
+            for member in household.members:
+                rel_to_member = get_relationship(character.gameobject, member)
+                if has_trait(rel_to_member, "spouse"):
+                    set_household_head(household.gameobject, member)
+                    spouse_appointed = True
+                    break
+
+            if not spouse_appointed:
+                # appoint oldest member
+                members = sorted(
+                    [(m.get_component(Age).value, m) for m in household.members],
+                    key=lambda e: e[0],
+                )
+
+                set_household_head(household.gameobject, members[-1][1])
+
+
+class UpdateFrequentedLocationSystem(System):
+    """Characters update the locations that they frequent
+
+    This system runs on a regular interval to allow characters to update the locations
+    that they frequent to reflect their current status and the state of the settlement.
+    It allows characters to choose new places to frequent that maybe didn't exist prior.
+    """
+
+    __slots__ = "ideal_location_count", "location_score_threshold"
+
+    ideal_location_count: int
+    """The ideal number of frequented locations that characters should have"""
+
+    location_score_threshold: float
+    """The probability score required for to consider frequenting a location."""
+
+    def __init__(
+        self, ideal_location_count: int = 4, location_score_threshold: float = 0.4
+    ) -> None:
+        super().__init__()
+        self.ideal_location_count = ideal_location_count
+        self.location_score_threshold = location_score_threshold
+
+    def score_locations(
+        self,
+        character: GameObject,
+    ) -> tuple[list[float], list[GameObject]]:
+        """Score potential locations for the character to frequent.
+
+        Parameters
+        ----------
+        character
+            The character to score the location in reference to
+
+        Returns
+        -------
+        Tuple[list[float], list[GameObject]]
+            A list of tuples containing location scores and the location, sorted in
+            descending order
+        """
+
+        scores: list[float] = []
+        locations: list[GameObject] = []
+
+        for _, (business, location, _) in character.world.get_components(
+            (Business, Location, Active)
+        ):
+            if business.status != BusinessStatus.OPEN:
+                continue
+
+            if location.is_private:
+                continue
+
+            score = score_location(character, business.gameobject)
+            if score >= self.location_score_threshold:
+                scores.append(score)
+                locations.append(business.gameobject)
+
+        return scores, locations
+
+    def on_update(self, world: World) -> None:
+        # Frequented locations are sampled from the current settlement
+        # that the character belongs to
+        rng = world.resource_manager.get_resource(random.Random)
+
         for _, (
-            character,
             frequented_locations,
-            sociability,
+            _,
+            character,
             _,
         ) in world.get_components(
-            (Character, FrequentedLocations, Sociability, Active)
+            (FrequentedLocations, LocationPreferences, Character, Active)
         ):
-            probability_meet_someone = sociability.stat.normalized
+            if character.life_stage < LifeStage.YOUNG_ADULT:
+                continue
 
-            if rng.random() < probability_meet_someone:
-                candidate_scores: defaultdict[GameObject, int] = defaultdict(int)
+            if len(frequented_locations) < self.ideal_location_count:
+                # Try to find additional places to frequent
+                places_to_find = max(
+                    0, self.ideal_location_count - len(frequented_locations)
+                )
 
-                for loc in frequented_locations:
-                    for other in loc.get_component(Location).frequented_by:
-                        if other != character.gameobject and not has_relationship(
-                            character.gameobject, other
-                        ):
-                            candidate_scores[other] += 1
+                scores, locations = self.score_locations(character.gameobject)
 
-                if candidate_scores:
-                    rng = world.resource_manager.get_resource(random.Random)
+                if locations:
+                    chosen_locations = rng.choices(
+                        population=locations, weights=scores, k=places_to_find
+                    )
 
-                    acquaintance = rng.choices(
-                        list(candidate_scores.keys()),
-                        weights=list(candidate_scores.values()),
-                        k=1,
-                    )[0]
+                    for location in chosen_locations:
+                        if location not in frequented_locations:
+                            frequented_locations.add_location(location)
 
-                    if (
-                        rng.random()
-                        < acquaintance.get_component(Sociability).stat.normalized
-                    ):
-                        add_relationship(character.gameobject, acquaintance)
-                        add_relationship(acquaintance, character.gameobject)
+
+class AgingSystem(System):
+    """Increases the age of all active GameObjects with Age components."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        # This system runs every simulated month
+        elapsed_years: float = 1.0 / MONTHS_PER_YEAR
+
+        for _, (age, _) in world.get_components((Age, Active)):
+            age.value += elapsed_years
+
+
+class LifeStageSystem(System):
+    """Updates the life stage of all characters to reflect their current age."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+
+        for _, (character, species, age, fertility, _) in world.get_components(
+            (Character, Species, Age, Fertility, Active)
+        ):
+
+            if species.species.can_physically_age:
+                if age.value >= species.species.senior_age:
+                    if character.life_stage != LifeStage.SENIOR:
+                        fertility_max = (
+                            species.species.senior_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.senior_female_fertility
+                        )
+
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
+                        evt = BecomeSeniorEvent(character.gameobject)
+                        character.life_stage = LifeStage.SENIOR
+                        dispatch_life_event(evt, [character.gameobject])
+
+                elif age.value >= species.species.adult_age:
+                    if character.life_stage != LifeStage.ADULT:
+
+                        fertility_max = (
+                            species.species.adult_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.adult_female_fertility
+                        )
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
+                        evt = BecomeAdultEvent(character.gameobject)
+                        character.life_stage = LifeStage.ADULT
+                        dispatch_life_event(evt, [character.gameobject])
+
+                elif age.value >= species.species.young_adult_age:
+                    if character.life_stage != LifeStage.YOUNG_ADULT:
+
+                        fertility_max = (
+                            species.species.young_adult_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.young_adult_female_fertility
+                        )
+
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
+                        evt = BecomeYoungAdultEvent(character.gameobject)
+                        character.life_stage = LifeStage.YOUNG_ADULT
+                        dispatch_life_event(evt, [character.gameobject])
+
+                elif age.value >= species.species.adolescent_age:
+                    if character.life_stage != LifeStage.ADOLESCENT:
+
+                        fertility_max = (
+                            species.species.adolescent_male_fertility
+                            if character.sex == Sex.MALE
+                            else species.species.adolescent_female_fertility
+                        )
+
+                        fertility.stat.base_value = min(
+                            fertility.stat.base_value, fertility_max
+                        )
+
+                        evt = BecomeAdolescentEvent(character.gameobject)
+                        character.life_stage = LifeStage.ADOLESCENT
+                        dispatch_life_event(evt, [character.gameobject])
+
+                else:
+                    if character.life_stage != LifeStage.CHILD:
+                        character.life_stage = LifeStage.CHILD
+
+
+class CharacterLifespanSystem(System):
+    """Kills of characters who have reached their lifespan."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        for _, (character, age, life_span, _) in world.get_components(
+            (Character, Age, Lifespan, Active)
+        ):
+
+            if age.value >= life_span.stat.value:
+                Die(character.gameobject).execute()
+
+
+class BusinessLifespanSystem(System):
+    """Kills of business that have reached their lifespan."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        for _, (business, age, lifespan, _) in world.get_components(
+            (Business, Age, Lifespan, Active)
+        ):
+            if age.value >= lifespan.stat.value and business.owner:
+                CloseBusiness(business.gameobject).execute()
+
+
+class ChildBirthSystem(System):
+    """Spawns new children when pregnant characters reach their due dates."""
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resource_manager.get_resource(SimDate)
+
+        for _, (character, pregnancy, fertility, species, _) in world.get_components(
+            (Character, Pregnant, Fertility, Species, Active)
+        ):
+            if pregnancy.due_date > current_date:
+                continue
+
+            other_parent = pregnancy.partner
+
+            baby = create_child(
+                birthing_parent=character.gameobject,
+                other_parent=other_parent,
+            )
+
+            baby.add_component(
+                ResidentOf(character.gameobject.get_component(ResidentOf).settlement)
+            )
+
+            household = character.gameobject.get_component(MemberOfHousehold).household
+
+            add_character_to_household(household, baby)
+
+            # Birthing parent to child
+            add_trait_with_id(get_relationship(character.gameobject, baby), "child")
+            add_trait_with_id(get_relationship(baby, character.gameobject), "parent")
+            add_trait_with_id(
+                get_relationship(baby, character.gameobject), "biological_parent"
+            )
+            character.gameobject.get_component(KeyRelations).set("child", baby)
+            baby.get_component(KeyRelations).set("parent", character.gameobject)
+
+            # Other parent to child
+            add_trait_with_id(get_relationship(other_parent, baby), "child")
+            add_trait_with_id(get_relationship(baby, other_parent), "parent")
+            add_trait_with_id(get_relationship(baby, other_parent), "biological_parent")
+            other_parent.get_component(KeyRelations).set("child", baby)
+            baby.get_component(KeyRelations).set("parent", other_parent)
+
+            # Create relationships with children of birthing parent
+            for child in character.gameobject.get_component(KeyRelations).get("child"):
+                if child == baby:
+                    continue
+
+                # Baby to sibling
+                add_trait_with_id(get_relationship(baby, child), "sibling")
+                add_trait_with_id(get_relationship(child, baby), "sibling")
+                baby.get_component(KeyRelations).set("sibling", child)
+                child.get_component(KeyRelations).set("sibling", baby)
+
+            # Create relationships with children of other parent
+            for child in other_parent.get_component(KeyRelations).get("child"):
+                if child == baby:
+                    continue
+
+                # Baby to sibling
+                add_trait_with_id(get_relationship(baby, child), "sibling")
+                add_trait_with_id(get_relationship(child, baby), "sibling")
+                baby.get_component(KeyRelations).set("sibling", child)
+                child.get_component(KeyRelations).set("sibling", baby)
+
+            character.gameobject.remove_component(Pregnant)
+
+            # Reduce the character's fertility according to their species
+            fertility.stat.base_value -= species.species.fertility_cost_per_child
+
+            child_birth_evt = ChildBirthEvent(
+                character.gameobject,
+                other_parent,
+                baby,
+            )
+            dispatch_life_event(child_birth_evt, [character.gameobject, other_parent])
+
+            birth_evt = BirthEvent(baby)
+            dispatch_life_event(birth_evt, [baby])
 
 
 def load_plugin(sim: Simulation) -> None:
     """Load systems into the simulation."""
 
-    sim.world.systems.add_system(FindJobSystem())
-    sim.world.systems.add_system(FiredFromJobSystem())
-    sim.world.systems.add_system(JobPromotionSystem())
-    sim.world.systems.add_system(StartBusinessSystem())
-    sim.world.systems.add_system(CharacterDatingSystem())
-    sim.world.systems.add_system(CharacterMarriageSystem())
-    sim.world.systems.add_system(CharacterDivorceSystem())
-    sim.world.systems.add_system(DatingBreakUpSystem())
-    sim.world.systems.add_system(PregnancySystem())
-    sim.world.systems.add_system(RetirementSystem())
-    # sim.world.systems.add_system(AdultsFormOwnHouseholdSystem())
-    sim.world.systems.add_system(CrushFormationSystem())
-    sim.world.systems.add_system(MeetNewPeopleSystem())
+    sim.world.systems.add_system(InitializeSettlementSystem())
+    sim.world.systems.add_system(SpawnNewResidentSystem())
+    sim.world.systems.add_system(HouseholdSystem())
+    sim.world.systems.add_system(UpdateFrequentedLocationSystem())
+    sim.world.systems.add_system(AgingSystem())
+    sim.world.systems.add_system(LifeStageSystem())
+    sim.world.systems.add_system(CharacterLifespanSystem())
+    sim.world.systems.add_system(BusinessLifespanSystem())
+    sim.world.systems.add_system(ChildBirthSystem())
