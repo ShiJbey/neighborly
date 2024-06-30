@@ -15,7 +15,7 @@ from neighborly.components.character import (
     ResidentOf,
 )
 from neighborly.components.location import CurrentDistrict
-from neighborly.components.relationship import Relationship
+from neighborly.components.relationship import IsSingle, KeyRelations
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.datetime import SimDate
@@ -48,11 +48,7 @@ from neighborly.helpers.location import (
     remove_all_frequenting_characters,
     remove_frequented_location,
 )
-from neighborly.helpers.relationship import (
-    deactivate_relationships,
-    get_relationship,
-    get_relationships_with_traits,
-)
+from neighborly.helpers.relationship import deactivate_relationships, get_relationship
 from neighborly.helpers.settlement import remove_character_from_settlement
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
@@ -189,10 +185,14 @@ class FormCrush(Action):
         self.crush = crush
 
     def execute(self) -> bool:
-        for rel in get_relationships_with_traits(self.character, "crush"):
-            remove_trait(rel, "crush")
+        character_relations = self.character.get_component(KeyRelations)
+
+        for previous_crush in character_relations.get("crush"):
+            remove_trait(get_relationship(self.character, previous_crush), "crush")
+            character_relations.unset("crush", previous_crush)
 
         add_trait(get_relationship(self.character, self.crush), "crush")
+        character_relations.set("crush", self.crush)
 
         return True
 
@@ -303,11 +303,28 @@ class BreakUp(Action):
         self.partner = partner
 
     def execute(self) -> bool:
+        character_relations = self.character.get_component(KeyRelations)
+        partner_relations = self.partner.get_component(KeyRelations)
+
         remove_trait(get_relationship(self.character, self.partner), "dating")
         remove_trait(get_relationship(self.partner, self.character), "dating")
+        character_relations.unset("dating", self.partner)
+        partner_relations.unset("dating", self.character)
 
         add_trait(get_relationship(self.character, self.partner), "ex_partner")
         add_trait(get_relationship(self.partner, self.character), "ex_partner")
+
+        if (
+            len(character_relations.get("dating")) == 0
+            and len(character_relations.get("spouse")) == 0
+        ):
+            self.character.add_component(IsSingle())
+
+        if (
+            len(partner_relations.get("dating")) == 0
+            and len(partner_relations.get("spouse")) == 0
+        ):
+            self.partner.add_component(IsSingle())
 
         get_stat(
             get_relationship(self.partner, self.character), "romance"
@@ -335,6 +352,9 @@ class Divorce(Action):
         self.partner = partner.get_component(Character)
 
     def execute(self) -> bool:
+        character_relations = self.character.gameobject.get_component(KeyRelations)
+        partner_relations = self.partner.gameobject.get_component(KeyRelations)
+
         remove_trait(
             get_relationship(self.character.gameobject, self.partner.gameobject),
             "spouse",
@@ -343,6 +363,8 @@ class Divorce(Action):
             get_relationship(self.partner.gameobject, self.character.gameobject),
             "spouse",
         )
+        character_relations.unset("spouse", self.partner.gameobject)
+        partner_relations.unset("spouse", self.character.gameobject)
 
         add_trait(
             get_relationship(self.character.gameobject, self.partner.gameobject),
@@ -352,6 +374,18 @@ class Divorce(Action):
             get_relationship(self.partner.gameobject, self.character.gameobject),
             "ex_spouse",
         )
+
+        if (
+            len(character_relations.get("dating")) == 0
+            and len(character_relations.get("spouse")) == 0
+        ):
+            self.character.gameobject.add_component(IsSingle())
+
+        if (
+            len(partner_relations.get("dating")) == 0
+            and len(partner_relations.get("spouse")) == 0
+        ):
+            self.partner.gameobject.add_component(IsSingle())
 
         get_stat(
             get_relationship(self.partner.gameobject, self.character.gameobject),
@@ -408,11 +442,24 @@ class GetMarried(Action):
         self.partner = partner
 
     def execute(self) -> bool:
+        character_relations = self.character.get_component(KeyRelations)
+        partner_relations = self.partner.get_component(KeyRelations)
+
         remove_trait(get_relationship(self.character, self.partner), "dating")
         remove_trait(get_relationship(self.partner, self.character), "dating")
+        character_relations.unset("dating", self.partner)
+        partner_relations.unset("dating", self.character)
 
         add_trait(get_relationship(self.character, self.partner), "spouse")
         add_trait(get_relationship(self.partner, self.character), "spouse")
+        character_relations.set("spouse", self.partner)
+        partner_relations.set("spouse", self.character)
+
+        for other_partner in character_relations.get("dating"):
+            BreakUp(self.character, other_partner).execute()
+
+        for other_partner in partner_relations.get("dating"):
+            BreakUp(self.partner, other_partner)
 
         set_character_name(
             character=self.partner.get_component(Character),
@@ -473,17 +520,13 @@ class GetMarried(Action):
             self.world.gameobjects.destroy_gameobject(partner_household.gameobject)
 
         # Update step sibling relationships
-        for rel_0 in get_relationships_with_traits(self.character, "child"):
-            if not rel_0.is_active:
+        for child_0 in character_relations.get("child"):
+            if not child_0.is_active:
                 continue
 
-            child_0 = rel_0.get_component(Relationship).target
-
-            for rel_1 in get_relationships_with_traits(self.partner, "child"):
-                if not rel_1.is_active:
+            for child_1 in partner_relations.get("child"):
+                if not child_1.is_active:
                     continue
-
-                child_1 = rel_1.get_component(Relationship).target
 
                 add_trait(get_relationship(child_0, child_1), "step_sibling")
                 add_trait(get_relationship(child_0, child_1), "sibling")
@@ -491,18 +534,16 @@ class GetMarried(Action):
                 add_trait(get_relationship(child_1, child_0), "sibling")
 
         # Update relationships parent/child relationships
-        for rel in get_relationships_with_traits(self.character, "child"):
-            if rel.is_active:
-                child = rel.get_component(Relationship).target
+        for child in character_relations.get("child"):
+            if child.is_active:
                 if not has_trait(get_relationship(self.partner, child), "child"):
                     add_trait(get_relationship(self.partner, child), "child")
                     add_trait(get_relationship(self.partner, child), "step_child")
                     add_trait(get_relationship(child, self.partner), "parent")
                     add_trait(get_relationship(child, self.partner), "step_parent")
 
-        for rel in get_relationships_with_traits(self.partner, "child"):
-            if rel.is_active:
-                child = rel.get_component(Relationship).target
+        for child in partner_relations.get("child"):
+            if child.is_active:
                 if not has_trait(get_relationship(self.character, child), "child"):
                     add_trait(get_relationship(self.character, child), "child")
                     add_trait(get_relationship(self.character, child), "step_child")
@@ -534,6 +575,11 @@ class StartDating(Action):
     def execute(self) -> bool:
         add_trait(get_relationship(self.character, self.partner), "dating")
         add_trait(get_relationship(self.partner, self.character), "dating")
+        self.character.get_component(KeyRelations).set("dating", self.partner)
+        self.partner.get_component(KeyRelations).set("dating", self.character)
+
+        self.character.remove_component(IsSingle)
+        self.partner.remove_component(IsSingle)
 
         event = StartDatingEvent(self.character, self.partner)
 
@@ -903,23 +949,32 @@ class Die(Action):
             current_settlement.population -= 1
             self.character.remove_component(ResidentOf)
 
+        character_relations = self.character.get_component(KeyRelations)
+
         # Adjust relationships
-        for rel in get_relationships_with_traits(self.character, "dating"):
-            target = rel.get_component(Relationship).target
+        for partner in character_relations.get("dating"):
+            partner_relations = partner.get_component(KeyRelations)
 
-            remove_trait(get_relationship(target, self.character), "dating")
-            remove_trait(get_relationship(self.character, target), "dating")
-            add_trait(get_relationship(target, self.character), "ex_partner")
-            add_trait(get_relationship(self.character, target), "ex_partner")
+            remove_trait(get_relationship(partner, self.character), "dating")
+            remove_trait(get_relationship(self.character, partner), "dating")
+            partner_relations.unset("dating", self.character)
+            character_relations.unset("dating", partner)
 
-        for rel in get_relationships_with_traits(self.character, "spouse"):
-            target = rel.get_component(Relationship).target
+            add_trait(get_relationship(partner, self.character), "ex_partner")
+            add_trait(get_relationship(self.character, partner), "ex_partner")
 
-            remove_trait(get_relationship(self.character, target), "spouse")
-            remove_trait(get_relationship(target, self.character), "spouse")
-            add_trait(get_relationship(target, self.character), "ex_spouse")
-            add_trait(get_relationship(self.character, target), "ex_spouse")
-            add_trait(get_relationship(target, self.character), "widow")
+        for partner in character_relations.get("spouse"):
+            partner_relations = partner.get_component(KeyRelations)
+
+            remove_trait(get_relationship(self.character, partner), "spouse")
+            remove_trait(get_relationship(partner, self.character), "spouse")
+            partner_relations.unset("spouse", self.character)
+            character_relations.unset("spouse", partner)
+
+            add_trait(get_relationship(partner, self.character), "ex_spouse")
+            add_trait(get_relationship(self.character, partner), "ex_spouse")
+
+            add_trait(get_relationship(partner, self.character), "widow")
 
         # Remove the character from their occupation
         if occupation := self.character.try_component(Occupation):

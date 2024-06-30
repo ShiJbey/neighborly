@@ -38,8 +38,10 @@
       "LocationPreferences": {},
       "PersonalEventHistory": {},
       "Relationships": {},
+      "KeyRelations": {},
       "Traits": {},
-      "Character": {}
+      "Character": {},
+      "IsSingle": {}
     },
     "variants": [
       {

@@ -202,6 +202,7 @@ class GameObject:
     __slots__ = (
         "_uid",
         "_name",
+        "_is_active",
         "world",
         "children",
         "parent",
@@ -215,6 +216,8 @@ class GameObject:
     """The unique ID of this GameObject."""
     _name: str
     """The name of this GameObject."""
+    _is_active: bool
+    """Is the GameObject actively a part of the simulation."""
     world: World
     """The world instance a GameObject belongs to."""
     _component_manager: esper.World
@@ -266,7 +269,7 @@ class GameObject:
     @property
     def is_active(self) -> bool:
         """Check if a GameObject is active."""
-        return self.has_component(Active)
+        return self._is_active
 
     @property
     def name(self) -> str:
@@ -281,6 +284,7 @@ class GameObject:
     def activate(self) -> None:
         """Tag the GameObject as active."""
         self.add_component(Active())
+        self._is_active = True
 
         for child in self.children:
             child.activate()
@@ -291,6 +295,7 @@ class GameObject:
         """Remove the Active tag from a GameObject."""
 
         self.remove_component(Active)
+        self._is_active = False
 
         for child in self.children:
             child.deactivate()
@@ -881,13 +886,26 @@ class _NodeQueueEntry:
 
 
 def get_incoming_edges(
-    edges: list[tuple[str, str,]], node: _SystemSortNode
+    edges: list[
+        tuple[
+            str,
+            str,
+        ]
+    ],
+    node: _SystemSortNode,
 ) -> list[str]:
     """Get incoming edges for a node in a system sorting graph."""
     return [n for n, m in edges if m == node.system.system_name()]
 
+
 def get_outgoing_edges(
-    edges: list[tuple[str, str,]], node: _SystemSortNode
+    edges: list[
+        tuple[
+            str,
+            str,
+        ]
+    ],
+    node: _SystemSortNode,
 ) -> list[str]:
     """Get outgoing edges for a node in a system sorting graph."""
     return [m for n, m in edges if n == node.system.system_name()]
@@ -1619,9 +1637,7 @@ class World:
 
     def initialize(self) -> None:
         """Run initialization systems only."""
-        initialization_system_group = self.systems.get_system(
-            InitializationSystems
-        )
+        initialization_system_group = self.systems.get_system(InitializationSystems)
 
         initialization_system_group.on_update(self)
 

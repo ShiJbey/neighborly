@@ -6,11 +6,20 @@
   "configurations": [
     {
       "name": "Sample",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/samples/sample.py",
       "console": "integratedTerminal",
       "justMyCode": true
+    },
+    {
+      "name": "Sample-50-123",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/samples/sample.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["--years", "50", "--seed", "123"]
     }
   ]
 }

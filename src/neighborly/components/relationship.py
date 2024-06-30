@@ -8,10 +8,13 @@ graph.
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections import defaultdict
+from typing import Any
+
+from ordered_set import OrderedSet
 
 from neighborly.components.stats import StatComponent
-from neighborly.ecs import Component, GameObject
+from neighborly.ecs import Component, GameObject, TagComponent
 from neighborly.effects.modifiers import RelationshipModifier
 
 
@@ -69,31 +72,21 @@ class Relationships(Component):
     """
 
     __slots__ = (
-        "_incoming",
-        "_outgoing",
+        "incoming",
+        "outgoing",
     )
 
-    _incoming: dict[GameObject, GameObject]
+    incoming: dict[GameObject, GameObject]
     """Relationship owners mapped to the Relationship GameObjects."""
-    _outgoing: dict[GameObject, GameObject]
+    outgoing: dict[GameObject, GameObject]
     """Relationship targets mapped to the Relationship GameObjects."""
 
     def __init__(
         self,
     ) -> None:
         super().__init__()
-        self._incoming = {}
-        self._outgoing = {}
-
-    @property
-    def outgoing(self) -> Mapping[GameObject, GameObject]:
-        """Returns a mapping of the outgoing relationship collection."""
-        return self._outgoing
-
-    @property
-    def incoming(self) -> Mapping[GameObject, GameObject]:
-        """Returns a mapping of the incoming relationship collection."""
-        return self._incoming
+        self.incoming = {}
+        self.outgoing = {}
 
     def add_outgoing_relationship(
         self, target: GameObject, relationship: GameObject
@@ -107,13 +100,13 @@ class Relationships(Component):
         relationship
             The relationship.
         """
-        if target in self._outgoing:
+        if target in self.outgoing:
             raise ValueError(
                 f"{self.gameobject.name} has existing outgoing relationship to "
                 "target: {target.name}"
             )
 
-        self._outgoing[target] = relationship
+        self.outgoing[target] = relationship
 
     def remove_outgoing_relationship(self, target: GameObject) -> bool:
         """Remove the relationship GameObject to the target.
@@ -128,42 +121,11 @@ class Relationships(Component):
         bool
             Returns True if a relationship was removed. False otherwise.
         """
-        if target in self._outgoing:
-            del self._outgoing[target]
+        if target in self.outgoing:
+            del self.outgoing[target]
             return True
 
         return False
-
-    def get_outgoing_relationship(self, target: GameObject) -> GameObject:
-        """Get a relationship from one GameObject to another.
-
-        Parameters
-        ----------
-        target
-            The target of the relationship.
-
-        Returns
-        -------
-        GameObject
-            A relationship instance.
-        """
-        return self._outgoing[target]
-
-    def has_outgoing_relationship(self, target: GameObject) -> bool:
-        """Check if there is an existing relationship from the owner to the target.
-
-        Parameters
-        ----------
-        target
-            The target of the relationship.
-
-        Returns
-        -------
-        bool
-            True if there is an existing Relationship between the GameObjects,
-            False otherwise.
-        """
-        return target in self._outgoing
 
     def add_incoming_relationship(
         self, owner: GameObject, relationship: GameObject
@@ -177,13 +139,13 @@ class Relationships(Component):
         relationship
             The relationship.
         """
-        if owner in self._incoming:
+        if owner in self.incoming:
             raise ValueError(
                 f"{self.gameobject.name} has existing incoming relationship from "
                 "target: {target.name}"
             )
 
-        self._incoming[owner] = relationship
+        self.incoming[owner] = relationship
 
     def remove_incoming_relationship(self, owner: GameObject) -> bool:
         """Remove the relationship GameObject to the owner.
@@ -198,47 +160,16 @@ class Relationships(Component):
         bool
             Returns True if a relationship was removed. False otherwise.
         """
-        if owner in self._incoming:
-            del self._incoming[owner]
+        if owner in self.incoming:
+            del self.incoming[owner]
             return True
 
         return False
 
-    def get_incoming_relationship(self, owner: GameObject) -> GameObject:
-        """Get a relationship from one another GameObject to this one.
-
-        Parameters
-        ----------
-        owner
-            The owner of the relationship.
-
-        Returns
-        -------
-        GameObject
-            A relationship instance.
-        """
-        return self._incoming[owner]
-
-    def has_incoming_relationship(self, owner: GameObject) -> bool:
-        """Check if there is an existing relationship from the owner to this GameObject.
-
-        Parameters
-        ----------
-        owner
-            The owner of the relationship.
-
-        Returns
-        -------
-        bool
-            True if there is an existing Relationship between the GameObjects,
-            False otherwise.
-        """
-        return owner in self._incoming
-
     def to_dict(self) -> dict[str, Any]:
         return {
-            "outgoing": {str(k.uid): v.uid for k, v in self._outgoing.items()},
-            "incoming": {str(k.uid): v.uid for k, v in self._incoming.items()},
+            "outgoing": {str(k.uid): v.uid for k, v in self.outgoing.items()},
+            "incoming": {str(k.uid): v.uid for k, v in self.incoming.items()},
         }
 
     def __str__(self) -> str:
@@ -246,8 +177,8 @@ class Relationships(Component):
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(outgoing={self._outgoing}, "
-            f"incoming={self._incoming})"
+            f"{self.__class__.__name__}(outgoing={self.outgoing}, "
+            f"incoming={self.incoming})"
         )
 
 
@@ -307,3 +238,45 @@ class RelationshipModifiers(Component):
 
     def to_dict(self) -> dict[str, Any]:
         return {}
+
+
+class KeyRelations(Component):
+    """Cache of key people in a character's life, indexed by relationship type."""
+
+    __slots__ = ("relations",)
+
+    relations: defaultdict[str, OrderedSet[GameObject]]
+    """Relationship types mapped to target of the relationship (another character)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.relations = defaultdict(lambda: OrderedSet([]))
+
+    def set(self, key: str, character: GameObject) -> None:
+        """Set a character in the cache"""
+        self.relations[key].add(character)
+
+    def unset(self, key: str, character: GameObject) -> bool:
+        """Unset a character in the cache."""
+        try:
+            self.relations[key].remove(character)
+            return True
+        except KeyError:
+            return False
+
+    def get(self, *keys: str) -> OrderedSet[GameObject]:
+        """Get relations indexed under the given keys."""
+        all_sets = [self.relations[k] for k in keys]
+
+        return all_sets[0].intersection(*all_sets[1:])
+
+    def to_dict(self) -> dict[str, Any]:
+        return {}
+
+
+class IsSingle(TagComponent):
+    """Tags a character as not being in any romantic relationships."""
+
+
+class IsMarried(TagComponent):
+    """Tags a character as being married."""

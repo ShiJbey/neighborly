@@ -9,6 +9,7 @@ import pathlib
 import pstats
 import random
 from cProfile import Profile
+from datetime import datetime
 from pstats import SortKey
 
 from neighborly.config import SimulationConfig
@@ -66,7 +67,6 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "--profile-out",
         type=pathlib.Path,
-        default=pathlib.Path("./profile.prof"),
         help="Specify path to write the profile data.",
     )
 
@@ -91,11 +91,17 @@ if __name__ == "__main__":
         with Profile() as profile:
             sim.run_for(args.years)
 
+            profile_path = (
+                args.profile_out
+                if args.profile_out
+                else f"profile_{datetime.now().strftime('%Y%m%d_%H_%M')}.prof"
+            )
+
             (
                 pstats.Stats(profile)
                 .strip_dirs()  # type: ignore
                 .sort_stats(SortKey.PCALLS)
-                .dump_stats(args.profile_out)
+                .dump_stats(profile_path)
             )
     else:
         sim.run_for(args.years)

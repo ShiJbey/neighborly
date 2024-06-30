@@ -28,7 +28,7 @@ from neighborly.components.location import (
     Location,
     LocationPreferences,
 )
-from neighborly.components.relationship import Relationship
+from neighborly.components.relationship import KeyRelations, RelationshipModifiers
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.shared import Age, Modifier, Modifiers
 from neighborly.components.skills import Skill
@@ -40,6 +40,7 @@ from neighborly.datetime import MONTHS_PER_YEAR, SimDate
 from neighborly.defs.base_types import DistrictDef
 from neighborly.defs.definition_compiler import compile_definitions
 from neighborly.ecs import Active, Event, GameObject, System, World
+from neighborly.effects.modifiers import RelationshipModifier
 from neighborly.events.defaults import (
     BecomeAdolescentEvent,
     BecomeAdultEvent,
@@ -61,17 +62,14 @@ from neighborly.helpers.character import (
 )
 from neighborly.helpers.content_selection import get_with_tags
 from neighborly.helpers.location import score_location
-from neighborly.helpers.relationship import (
-    get_relationship,
-    get_relationships_with_traits,
-)
+from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.settlement import (
     add_character_to_settlement,
     add_district_to_settlement,
     create_district,
     create_settlement,
 )
-from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.libraries import (
     BusinessLibrary,
     CharacterLibrary,
@@ -321,10 +319,34 @@ class HouseholdSystem(System):
             MemberOfHousehold
         ).household.get_component(Household)
 
-        if character.gameobject == household.head:
-            set_household_head(household.gameobject, None)
+        was_household_head = character.gameobject == household.head
 
         remove_character_from_household(household.gameobject, character.gameobject)
+
+        if was_household_head:
+            set_household_head(household.gameobject, None)
+
+            if not household.members:
+                household.gameobject.destroy()
+                return
+
+            # appoint new head
+            spouse_appointed = False
+            for member in household.members:
+                rel_to_member = get_relationship(character.gameobject, member)
+                if has_trait(rel_to_member, "spouse"):
+                    set_household_head(household.gameobject, member)
+                    spouse_appointed = True
+                    break
+
+            if not spouse_appointed:
+                # appoint oldest member
+                members = sorted(
+                    [(m.get_component(Age).value, m) for m in household.members],
+                    key=lambda e: e[0],
+                )
+
+                set_household_head(household.gameobject, members[-1][1])
 
 
 class CompileTraitDefsSystem(System):
@@ -790,59 +812,37 @@ class ChildBirthSystem(System):
             add_trait(get_relationship(character.gameobject, baby), "child")
             add_trait(get_relationship(baby, character.gameobject), "parent")
             add_trait(get_relationship(baby, character.gameobject), "biological_parent")
+            character.gameobject.get_component(KeyRelations).set("child", baby)
+            baby.get_component(KeyRelations).set("parent", character.gameobject)
 
             # Other parent to child
             add_trait(get_relationship(other_parent, baby), "child")
             add_trait(get_relationship(baby, other_parent), "parent")
             add_trait(get_relationship(baby, other_parent), "biological_parent")
+            other_parent.get_component(KeyRelations).set("child", baby)
+            baby.get_component(KeyRelations).set("parent", other_parent)
 
             # Create relationships with children of birthing parent
-            for relationship in get_relationships_with_traits(
-                character.gameobject, "child"
-            ):
-                rel = relationship.get_component(Relationship)
-
-                if rel.target == baby:
+            for child in character.gameobject.get_component(KeyRelations).get("child"):
+                if child == baby:
                     continue
 
-                sibling = rel.target
-
                 # Baby to sibling
-                add_trait(get_relationship(baby, sibling), "sibling")
-                add_trait(get_relationship(sibling, baby), "sibling")
-
-            # Create relationships with children of the birthing parent's spouses
-            for spousal_rel in get_relationships_with_traits(
-                character.gameobject, "spouse"
-            ):
-                spouse = spousal_rel.get_component(Relationship).target
-
-                if spousal_rel.is_active:
-                    add_trait(get_relationship(spouse, baby), "child")
-                    add_trait(get_relationship(baby, spouse), "parent")
-
-                for child_rel in get_relationships_with_traits(spouse, "child"):
-                    rel = child_rel.get_component(Relationship)
-                    if rel.target == baby:
-                        continue
-
-                    sibling = rel.target
-
-                    # Baby to sibling
-                    add_trait(get_relationship(baby, sibling), "sibling")
-                    add_trait(get_relationship(sibling, baby), "sibling")
+                add_trait(get_relationship(baby, child), "sibling")
+                add_trait(get_relationship(child, baby), "sibling")
+                baby.get_component(KeyRelations).set("sibling", child)
+                child.get_component(KeyRelations).set("sibling", baby)
 
             # Create relationships with children of other parent
-            for relationship in get_relationships_with_traits(other_parent, "child"):
-                rel = relationship.get_component(Relationship)
-                if rel.target == baby:
+            for child in other_parent.get_component(KeyRelations).get("child"):
+                if child == baby:
                     continue
 
-                sibling = rel.target
-
                 # Baby to sibling
-                add_trait(get_relationship(baby, sibling), "sibling")
-                add_trait(get_relationship(sibling, baby), "sibling")
+                add_trait(get_relationship(baby, child), "sibling")
+                add_trait(get_relationship(child, baby), "sibling")
+                baby.get_component(KeyRelations).set("sibling", child)
+                child.get_component(KeyRelations).set("sibling", baby)
 
             character.gameobject.remove_component(Pregnant)
 
@@ -875,6 +875,24 @@ class TickModifiersSystem(System):
                     continue
                 else:
                     modifier.update(modifier_manager.gameobject)
+
+            for modifier in modifiers_to_remove:
+                modifier_manager.remove_modifier(modifier)
+
+        for _, (modifier_manager, _) in world.get_components(
+            (RelationshipModifiers, Active)
+        ):
+            rel_modifiers_to_remove: list[RelationshipModifier] = []
+
+            for modifier in modifier_manager.modifiers:
+                if modifier.is_expired():
+                    rel_modifiers_to_remove.append(modifier)
+                    continue
+                else:
+                    modifier.update(modifier_manager.gameobject)
+
+            for modifier in rel_modifiers_to_remove:
+                modifier_manager.remove_modifier(modifier)
 
 
 class TickTraitsSystem(System):

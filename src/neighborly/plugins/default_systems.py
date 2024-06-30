@@ -17,10 +17,16 @@ from neighborly.components.character import (
     Sex,
 )
 from neighborly.components.location import FrequentedLocations, Location
-from neighborly.components.relationship import Relationship, Relationships, Romance
+from neighborly.components.relationship import (
+    IsMarried,
+    KeyRelations,
+    Relationships,
+    Romance,
+)
 from neighborly.components.settlement import Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
-from neighborly.components.stats import Sociability
+from neighborly.components.stats import Sociability, Stats
+from neighborly.config import SimulationConfig
 from neighborly.ecs import Active, GameObject, System, World
 from neighborly.helpers.action import get_action_probability
 from neighborly.helpers.character import (
@@ -31,7 +37,7 @@ from neighborly.helpers.character import (
 )
 from neighborly.helpers.relationship import (
     add_relationship,
-    get_relationships_with_traits,
+    get_relationship,
     has_relationship,
 )
 from neighborly.libraries import JobRoleLibrary
@@ -325,19 +331,21 @@ class CharacterDatingSystem(System):
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, relationships, _) in world.get_components(
-            (Character, Relationships, Active)
+        for _, (character, key_relations, _) in world.get_components(
+            (Character, KeyRelations, Active)
         ):
+            if character.gameobject.has_component(IsMarried):
+                continue
 
             potential_romances: list[tuple[StartDating, float]] = []
             potential_romance_scores: list[float] = []
 
-            for partner, relationship in relationships.outgoing.items():
+            for partner in key_relations.get("crush"):
 
-                if partner == character.gameobject:
+                if partner.has_component(IsMarried):
                     continue
 
-                if not relationship.is_active:
+                if partner == character.gameobject:
                     continue
 
                 if partner.is_active is False:
@@ -370,29 +378,22 @@ class CharacterMarriageSystem(System):
     def on_update(self, world: World) -> None:
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, _) in world.get_components((Character, Active)):
-
-            marriages = get_relationships_with_traits(character.gameobject, "spouse")
-
-            if marriages:
+        for _, (character, key_relations, _) in world.get_components(
+            (Character, KeyRelations, Active)
+        ):
+            if character.gameobject.has_component(IsMarried):
                 continue
 
-            relationships = get_relationships_with_traits(
-                character.gameobject, "dating"
-            )
+            significant_others = key_relations.get("dating")
 
             potential_marriages: list[tuple[GetMarried, float]] = []
             potential_marriage_scores: list[float] = []
 
-            for relationship in relationships:
-                partner = relationship.get_component(Relationship).target
-
+            for partner in significant_others:
                 if partner.is_active is False:
                     continue
 
-                marriages = get_relationships_with_traits(partner, "spouse")
-
-                if marriages:
+                if partner.has_component(IsMarried):
                     continue
 
                 action = GetMarried(character=character.gameobject, partner=partner)
@@ -420,15 +421,16 @@ class CharacterDivorceSystem(System):
 
         rng = world.resource_manager.get_resource(random.Random)
 
-        for _, (character, _) in world.get_components((Character, Active)):
+        for _, (character, key_relations, _) in world.get_components(
+            (Character, KeyRelations, Active)
+        ):
 
-            marriages = get_relationships_with_traits(character.gameobject, "spouse")
+            spouses = key_relations.get("spouse")
 
             potential_divorces: list[tuple[Divorce, float]] = []
             potential_divorce_scores: list[float] = []
 
-            for relationship in marriages:
-                partner = relationship.get_component(Relationship).target
+            for partner in spouses:
 
                 if partner.is_active is False:
                     continue
@@ -458,24 +460,24 @@ class DatingBreakUpSystem(System):
 
         rng = world.resources.get_resource(random.Random)
 
-        for _, (character, _) in world.get_components((Character, Active)):
+        for _, (character, key_relations, _) in world.get_components(
+            (Character, KeyRelations, Active)
+        ):
 
-            dating_relationships = get_relationships_with_traits(
-                character.gameobject, "dating"
-            )
+            partners = key_relations.get("dating")
 
             potential_break_ups: list[tuple[BreakUp, float]] = []
             potential_break_up_scores: list[float] = []
 
-            if dating_relationships:
-                relationship = rng.choice(dating_relationships)
+            if partners:
+                partner = rng.choice(partners)
 
-                if relationship.is_active is False:
-                    return None
+                if not partner.is_active:
+                    continue
 
                 action = BreakUp(
                     character=character.gameobject,
-                    partner=relationship.get_component(Relationship).target,
+                    partner=partner,
                 )
                 action_probability = get_action_probability(action)
 
@@ -501,20 +503,21 @@ class PregnancySystem(System):
 
         rng = world.resources.get_resource(random.Random)
 
-        for _, (character, _) in world.get_components((Character, Active)):
+        for _, (character, key_relations, _) in world.get_components(
+            (Character, KeyRelations, Active)
+        ):
             if character.sex != Sex.FEMALE:
                 continue
 
             if character.gameobject.has_component(Pregnant):
                 continue
 
-            marriages = get_relationships_with_traits(character.gameobject, "spouse")
+            spouses = key_relations.get("spouse")
 
             potential_pregnancies: list[tuple[GetPregnant, float]] = []
             potential_pregnancy_scores: list[float] = []
 
-            for relationship in marriages:
-                partner = relationship.get_component(Relationship).target
+            for partner in spouses:
 
                 if partner.get_component(Character).sex != Sex.MALE:
                     continue
@@ -597,8 +600,20 @@ class CrushFormationSystem(System):
     on characters that they are not currently in a romantic relationship with.
     """
 
-    CRUSH_THRESHOLD: ClassVar[float] = 0.6
+    __slots__ = ("crush_threshold",)
+
+    crush_threshold: float
     """Probability score required for someone to form a crush."""
+
+    def __init__(self, crush_threshold: float = 0.6) -> None:
+        super().__init__()
+        self.crush_threshold = crush_threshold
+
+    def on_add(self, world: World) -> None:
+        config = world.resources.get_resource(SimulationConfig)
+
+        if threshold := config.settings.get("crush_threshold"):
+            self.crush_threshold = float(threshold)
 
     def on_update(self, world: World) -> None:
         # 1) Loop through all the active characters
@@ -610,41 +625,47 @@ class CrushFormationSystem(System):
 
         rng = world.resources.get_resource(random.Random)
 
-        for _, (character, relationships, _) in world.get_components(
-            (Character, Relationships, Active)
+        for _, (character, key_relations, relationships, _) in world.get_components(
+            (Character, KeyRelations, Relationships, Active)
         ):
+            current_crush: Optional[GameObject] = None
             potential_crush: Optional[GameObject] = None
             highest_romance: float = 0
+
+            crushes = key_relations.get("crush")
+            if crushes:
+                current_crush = crushes[0]
+                potential_crush = current_crush
+                highest_romance = (
+                    get_relationship(character.gameobject, potential_crush)
+                    .get_component(Stats)
+                    .get_stat("romance")
+                    .value
+                )
 
             for target, relationship in relationships.outgoing.items():
 
                 if target == character.gameobject:
                     continue
 
-                if not target.is_active or not relationship.is_active:
-                    continue
-
-                if not target.has_component(Character):
+                if not target.is_active:
                     continue
 
                 romance = relationship.get_component(Romance).stat.value
-
-                if romance <= 0:
-                    continue
 
                 if romance > highest_romance:
                     highest_romance = romance
                     potential_crush = target
 
-            if potential_crush is None:
+            if potential_crush is None or potential_crush == current_crush:
                 continue
 
             action = FormCrush(character=character.gameobject, crush=potential_crush)
 
             action_probability = get_action_probability(action)
 
-            # if action_probability < self.CRUSH_THRESHOLD:
-            #     continue
+            if action_probability < self.crush_threshold:
+                continue
 
             if rng.random() < action_probability:
                 action.execute()

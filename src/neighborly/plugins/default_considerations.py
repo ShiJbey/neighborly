@@ -5,13 +5,9 @@
 from neighborly.action import Action
 from neighborly.components.business import Business, Occupation
 from neighborly.components.character import Character, LifeStage
-from neighborly.components.relationship import Reputation, Romance
+from neighborly.components.relationship import IsSingle, Reputation, Romance
 from neighborly.components.stats import Fertility
-from neighborly.ecs import GameObject
-from neighborly.helpers.relationship import (
-    get_relationship,
-    get_relationships_with_traits,
-)
+from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.traits import get_time_with_trait
 from neighborly.libraries import ActionConsiderationLibrary
 from neighborly.plugins.actions import (
@@ -53,26 +49,14 @@ def romance_consideration(action: Action) -> float:
     return -1
 
 
-def is_single(character: GameObject) -> bool:
-    """Return True if the character is not in a romantic relationship."""
-
-    if get_relationships_with_traits(character, "dating"):
-        return False
-
-    if get_relationships_with_traits(character, "spouse"):
-        return False
-
-    return True
-
-
 def existing_relationship_cons(action: Action) -> float:
     """Characters in relationships don't start dating or marriages with others."""
 
     if isinstance(action, StartDating):
-        if not is_single(action.character):
+        if not action.character.has_component(IsSingle):
             return 0.0
 
-        if not is_single(action.character):
+        if not action.partner.has_component(IsSingle):
             return 0.0
 
     return -1

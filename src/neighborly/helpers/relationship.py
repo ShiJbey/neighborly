@@ -80,8 +80,9 @@ def get_relationship(
     GameObject
         A relationship instance.
     """
-    if has_relationship(owner, target):
-        return owner.get_component(Relationships).get_outgoing_relationship(target)
+    relationships = owner.get_component(Relationships)
+    if target in relationships.outgoing:
+        return relationships.outgoing[target]
 
     return add_relationship(owner, target)
 
@@ -102,7 +103,8 @@ def has_relationship(owner: GameObject, target: GameObject) -> bool:
         True if there is an existing Relationship between the GameObjects,
         False otherwise.
     """
-    return owner.get_component(Relationships).has_outgoing_relationship(target)
+    relationships = owner.get_component(Relationships)
+    return target in relationships.outgoing
 
 
 def destroy_relationship(owner: GameObject, target: GameObject) -> bool:

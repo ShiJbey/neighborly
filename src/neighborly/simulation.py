@@ -40,6 +40,8 @@ from neighborly.factories.location import (
     LocationPreferencesFactory,
 )
 from neighborly.factories.relationships import (
+    IsSingleFactory,
+    KeyRelationsFactory,
     RelationshipModifiersFactory,
     RelationshipsFactory,
 )
@@ -247,6 +249,8 @@ class Simulation:
         self.world.gameobjects.add_component_factory(SpeciesFactory())
         self.world.gameobjects.add_component_factory(ModifiersFactory())
         self.world.gameobjects.add_component_factory(RelationshipModifiersFactory())
+        self.world.gameobjects.add_component_factory(KeyRelationsFactory())
+        self.world.gameobjects.add_component_factory(IsSingleFactory())
 
     def _init_effect_precondition_factories(self) -> None:
         """Add effect factories to the library."""
