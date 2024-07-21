@@ -14,6 +14,17 @@
         "value": 0.8,
         "modifier_type": "percent",
         "reason": "Has the 'Drinks too Much' trait."
+      },
+      {
+        "type": "AddRelationshipModifier",
+        "direction": "incoming",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": -10
+          }
+        ]
       }
     ],
     "spawn_frequency": 1,
@@ -23,18 +34,23 @@
   },
   "skeptical": {
     "name": "Skeptical",
+    "description": "This character is cautious of others.",
     "effects": [
       {
         "type": "AddStatModifier",
         "stat": "sociability",
         "value": -3
-      }
-    ],
-    "outgoing_relationship_effects": [
+      },
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": -5
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": -10
+          }
+        ]
       }
     ],
     "conflicts_with": [
@@ -52,13 +68,17 @@
         "type": "AddStatModifier",
         "stat": "sociability",
         "value": 3
-      }
-    ],
-    "outgoing_relationship_effects": [
+      },
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": 10
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": 10
+          }
+        ]
       }
     ],
     "conflicts_with": [
@@ -73,12 +93,18 @@
   },
   "flirtatious": {
     "name": "Flirtatious",
+    "description": "This character is prone to romantic behavior",
     "spawn_frequency": 1,
-    "outgoing_relationship_effects": [
+    "effects": [
       {
-        "type": "AddStatModifier",
-        "stat": "romance",
-        "value": 30
+        "type": "AddRelationshipModifier",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": 30
+          }
+        ]
       }
     ],
     "tags": [
@@ -93,13 +119,17 @@
         "type": "AddStatModifier",
         "stat": "discipline",
         "value": 20
-      }
-    ],
-    "incoming_relationship_effects": [
+      },
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": 5
+        "type": "AddRelationshipModifier",
+        "direction": "incoming",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": 5
+          }
+        ]
       }
     ],
     "conflicts_with": [
@@ -115,17 +145,22 @@
   "traitorous": {
     "name": "Traitorous",
     "description": "This character can betray their friends and allies for personal gain.",
-    "effects": [],
-    "outgoing_relationship_effects": [
+    "effects": [
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": -5
-      },
-      {
-        "type": "AddStatModifier",
-        "stat": "romance",
-        "value": -3
+        "type": "AddRelationshipModifier",
+        "direction": "incoming",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": -10
+          },
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": -5
+          }
+        ]
       }
     ],
     "conflicts_with": [
@@ -181,19 +216,28 @@
   "compassionate": {
     "name": "Compassionate",
     "description": "This character cares deeply for the well-being of others.",
-    "effects": [],
-    "outgoing_relationship_effects": [
+    "effects": [
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": 5
-      }
-    ],
-    "incoming_relationship_effects": [
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": 5
+          }
+        ]
+      },
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": 5
+        "type": "AddRelationshipModifier",
+        "direction": "incoming",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": 5
+          }
+        ]
       }
     ],
     "conflicts_with": [
@@ -209,19 +253,28 @@
   "callous": {
     "name": "Callous",
     "description": "This character is emotionally detached and unsympathetic.",
-    "effects": [],
-    "outgoing_relationship_effects": [
+    "effects": [
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": -5
-      }
-    ],
-    "incoming_relationship_effects": [
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": -5
+          }
+        ]
+      },
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": -5
+        "type": "AddRelationshipModifier",
+        "direction": "incoming",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": -5
+          }
+        ]
       }
     ],
     "conflicts_with": [
@@ -265,12 +318,17 @@
   "charismatic": {
     "name": "Charismatic",
     "description": "This character has a natural charm that draws others to them.",
-    "effects": [],
-    "incoming_relationship_effects": [
+    "effects": [
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": 15
+        "type": "AddRelationshipModifier",
+        "direction": "incoming",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": 15
+          }
+        ]
       }
     ],
     "conflicts_with": [
@@ -534,11 +592,16 @@
   "betraying": {
     "name": "Betraying",
     "description": "This character is prone to betrayal and can turn on friends and allies.",
-    "outgoing_relationship_effects": [
+    "effects": [
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": -10
+        "type": "AddRelationshipModifier",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": -10
+          }
+        ]
       }
     ],
     "spawn_frequency": 1,
@@ -565,18 +628,28 @@
   "friendly": {
     "name": "Friendly",
     "description": "This character is amiable and easily forms positive relationships with others.",
-    "incoming_relationship_effects": [
+    "effects": [
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": 10
-      }
-    ],
-    "outgoing_relationship_effects": [
+        "type": "AddRelationshipModifier",
+        "direction": "incoming",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": 10
+          }
+        ]
+      },
       {
-        "type": "AddStatModifier",
-        "stat": "reputation",
-        "value": 20
+        "type": "AddRelationshipModifier",
+        "direction": "outgoing",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "reputation",
+            "value": 20
+          }
+        ]
       }
     ],
     "spawn_frequency": 1,
@@ -595,13 +668,16 @@
         "stat": "fertility",
         "value": 0.3,
         "modifier_type": "percent"
-      }
-    ],
-    "outgoing_relationship_effects": [
+      },
       {
-        "type": "AddStatModifier",
-        "stat": "romance",
-        "value": 10
+        "type": "AddRelationshipModifier",
+        "effects": [
+          {
+            "type": "AddStatModifier",
+            "stat": "romance",
+            "value": 10
+          }
+        ]
       }
     ],
     "conflicts_with": [
