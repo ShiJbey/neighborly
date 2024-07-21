@@ -112,9 +112,9 @@ def _district_section(obj: GameObject) -> str:
         f"Name: {district.name}",
     ]
 
-    if district.locations:
-        output.append(f"Locations: (Total {len(district.locations)})")
-        for location in district.locations:
+    if district.businesses:
+        output.append(f"Locations: (Total {len(district.businesses)})")
+        for location in district.businesses:
             output.append(f"\t- {location.name}")
     else:
         output.append("Locations: None")

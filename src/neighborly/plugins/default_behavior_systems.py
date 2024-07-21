@@ -23,7 +23,7 @@ from neighborly.components.relationship import (
     Relationships,
     Romance,
 )
-from neighborly.components.settlement import Settlement
+from neighborly.components.settlement import Settlement, District
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.components.stats import Sociability, Stats
 from neighborly.config import SimulationConfig
@@ -245,8 +245,13 @@ class StartBusinessSystem(System):
         eligible_business_definitions: list[tuple[str, GameObject, JobRole]] = []
         weights: list[float] = []
 
-        for district in settlement.districts:
-            spawn_table = district.get_component(BusinessSpawnTable)
+        for district_obj in settlement.districts:
+            district = district_obj.get_component(District)
+
+            if len(district.businesses) >= district.business_capacity:
+                continue
+
+            spawn_table = district_obj.get_component(BusinessSpawnTable)
 
             for entry in spawn_table.table.values():
                 if entry.instances >= entry.max_instances:
@@ -255,7 +260,7 @@ class StartBusinessSystem(System):
                     continue
 
                 eligible_business_definitions.append(
-                    (entry.definition_id, district, entry.owner_role)
+                    (entry.definition_id, district_obj, entry.owner_role)
                 )
                 weights.append(entry.spawn_frequency)
 

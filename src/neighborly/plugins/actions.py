@@ -101,6 +101,7 @@ class StartBusiness(Action):
         district.gameobject.get_component(BusinessSpawnTable).increment_count(
             self.business_definition_id
         )
+        district.businesses.append(business)
 
         # (3) Dispatch a global event that a business was added to the sim.
         self.world.events.dispatch_event(
@@ -389,8 +390,18 @@ class Divorce(Action):
 
         get_stat(
             get_relationship(self.partner.gameobject, self.character.gameobject),
+            "reputation",
+        ).base_value -= 25
+
+        get_stat(
+            get_relationship(self.partner.gameobject, self.character.gameobject),
             "romance",
         ).base_value -= 25
+
+        get_stat(
+            get_relationship(self.character.gameobject, self.partner.gameobject),
+            "romance",
+        ).base_value -= 5
 
         event = DivorceEvent(self.character.gameobject, self.partner.gameobject)
 
@@ -899,6 +910,9 @@ class CloseBusiness(Action):
         # Decrement the number of this type
         business_location.district.get_component(BusinessSpawnTable).decrement_count(
             self.business.metadata["definition_id"]
+        )
+        business_location.district.get_component(District).businesses.remove(
+            self.business
         )
 
         # Remove any other characters that frequent the location

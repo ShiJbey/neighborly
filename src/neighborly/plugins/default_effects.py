@@ -419,7 +419,9 @@ class AddRelationshipModifier(Effect):
 
     @classmethod
     def instantiate(cls, world: World, params: dict[str, Any]) -> Effect:
-        modifier_dir = RelationshipModifierDir[str(params["direction"]).upper()]
+        modifier_dir = RelationshipModifierDir[
+            str(params.get("direction", "OUTGOING")).upper()
+        ]
         description = params.get("description", "")
         reason: str = params.get("reason", "")
 

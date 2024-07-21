@@ -14,22 +14,26 @@ from neighborly.ecs import Component, GameObject
 class District(Component):
     """A subsection of a settlement."""
 
-    __slots__ = ("name", "locations")
+    __slots__ = ("name", "businesses", "business_capacity")
 
     name: str
     """The district's name."""
-    locations: list[GameObject]
-    """locations within this district."""
+    businesses: list[GameObject]
+    """businesses within this district."""
+    business_capacity: int
+    """The maximum number of businesses that this district can support."""
 
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name
-        self.locations = []
+        self.businesses = []
+        self.business_capacity = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
-            "locations": [l.uid for l in self.locations],
+            "businesses": [l.uid for l in self.businesses],
+            "business_capacity": self.business_capacity,
         }
 
 

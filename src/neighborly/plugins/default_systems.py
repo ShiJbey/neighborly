@@ -71,19 +71,34 @@ class InitializeSettlementSystem(System):
     __system_group__ = "InitializationSystems"
     __update_order__ = ("last",)
 
-    __slots__ = ("num_districts",)
+    __slots__ = ("num_districts", "min_businesses_capacity", "max_business_capacity")
 
-    num_districts: float
+    num_districts: int
+    min_business_capacity: int
+    max_business_capacity: int
 
-    def __init__(self, num_districts: float = 4) -> None:
+    def __init__(
+        self,
+        num_districts: int = 4,
+        min_business_capacity: int = 2,
+        max_business_capacity: int = 10,
+    ) -> None:
         super().__init__()
         self.num_districts = num_districts
+        self.min_business_capacity = min_business_capacity
+        self.max_business_capacity = max_business_capacity
 
     def on_add(self, world: World) -> None:
         config = world.resources.get_resource(SimulationConfig)
 
         if num_districts := config.settings.get("num_districts"):
             self.num_districts = int(num_districts)
+
+        if min_business_capacity := config.settings.get("min_business_capacity"):
+            self.min_business_capacity = int(min_business_capacity)
+
+        if max_business_capacity := config.settings.get("max_business_capacity"):
+            self.max_business_capacity = int(max_business_capacity)
 
     def on_update(self, world: World) -> None:
         config = world.resource_manager.get_resource(SimulationConfig)
@@ -150,6 +165,10 @@ class InitializeSettlementSystem(System):
             # Create an instance of the district and add it to the settlement
             district = create_district(world, district_def.definition_id).get_component(
                 District
+            )
+
+            district.business_capacity = rng.randint(
+                self.min_business_capacity, self.max_business_capacity
             )
 
             add_district_to_settlement(settlement, district)
