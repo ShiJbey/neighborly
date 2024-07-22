@@ -47,7 +47,7 @@ from neighborly.helpers.settlement import (
     create_district,
     create_settlement,
 )
-from neighborly.helpers.traits import add_trait_with_id, has_trait
+from neighborly.helpers.traits import add_trait, has_trait
 from neighborly.libraries import DistrictLibrary, SettlementLibrary
 from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.actions import CloseBusiness, Die
@@ -580,18 +580,16 @@ class ChildBirthSystem(System):
             add_character_to_household(household, baby)
 
             # Birthing parent to child
-            add_trait_with_id(get_relationship(character.gameobject, baby), "child")
-            add_trait_with_id(get_relationship(baby, character.gameobject), "parent")
-            add_trait_with_id(
-                get_relationship(baby, character.gameobject), "biological_parent"
-            )
+            add_trait(get_relationship(character.gameobject, baby), "child")
+            add_trait(get_relationship(baby, character.gameobject), "parent")
+            add_trait(get_relationship(baby, character.gameobject), "biological_parent")
             character.gameobject.get_component(KeyRelations).set("child", baby)
             baby.get_component(KeyRelations).set("parent", character.gameobject)
 
             # Other parent to child
-            add_trait_with_id(get_relationship(other_parent, baby), "child")
-            add_trait_with_id(get_relationship(baby, other_parent), "parent")
-            add_trait_with_id(get_relationship(baby, other_parent), "biological_parent")
+            add_trait(get_relationship(other_parent, baby), "child")
+            add_trait(get_relationship(baby, other_parent), "parent")
+            add_trait(get_relationship(baby, other_parent), "biological_parent")
             other_parent.get_component(KeyRelations).set("child", baby)
             baby.get_component(KeyRelations).set("parent", other_parent)
 
@@ -601,8 +599,8 @@ class ChildBirthSystem(System):
                     continue
 
                 # Baby to sibling
-                add_trait_with_id(get_relationship(baby, child), "sibling")
-                add_trait_with_id(get_relationship(child, baby), "sibling")
+                add_trait(get_relationship(baby, child), "sibling")
+                add_trait(get_relationship(child, baby), "sibling")
                 baby.get_component(KeyRelations).set("sibling", child)
                 child.get_component(KeyRelations).set("sibling", baby)
 
@@ -612,8 +610,8 @@ class ChildBirthSystem(System):
                     continue
 
                 # Baby to sibling
-                add_trait_with_id(get_relationship(baby, child), "sibling")
-                add_trait_with_id(get_relationship(child, baby), "sibling")
+                add_trait(get_relationship(baby, child), "sibling")
+                add_trait(get_relationship(child, baby), "sibling")
                 baby.get_component(KeyRelations).set("sibling", child)
                 child.get_component(KeyRelations).set("sibling", baby)
 

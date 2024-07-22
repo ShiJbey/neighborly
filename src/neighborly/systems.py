@@ -310,7 +310,7 @@ class TickTraitsSystem(System):
                     traits_to_remove.append(trait_instance.trait)
 
             for trait in traits_to_remove:
-                remove_trait(traits.gameobject, trait)
+                remove_trait(traits.gameobject, trait.definition_id)
 
 
 class TimeSystem(System):

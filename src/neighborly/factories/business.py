@@ -6,7 +6,7 @@ from typing import Any
 
 from neighborly.components.business import Business, Occupation, Unemployed
 from neighborly.ecs import Component, ComponentFactory, GameObject, World
-from neighborly.helpers.traits import add_trait_with_id
+from neighborly.helpers.traits import add_trait
 from neighborly.libraries import (
     BusinessLibrary,
     BusinessNameFactories,
@@ -83,6 +83,6 @@ class DefaultBusinessFactory(IBusinessFactory):
         business.name = business.get_component(Business).name
 
         for trait in business_def.traits:
-            add_trait_with_id(business, trait)
+            add_trait(business, trait)
 
         return business

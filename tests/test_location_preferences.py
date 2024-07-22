@@ -10,7 +10,7 @@ import pytest
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
 from neighborly.helpers.location import score_location
-from neighborly.helpers.traits import add_trait_with_id, remove_trait_with_id
+from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -49,18 +49,16 @@ def test_trait_with_location_preferences() -> None:
 
     farmer = create_character(sim.world, "farmer.female")
 
-    remove_trait_with_id(
-        farmer, "drinks_too_much"
-    )  # just in case they spawned with the trait
+    remove_trait(farmer, "drinks_too_much")  # just in case they spawned with the trait
 
     assert score_location(farmer, cafe) == 0.5
     assert score_location(farmer, bar) == 0.5
 
-    add_trait_with_id(farmer, "drinks_too_much")
+    add_trait(farmer, "drinks_too_much")
 
     assert score_location(farmer, cafe) == 0.5
     assert score_location(farmer, bar) == pytest.approx(0.9, 0.001)  # type: ignore
 
-    remove_trait_with_id(farmer, "drinks_too_much")
+    remove_trait(farmer, "drinks_too_much")
 
     assert score_location(farmer, bar) == 0.5

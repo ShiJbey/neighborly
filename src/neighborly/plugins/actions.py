@@ -44,7 +44,7 @@ from neighborly.helpers.location import (
 from neighborly.helpers.relationship import deactivate_relationships, get_relationship
 from neighborly.helpers.settlement import remove_character_from_settlement
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait_with_id, has_trait, remove_trait_with_id
+from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.default_events import (
     BecomeBusinessOwnerEvent,
@@ -152,8 +152,8 @@ class BecomeBusinessOwner(Action):
 
         # (2) Update relationships with any existing employees
         for employee, _ in self.business.employees.items():
-            add_trait_with_id(get_relationship(self.character, employee), "employee")
-            add_trait_with_id(get_relationship(employee, self.character), "boss")
+            add_trait(get_relationship(self.character, employee), "employee")
+            add_trait(get_relationship(employee, self.character), "boss")
 
         # (4) Dispatch a life event for becoming the owner of this business
         become_business_owner_event = BecomeBusinessOwnerEvent(
@@ -187,12 +187,10 @@ class FormCrush(Action):
         character_relations = self.character.get_component(KeyRelations)
 
         for previous_crush in character_relations.get("crush"):
-            remove_trait_with_id(
-                get_relationship(self.character, previous_crush), "crush"
-            )
+            remove_trait(get_relationship(self.character, previous_crush), "crush")
             character_relations.unset("crush", previous_crush)
 
-        add_trait_with_id(get_relationship(self.character, self.crush), "crush")
+        add_trait(get_relationship(self.character, self.crush), "crush")
         character_relations.set("crush", self.crush)
 
         return True
@@ -248,7 +246,7 @@ class Retire(Action):
         business = occupation.business
 
         # Add the retired trait to the character and update employment status
-        add_trait_with_id(self.character, "retired")
+        add_trait(self.character, "retired")
 
         # Dispatch a life event for retirement.
         retirement_event = RetirementEvent(
@@ -307,13 +305,13 @@ class BreakUp(Action):
         character_relations = self.character.get_component(KeyRelations)
         partner_relations = self.partner.get_component(KeyRelations)
 
-        remove_trait_with_id(get_relationship(self.character, self.partner), "dating")
-        remove_trait_with_id(get_relationship(self.partner, self.character), "dating")
+        remove_trait(get_relationship(self.character, self.partner), "dating")
+        remove_trait(get_relationship(self.partner, self.character), "dating")
         character_relations.unset("dating", self.partner)
         partner_relations.unset("dating", self.character)
 
-        add_trait_with_id(get_relationship(self.character, self.partner), "ex_partner")
-        add_trait_with_id(get_relationship(self.partner, self.character), "ex_partner")
+        add_trait(get_relationship(self.character, self.partner), "ex_partner")
+        add_trait(get_relationship(self.partner, self.character), "ex_partner")
 
         if (
             len(character_relations.get("dating")) == 0
@@ -356,22 +354,22 @@ class Divorce(Action):
         character_relations = self.character.gameobject.get_component(KeyRelations)
         partner_relations = self.partner.gameobject.get_component(KeyRelations)
 
-        remove_trait_with_id(
+        remove_trait(
             get_relationship(self.character.gameobject, self.partner.gameobject),
             "spouse",
         )
-        remove_trait_with_id(
+        remove_trait(
             get_relationship(self.partner.gameobject, self.character.gameobject),
             "spouse",
         )
         character_relations.unset("spouse", self.partner.gameobject)
         partner_relations.unset("spouse", self.character.gameobject)
 
-        add_trait_with_id(
+        add_trait(
             get_relationship(self.character.gameobject, self.partner.gameobject),
             "ex_spouse",
         )
-        add_trait_with_id(
+        add_trait(
             get_relationship(self.partner.gameobject, self.character.gameobject),
             "ex_spouse",
         )
@@ -456,13 +454,13 @@ class GetMarried(Action):
         character_relations = self.character.get_component(KeyRelations)
         partner_relations = self.partner.get_component(KeyRelations)
 
-        remove_trait_with_id(get_relationship(self.character, self.partner), "dating")
-        remove_trait_with_id(get_relationship(self.partner, self.character), "dating")
+        remove_trait(get_relationship(self.character, self.partner), "dating")
+        remove_trait(get_relationship(self.partner, self.character), "dating")
         character_relations.unset("dating", self.partner)
         partner_relations.unset("dating", self.character)
 
-        add_trait_with_id(get_relationship(self.character, self.partner), "spouse")
-        add_trait_with_id(get_relationship(self.partner, self.character), "spouse")
+        add_trait(get_relationship(self.character, self.partner), "spouse")
+        add_trait(get_relationship(self.partner, self.character), "spouse")
         character_relations.set("spouse", self.partner)
         partner_relations.set("spouse", self.character)
 
@@ -539,35 +537,27 @@ class GetMarried(Action):
                 if not child_1.is_active:
                     continue
 
-                add_trait_with_id(get_relationship(child_0, child_1), "step_sibling")
-                add_trait_with_id(get_relationship(child_0, child_1), "sibling")
-                add_trait_with_id(get_relationship(child_1, child_0), "step_sibling")
-                add_trait_with_id(get_relationship(child_1, child_0), "sibling")
+                add_trait(get_relationship(child_0, child_1), "step_sibling")
+                add_trait(get_relationship(child_0, child_1), "sibling")
+                add_trait(get_relationship(child_1, child_0), "step_sibling")
+                add_trait(get_relationship(child_1, child_0), "sibling")
 
         # Update relationships parent/child relationships
         for child in character_relations.get("child"):
             if child.is_active:
                 if not has_trait(get_relationship(self.partner, child), "child"):
-                    add_trait_with_id(get_relationship(self.partner, child), "child")
-                    add_trait_with_id(
-                        get_relationship(self.partner, child), "step_child"
-                    )
-                    add_trait_with_id(get_relationship(child, self.partner), "parent")
-                    add_trait_with_id(
-                        get_relationship(child, self.partner), "step_parent"
-                    )
+                    add_trait(get_relationship(self.partner, child), "child")
+                    add_trait(get_relationship(self.partner, child), "step_child")
+                    add_trait(get_relationship(child, self.partner), "parent")
+                    add_trait(get_relationship(child, self.partner), "step_parent")
 
         for child in partner_relations.get("child"):
             if child.is_active:
                 if not has_trait(get_relationship(self.character, child), "child"):
-                    add_trait_with_id(get_relationship(self.character, child), "child")
-                    add_trait_with_id(
-                        get_relationship(self.character, child), "step_child"
-                    )
-                    add_trait_with_id(get_relationship(child, self.character), "parent")
-                    add_trait_with_id(
-                        get_relationship(child, self.character), "step_parent"
-                    )
+                    add_trait(get_relationship(self.character, child), "child")
+                    add_trait(get_relationship(self.character, child), "step_child")
+                    add_trait(get_relationship(child, self.character), "parent")
+                    add_trait(get_relationship(child, self.character), "step_parent")
 
         event = MarriageEvent(self.character, self.partner)
 
@@ -592,8 +582,8 @@ class StartDating(Action):
         self.partner = partner
 
     def execute(self) -> bool:
-        add_trait_with_id(get_relationship(self.character, self.partner), "dating")
-        add_trait_with_id(get_relationship(self.partner, self.character), "dating")
+        add_trait(get_relationship(self.character, self.partner), "dating")
+        add_trait(get_relationship(self.partner, self.character), "dating")
         self.character.get_component(KeyRelations).set("dating", self.partner)
         self.partner.get_component(KeyRelations).set("dating", self.character)
 
@@ -639,20 +629,16 @@ class HireEmployee(Action):
 
         # Update boss/employee relationships if needed
         if business_comp.owner is not None:
-            add_trait_with_id(
-                get_relationship(self.character, business_comp.owner), "boss"
-            )
-            add_trait_with_id(
-                get_relationship(business_comp.owner, self.character), "employee"
-            )
+            add_trait(get_relationship(self.character, business_comp.owner), "boss")
+            add_trait(get_relationship(business_comp.owner, self.character), "employee")
 
         # Update employee/employee relationships
         for employee, _ in business_comp.employees.items():
             if employee == self.character:
                 continue
 
-            add_trait_with_id(get_relationship(self.character, employee), "coworker")
-            add_trait_with_id(get_relationship(employee, self.character), "coworker")
+            add_trait(get_relationship(self.character, employee), "coworker")
+            add_trait(get_relationship(employee, self.character), "coworker")
 
         hiring_event = StartNewJobEvent(self.character, self.business, self.role)
 
@@ -829,10 +815,8 @@ class LeaveJob(Action):
 
             # Update relationships boss/employee relationships
             for employee, _ in business_comp.employees.items():
-                remove_trait_with_id(
-                    get_relationship(self.character, employee), "employee"
-                )
-                remove_trait_with_id(get_relationship(employee, self.character), "boss")
+                remove_trait(get_relationship(self.character, employee), "employee")
+                remove_trait(get_relationship(employee, self.character), "boss")
 
             set_business_owner(business_comp, None)
 
@@ -841,20 +825,18 @@ class LeaveJob(Action):
             # Update boss/employee relationships if needed
             owner = business_comp.owner
             if owner is not None:
-                remove_trait_with_id(get_relationship(self.character, owner), "boss")
-                remove_trait_with_id(
-                    get_relationship(owner, self.character), "employee"
-                )
+                remove_trait(get_relationship(self.character, owner), "boss")
+                remove_trait(get_relationship(owner, self.character), "employee")
 
             # Update coworker relationships
             for other_employee, _ in business_comp.employees.items():
                 if other_employee == self.character:
                     continue
 
-                remove_trait_with_id(
+                remove_trait(
                     get_relationship(self.character, other_employee), "coworker"
                 )
-                remove_trait_with_id(
+                remove_trait(
                     get_relationship(other_employee, self.character), "coworker"
                 )
 
@@ -950,7 +932,7 @@ class Die(Action):
 
         remove_all_frequented_locations(self.character)
 
-        add_trait_with_id(self.character, "deceased")
+        add_trait(self.character, "deceased")
 
         deactivate_relationships(self.character)
 
@@ -985,26 +967,26 @@ class Die(Action):
         for partner in character_relations.get("dating"):
             partner_relations = partner.get_component(KeyRelations)
 
-            remove_trait_with_id(get_relationship(partner, self.character), "dating")
-            remove_trait_with_id(get_relationship(self.character, partner), "dating")
+            remove_trait(get_relationship(partner, self.character), "dating")
+            remove_trait(get_relationship(self.character, partner), "dating")
             partner_relations.unset("dating", self.character)
             character_relations.unset("dating", partner)
 
-            add_trait_with_id(get_relationship(partner, self.character), "ex_partner")
-            add_trait_with_id(get_relationship(self.character, partner), "ex_partner")
+            add_trait(get_relationship(partner, self.character), "ex_partner")
+            add_trait(get_relationship(self.character, partner), "ex_partner")
 
         for partner in character_relations.get("spouse"):
             partner_relations = partner.get_component(KeyRelations)
 
-            remove_trait_with_id(get_relationship(self.character, partner), "spouse")
-            remove_trait_with_id(get_relationship(partner, self.character), "spouse")
+            remove_trait(get_relationship(self.character, partner), "spouse")
+            remove_trait(get_relationship(partner, self.character), "spouse")
             partner_relations.unset("spouse", self.character)
             character_relations.unset("spouse", partner)
 
-            add_trait_with_id(get_relationship(partner, self.character), "ex_spouse")
-            add_trait_with_id(get_relationship(self.character, partner), "ex_spouse")
+            add_trait(get_relationship(partner, self.character), "ex_spouse")
+            add_trait(get_relationship(self.character, partner), "ex_spouse")
 
-            add_trait_with_id(get_relationship(partner, self.character), "widow")
+            add_trait(get_relationship(partner, self.character), "widow")
 
         # Remove the character from their occupation
         if occupation := self.character.try_component(Occupation):
@@ -1035,7 +1017,7 @@ class DepartSettlement(Action):
     def execute(self) -> bool:
         """Have the given character depart the settlement."""
 
-        add_trait_with_id(self.character, "departed")
+        add_trait(self.character, "departed")
 
         # Have the character leave their job
         if occupation := self.character.try_component(Occupation):

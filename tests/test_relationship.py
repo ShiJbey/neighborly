@@ -17,7 +17,7 @@ from neighborly.helpers.relationship import (
     has_relationship,
 )
 from neighborly.helpers.stats import get_stat
-from neighborly.helpers.traits import add_trait_with_id, remove_trait_with_id
+from neighborly.helpers.traits import add_trait, remove_trait
 from neighborly.libraries import CharacterLibrary, TraitLibrary
 from neighborly.loaders import (
     load_businesses,
@@ -137,7 +137,7 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     assert get_stat(rel_to_noble, "reputation").value == 0
 
-    add_trait_with_id(farmer, "gullible")
+    add_trait(farmer, "gullible")
 
     assert get_stat(rel_to_noble, "reputation").value == 10
 
@@ -145,7 +145,7 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     assert get_stat(rel, "reputation").value == 10
 
-    remove_trait_with_id(farmer, "gullible")
+    remove_trait(farmer, "gullible")
 
     assert get_stat(rel, "reputation").value == 0
     assert get_stat(rel_to_noble, "reputation").value == 0
