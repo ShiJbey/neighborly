@@ -56,9 +56,17 @@ from neighborly.factories.stats import (
     DisciplineFactory,
     FertilityFactory,
     LifespanFactory,
+    LoyaltyFactory,
+    LuckFactory,
+    RomancePropensityFactory,
     SociabilityFactory,
     StatsFactory,
     StewardshipFactory,
+    ViolencePropensityFactory,
+    WantForChildrenFactory,
+    WantForMarriageFactory,
+    WantForPowerFactory,
+    WantToWorkFactory,
 )
 from neighborly.factories.traits import TraitsFactory
 from neighborly.libraries import (
@@ -190,6 +198,14 @@ class Simulation:
         self.world.gameobjects.add_component_factory(StewardshipFactory())
         self.world.gameobjects.add_component_factory(SociabilityFactory())
         self.world.gameobjects.add_component_factory(DisciplineFactory())
+        self.world.gameobjects.add_component_factory(RomancePropensityFactory())
+        self.world.gameobjects.add_component_factory(ViolencePropensityFactory())
+        self.world.gameobjects.add_component_factory(LoyaltyFactory())
+        self.world.gameobjects.add_component_factory(WantForPowerFactory())
+        self.world.gameobjects.add_component_factory(WantForChildrenFactory())
+        self.world.gameobjects.add_component_factory(WantToWorkFactory())
+        self.world.gameobjects.add_component_factory(LuckFactory())
+        self.world.gameobjects.add_component_factory(WantForMarriageFactory())
         self.world.gameobjects.add_component_factory(SpeciesFactory())
         self.world.gameobjects.add_component_factory(ModifiersFactory())
         self.world.gameobjects.add_component_factory(RelationshipModifiersFactory())

@@ -419,23 +419,32 @@ def _get_stats_table(obj: GameObject) -> str:
     if stats is None:
         return ""
 
-    stats_table_data: list[tuple[str, str]] = []
+    stats_table_data: list[tuple[str, str, str, str]] = []
 
     for stat_component in stats.stats:
+        if stat_component.stat.is_bounded:
+            min_val, max_val = stat_component.stat.bounds
+        else:
+            min_val, max_val = "N/A", "N/A"
+
         stat = stat_component.stat
+        boost = int(stat.value - stat.base_value)
+
         if stat.is_discrete:
-            boost = int(stat.value - stat.base_value)
             value_label = f"{int(stat.base_value)}[{_sign(boost)}{abs(boost)}]"
         else:
-            boost = int(stat.value - stat.base_value)
             value_label = f"{stat.base_value:.3f}[{_sign(boost)}{abs(boost)}]"
 
-        stats_table_data.append((stat_component.stat_name, value_label))
+        stats_table_data.append(
+            (stat_component.stat_name, value_label, str(min_val), str(max_val))
+        )
 
     output = "=== Stats ===\n\n"
 
     output += tabulate.tabulate(
-        stats_table_data, headers=("Stat", "Value"), numalign="left"
+        stats_table_data,
+        headers=("Stat", "Base Value[boost]", "Min", "Max"),
+        numalign="left",
     )
 
     return output

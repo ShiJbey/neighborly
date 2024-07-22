@@ -76,17 +76,17 @@ def test_add_remove_trait_effects(test_sim: Simulation) -> None:
 
     farmer = create_character(test_sim.world, "farmer.female")
 
-    get_stat(farmer, "sociability").base_value = 0
+    get_stat(farmer, "Sociability").base_value = 0
 
     success = add_trait(farmer, "gullible")
 
     assert success is True
-    assert get_stat(farmer, "sociability").value == 3
+    assert get_stat(farmer, "Sociability").value == 3
 
     success = remove_trait(farmer, "gullible")
 
     assert success is True
-    assert get_stat(farmer, "sociability").value == 0
+    assert get_stat(farmer, "Sociability").value == 0
 
 
 def test_try_add_conflicting_trait(test_sim: Simulation) -> None:

@@ -38,7 +38,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "sociability",
+        "stat": "Sociability",
         "value": -3
       },
       {
@@ -66,7 +66,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "sociability",
+        "stat": "Sociability",
         "value": 3
       },
       {
@@ -117,7 +117,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "discipline",
+        "stat": "Discipline",
         "value": 20
       },
       {
@@ -179,7 +179,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "sociability",
+        "stat": "Sociability",
         "value": -3
       }
     ],
@@ -199,7 +199,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "sociability",
+        "stat": "Sociability",
         "value": 20
       }
     ],
@@ -347,7 +347,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "sociability",
+        "stat": "Sociability",
         "value": -5
       }
     ],
@@ -367,7 +367,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "stewardship",
+        "stat": "Stewardship",
         "value": 5
       }
     ],
@@ -387,7 +387,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "stewardship",
+        "stat": "Stewardship",
         "value": -5
       }
     ],
@@ -407,7 +407,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "discipline",
+        "stat": "Discipline",
         "value": -15
       }
     ],
@@ -427,7 +427,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "discipline",
+        "stat": "Discipline",
         "value": 15
       }
     ],
@@ -491,7 +491,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "sociability",
+        "stat": "Sociability",
         "value": 30
       }
     ],
@@ -511,7 +511,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "sociability",
+        "stat": "Sociability",
         "value": -20
       }
     ],
@@ -531,7 +531,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "fertility",
+        "stat": "Fertility",
         "value": 0.2,
         "modifier_type": "percent"
       }
@@ -552,7 +552,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "fertility",
+        "stat": "Fertility",
         "value": -0.2,
         "modifier_type": "percent"
       }
@@ -665,7 +665,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "fertility",
+        "stat": "Fertility",
         "value": 0.3,
         "modifier_type": "percent"
       },
@@ -696,7 +696,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "lifespan",
+        "stat": "Lifespan",
         "value": 999999
       }
     ],

@@ -386,7 +386,7 @@ class Stats(Component):
 class Lifespan(StatComponent):
     """Tracks a GameObject's lifespan."""
 
-    __stat_name__ = "lifespan"
+    __stat_name__ = "Lifespan"
 
     def __init__(
         self,
@@ -398,7 +398,7 @@ class Lifespan(StatComponent):
 class Fertility(StatComponent):
     """Tracks a GameObject's fertility."""
 
-    __stat_name__ = "fertility"
+    __stat_name__ = "Fertility"
 
     MAX_VALUE: int = 100
 
@@ -412,7 +412,7 @@ class Fertility(StatComponent):
 class Stewardship(StatComponent):
     """Tracks a GameObject's stewardship."""
 
-    __stat_name__ = "stewardship"
+    __stat_name__ = "Stewardship"
 
     MAX_VALUE: int = 100
 
@@ -426,7 +426,7 @@ class Stewardship(StatComponent):
 class Sociability(StatComponent):
     """Tracks a GameObject's sociability."""
 
-    __stat_name__ = "sociability"
+    __stat_name__ = "Sociability"
 
     MAX_VALUE: int = 100
 
@@ -440,7 +440,119 @@ class Sociability(StatComponent):
 class Discipline(StatComponent):
     """Tracks a GameObject's discipline."""
 
-    __stat_name__ = "discipline"
+    __stat_name__ = "Discipline"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class RomancePropensity(StatComponent):
+    """Tracks a GameObject's propensity for romantic actions."""
+
+    __stat_name__ = "RomancePropensity"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class ViolencePropensity(StatComponent):
+    """Tracks a GameObject's propensity for violent actions."""
+
+    __stat_name__ = "ViolencePropensity"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Loyalty(StatComponent):
+    """Tracks a GameObject's propensity to remain loyal to those around them."""
+
+    __stat_name__ = "Loyalty"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class WantForPower(StatComponent):
+    """Tracks a GameObject's propensity to take actions that increase social power."""
+
+    __stat_name__ = "WantForPower"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class WantForChildren(StatComponent):
+    """Tracks a GameObject's propensity to have children."""
+
+    __stat_name__ = "WantForChildren"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class WantToWork(StatComponent):
+    """Tracks a GameObject's propensity to find and stay at a job."""
+
+    __stat_name__ = "WantToWork"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Luck(StatComponent):
+    """Tracks a GameObject's propensity to be successful."""
+
+    __stat_name__ = "Luck"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class WantForMarriage(StatComponent):
+    """Tracks a GameObject's propensity to be married."""
+
+    __stat_name__ = "WantForMarriage"
 
     MAX_VALUE: int = 100
 
