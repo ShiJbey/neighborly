@@ -219,7 +219,7 @@ class Retire(Action):
                 (
                     employee,
                     get_stat(
-                        get_relationship(self.character, employee), "reputation"
+                        get_relationship(self.character, employee), "Reputation"
                     ).value,
                 )
                 for employee, _ in business.get_component(Business).employees.items()
@@ -339,7 +339,7 @@ class BreakUp(Action):
             self.partner.add_component(IsSingle())
 
         get_stat(
-            get_relationship(self.partner, self.character), "romance"
+            get_relationship(self.partner, self.character), "Romance"
         ).base_value -= 15
 
         event = DatingBreakUpEvent(self.character, self.partner)
@@ -401,17 +401,17 @@ class Divorce(Action):
 
         get_stat(
             get_relationship(self.partner.gameobject, self.character.gameobject),
-            "reputation",
+            "Reputation",
         ).base_value -= 25
 
         get_stat(
             get_relationship(self.partner.gameobject, self.character.gameobject),
-            "romance",
+            "Romance",
         ).base_value -= 25
 
         get_stat(
             get_relationship(self.character.gameobject, self.partner.gameobject),
-            "romance",
+            "Romance",
         ).base_value -= 5
 
         event = DivorceEvent(self.character.gameobject, self.partner.gameobject)

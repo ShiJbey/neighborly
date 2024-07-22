@@ -71,7 +71,7 @@ def sim() -> Simulation:
                     preconditions=[],
                     effects=[
                         AddStatModifier(
-                            stat="reputation",
+                            stat="Reputation",
                             value=10,
                             modifier_type=StatModifierType.FLAT,
                         )
@@ -135,17 +135,17 @@ def test_trait_with_social_rules(sim: Simulation) -> None:
 
     rel_to_noble = add_relationship(farmer, noble)
 
-    assert get_stat(rel_to_noble, "reputation").value == 0
+    assert get_stat(rel_to_noble, "Reputation").value == 0
 
     add_trait(farmer, "gullible")
 
-    assert get_stat(rel_to_noble, "reputation").value == 10
+    assert get_stat(rel_to_noble, "Reputation").value == 10
 
     rel = add_relationship(farmer, merchant)
 
-    assert get_stat(rel, "reputation").value == 10
+    assert get_stat(rel, "Reputation").value == 10
 
     remove_trait(farmer, "gullible")
 
-    assert get_stat(rel, "reputation").value == 0
-    assert get_stat(rel_to_noble, "reputation").value == 0
+    assert get_stat(rel, "Reputation").value == 0
+    assert get_stat(rel_to_noble, "Reputation").value == 0

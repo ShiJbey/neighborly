@@ -5,12 +5,12 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": -30
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": 10
       }
     ]
@@ -21,12 +21,12 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": -50
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": 10
       }
     ]
@@ -37,12 +37,12 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": -50
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": 20
       }
     ]
@@ -53,12 +53,12 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": -50
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": 15
       }
     ]
@@ -69,12 +69,12 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": 15
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": 20
       }
     ]
@@ -85,17 +85,17 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": 10
       },
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": 5
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": 15
       }
     ]
@@ -106,12 +106,12 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": -20
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": -8
       }
     ]
@@ -122,12 +122,12 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": -10
       },
       {
         "type": "AddStatModifier",
-        "stat": "reputation",
+        "stat": "Reputation",
         "value": -5
       }
     ]
@@ -138,7 +138,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "romance",
+        "stat": "Romance",
         "value": 10
       }
     ]

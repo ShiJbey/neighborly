@@ -23,7 +23,7 @@ from neighborly.components.relationship import (
     Relationships,
     Romance,
 )
-from neighborly.components.settlement import Settlement, District
+from neighborly.components.settlement import District, Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
 from neighborly.components.stats import Sociability, Stats
 from neighborly.config import SimulationConfig
@@ -644,7 +644,7 @@ class CrushFormationSystem(System):
                 highest_romance = (
                     get_relationship(character.gameobject, potential_crush)
                     .get_component(Stats)
-                    .get_stat("romance")
+                    .get_stat("Romance")
                     .value
                 )
 

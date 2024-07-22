@@ -21,7 +21,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": -10
           }
         ]
@@ -47,7 +47,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": -10
           }
         ]
@@ -75,7 +75,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": 10
           }
         ]
@@ -101,7 +101,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": 30
           }
         ]
@@ -126,7 +126,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": 5
           }
         ]
@@ -152,12 +152,12 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": -10
           },
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": -5
           }
         ]
@@ -223,7 +223,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": 5
           }
         ]
@@ -234,7 +234,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": 5
           }
         ]
@@ -260,7 +260,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": -5
           }
         ]
@@ -271,7 +271,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": -5
           }
         ]
@@ -325,7 +325,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": 15
           }
         ]
@@ -598,7 +598,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": -10
           }
         ]
@@ -635,7 +635,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": 10
           }
         ]
@@ -646,7 +646,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "reputation",
+            "stat": "Reputation",
             "value": 20
           }
         ]
@@ -674,7 +674,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": 10
           }
         ]
@@ -721,7 +721,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": 15,
             "reason": "Owner has Heterosexual trait"
           }
@@ -738,7 +738,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": -15,
             "reason": "Owner has Heterosexual trait"
           }
@@ -769,7 +769,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": -15,
             "reason": "Owner has Homosexual trait"
           }
@@ -786,7 +786,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": 15,
             "reason": "Owner has Homosexual trait"
           }
@@ -812,7 +812,7 @@
         "effects": [
           {
             "type": "AddStatModifier",
-            "stat": "romance",
+            "stat": "Romance",
             "value": 15,
             "reason": "Owner has Bisexual trait"
           }

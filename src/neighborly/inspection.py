@@ -374,8 +374,8 @@ def _get_relationships_table(obj: GameObject) -> str:
     relationship_data: list[tuple[bool, int, str, str, str, str]] = []
 
     for target, relationship in relationships.outgoing.items():
-        reputation = get_stat(relationship, "reputation")
-        romance = get_stat(relationship, "romance")
+        reputation = get_stat(relationship, "Reputation")
+        romance = get_stat(relationship, "Romance")
         traits = ", ".join(
             t.trait.name for t in relationship.get_component(Traits).traits.values()
         )

@@ -188,7 +188,7 @@ class Relationships(Component):
 class Reputation(StatComponent):
     """Tracks a relationship's reputations stat."""
 
-    __stat_name__ = "reputation"
+    __stat_name__ = "Reputation"
 
     def __init__(
         self,
@@ -200,7 +200,7 @@ class Reputation(StatComponent):
 class Romance(StatComponent):
     """Tracks a relationship's romance stat."""
 
-    __stat_name__ = "romance"
+    __stat_name__ = "Romance"
 
     def __init__(
         self,
