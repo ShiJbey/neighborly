@@ -244,6 +244,12 @@ class Retire(Action):
     def execute(self) -> bool:
         occupation = self.character.get_component(Occupation)
         business = occupation.business
+        business_comp = business.get_component(Business)
+        succession_action: Optional[BecomeBusinessOwner] = None
+        is_business_owner = self.character == business_comp.owner
+
+        if is_business_owner:
+            succession_action = self._choose_successor()
 
         # Add the retired trait to the character and update employment status
         add_trait(self.character, "retired")
@@ -255,6 +261,13 @@ class Retire(Action):
         dispatch_life_event(retirement_event, [self.character])
 
         LeaveJob(business=business, character=self.character, is_silent=True).execute()
+
+        # If we have a successor, put them in charge. Otherwise, close the business
+        if is_business_owner:
+            if succession_action:
+                succession_action.execute()
+            else:
+                CloseBusiness(business=business).execute()
 
         return True
 
@@ -767,52 +780,15 @@ class LeaveJob(Action):
         self.business = business
         self.character = character
 
-    def _choose_successor(self) -> Optional[BecomeBusinessOwner]:
-        rng = self.world.resource_manager.get_resource(random.Random)
-
-        potential_successors: list[tuple[GameObject, float]] = sorted(
-            [
-                (
-                    employee,
-                    get_stat(
-                        get_relationship(self.character, employee), "reputation"
-                    ).value,
-                )
-                for employee, _ in self.business.get_component(
-                    Business
-                ).employees.items()
-            ],
-            key=lambda entry: entry[1],
-        )
-
-        if not potential_successors:
-            return
-
-        chosen_successor = potential_successors[-1][0]
-
-        potential_succession_action = BecomeBusinessOwner(
-            chosen_successor, self.business
-        )
-
-        action_probability = get_action_probability(potential_succession_action)
-
-        if rng.random() < action_probability:
-            return potential_succession_action
-
-        return None
-
     def execute(self) -> bool:
 
         job_role = self.character.get_component(Occupation).job_role
         business_comp = self.business.get_component(Business)
-        succession_action: Optional[BecomeBusinessOwner] = None
         is_business_owner = self.character == business_comp.owner
 
         remove_frequented_location(self.character, self.business)
 
         if is_business_owner:
-            succession_action = self._choose_successor()
-
             # Update relationships boss/employee relationships
             for employee, _ in business_comp.employees.items():
                 remove_trait(get_relationship(self.character, employee), "employee")
@@ -849,13 +825,6 @@ class LeaveJob(Action):
         dispatch_life_event(
             leave_job_event, [self.character], skip_logging=self.is_silent
         )
-
-        # If we have a successor, put them in charge. Otherwise, close the business
-        if is_business_owner:
-            if succession_action:
-                succession_action.execute()
-            else:
-                CloseBusiness(business=self.business).execute()
 
         return True
 

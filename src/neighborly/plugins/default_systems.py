@@ -548,7 +548,7 @@ class BusinessLifespanSystem(System):
         for _, (business, age, lifespan, _) in world.get_components(
             (Business, Age, Lifespan, Active)
         ):
-            if age.value >= lifespan.stat.value and business.owner:
+            if age.value >= lifespan.stat.value:
                 CloseBusiness(business.gameobject).execute()
 
 
