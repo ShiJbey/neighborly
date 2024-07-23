@@ -1,0 +1,629 @@
+# This file contains trait definitions inspired by the traits
+# in Crusader Kings III.
+# Source: https://ck3.paradoxwikis.com/Traits
+
+brave:
+  name: Brave
+  tags: [personality]
+  conflicting_traits: [craven]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: 20
+    - type: AddStatModifier
+      stat: Rationality
+      value: -20
+    - type: AddStatModifier
+      stat: Boldness
+      value: 70
+    - type: AddStatModifier
+      stat: Martial
+      value: 10
+    - type: AddStatModifier
+      stat: Prowess
+      value: 15
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Romance
+          value: 20
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: craven
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: brave
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+
+craven:
+  name: Craven
+  tags: [personality]
+  conflicting_traits: [brave]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: -20
+    - type: AddStatModifier
+      stat: Rationality
+      value: 10
+    - type: AddStatModifier
+      stat: Boldness
+      value: -70
+    - type: AddStatModifier
+      stat: Martial
+      value: -10
+    - type: AddStatModifier
+      stat: Prowess
+      value: -15
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Romance
+          value: -10
+        - type: AddStatModifier
+          stat: Reputation
+          value: -15
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: craven
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 20
+
+calm:
+  name: Calm
+  tags: [personality]
+  conflicting_traits: [wrathful]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 10
+    - type: AddStatModifier
+      stat: Intrigue
+      value: -20
+    - type: AddStatModifier
+      stat: Rationality
+      value: 45
+    - type: AddStatModifier
+      stat: Vengefulness
+      value: -10
+    - type: AddStatModifier
+      stat: Boldness
+      value: -20
+    # Same trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: calm
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    # Opposite trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: wrathful
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+wrathful:
+  name: Wrathful
+  tags: [personality]
+  conflicting_traits: [calm]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Intrigue
+      value: -10
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: -10
+    - type: AddStatModifier
+      stat: Vengefulness
+      value: -10
+    - type: AddStatModifier
+      stat: Boldness
+      value: -20
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+chaste:
+  name: Chaste
+  tags: [personality]
+  conflicting_traits: [lustful]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: -20
+    - type: AddStatModifier
+      stat: Fertility
+      value: -0.25
+      modifier_type: PERCENT
+    # Same trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: chaste
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    # Opposite trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: lustful
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+lustful:
+  name: Lustful
+  tags: [personality]
+  conflicting_traits: [chaste]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: 35
+    - type: AddStatModifier
+      stat: Fertility
+      value: 0.25
+      modifier_type: PERCENT
+    # Same trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: lustful
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    # Opposite trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: chaste
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+content:
+  name: Content
+  tags: [personality]
+  conflicting_traits: [ambitious]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: -10
+    # Same trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: content
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 20
+
+ambitious:
+  name: Ambitious
+  tags: [personality]
+  conflicting_traits: [ambitious]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: 20
+    - type: AddStatModifier
+      stat: Stewardship
+      value: 10
+    - type: AddStatModifier
+      stat: WantForPower
+      value: 20
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 10
+    # Same trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: ambitious
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -15
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+
+diligent:
+  name: Diligent
+  tags: [personality]
+  conflicting_traits: [lazy]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 25
+    - type: AddStatModifier
+      stat: Stewardship
+      value: 25
+    - type: AddStatModifier
+      stat: WantToWork
+      value: 25
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    # Same trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: diligent
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    # Opposite trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: lazy
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+lazy:
+  name: Lazy
+  tags: [personality]
+  conflicting_traits: [diligent]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 25
+    - type: AddStatModifier
+      stat: Stewardship
+      value: -15
+    - type: AddStatModifier
+      stat: WantToWork
+      value: -25
+    - type: AddStatModifier
+      stat: Sociability
+      value: -15
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+generous:
+  name: Generous
+  tags: [personality]
+  conflicting_traits: [greedy]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 20
+    - type: AddStatModifier
+      stat: Sociability
+      value: 10
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 15
+    # Opposite trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: greedy
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -20
+
+greedy:
+  name: Greedy
+  tags: [personality]
+  conflicting_traits: [generous]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: -20
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -15
+
+gregarious:
+  name: Gregarious
+  tags: [personality]
+  conflicting_traits: [shy]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: 50
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 20
+
+shy:
+  name: Shy
+  tags: [personality]
+  conflicting_traits: [gregarious]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Sociability
+      value: -50
+
+compassionate:
+  name: Compassionate
+  tags: [personality]
+  conflicting_traits: [callous, sadistic]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 25
+    - type: AddStatModifier
+      stat: Sociability
+      value: 35
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+        - type: AddStatModifier
+          stat: Romance
+          value: 10
+    # Opposite trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: callous
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: sadistic
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+honest:
+  name: Honest
+  tags: [personality]
+  conflicting_traits: [deceitful]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 10
+    - type: AddStatModifier
+      stat: Intrigue
+      value: -35
+    - type: AddStatModifier
+      stat: Sociability
+      value: 10
+    - type: AddStatModifier
+      stat: Compassion
+      value: 10
+    - type: AddStatModifier
+      stat: Honor
+      value: 50
+    - type: AddStatModifier
+      stat: Boldness
+      value: 10
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    # same trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: honest
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10
+    # opposite trait opinion
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: deceitful
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+deceitful:
+  name: Deceitful
+  tags: [personality]
+  conflicting_traits: [honest]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: -10
+    - type: AddStatModifier
+      stat: Intrigue
+      value: 35
+    - type: AddStatModifier
+      stat: Rationality
+      value: 10
+    - type: AddStatModifier
+      stat: Compassion
+      value: -10
+    - type: AddStatModifier
+      stat: Honor
+      value: -50
+    - type: AddStatModifier
+      stat: Boldness
+      value: -10
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: honest
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+callous:
+  name: Callous
+  tags: [personality]
+  conflicting_traits: [compassion, sadistic]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: -10
+    - type: AddStatModifier
+      stat: Sociability
+      value: -10
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -5
+
+sadistic:
+  name: Sadistic
+  tags: [personality]
+  conflicting_traits: [compassion, callous]
+  spawn_frequency: 1
+  effects:
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+fickle:
+  name: Fickle
+  tags: [personality]
+  conflicting_traits: [stubborn, eccentric]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Stewardship
+      value: -15
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: 15
+
+stubborn:
+  name: Stubborn
+  tags: [personality]
+  conflicting_traits: [fickle, eccentric]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Stewardship
+      value: 20
+    - type: AddStatModifier
+      stat: Lifespan
+      value: 5
+    - type: AddRelationshipModifier
+      direction: incoming
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: -10
+
+eccentric:
+  name: Eccentric
+  tags: [personality]
+  conflicting_traits: [fickle, stubborn]
+  spawn_frequency: 1
+  effects:
+    - type: AddStatModifier
+      stat: Diplomacy
+      value: -15
+    - type: AddStatModifier
+      stat: Sociability
+      value: -20
+    - type: AddRelationshipModifier
+      direction: outgoing
+      preconditions:
+        - type: TargetHasTrait
+          trait: eccentric
+      effects:
+        - type: AddStatModifier
+          stat: Reputation
+          value: 10

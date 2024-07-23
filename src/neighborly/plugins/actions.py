@@ -15,9 +15,15 @@ from neighborly.components.character import (
     ResidentOf,
 )
 from neighborly.components.location import CurrentDistrict
-from neighborly.components.relationship import IsSingle, KeyRelations
+from neighborly.components.relationship import (
+    IsSingle,
+    KeyRelations,
+    Relationships,
+    Romance,
+)
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
+from neighborly.config import SimulationConfig
 from neighborly.datetime import SimDate
 from neighborly.ecs import Event, GameObject
 from neighborly.helpers.action import get_action_probability
@@ -64,6 +70,21 @@ from neighborly.plugins.default_events import (
     StartDatingEvent,
     StartNewJobEvent,
 )
+
+
+class TryGetJob(Action):
+    """This is a blank action that is used to gauge character interest in a job."""
+
+    __action_id__ = "try-get-job"
+
+    __slots__ = ("performer",)
+
+    def __init__(self, performer: GameObject) -> None:
+        super().__init__(performer.world, performer=performer)
+        self.performer = performer
+
+    def execute(self) -> bool:
+        return False
 
 
 class StartBusiness(Action):
@@ -168,6 +189,70 @@ class BecomeBusinessOwner(Action):
         return True
 
 
+class TryFormCrush(Action):
+    """A character attempts to form a crush on someone in their social circle."""
+
+    __action_id__ = "try-form-crush"
+
+    __slots__ = ("performer",)
+
+    def __init__(self, performer: GameObject) -> None:
+        super().__init__(performer.world, performer=performer)
+        self.performer = performer
+
+    def execute(self) -> bool:
+        crush_threshold = self.world.resources.get_resource(
+            SimulationConfig
+        ).settings.get("crush_threshold", 0)
+        rng = self.world.resources.get_resource(random.Random)
+        key_relations = self.performer.get_component(KeyRelations)
+        character = self.performer.get_component(Character)
+        relationships = self.performer.get_component(Relationships)
+
+        current_crush: Optional[GameObject] = None
+        potential_crush: Optional[GameObject] = None
+        highest_romance: float = 0
+
+        crushes = key_relations.get("crush")
+        if crushes:
+            current_crush = crushes[0]
+            potential_crush = current_crush
+            highest_romance = (
+                get_relationship(self.performer, potential_crush)
+                .get_component(Romance)
+                .stat.value
+            )
+
+        for target, relationship in relationships.outgoing.items():
+
+            if target == character.gameobject:
+                continue
+
+            if not target.is_active:
+                continue
+
+            romance = relationship.get_component(Romance).stat.value
+
+            if romance > highest_romance:
+                highest_romance = romance
+                potential_crush = target
+
+        if potential_crush is None or potential_crush == current_crush:
+            return False
+
+        action = FormCrush(character=character.gameobject, crush=potential_crush)
+
+        action_probability = get_action_probability(action)
+
+        if action_probability < crush_threshold:
+            return False
+
+        if rng.random() < action_probability:
+            return action.execute()
+
+        return False
+
+
 class FormCrush(Action):
     """A character forms a crush on another."""
 
@@ -179,7 +264,7 @@ class FormCrush(Action):
     crush: GameObject
 
     def __init__(self, character: GameObject, crush: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character, target=crush)
         self.character = character
         self.crush = crush
 
@@ -283,7 +368,7 @@ class GetPregnant(Action):
     partner: GameObject
 
     def __init__(self, character: GameObject, partner: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character, target=partner)
         self.character = character
         self.partner = partner
 
@@ -310,7 +395,7 @@ class BreakUp(Action):
     partner: GameObject
 
     def __init__(self, character: GameObject, partner: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character, target=partner)
         self.character = character
         self.partner = partner
 
@@ -359,7 +444,7 @@ class Divorce(Action):
     partner: Character
 
     def __init__(self, character: GameObject, partner: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character, target=partner)
         self.character = character.get_component(Character)
         self.partner = partner.get_component(Character)
 
@@ -448,6 +533,25 @@ class Divorce(Action):
         return True
 
 
+class ProposeMarriage(Action):
+    """A character proposes marriage to another."""
+
+    __action_id__ = "get-married"
+
+    __slots__ = ("character", "partner")
+
+    character: GameObject
+    partner: GameObject
+
+    def __init__(self, character: GameObject, partner: GameObject) -> None:
+        super().__init__(character.world, performer=character, target=partner)
+        self.character = character
+        self.partner = partner
+
+    def execute(self) -> bool:
+        return True
+
+
 class GetMarried(Action):
     """A two characters get married."""
 
@@ -459,7 +563,7 @@ class GetMarried(Action):
     partner: GameObject
 
     def __init__(self, character: GameObject, partner: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character, target=partner)
         self.character = character
         self.partner = partner
 
@@ -579,6 +683,25 @@ class GetMarried(Action):
         return True
 
 
+class AskOut(Action):
+    """A character asks another out."""
+
+    __action_id__ = "ask-out"
+
+    __slots__ = ("performer", "target")
+
+    performer: GameObject
+    target: GameObject
+
+    def __init__(self, character: GameObject, crush: GameObject) -> None:
+        super().__init__(character.world, performer=character, target=crush)
+        self.performer = character
+        self.target = crush
+
+    def execute(self) -> bool:
+        return False
+
+
 class StartDating(Action):
     """A character start dating another."""
 
@@ -590,7 +713,7 @@ class StartDating(Action):
     partner: GameObject
 
     def __init__(self, character: GameObject, partner: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character, target=partner)
         self.character = character
         self.partner = partner
 

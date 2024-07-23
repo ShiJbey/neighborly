@@ -2,62 +2,57 @@
 
 """
 
-from neighborly.action import Action
+from typing import Type, cast
+
+from neighborly.action import Action, ActionConsideration, invert_cons
 from neighborly.components.business import Business, Occupation
 from neighborly.components.character import Character, LifeStage
 from neighborly.components.relationship import IsSingle, Reputation, Romance
-from neighborly.components.stats import Fertility
+from neighborly.components.stats import (
+    Boldness,
+    Fertility,
+    Honor,
+    Luck,
+    RomancePropensity,
+    Sociability,
+    StatComponent,
+    WantForChildren,
+    WantForMarriage,
+    WantToWork,
+)
+from neighborly.ecs import GameObject
 from neighborly.helpers.relationship import get_relationship
 from neighborly.helpers.traits import get_time_with_trait
 from neighborly.libraries import ActionConsiderationLibrary
 from neighborly.plugins.actions import (
+    AskOut,
     BecomeBusinessOwner,
+    BreakUp,
     Divorce,
     FireEmployee,
     FormCrush,
     GetMarried,
     GetPregnant,
+    ProposeMarriage,
     Retire,
     StartDating,
+    TryFormCrush,
+    TryGetJob,
 )
 from neighborly.simulation import Simulation
-
-
-def romance_consideration(action: Action) -> float:
-    """Characters with occupations are not eligible to become business owners."""
-
-    if isinstance(action, StartDating):
-        outgoing_relationship = get_relationship(action.character, action.partner)
-        outgoing_romance_stat = outgoing_relationship.get_component(Romance).stat.value
-        if outgoing_romance_stat <= 0:
-            return 0
-
-        incoming_relationship = get_relationship(action.partner, action.character)
-        incoming_romance_stat = incoming_relationship.get_component(Romance).stat.value
-        if incoming_romance_stat <= 0:
-            return 0
-
-        romance_diff = abs(outgoing_romance_stat - incoming_romance_stat)
-
-        if romance_diff < 10:
-            return 0.8
-        if romance_diff < 20:
-            return 0.7
-        if romance_diff < 30:
-            return 0.6
-
-    return -1
 
 
 def existing_relationship_cons(action: Action) -> float:
     """Characters in relationships don't start dating or marriages with others."""
 
-    if isinstance(action, StartDating):
-        if not action.character.has_component(IsSingle):
-            return 0.0
+    performer = cast(GameObject, action.data["performer"])
+    target = cast(GameObject, action.data["target"])
 
-        if not action.partner.has_component(IsSingle):
-            return 0.0
+    if not performer.has_component(IsSingle):
+        return 0.0
+
+    if not target.has_component(IsSingle):
+        return 0.0
 
     return -1
 
@@ -125,31 +120,6 @@ def firing_owner_relationship_cons(action: Action) -> float:
     return -1
 
 
-def crush_romance_consideration(action: Action) -> float:
-    """Consider romance from a character to their potential crush."""
-    if isinstance(action, FormCrush):
-        relationship = get_relationship(action.character, action.crush)
-
-        normalized_reputation = relationship.get_component(Reputation).stat.normalized
-
-        return normalized_reputation
-
-    return -1
-
-
-def fertility_consideration(action: Action) -> float:
-    """Consider romance from a character to their potential crush."""
-    if isinstance(action, GetPregnant):
-        character_fertility = action.character.get_component(Fertility).stat.value
-        partner_fertility = action.partner.get_component(Fertility).stat.value
-
-        avg_fertility = (character_fertility + partner_fertility) / 2.0
-
-        return avg_fertility / 100.0
-
-    return -1
-
-
 def marriage_time_dating_consideration(action: Action) -> float:
     """Consider how long you have been dating before getting married."""
 
@@ -169,41 +139,6 @@ def marriage_time_dating_consideration(action: Action) -> float:
             return 0.5
         else:
             return 0.05
-
-    return -1
-
-
-def marriage_romance_consideration(action: Action) -> float:
-    """Consider romantic feeling for marriage."""
-
-    if isinstance(action, GetMarried):
-        relationship = get_relationship(action.character, action.partner)
-        romance = relationship.get_component(Romance).stat.normalized
-
-        return romance**2
-
-    return -1
-
-
-def breakup_romance_consideration(action: Action) -> float:
-    """Consider romantic feeling for break-up."""
-
-    if isinstance(action, GetMarried):
-        relationship = get_relationship(action.character, action.partner)
-        romance = relationship.get_component(Romance).stat.normalized
-
-        return 1 - romance**2
-
-    return -1
-
-
-def divorce_romance_consideration(action: Action) -> float:
-    """Consider romantic feelings before divorce."""
-    if isinstance(action, GetMarried):
-        relationship = get_relationship(action.character, action.partner)
-        romance = relationship.get_component(Romance).stat.normalized
-
-        return 1 - (romance**2)
 
     return -1
 
@@ -233,8 +168,51 @@ def divorce_time_married_consideration(action: Action) -> float:
     return -1
 
 
+def normalized_relationship_stat_consideration(
+    owner: str, target: str, stat_type: Type[StatComponent]
+) -> ActionConsideration:
+    """Return the normalized value of the stat between the owner and target"""
+
+    def wrapped_fn(action: Action) -> float:
+        owner_obj = cast(GameObject, action.data[owner])
+        target_obj = cast(GameObject, action.data[target])
+        relationship = get_relationship(owner_obj, target_obj)
+
+        return relationship.get_component(stat_type).stat.normalized
+
+    return wrapped_fn
+
+
+def normalized_stat_consideration(
+    agent: str, stat_type: Type[StatComponent]
+) -> ActionConsideration:
+    """Return the normalized value of the stat as a consideration score."""
+
+    def wrapped_fn(action: Action) -> float:
+
+        return (
+            cast(GameObject, action.data[agent])
+            .get_component(stat_type)
+            .stat.normalized
+        )
+
+    return wrapped_fn
+
+
 def load_plugin(sim: Simulation) -> None:
     """Load plugin content into a simulation."""
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        TryGetJob.action_id(), normalized_stat_consideration("performer", WantToWork)
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        TryGetJob.action_id(), normalized_stat_consideration("performer", Honor)
+    )
 
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
@@ -242,33 +220,192 @@ def load_plugin(sim: Simulation) -> None:
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("become-business-owner", life_stage_consideration)
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
-    ).add_success_consideration("start-dating", romance_consideration)
+    ).add_success_consideration(
+        AskOut.action_id(),
+        normalized_relationship_stat_consideration("performer", "target", Romance),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        AskOut.action_id(),
+        normalized_stat_consideration("performer", Boldness),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        AskOut.action_id(),
+        normalized_stat_consideration("performer", Sociability),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        StartDating.action_id(),
+        normalized_relationship_stat_consideration("performer", "target", Romance),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        StartDating.action_id(),
+        normalized_relationship_stat_consideration("target", "performer", Romance),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        StartDating.action_id(),
+        normalized_stat_consideration("target", RomancePropensity),
+    )
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("fire-employee", firing_owner_relationship_cons)
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
-    ).add_success_consideration("form-crush", crush_romance_consideration)
+    ).add_success_consideration(
+        TryFormCrush.action_id(),
+        normalized_stat_consideration("performer", RomancePropensity),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        FormCrush.action_id(),
+        normalized_relationship_stat_consideration("performer", "target", Romance),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        FormCrush.action_id(),
+        normalized_stat_consideration("performer", RomancePropensity),
+    )
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("start-dating", existing_relationship_cons)
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
-    ).add_success_consideration("get-pregnant", fertility_consideration)
+    ).add_success_consideration(
+        GetPregnant.action_id(), normalized_stat_consideration("performer", Fertility)
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        GetPregnant.action_id(),
+        normalized_stat_consideration("performer", WantForChildren),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        GetPregnant.action_id(),
+        normalized_stat_consideration("target", Fertility),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        GetPregnant.action_id(),
+        normalized_stat_consideration("target", WantForChildren),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        ProposeMarriage.action_id(),
+        normalized_relationship_stat_consideration("performer", "target", Romance),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        ProposeMarriage.action_id(),
+        normalized_stat_consideration("performer", Boldness),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        ProposeMarriage.action_id(),
+        normalized_stat_consideration("performer", RomancePropensity),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        ProposeMarriage.action_id(),
+        normalized_stat_consideration("performer", WantForMarriage),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        GetMarried.action_id(),
+        normalized_relationship_stat_consideration("performer", "target", Romance),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        GetMarried.action_id(),
+        normalized_relationship_stat_consideration("target", "performer", Romance),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        GetMarried.action_id(),
+        normalized_stat_consideration("performer", Luck),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        GetMarried.action_id(),
+        normalized_stat_consideration("target", WantForMarriage),
+    )
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("get-married", marriage_time_dating_consideration)
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("divorce", divorce_time_married_consideration)
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
-    ).add_success_consideration("get-married", marriage_romance_consideration)
+    ).add_success_consideration(
+        Divorce.action_id(),
+        invert_cons(
+            normalized_relationship_stat_consideration("performer", "target", Romance),
+        ),
+    )
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
-    ).add_success_consideration("divorce", divorce_romance_consideration)
+    ).add_success_consideration(
+        Divorce.action_id(),
+        invert_cons(
+            normalized_stat_consideration("performer", WantForMarriage),
+        ),
+    )
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
-    ).add_success_consideration("break-up", breakup_romance_consideration)
+    ).add_success_consideration(
+        BreakUp.action_id(),
+        invert_cons(
+            normalized_relationship_stat_consideration("performer", "target", Romance),
+        ),
+    )

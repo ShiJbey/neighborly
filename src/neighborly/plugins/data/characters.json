@@ -77,22 +77,22 @@
         "value_range": "0-80"
       },
       "RomancePropensity": {
-        "value": 50
+        "value_range": "0-80"
       },
       "ViolencePropensity": {
-        "value": 50
+        "value_range": "0-80"
       },
       "WantForPower": {
-        "value": 50
+        "value_range": "0-80"
       },
       "WantForChildren": {
-        "value": 50
+        "value_range": "0-80"
       },
       "WantToWork": {
-        "value": 50
+        "value_range": "0-80"
       },
       "WantForMarriage": {
-        "value": 50
+        "value_range": "0-80"
       },
       "Skills": {},
       "Age": {},

@@ -107,6 +107,62 @@ class BecomeBusinessOwnerEvent(LifeEvent):
         )
 
 
+class RejectDatingProposalEvent(LifeEvent):
+    """A character was rejected."""
+
+    __event_type__ = "reject_dating_proposal"
+
+    __slots__ = ("performer", "target")
+
+    performer: GameObject
+    target: GameObject
+
+    def __init__(self, performer: GameObject, target: GameObject) -> None:
+        super().__init__(performer.world)
+        self.performer = performer
+        self.target = target
+        self.data["performer"] = performer
+        self.data["target"] = target
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "initiator": self.performer.uid,
+            "partner": self.target.uid,
+        }
+
+    def __str__(self) -> str:
+        return f"{self.performer.name} rejected {self.target.name}'s dating proposal."
+
+
+class AskOutEvent(LifeEvent):
+    """A character tried to ask another to start dating."""
+
+    __event_type__ = "ask_out"
+
+    __slots__ = ("performer", "target")
+
+    performer: GameObject
+    target: GameObject
+
+    def __init__(self, performer: GameObject, target: GameObject) -> None:
+        super().__init__(performer.world)
+        self.performer = performer
+        self.target = target
+        self.data["performer"] = performer
+        self.data["target"] = target
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "initiator": self.performer.uid,
+            "partner": self.target.uid,
+        }
+
+    def __str__(self) -> str:
+        return f"{self.performer.name} asked {self.target.name} to date."
+
+
 class StartDatingEvent(LifeEvent):
     """Event dispatched when two characters start dating."""
 
@@ -121,6 +177,8 @@ class StartDatingEvent(LifeEvent):
         super().__init__(initiator.world)
         self.initiator = initiator
         self.partner = partner
+        self.data["performer"] = initiator
+        self.data["target"] = partner
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -131,6 +189,34 @@ class StartDatingEvent(LifeEvent):
 
     def __str__(self) -> str:
         return f"{self.initiator.name} and {self.partner.name} started dating."
+
+
+class ProposeMarriageEvent(LifeEvent):
+    """Event dispatched when two characters get married."""
+
+    __event_type__ = "marriage-proposal"
+
+    __slots__ = ("performer", "target")
+
+    performer: GameObject
+    target: GameObject
+
+    def __init__(self, performer: GameObject, target: GameObject) -> None:
+        super().__init__(performer.world)
+        self.performer = performer
+        self.target = target
+        self.data["performer"] = performer
+        self.data["target"] = target
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "initiator": self.performer.uid,
+            "partner": self.target.uid,
+        }
+
+    def __str__(self) -> str:
+        return f"{self.performer.name} proposed marriage to {self.target.name}."
 
 
 class MarriageEvent(LifeEvent):
@@ -157,6 +243,34 @@ class MarriageEvent(LifeEvent):
 
     def __str__(self) -> str:
         return f"{self.initiator.name} and {self.partner.name} got married."
+
+
+class MarriageProposalRejectionEvent(LifeEvent):
+    """Event dispatched when two characters get married."""
+
+    __event_type__ = "marriage-rejection"
+
+    __slots__ = ("performer", "target")
+
+    performer: GameObject
+    target: GameObject
+
+    def __init__(self, performer: GameObject, target: GameObject) -> None:
+        super().__init__(performer.world)
+        self.performer = performer
+        self.target = target
+        self.data["performer"] = performer
+        self.data["target"] = target
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "initiator": self.performer.uid,
+            "partner": self.target.uid,
+        }
+
+    def __str__(self) -> str:
+        return f"{self.performer.name} rejected {self.target.name}'s marriage proposal."
 
 
 class DivorceEvent(LifeEvent):

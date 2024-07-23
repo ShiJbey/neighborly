@@ -54,6 +54,12 @@ class LifeEvent(Event, ABC):
             f"event_type={self.event_type!r}, timestamp={self.timestamp!r})"
         )
 
+    @classmethod
+    def event_name(cls) -> str:
+        """Get the event type of this class."""
+
+        return cls.__event_type__
+
     @abstractmethod
     def to_dict(self) -> dict[str, Any]:
         """Serialize event data to a dict."""

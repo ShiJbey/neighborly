@@ -4,7 +4,7 @@
 
 import random
 from collections import defaultdict
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from neighborly.components.business import Business, BusinessStatus, JobRole, Occupation
 from neighborly.components.character import (
@@ -17,16 +17,10 @@ from neighborly.components.character import (
     Sex,
 )
 from neighborly.components.location import FrequentedLocations, Location
-from neighborly.components.relationship import (
-    IsMarried,
-    KeyRelations,
-    Relationships,
-    Romance,
-)
+from neighborly.components.relationship import IsMarried, KeyRelations
 from neighborly.components.settlement import District, Settlement
 from neighborly.components.spawn_table import BusinessSpawnTable
-from neighborly.components.stats import Sociability, Stats
-from neighborly.config import SimulationConfig
+from neighborly.components.stats import Sociability
 from neighborly.ecs import Active, GameObject, System, World
 from neighborly.helpers.action import get_action_probability
 from neighborly.helpers.character import (
@@ -35,24 +29,30 @@ from neighborly.helpers.character import (
     remove_character_from_household,
     set_household_head,
 )
-from neighborly.helpers.relationship import (
-    add_relationship,
-    get_relationship,
-    has_relationship,
-)
+from neighborly.helpers.relationship import add_relationship, has_relationship
 from neighborly.libraries import JobRoleLibrary
+from neighborly.life_event import dispatch_life_event
 from neighborly.plugins.actions import (
+    AskOut,
     BreakUp,
     Divorce,
     FireEmployee,
-    FormCrush,
     GetMarried,
     GetPregnant,
     HireEmployee,
     PromoteEmployee,
+    ProposeMarriage,
     Retire,
     StartBusiness,
     StartDating,
+    TryFormCrush,
+    TryGetJob,
+)
+from neighborly.plugins.default_events import (
+    AskOutEvent,
+    MarriageProposalRejectionEvent,
+    ProposeMarriageEvent,
+    RejectDatingProposalEvent,
 )
 from neighborly.simulation import Simulation
 
@@ -84,6 +84,12 @@ class FindJobSystem(System):
                 LifeStage.YOUNG_ADULT,
                 LifeStage.ADULT,
             ):
+                continue
+
+            try_get_job_action = TryGetJob(character)
+
+            # Skip this character if they dont want to get a job
+            if rng.random() > get_action_probability(try_get_job_action):
                 continue
 
             potential_hires: list[HireEmployee] = []
@@ -369,12 +375,30 @@ class CharacterDatingSystem(System):
             if not potential_romances:
                 continue
 
-            action, action_probability = rng.choices(
+            start_dating_action, start_dating_probability = rng.choices(
                 potential_romances, potential_romance_scores, k=1
             )[0]
 
-            if rng.random() < action_probability:
-                action.execute()
+            ask_out_action = AskOut(character.gameobject, start_dating_action.partner)
+
+            # If they dont want to ask them out skip them
+            if rng.random() > get_action_probability(ask_out_action):
+                continue
+
+            dispatch_life_event(
+                AskOutEvent(start_dating_action.character, start_dating_action.partner),
+                [start_dating_action.partner, start_dating_action.character],
+            )
+
+            if rng.random() < start_dating_probability:
+                start_dating_action.execute()
+            else:
+                dispatch_life_event(
+                    RejectDatingProposalEvent(
+                        start_dating_action.partner, start_dating_action.character
+                    ),
+                    [start_dating_action.partner, start_dating_action.character],
+                )
 
 
 class CharacterMarriageSystem(System):
@@ -411,12 +435,34 @@ class CharacterMarriageSystem(System):
             if not potential_marriages:
                 continue
 
-            action, action_probability = rng.choices(
+            marriage_action, marriage_probability = rng.choices(
                 potential_marriages, potential_marriage_scores, k=1
             )[0]
 
-            if rng.random() < action_probability:
-                action.execute()
+            proposal_action = ProposeMarriage(
+                character.gameobject, marriage_action.partner
+            )
+
+            # If they dont want to ask them out skip them
+            if rng.random() > get_action_probability(proposal_action):
+                continue
+
+            dispatch_life_event(
+                ProposeMarriageEvent(
+                    proposal_action.character, proposal_action.partner
+                ),
+                [proposal_action.partner, proposal_action.character],
+            )
+
+            if rng.random() < marriage_probability:
+                marriage_action.execute()
+            else:
+                dispatch_life_event(
+                    MarriageProposalRejectionEvent(
+                        marriage_action.partner, marriage_action.character
+                    ),
+                    [marriage_action.partner, marriage_action.character],
+                )
 
 
 class CharacterDivorceSystem(System):
@@ -605,74 +651,16 @@ class CrushFormationSystem(System):
     on characters that they are not currently in a romantic relationship with.
     """
 
-    __slots__ = ("crush_threshold",)
-
-    crush_threshold: float
-    """Probability score required for someone to form a crush."""
-
-    def __init__(self, crush_threshold: float = 0.6) -> None:
-        super().__init__()
-        self.crush_threshold = crush_threshold
-
-    def on_add(self, world: World) -> None:
-        config = world.resources.get_resource(SimulationConfig)
-
-        if threshold := config.settings.get("crush_threshold"):
-            self.crush_threshold = float(threshold)
-
     def on_update(self, world: World) -> None:
         # 1) Loop through all the active characters
-        # 2) Get their outgoing relationships
-        # 3) Find the person that they have the highest romantic attraction to
-        # 4) Run a probability check
-        # 5) If successful, add a crush trait to the relationship and remove any
-        #    existing crushes.
+        # 2) Let them decide if they want to form a new crush
 
         rng = world.resources.get_resource(random.Random)
 
-        for _, (character, key_relations, relationships, _) in world.get_components(
-            (Character, KeyRelations, Relationships, Active)
-        ):
-            current_crush: Optional[GameObject] = None
-            potential_crush: Optional[GameObject] = None
-            highest_romance: float = 0
+        for _, (character, _) in world.get_components((Character, Active)):
+            action = TryFormCrush(character.gameobject)
 
-            crushes = key_relations.get("crush")
-            if crushes:
-                current_crush = crushes[0]
-                potential_crush = current_crush
-                highest_romance = (
-                    get_relationship(character.gameobject, potential_crush)
-                    .get_component(Stats)
-                    .get_stat("Romance")
-                    .value
-                )
-
-            for target, relationship in relationships.outgoing.items():
-
-                if target == character.gameobject:
-                    continue
-
-                if not target.is_active:
-                    continue
-
-                romance = relationship.get_component(Romance).stat.value
-
-                if romance > highest_romance:
-                    highest_romance = romance
-                    potential_crush = target
-
-            if potential_crush is None or potential_crush == current_crush:
-                continue
-
-            action = FormCrush(character=character.gameobject, crush=potential_crush)
-
-            action_probability = get_action_probability(action)
-
-            if action_probability < self.crush_threshold:
-                continue
-
-            if rng.random() < action_probability:
+            if rng.random() < get_action_probability(action):
                 action.execute()
 
 

@@ -16,3 +16,4 @@ def load_plugin(sim: Simulation) -> None:
     load_traits(sim, _DATA_DIR / "traits.json")
     load_traits(sim, _DATA_DIR / "business_traits.json")
     load_traits(sim, _DATA_DIR / "relationship_traits.json")
+    load_traits(sim, _DATA_DIR / "ck3_traits.yaml")

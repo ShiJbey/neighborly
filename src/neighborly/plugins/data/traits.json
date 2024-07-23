@@ -1,37 +1,4 @@
 {
-  "drinks_too_much": {
-    "name": "Drinks too much",
-    "effects": [
-      {
-        "type": "AddLocationPreference",
-        "location_preconditions": [
-          {
-            "type": "HasTrait",
-            "target": "location",
-            "trait": "serves_alcohol"
-          }
-        ],
-        "value": 0.8,
-        "modifier_type": "percent",
-        "reason": "Has the 'Drinks too Much' trait."
-      },
-      {
-        "type": "AddRelationshipModifier",
-        "direction": "incoming",
-        "effects": [
-          {
-            "type": "AddStatModifier",
-            "stat": "Reputation",
-            "value": -10
-          }
-        ]
-      }
-    ],
-    "spawn_frequency": 1,
-    "tags": [
-      "personality"
-    ]
-  },
   "skeptical": {
     "name": "Skeptical",
     "description": "This character is cautious of others.",
@@ -138,37 +105,6 @@
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.5,
     "inheritance_chance_both": 0.75,
-    "tags": [
-      "personality"
-    ]
-  },
-  "traitorous": {
-    "name": "Traitorous",
-    "description": "This character can betray their friends and allies for personal gain.",
-    "effects": [
-      {
-        "type": "AddRelationshipModifier",
-        "direction": "incoming",
-        "effects": [
-          {
-            "type": "AddStatModifier",
-            "stat": "Reputation",
-            "value": -10
-          },
-          {
-            "type": "AddStatModifier",
-            "stat": "Romance",
-            "value": -5
-          }
-        ]
-      }
-    ],
-    "conflicts_with": [
-      "loyal"
-    ],
-    "spawn_frequency": 1,
-    "inheritance_chance_single": 0.2,
-    "inheritance_chance_both": 0.4,
     "tags": [
       "personality"
     ]
@@ -589,36 +525,30 @@
       "personality"
     ]
   },
-  "betraying": {
-    "name": "Betraying",
-    "description": "This character is prone to betrayal and can turn on friends and allies.",
-    "effects": [
-      {
-        "type": "AddRelationshipModifier",
-        "effects": [
-          {
-            "type": "AddStatModifier",
-            "stat": "Reputation",
-            "value": -10
-          }
-        ]
-      }
-    ],
-    "spawn_frequency": 1,
-    "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6,
-    "tags": [
-      "personality"
-    ]
-  },
   "genius": {
     "name": "Genius",
     "description": "This character possesses exceptional intelligence and problem-solving abilities.",
-    "effects": [],
+    "effects": [
+      {
+        "type": "AddStatModifier",
+        "stat": "Learning",
+        "value": 50
+      },
+      {
+        "type": "AddStatModifier",
+        "stat": "Diplomacy",
+        "value": 50
+      },
+      {
+        "type": "AddStatModifier",
+        "stat": "Stewardship",
+        "value": 50
+      }
+    ],
     "conflicts_with": [
       "simpleminded"
     ],
-    "spawn_frequency": 1,
+    "spawn_frequency": 0.5,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6,
     "tags": [
@@ -651,37 +581,6 @@
           }
         ]
       }
-    ],
-    "spawn_frequency": 1,
-    "inheritance_chance_single": 0.3,
-    "inheritance_chance_both": 0.6,
-    "tags": [
-      "personality"
-    ]
-  },
-  "lustful": {
-    "name": "Lustful",
-    "description": "This character has strong sexual desires and is often drawn to romantic encounters.",
-    "effects": [
-      {
-        "type": "AddStatModifier",
-        "stat": "Fertility",
-        "value": 0.3,
-        "modifier_type": "percent"
-      },
-      {
-        "type": "AddRelationshipModifier",
-        "effects": [
-          {
-            "type": "AddStatModifier",
-            "stat": "Romance",
-            "value": 10
-          }
-        ]
-      }
-    ],
-    "conflicts_with": [
-      "chaste"
     ],
     "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
@@ -838,6 +737,74 @@
   },
   "retired": {
     "name": "Retired",
-    "description": "The character has retired from working."
+    "description": "The character has retired from working.",
+    "effects": [
+      {
+        "type": "AddStatModifier",
+        "stat": "WantToWork",
+        "value": -100
+      }
+    ]
+  },
+  "lucky": {
+    "name": "Lucky",
+    "spawn_frequency": 1,
+    "tags": [
+      "personality"
+    ],
+    "effects": [
+      {
+        "type": "AddStatModifier",
+        "stat": "Luck",
+        "value": 75
+      }
+    ]
+  },
+  "power_hungry": {
+    "name": "Power Hungry",
+    "spawn_frequency": 1,
+    "tags": [
+      "personality"
+    ],
+    "effects": [
+      {
+        "type": "AddStatModifier",
+        "stat": "WantForPower",
+        "value": 75
+      }
+    ]
+  },
+  "hopeless_romantic": {
+    "name": "Hopeless Romantic",
+    "spawn_frequency": 1,
+    "tags": [
+      "personality"
+    ],
+    "effects": [
+      {
+        "type": "AddStatModifier",
+        "stat": "RomancePropensity",
+        "value": 50
+      }
+    ]
+  },
+  "family_oriented": {
+    "name": "Family Oriented",
+    "spawn_frequency": 1,
+    "tags": [
+      "personality"
+    ],
+    "effects": [
+      {
+        "type": "AddStatModifier",
+        "stat": "WantForMarriage",
+        "value": 50
+      },
+      {
+        "type": "AddStatModifier",
+        "stat": "WantForChildren",
+        "value": 50
+      }
+    ]
   }
 }
