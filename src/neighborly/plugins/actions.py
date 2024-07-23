@@ -48,7 +48,6 @@ from neighborly.helpers.location import (
     remove_frequented_location,
 )
 from neighborly.helpers.relationship import deactivate_relationships, get_relationship
-from neighborly.helpers.settlement import remove_character_from_settlement
 from neighborly.helpers.stats import get_stat
 from neighborly.helpers.traits import add_trait, has_trait, remove_trait
 from neighborly.life_event import dispatch_life_event
@@ -57,7 +56,6 @@ from neighborly.plugins.default_events import (
     BusinessClosedEvent,
     DatingBreakUpEvent,
     DeathEvent,
-    DepartSettlementEvent,
     DivorceEvent,
     FiredFromJobEvent,
     JobPromotionEvent,
@@ -1089,66 +1087,5 @@ class Die(Action):
         death_event = DeathEvent(self.character)
 
         dispatch_life_event(death_event, [self.character], skip_logging=self.is_silent)
-
-        return True
-
-
-class DepartSettlement(Action):
-    """A character departs from the settlement and simulation."""
-
-    __action_id__ = "depart-settlement"
-
-    __slots__ = ("character",)
-
-    character: GameObject
-
-    def __init__(self, character: GameObject) -> None:
-        super().__init__(character.world)
-        self.character = character
-
-    def execute(self) -> bool:
-        """Have the given character depart the settlement."""
-
-        add_trait(self.character, "departed")
-
-        # Have the character leave their job
-        if occupation := self.character.try_component(Occupation):
-            if occupation.business.get_component(Business).owner == self.character:
-                CloseBusiness(occupation.business).execute()
-            else:
-                LeaveJob(
-                    business=occupation.business, character=self.character
-                ).execute()
-
-        # Remove them from the population
-        if resident_of := self.character.try_component(ResidentOf):
-            settlement = resident_of.settlement.get_component(Settlement)
-            remove_character_from_settlement(
-                settlement, self.character.get_component(Character)
-            )
-
-        event = DepartSettlementEvent(character=self.character)
-        dispatch_life_event(event, [self.character])
-
-        remove_all_frequented_locations(self.character)
-
-        self.character.deactivate()
-
-        deactivate_relationships(self.character)
-
-        # Remove the character from their household
-        # household = self.character.get_component(
-        #     MemberOfHousehold
-        # ).household.get_component(Household)
-
-        # if self.character == household.head:
-        #     set_household_head(household, None)
-
-        # if self.character == household.spouse:
-        #     set_household_head_spouse(household, None)
-
-        # remove_character_from_household(
-        #     household, self.character.get_component(Character)
-        # )
 
         return True

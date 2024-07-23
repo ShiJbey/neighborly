@@ -727,10 +727,6 @@
       "sexuality"
     ]
   },
-  "departed": {
-    "name": "Departed",
-    "description": "The character has departed the simulation."
-  },
   "deceased": {
     "name": "Deceased",
     "description": "The character is deceased."

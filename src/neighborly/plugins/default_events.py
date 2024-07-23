@@ -720,36 +720,6 @@ class LeaveJobEvent(LifeEvent):
         )
 
 
-class DepartSettlementEvent(LifeEvent):
-    """Character leave the settlement and the simulation."""
-
-    __event_type__ = "depart"
-
-    __slots__ = ("character", "reason")
-
-    character: GameObject
-    reason: str
-
-    def __init__(self, character: GameObject, reason: str = "") -> None:
-        super().__init__(character.world)
-        self.character = character
-        self.reason = reason
-        self.data = {
-            "character": self.character,
-            "reason": self.reason,
-        }
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            **super().to_dict(),
-            "character": self.character.uid,
-            "reason": self.reason,
-        }
-
-    def __str__(self):
-        return f"{self.character.name} departed from the settlement."
-
-
 class LayOffEvent(LifeEvent):
     """The character is laid off from their job."""
 
