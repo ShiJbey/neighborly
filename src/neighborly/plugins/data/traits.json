@@ -117,7 +117,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "Discipline",
+        "stat": "Honor",
         "value": 20
       },
       {
@@ -407,7 +407,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "Discipline",
+        "stat": "Honor",
         "value": -15
       }
     ],
@@ -427,7 +427,7 @@
     "effects": [
       {
         "type": "AddStatModifier",
-        "stat": "Discipline",
+        "stat": "Honor",
         "value": 15
       }
     ],

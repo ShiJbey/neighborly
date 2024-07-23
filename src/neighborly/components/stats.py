@@ -423,6 +423,62 @@ class Stewardship(StatComponent):
         super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
+class Martial(StatComponent):
+    """Tracks a GameObject's martial."""
+
+    __stat_name__ = "Martial"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Intrigue(StatComponent):
+    """Tracks a GameObject's intrigue."""
+
+    __stat_name__ = "Intrigue"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Learning(StatComponent):
+    """Tracks a GameObject's learning."""
+
+    __stat_name__ = "Learning"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Prowess(StatComponent):
+    """Tracks a GameObject's prowess."""
+
+    __stat_name__ = "Prowess"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
 class Sociability(StatComponent):
     """Tracks a GameObject's sociability."""
 
@@ -437,10 +493,108 @@ class Sociability(StatComponent):
         super().__init__(base_value, (0, self.MAX_VALUE), True)
 
 
-class Discipline(StatComponent):
-    """Tracks a GameObject's discipline."""
+class Honor(StatComponent):
+    """Tracks a GameObject's honor."""
 
-    __stat_name__ = "Discipline"
+    __stat_name__ = "Honor"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Boldness(StatComponent):
+    """Tracks a GameObject's boldness."""
+
+    __stat_name__ = "Boldness"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Compassion(StatComponent):
+    """Tracks a GameObject's compassion."""
+
+    __stat_name__ = "Compassion"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Diplomacy(StatComponent):
+    """Tracks a GameObject's diplomacy."""
+
+    __stat_name__ = "Diplomacy"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Greed(StatComponent):
+    """Tracks a GameObject's greed."""
+
+    __stat_name__ = "Greed"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Rationality(StatComponent):
+    """Tracks a GameObject's rationality."""
+
+    __stat_name__ = "Rationality"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Vengefulness(StatComponent):
+    """Tracks a GameObject's vengefulness."""
+
+    __stat_name__ = "Vengefulness"
+
+    MAX_VALUE: int = 100
+
+    def __init__(
+        self,
+        base_value: float = 0,
+    ) -> None:
+        super().__init__(base_value, (0, self.MAX_VALUE), True)
+
+
+class Zeal(StatComponent):
+    """Tracks a GameObject's zeal."""
+
+    __stat_name__ = "Zeal"
 
     MAX_VALUE: int = 100
 
@@ -469,20 +623,6 @@ class ViolencePropensity(StatComponent):
     """Tracks a GameObject's propensity for violent actions."""
 
     __stat_name__ = "ViolencePropensity"
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
-
-
-class Loyalty(StatComponent):
-    """Tracks a GameObject's propensity to remain loyal to those around them."""
-
-    __stat_name__ = "Loyalty"
 
     MAX_VALUE: int = 100
 

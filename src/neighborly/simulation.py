@@ -53,20 +53,30 @@ from neighborly.factories.spawn_table import (
     DistrictSpawnTableFactory,
 )
 from neighborly.factories.stats import (
-    DisciplineFactory,
+    BoldnessFactory,
+    CompassionFactory,
+    DiplomacyFactory,
     FertilityFactory,
+    GreedFactory,
+    HonorFactory,
+    IntrigueFactory,
+    LearningFactory,
     LifespanFactory,
-    LoyaltyFactory,
     LuckFactory,
+    MartialFactory,
+    ProwessFactory,
+    RationalityFactory,
     RomancePropensityFactory,
     SociabilityFactory,
     StatsFactory,
     StewardshipFactory,
+    VengefulnessFactory,
     ViolencePropensityFactory,
     WantForChildrenFactory,
     WantForMarriageFactory,
     WantForPowerFactory,
     WantToWorkFactory,
+    ZealFactory,
 )
 from neighborly.factories.traits import TraitsFactory
 from neighborly.libraries import (
@@ -195,12 +205,23 @@ class Simulation:
         self.world.gameobjects.add_component_factory(PersonalEventHistoryFactory())
         self.world.gameobjects.add_component_factory(LifespanFactory())
         self.world.gameobjects.add_component_factory(FertilityFactory())
+        self.world.gameobjects.add_component_factory(DiplomacyFactory())
+        self.world.gameobjects.add_component_factory(MartialFactory())
         self.world.gameobjects.add_component_factory(StewardshipFactory())
+        self.world.gameobjects.add_component_factory(IntrigueFactory())
+        self.world.gameobjects.add_component_factory(LearningFactory())
+        self.world.gameobjects.add_component_factory(ProwessFactory())
+        self.world.gameobjects.add_component_factory(BoldnessFactory())
+        self.world.gameobjects.add_component_factory(CompassionFactory())
+        self.world.gameobjects.add_component_factory(GreedFactory())
+        self.world.gameobjects.add_component_factory(HonorFactory())
+        self.world.gameobjects.add_component_factory(RationalityFactory())
         self.world.gameobjects.add_component_factory(SociabilityFactory())
-        self.world.gameobjects.add_component_factory(DisciplineFactory())
+        self.world.gameobjects.add_component_factory(VengefulnessFactory())
+        self.world.gameobjects.add_component_factory(ZealFactory())
         self.world.gameobjects.add_component_factory(RomancePropensityFactory())
         self.world.gameobjects.add_component_factory(ViolencePropensityFactory())
-        self.world.gameobjects.add_component_factory(LoyaltyFactory())
+        self.world.gameobjects.add_component_factory(HonorFactory())
         self.world.gameobjects.add_component_factory(WantForPowerFactory())
         self.world.gameobjects.add_component_factory(WantForChildrenFactory())
         self.world.gameobjects.add_component_factory(WantToWorkFactory())

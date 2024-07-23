@@ -4,21 +4,31 @@ import random
 from typing import Any, Type
 
 from neighborly.components.stats import (
-    Discipline,
+    Boldness,
+    Compassion,
+    Diplomacy,
     Fertility,
+    Greed,
+    Honor,
+    Intrigue,
+    Learning,
     Lifespan,
-    Loyalty,
     Luck,
+    Martial,
+    Prowess,
+    Rationality,
     RomancePropensity,
     Sociability,
     StatComponent,
     Stats,
     Stewardship,
+    Vengefulness,
     ViolencePropensity,
     WantForChildren,
     WantForMarriage,
     WantForPower,
     WantToWork,
+    Zeal,
 )
 from neighborly.ecs import Component, ComponentFactory, World
 
@@ -116,6 +126,42 @@ class StewardshipFactory(ComponentFactory):
         return Stewardship(base_value=value)
 
 
+class MartialFactory(StatComponentFactory):
+    """Creates Martial component instances."""
+
+    __component__ = "Martial"
+
+    def __init__(self) -> None:
+        super().__init__(Martial)
+
+
+class IntrigueFactory(StatComponentFactory):
+    """Creates Intrigue component instances."""
+
+    __component__ = "Intrigue"
+
+    def __init__(self) -> None:
+        super().__init__(Intrigue)
+
+
+class LearningFactory(StatComponentFactory):
+    """Creates Learning component instances."""
+
+    __component__ = "Learning"
+
+    def __init__(self) -> None:
+        super().__init__(Learning)
+
+
+class ProwessFactory(StatComponentFactory):
+    """Creates Prowess component instances."""
+
+    __component__ = "Prowess"
+
+    def __init__(self) -> None:
+        super().__init__(Prowess)
+
+
 class SociabilityFactory(ComponentFactory):
     """Creates Sociability component instances."""
 
@@ -134,22 +180,76 @@ class SociabilityFactory(ComponentFactory):
         return Sociability(base_value=value)
 
 
-class DisciplineFactory(ComponentFactory):
-    """Creates Discipline component instances."""
+class HonorFactory(StatComponentFactory):
+    """Creates Honor component instances."""
 
-    __component__ = "Discipline"
+    __component__ = "Honor"
 
-    def instantiate(self, world: World, /, **kwargs: Any) -> Component:
+    def __init__(self) -> None:
+        super().__init__(Honor)
 
-        rng = world.resource_manager.get_resource(random.Random)
 
-        value: float = float(kwargs.get("value", 0))
+class BoldnessFactory(StatComponentFactory):
+    """Creates Boldness component instances."""
 
-        if value_range := kwargs.get("value_range", ""):
-            min_value, max_value = (int(x.strip()) for x in value_range.split("-"))
-            value = rng.randint(min_value, max_value)
+    __component__ = "Boldness"
 
-        return Discipline(base_value=value)
+    def __init__(self) -> None:
+        super().__init__(Boldness)
+
+
+class CompassionFactory(StatComponentFactory):
+    """Creates Compassion component instances."""
+
+    __component__ = "Compassion"
+
+    def __init__(self) -> None:
+        super().__init__(Compassion)
+
+
+class DiplomacyFactory(StatComponentFactory):
+    """Creates Diplomacy component instances."""
+
+    __component__ = "Diplomacy"
+
+    def __init__(self) -> None:
+        super().__init__(Diplomacy)
+
+
+class GreedFactory(StatComponentFactory):
+    """Creates Greed component instances."""
+
+    __component__ = "Greed"
+
+    def __init__(self) -> None:
+        super().__init__(Greed)
+
+
+class RationalityFactory(StatComponentFactory):
+    """Creates Rationality component instances."""
+
+    __component__ = "Rationality"
+
+    def __init__(self) -> None:
+        super().__init__(Rationality)
+
+
+class VengefulnessFactory(StatComponentFactory):
+    """Creates Vengefulness component instances."""
+
+    __component__ = "Vengefulness"
+
+    def __init__(self) -> None:
+        super().__init__(Vengefulness)
+
+
+class ZealFactory(StatComponentFactory):
+    """Creates Zeal component instances."""
+
+    __component__ = "Zeal"
+
+    def __init__(self) -> None:
+        super().__init__(Zeal)
 
 
 class RomancePropensityFactory(StatComponentFactory):
@@ -168,15 +268,6 @@ class ViolencePropensityFactory(StatComponentFactory):
 
     def __init__(self) -> None:
         super().__init__(ViolencePropensity)
-
-
-class LoyaltyFactory(StatComponentFactory):
-    """Creates instances of Loyalty Components."""
-
-    __component__ = "Loyalty"
-
-    def __init__(self) -> None:
-        super().__init__(Loyalty)
 
 
 class WantForPowerFactory(StatComponentFactory):
