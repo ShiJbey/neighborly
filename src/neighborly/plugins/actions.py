@@ -104,7 +104,7 @@ class StartBusiness(Action):
         business_definition_id: str,
         owner_role: JobRole,
     ) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character)
         self.character = character
         self.district = district
         self.business_definition_id = business_definition_id
@@ -156,7 +156,7 @@ class BecomeBusinessOwner(Action):
     business: Business
 
     def __init__(self, character: GameObject, business: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character, business=business)
         self.character = character
         self.business = business.get_component(Business)
 
@@ -289,7 +289,7 @@ class Retire(Action):
     character: GameObject
 
     def __init__(self, character: GameObject) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=character)
         self.character = character
 
     def _choose_successor(self) -> Optional[BecomeBusinessOwner]:
@@ -749,7 +749,12 @@ class HireEmployee(Action):
         role: JobRole,
         is_silent: bool = False,
     ) -> None:
-        super().__init__(business.world, is_silent=is_silent)
+        super().__init__(
+            business.world,
+            is_silent=is_silent,
+            performer=business,
+            target=character,
+        )
         self.business = business
         self.character = character
         self.role = role
@@ -794,7 +799,7 @@ class FireEmployee(Action):
     character: GameObject
 
     def __init__(self, business: GameObject, character: GameObject) -> None:
-        super().__init__(business.world)
+        super().__init__(business.world, performer=business, target=character)
         self.business = business
         self.character = character
 
@@ -826,7 +831,7 @@ class PromoteEmployee(Action):
     def __init__(
         self, business: GameObject, character: GameObject, role: JobRole
     ) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, performer=business, target=character)
         self.business = business
         self.character = character
         self.role = role
@@ -865,7 +870,7 @@ class LayOffEmployee(Action):
     character: GameObject
 
     def __init__(self, business: GameObject, character: GameObject) -> None:
-        super().__init__(business.world)
+        super().__init__(business.world, performer=business, target=character)
         self.business = business
         self.character = character
 
@@ -897,7 +902,9 @@ class LeaveJob(Action):
     def __init__(
         self, business: GameObject, character: GameObject, is_silent: bool = False
     ) -> None:
-        super().__init__(business.world, is_silent=is_silent)
+        super().__init__(
+            business.world, is_silent=is_silent, performer=character, business=business
+        )
         self.business = business
         self.character = character
 
@@ -955,49 +962,49 @@ class CloseBusiness(Action):
 
     __action_id__ = "close-business"
 
-    __slots__ = ("business",)
+    __slots__ = ("performer",)
 
-    business: GameObject
+    performer: GameObject
 
     def __init__(self, business: GameObject) -> None:
-        super().__init__(business.world)
-        self.business = business
+        super().__init__(business.world, performer=business)
+        self.performer = business
 
     def execute(self) -> bool:
 
-        business_comp = self.business.get_component(Business)
-        business_location = self.business.get_component(CurrentDistrict)
+        business_comp = self.performer.get_component(Business)
+        business_location = self.performer.get_component(CurrentDistrict)
 
         # Update the business as no longer active
         business_comp.status = BusinessStatus.CLOSED
 
         # Remove all the employees
         for employee, _ in [*business_comp.employees.items()]:
-            LayOffEmployee(business=self.business, character=employee).execute()
+            LayOffEmployee(business=self.performer, character=employee).execute()
 
         # Remove the owner if applicable
         if business_comp.owner is not None:
-            LeaveJob(business=self.business, character=business_comp.owner).execute()
+            LeaveJob(business=self.performer, character=business_comp.owner).execute()
 
         # Decrement the number of this type
         business_location.district.get_component(BusinessSpawnTable).decrement_count(
-            self.business.metadata["definition_id"]
+            self.performer.metadata["definition_id"]
         )
         business_location.district.get_component(District).businesses.remove(
-            self.business
+            self.performer
         )
 
         # Remove any other characters that frequent the location
-        remove_all_frequenting_characters(self.business)
+        remove_all_frequenting_characters(self.performer)
 
         # Un-mark the business as active so it doesn't appear in queries
-        self.business.deactivate()
+        self.performer.deactivate()
         self.world.events.dispatch_event(
-            Event("business-removed", self.world, business=self.business)
+            Event("business-removed", self.world, business=self.performer)
         )
 
-        event = BusinessClosedEvent(self.business)
-        dispatch_life_event(event, [self.business])
+        event = BusinessClosedEvent(self.performer)
+        dispatch_life_event(event, [self.performer])
 
         return True
 
@@ -1007,27 +1014,27 @@ class Die(Action):
 
     __action_id__ = "die"
 
-    __slots__ = ("character",)
+    __slots__ = ("performer",)
 
-    character: GameObject
+    performer: GameObject
 
-    def __init__(self, character: GameObject, is_silent: bool = False) -> None:
-        super().__init__(character.world, is_silent=is_silent)
-        self.character = character
+    def __init__(self, performer: GameObject, is_silent: bool = False) -> None:
+        super().__init__(performer.world, is_silent=is_silent, performer=performer)
+        self.performer = performer
 
     def execute(self) -> bool:
         """Have a character die."""
 
-        self.character.deactivate()
+        self.performer.deactivate()
 
-        remove_all_frequented_locations(self.character)
+        remove_all_frequented_locations(self.performer)
 
-        add_trait(self.character, "deceased")
+        add_trait(self.performer, "deceased")
 
-        deactivate_relationships(self.character)
+        deactivate_relationships(self.performer)
 
         self.world.events.dispatch_event(
-            Event(event_type="death", world=self.world, character=self.character)
+            Event(event_type="death", world=self.world, character=self.performer)
         )
 
         # Remove the character from their household
@@ -1045,47 +1052,47 @@ class Die(Action):
         #         household, self.character.get_component(Character)
         #     )
 
-        if resident_of := self.character.try_component(ResidentOf):
+        if resident_of := self.performer.try_component(ResidentOf):
 
             current_settlement = resident_of.settlement.get_component(Settlement)
             current_settlement.population -= 1
-            self.character.remove_component(ResidentOf)
+            self.performer.remove_component(ResidentOf)
 
-        character_relations = self.character.get_component(KeyRelations)
+        character_relations = self.performer.get_component(KeyRelations)
 
         # Adjust relationships
         for partner in character_relations.get("dating"):
             partner_relations = partner.get_component(KeyRelations)
 
-            remove_trait(get_relationship(partner, self.character), "dating")
-            remove_trait(get_relationship(self.character, partner), "dating")
-            partner_relations.unset("dating", self.character)
+            remove_trait(get_relationship(partner, self.performer), "dating")
+            remove_trait(get_relationship(self.performer, partner), "dating")
+            partner_relations.unset("dating", self.performer)
             character_relations.unset("dating", partner)
 
-            add_trait(get_relationship(partner, self.character), "ex_partner")
-            add_trait(get_relationship(self.character, partner), "ex_partner")
+            add_trait(get_relationship(partner, self.performer), "ex_partner")
+            add_trait(get_relationship(self.performer, partner), "ex_partner")
 
         for partner in character_relations.get("spouse"):
             partner_relations = partner.get_component(KeyRelations)
 
-            remove_trait(get_relationship(self.character, partner), "spouse")
-            remove_trait(get_relationship(partner, self.character), "spouse")
-            partner_relations.unset("spouse", self.character)
+            remove_trait(get_relationship(self.performer, partner), "spouse")
+            remove_trait(get_relationship(partner, self.performer), "spouse")
+            partner_relations.unset("spouse", self.performer)
             character_relations.unset("spouse", partner)
 
-            add_trait(get_relationship(partner, self.character), "ex_spouse")
-            add_trait(get_relationship(self.character, partner), "ex_spouse")
+            add_trait(get_relationship(partner, self.performer), "ex_spouse")
+            add_trait(get_relationship(self.performer, partner), "ex_spouse")
 
-            add_trait(get_relationship(partner, self.character), "widow")
+            add_trait(get_relationship(partner, self.performer), "widow")
 
         # Remove the character from their occupation
-        if occupation := self.character.try_component(Occupation):
+        if occupation := self.performer.try_component(Occupation):
             LeaveJob(
-                business=occupation.business, character=self.character, is_silent=True
+                business=occupation.business, character=self.performer, is_silent=True
             ).execute()
 
-        death_event = DeathEvent(self.character)
+        death_event = DeathEvent(self.performer)
 
-        dispatch_life_event(death_event, [self.character], skip_logging=self.is_silent)
+        dispatch_life_event(death_event, [self.performer], skip_logging=self.is_silent)
 
         return True

@@ -548,7 +548,7 @@
     "conflicts_with": [
       "simpleminded"
     ],
-    "spawn_frequency": 0.5,
+    "spawn_frequency": 1,
     "inheritance_chance_single": 0.3,
     "inheritance_chance_both": 0.6,
     "tags": [

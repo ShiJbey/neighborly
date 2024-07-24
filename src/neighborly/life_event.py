@@ -35,10 +35,10 @@ class LifeEvent(Event, ABC):
     timestamp: SimDate
     """The timestamp of the event"""
 
-    def __init__(self, world: World) -> None:
+    def __init__(self, world: World, **kwargs: Any) -> None:
         if not type(self).__event_type__:
             raise ValueError(f"Please specify __event_id__ for class {type(self)}")
-        super().__init__(self.__event_type__, world)
+        super().__init__(self.__event_type__, world, **kwargs)
         self.life_event_id = next(self._next_life_event_id)
         self.timestamp = world.resources.get_resource(SimDate).copy()
 

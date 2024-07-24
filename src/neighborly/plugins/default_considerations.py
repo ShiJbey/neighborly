@@ -16,8 +16,10 @@ from neighborly.components.stats import (
     RomancePropensity,
     Sociability,
     StatComponent,
+    Stewardship,
     WantForChildren,
     WantForMarriage,
+    WantForPower,
     WantToWork,
 )
 from neighborly.ecs import GameObject
@@ -33,8 +35,10 @@ from neighborly.plugins.actions import (
     FormCrush,
     GetMarried,
     GetPregnant,
+    PromoteEmployee,
     ProposeMarriage,
     Retire,
+    StartBusiness,
     StartDating,
     TryFormCrush,
     TryGetJob,
@@ -205,6 +209,12 @@ def load_plugin(sim: Simulation) -> None:
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration(
+        PromoteEmployee.action_id(), normalized_stat_consideration("target", Luck)
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
         TryGetJob.action_id(), normalized_stat_consideration("performer", WantToWork)
     )
 
@@ -217,9 +227,38 @@ def load_plugin(sim: Simulation) -> None:
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("become-business-owner", has_occupation_consideration)
+
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("become-business-owner", life_stage_consideration)
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        StartBusiness.action_id(),
+        normalized_stat_consideration("performer", WantToWork),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        StartBusiness.action_id(),
+        normalized_stat_consideration("performer", Boldness),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        StartBusiness.action_id(),
+        normalized_stat_consideration("performer", Stewardship),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        StartBusiness.action_id(),
+        normalized_stat_consideration("performer", WantForPower),
+    )
 
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
@@ -233,6 +272,13 @@ def load_plugin(sim: Simulation) -> None:
     ).add_success_consideration(
         AskOut.action_id(),
         normalized_stat_consideration("performer", Boldness),
+    )
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        AskOut.action_id(),
+        normalized_stat_consideration("performer", RomancePropensity),
     )
 
     sim.world.resources.get_resource(
@@ -266,6 +312,18 @@ def load_plugin(sim: Simulation) -> None:
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
     ).add_success_consideration("fire-employee", firing_owner_relationship_cons)
+
+    sim.world.resources.get_resource(
+        ActionConsiderationLibrary
+    ).add_success_consideration(
+        FireEmployee.action_id(),
+        invert_cons(
+            normalized_stat_consideration(
+                "target",
+                Luck,
+            )
+        ),
+    )
 
     sim.world.resources.get_resource(
         ActionConsiderationLibrary
