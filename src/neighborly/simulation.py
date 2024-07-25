@@ -106,6 +106,8 @@ from neighborly.systems import (
     CompileSkillDefsSystem,
     CompileSpeciesDefsSystem,
     CompileTraitDefsSystem,
+    TickModifiersSystem,
+    TickTraitsSystem,
     TimeSystem,
 )
 
@@ -183,6 +185,8 @@ class Simulation:
         self.world.system_manager.add_system(CompileSettlementDefsSystem())
         self.world.system_manager.add_system(CompileCharacterDefsSystem())
         self.world.system_manager.add_system(CompileBusinessDefsSystem())
+        self.world.system_manager.add_system(TickModifiersSystem())
+        self.world.system_manager.add_system(TickTraitsSystem())
         self.world.system_manager.add_system(TimeSystem())
 
     def _init_component_factories(self) -> None:

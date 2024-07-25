@@ -1,0 +1,167 @@
+{
+  "base_character": {
+    "is_template": true,
+    "traits": [
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "personality"
+        ]
+      },
+      {
+        "with_tags": [
+          "sexuality"
+        ]
+      }
+    ],
+    "components": {
+      "Stats": {},
+      "Modifiers": {},
+      "RelationshipModifiers": {},
+      "Lifespan": {},
+      "Fertility": {
+        "value_range": "0-100"
+      },
+      "Diplomacy": {
+        "value_range": "0-80"
+      },
+      "Martial": {
+        "value_range": "0-80"
+      },
+      "Stewardship": {
+        "value_range": "0-80"
+      },
+      "Intrigue": {
+        "value_range": "0-80"
+      },
+      "Learning": {
+        "value_range": "0-80"
+      },
+      "Prowess": {
+        "value_range": "0-80"
+      },
+      "Boldness": {
+        "value_range": "0-80"
+      },
+      "Compassion": {
+        "value_range": "0-80"
+      },
+      "Greed": {
+        "value_range": "0-80"
+      },
+      "Honor": {
+        "value_range": "0-80"
+      },
+      "Rationality": {
+        "value_range": "0-80"
+      },
+      "Sociability": {
+        "value_range": "0-80"
+      },
+      "Vengefulness": {
+        "value_range": "0-80"
+      },
+      "Zeal": {
+        "value_range": "0-80"
+      },
+      "Luck": {
+        "value_range": "0-80"
+      },
+      "RomancePropensity": {
+        "value_range": "0-80"
+      },
+      "ViolencePropensity": {
+        "value_range": "0-80"
+      },
+      "WantForPower": {
+        "value_range": "0-80"
+      },
+      "WantForChildren": {
+        "value_range": "0-80"
+      },
+      "WantToWork": {
+        "value_range": "0-80"
+      },
+      "WantForMarriage": {
+        "value_range": "0-80"
+      },
+      "StoryCreditScore": {},
+      "Skills": {},
+      "Age": {},
+      "FrequentedLocations": {},
+      "LocationPreferences": {},
+      "PersonalEventHistory": {},
+      "Relationships": {},
+      "KeyRelations": {},
+      "Traits": {},
+      "Character": {},
+      "IsSingle": {}
+    },
+    "variants": [
+      {
+        "variant_name": "male",
+        "sex": "Male",
+        "name_factory": "masculine-first",
+        "is_template": false,
+        "traits": [
+          {
+            "with_tags": [
+              "personality"
+            ]
+          },
+          {
+            "with_tags": [
+              "personality"
+            ]
+          },
+          {
+            "with_tags": [
+              "sexuality"
+            ]
+          }
+        ],
+        "components": {
+          "Character": {
+            "first_name_factory": "masculine-first",
+            "last_name_factory": "default-last",
+            "sex": "MALE"
+          },
+          "Species": {
+            "species": "human"
+          },
+          "Age": {
+            "value_range": "25-56"
+          }
+        }
+      },
+      {
+        "variant_name": "female",
+        "sex": "Female",
+        "name_factory": "feminine-first",
+        "is_template": false,
+        "components": {
+          "Character": {
+            "first_name_factory": "feminine-first",
+            "last_name_factory": "default-last",
+            "sex": "FEMALE"
+          },
+          "Species": {
+            "species": "human"
+          },
+          "Age": {
+            "value_range": "25-56"
+          }
+        }
+      }
+    ]
+  }
+}

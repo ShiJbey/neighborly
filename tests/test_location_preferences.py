@@ -7,10 +7,12 @@ import pathlib
 
 import pytest
 
+from neighborly.definitions import TraitDef
 from neighborly.helpers.business import create_business
 from neighborly.helpers.character import create_character
 from neighborly.helpers.location import score_location
 from neighborly.helpers.traits import add_trait, remove_trait
+from neighborly.libraries import TraitLibrary
 from neighborly.loaders import (
     load_businesses,
     load_characters,
@@ -33,6 +35,20 @@ def test_trait_with_location_preferences() -> None:
     sim = Simulation()
 
     default_content.load_plugin(sim)
+
+    sim.world.resources.get_resource(TraitLibrary).add_definition(
+        TraitDef(
+            definition_id="drinks_too_much",
+            name="Drinks Too Much",
+            effects=[
+                {
+                    "type": "AddLocationPreference",
+                    "preconditions": [{"type": "HasTrait", "trait": "serves_alcohol"}],
+                    "value": 0.4,
+                }
+            ],
+        )
+    )
 
     load_districts(sim, _DATA_DIR / "districts.json")
     load_settlements(sim, _DATA_DIR / "settlements.json")

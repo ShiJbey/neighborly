@@ -18,6 +18,8 @@ from neighborly.components.traits import Trait, Traits
 from neighborly.datetime import SimDate
 from neighborly.definitions import compile_definitions
 from neighborly.ecs import Active, System, World
+from neighborly.helpers.relationship import remove_relationship_modifier
+from neighborly.helpers.shared import remove_modifier
 from neighborly.helpers.traits import remove_trait
 from neighborly.libraries import (
     BusinessLibrary,
@@ -273,7 +275,7 @@ class TickModifiersSystem(System):
                     modifier.update(modifier_manager.gameobject)
 
             for modifier in modifiers_to_remove:
-                modifier_manager.remove_modifier(modifier)
+                remove_modifier(modifier_manager.gameobject, modifier)
 
         for _, (modifier_manager, _) in world.get_components(
             (RelationshipModifiers, Active)
@@ -288,7 +290,7 @@ class TickModifiersSystem(System):
                     modifier.update(modifier_manager.gameobject)
 
             for modifier in rel_modifiers_to_remove:
-                modifier_manager.remove_modifier(modifier)
+                remove_relationship_modifier(modifier_manager.gameobject, modifier)
 
 
 class TickTraitsSystem(System):

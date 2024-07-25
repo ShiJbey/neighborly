@@ -90,7 +90,7 @@ class BecomeBusinessOwnerEvent(LifeEvent):
         character: GameObject,
         business: GameObject,
     ) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, target=character, character=character)
         self.character = character
         self.business = business
 
@@ -230,7 +230,7 @@ class MarriageEvent(LifeEvent):
     partner: GameObject
 
     def __init__(self, initiator: GameObject, partner: GameObject) -> None:
-        super().__init__(initiator.world)
+        super().__init__(initiator.world, performer=initiator, target=partner)
         self.initiator = initiator
         self.partner = partner
 
@@ -284,7 +284,7 @@ class DivorceEvent(LifeEvent):
     partner: GameObject
 
     def __init__(self, initiator: GameObject, partner: GameObject) -> None:
-        super().__init__(initiator.world)
+        super().__init__(initiator.world, performer=initiator, target=partner)
         self.initiator = initiator
         self.partner = partner
 
@@ -409,7 +409,7 @@ class JobPromotionEvent(LifeEvent):
         business: GameObject,
         job_role: JobRole,
     ) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, character=character, business=business)
         self.character = character
         self.business = business
         self.job_role = job_role
@@ -443,7 +443,7 @@ class FiredFromJobEvent(LifeEvent):
     def __init__(
         self, character: GameObject, business: GameObject, job_role: JobRole
     ) -> None:
-        super().__init__(character.world)
+        super().__init__(character.world, character=character, business=business)
         self.character = character
         self.business = business
         self.job_role = job_role
