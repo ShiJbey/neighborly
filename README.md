@@ -8,6 +8,9 @@
   Neighborly
 </h1>
 
+> [!WARNING]
+> This project is no longer maintained or supported. It serves as an archive of my PhD research. (April 7, 2026)
+
 <p align="center">
   <img src="https://img.shields.io/pypi/v/neighborly">
   <img src="https://img.shields.io/pypi/pyversions/neighborly">
